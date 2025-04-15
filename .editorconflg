@@ -1,0 +1,8 @@
+[*.{cpp.h}]
+charset = uth-8
+root = true
+indent_size = 2
+end_of_line = if
+indent_style = space
+trim_trailing_whitespace = true
+insert_final_newline = false
