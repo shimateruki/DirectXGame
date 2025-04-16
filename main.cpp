@@ -123,43 +123,52 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		nullptr); // オプション
 
 	ShowWindow(hwnd, SW_SHOW);
-
+	//DXGIファクトリーの生成
 	IDXGIFactory7* dxgiFaxtory = nullptr;
+	//関数が成功したかどうかSUCCEEDマクロで判定できる
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFaxtory));
 	assert(SUCCEEDED(hr));
-
+	//仕様するアダプタ用生成の変数。最初にnullptrを入れておく
 	IDXGIAdapter4* useAsapter = nullptr;
+	//良い順でアダプタを読む
 	for (int i = 0; dxgiFaxtory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAsapter)) !=
 		DXGI_ERROR_NOT_FOUND; ++i) 
-	{
+	{//アダプタの情報を取得する
 		DXGI_ADAPTER_DESC3 adapterDesc{};
 		hr = useAsapter->GetDesc3(&adapterDesc);
-		assert(SUCCEEDED(hr));
+		assert(SUCCEEDED(hr));//取得できないのは一大事
+		//ソフトウェアアダプタでなければ採用
 		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE))
 		{
+			//採用したアダプタ情報をログに出力 wstringの方なので注意
 			Log(logStrem, ConvertString(std::format(L"use Adapater:{}\n", adapterDesc.Description)));
 			break;
 		}
-		useAsapter = nullptr;
+		useAsapter = nullptr;//ソフトウェアアダプタのばあいは見なかったことにする
 	}
+	//見つからなかったので起動できない
 	assert(useAsapter != nullptr);
 		
 	ID3D12Device* device = nullptr;
+	//機能レベルとログの出力
 	D3D_FEATURE_LEVEL featrueLevels[] =
 	{ D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1,D3D_FEATURE_LEVEL_12_0 };
 	const char* featrueLevelStrings[] = { "12.1", "12.1", "12.0" };
 	for (size_t i = 0; i < _countof(featrueLevels); ++i)
 	{
+		//採用したアダプターでデバイスを生成
 		hr = D3D12CreateDevice(useAsapter, featrueLevels[i], IID_PPV_ARGS(&device));
+		//指定した機能レベルでデバイスが生成できたか確認
 		if (SUCCEEDED(hr))
 		{
+			//静瀬尾できたのでループを抜ける
 			Log(logStrem, (std::format("FeatrueLevel", featrueLevelStrings[i])));
 
 				break;
 		}
 	}
 	assert(device != nullptr);
-	Log(logStrem, "complate crate D3D12Device!!!\n");
+	Log(logStrem, "complate crate D3D12Device!!!\n");//初期化ログを出す
 
 
 
