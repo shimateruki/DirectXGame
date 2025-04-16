@@ -2,13 +2,13 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+//時間を扱うライブラリ
 #include <chrono>
+//ファイルに書いてり読んだりするライブラリ
 #include <format>
 
-void Log(const std::string& message)
-{
-	OutputDebugStringA(message.c_str());
-}
+#include <fstream>
+
 
 
 std::wstring ConvertString(const std::string& str) {
@@ -40,11 +40,17 @@ std::string ConvertString(const std::wstring& str) {
 }
 
 
-//void Log(std::ostream& os, const std::string& message)
+//void Log(const std::string& message)
 //{
-//	os << message << std::endl;
 //	OutputDebugStringA(message.c_str());
 //}
+
+
+void Log(std::ostream& os, const std::string& message)
+{
+	os << message << std::endl;
+	OutputDebugStringA(message.c_str());
+}
 
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
@@ -68,10 +74,20 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-	/*std::filesystem::create_directory("log");
-
+	//ログのフォルダ作成
+	std::filesystem::create_directory("logs");
+	//現在時刻を取得
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-	std::chrono::time_point < std::chrono::system_clock, std::chrono::seconds >;*/
+	//ログファイルの名前にコンマはいらないので削って秒にする
+	std::chrono::time_point < std::chrono::system_clock, std::chrono::seconds >
+	nowSeconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
+	//日本時間に変換
+	std::chrono::zoned_time localTime{ std::chrono::current_zone(), nowSeconds };
+	//年月日時分秒の文字列の取得
+	std::string dateStrings = std::format("{:%Y%m%d_%H%M%S}", localTime);
+	//ファイル名
+	std::string  logFilePath = std::format("logs/") + dateStrings + "log";
+	std::ofstream logStrem(logFilePath);
 	WNDCLASS wc{};
 	//windowプロシージャ
 	wc.lpfnWndProc = WindowProc;
@@ -121,8 +137,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 
 
-	Log("Hello,DirectX!\n");
-	Log(ConvertString(
+	Log(logStrem,"Hello,DirectX!\n");
+	Log(logStrem,
+		ConvertString(
 		std::format(
 			L"clientSize:{} {}\n",
 			kClientWidth,
