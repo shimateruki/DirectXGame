@@ -8,7 +8,11 @@
 #include <format>
 
 #include <fstream>
-
+#include <d3d12.h>
+#include <dxgi1_6.h>
+#include<cassert>
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
 
 
 std::wstring ConvertString(const std::string& str) {
@@ -119,6 +123,47 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		nullptr); // オプション
 
 	ShowWindow(hwnd, SW_SHOW);
+
+	IDXGIFactory7* dxgiFaxtory = nullptr;
+	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFaxtory));
+	assert(SUCCEEDED(hr));
+
+	IDXGIAdapter4* useAsapter = nullptr;
+	for (int i = 0; dxgiFaxtory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAsapter)) !=
+		DXGI_ERROR_NOT_FOUND; ++i) 
+	{
+		DXGI_ADAPTER_DESC3 adapterDesc{};
+		hr = useAsapter->GetDesc3(&adapterDesc);
+		assert(SUCCEEDED(hr));
+		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE))
+		{
+			Log(logStrem, ConvertString(std::format(L"use Adapater:{}\n", adapterDesc.Description)));
+			break;
+		}
+		useAsapter = nullptr;
+	}
+	assert(useAsapter != nullptr);
+		
+	ID3D12Device* device = nullptr;
+	D3D_FEATURE_LEVEL featrueLevels[] =
+	{ D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1,D3D_FEATURE_LEVEL_12_0 };
+	const char* featrueLevelStrings[] = { "12.1", "12.1", "12.0" };
+	for (size_t i = 0; i < _countof(featrueLevels); ++i)
+	{
+		hr = D3D12CreateDevice(useAsapter, featrueLevels[i], IID_PPV_ARGS(&device));
+		if (SUCCEEDED(hr))
+		{
+			Log(logStrem, (std::format("FeatrueLevel", featrueLevelStrings[i])));
+
+				break;
+		}
+	}
+	assert(device != nullptr);
+	Log(logStrem, "complate crate D3D12Device!!!\n");
+
+
+
+
 	MSG msg{};
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
