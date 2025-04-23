@@ -164,14 +164,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	ShowWindow(hwnd, SW_SHOW);
 	//DXGIファクトリーの生成
-	IDXGIFactory7* dxgiFaxtory = nullptr;
+	IDXGIFactory7* dxgiFactory = nullptr;
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
-	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFaxtory));
+	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
 	//仕様するアダプタ用生成の変数。最初にnullptrを入れておく
 	IDXGIAdapter4* useAsapter = nullptr;
 	//良い順でアダプタを読む
-	for (int i = 0; dxgiFaxtory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAsapter)) !=
+	for (int i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAsapter)) !=
 		DXGI_ERROR_NOT_FOUND; ++i) 
 	{//アダプタの情報を取得する
 		DXGI_ADAPTER_DESC3 adapterDesc{};
@@ -227,6 +227,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr,
 		IID_PPV_ARGS(&commandList));
 	assert(SUCCEEDED(hr));
+
+	//スラップチェインを作成する
+	IDXGISwapChain4* swapChain = nullptr;
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+	swapChainDesc.Width = kClientWidth;//画面幅
+	swapChainDesc.Height = kClientHeight;//画面高さ
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;//色の形式
+	swapChainDesc.SampleDesc.Count = 1;//マルチサンプルしない
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount = 2;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue, hwnd, &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(&swapChain));
+		assert(SUCCEEDED(hr));
+
 
 
 	MSG msg{};
