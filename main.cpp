@@ -262,10 +262,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvStartHandle = rtvDescrriptorHelp->GetCPUDescriptorHandleForHeapStart();
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
+		//まず一つ目を作る
 		rtvHandles[0] = rtvStartHandle;
 		device->CreateRenderTargetView(swapChainResouces[0], &rtvDesc, rtvHandles[0]);
 		rtvHandles[1].ptr = rtvHandles[0].ptr + device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
+		//二つ目を作る
 		device->CreateRenderTargetView(swapChainResouces[1],& rtvDesc,rtvHandles[1]);
 
 
@@ -282,6 +283,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		} else
 		{
 			//ゲームの処理
+
+			//画面のクリア処理
+
+			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+			//画面先のrtvを設定する
+			commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, nullptr);
+			float clearColr[] = { 0.1f, 0.25f, 0.5f, 1.0f };
+			commandList->ClearRenderTargetView(rtvHandles[backBufferIndex],clearColr, 0, nullptr );
+			hr = commandList->Close();
+			assert(SUCCEEDED(hr));
+
+			ID3D12CommandList* commandLists[] = { commandList };
+			commandQueue->ExecuteCommandLists(1, commandLists);
+			swapChain->Present(1, 0);
+			hr = commandAllocator->Reset();
+			assert(SUCCEEDED(hr));
+			hr = commandList->Reset(commandAllocator,nullptr);
+			assert(SUCCEEDED(hr));
 
 		}
 
