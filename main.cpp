@@ -11,8 +11,45 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include<cassert>
+#include <dbghelp.h>
+#include <strsafe.h>
+
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "Dbghelp.lib")
+
+//BOOL MiniDumpWriteDump(
+//	[in] HANDLE                            hProcess,
+//	[in] DWORD                             ProcessId,
+//	[in] HANDLE                            hFile,
+//	[in] MINIDUMP_TYPE                     DumpType,
+//	[in] PMINIDUMP_EXCEPTION_INFORMATION   ExceptionParam,
+//	[in] PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
+//	[in] PMINIDUMP_CALLBACK_INFORMATION    CallbackParam
+//);
+
+
+static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
+{
+	SYSTEMTIME time;
+	GetLocalTime(&time);
+	wchar_t filePath[MAX_PATH] = { 0 };
+	CreateDirectory(L"./DUMPS", nullptr);
+	StringCchPrintfW(filePath, MAX_PATH, L"./Dumps/%04d-%02d%02d-%02d%02d.dmp",time.wYear,time.wMonth, time.wDay, time.wHour, time.wMinute );
+	HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ | GENERIC_WRITE,FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
+	DWORD processId = GetCurrentProcessId();
+	DWORD threadId = GetCurrentThreadId();
+	MINIDUMP_EXCEPTION_INFORMATION minidumpInformation{0};
+	minidumpInformation.ThreadId = threadId;
+	minidumpInformation.ExceptionPointers = exception;
+	minidumpInformation.ClientPointers = TRUE;
+	MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle, MiniDumpNormal, &minidumpInformation, nullptr, nullptr);
+
+	
+	
+
+	return EXCEPTION_EXECUTE_HANDLER;
+}
 
 
 std::wstring ConvertString(const std::string& str) {
@@ -78,6 +115,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+	SetUnhandledExceptionFilter(ExportDump);
+	
+
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
 	//現在時刻を取得
@@ -169,7 +209,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 	assert(device != nullptr);
 	Log(logStrem, "complate crate D3D12Device!!!\n");//初期化ログを出す
+	//コマンドキューを生成する
+	ID3D12CommandQueue* commandQueue = nullptr;
+	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
+	hr = device->CreateCommandQueue(&commandQueueDesc,
+		IID_PPV_ARGS(&commandQueue));
 
+	assert(SUCCEEDED(hr));
+	
 
 
 
@@ -201,3 +248,5 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	return 0;
 }
+
+
