@@ -163,6 +163,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		nullptr); // オプション
 
 	ShowWindow(hwnd, SW_SHOW);
+
+
+	#ifdef _DEBUG
+		ID3D12Debug1* debugController = nullptr;
+		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+		{
+			debugController->EnableDebugLayer();
+			debugController->SetEnableGPUBasedValidation(true);
+		}
+
+
+	
+
+#endif // !_DEBUG
+
+
 	//DXGIファクトリーの生成
 	IDXGIFactory7* dxgiFactory = nullptr;
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
@@ -209,6 +225,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 	assert(device != nullptr);
 	Log(logStrem, "complate crate D3D12Device!!!\n");//初期化ログを出す
+
+#ifdef _DEBUG
+
+	ID3D12InfoQueue* infoqueue = nullptr;
+
+	if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&infoqueue))))
+	{
+		//やばいときにエラーで止まる
+		infoqueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+		//エラー時に止まる
+		infoqueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+		//緊急時に止まる
+		infoqueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+		D3D12_MESSAGE_ID denyids[] = 
+		{
+			D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE
+		};
+		//抑制するレベル
+		D3D12_MESSAGE_SEVERITY secerities[] = {D3D12_MESSAGE_SEVERITY_INFO};
+		D3D12_INFO_QUEUE_FILTER filter{};
+		filter.DenyList.NumIDs = _countof(denyids);
+		filter.DenyList.pIDList = denyids;
+		filter.DenyList.NumSeverities = _countof(secerities);
+		filter.DenyList.pSeverityList = secerities;
+		//指定したメッセージの表示を抑制する
+		infoqueue->PushStorageFilter(&filter);
+
+		//解放
+		infoqueue->Release();
+	}
+
+
+#endif // !_DEBUG
 	//コマンドキューを生成する
 	ID3D12CommandQueue* commandQueue = nullptr;
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
@@ -270,6 +319,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		device->CreateRenderTargetView(swapChainResouces[1],& rtvDesc,rtvHandles[1]);
 
 
+
+	
 
 	MSG msg{};
 	//windowの×ボタンが押されるまでループ
