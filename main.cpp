@@ -318,9 +318,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//二つ目を作る
 		device->CreateRenderTargetView(swapChainResouces[1],& rtvDesc,rtvHandles[1]);
 
-
-
 	
+
+		//初期値で0Fenceを作る
+		ID3D12Fence* fence = nullptr;
+		uint64_t fenceValue = 0;
+		hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+		assert(SUCCEEDED(hr));
+	
+
+		//fenceのsignalを持つためのイベントを作成する
+		HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+		assert(fenceEvent != nullptr);
 
 	MSG msg{};
 	//windowの×ボタンが押されるまでループ
@@ -338,21 +347,57 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//画面のクリア処理
 
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+			//TransitonBarrierの設定
+			D3D12_RESOURCE_BARRIER barrier{};
+			//今回のバリアはtransition
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			//Noneにしておく
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			//バリアを張る対象のリソース現在のバックバッファに対して行う
+			barrier.Transition.pResource = swapChainResouces[backBufferIndex];
+			//転移前の(現在)のResoucesStare
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+			//転移後のResourceState
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			//transSitiionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+
 			//画面先のrtvを設定する
 			commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, nullptr);
-			float clearColr[] = { 0.1f, 0.25f, 0.5f, 1.0f };
-			commandList->ClearRenderTargetView(rtvHandles[backBufferIndex],clearColr, 0, nullptr );
+			float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
+			commandList->ClearRenderTargetView(rtvHandles[backBufferIndex],clearColor, 0, nullptr );
+			
+			//renderTarGetからPresentにする
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+			//transSitiionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+			
 			hr = commandList->Close();
 			assert(SUCCEEDED(hr));
 
 			ID3D12CommandList* commandLists[] = { commandList };
 			commandQueue->ExecuteCommandLists(1, commandLists);
 			swapChain->Present(1, 0);
+		
+
+			//Fenceの更新
+			fenceValue++;
+			//GPUがそこまでたどり着いた時に Fenceの値を指定した値に代入するようにsignalを送る
+			commandQueue->Signal(fence, fenceValue);
+
+			if (fence->GetCompletedValue() < fenceValue)
+			{
+				//指定したsignal似たとりついていないのでたどり着くまでに待つようにイベントを指定する
+				fence->SetEventOnCompletion(fenceValue, fenceEvent);
+				//イベントを待つ
+				WaitForSingleObject(fenceEvent, INFINITE);
+			}
+
 			hr = commandAllocator->Reset();
 			assert(SUCCEEDED(hr));
-			hr = commandList->Reset(commandAllocator,nullptr);
+			hr = commandList->Reset(commandAllocator, nullptr);
 			assert(SUCCEEDED(hr));
-
 		}
 
 	}
