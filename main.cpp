@@ -13,10 +13,13 @@
 #include<cassert>
 #include <dbghelp.h>
 #include <strsafe.h>
+#include <dxgidebug.h>
+
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "Dbghelp.lib")
+#pragma comment(lib, "dxguid.lib")
 
 //BOOL MiniDumpWriteDump(
 //	[in] HANDLE                            hProcess,
@@ -411,6 +414,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			kClientWidth,
 			kClientHeight)));
 
+	//解放処理
+	CloseHandle(fenceEvent);
+	fence->Release();
+	rtvDescrriptorHelp->Release();
+	swapChainResouces[0]->Release();
+	swapChainResouces[1]->Release();
+	swapChain->Release();
+	commandList->Release();
+	commandAllocator->Release();
+	commandQueue->Release();
+	device->Release();
+	useAsapter->Release();
+	dxgiFactory->Release();
+#ifdef _DEBUG
+
+	debugController->Release();
+#endif // _DEBUG
+	CloseWindow(hwnd);
+
+	//リソースチェック
+	IDXGIDebug* debug;
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug))))
+	{
+		debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
+		debug->Release();
+	}
+	infoqueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
 	return 0;
 }
 
