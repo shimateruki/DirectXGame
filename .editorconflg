@@ -1,4 +1,4 @@
-[*.{cpp.h}]
+[*.{cpp.h,hlsl,hlsli}]
 charset = uth-8
 root = true
 indent_size = 2
