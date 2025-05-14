@@ -24,4 +24,8 @@
       <Filter>ソース ファイル</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Object3d.VS.hlsl" />
+    <FxCompile Include="Object3d.PS.hlsl" />
+  </ItemGroup>
 </Project>
