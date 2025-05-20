@@ -178,7 +178,10 @@ IDxcBlob* CompileShander(
 
 }
 	
-
+//ID3D12Resource* createBuhherResouces(ID3D12Device* device, size_t sizeInBytes)
+//{
+//
+//};
 
 
 
@@ -423,6 +426,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	descriptionRootSignatrue.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	//Rootparameter作成　複数設定できるので配列 今回は結果が一つだけなので長さが1の配列
+	D3D12_ROOT_PARAMETER rootParmeters[1] = {};
+	rootParmeters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+	rootParmeters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
+	rootParmeters[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
+	descriptionRootSignatrue.pParameters = rootParmeters;//ルートパラメーターへのポインタ
+	descriptionRootSignatrue.NumParameters = _countof(rootParmeters);//配列の長さ
+
 	//シアライズしてばいなりにする
 	ID3DBlob* signatureBlob = nullptr;
 	ID3DBlob* errorBlob = nullptr;
@@ -657,6 +669,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	device->Release();
 	useAsapter->Release();
 	dxgiFactory->Release();
+
 	vertexResouces->Release();
 	graphicsPipelineState->Release();
 	signatureBlob->Release();
