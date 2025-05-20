@@ -93,6 +93,32 @@ std::string ConvertString(const std::wstring& str) {
 	return result;
 }
 
+//resouces作成の関数
+ID3D12Resource* createBufferResouces(ID3D12Device* device, size_t sizeInBytes)
+{
+	//頂点とリソース用のヒープ設定
+	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+	//頂点リソースの設定
+	D3D12_RESOURCE_DESC vertResoucesDesc{};
+	//バッファーリソーステクスチャの場合は別の指定をする
+	vertResoucesDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	vertResoucesDesc.Width = sizeInBytes * 3;
+	//バッファの場合は1にする
+	vertResoucesDesc.Height = 1;
+	vertResoucesDesc.DepthOrArraySize = 1;
+	vertResoucesDesc.MipLevels = 1;
+	vertResoucesDesc.SampleDesc.Count = 1;
+	//バッファの場合はこれをする決まり
+	vertResoucesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	//実際に頂点リソースを作る
+	ID3D12Resource* vertexResouces = nullptr;
+	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
+		&vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexResouces));
+	assert(SUCCEEDED(hr));
+	return vertexResouces;
+}
+
 
 //void Log(const std::string& message)
 //{
@@ -178,10 +204,7 @@ IDxcBlob* CompileShander(
 
 }
 	
-//ID3D12Resource* createBuhherResouces(ID3D12Device* device, size_t sizeInBytes)
-//{
-//
-//};
+
 
 
 
@@ -435,6 +458,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptionRootSignatrue.pParameters = rootParmeters;//ルートパラメーターへのポインタ
 	descriptionRootSignatrue.NumParameters = _countof(rootParmeters);//配列の長さ
 
+	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
+	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Vector4));
+	//マテリアル用のデータを書き込む
+	Vector4* materrialData = nullptr;
+	//書き込むためのアドレスを取得
+	materialResouces->Map(0, nullptr, reinterpret_cast<void**>(&materrialData));
+	//今回は赤を書き込んでみる
+	*materrialData = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+
 	//シアライズしてばいなりにする
 	ID3DBlob* signatureBlob = nullptr;
 	ID3DBlob* errorBlob = nullptr;
@@ -606,6 +638,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			//マテリアルcBubufferの場所設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
+
 			//作画
 			commandList->DrawInstanced(3, 1, 0, 0);
 
@@ -656,6 +692,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			kClientWidth,
 			kClientHeight)));
 
+	CloseWindow(hwnd);
+
 	//解放処理
 	CloseHandle(fenceEvent);
 	fence->Release();
@@ -680,11 +718,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootsignatrue->Release();
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
+	materialResouces->Release();
+
 #ifdef _DEBUG
 
 	debugController->Release();
 #endif // _DEBUG
-	CloseWindow(hwnd);
+
 
 	//リソースチェック
 	IDXGIDebug* debug;
