@@ -33,6 +33,14 @@
 //	[in] PMINIDUMP_CALLBACK_INFORMATION    CallbackParam
 //);
 
+struct Vector3
+{
+	float x;
+	float y;
+	float z;
+};
+
+
 struct Vector4
 {
 	float x;
@@ -41,17 +49,22 @@ struct Vector4
 	float w;
 };
 
-struct matrix4x4
+struct Matrix4x4
 {
 	float m[4][4];
 };
 
-
+struct Transform
+{
+	Vector3 scale;
+	Vector3 rotate;
+	Vector3 translate;
+};
 
 // 単位行列の作成
-matrix4x4 makeIdentity4x4()
+Matrix4x4 makeIdentity4x4()
 {
-	matrix4x4 result = {};
+	Matrix4x4 result = {};
 	result.m[0][0] = 1.0f;
 	result.m[0][1] = 0.0f;
 	result.m[0][2] = 0.0f;
@@ -74,6 +87,74 @@ matrix4x4 makeIdentity4x4()
 	return result;
 };
 
+Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
+
+	Matrix4x4 result{ scale.x, 0.0f, 0.0f, 0.0f, 0.0f, scale.y, 0.0f, 0.0f, 0.0f, 0.0f, scale.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+
+	return result;
+}
+
+Matrix4x4 MakeRotateXMatrix(float theta) {
+	float sin = std::sin(theta);
+	float cos = std::cos(theta);
+
+	Matrix4x4 result{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, cos, sin, 0.0f, 0.0f, -sin, cos, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+
+	return result;
+}
+
+Matrix4x4 MakeRotateYMatrix(float theta) {
+	float sin = std::sin(theta);
+	float cos = std::cos(theta);
+
+	Matrix4x4 result{ cos, 0.0f, -sin, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, sin, 0.0f, cos, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+
+	return result;
+}
+
+Matrix4x4 MakeRotateZMatrix(float theta) {
+	float sin = std::sin(theta);
+	float cos = std::cos(theta);
+
+	Matrix4x4 result{ cos, sin, 0.0f, 0.0f, -sin, cos, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+
+	return result;
+}
+
+Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
+	Matrix4x4 result{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, translate.x, translate.y, translate.z, 1.0f };
+
+	return result;
+}
+
+
+
+Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result = {};
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			result.m[row][col] =
+				m1.m[row][0] * m2.m[0][col] +
+				m1.m[row][1] * m2.m[1][col] +
+				m1.m[row][2] * m2.m[2][col] +
+				m1.m[row][3] * m2.m[3][col];
+		}
+	}
+	return result;
+}
+
+Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate) {
+	Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
+	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
+	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
+	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
+	Matrix4x4 rotateMatrix = Multiply(Multiply(rotateXMatrix, rotateYMatrix), rotateZMatrix);
+	Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
+
+	Matrix4x4 worldMatrix = Multiply(Multiply(scaleMatrix, rotateMatrix), translateMatrix);
+
+	return worldMatrix;
+}
 
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
@@ -607,9 +688,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexBufferView.StrideInBytes = sizeof(Vector4);
 	
 	//WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
-	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(matrix4x4));
+	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(Matrix4x4));
 	//データ書き込む
-	matrix4x4* wvpData = nullptr;
+	Matrix4x4* wvpData = nullptr;
 	//書き込むためのアドレス
 	wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
 	*wvpData = makeIdentity4x4();
@@ -642,7 +723,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-			
+	Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
 
 
 	//windowの×ボタンが押されるまでループ
@@ -657,6 +738,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		{
 			//ゲームの処理
 
+			transform.rotate.y += 0.03f;
+			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+			*wvpData = worldMatrix;
 			//画面のクリア処理
 
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
