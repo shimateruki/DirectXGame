@@ -41,6 +41,40 @@ struct Vector4
 	float w;
 };
 
+struct matrix4x4
+{
+	float m[4][4];
+};
+
+
+
+// 単位行列の作成
+matrix4x4 makeIdentity4x4()
+{
+	matrix4x4 result = {};
+	result.m[0][0] = 1.0f;
+	result.m[0][1] = 0.0f;
+	result.m[0][2] = 0.0f;
+	result.m[0][3] = 0.0f;
+
+	result.m[1][0] = 0.0f;
+	result.m[1][1] = 1.0f;
+	result.m[1][2] = 0.0f;
+	result.m[1][3] = 0.0f;
+
+	result.m[2][0] = 0.0f;
+	result.m[2][1] = 0.0f;
+	result.m[2][2] = 1.0f;
+	result.m[2][3] = 0.0f;
+
+	result.m[3][0] = 0.0f;
+	result.m[3][1] = 0.0f;
+	result.m[3][2] = 0.0f;
+	result.m[3][3] = 1.0f;
+	return result;
+};
+
+
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 {
@@ -451,12 +485,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 	//Rootparameter作成　複数設定できるので配列 今回は結果が一つだけなので長さが1の配列
-	D3D12_ROOT_PARAMETER rootParmeters[1] = {};
+	D3D12_ROOT_PARAMETER rootParmeters[2] = {};
 	rootParmeters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 	rootParmeters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
 	rootParmeters[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
+
+	rootParmeters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CVBを使う
+	rootParmeters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//vertexShaerで使う
+	rootParmeters[1].Descriptor.ShaderRegister = 0;//レジスタ番号0を使う
 	descriptionRootSignatrue.pParameters = rootParmeters;//ルートパラメーターへのポインタ
 	descriptionRootSignatrue.NumParameters = _countof(rootParmeters);//配列の長さ
+
+
 
 	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
 	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Vector4));
@@ -555,6 +595,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
 		&vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexResouces));
 	assert(SUCCEEDED(hr));
+
+
 	//頂点バッファビューを作成する
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 	//リソースの先端アドレスから使う
@@ -564,6 +606,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//1頂点当たりのサイズ
 	vertexBufferView.StrideInBytes = sizeof(Vector4);
 	
+	//WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
+	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(matrix4x4));
+	//データ書き込む
+	matrix4x4* wvpData = nullptr;
+	//書き込むためのアドレス
+	wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
+	*wvpData = makeIdentity4x4();
+
 	//頂点リソースサイズデータに書き込む
 	Vector4* vertexData = nullptr;
 	//書き込むためのアドレスの取得
@@ -641,7 +691,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			
 			//作画
 			commandList->DrawInstanced(3, 1, 0, 0);
 
@@ -719,6 +770,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
 	materialResouces->Release();
+	wvpResouces->Release();
 
 #ifdef _DEBUG
 

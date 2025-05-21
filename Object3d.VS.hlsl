@@ -1,3 +1,9 @@
+struct TransformationMatrix
+{
+    float32_t4x4 WVP;
+};
+ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
+
 
 struct VertexShanderOutput
 {
@@ -12,6 +18,7 @@ struct VertexShanderInput
 VertexShanderOutput main(VertexShanderInput input)
 {
     VertexShanderOutput output;
-    output.position = input.position;
+    output.position = mul(input.position, gTransformationMatrix.WVP);
     return output;
 }
+
