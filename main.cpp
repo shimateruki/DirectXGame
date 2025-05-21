@@ -871,6 +871,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::NewFrame();
 			ImGui::ShowDemoWindow();
 			//ゲームの処理
+			ImGui::Begin("MaterialColor");
+			ImGui::ColorEdit4("color", &(materrialData)->x);
+			ImGui::End();
 
 			transform.rotate.y += 0.03f;
 			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
