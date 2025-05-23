@@ -369,6 +369,20 @@ ID3D12DescriptorHeap* CreateDescriptorHeap(
 	return descriptorHeap;
 }
 
+void ShowSRTWindow(Transform& transform)
+{
+#ifdef _DEBUG
+	ImGui::Begin("SRT Settings (Debug Only)");
+
+	ImGui::SliderFloat3("Scale", &transform.scale.x, 0.1f, 10.0f);
+	ImGui::SliderFloat3("Rotate", &transform.rotate.x, -3.14159f, 3.14159f);
+	ImGui::SliderFloat3("Translate", &transform.translate.x, -100.0f, 100.0f);
+
+	ImGui::End();
+#endif
+}
+
+
 
 
 
@@ -764,8 +778,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptionRootSignatrue.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
+
+	//descriptorRangeによる一括設定
+		D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
+	descriptorRange[0].BaseShaderRegister = 0;//0から始まる
+	descriptorRange[0].NumDescriptors = 1;//数は一つ
+	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;//srvを使う
+	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;//自動計算
+
 	//Rootparameter作成　複数設定できるので配列 今回は結果が一つだけなので長さが1の配列
-	D3D12_ROOT_PARAMETER rootParmeters[2] = {};
+	D3D12_ROOT_PARAMETER rootParmeters[3] = {};
 	rootParmeters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 	rootParmeters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
 	rootParmeters[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
@@ -773,9 +795,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParmeters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CVBを使う
 	rootParmeters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//vertexShaerで使う
 	rootParmeters[1].Descriptor.ShaderRegister = 0;//レジスタ番号0を使う
+
+	rootParmeters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
+	rootParmeters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParmeters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
+	rootParmeters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);//tableで利用する数
 	descriptionRootSignatrue.pParameters = rootParmeters;//ルートパラメーターへのポインタ
 	descriptionRootSignatrue.NumParameters = _countof(rootParmeters);//配列の長さ
 
+	//samplerの設定お行う
+	D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;//バイリニアフィルター
+	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//0 ~1の範囲外をリピート 
+	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//比較
+	staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+	staticSamplers[0].ShaderRegister = 0;
+	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	descriptionRootSignatrue.pStaticSamplers = staticSamplers;
+	descriptionRootSignatrue.NumStaticSamplers = _countof(staticSamplers);
+
+	
+	
 
 
 	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
@@ -985,6 +1027,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ColorEdit4("color", &(materrialData)->x);
 			ImGui::End();
 
+			ShowSRTWindow(transform);
+
 
 			transform.rotate.y += 0.03f;
 			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
@@ -1033,6 +1077,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			
 			ImGui::Render();
 
