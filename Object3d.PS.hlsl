@@ -1,3 +1,5 @@
+#include "Object3d.hlsli"
+
 
 struct PixelShanderOutput
 {
@@ -18,7 +20,7 @@ struct pixelShaderOutput
 
 
 
-PixelShanderOutput main()
+PixelShanderOutput main(VecrtexShaderOutput input)
 {
     PixelShanderOutput output;
     
