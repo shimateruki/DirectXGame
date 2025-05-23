@@ -16,10 +16,12 @@
 #include <dxgidebug.h>
 #include <dxcapi.h>
 
+
 #include "externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
-
+#include "externals/DirectXTex/DirectXTex.h"
+	
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 
@@ -432,8 +434,75 @@ IDxcBlob* CompileShander(
 	return shaderBlob;
 
 }
-	
 
+DirectX::ScratchImage LoadTexture (const std::string& filePath)
+{
+	//テクスチャファイルを読み込んでプログラムで扱えるようにする
+	DirectX::ScratchImage image{};
+	std::wstring filePathW = ConvertString(filePath);
+	HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+	assert(SUCCEEDED(hr));
+	//ミニマップの作成
+	DirectX::ScratchImage mipImages{};
+	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
+	assert(SUCCEEDED(hr));
+	//ミップマップのデータを返す
+	return mipImages;
+}
+	
+ID3D12Resource* createTextreResouces(ID3D12Device* device, const DirectX::TexMetadata& metadata)
+{
+	//metadataを軸にResoucesの設定
+	D3D12_RESOURCE_DESC resouceDesc{};
+	resouceDesc.Width = UINT(metadata.width);//textreの幅
+	resouceDesc.Height = UINT(metadata.height);//textreの幅
+	resouceDesc.MipLevels = UINT(metadata.mipLevels);//mipmapの数
+	resouceDesc.DepthOrArraySize = UINT16(metadata.arraySize);//奥行き or 配列のtextreの配列数
+	resouceDesc.Format = metadata.format;//textreのformat
+	resouceDesc.SampleDesc.Count = 1;//サンプリングカウント1固定
+	resouceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);//textreの次元数　普段使っているのは2次元
+	
+	//利用するheapの設定　非常に特殊な運用　02_04exで一般ケース版がある
+	D3D12_HEAP_PROPERTIES heapProperties{};
+	heapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;//細かい設定お行う
+	heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;//writebackポリシーでcpuでアクセス可能
+	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;//プロセッサーの近くに配置
+	
+	//resoucesの作成
+	ID3D12Resource* resouce = nullptr;
+	HRESULT hr = device->CreateCommittedResource(
+		&heapProperties,//heapの設定
+		D3D12_HEAP_FLAG_NONE,//heapの特殊設定
+		&resouceDesc,//Resoucesの設定
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&resouce));//初回Resoucesstate textre破棄本読むだけ
+	assert(SUCCEEDED(hr));
+	return resouce;
+}
+
+void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages)
+{
+	//meta情報
+	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
+	//全mipdataについて
+	for (size_t mipLevel = 0; mipLevel < metadata.mipLevels; mipLevel++)
+	{
+		const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
+		//textureに転送
+		HRESULT hr = texture->WriteToSubresource
+		(
+			UINT(mipLevel),//全領域へコピー
+			nullptr,
+			img->pixels,//元データアドレス
+			UINT(img->rowPitch),//1ラインサイズ
+			UINT(img->slicePitch)//1枚サイズ
+
+		);
+		assert(SUCCEEDED(hr));
+	}
+}
 
 
 
@@ -441,7 +510,9 @@ IDxcBlob* CompileShander(
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	SetUnhandledExceptionFilter(ExportDump);
-	
+
+	//comの初期化
+	CoInitializeEx(0, COINIT_MULTITHREADED);
 	
 
 
@@ -846,6 +917,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		srvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
+	//textureを読んで転送する
+	DirectX::ScratchImage mipImages = LoadTexture("resouces/uvChecker.png");
+	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+	ID3D12Resource* textureResouces = createTextreResouces(device, metadata);
+	UploadTextureData(textureResouces, mipImages);
+
+
+
+
 	//初期化
 	Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -5.0f} };
@@ -1008,6 +1088,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 	materialResouces->Release();
 	wvpResouces->Release();
+	textureResouces->Release();
 	
 
 #ifdef _DEBUG
@@ -1018,6 +1099,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+	//comの終了時
+	CoUninitialize();
 
 	//リソースチェック
 	IDXGIDebug* debug;
