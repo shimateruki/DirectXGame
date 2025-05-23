@@ -923,7 +923,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Resource* textureResouces = createTextreResouces(device, metadata);
 	UploadTextureData(textureResouces, mipImages);
 
+	//mataDataを基にSRVの設定
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = metadata.format;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
+	//SRVを作成するDescriptorHeapの場所を求める
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = srvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart();
+	//先端はimguiを作成するDescriptorの場所を決める
+	textureSrvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	textureSrvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//srvを作成する
+	
+	device->CreateShaderResourceView(textureResouces, &srvDesc, textureSrvHandleCPU);
 
 
 	//初期化
