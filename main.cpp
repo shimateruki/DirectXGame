@@ -1003,6 +1003,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 	ID3D12Resource* textureResouces = createTextreResouces(device, metadata);
 
+	ID3D12Resource* intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
+
 
 	//mataDataを基にSRVの設定
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -1104,10 +1106,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			
-			//a
+		
 			ImGui::Render();
 
-				
+
 
 			//作画
 			commandList->DrawInstanced(3, 1, 0, 0);
@@ -1120,7 +1122,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->ResourceBarrier(1, &barrier);
 	
 		
-			ID3D12Resource* intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
+			
 			
 			hr = commandList->Close();
 			assert(SUCCEEDED(hr));
@@ -1150,7 +1152,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			assert(SUCCEEDED(hr));
 
 	
-			intermediteResouces->Release();
+			
 		
 		}
 
@@ -1196,7 +1198,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResouces->Release();
 	wvpResouces->Release();
 	textureResouces->Release();
-
+	intermediteResouces->Release();
 	
 
 #ifdef _DEBUG
