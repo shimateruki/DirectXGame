@@ -285,6 +285,8 @@ Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Ve
 
 
 
+
+
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 {
 	SYSTEMTIME time;
@@ -1007,8 +1009,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 	
+	// 球体用の頂点数を定義
+	const uint32_t kSphereVertexCount = 1536;
+
+
 	//リソースを作る
-	ID3D12Resource* vertexResouces = createBufferResouces(device, sizeof(VertexData)*6);
+	ID3D12Resource* vertexResouces = createBufferResouces(device, sizeof(VertexData)*kSphereVertexCount);
 	ID3D12Resource* vertexResoucesSptite = createBufferResouces(device, sizeof(VertexData) * 6);
 
 	//頂点バッファビューを作成する
@@ -1018,7 +1024,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexBufferView.BufferLocation = vertexResouces->GetGPUVirtualAddress();
 	
 	//使用するリソースのサイズは頂点3つ分サイズ
-	vertexBufferView.SizeInBytes = sizeof(VertexData) * 6;
+	vertexBufferView.SizeInBytes = sizeof(VertexData) * kSphereVertexCount;
 	
 	//1頂点当たりのサイズ
 	vertexBufferView.StrideInBytes = sizeof(VertexData);
@@ -1052,28 +1058,106 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//書き込むためのアドレスの取得
 	vertexResouces->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexData));
 	
-	//左
-	vertexData[0].position = { -0.5f, -0.5f,0.0f,1.0f };
-	vertexData[0].texcoord = { 0.0f, 1.0f };
-	//上
-	vertexData[1].position = { 0.0f, 0.5f, 0.0f, 1.0f };
-	vertexData[1].texcoord = { 0.5f, 0.0f };
+	
 
-	//右
-	vertexData[2].position = { 0.5f, -0.5f, 0.0f, 1.0f };
-	vertexData[2].texcoord = { 1.0f, 1.0f };
+	const uint32_t kSubdivision = 16; // 分割数
+	const float pi = 3.14159265359f;
+
+	//経度分割一つ分の角度
+	const float kLonEvery = pi * 2.0f / static_cast<float>(kSubdivision);
+	//経度分割一つ分の角度
+	const float kLatEvery = pi / static_cast<float>(kSubdivision);
 
 
-	//左
-	vertexData[3].position = { -0.5f, -0.5f,0.5f,1.0f };
-	vertexData[3].texcoord = { 0.0f, 1.0f };
-	//上
-	vertexData[4].position = { 0.0f, 0.0f, 0.0f, 1.0f };
-	vertexData[4].texcoord = { 0.5f, 0.0f };
 
-	//右
-	vertexData[5].position = { 0.5f, -0.5f, -0.5f, 1.0f };
-	vertexData[5].texcoord = { 1.0f, 1.0f };
+	for (int latIndex = 0; latIndex < kSubdivision; latIndex++)
+	{
+		// 現在の緯度
+		float lat = -pi / 2.0f + kLatEvery * latIndex;
+		// 次の緯度 (現在の緯度セグメントの上端)
+		float nextLat = -pi / 2.0f + kLatEvery * (latIndex + 1);
+
+		//経度の方向に分割しながら線を書く
+		for (int lonIndex = 0; lonIndex < kSubdivision; ++lonIndex)
+		{
+			// このクワッド（四角形）の最初の頂点が格納されるインデックス
+			// 1つのクワッドにつき2つの三角形、合計6つの頂点データを使用
+			uint32_t start = (latIndex * kSubdivision + lonIndex) * 6;
+
+			// 現在の経度
+			float lon = lonIndex * kLonEvery;
+			// 次の経度 (現在の経度セグメントの右端)
+			float nextLon = (lonIndex + 1) * kLonEvery;
+
+			// --- クワッドの4つのコーナーのワールド座標を計算 ---
+			// P0: 左下 (現在の経度・緯度)
+			Vector4 p0_pos = {
+				cos(lat) * cos(lon),
+				sin(lat),
+				cos(lat) * sin(lon),
+				1.0f
+			};
+			// P1: 右下 (次の経度・現在の緯度)
+			Vector4 p1_pos = {
+				cos(lat) * cos(nextLon),
+				sin(lat),
+				cos(lat) * sin(nextLon),
+				1.0f
+			};
+			// P2: 左上 (現在の経度・次の緯度)
+			Vector4 p2_pos = {
+				cos(nextLat) * cos(lon),
+				sin(nextLat),
+				cos(nextLat) * sin(lon),
+				1.0f
+			};
+			// P3: 右上 (次の経度・次の緯度)
+			Vector4 p3_pos = {
+				cos(nextLat) * cos(nextLon),
+				sin(nextLat),
+				cos(nextLat) * sin(nextLon),
+				1.0f
+			};
+
+
+			Vector2 uv0 = { static_cast<float>(lonIndex) / kSubdivision,      1.0f-static_cast<float>(latIndex) / kSubdivision };
+			Vector2 uv1 = { static_cast<float>(lonIndex + 1) / kSubdivision,  1.0f-static_cast<float>(latIndex) / kSubdivision };
+			Vector2 uv2 = { static_cast<float>(lonIndex) / kSubdivision,      1.0f-static_cast<float>(latIndex + 1) / kSubdivision };
+			Vector2 uv3 = { static_cast<float>(lonIndex + 1) / kSubdivision,  1.0f-static_cast<float>(latIndex + 1) / kSubdivision };
+
+			// --- 1つのクワッドを2つの三角形に分割して頂点データを入力 ---
+			// この順番で頂点を指定することで、表面の向きが統一されます (巻き順に注意)
+
+			// 三角形1: 左下(P0), 左上(P2), 右下(P1)
+			// 頂点1 (P0)
+			vertexData[start + 0].position = p0_pos;
+			vertexData[start + 0].texcoord = uv0;
+			// (オプション) 法線も設定する場合: vertexData[start + 0].normal = Normalize(p0_pos.xyz); // Normalize関数が必要です
+
+			// 頂点2 (P2)
+			vertexData[start + 1].position = p2_pos;
+			vertexData[start + 1].texcoord = uv2;
+
+			// 頂点3 (P1)
+			vertexData[start + 2].position = p1_pos;
+			vertexData[start + 2].texcoord = uv1;
+
+			// 三角形2: 右下(P1), 左上(P2), 右上(P3)
+			// 頂点4 (P1)
+			vertexData[start + 3].position = p1_pos;
+			vertexData[start + 3].texcoord = uv1;
+
+			// 頂点5 (P2)
+			vertexData[start + 4].position = p2_pos;
+			vertexData[start + 4].texcoord = uv2;
+
+			// 頂点6 (P3)
+			vertexData[start + 5].position = p3_pos;
+			vertexData[start + 5].texcoord = uv3;
+			;
+		}
+	}
+
 
 
 	//頂点リソースサイズデータに書き込む
@@ -1090,6 +1174,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDataSprite[1].texcoord = { 0.0f, 0.0f };
 	vertexDataSprite[2].position = { 640.0f, 360.0f, 0.0f, 1.0f };
 	vertexDataSprite[2].texcoord = { 1.0f, 1.0f };
+
+
+
 
 	//2枚目の三角形
 	vertexDataSprite[3].position = { 0.0f, 0.0f,0.0f,1.0f };
@@ -1180,7 +1267,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//初期化
 	Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
-	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -5.0f} };
+	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	Transform transformSprite = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 
 
@@ -1224,8 +1311,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
 			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+			
 			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
-
+			
+		
 			//画面のクリア処理
 
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -1279,7 +1368,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 			//作画
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
 
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
