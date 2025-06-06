@@ -608,7 +608,6 @@ ID3D12Resource* UploadTextureDeta(ID3D12Resource* texture, const DirectX::Scratc
 
 
 
-
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
