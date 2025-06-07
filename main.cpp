@@ -1255,10 +1255,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Resource* intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
 
 	//2枚目のtextureを張る
-	//DirectX::ScratchImage mipImages2 = LoadTexture("resouces/monsterBall.png");
-	//const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
-	//ID3D12Resource* textureRouces2 = createTextreResouces(device, metadata2);
-	//UploadTextureData(textureRouces2, mipImages2);
+	DirectX::ScratchImage mipImages2 = LoadTexture("resouces/monsterBall.png");
+	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
+	ID3D12Resource* textureRouces2 = createTextreResouces(device, metadata2);
+	ID3D12Resource* intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
+
 	
 
 	//mataDataを基にSRVの設定1
@@ -1269,26 +1270,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
 	//mataDataを基にSRVの設定2
-	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
-	//srvDesc2.Format = metadata2.format;
-	//srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
-	//srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
+	srvDesc2.Format = metadata2.format;
+	srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
 
 	//SRVを作成するDescriptorHeapの場所を求める
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 1);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 1);
 	// ImGuiがSRVヒープの0番目を使うため、テクスチャは1番インデックスに配置する
-	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
-	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
-	//先端はimguiを作成するDescriptorの場所を決める
-	textureSrvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureSrvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+
 	//srvを作成する
 	
 	device->CreateShaderResourceView(textureResouces, &srvDesc, textureSrvHandleCPU);
-	/*device->CreateShaderResourceView(textureRouces2, &srvDesc2, textureSrvHandleCPU2);*/
+	device->CreateShaderResourceView(textureRouces2, &srvDesc2, textureSrvHandleCPU2);
 
 		//DepthStenclitextureをwindowのサイズを作成
 	ID3D12Resource* depthStenscilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
@@ -1401,15 +1400,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-		/*	commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 :textureSrvHandleGPU);*/
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 :textureSrvHandleGPU);
+
 			
 			ImGui::Render();
 
 
 			//作画
 			commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
 
@@ -1505,6 +1504,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	dsvDescriptorHeap->Release();
 	vertexResoucesSptite->Release();
 	transformationMatrixResoucesSprite->Release();
+	textureRouces2->Release();
+	intermediteResouces2->Release();
+
+
+
 
 	
 
