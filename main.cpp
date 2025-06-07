@@ -603,16 +603,18 @@ ID3D12Resource* UploadTextureDeta(ID3D12Resource* texture, const DirectX::Scratc
 	return intermeddiaetResouces;
 }
 
-//CPU GPU の関数化
+// CPU GPU の関数化
 D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(ID3D12DescriptorHeap* descriptHeap, uint32_t descriptorSize, uint32_t index)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE handleCPU = descriptHeap->GetCPUDescriptorHandleForHeapStart();
 	handleCPU.ptr += (descriptorSize * index);
 	return handleCPU;
 }
+
 D3D12_GPU_DESCRIPTOR_HANDLE GetGpudescriptorHandle(ID3D12DescriptorHeap* descriptHeap, uint32_t descriptorSize, uint32_t index)
 {
 	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptHeap->GetGPUDescriptorHandleForHeapStart();
+	handleGPU.ptr += (descriptorSize * index); 
 	return handleGPU;
 }
 
@@ -1251,12 +1253,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 	ID3D12Resource* textureResouces = createTextreResouces(device, metadata);
 	ID3D12Resource* intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
+
 	//2枚目のtextureを張る
 	//DirectX::ScratchImage mipImages2 = LoadTexture("resouces/monsterBall.png");
 	//const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	//ID3D12Resource* textureRouces2 = createTextreResouces(device, metadata2);
 	//UploadTextureData(textureRouces2, mipImages2);
-	//
+	
 
 	//mataDataを基にSRVの設定1
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -1273,9 +1276,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
 
 	//SRVを作成するDescriptorHeapの場所を求める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = srvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 1);
 
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart();
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 1);
 	// ImGuiがSRVヒープの0番目を使うため、テクスチャは1番インデックスに配置する
 	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
@@ -1285,7 +1288,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//srvを作成する
 	
 	device->CreateShaderResourceView(textureResouces, &srvDesc, textureSrvHandleCPU);
-	//device->CreateShaderResourceView(textureRouces2, &srvDesc, textureSrvHandleCPU2);
+	/*device->CreateShaderResourceView(textureRouces2, &srvDesc2, textureSrvHandleCPU2);*/
 
 		//DepthStenclitextureをwindowのサイズを作成
 	ID3D12Resource* depthStenscilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
@@ -1304,6 +1307,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	Transform transformSprite = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 
+	bool useMonsterBall = true;
+	
 
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
@@ -1326,6 +1331,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				//ゲームの処理
 			ImGui::Begin("MaterialColor");
 			ImGui::ColorEdit4("color", &(materrialData)->x);
+			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			ImGui::End();
 
 			ShowSRTWindow(transform);
@@ -1395,6 +1401,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+		/*	commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 :textureSrvHandleGPU);*/
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			
 			ImGui::Render();
