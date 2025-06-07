@@ -806,6 +806,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue, hwnd, &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(&swapChain));
 		assert(SUCCEEDED(hr));
 
+		//DEscriptSizeを取得しておく
+		const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 
 		//rtv用ののヒーブでくりぷの数は２RTV はShader内で触るものではないのでShaderVisbleはfalse
@@ -830,14 +834,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;//出力結果をSRGBに変換して書き込む
 		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;//2dテクスチャとして書き込み
 
+
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvStartHandle = rtvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
 		//まず一つ目を作る
-		rtvHandles[0] = rtvStartHandle;
+		// 0番目のRTVハンドルを取得
+		rtvHandles[0] = GetCPUDescriptorHandle(rtvDescrriptorHeap, descriptorSizeRTV, 0);
 		device->CreateRenderTargetView(swapChainResouces[0], &rtvDesc, rtvHandles[0]);
-		rtvHandles[1].ptr = rtvHandles[0].ptr + device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		//二つ目を作る
-		device->CreateRenderTargetView(swapChainResouces[1],& rtvDesc,rtvHandles[1]);
+
+		// 1番目のRTVハンドルを取得
+		rtvHandles[1] = GetCPUDescriptorHandle(rtvDescrriptorHeap, descriptorSizeRTV, 1);
+		device->CreateRenderTargetView(swapChainResouces[1], &rtvDesc, rtvHandles[1]);
+		
 
 	
 
@@ -1243,25 +1251,41 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 	ID3D12Resource* textureResouces = createTextreResouces(device, metadata);
 	ID3D12Resource* intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
+	//2枚目のtextureを張る
+	//DirectX::ScratchImage mipImages2 = LoadTexture("resouces/monsterBall.png");
+	//const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
+	//ID3D12Resource* textureRouces2 = createTextreResouces(device, metadata2);
+	//UploadTextureData(textureRouces2, mipImages2);
+	//
 
-
-	//mataDataを基にSRVの設定
+	//mataDataを基にSRVの設定1
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Format = metadata.format;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
 	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
+	//mataDataを基にSRVの設定2
+	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
+	//srvDesc2.Format = metadata2.format;
+	//srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	//srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	//srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
+
 	//SRVを作成するDescriptorHeapの場所を求める
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = srvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart();
+	// ImGuiがSRVヒープの0番目を使うため、テクスチャは1番インデックスに配置する
+	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 	//先端はimguiを作成するDescriptorの場所を決める
 	textureSrvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	textureSrvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	//srvを作成する
 	
 	device->CreateShaderResourceView(textureResouces, &srvDesc, textureSrvHandleCPU);
+	//device->CreateShaderResourceView(textureRouces2, &srvDesc, textureSrvHandleCPU2);
 
 		//DepthStenclitextureをwindowのサイズを作成
 	ID3D12Resource* depthStenscilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
@@ -1285,11 +1309,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	while (msg.message != WM_QUIT)
 	{
 	
-		//DEscriptSizeを取得しておく
-		const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	
+		
 
 		
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
