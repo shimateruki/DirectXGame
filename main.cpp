@@ -86,6 +86,27 @@ struct VertexData
 {
 	Vector4 position;
 	Vector2 texcoord;
+	Vector3 normal;
+};
+
+struct Material
+{
+	Vector4 color;
+	int32_t enableLighting;
+
+};
+
+struct TransformationMatrix
+{
+	Matrix4x4 WVP;
+	Matrix4x4 world;
+};
+
+struct DirectionalLight
+{
+	Vector4 color;//ライトの色
+	Vector3 direction;//ライトの向き
+	float intensity;//光度
 };
 
 // 単位行列の作成
@@ -948,7 +969,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&rootsignatrue));
 	assert(SUCCEEDED(hr));
 	//inputLayout
-	D3D12_INPUT_ELEMENT_DESC inputElementDescs[2] = {};
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
 	inputElementDescs[0].SemanticName = "POSITION";
 	inputElementDescs[0].SemanticIndex = 0;
 	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -958,6 +979,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	inputElementDescs[1].SemanticIndex = 0;
 	inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
 	inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+	inputElementDescs[2].SemanticName = "normal";
+	inputElementDescs[2].SemanticIndex = 0;
+	inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
 
 
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
@@ -1061,10 +1088,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//1頂点当たりのサイズ
 	vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
 
+	//Sprite用のマテリアルリソースを作る
+	ID3D12Resource* materialResoucesSprite = createBufferResouces(device, sizeof(Material));
+
+	
+
 	
 	//WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
 	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(Matrix4x4));
 	
+
 	//データ書き込む
 	Matrix4x4* wvpData = nullptr;
 	
@@ -1078,7 +1111,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//書き込むためのアドレスの取得
 	vertexResouces->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexData));
 	
-	
+
+	//データ書き込む
+	Material* materialDataSprite = nullptr;
+	//mapしてデータを書き込む
+	materialResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&materialDataSprite));
+	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//Spriteはlightingしないのでfalse;
+	materialDataSprite->enableLighting = false;
 
 	const uint32_t kSubdivision = 16; // 分割数
 	const float pi = 3.14159265359f;
@@ -1152,32 +1192,53 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// 頂点1 (P0)
 			vertexData[start + 0].position = p0_pos;
 			vertexData[start + 0].texcoord = uv0;
+			vertexData[start + 0].normal.x = vertexData[start + 0].position.x;
+			vertexData[start + 0].normal.y = vertexData[start + 0].position.y;
+			vertexData[start + 0].normal.z = vertexData[start + 0].position.z;;
 			// (オプション) 法線も設定する場合: vertexData[start + 0].normal = Normalize(p0_pos.xyz); // Normalize関数が必要です
 
 			// 頂点2 (P2)
 			vertexData[start + 1].position = p2_pos;
 			vertexData[start + 1].texcoord = uv2;
-
+			vertexData[start + 1].normal.x = vertexData[start + 1].position.x;
+			vertexData[start + 1].normal.y = vertexData[start + 1].position.y;
+			vertexData[start + 1].normal.z = vertexData[start + 1].position.z;;
 			// 頂点3 (P1)
 			vertexData[start + 2].position = p1_pos;
 			vertexData[start + 2].texcoord = uv1;
+			vertexData[start + 2].normal.x = vertexData[start + 2].position.x;
+			vertexData[start + 2].normal.y = vertexData[start + 2].position.y;
+			vertexData[start + 2].normal.z = vertexData[start + 2].position.z;
 
 			// 三角形2: 右下(P1), 左上(P2), 右上(P3)
 			// 頂点4 (P1)
 			vertexData[start + 3].position = p1_pos;
 			vertexData[start + 3].texcoord = uv1;
+			vertexData[start + 3].normal.x = vertexData[start + 3].position.x;
+			vertexData[start + 3].normal.y = vertexData[start + 3].position.y;
+			vertexData[start + 3].normal.z = vertexData[start + 3].position.z;
 
 			// 頂点5 (P2)
 			vertexData[start + 4].position = p2_pos;
 			vertexData[start + 4].texcoord = uv2;
+			vertexData[start + 4].normal.x = vertexData[start + 4].position.x;
+			vertexData[start + 4].normal.y = vertexData[start + 4].position.y;
+			vertexData[start + 4].normal.z = vertexData[start + 4].position.z;
+
 
 			// 頂点6 (P3)
 			vertexData[start + 5].position = p3_pos;
 			vertexData[start + 5].texcoord = uv3;
+			vertexData[start + 5].normal.x = vertexData[start + 5].position.x;
+			vertexData[start + 5].normal.y = vertexData[start + 5].position.y;
+			vertexData[start + 5].normal.z = vertexData[start + 5].position.z;
+
 			;
 		}
 	}
+	
 
+	
 
 
 	//頂点リソースサイズデータに書き込む
@@ -1190,6 +1251,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//一枚目の三角形
 	vertexDataSprite[0].position = { -0.0f, 360.0f,0.0f,1.0f };
 	vertexDataSprite[0].texcoord = { 0.0f, 1.0f };
+	vertexDataSprite[0].normal = { 0.0f,0.0f,-1.0f };
 	vertexDataSprite[1].position = { 0.0f, 0.5f, 0.0f, 1.0f };
 	vertexDataSprite[1].texcoord = { 0.0f, 0.0f };
 	vertexDataSprite[2].position = { 640.0f, 360.0f, 0.0f, 1.0f };
@@ -1400,6 +1462,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 :textureSrvHandleGPU);
 
 			
@@ -1506,7 +1569,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	transformationMatrixResoucesSprite->Release();
 	textureRouces2->Release();
 	intermediteResouces2->Release();
-
+	materialResoucesSprite->Release();
 
 
 
