@@ -10,6 +10,13 @@ struct PixelShanderOutput
 struct Material
 {
     float32_t4 color;
+	int32_t enableLighting;
+};
+struct DirectionalLight
+{
+    float32_t4 color;
+    float32_t3 direction;
+    float intenssity;
 };
 
 ConstantBuffer<Material> gMaterial: register(b0);
