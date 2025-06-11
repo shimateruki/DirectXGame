@@ -457,7 +457,19 @@ void ShowSRTWindow(Transform& transform)
 #endif
 }
 
+// Vector3 の正規化関数
+Vector3 Normalize(const Vector3& v) {
+	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 
+	// ゼロ除算を避けるために、長さが非常に小さい場合はゼロベクトルを返す
+	// FLT_EPSILON は <cfloat> または <limits> に定義されています
+	// もしくは、独自に小さな定数 (例: 1e-6f) を定義しても良い
+	if (length < 0.000001f) { // 適切な epsilon 値を設定してください
+		return { 0.0f, 0.0f, 0.0f };
+	}
+
+	return { v.x / length, v.y / length, v.z / length };
+}
 
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
@@ -642,6 +654,8 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGpudescriptorHandle(ID3D12DescriptorHeap* descrip
 
 
 
+//初期化
+Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
 
 
 
@@ -1103,16 +1117,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12Resource* DirectionalLightResoucesSprite = createBufferResouces(device, sizeof(DirectionalLight));
 
 
+
 	//WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
-	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(Matrix4x4));
+	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(TransformationMatrix));
 
 
 	//データ書き込む
-	Matrix4x4* wvpData = nullptr;
+	TransformationMatrix* wvpData = nullptr;
 
 	//書き込むためのアドレス
 	wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
-	*wvpData = makeIdentity4x4();
+	wvpData->WVP = makeIdentity4x4();
+	wvpData->world = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
 
 	//頂点リソースサイズデータに書き込む
 	VertexData* vertexData = nullptr;
@@ -1127,13 +1143,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&materialDataSprite));
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//Spriteはlightingしないのでfalse;
-	materialDataSprite->enableLighting = true;
+	materialDataSprite->enableLighting = 1;
+	materialResoucesSprite->Unmap(0, nullptr);
 
 	DirectionalLight* directLightData{};
 	DirectionalLightResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&directLightData));
 	directLightData->color = { 1.0f, 1.0f,1.0f, 1.0f };
-	directLightData->direction = { 0.0f, -1.0f, 0.0f };
+	directLightData->direction = { 0.0f, 0.0f, -1.0f };
+	directLightData->direction = Normalize(directLightData->direction);
 	directLightData->intensity = 1.0f;
+	DirectionalLightResoucesSprite->Unmap(0, nullptr);
 
 	const uint32_t kSubdivision = 16; // 分割数
 	const float pi = 3.14159265359f;
@@ -1378,8 +1397,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-	//初期化
-	Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	Transform transformSprite = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 
@@ -1420,7 +1437,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
 			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
-			*wvpData = worldViewProjectionMatrix;
+			wvpData->WVP = worldViewProjectionMatrix;
 
 			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
@@ -1476,8 +1493,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(0, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, materialResoucesSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
