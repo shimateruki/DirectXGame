@@ -36,14 +36,15 @@ PixelShanderOutput main(VecrtexShaderOutput input)
     output.color = gMaterial.color * textureColor;
     if (gMaterial.enableLighting != 0)
     {
-        float cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
-        output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intenssity;
-        
+      
+        output.color = gMaterial.color * textureColor;
 
     }
     else
     {
-        output.color = gMaterial.color * textureColor;
+
+        float cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
+        output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intenssity;
     }
       
         return output;
