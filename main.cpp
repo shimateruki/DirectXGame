@@ -1143,7 +1143,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&materialDataSprite));
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//Spriteはlightingしないのでfalse;
-	materialDataSprite->enableLighting = 1;
+	materialDataSprite->enableLighting = false;
 	materialResoucesSprite->Unmap(0, nullptr);
 
 	DirectionalLight* directLightData{};
@@ -1417,6 +1417,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
+			bool temp_enableLighting = (materialDataSprite->enableLighting != 0);
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
@@ -1425,6 +1426,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Begin("MaterialColor");
 			ImGui::ColorEdit4("color", &(materrialData)->x);
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
+			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
+				
+				materialDataSprite->enableLighting = temp_enableLighting ? 1 : 0;
+			}
+			
+			ImGui::ColorEdit3("Spritecolor", &directLightData->color.x);
+			ImGui::DragFloat3("direction", &directLightData->direction.x);
+			ImGui::DragFloat("intensity", &directLightData->intensity);
 			ImGui::End();
 
 			ShowSRTWindow(transform);
@@ -1493,7 +1502,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, materialResoucesSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
@@ -1504,11 +1513,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//作画
 			commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			/*commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
 
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(6, 1, 0, 0);*/
 			//実際のcommmandList残り時間imguiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 			//renderTarGetからPresentにする
