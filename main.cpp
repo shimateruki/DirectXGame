@@ -1609,6 +1609,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DirectionalLightResoucesSprite->Release();
 	vertexResourceSphere->Release();
 	indexResourceSphere->Release();
+	indexResoucesSprite->Release();
 
 
 
