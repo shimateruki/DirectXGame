@@ -70,6 +70,12 @@ struct Vector4
 	float w;
 };
 
+struct Matrix3x3
+{
+	float m[3][3];
+};
+
+
 struct Matrix4x4
 {
 	float m[4][4];
@@ -93,6 +99,8 @@ struct Material
 {
 	Vector4 color;
 	int32_t enableLighting;
+	float padding[3];
+	Matrix4x4 uvTransform;
 
 };
 
@@ -963,16 +971,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
-	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Vector4));
+	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Material));
 
 	//マテリアル用のデータを書き込む
-	Vector4* materrialData = nullptr;
+	Material* materrialData = nullptr;
 
 	//書き込むためのアドレスを取得
 	materialResouces->Map(0, nullptr, reinterpret_cast<void**>(&materrialData));
 
 	//今回は赤を書き込んでみる
-	*materrialData = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+	materrialData->color = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+	materrialData->uvTransform = makeIdentity4x4();
+	
 
 	//シアライズしてばいなりにする
 	ID3DBlob* signatureBlob = nullptr;
@@ -1231,6 +1241,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//Spriteはlightingしないのでfalse;
 	materialDataSprite->enableLighting = false;
+	materialDataSprite->uvTransform = makeIdentity4x4();
 	materialResoucesSprite->Unmap(0, nullptr);
 
 	DirectionalLight* directLightData{};
@@ -1389,7 +1400,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//初期化
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	Transform transformSprite = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
-
+	Transform uvTransformSprite = { {1.0f, 1.0f,1.0f},{0.0f,0.0f, 0.0f},{0.0f,0.0f,0.0f} };
 	bool useMonsterBall = true;
 
 
@@ -1414,7 +1425,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ShowDemoWindow();
 			//ゲームの処理
 			ImGui::Begin("MaterialColor");
-			ImGui::ColorEdit4("color", &(materrialData)->x);
+			ImGui::ColorEdit4("color", &materrialData->color.x);
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
 
@@ -1424,6 +1435,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ColorEdit3("Spritecolor", &directLightData->color.x);
 			ImGui::DragFloat3("direction", &directLightData->direction.x);
 			ImGui::DragFloat("intensity", &directLightData->intensity);
+			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
 			ImGui::End();
 
 			ShowSRTWindow(transform);
@@ -1444,7 +1458,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
-
+			//編集と行列の作成
+			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+			materialDataSprite->uvTransform = uvTransformMatrix;
 
 			//画面のクリア処理
 
