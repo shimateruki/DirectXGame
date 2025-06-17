@@ -17,6 +17,7 @@
 #include <dxcapi.h>
 #include "externals//DirectXTex/d3dx12.h"
 #include <vector>
+#include <sstream>
 
 
 
@@ -115,6 +116,11 @@ struct DirectionalLight
 	Vector4 color;//ライトの色
 	Vector3 direction;//ライトの向き
 	float intensity;//光度
+};
+
+struct  ModelData
+{
+	std::vector<VertexData> vertices;
 };
 
 // 単位行列の作成
@@ -657,6 +663,64 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGpudescriptorHandle(ID3D12DescriptorHeap* descrip
 	D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = descriptHeap->GetGPUDescriptorHandleForHeapStart();
 	handleGPU.ptr += (descriptorSize * index);
 	return handleGPU;
+}
+
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
+{
+	//必要な変数の宣言
+	ModelData modelData;//構築するmodelData
+	std::vector<Vector4> positions;//位置
+	std::vector<Vector3> normals;//法線
+	std::vector<Vector2> texcoords;//テクスチャ座標
+	std::string line;//ファイルから読んだ一行を格納するもの
+	//ファイルを開く
+	std::ifstream file(directoryPath + "/" + filename);//ファイルを開く
+	assert(file.is_open());
+	//ファイルを読み込み　 modelDataを構築
+	while (std::getline(file, line)) {
+		std::string identfier;
+		std::istringstream s(line);
+		s >> identfier;
+		//頂点情報を読む
+		if (identfier == "v")
+		{
+			Vector4 position;
+			s >> position.x >> position.y >> position.z;
+			position.w = 1.0f;
+			positions.push_back(position);
+		}
+		else if (identfier == "vt")
+		{
+			Vector2 texcoord;
+			s >> texcoord.x >> texcoord.y;
+			texcoords.push_back(texcoord);
+		}
+		else if (identfier == "vn")
+		{
+			Vector3 normal;
+			s >> normal.x >> normal.y >> normal.z;
+			normals.push_back(normal);
+		}
+		else if (identfier == "f")
+		{
+			//面は三角形限定　その他は未対応
+			for (int32_t faceVertex = 0; faceVertex < 3; faceVertex++)
+			{
+				std::string vertexDefinition;
+				s >> vertexDefinition;
+				//頂点の要素へのindexは {位置/UV/法線} 出格納されているので　分割してindexを取得する
+				std::istringstream v(vertexDefinition);
+				uint32_t elementIndices[3];
+				for (int32_t element = 0; element < 3; ++element)
+				{
+					std::string index;
+					std::getline(v, index, '/');
+					elementIndices[element] = std::stoi(index);
+				}
+			}
+		}
+	}
+
 }
 
 
