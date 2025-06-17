@@ -982,6 +982,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//今回は赤を書き込んでみる
 	materrialData->color = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
 	materrialData->uvTransform = makeIdentity4x4();
+
+
+
 	
 
 	//シアライズしてばいなりにする
@@ -1206,6 +1209,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//Sprite用のマテリアルリソースを作る
 	ID3D12Resource* materialResoucesSprite = createBufferResouces(device, sizeof(Material));
 
+	//Sprite用のマテリアルリソースを作る
+	ID3D12Resource* materialResoucesSphire = createBufferResouces(device, sizeof(Material));
+
 
 	//Sprite用のマテリアルリソースを作る
 	ID3D12Resource* DirectionalLightResoucesSprite = createBufferResouces(device, sizeof(DirectionalLight));
@@ -1239,9 +1245,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//mapしてデータを書き込む
 	materialResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&materialDataSprite));
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	//Spriteはlightingしないのでfalse;
 	materialDataSprite->enableLighting = false;
-	materialDataSprite->uvTransform = makeIdentity4x4();
 	materialResoucesSprite->Unmap(0, nullptr);
 
 	DirectionalLight* directLightData{};
@@ -1251,6 +1255,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	directLightData->direction = Normalize(directLightData->direction);
 	directLightData->intensity = 1.0f;
 	DirectionalLightResoucesSprite->Unmap(0, nullptr);
+
+	
+	//データ書き込む
+	Material* materialDataSphire = nullptr;
+	//mapしてデータを書き込む
+	materialResoucesSphire->Map(0, nullptr, reinterpret_cast<VOID**>(&materialDataSphire));
+	materialDataSphire->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		//Spriteはlightingしないのでfalse;
+	materialDataSphire->enableLighting = false;
+	 materialDataSphire ->uvTransform = makeIdentity4x4();
+	materialResoucesSphire->Unmap(0, nullptr);
+
+
 
 	//インデックス用データ書き込み
 	D3D12_INDEX_BUFFER_VIEW indexBufferViewSprite{};
@@ -1418,7 +1435,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
-			bool temp_enableLighting = (materialDataSprite->enableLighting != 0);
+			bool temp_enableLighting = (materialDataSphire->enableLighting != 0);
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
@@ -1429,7 +1446,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
 
-				materialDataSprite->enableLighting = temp_enableLighting ? 1 : 0;
+				materialDataSphire->enableLighting = temp_enableLighting ? 1 : 0;
 			}
 
 			ImGui::ColorEdit3("Spritecolor", &directLightData->color.x);
@@ -1458,6 +1475,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
+
 			//編集と行列の作成
 			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
 			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
@@ -1510,7 +1528,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
@@ -1523,7 +1541,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetIndexBuffer(&indexBufferViewSphere);         // 球体のインデックスバッファを設定 (これが重要！)
 			//作画
 			commandList->DrawIndexedInstanced(static_cast<UINT>(sphereIndices.size()), 1, 0, 0, 0);
-
+			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->IASetIndexBuffer(&indexBufferViewSprite);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
@@ -1624,10 +1642,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	textureRouces2->Release();
 	intermediteResouces2->Release();
 	materialResoucesSprite->Release();
+	materialResoucesSphire->Release();
 	DirectionalLightResoucesSprite->Release();
 	vertexResourceSphere->Release();
 	indexResourceSphere->Release();
 	indexResoucesSprite->Release();
+	
 
 
 
