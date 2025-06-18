@@ -717,10 +717,16 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 					std::getline(v, index, '/');
 					elementIndices[element] = std::stoi(index);
 				}
+				//要素へindexから、実際の要素の値を取得して頂点を構築する
+				Vector4 position = positions[elementIndices[0] - 1];
+				Vector2 texcoode = texcoords[elementIndices[1] - 1];
+				Vector3 normal = normals[elementIndices[2] - 1];
+				VertexData vertex = { position, texcoode, normal };
+				modelData.vertices.push_back(vertex);
 			}
 		}
 	}
-
+	return modelData;
 }
 
 
@@ -1213,6 +1219,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			sphereIndices.push_back(i3);
 		}
 	}
+	//モデル読み込み
+	ModelData modelData = LoadObjFile("resouces", "plane.obj");
 
 	// ★球体用の頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
 	ID3D12Resource* vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * sphereVertices.size());
