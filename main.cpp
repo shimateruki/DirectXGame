@@ -18,6 +18,8 @@
 #include "externals//DirectXTex/d3dx12.h"
 #include <vector>
 #include <sstream>
+#include <wrl.h>
+#include "ResoucesObject.h"
 
 
 
@@ -1701,6 +1703,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//解放処理
 	CloseHandle(fenceEvent);
+	ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	fence->Release();
 	rtvDescrriptorHeap->Release();
 	srvDescrriptorHeap->Release();
