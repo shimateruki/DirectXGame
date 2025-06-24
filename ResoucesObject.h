@@ -1,10 +1,10 @@
 #pragma once  
 #include <d3d12.h>
-
+#include <wrl.h>
 class ResoucesObject  
 {  
 public:  
-	ResoucesObject(ID3D12Resource* resources) 
+	ResoucesObject(Microsoft::WRL::ComPtr<ID3D12Resource> resources)
 		:resouces_(resources)
 	{}
 	~ResoucesObject()
@@ -15,5 +15,5 @@ public:
 		}
 	}
 private:
-	ID3D12Resource* resouces_ = nullptr; 
+	Microsoft::WRL::ComPtr<ID3D12Resource> resouces_ = nullptr;
 };
