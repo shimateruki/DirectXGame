@@ -1503,7 +1503,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, materialResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
@@ -1514,11 +1514,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//作画
 			commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-			/*commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
 
-			commandList->DrawInstanced(6, 1, 0, 0);*/
+			commandList->DrawInstanced(6, 1, 0, 0);
 			//実際のcommmandList残り時間imguiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 			//renderTarGetからPresentにする
