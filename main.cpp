@@ -1640,11 +1640,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			ImGui::Render();
 
-	
+
+			// ★ここ！球体の頂点バッファとインデックスバッファを設定
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere); // 球体の頂点バッファを設定
+			commandList->IASetIndexBuffer(&indexBufferViewSphere);         // 球体のインデックスバッファを設定 (これが重要！)
+			//作画
+			commandList->DrawIndexedInstanced(static_cast<UINT>(sphereIndices.size()), 1, 0, 0, 0);
+
+			/*commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->IASetIndexBuffer(&indexBufferViewSprite);
+
 			commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
 	/*		commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->IASetIndexBuffer(&indexBufferView);
+
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());*/
 
