@@ -1432,7 +1432,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			}
 
 			ImGui::ColorEdit3("Spritecolor", &directLightData->color.x);
-			ImGui::DragFloat3("direction", &directLightData->direction.x);
+			ImGui::SliderFloat3("direction", &directLightData->direction.x, -1.0f,1.0f);
 			ImGui::DragFloat("intensity", &directLightData->intensity);
 			ImGui::End();
 
