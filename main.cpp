@@ -17,6 +17,10 @@
 #include <dxcapi.h>
 #include "externals//DirectXTex/d3dx12.h"
 #include <vector>
+#include <sstream>
+#include <wrl.h>
+
+
 
 
 
@@ -108,6 +112,36 @@ struct DirectionalLight
 	Vector3 direction;//ライトの向き
 	float intensity;//光度
 };
+
+
+
+struct MateriaData
+{
+	std::string textureFilePath;
+};
+struct  ModelData
+{
+	std::vector<VertexData> vertices;
+	MateriaData material;
+
+};
+
+struct D3DResourceLeakChecker {
+   ~D3DResourceLeakChecker() {
+     
+
+	   //リソースチェック
+	   Microsoft::WRL::ComPtr<IDXGIDebug1> debug;
+	   if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug))))
+	   {
+		   debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+		   debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
+		   debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
+		   debug->Release();
+	   }
+   }
+};
+
 
 // 単位行列の作成
 Matrix4x4 makeIdentity4x4()
@@ -360,7 +394,9 @@ std::string ConvertString(const std::wstring& str) {
 }
 
 //resouces作成の関数
-ID3D12Resource* createBufferResouces(ID3D12Device* device, size_t sizeInBytes)
+
+const Microsoft::WRL::ComPtr<ID3D12Resource> createBufferResouces(const Microsoft::WRL::ComPtr<ID3D12Device>& device, size_t sizeInBytes)
+
 {
 	//頂点とリソース用のヒープ設定
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
@@ -378,7 +414,7 @@ ID3D12Resource* createBufferResouces(ID3D12Device* device, size_t sizeInBytes)
 	//バッファの場合はこれをする決まり
 	vertResoucesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	//実際に頂点リソースを作る
-	ID3D12Resource* vertexResouces = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResouces = nullptr;
 	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
 		&vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexResouces));
 	assert(SUCCEEDED(hr));
@@ -431,8 +467,10 @@ void Log(std::ostream& os, const std::string& message)
 	OutputDebugStringA(message.c_str());
 }
 
-ID3D12DescriptorHeap* CreateDescriptorHeap(
-	ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>CreateDescriptorHeap(
+	const Microsoft::WRL::ComPtr<ID3D12Device>& device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible
+
 )
 {
 	ID3D12DescriptorHeap* descriptorHeap = nullptr;
@@ -660,7 +698,13 @@ Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f}
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+#ifdef _DEBUG
+	D3DResourceLeakChecker leakChecker;
+#endif
 
+	// DXの初期化とComPtrによるリソース生成
+	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
+	Microsoft::WRL::ComPtr<ID3D12Device> device;
 
 	SetUnhandledExceptionFilter(ExportDump);
 
@@ -718,7 +762,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 #ifdef _DEBUG
-	ID3D12Debug1* debugController = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Debug1> debugController = nullptr;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 	{
 		debugController->EnableDebugLayer();
@@ -731,13 +775,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #endif // !_DEBUG
 
 
-	//DXGIファクトリーの生成
-	IDXGIFactory7* dxgiFactory = nullptr;
+<
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
 	//仕様するアダプタ用生成の変数。最初にnullptrを入れておく
-	IDXGIAdapter4* useAsapter = nullptr;
+	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAsapter = nullptr;
 	//良い順でアダプタを読む
 	for (int i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAsapter)) !=
 		DXGI_ERROR_NOT_FOUND; ++i)
@@ -757,7 +800,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//見つからなかったので起動できない
 	assert(useAsapter != nullptr);
 
-	ID3D12Device* device = nullptr;
+
 	//機能レベルとログの出力
 	D3D_FEATURE_LEVEL featrueLevels[] =
 	{ D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1,D3D_FEATURE_LEVEL_12_0 };
@@ -765,7 +808,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	for (size_t i = 0; i < _countof(featrueLevels); ++i)
 	{
 		//採用したアダプターでデバイスを生成
-		hr = D3D12CreateDevice(useAsapter, featrueLevels[i], IID_PPV_ARGS(&device));
+		hr = D3D12CreateDevice(useAsapter.Get(), featrueLevels[i], IID_PPV_ARGS(&device));
 		//指定した機能レベルでデバイスが生成できたか確認
 		if (SUCCEEDED(hr))
 		{
@@ -963,7 +1006,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
-	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Vector4));
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> materialResouces = createBufferResouces(device, sizeof(Material));
+
 
 	//マテリアル用のデータを書き込む
 	Vector4* materrialData = nullptr;
@@ -1303,7 +1348,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDataSprite[5].texcoord = { 1.0f, 1.0f };
 
 	//TransForm周りを作る
-	ID3D12Resource* transformationMatrixResoucesSprite = createBufferResouces(device, sizeof(Matrix4x4));
+	Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResoucesSprite = createBufferResouces(device, sizeof(Matrix4x4));
 	//データを書き込む
 	Matrix4x4* transformationMatrixDataSprite = nullptr;
 	//書き込むアドレスを取得
@@ -1403,6 +1448,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	bool useMonsterBall = true;
 
 
+	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
 	{
@@ -1577,52 +1623,98 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	CloseWindow(hwnd);
 
-	//解放処理
-	CloseHandle(fenceEvent);
-	fence->Release();
-	rtvDescrriptorHeap->Release();
-	srvDescrriptorHeap->Release();
-	swapChainResouces[0]->Release();
-	swapChainResouces[1]->Release();
-	swapChain->Release();
-	commandList->Release();
-	commandAllocator->Release();
-	commandQueue->Release();
-	device->Release();
-	useAsapter->Release();
-	dxgiFactory->Release();
 
-	vertexResouces->Release();
-	graphicsPipelineState->Release();
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+	//vertexResouces->Release();
+
+
 	signatureBlob->Release();
 	if (errorBlob)
 	{
 		errorBlob->Release();
 	}
-	rootsignatrue->Release();
+
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
-	materialResouces->Release();
-	wvpResouces->Release();
-	textureResouces->Release();
-	intermediteResouces->Release();
-	depthStenscilResouces->Release();
-	dsvDescriptorHeap->Release();
-	vertexResoucesSptite->Release();
-	transformationMatrixResoucesSprite->Release();
-	textureRouces2->Release();
-	intermediteResouces2->Release();
-	materialResoucesSprite->Release();
-	DirectionalLightResoucesSprite->Release();
+
+	//解放処理
+	CloseHandle(fenceEvent);
 
 
 
 
 
-#ifdef _DEBUG
 
-	debugController->Release();
-#endif // _DEBUG
+	
+//
+//	fence->Release();
+//	rtvDescrriptorHeap->Release();
+//	srvDescrriptorHeap->Release();
+//	swapChainResouces[0]->Release();
+//	swapChainResouces[1]->Release();
+//	swapChain->Release();
+//	commandList->Release();
+//	commandAllocator->Release();
+//	commandQueue->Release();
+//	device->Release();
+//	useAsapter->Release();
+//	dxgiFactory->Release();
+//
+//	//vertexResouces->Release();
+//	graphicsPipelineState->Release();
+//	signatureBlob->Release();
+//	if (errorBlob)
+//	{
+//		errorBlob->Release();
+//	}
+//	rootsignatrue->Release();
+//	pixelShaderBlob->Release();
+//	vertexShaderBlob->Release();
+//	materialResouces->Release();
+//	wvpResouces->Release();
+//	textureResouces->Release();
+//	intermediteResouces->Release();
+//	depthStenscilResouces->Release();
+//	dsvDescriptorHeap->Release();
+//	vertexResoucesSptite->Release();
+//	transformationMatrixResoucesSprite->Release();
+//	textureRouces2->Release();
+//	intermediteResouces2->Release();
+//	materialResoucesSprite->Release();
+//	materialResoucesSphire->Release();
+//	DirectionalLightResoucesSprite->Release();
+//	vertexResource->Release();
+//	//indexResourceSphere->Release();
+//	indexResoucesSprite->Release();
+//
+//
+//
+//
+//
+//#ifdef _DEBUG
+//
+//	debugController->Release();
+//#endif // _DEBUG
+	
+
+
+
+	
+
+
+
 
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
@@ -1630,15 +1722,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//comの終了時
 	CoUninitialize();
 
-	//リソースチェック
-	IDXGIDebug* debug;
-	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug))))
-	{
-		debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
-		debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
-		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
-		debug->Release();
-	}
+
 
 	return 0;
 }
