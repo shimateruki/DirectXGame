@@ -399,7 +399,7 @@ std::string ConvertString(const std::wstring& str) {
 }
 
 //resouces作成の関数
-ID3D12Resource* createBufferResouces(const Microsoft::WRL::ComPtr<ID3D12Device>& device, size_t sizeInBytes)
+const Microsoft::WRL::ComPtr<ID3D12Resource> createBufferResouces(const Microsoft::WRL::ComPtr<ID3D12Device>& device, size_t sizeInBytes)
 {
 	//頂点とリソース用のヒープ設定
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
@@ -417,7 +417,7 @@ ID3D12Resource* createBufferResouces(const Microsoft::WRL::ComPtr<ID3D12Device>&
 	//バッファの場合はこれをする決まり
 	vertResoucesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	//実際に頂点リソースを作る
-	ID3D12Resource* vertexResouces = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResouces = nullptr;
 	HRESULT hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
 		&vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexResouces));
 	assert(SUCCEEDED(hr));
@@ -471,7 +471,7 @@ void Log(std::ostream& os, const std::string& message)
 }
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>CreateDescriptorHeap(
-	ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible
+	const Microsoft::WRL::ComPtr<ID3D12Device>& device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible
 )
 {
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap = nullptr;
@@ -803,8 +803,9 @@ Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f}
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-
-	D3DResourceLeakChecker leakChecker; 
+#ifdef _DEBUG
+	D3DResourceLeakChecker leakChecker;
+#endif
 
 	// DXの初期化とComPtrによるリソース生成
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
@@ -1110,7 +1111,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResouces = createBufferResouces(device.Get(), sizeof(Material));
+	Microsoft::WRL::ComPtr<ID3D12Resource> materialResouces = createBufferResouces(device, sizeof(Material));
 
 	//マテリアル用のデータを書き込む
 	Material* materrialData = nullptr;
@@ -1754,8 +1755,55 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	
-
-
+//
+//	fence->Release();
+//	rtvDescrriptorHeap->Release();
+//	srvDescrriptorHeap->Release();
+//	swapChainResouces[0]->Release();
+//	swapChainResouces[1]->Release();
+//	swapChain->Release();
+//	commandList->Release();
+//	commandAllocator->Release();
+//	commandQueue->Release();
+//	device->Release();
+//	useAsapter->Release();
+//	dxgiFactory->Release();
+//
+//	//vertexResouces->Release();
+//	graphicsPipelineState->Release();
+//	signatureBlob->Release();
+//	if (errorBlob)
+//	{
+//		errorBlob->Release();
+//	}
+//	rootsignatrue->Release();
+//	pixelShaderBlob->Release();
+//	vertexShaderBlob->Release();
+//	materialResouces->Release();
+//	wvpResouces->Release();
+//	textureResouces->Release();
+//	intermediteResouces->Release();
+//	depthStenscilResouces->Release();
+//	dsvDescriptorHeap->Release();
+//	vertexResoucesSptite->Release();
+//	transformationMatrixResoucesSprite->Release();
+//	textureRouces2->Release();
+//	intermediteResouces2->Release();
+//	materialResoucesSprite->Release();
+//	materialResoucesSphire->Release();
+//	DirectionalLightResoucesSprite->Release();
+//	vertexResource->Release();
+//	//indexResourceSphere->Release();
+//	indexResoucesSprite->Release();
+//
+//
+//
+//
+//
+//#ifdef _DEBUG
+//
+//	debugController->Release();
+//#endif // _DEBUG
 	
 
 
