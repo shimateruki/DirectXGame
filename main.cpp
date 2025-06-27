@@ -716,10 +716,8 @@ MateriaData LoadMaterialTemplatFile(const std::string& directoryPath, const std:
 	return materialData;
 }
 
-
-
 ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
-{　
+{
 	//必要な変数の宣言
 	ModelData modelData;//構築するmodelData
 	std::vector<Vector4> positions;//位置
