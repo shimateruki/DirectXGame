@@ -19,6 +19,7 @@
 #include <vector>
 #include <sstream>
 #include <wrl.h>
+#include<xaudio2.h>
 
 
 
@@ -40,6 +41,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #pragma comment(lib, "Dbghelp.lib")
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dxcompiler.lib")
+#pragma comment(lib, "xaudio2.lib")
 
 //BOOL MiniDumpWriteDump(
 //	[in] HANDLE                            hProcess,
@@ -130,6 +132,32 @@ struct  ModelData
 	std::vector<VertexData> vertices;
 	MateriaData material;
 
+};
+
+
+struct ChunkHeader
+{
+	char id[4];
+	int32_t size;
+};
+
+struct RiffHeader
+{
+	ChunkHeader chunk;
+	char type[4];
+};
+
+struct FormatChunk
+{
+	ChunkHeader chunk;
+	WAVEFORMATEX format;
+};
+
+struct SoundData
+{
+	WAVEFORMATEX wfex;
+	BYTE* pBuffer;
+	unsigned int bufferSize;
 };
 
 struct D3DResourceLeakChecker {
@@ -347,6 +375,7 @@ Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Ve
 
 
 
+
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 {
 	SYSTEMTIME time;
@@ -370,11 +399,14 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 }
 
 
+
 std::wstring ConvertString(const std::string& str) {
+
 	if (str.empty()) {
 		return std::wstring();
 	}
 
+	// UTF-8からUTF-16への変換
 	auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0);
 	if (sizeNeeded == 0) {
 		return std::wstring();
@@ -530,6 +562,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
 	//標準メッセージを行う
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
+
 
 IDxcBlob* CompileShander(
 	const std::wstring& filePath,
@@ -790,6 +823,86 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 	return modelData;
 }
 
+SoundData SoundLoadWave(const char* filename)
+{
+
+	//ファイルオープン
+	std::ifstream file;
+	file.open(filename, std::ios::binary);
+	assert(file.is_open());
+	//wavデータ読み込み
+	RiffHeader riff;
+	file.read((char*)&riff, sizeof(riff));
+	if (strncmp(riff.chunk.id, "RIFF", 4) != 0)
+	{
+		assert(0);
+	}
+	if (strncmp(riff.type, "WAVE", 4) != 0)
+	{
+		assert(0);
+	}
+	//fmtチャンク読み込み
+	FormatChunk format = {};
+	file.read((char*)&format, sizeof(ChunkHeader));
+	if (strncmp(format.chunk.id, "fmt ", 4) != 0)
+	{
+		assert(0);
+	}
+	//チャンク本体の読み込み
+	assert(format.chunk.size <= sizeof(format.format));
+	file.read((char*)&format.format, format.chunk.size);
+	//dataチャンクの読み込み
+	ChunkHeader data = {};
+	file.read((char*)&data, sizeof(data));
+	if (strncmp(data.id, "JUNK", 4) == 0)
+	{
+
+		file.seekg(data.size, std::ios_base::cur);
+		file.read((char*)&data, sizeof(data));
+	}
+	if (strncmp(data.id, "data", 4) != 0)
+	{
+		assert(0);
+	}
+	char* pBuffer = new char[data.size];
+	file.read(pBuffer, data.size);
+
+	file.close();
+	SoundData soundData = {};
+	soundData.wfex = format.format;
+	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
+	soundData.bufferSize = data.size;
+	return soundData;
+}
+
+//専用データ解放
+void SoundUnload(SoundData* soundData)
+{
+
+	delete[] soundData->pBuffer;
+	soundData->pBuffer = 0;
+
+	soundData->bufferSize = 0;
+	soundData->wfex = {};
+
+
+}
+
+void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
+
+	HRESULT result;
+	IXAudio2SourceVoice* pSourceVoice = nullptr;
+	result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
+
+	XAUDIO2_BUFFER buffer = {};
+	buffer.pAudioData = soundData.pBuffer; // 音声データのポインタ
+	buffer.AudioBytes = soundData.bufferSize; // 音声データのサイズ
+	buffer.Flags = XAUDIO2_END_OF_STREAM; // ストリームの終端を示すフラグ
+
+	result = pSourceVoice->SubmitSourceBuffer(&buffer);
+	result = pSourceVoice->Start(); // 音声の再生を開始
+
+}
 
 
 //初期化
@@ -805,6 +918,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// DXの初期化とComPtrによるリソース生成
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
+
+	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
+	IXAudio2MasteringVoice* masteringVoice;
+	HRESULT Result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	Result = xAudio2->CreateMasteringVoice(&masteringVoice);
 
 	SetUnhandledExceptionFilter(ExportDump);
 
@@ -1488,6 +1606,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces2 = createTextreResouces(device, metadata2);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
 
+	SoundData soundData1 = SoundLoadWave("resouces/Alarm01.wav");
+
 
 
 	//mataDataを基にSRVの設定1
@@ -1528,6 +1648,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
+
 	//初期化
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	Transform transformSprite = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
@@ -1550,6 +1671,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
+			//音声再生
+			SoundPlayWave(xAudio2.Get(), soundData1);
+
 			bool temp_enableLighting = (materialData->enableLighting != 0);
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -1741,6 +1865,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
+	xAudio2.Reset();
+	SoundUnload(&soundData1);
 	//解放処理
 	CloseHandle(fenceEvent);
 
