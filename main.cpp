@@ -918,15 +918,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
 
+
+	// COMライブラリの初期化 
+	HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+	// XAudio2 の初期化
 	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
-	IXAudio2MasteringVoice* masteringVoice;
-	HRESULT Result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
-	Result = xAudio2->CreateMasteringVoice(&masteringVoice);
+	IXAudio2MasteringVoice* masteringVoice = nullptr;
+
+	hr = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+
+
+	hr = xAudio2->CreateMasteringVoice(&masteringVoice);
+
 
 	SetUnhandledExceptionFilter(ExportDump);
 
-	//comの初期化
-	CoInitializeEx(0, COINIT_MULTITHREADED);
+
 
 
 
@@ -994,7 +1002,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
-	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
+	 hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
 	//仕様するアダプタ用生成の変数。最初にnullptrを入れておく
 	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAsapter = nullptr;
@@ -1654,6 +1662,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Transform uvTransformSprite = { {1.0f, 1.0f,1.0f},{0.0f,0.0f, 0.0f},{0.0f,0.0f,0.0f} };
 	bool useMonsterBall = true;
 
+	// ★追加する行
+	bool audioPlayedOnce = false; // 音声が一度再生されたかどうかのフラグ
 
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
@@ -1670,8 +1680,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
-			//音声再生
-			SoundPlayWave(xAudio2.Get(), soundData1);
+			
+			// 音声再生を一度だけにする制御
+			if (!audioPlayedOnce) {
+				SoundPlayWave(xAudio2.Get(), soundData1);
+				audioPlayedOnce = true; // フラグを立てて、二度と再生しないようにする
+			}
 
 			bool temp_enableLighting = (materialData->enableLighting != 0);
 			ImGui_ImplDX12_NewFrame();
