@@ -921,16 +921,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	// COMライブラリの初期化 
-	HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	HRESULT result = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
 	// XAudio2 の初期化
 	Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
 	IXAudio2MasteringVoice* masteringVoice = nullptr;
 
-	hr = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 
 
-	hr = xAudio2->CreateMasteringVoice(&masteringVoice);
+	result = xAudio2->CreateMasteringVoice(&masteringVoice);
 
 
 	SetUnhandledExceptionFilter(ExportDump);
@@ -1003,7 +1003,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
-	 hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
+	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
 	//仕様するアダプタ用生成の変数。最初にnullptrを入れておく
 	Microsoft::WRL::ComPtr<IDXGIAdapter4> useAsapter = nullptr;
@@ -1614,7 +1614,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces2 = createTextreResouces(device, metadata2);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
 
-	SoundData soundData1 = SoundLoadWave("resouces/Alarm01.wav");
+	SoundData soundData1 = SoundLoadWave("resouces/Alarm02.wav");
 
 
 
