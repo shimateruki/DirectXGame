@@ -1861,13 +1861,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-
-
-
-
-
-
-
 	//vertexResouces->Release();
 
 	signatureBlob->Release();
