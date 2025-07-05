@@ -1,4 +1,6 @@
-﻿#include <windows.h>
+﻿#define DIRECTINPUT_VERSION 0x0800
+
+#include <windows.h>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -20,6 +22,9 @@
 #include <sstream>
 #include <wrl.h>
 #include<xaudio2.h>
+#include <dinput.h>
+
+
 
 
 
@@ -42,6 +47,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dxcompiler.lib")
 #pragma comment(lib, "xaudio2.lib")
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "dxguid.lib")
 
 //BOOL MiniDumpWriteDump(
 //	[in] HANDLE                            hProcess,
@@ -931,6 +938,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	result = xAudio2->CreateMasteringVoice(&masteringVoice);
 
+	
+
+
+
+
 
 	SetUnhandledExceptionFilter(ExportDump);
 
@@ -1601,6 +1613,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 
+	// DirectInput の初期化
+	IDirectInput8* directInput = nullptr;
+	result = DirectInput8Create(
+		GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(&directInput), nullptr);
+	assert(SUCCEEDED(result));
+
+
+
+
+
+	//キーボートデバイスの生成
+	IDirectInputDevice8* keyboardDevice = nullptr;
+	result = directInput->CreateDevice(GUID_SysKeyboard, &keyboardDevice, nullptr);
+	assert(SUCCEEDED(result));
+
+	//入力データ形式のセット
+	result = keyboardDevice->SetDataFormat(&c_dfDIKeyboard);
+	assert(SUCCEEDED(result));
+	//キーボードの排他モードを設定
+	result = keyboardDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+	assert(SUCCEEDED(result));
+
+
+
 	//textureを読んで転送する
 	DirectX::ScratchImage mipImages = LoadTexture("resouces/uvChecker.png");
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
@@ -1680,7 +1716,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
-			
+			//画面の更新処理
+			keyboardDevice->Acquire();
+
+			BYTE key[256] = {};
+			keyboardDevice->GetDeviceState(sizeof(key), key);
+
+			//キーの状態を取得
+			if (key[DIK_0])
+			{
+				OutputDebugStringA("HIT 0\n");
+			}
+
+
 			// 音声再生を一度だけにする制御
 			if (!audioPlayedOnce) {
 				SoundPlayWave(xAudio2.Get(), soundData1);
@@ -1790,13 +1838,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 			commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
-			/*		commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
+					commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 					commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 					commandList->IASetIndexBuffer(&indexBufferView);
 					commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-					commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());*/
+					commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
 
-					/*	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);*/
+						commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 						//実際のcommmandList残り時間imguiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 			//renderTarGetからPresentにする
