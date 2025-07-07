@@ -1423,7 +1423,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 	}
 	//モデル読み込み
-	ModelData modelData = LoadObjFile("resouces", "axis.obj");
+	ModelData modelData = LoadObjFile("resouces", "plane.obj");
 
 	// ★球体用の頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource = createBufferResouces(device, sizeof(VertexData) * modelData.vertices.size());
@@ -1676,8 +1676,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 
-	//srvを作成する
 
+
+	//テクスチャのSRVを作成する
 	device->CreateShaderResourceView(textureResouces.Get(), &srvDesc, textureSrvHandleCPU);
 	device->CreateShaderResourceView(textureRouces2.Get(), &srvDesc2, textureSrvHandleCPU2);
 
@@ -1769,6 +1770,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 			wvpData->WVP = worldViewProjectionMatrix;
+			wvpData->world = worldMatrix;
 
 			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
@@ -1829,23 +1831,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//マテリアルcBubufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
+			//wvpのcBufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			//directionalLightのcBufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 
+			//テクスチャのSRVの場所設定
 			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+
+			commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
 
 
 			ImGui::Render();
 
 
-			commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
+		
 					commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 					commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 					commandList->IASetIndexBuffer(&indexBufferView);
 					commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 					commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
 
-						commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+					commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 						//実際のcommmandList残り時間imguiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 			//renderTarGetからPresentにする
@@ -1911,7 +1918,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//vertexResouces->Release();
-
+		//解放処理
+	CloseHandle(fenceEvent);
 	signatureBlob->Release();
 	if (errorBlob)
 	{
@@ -1922,8 +1930,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexShaderBlob->Release();
 	xAudio2.Reset();
 	SoundUnload(&soundData1);
-	//解放処理
-	CloseHandle(fenceEvent);
+
 
 
 
