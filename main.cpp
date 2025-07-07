@@ -1502,7 +1502,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DirectionalLight* directLightData{};
 	DirectionalLightResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&directLightData));
 	directLightData->color = { 1.0f, 1.0f,1.0f, 1.0f };
-	directLightData->direction = { 0.0f, 0.0f, -1.0f };
+	directLightData->direction = { 0.0f, 0.0f, 0.0f };
 	directLightData->direction = Normalize(directLightData->direction);
 	directLightData->intensity = 1.0f;
 	DirectionalLightResoucesSprite->Unmap(0, nullptr);
@@ -1514,7 +1514,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResoucesSphire->Map(0, nullptr, reinterpret_cast<VOID**>(&materialData));
 	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//Spriteはlightingしないのでfalse;
-	materialData->enableLighting = false;
+	materialData->enableLighting = true;
 	materialData->uvTransform = makeIdentity4x4();
 	materialResoucesSphire->Unmap(0, nullptr);
 
@@ -1641,13 +1641,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DirectX::ScratchImage mipImages = LoadTexture("resouces/uvChecker.png");
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureResouces = createTextreResouces(device, metadata);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
+
 
 	//2枚目のtextureを張る
 	DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces2 = createTextreResouces(device, metadata2);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
+
 
 	SoundData soundData1 = SoundLoadWave("resouces/Alarm02.wav");
 
@@ -1691,9 +1691,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	device->CreateDepthStencilView(depthStenscilResouces.Get(), &dsvDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 
-
-
+	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
+	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
 	//初期化
+
+
+
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	Transform transformSprite = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
 	Transform uvTransformSprite = { {1.0f, 1.0f,1.0f},{0.0f,0.0f, 0.0f},{0.0f,0.0f,0.0f} };
