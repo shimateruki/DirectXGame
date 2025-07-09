@@ -1882,7 +1882,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			case 2:
 			
 
+				//マテリアルcBubufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 
+				// ★ここ！球体の頂点バッファとインデックスバッファを設定
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere); // 球体の頂点バッファを設定
+				commandList->IASetIndexBuffer(&indexBufferViewSphere);         // 球体のインデックスバッファを設定 (これが重要！)
+				//作画
+				commandList->DrawIndexedInstanced(static_cast<UINT>(sphereIndices.size()), 1, 0, 0, 0);
 
 				break;
 			}
