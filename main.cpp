@@ -1412,25 +1412,46 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 	}
 	//モデル読み込み
-	ModelData modelData = LoadObjFile("resouces", "plane.obj");
+	ModelData modelPlaneData = LoadObjFile("resouces", "plane.obj");
 
 	// ★球体用の頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource = createBufferResouces(device, sizeof(VertexData) * modelData.vertices.size());
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexplaneResource = createBufferResouces(device, sizeof(VertexData) * modelPlaneData.vertices.size());
 
 
 	// ★球体用の頂点バッファビューの設定 (vertexBufferViewSphereを使用)
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-	vertexBufferView.BufferLocation = vertexResource->GetGPUVirtualAddress();
-	vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelData.vertices.size());
-	vertexBufferView.StrideInBytes = sizeof(VertexData);
+	D3D12_VERTEX_BUFFER_VIEW vertexPlaneBufferView{};
+	vertexPlaneBufferView.BufferLocation = vertexplaneResource->GetGPUVirtualAddress();
+	vertexPlaneBufferView.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelPlaneData.vertices.size());
+	vertexPlaneBufferView.StrideInBytes = sizeof(VertexData);
+
+
+	VertexData* vertexPlaneData = nullptr;
+	vertexplaneResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexPlaneData));
+	std::memcpy(vertexPlaneData, modelPlaneData.vertices.data(), sizeof(VertexData) * modelPlaneData.vertices.size());
+	vertexplaneResource->Unmap(0, nullptr);
+
+	ModelData modelTeapotData = LoadObjFile("resouces", "teapot.obj");
+
+	// ★球体用の頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexTeapotResource = createBufferResouces(device, sizeof(VertexData) * modelTeapotData.vertices.size());
+
+
+	// ★球体用の頂点バッファビューの設定 (vertexBufferViewSphereを使用)
+	D3D12_VERTEX_BUFFER_VIEW vertexTeapotBufferView{};
+	vertexTeapotBufferView.BufferLocation = vertexTeapotResource->GetGPUVirtualAddress();
+	vertexTeapotBufferView.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelTeapotData.vertices.size());
+	vertexTeapotBufferView.StrideInBytes = sizeof(VertexData);
+
+
+	VertexData* vertexTeapotData = nullptr;
+	vertexTeapotResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexTeapotData));
+	std::memcpy(vertexTeapotData, modelTeapotData.vertices.data(), sizeof(VertexData) * modelTeapotData.vertices.size());
+	vertexTeapotResource->Unmap(0, nullptr);
 
 
 
 
-	VertexData* vertexData = nullptr;
-	vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-	std::memcpy(vertexData, modelData.vertices.data(), sizeof(VertexData) * modelData.vertices.size());
-	vertexResource->Unmap(0, nullptr);
+
 
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * sphereVertices.size());
@@ -1674,9 +1695,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//2枚目のtextureを張る
-	DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
+	DirectX::ScratchImage mipImages2 = LoadTexture(modelPlaneData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces2 = createTextreResouces(device, metadata2);
+
+
+
+	//2枚目のtextureを張る
+	DirectX::ScratchImage mipImages3 = LoadTexture(modelTeapotData.material.textureFilePath);
+	const DirectX::TexMetadata& metadata3 = mipImages3.GetMetadata();
+	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces3 = createTextreResouces(device, metadata3);
+
 
 
 	SoundData soundData1 = SoundLoadWave("resouces/Alarm02.wav");
@@ -1697,19 +1726,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
 	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
 
+	//mataDataを基にSRVの設定2
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3{};
+	srvDesc3.Format = metadata3.format;
+	srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc3.Texture2D.MipLevels = UINT(metadata3.mipLevels);
+
+
 	//SRVを作成するDescriptorHeapの場所を求める
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 1);
-
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 1);
 	// ImGuiがSRVヒープの0番目を使うため、テクスチャは1番インデックスに配置する
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU3 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 3);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 3);
 
 
 
 	//テクスチャのSRVを作成する
 	device->CreateShaderResourceView(textureResouces.Get(), &srvDesc, textureSrvHandleCPU);
 	device->CreateShaderResourceView(textureRouces2.Get(), &srvDesc2, textureSrvHandleCPU2);
+	device->CreateShaderResourceView(textureRouces3.Get(), &srvDesc3, textureSrvHandleCPU3);
+
 
 	//DepthStenclitextureをwindowのサイズを作成
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStenscilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
@@ -1723,6 +1764,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
+	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces3 = UploadTextureDeta(textureRouces3, mipImages3, device, commandList);
 	//初期化
 
 
@@ -1777,7 +1819,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Begin("Setting");
 
 			static int selected = 0;
-			const char* items[] = { "obj & sprite", "sprite", "sphire" ,"sphire & obj"};
+			const char* items[] = { "obj & sprite", "sprite", "sphire" ,"sphire & obj", "Teapot"};
 
 			ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
 
@@ -1894,7 +1936,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
 			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 			commandList->SetPipelineState(graphicsPipelineState.Get());
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+			commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
+			
 
 			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1906,6 +1949,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			case 0:
 				
 
+				//obj平面
 				//マテリアルcBubufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
@@ -1913,12 +1957,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
 				//directionalLightのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
-
 				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
+				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
-				commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
-
+				//sprite
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->IASetIndexBuffer(&indexBufferView);
@@ -1930,6 +1973,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 				break;
 			case 1:
+				//sorite
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->IASetIndexBuffer(&indexBufferView);
@@ -1941,14 +1985,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				break;
 			case 2:
 			
-
+				//球
 				//マテリアルcBubufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpSphireResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				// ★ここ！球体の頂点バッファとインデックスバッファを設定
 				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere); 
 				commandList->IASetIndexBuffer(&indexBufferViewSphere);        
 				//作画
@@ -1960,6 +2003,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			case 3:
 
+				//obj 平面
 				//マテリアルcBubufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
@@ -1971,10 +2015,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				//テクスチャのSRVの場所設定
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
 
-				commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
+				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
 
-
+				//球
 				//マテリアルcBubufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
@@ -1990,6 +2034,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 				break;
+			case 4:
+				//teapot
+					//マテリアルcBubufferの場所設定
+					commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
+					commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
+					//wvpのcBufferの場所設定
+					commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
+					//directionalLightのcBufferの場所設定
+					commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
+
+					//テクスチャのSRVの場所設定
+					commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
+					commandList->IASetVertexBuffers(0, 1, &vertexTeapotBufferView);
+
+					commandList->DrawInstanced(static_cast<UINT>(modelTeapotData.vertices.size()), 1, 0, 0);
+					break;
 			}
 
 
