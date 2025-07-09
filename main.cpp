@@ -1433,11 +1433,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	ModelData modelTeapotData = LoadObjFile("resouces", "teapot.obj");
 
-	// ★球体用の頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
+	// 頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexTeapotResource = createBufferResouces(device, sizeof(VertexData) * modelTeapotData.vertices.size());
 
 
-	// ★球体用の頂点バッファビューの設定 (vertexBufferViewSphereを使用)
+	// 頂点バッファビューの設定 (vertexBufferViewSphereを使用)
 	D3D12_VERTEX_BUFFER_VIEW vertexTeapotBufferView{};
 	vertexTeapotBufferView.BufferLocation = vertexTeapotResource->GetGPUVirtualAddress();
 	vertexTeapotBufferView.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelTeapotData.vertices.size());
@@ -1449,7 +1449,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	std::memcpy(vertexTeapotData, modelTeapotData.vertices.data(), sizeof(VertexData) * modelTeapotData.vertices.size());
 	vertexTeapotResource->Unmap(0, nullptr);
 
+	ModelData modelbunnyData = LoadObjFile("resouces", "bunny.obj");
 
+	// 頂点リソースの作成とデータ転送 (vertexResourceSphereを使用)
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexbunnyResource = createBufferResouces(device, sizeof(VertexData) * modelbunnyData.vertices.size());
+
+	// 頂点バッファビューの設定 (vertexBufferViewSphereを使用)
+	D3D12_VERTEX_BUFFER_VIEW vertexbunnyBufferView{};
+	vertexbunnyBufferView.BufferLocation = vertexbunnyResource->GetGPUVirtualAddress();
+	vertexbunnyBufferView.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelbunnyData.vertices.size());
+	vertexbunnyBufferView.StrideInBytes = sizeof(VertexData);
+
+
+	VertexData* vertexbunnyData = nullptr;
+	vertexbunnyResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexbunnyData));
+	std::memcpy(vertexbunnyData, modelbunnyData.vertices.data(), sizeof(VertexData) * modelbunnyData.vertices.size());
+	vertexbunnyResource->Unmap(0, nullptr);
 
 
 
@@ -1708,6 +1723,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces3 = createTextreResouces(device, metadata3);
 
 
+	//2枚目のtextureを張る
+	DirectX::ScratchImage mipImages4 = LoadTexture(modelbunnyData.material.textureFilePath);
+	const DirectX::TexMetadata& metadata4 = mipImages4.GetMetadata();
+	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces4 = createTextreResouces(device, metadata4);
+
 
 	SoundData soundData1 = SoundLoadWave("resouces/Alarm02.wav");
 
@@ -1746,11 +1766,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 3);
 
 
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU4 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 4);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU4 = GetGpudescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 4);
+
+
 
 	//テクスチャのSRVを作成する
 	device->CreateShaderResourceView(textureResouces.Get(), &srvDesc, textureSrvHandleCPU);
 	device->CreateShaderResourceView(textureRouces2.Get(), &srvDesc2, textureSrvHandleCPU2);
 	device->CreateShaderResourceView(textureRouces3.Get(), &srvDesc3, textureSrvHandleCPU3);
+	device->CreateShaderResourceView(textureRouces3.Get(), &srvDesc3, textureSrvHandleCPU4);
 
 
 	//DepthStenclitextureをwindowのサイズを作成
@@ -1766,6 +1791,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList);
 	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces3 = UploadTextureDeta(textureRouces3, mipImages3, device, commandList);
+	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces4 = UploadTextureDeta(textureRouces4, mipImages4, device, commandList);
 	//初期化
 
 
@@ -1820,7 +1846,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Begin("Setting");
 
 			static int selected = 0;
-			const char* items[] = { "obj & sprite", "sprite", "sphire" ,"sphire & obj", "Teapot"};
+			const char* items[] = { "obj & sprite", "sprite", "sphire" ,"sphire & obj", "Teapot","bunny"};
 
 			ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
 
@@ -2051,6 +2077,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 					commandList->DrawInstanced(static_cast<UINT>(modelTeapotData.vertices.size()), 1, 0, 0);
 					break;
+			case 5:
+				//マテリアルcBubufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
+				//wvpのcBufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
+				//directionalLightのcBufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
+
+				//テクスチャのSRVの場所設定
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
+				commandList->IASetVertexBuffers(0, 1, &vertexbunnyBufferView);
+
+				commandList->DrawInstanced(static_cast<UINT>(modelbunnyData.vertices.size()), 1, 0, 0);
+				break;
 			}
 
 
