@@ -26,9 +26,6 @@
 
 
 
-
-
-
 #include "externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
@@ -571,17 +568,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
 }
 
 
-IDxcBlob* CompileShander(
+Microsoft::WRL::ComPtr<IDxcBlob> CompileShander(
 	const std::wstring& filePath,
 	const wchar_t* profile,
-	IDxcUtils* dxcUtils,
-	IDxcCompiler3* dxCompiler,
-	IDxcIncludeHandler* includeHandler,
+const	Microsoft::WRL::ComPtr<IDxcUtils>& dxcUtils,
+const	Microsoft::WRL::ComPtr<IDxcCompiler3>& dxCompiler,
+const	Microsoft::WRL::ComPtr<IDxcIncludeHandler>& includeHandler,
 	std::ostream& os)
 {
 	//１hlslファイルを読み込む
 	Log(os, ConvertString(std::format(L"Begin CompileShader,path:{}, profile:{}\n", filePath, profile)));
-	IDxcBlobEncoding* shaderSource = nullptr;
+	Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
 	HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
 	assert(SUCCEEDED(hr));
 
@@ -597,17 +594,17 @@ IDxcBlob* CompileShander(
 	L"-Od",
 	L"-Zpr" };
 
-	IDxcResult* shaderResult = nullptr;
+	Microsoft::WRL::ComPtr<IDxcResult> shaderResult = nullptr;
 	hr = dxCompiler->Compile(
 		&shaderSoucesBuffer,
 		argument,
 		_countof(argument),
-		includeHandler,
+		includeHandler.Get(),
 		IID_PPV_ARGS(&shaderResult));
 
 	assert(SUCCEEDED(hr));
 	//３警告エラーが出てないか確認する
-	IDxcBlobUtf8* shanderError = nullptr;
+	Microsoft::WRL::ComPtr<IDxcBlobUtf8> shanderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shanderError), nullptr);
 	if (shanderError != nullptr && shanderError->GetStringLength() != 0)
 	{
@@ -616,13 +613,11 @@ IDxcBlob* CompileShander(
 
 	}
 	//４Compile結果を受けて返す
-	IDxcBlob* shaderBlob = nullptr;
+	Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob = nullptr;
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
 	Log(os, ConvertString(std::format(L"Compile Succeeded, path:{}, profile:{}\n", filePath, profile)));
-	shaderSource->Release();
-	shaderResult->Release();
-	return shaderBlob;
+	return shaderBlob.Get();
 
 }
 
@@ -777,6 +772,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		{
 			Vector4 position;
 			s >> position.x >> position.y >> position.z;
+			position.x *= -1.0f;
 			position.w = 1.0f;
 			positions.push_back(position);
 		} else if (identfier == "vt")
@@ -788,6 +784,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		} else if (identfier == "vn")
 		{
 			Vector3 normal;
+			normal.x = -1.0f;
 			s >> normal.x >> normal.y >> normal.z;
 			normals.push_back(normal);
 		} else if (identfier == "f")
@@ -916,7 +913,6 @@ void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
 Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
 
 
-
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #ifdef _DEBUG
 	D3DResourceLeakChecker leakChecker;
@@ -940,16 +936,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	result = xAudio2->CreateMasteringVoice(&masteringVoice);
 
 	
-
-
-
-
-
 	SetUnhandledExceptionFilter(ExportDump);
-
-
-
-
 
 
 	//ログのフォルダ作成
@@ -1085,8 +1072,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//指定したメッセージの表示を抑制する
 		infoqueue->PushStorageFilter(&filter);
 
-		//解放
-		infoqueue->Release();
+
 	}
 
 
@@ -1181,8 +1167,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	MSG msg{};
 
 	//dxcompilerを初期化
-	IDxcUtils* dxcUtils = nullptr;
-	IDxcCompiler3* dxcCompiler = nullptr;
+	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils = nullptr;
+	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler = nullptr;
 	hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
 	assert(SUCCEEDED(hr));
 	hr = hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
@@ -1260,9 +1246,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-	//シアライズしてばいなりにする
-	ID3DBlob* signatureBlob = nullptr;
-	ID3DBlob* errorBlob = nullptr;
+	//シアライズしてばいなりにする>
+	Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
 	hr = D3D12SerializeRootSignature(&descriptionRootSignatrue, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
 	if (FAILED(hr))
 	{
@@ -1311,10 +1297,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	//shaderをコンパイルする
-	IDxcBlob* vertexShaderBlob = CompileShander(L"Object3d.VS.hlsl",
+	Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob = CompileShander(L"Object3d.VS.hlsl",
 		L"vs_6_0", dxcUtils, dxcCompiler, includeHander, logStrem);
 	assert(vertexShaderBlob != nullptr);
-	IDxcBlob* pixelShaderBlob = CompileShander(L"Object3d.PS.hlsl", L"ps_6_0", dxcUtils, dxcCompiler, includeHander, logStrem);
+	Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob = CompileShander(L"Object3d.PS.hlsl", L"ps_6_0", dxcUtils, dxcCompiler, includeHander, logStrem);
 	assert(pixelShaderBlob != nullptr);
 
 	//psoを作成する
@@ -1446,7 +1432,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//リソースを作る
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResoucesSptite = createBufferResouces(device, sizeof(VertexData) * 6);
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResoucesSptite = createBufferResouces(device, sizeof(VertexData) * 4);
 
 
 
@@ -1745,22 +1731,43 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
-			ImGui::ShowDemoWindow();
 			//ゲームの処理
-			ImGui::Begin("MaterialColor");
-			ImGui::ColorEdit4("color", &materrialData->color.x);
-			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
-			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
+			ImGui::Begin("Setting");
 
-				materialData->enableLighting = temp_enableLighting ? 1 : 0;
+			static int selected = 0;
+			const char* items[] = { "obj & sprite", "sprite", "sphire" };
+
+			ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
+
+
+
+			if (ImGui::CollapsingHeader("object##obj")) {
+				ImGui::DragFloat3("Translate", &transform.translate.x,0.001f);
+				ImGui::DragFloat3("Rotate", &transform.rotate.x, 0.001f);
+				ImGui::DragFloat3("Scale", &transform.scale.x, 0.001f);
+			}
+		
+			//影
+			if (ImGui::CollapsingHeader("Lighting Settings##obj")) {
+				ImGui::DragFloat3("direction", &directLightData->direction.x, 0.001f);
+				ImGui::DragFloat("intensity", &directLightData->intensity, 0.001f);
 			}
 
-			ImGui::ColorEdit3("Spritecolor", &directLightData->color.x);
-			ImGui::DragFloat3("direction", &directLightData->direction.x);
-			ImGui::DragFloat("intensity", &directLightData->intensity);
-			ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-			ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-			ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z);
+			if (ImGui::CollapsingHeader("Material##sprite")) {
+				//uvスクロール
+				ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+				ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+				ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z, 0.001f);
+				ImGui::ColorEdit4("color", &materialDataSprite->color.x);
+
+				if (ImGui::CollapsingHeader("Object##sprite")) {
+					//sprite
+					ImGui::DragFloat3("Translate", &transformSprite.translate.x, 0.001f);
+					ImGui::DragFloat3("Rotate", &transformSprite.rotate.x, 0.001f);
+					ImGui::DragFloat3("Scale", &transformSprite.scale.x, 0.001f);
+				}
+			}
+		
 			ImGui::End();
 
 			ShowSRTWindow(transform);
@@ -1833,31 +1840,63 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			//マテリアルcBubufferの場所設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
-			//wvpのcBufferの場所設定
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			//directionalLightのcBufferの場所設定
-			commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 
-			//テクスチャのSRVの場所設定
-			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
-			commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
+			switch (selected)
+			{
+			case 0:
+				
+
+				//マテリアルcBubufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
+				//wvpのcBufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+				//directionalLightのcBufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
+
+				//テクスチャのSRVの場所設定
+				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+
+				commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1, 0, 0);
+
+				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->IASetIndexBuffer(&indexBufferView);
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
+
+				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+
+
+				break;
+			case 1:
+				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->IASetIndexBuffer(&indexBufferView);
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
+
+				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+				// 描画処理2
+				break;
+			case 2:
+			
+
+
+
+				break;
+			}
+
+
+
 
 
 			ImGui::Render();
 
 
 		
-					commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
-					commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-					commandList->IASetIndexBuffer(&indexBufferView);
-					commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-					commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
-
-					commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+		
 						//実際のcommmandList残り時間imguiの描画コマンドを積む
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 			//renderTarGetからPresentにする
@@ -1922,76 +1961,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-	//vertexResouces->Release();
-		//解放処理
-	CloseHandle(fenceEvent);
-	signatureBlob->Release();
-	if (errorBlob)
-	{
-		errorBlob->Release();
-	}
 
-	pixelShaderBlob->Release();
-	vertexShaderBlob->Release();
-	xAudio2.Reset();
 	SoundUnload(&soundData1);
+	xAudio2.Reset();
 
 
 
 
 
 
-
-
-	//
-	//	fence->Release();
-	//	rtvDescrriptorHeap->Release();
-	//	srvDescrriptorHeap->Release();
-	//	swapChainResouces[0]->Release();
-	//	swapChainResouces[1]->Release();
-	//	swapChain->Release();
-	//	commandList->Release();
-	//	commandAllocator->Release();
-	//	commandQueue->Release();
-	//	device->Release();
-	//	useAsapter->Release();
-	//	dxgiFactory->Release();
-	//
-	//	//vertexResouces->Release();
-	//	graphicsPipelineState->Release();
-	//	signatureBlob->Release();
-	//	if (errorBlob)
-	//	{
-	//		errorBlob->Release();
-	//	}
-	//	rootsignatrue->Release();
-	//	pixelShaderBlob->Release();
-	//	vertexShaderBlob->Release();
-	//	materialResouces->Release();
-	//	wvpResouces->Release();
-	//	textureResouces->Release();
-	//	intermediteResouces->Release();
-	//	depthStenscilResouces->Release();
-	//	dsvDescriptorHeap->Release();
-	//	vertexResoucesSptite->Release();
-	//	transformationMatrixResoucesSprite->Release();
-	//	textureRouces2->Release();
-	//	intermediteResouces2->Release();
-	//	materialResoucesSprite->Release();
-	//	materialResoucesSphire->Release();
-	//	DirectionalLightResoucesSprite->Release();
-	//	vertexResource->Release();
-	//	//indexResourceSphere->Release();
-	//	indexResoucesSprite->Release();
-	//
-	//
-	//
-	//
-	//
-	//#ifdef _DEBUG
-	//
-	//	debugController->Release();
-	//#endif // _DEBUG
 
 
 
