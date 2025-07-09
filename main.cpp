@@ -1430,6 +1430,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexResource->Unmap(0, nullptr);
 
 
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
+	vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
+	vertexBufferViewSphere.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * sphereVertices.size());
+	vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
+
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * sphereVertices.size());
+	VertexData* mappedVertexDataSphere = nullptr;
+	vertexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&mappedVertexDataSphere));
+	std::copy(sphereVertices.begin(), sphereVertices.end(), mappedVertexDataSphere);
+	vertexResourceSphere->Unmap(0, nullptr);
+
+
+	// ★球体用のインデックスリソースの作成とデータ転送 (indexResourceSphereを使用)
+	Microsoft::WRL::ComPtr<ID3D12Resource> indexResourceSphere = createBufferResouces(device, sizeof(uint32_t) * sphereIndices.size());
+	uint32_t* mappedIndexDataSphere = nullptr;
+	indexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&mappedIndexDataSphere));
+	std::copy(sphereIndices.begin(), sphereIndices.end(), mappedIndexDataSphere);
+	indexResourceSphere->Unmap(0, nullptr);
+
+	// ★球体用のインデックスバッファビューの設定 (indexBufferViewSphereを使用)
+	D3D12_INDEX_BUFFER_VIEW indexBufferViewSphere{};
+	indexBufferViewSphere.BufferLocation = indexResourceSphere->GetGPUVirtualAddress();
+	indexBufferViewSphere.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * sphereIndices.size());
+	indexBufferViewSphere.Format = DXGI_FORMAT_R32_UINT;
+
+
+
 
 	//リソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResoucesSptite = createBufferResouces(device, sizeof(VertexData) * 4);
