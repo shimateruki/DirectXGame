@@ -947,8 +947,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//指定したメッセージの表示を抑制する
 		infoqueue->PushStorageFilter(&filter);
 
-		//解放
-		infoqueue->Release();
 	}
 
 
@@ -1754,57 +1752,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-
-
-	//
-	//	fence->Release();
-	//	rtvDescrriptorHeap->Release();
-	//	srvDescrriptorHeap->Release();
-	//	swapChainResouces[0]->Release();
-	//	swapChainResouces[1]->Release();
-	//	swapChain->Release();
-	//	commandList->Release();
-	//	commandAllocator->Release();
-	//	commandQueue->Release();
-	//	device->Release();
-	//	useAsapter->Release();
-	//	dxgiFactory->Release();
-	//
-	//	//vertexResouces->Release();
-	//	graphicsPipelineState->Release();
-	//	signatureBlob->Release();
-	//	if (errorBlob)
-	//	{
-	//		errorBlob->Release();
-	//	}
-	//	rootsignatrue->Release();
-	//	pixelShaderBlob->Release();
-	//	vertexShaderBlob->Release();
-	//	materialResouces->Release();
-	//	wvpResouces->Release();
-	//	textureResouces->Release();
-	//	intermediteResouces->Release();
-	//	depthStenscilResouces->Release();
-	//	dsvDescriptorHeap->Release();
-	//	vertexResoucesSptite->Release();
-	//	transformationMatrixResoucesSprite->Release();
-	//	textureRouces2->Release();
-	//	intermediteResouces2->Release();
-	//	materialResoucesSprite->Release();
-	//	materialResoucesSphire->Release();
-	//	DirectionalLightResoucesSprite->Release();
-	//	vertexResource->Release();
-	//	//indexResourceSphere->Release();
-	//	indexResoucesSprite->Release();
-	//
-	//
-	//
-	//
-	//
-	//#ifdef _DEBUG
-	//
-	//	debugController->Release();
-	//#endif // _DEBUG
 
 
 
