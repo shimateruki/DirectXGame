@@ -23,6 +23,8 @@
 #include <wrl.h>
 #include<xaudio2.h>
 #include <dinput.h>
+#include "AudioPlayer.h"
+#include "Math.h"
 
 
 
@@ -47,48 +49,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 
-//BOOL MiniDumpWriteDump(
-//	[in] HANDLE                            hProcess,
-//	[in] DWORD                             ProcessId,
-//	[in] HANDLE                            hFile,
-//	[in] MINIDUMP_TYPE                     DumpType,
-//	[in] PMINIDUMP_EXCEPTION_INFORMATION   ExceptionParam,
-//	[in] PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
-//	[in] PMINIDUMP_CALLBACK_INFORMATION    CallbackParam
-//);
-
-struct Vector2
-{
-	float x;
-	float y;
-};
-
-struct Vector3
-{
-	float x;
-	float y;
-	float z;
-};
 
 
-struct Vector4
-{
-	float x;
-	float y;
-	float z;
-	float w;
-};
-
-struct Matrix3x3
-{
-	float m[3][3];
-};
-
-
-struct Matrix4x4
-{
-	float m[4][4];
-};
 
 struct Transform
 {
@@ -126,7 +88,6 @@ struct DirectionalLight
 	float intensity;//光度
 };
 
-
 struct MateriaData
 {
 	std::string textureFilePath;
@@ -135,33 +96,6 @@ struct  ModelData
 {
 	std::vector<VertexData> vertices;
 	MateriaData material;
-
-};
-
-
-struct ChunkHeader
-{
-	char id[4];
-	int32_t size;
-};
-
-struct RiffHeader
-{
-	ChunkHeader chunk;
-	char type[4];
-};
-
-struct FormatChunk
-{
-	ChunkHeader chunk;
-	WAVEFORMATEX format;
-};
-
-struct SoundData
-{
-	WAVEFORMATEX wfex;
-	BYTE* pBuffer;
-	unsigned int bufferSize;
 };
 
 struct D3DResourceLeakChecker {
@@ -179,205 +113,6 @@ struct D3DResourceLeakChecker {
 		}
 	}
 };
-
-// 単位行列の作成
-Matrix4x4 makeIdentity4x4()
-{
-	Matrix4x4 result = {};
-	result.m[0][0] = 1.0f;
-	result.m[0][1] = 0.0f;
-	result.m[0][2] = 0.0f;
-	result.m[0][3] = 0.0f;
-
-	result.m[1][0] = 0.0f;
-	result.m[1][1] = 1.0f;
-	result.m[1][2] = 0.0f;
-	result.m[1][3] = 0.0f;
-
-	result.m[2][0] = 0.0f;
-	result.m[2][1] = 0.0f;
-	result.m[2][2] = 1.0f;
-	result.m[2][3] = 0.0f;
-
-	result.m[3][0] = 0.0f;
-	result.m[3][1] = 0.0f;
-	result.m[3][2] = 0.0f;
-	result.m[3][3] = 1.0f;
-	return result;
-};
-
-Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
-
-	Matrix4x4 result{ scale.x, 0.0f, 0.0f, 0.0f, 0.0f, scale.y, 0.0f, 0.0f, 0.0f, 0.0f, scale.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-
-	return result;
-}
-
-Matrix4x4 MakeRotateXMatrix(float theta) {
-	float sin = std::sin(theta);
-	float cos = std::cos(theta);
-
-	Matrix4x4 result{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, cos, sin, 0.0f, 0.0f, -sin, cos, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-
-	return result;
-}
-
-Matrix4x4 MakeRotateYMatrix(float theta) {
-	float sin = std::sin(theta);
-	float cos = std::cos(theta);
-
-	Matrix4x4 result{ cos, 0.0f, -sin, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, sin, 0.0f, cos, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-
-	return result;
-}
-
-Matrix4x4 MakeRotateZMatrix(float theta) {
-	float sin = std::sin(theta);
-	float cos = std::cos(theta);
-
-	Matrix4x4 result{ cos, sin, 0.0f, 0.0f, -sin, cos, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
-
-	return result;
-}
-
-Matrix4x4 MakeTranslateMatrix(const Vector3& translate) {
-	Matrix4x4 result{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, translate.x, translate.y, translate.z, 1.0f };
-
-	return result;
-}
-
-
-
-Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
-	Matrix4x4 result = {};
-	for (int row = 0; row < 4; ++row) {
-		for (int col = 0; col < 4; ++col) {
-			result.m[row][col] =
-				m1.m[row][0] * m2.m[0][col] +
-				m1.m[row][1] * m2.m[1][col] +
-				m1.m[row][2] * m2.m[2][col] +
-				m1.m[row][3] * m2.m[3][col];
-		}
-	}
-	return result;
-}
-
-//逆行列
-Matrix4x4 Inverse(const Matrix4x4& m)
-{
-	Matrix4x4 result = {};
-
-
-	float a11 = m.m[0][0], a12 = m.m[0][1], a13 = m.m[0][2], a14 = m.m[0][3];
-	float a21 = m.m[1][0], a22 = m.m[1][1], a23 = m.m[1][2], a24 = m.m[1][3];
-	float a31 = m.m[2][0], a32 = m.m[2][1], a33 = m.m[2][2], a34 = m.m[2][3];
-	float a41 = m.m[3][0], a42 = m.m[3][1], a43 = m.m[3][2], a44 = m.m[3][3];
-
-
-	float det = a11 * a22 * a33 * a44 + a11 * a23 * a34 * a42 + a11 * a24 * a32 * a43
-		- a11 * a24 * a33 * a42 - a11 * a23 * a32 * a44 - a11 * a22 * a34 * a43
-		- a12 * a21 * a33 * a44 - a13 * a21 * a34 * a42 - a14 * a21 * a32 * a43
-		+ a14 * a21 * a33 * a42 + a13 * a21 * a32 * a44 + a12 * a21 * a34 * a43
-		+ a12 * a23 * a31 * a44 + a13 * a24 * a31 * a42 + a14 * a22 * a31 * a43
-		- a14 * a23 * a31 * a42 - a13 * a22 * a31 * a44 - a12 * a24 * a31 * a43
-		- a12 * a23 * a34 * a41 - a13 * a24 * a32 * a41 - a14 * a22 * a33 * a41
-		+ a14 * a23 * a32 * a41 + a13 * a22 * a34 * a41 + a12 * a24 * a33 * a41;
-	if (det == 0.0f) {
-		// 逆行列が存在しない（行列式が0）
-		return result;
-	}
-
-	float invDet = 1.0f / det;
-
-	// 以下、各要素に対応する余因子を手動計算して代入（転置あり）
-
-	// 1行目
-	result.m[0][0] = (a22 * (a33 * a44 - a34 * a43) - a23 * (a32 * a44 - a34 * a42) + a24 * (a32 * a43 - a33 * a42)) * invDet;
-	result.m[0][1] = -(a12 * (a33 * a44 - a34 * a43) - a13 * (a32 * a44 - a34 * a42) + a14 * (a32 * a43 - a33 * a42)) * invDet;
-	result.m[0][2] = (a12 * (a23 * a44 - a24 * a43) - a13 * (a22 * a44 - a24 * a42) + a14 * (a22 * a43 - a23 * a42)) * invDet;
-	result.m[0][3] = -(a12 * (a23 * a34 - a24 * a33) - a13 * (a22 * a34 - a24 * a32) + a14 * (a22 * a33 - a23 * a32)) * invDet;
-
-	// 2行目
-	result.m[1][0] = -(a21 * (a33 * a44 - a34 * a43) - a23 * (a31 * a44 - a34 * a41) + a24 * (a31 * a43 - a33 * a41)) * invDet;
-	result.m[1][1] = (a11 * (a33 * a44 - a34 * a43) - a13 * (a31 * a44 - a34 * a41) + a14 * (a31 * a43 - a33 * a41)) * invDet;
-	result.m[1][2] = -(a11 * (a23 * a44 - a24 * a43) - a13 * (a21 * a44 - a24 * a41) + a14 * (a21 * a43 - a23 * a41)) * invDet;
-	result.m[1][3] = (a11 * (a23 * a34 - a24 * a33) - a13 * (a21 * a34 - a24 * a31) + a14 * (a21 * a33 - a23 * a31)) * invDet;
-
-	// 3行目
-	result.m[2][0] = (a21 * (a32 * a44 - a34 * a42) - a22 * (a31 * a44 - a34 * a41) + a24 * (a31 * a42 - a32 * a41)) * invDet;
-	result.m[2][1] = -(a11 * (a32 * a44 - a34 * a42) - a12 * (a31 * a44 - a34 * a41) + a14 * (a31 * a42 - a32 * a41)) * invDet;
-	result.m[2][2] = (a11 * (a22 * a44 - a24 * a42) - a12 * (a21 * a44 - a24 * a41) + a14 * (a21 * a42 - a22 * a41)) * invDet;
-	result.m[2][3] = -(a11 * (a22 * a34 - a24 * a32) - a12 * (a21 * a34 - a24 * a31) + a14 * (a21 * a32 - a22 * a31)) * invDet;
-
-	// 4行目
-	result.m[3][0] = -(a21 * (a32 * a43 - a33 * a42) - a22 * (a31 * a43 - a33 * a41) + a23 * (a31 * a42 - a32 * a41)) * invDet;
-	result.m[3][1] = (a11 * (a32 * a43 - a33 * a42) - a12 * (a31 * a43 - a33 * a41) + a13 * (a31 * a42 - a32 * a41)) * invDet;
-	result.m[3][2] = -(a11 * (a22 * a43 - a23 * a42) - a12 * (a21 * a43 - a23 * a41) + a13 * (a21 * a42 - a22 * a41)) * invDet;
-	result.m[3][3] = (a11 * (a22 * a33 - a23 * a32) - a12 * (a21 * a33 - a23 * a31) + a13 * (a21 * a32 - a22 * a31)) * invDet;
-
-	return result;
-}
-
-//透視投影行列
-Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip)
-{
-	Matrix4x4 result = {};
-	float f = 1.0f / tanf(fovY / 2.0f);
-	result.m[0][0] = f / aspectRatio;
-	result.m[0][1] = 0.0f;
-	result.m[0][2] = 0.0f;
-	result.m[0][3] = 0.0f;
-
-	result.m[1][0] = 0.0f;
-	result.m[1][1] = f;
-	result.m[1][2] = 0.0f;
-	result.m[1][3] = 0.0f;
-
-	result.m[2][0] = 0.0f;
-	result.m[2][1] = 0.0f;
-	result.m[2][2] = farClip / (farClip - nearClip);
-	result.m[2][3] = 1.0f;
-
-	result.m[3][0] = 0.0f;
-	result.m[3][1] = 0.0f;
-	result.m[3][2] = -nearClip * farClip / (farClip - nearClip);
-	result.m[3][3] = 0.0f;
-	return result;
-}
-
-
-
-//正射影行列
-Matrix4x4 MakeOrthographicMatrix(float left, float top, float right,
-	float bottom, float nearClip, float farClip)
-{
-	Matrix4x4 result{};
-	result.m[0][0] = 2.0f / (right - left);
-	result.m[1][1] = 2.0f / (top - bottom);
-	result.m[2][2] = 1.0f / (farClip - nearClip);
-	result.m[3][0] = (left + right) / (left - right);
-	result.m[3][1] = (top + bottom) / (bottom - top);
-	result.m[3][2] = nearClip / (nearClip - farClip);
-	result.m[3][3] = 1.0f;
-	return result;
-}
-
-Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate) {
-	Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
-	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
-	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
-	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
-	Matrix4x4 rotateMatrix = Multiply(Multiply(rotateXMatrix, rotateYMatrix), rotateZMatrix);
-	Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
-
-	Matrix4x4 worldMatrix = Multiply(Multiply(scaleMatrix, rotateMatrix), translateMatrix);
-
-	return worldMatrix;
-}
-
-
-
-
 
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
@@ -519,32 +254,9 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>CreateDescriptorHeap(
 	return descriptorHeap;
 }
 
-void ShowSRTWindow(Transform& transform)
-{
-#ifdef _DEBUG
-	ImGui::Begin("SRT Settings (Debug Only)");
 
-	ImGui::SliderFloat3("Scale", &transform.scale.x, 0.1f, 10.0f);
-	ImGui::SliderFloat3("Rotate", &transform.rotate.x, -3.14159f, 3.14159f);
-	ImGui::SliderFloat3("Translate", &transform.translate.x, -100.0f, 100.0f);
 
-	ImGui::End();
-#endif
-}
 
-// Vector3 の正規化関数
-Vector3 Normalize(const Vector3& v) {
-	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-
-	// ゼロ除算を避けるために、長さが非常に小さい場合はゼロベクトルを返す
-	// FLT_EPSILON は <cfloat> または <limits> に定義されています
-	// もしくは、独自に小さな定数 (例: 1e-6f) を定義しても良い
-	if (length < 0.000001f) { // 適切な epsilon 値を設定してください
-		return { 0.0f, 0.0f, 0.0f };
-	}
-
-	return { v.x / length, v.y / length, v.z / length };
-}
 
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
@@ -784,8 +496,8 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 			texcoords.push_back(texcoord);
 		} else if (identfier == "vn")
 		{
-			Vector3 normal;
-			normal.x = -1.0f;
+			Vector3 normal{};
+			normal.x *= -1.0f;
 			s >> normal.x >> normal.y >> normal.z;
 			normals.push_back(normal);
 		} else if (identfier == "f")
@@ -828,86 +540,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 	return modelData;
 }
 
-SoundData SoundLoadWave(const char* filename)
-{
 
-	//ファイルオープン
-	std::ifstream file;
-	file.open(filename, std::ios::binary);
-	assert(file.is_open());
-	//wavデータ読み込み
-	RiffHeader riff;
-	file.read((char*)&riff, sizeof(riff));
-	if (strncmp(riff.chunk.id, "RIFF", 4) != 0)
-	{
-		assert(0);
-	}
-	if (strncmp(riff.type, "WAVE", 4) != 0)
-	{
-		assert(0);
-	}
-	//fmtチャンク読み込み
-	FormatChunk format = {};
-	file.read((char*)&format, sizeof(ChunkHeader));
-	if (strncmp(format.chunk.id, "fmt ", 4) != 0)
-	{
-		assert(0);
-	}
-	//チャンク本体の読み込み
-	assert(format.chunk.size <= sizeof(format.format));
-	file.read((char*)&format.format, format.chunk.size);
-	//dataチャンクの読み込み
-	ChunkHeader data = {};
-	file.read((char*)&data, sizeof(data));
-	if (strncmp(data.id, "JUNK", 4) == 0)
-	{
-
-		file.seekg(data.size, std::ios_base::cur);
-		file.read((char*)&data, sizeof(data));
-	}
-	if (strncmp(data.id, "data", 4) != 0)
-	{
-		assert(0);
-	}
-	char* pBuffer = new char[data.size];
-	file.read(pBuffer, data.size);
-
-	file.close();
-	SoundData soundData = {};
-	soundData.wfex = format.format;
-	soundData.pBuffer = reinterpret_cast<BYTE*>(pBuffer);
-	soundData.bufferSize = data.size;
-	return soundData;
-}
-
-//専用データ解放
-void SoundUnload(SoundData* soundData)
-{
-
-	delete[] soundData->pBuffer;
-	soundData->pBuffer = 0;
-
-	soundData->bufferSize = 0;
-	soundData->wfex = {};
-
-
-}
-
-void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) {
-
-	HRESULT result;
-	IXAudio2SourceVoice* pSourceVoice = nullptr;
-	result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
-
-	XAUDIO2_BUFFER buffer = {};
-	buffer.pAudioData = soundData.pBuffer; // 音声データのポインタ
-	buffer.AudioBytes = soundData.bufferSize; // 音声データのサイズ
-	buffer.Flags = XAUDIO2_END_OF_STREAM; // ストリームの終端を示すフラグ
-
-	result = pSourceVoice->SubmitSourceBuffer(&buffer);
-	result = pSourceVoice->Start(); // 音声の再生を開始
-
-}
 
 //初期化
 Transform transformObj = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
@@ -926,6 +559,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
 
+	AudioPlayer* audioPlayer = new AudioPlayer();
+	Math* math = new Math();
 
 	// COMライブラリの初期化 
 	HRESULT result = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -1244,7 +879,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//今回は赤を書き込んでみる
 	materrialData->color = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
-	materrialData->uvTransform = makeIdentity4x4();
+	materrialData->uvTransform = math-> makeIdentity4x4();
 
 
 
@@ -1386,7 +1021,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				static_cast<float>(lonIndex) / kSubdivision,
 				1.0f - static_cast<float>(latIndex) / kSubdivision
 			};
-			vertex.normal = Normalize({ vertex.position.x, vertex.position.y, vertex.position.z });
+			vertex.normal = math-> Normalize({ vertex.position.x, vertex.position.y, vertex.position.z });
 			sphereVertices.push_back(vertex); // 計算した頂点データを動的配列に追加します。
 		}
 	}
@@ -1586,16 +1221,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//書き込むためのアドレス
 	wvpObjResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpObjData));
-	wvpObjData->WVP = makeIdentity4x4();
-	wvpObjData->world = MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
+	wvpObjData->WVP = math-> makeIdentity4x4();
+	wvpObjData->world =math-> MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
 
 
 	//データ書き込む
 	TransformationMatrix* wvpSphireData = nullptr;
 
 	wvpSphireResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpSphireData));
-	wvpSphireData->WVP = makeIdentity4x4();
-	wvpSphireData->world = MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
+	wvpSphireData->WVP =math-> makeIdentity4x4();
+	wvpSphireData->world = math-> MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
 
 
 	//データ書き込む
@@ -1604,14 +1239,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&materialDataSprite));
 	materialDataSprite->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	materialDataSprite->enableLighting = false;
-	materialDataSprite->uvTransform = makeIdentity4x4();
+	materialDataSprite->uvTransform = math-> makeIdentity4x4();
 	materialResoucesSprite->Unmap(0, nullptr);
 
 	DirectionalLight* directLightData{};
 	DirectionalLightResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&directLightData));
 	directLightData->color = { 1.0f, 1.0f,1.0f, 1.0f };
 	directLightData->direction = { 0.0f, 0.0f, 0.0f };
-	directLightData->direction = Normalize(directLightData->direction);
+	directLightData->direction =math-> Normalize(directLightData->direction);
 	directLightData->intensity = 1.0f;
 	DirectionalLightResoucesSprite->Unmap(0, nullptr);
 
@@ -1623,7 +1258,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//Spriteはlightingしないのでfalse;
 	materialData->enableLighting = true;
-	materialData->uvTransform = makeIdentity4x4();
+	materialData->uvTransform = math-> makeIdentity4x4();
 	materialResoucesSphire->Unmap(0, nullptr);
 
 
@@ -1686,7 +1321,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//書き込むアドレスを取得
 	transformationMatrixResoucesSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSprite));
 	//単位行列を書き込んでおく
-	*transformationMatrixDataSprite = makeIdentity4x4();
+	*transformationMatrixDataSprite = math-> makeIdentity4x4();
 
 
 
@@ -1775,13 +1410,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces5 = createTextreResouces(device, metadata5);
 
 	//textureを張る
-	DirectX::ScratchImage mipImages6 = LoadTexture(modelMultiMeshData.material.textureFilePath);
+	DirectX::ScratchImage mipImages6 = LoadTexture(modelMultiMaterialData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata6 = mipImages6.GetMetadata();
 	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces6 = createTextreResouces(device, metadata6);
 
 
 	//サウンド読み込み
-	SoundData soundData1 = SoundLoadWave("resouces/Alarm02.wav");
+	SoundData soundData1 = audioPlayer->SoundLoadWave("resouces/Alarm02.wav");
 
 
 
@@ -1917,7 +1552,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			// 音声再生を一度だけにする制御
 			if (!audioPlayedOnce) {
-				SoundPlayWave(xAudio2.Get(), soundData1);
+				audioPlayer->SoundPlayWave(xAudio2.Get(), soundData1);
 				audioPlayedOnce = true; // フラグを立てて、二度と再生しないようにする
 			}
 
@@ -1977,34 +1612,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			;
 			//obj用
-			Matrix4x4 worldMatrixObj = MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
-			Matrix4x4 cameraMatrixObj = MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixObj  = Inverse(cameraMatrixObj);
-			Matrix4x4 projectionMatrixObj = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixObj = Multiply(worldMatrixObj, Multiply(viewMatrixObj, projectionMatrixObj));
+			Matrix4x4 worldMatrixObj = math ->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
+			Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+			Matrix4x4 viewMatrixObj  = math->Inverse(cameraMatrixObj);
+			Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
 			wvpObjData->WVP = worldViewProjectionMatrixObj;
 			wvpObjData->world = worldMatrixObj;
 
 			//shire用
-			Matrix4x4 worldMatrixSphire = MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
-			Matrix4x4 cameraMatrixSphire = MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixSphire = Inverse(cameraMatrixObj);
-			Matrix4x4 projectionMatrixSphire = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixSphire = Multiply(worldMatrixSphire, Multiply(viewMatrixSphire, projectionMatrixSphire));
+			Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
+			Matrix4x4 cameraMatrixSphire = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+			Matrix4x4 viewMatrixSphire = math->Inverse(cameraMatrixObj);
+			Matrix4x4 projectionMatrixSphire = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixSphire, projectionMatrixSphire));
 			wvpSphireData->WVP = worldViewProjectionMatrixSphire;
 			wvpSphireData->world = worldMatrixSphire;
 
-			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
-			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
-			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+			Matrix4x4 worldMatrixSprite = math->MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
+			Matrix4x4 viewMatrixSprite = math->makeIdentity4x4();
+			Matrix4x4 projectionMatrixSprite = math->MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixSprite = math->Multiply(worldMatrixSprite, math->Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
 
 			//編集と行列の作成
-			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+			Matrix4x4 uvTransformMatrix = math->MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = math->Multiply(uvTransformMatrix, math->MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = math->Multiply(uvTransformMatrix, math->MakeTranslateMatrix(uvTransformSprite.translate));
 			materialDataSprite->uvTransform = uvTransformMatrix;
 
 			//画面のクリア処理
@@ -2277,7 +1912,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//サウンドのRelese
-	SoundUnload(&soundData1);
+	audioPlayer-> SoundUnload(&soundData1);
 	xAudio2.Reset();
 
 
