@@ -70,8 +70,10 @@ struct Material
 {
 	Vector4 color;
 	int32_t enableLighting;
-	float padding[3];
+	float padding1[3];
 	Matrix4x4 uvTransform;
+ int32_t selectedLighting;
+ float padding2[3];
 
 };
 
@@ -97,6 +99,8 @@ struct  ModelData
 	std::vector<VertexData> vertices;
 	MateriaData material;
 };
+
+
 
 struct D3DResourceLeakChecker {
 	~D3DResourceLeakChecker() {
@@ -879,6 +883,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//今回は赤を書き込んでみる
 	materrialData->color = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+	materrialData->selectedLighting = 0;
 	materrialData->uvTransform = math-> makeIdentity4x4();
 
 
@@ -1067,6 +1072,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	std::memcpy(vertexPlaneData, modelPlaneData.vertices.data(), sizeof(VertexData) * modelPlaneData.vertices.size());
 	vertexplaneResource->Unmap(0, nullptr);
 
+
+
 	//	TeapotObj読み込み
 	ModelData modelTeapotData = LoadObjFile("resouces", "teapot.obj");
 
@@ -1245,7 +1252,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DirectionalLight* directLightData{};
 	DirectionalLightResoucesSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&directLightData));
 	directLightData->color = { 1.0f, 1.0f,1.0f, 1.0f };
-	directLightData->direction = { 0.0f, 0.0f, 0.0f };
+	directLightData->direction = { 0.0f, -1.0f, 0.0f };
 	directLightData->direction =math-> Normalize(directLightData->direction);
 	directLightData->intensity = 1.0f;
 	DirectionalLightResoucesSprite->Unmap(0, nullptr);
@@ -1258,6 +1265,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	//Spriteはlightingしないのでfalse;
 	materialData->enableLighting = true;
+	materialData->selectedLighting = 0;
 	materialData->uvTransform = math-> makeIdentity4x4();
 	materialResoucesSphire->Unmap(0, nullptr);
 
@@ -1307,10 +1315,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDataSprite[3].position = { 640.0f, 360.0f, 0.0f, 1.0f };
 	vertexDataSprite[3].texcoord = { 1.0f, 1.0f };
 	vertexDataSprite[3].normal = { 0.0f, 0.0f, -1.0f };
-
-
-
-
 
 
 
@@ -1522,6 +1526,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// ★追加する行
 	bool audioPlayedOnce = false; // 音声が一度再生されたかどうかのフラグ
 
+	static int selectedLightingUI = 0;
+
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
@@ -1543,12 +1549,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			BYTE key[256] = {};
 			keyboardDevice->GetDeviceState(sizeof(key), key);
 
-			//キーの状態を取得
-			if (key[DIK_0])
-			{
-				OutputDebugStringA("HIT 0\n");
-			}
-
+		
 
 			// 音声再生を一度だけにする制御
 			if (!audioPlayedOnce) {
@@ -1564,10 +1565,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Begin("Setting");
 
 			static int selected = 0;
+
+			const char* enableLighting[] = { "None", "enableLighting","enableLightingHaef" };
 			const char* items[] = { "obj & sprite", "sprite", "sphire" ,"sphire & obj", "Teapot","bunny","MultiMesh", "multiMaterial"};
 
 			ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
 
+			ImGui::Combo("Lighting", &materialData->selectedLighting, enableLighting, IM_ARRAYSIZE(enableLighting));
 
 
 			if (ImGui::CollapsingHeader("object##obj")) {
@@ -1688,7 +1692,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 
-
+			//描画をimGui
 			switch (selected)
 			{
 			case 0:
@@ -1696,7 +1700,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 				//obj平面
 				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				//wvpのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
@@ -1750,7 +1753,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 				//obj 平面
 				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				//wvpのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
@@ -1765,7 +1767,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 				//球
 				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResoucesSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpSphireResouces->GetGPUVirtualAddress());
@@ -1782,7 +1783,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			case 4:
 				//teapot
 					//マテリアルcBubufferの場所設定
-					commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 					commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 					//wvpのcBufferの場所設定
 					commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
@@ -1797,7 +1797,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 					break;
 			case 5:
 				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				//wvpのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
@@ -1812,7 +1811,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				break;
 			case 6:
 				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				//wvpのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
@@ -1827,7 +1825,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				break;
 			case 7:
 				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSphire->GetGPUVirtualAddress());
 				//wvpのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
@@ -1843,6 +1840,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			}
 
+			switch (materialData->selectedLighting)
+			{
+			case 0:
+				//キーの状態を取得
+				if (key[DIK_0])
+				{
+					OutputDebugStringA("HIT 0\n");
+				}
+				break;
+
+			case 1:
+				//キーの状態を取得
+				if (key[DIK_1])
+				{
+					OutputDebugStringA("HIT 0\n");
+				}
+				break;
+			default:
+				break;
+			}
 
 
 
