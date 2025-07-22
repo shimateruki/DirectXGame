@@ -12,6 +12,8 @@ struct Material
     float32_t4 color;
     int32_t enableLighting;
     float32_t4x4 uvTransform;
+     int32_t selectedLighting;
+    
 };
 struct DirectionalLight
 {
@@ -34,23 +36,29 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 {
     PixelShanderOutput output;
     //float32_t4 textureColor = gTexture.Sample(gSampler, input.texcoord);
-
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
-    output.color = gMaterial.color * textureColor;
-    if (gMaterial.enableLighting != 0)
-    {
-      
-        float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
-        float cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
-        output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intenssity;
-
-    }
-    else
-    {
-        output.color = gMaterial.color * textureColor;
+    float NdotL;
+    float cos;
     
+    switch (gMaterial.selectedLighting)
+    {
+        case 0:
+
+            output.color = gMaterial.color * textureColor;
+            break;
+        case 1:
+         cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
+            output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intenssity;;
+            break;
+        case 2:
+             NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
+             cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+            output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intenssity;
+            break;
     }
+
+   
       
     return output;
 }
