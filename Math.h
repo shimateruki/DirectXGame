@@ -1,5 +1,8 @@
 ﻿#pragma once
 
+
+
+
 struct Vector2
 {
 	float x;
@@ -32,10 +35,20 @@ struct Matrix4x4
 {
 	float m[4][4];
 };
+Vector3 operator-(const Vector3& v1, const Vector3& v2);
+Vector3 operator*(const Vector3& v, float scalar);
+Vector3 operator+(const Vector3& v1, const Vector3& v2);
+
+Vector3 operator-(const Vector3& v);
+
+Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
 
 class Math
 {
+  
+ 
 public:
+
 	Matrix4x4 makeIdentity4x4();
 	Matrix4x4 MakeScaleMatrix(const Vector3& scale);
 	Matrix4x4 MakeRotateXMatrix(float theta);
@@ -52,7 +65,8 @@ public:
 
 	Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
 	Vector3 Normalize(const Vector3& v);
-private:
+	Matrix4x4 MakeRotateMatrix(const Vector3& rotate);
+	Vector3 TransformNormal(const Vector3& v, const Matrix4x4& m);
 
 };
 

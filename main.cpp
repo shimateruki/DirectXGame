@@ -25,6 +25,8 @@
 #include <dinput.h>
 #include "AudioPlayer.h"
 #include "Math.h"
+#include "debugCamera.h"
+#include "InputManager.h"
 
 
 
@@ -581,6 +583,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	
 	SetUnhandledExceptionFilter(ExportDump);
+
+	// --- 初期化 ---
+	InputManager* inputManager = new InputManager();
+	DebugCamera* debugCamera = new DebugCamera();;
+	debugCamera->Initialize();
 
 
 	//ログのフォルダ作成
@@ -1528,7 +1535,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	bool audioPlayedOnce = false; // 音声が一度再生されたかどうかのフラグ
 
 	static int selectedLightingUI = 0;
-
+	debugCamera->SetInputManager(inputManager);
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
@@ -1550,14 +1557,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			BYTE key[256] = {};
 			keyboardDevice->GetDeviceState(sizeof(key), key);
 
-		
+			// 入力更新
+
+			debugCamera->Update();
 
 			// 音声再生を一度だけにする制御
 			if (!audioPlayedOnce) {
 				audioPlayer->SoundPlayWave(xAudio2.Get(), soundData1);
 				audioPlayedOnce = true; // フラグを立てて、二度と再生しないようにする
 			}
-
+		
+			if (!inputManager) {
+				OutputDebugStringA("inputManager is null!\n");
+			
+			}
 			bool temp_enableLighting = (materialData->enableLighting != 0);
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -1617,10 +1630,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			;
 			//obj用
+
 			Matrix4x4 worldMatrixObj = math ->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
 			Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixObj  = math->Inverse(cameraMatrixObj);
-			Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 viewMatrixObj = debugCamera->GetViewMatrix(); 
+			Matrix4x4 projectionMatrixObj = debugCamera->GetProjectionMatrix();
 			Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
 			wvpObjData->WVP = worldViewProjectionMatrixObj;
 			wvpObjData->world = worldMatrixObj;

@@ -2,6 +2,48 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+
+
+Vector3 operator-(const Vector3& v1, const Vector3& v2)
+{
+	return { v1.x - v2.x, v1.y - v2.y, v1.z - v2.z };
+}
+
+Vector3 operator*(const Vector3& v, float scalar)
+{
+	return { v.x * scalar, v.y * scalar, v.z * scalar };
+}
+
+Vector3 operator+(const Vector3& v1, const Vector3& v2)
+{
+
+	return { v1.x + v2.x, v1.y + v2.y, v1.z + v2.z };
+
+}
+
+Vector3 operator-(const Vector3& v)
+{
+	return { -v.x, -v.y, -v.z };
+}
+
+Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2)
+{
+	Matrix4x4 result = {};
+	for (int i = 0; i < 4; ++i)
+	{
+		for (int j = 0; j < 4; ++j)
+		{
+			result.m[i][j] = 0;
+			for (int k = 0; k < 4; ++k)
+			{
+				result.m[i][j] += m1.m[i][k] * m2.m[k][j];
+			}
+		}
+	}
+	return result;
+}
+
+
 Matrix4x4 Math::makeIdentity4x4()
 {
 
@@ -204,5 +246,22 @@ Vector3 Math::Normalize(const Vector3& v)
 	}
 
 	return { v.x / length, v.y / length, v.z / length };
+}
+
+Matrix4x4 Math::MakeRotateMatrix(const Vector3& rotate)
+{
+	Matrix4x4 rotX = MakeRotateXMatrix(rotate.x);
+	Matrix4x4 rotY = MakeRotateYMatrix(rotate.y);
+	Matrix4x4 rotZ = MakeRotateZMatrix(rotate.z);
+	return Multiply(Multiply(rotZ, rotX), rotY); // Z→X→Y の順
+}
+
+Vector3 Math::TransformNormal(const Vector3& v, const Matrix4x4& m)
+{
+	Vector3 result;
+	result.x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0];
+	result.y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1];
+	result.z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2];
+	return result;
 }
 
