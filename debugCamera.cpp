@@ -11,7 +11,7 @@ void DebugCamera::Initialize()
 
 
     // 初期位置と回転を設定
-    translation = { 0.0f, 0.0f, -30.0f };  // 適切な初期位置を設定
+    translation = { 0.0f, 0.0f, -10.0f };  // 適切な初期位置を設定
     rotation = { 0.0f, 0.0f, 0.0f };
 
 
@@ -30,13 +30,13 @@ void DebugCamera::Update()
     }
     // 移動（WASDなど）
     Vector3 move = { 0, 0, 0 };
-    const float moveSpeed = 0.3f;
+    const float moveSpeed = 0.1f;
     if (!inputManager) return; // 安全確認
 
     if (inputManager->IsKeyPressed(DIK_W)) move.z += 1.0f;
     if (inputManager->IsKeyPressed(DIK_S)) move.z -= 1.0f;
-    if (inputManager->IsKeyPressed(DIK_A)) move.x -= 1.0f;
-    if (inputManager->IsKeyPressed(DIK_D)) move.x += 1.0f;
+    if (inputManager->IsKeyPressed(DIK_A)) move.x += 1.0f;
+    if (inputManager->IsKeyPressed(DIK_D)) move.x -= 1.0f;
     if (inputManager->IsKeyPressed(DIK_Q)) move.y -= 1.0f;
     if (inputManager->IsKeyPressed(DIK_E)) move.y += 1.0f;
 

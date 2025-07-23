@@ -6,7 +6,8 @@
 
 class InputManager {
 public:
-    void Initialize(HINSTANCE hInstance, HWND hwnd);
+   /* void Initialize(HINSTANCE hInstance, HWND hwnd);*/
+    void Initialize(HWND hwnd);
     void Update();
 
     // キーボード

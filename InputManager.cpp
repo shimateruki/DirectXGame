@@ -2,17 +2,17 @@
 #include <cassert>
 #include "math.h"
 
-void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
+void InputManager::Initialize(HWND hwnd)
 {
     HRESULT result;
 
-    // DirectInput インターフェース生成
+    // DirectInputインターフェース生成
     result = DirectInput8Create(
-        hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
+        GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8,
         reinterpret_cast<void**>(&directInput), nullptr);
     assert(SUCCEEDED(result));
 
-    // --- キーボードデバイス ---
+    // キーボードデバイス生成
     result = directInput->CreateDevice(GUID_SysKeyboard, &keyboardDevice, nullptr);
     assert(SUCCEEDED(result));
     result = keyboardDevice->SetDataFormat(&c_dfDIKeyboard);
@@ -21,7 +21,7 @@ void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
     assert(SUCCEEDED(result));
     keyboardDevice->Acquire();
 
-    // --- マウスデバイス ---
+    // マウスデバイス生成
     result = directInput->CreateDevice(GUID_SysMouse, &mouseDevice, nullptr);
     assert(SUCCEEDED(result));
     result = mouseDevice->SetDataFormat(&c_dfDIMouse);
