@@ -25,6 +25,8 @@
 #include <dinput.h>
 #include "AudioPlayer.h"
 #include "Math.h"
+#include "debugCamera.h"
+#include "InputManager.h"
 
 
 
@@ -581,6 +583,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	
 	SetUnhandledExceptionFilter(ExportDump);
+
 
 
 	//ログのフォルダ作成
@@ -1361,27 +1364,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 
-	// DirectInput の初期化
-	IDirectInput8* directInput = nullptr;
-	result = DirectInput8Create(
-		GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(&directInput), nullptr);
-	assert(SUCCEEDED(result));
+	//// DirectInput の初期化
+	//IDirectInput8* directInput = nullptr;
+	//result = DirectInput8Create(
+	//	GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8, reinterpret_cast<void**>(&directInput), nullptr);
+	//assert(SUCCEEDED(result));
 
 
 
 
 
-	//キーボートデバイスの生成
-	IDirectInputDevice8* keyboardDevice = nullptr;
-	result = directInput->CreateDevice(GUID_SysKeyboard, &keyboardDevice, nullptr);
-	assert(SUCCEEDED(result));
+	////キーボートデバイスの生成
+	//IDirectInputDevice8* keyboardDevice = nullptr;
+	//result = directInput->CreateDevice(GUID_SysKeyboard, &keyboardDevice, nullptr);
+	//assert(SUCCEEDED(result));
 
-	//入力データ形式のセット
-	result = keyboardDevice->SetDataFormat(&c_dfDIKeyboard);
-	assert(SUCCEEDED(result));
-	//キーボードの排他モードを設定
-	result = keyboardDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-	assert(SUCCEEDED(result));
+	////入力データ形式のセット
+	//result = keyboardDevice->SetDataFormat(&c_dfDIKeyboard);
+	//assert(SUCCEEDED(result));
+	////キーボードの排他モードを設定
+	//result = keyboardDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+	//assert(SUCCEEDED(result));
 
 
 
@@ -1529,6 +1532,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	static int selectedLightingUI = 0;
 
+
+	// --- 初期化 ---
+	InputManager* inputManager = new InputManager();
+	inputManager->Initialize(hwnd);
+	DebugCamera* debugCamera = new DebugCamera();;
+	debugCamera->Initialize();
+	debugCamera->SetInputManager(inputManager);
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
@@ -1544,20 +1554,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
-			//画面の更新処理
-			keyboardDevice->Acquire();
+			////画面の更新処理
+			//keyboardDevice->Acquire();
 
-			BYTE key[256] = {};
-			keyboardDevice->GetDeviceState(sizeof(key), key);
+			//BYTE key[256] = {};
+			//keyboardDevice->GetDeviceState(sizeof(key), key);
 
-		
+			// 入力更新
+			inputManager->Update();
+			debugCamera->Update();
 
 			// 音声再生を一度だけにする制御
 			if (!audioPlayedOnce) {
 				audioPlayer->SoundPlayWave(xAudio2.Get(), soundData1);
 				audioPlayedOnce = true; // フラグを立てて、二度と再生しないようにする
 			}
-
+		
+			if (inputManager) {
+				OutputDebugStringA("inputManager is null!\n");
+			
+			}
 			bool temp_enableLighting = (materialData->enableLighting != 0);
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -1617,10 +1633,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			;
 			//obj用
+
 			Matrix4x4 worldMatrixObj = math ->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
 			Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixObj  = math->Inverse(cameraMatrixObj);
-			Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 viewMatrixObj = debugCamera->GetViewMatrix(); 
+			Matrix4x4 projectionMatrixObj = debugCamera->GetProjectionMatrix();
 			Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
 			wvpObjData->WVP = worldViewProjectionMatrixObj;
 			wvpObjData->world = worldMatrixObj;
@@ -1628,8 +1645,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//shire用
 			Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
 			Matrix4x4 cameraMatrixSphire = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixSphire = math->Inverse(cameraMatrixObj);
-			Matrix4x4 projectionMatrixSphire = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 viewMatrixSphire = debugCamera->GetViewMatrix();
+			Matrix4x4 projectionMatrixSphire = debugCamera->GetProjectionMatrix();
 			Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixSphire, projectionMatrixSphire));
 			wvpSphireData->WVP = worldViewProjectionMatrixSphire;
 			wvpSphireData->world = worldMatrixSphire;
@@ -1843,26 +1860,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			}
 
-			switch (materialData->selectedLighting)
-			{
-			case 0:
-				//キーの状態を取得
-				if (key[DIK_0])
-				{
-					OutputDebugStringA("HIT 0\n");
-				}
-				break;
+			//switch (materialData->selectedLighting)
+			//{
+			//case 0:
+			//	//キーの状態を取得
+			//	if (key[DIK_0])
+			//	{
+			//		OutputDebugStringA("HIT 0\n");
+			//	}
+			//	break;
 
-			case 1:
-				//キーの状態を取得
-				if (key[DIK_1])
-				{
-					OutputDebugStringA("HIT 0\n");
-				}
-				break;
-			default:
-				break;
-			}
+			//case 1:
+			//	//キーの状態を取得
+			//	if (key[DIK_1])
+			//	{
+			//		OutputDebugStringA("HIT 0\n");
+			//	}
+			//	break;
+			//default:
+			//	break;
+			//}
 
 
 
