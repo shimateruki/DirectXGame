@@ -1139,6 +1139,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// ----------------------------
 	// Teapot モデル読み込み
 	// ----------------------------
+
 	ModelData modelTeapotData = LoadObjFile("resouces", "teapot.obj");
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexTeapotResource =
@@ -1264,7 +1265,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
 	vertexBufferViewSprite.BufferLocation = vertexResoucesSptite->GetGPUVirtualAddress();
-	vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 6;  // 6頂点（三角形2つ分）想定
+	vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 4;  // 6頂点（三角形2つ分）想定
 	vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
 
 	
@@ -1693,6 +1694,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 viewMatrixSprite = math->makeIdentity4x4();
 			Matrix4x4 projectionMatrixSprite = math->MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprite = math->Multiply(worldMatrixSprite, math->Multiply(viewMatrixSprite, projectionMatrixSprite));
+
 			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
 
 			// UV変換
@@ -1740,7 +1742,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
 			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 			commandList->SetPipelineState(graphicsPipelineState.Get());
-			commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
 			
 
 			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
@@ -1757,15 +1758,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
+				commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
 				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
 				// Sprite
 				commandList->SetGraphicsRootConstantBufferView(0, materialResoucesSprite->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
 				commandList->IASetIndexBuffer(&indexBufferView);
 				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResoucesSprite->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 				break;
 
@@ -1784,9 +1786,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				//球
 				//マテリアルcBubufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpSphireResouces->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere); 
 				commandList->IASetIndexBuffer(&indexBufferViewSphere);        
@@ -1806,10 +1807,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
 				//directionalLightのcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-
+				commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
 				//テクスチャのSRVの場所設定
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
-
 				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
 
@@ -1819,7 +1819,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpSphireResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				// ★ここ！球体の頂点バッファとインデックスバッファを設定
 				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
 				commandList->IASetIndexBuffer(&indexBufferViewSphere);
 				//作画
