@@ -6,13 +6,12 @@ void InputManager::Initialize(HWND hwnd)
 {
     HRESULT result;
 
-    // DirectInputインターフェース生成
-    result = DirectInput8Create(
-        GetModuleHandle(nullptr), DIRECTINPUT_VERSION, IID_IDirectInput8,
-        reinterpret_cast<void**>(&directInput), nullptr);
+    // DirectInput 初期化
+    result = DirectInput8Create(GetModuleHandle(nullptr), DIRECTINPUT_VERSION,
+        IID_IDirectInput8, reinterpret_cast<void**>(&directInput), nullptr);
     assert(SUCCEEDED(result));
 
-    // キーボードデバイス生成
+    // キーボード
     result = directInput->CreateDevice(GUID_SysKeyboard, &keyboardDevice, nullptr);
     assert(SUCCEEDED(result));
     result = keyboardDevice->SetDataFormat(&c_dfDIKeyboard);
@@ -21,7 +20,7 @@ void InputManager::Initialize(HWND hwnd)
     assert(SUCCEEDED(result));
     keyboardDevice->Acquire();
 
-    // マウスデバイス生成
+    // マウス
     result = directInput->CreateDevice(GUID_SysMouse, &mouseDevice, nullptr);
     assert(SUCCEEDED(result));
     result = mouseDevice->SetDataFormat(&c_dfDIMouse);
@@ -30,60 +29,76 @@ void InputManager::Initialize(HWND hwnd)
     assert(SUCCEEDED(result));
     mouseDevice->Acquire();
 }
+
 void InputManager::Update()
 {
-    // 前の状態を保存
     memcpy(prevKeyState, keyState, sizeof(keyState));
     prevMouseState = mouseState;
 
-    // --- キーボードの状態取得 ---
+    // キーボード
     HRESULT result = keyboardDevice->GetDeviceState(sizeof(keyState), keyState);
     if (FAILED(result)) {
         keyboardDevice->Unacquire();
-        result = keyboardDevice->Acquire();
-        while (result == DIERR_INPUTLOST) {
-            result = keyboardDevice->Acquire();
-        }
+        while ((result = keyboardDevice->Acquire()) == DIERR_INPUTLOST) {}
         keyboardDevice->GetDeviceState(sizeof(keyState), keyState);
     }
 
-    // --- マウスの状態取得 ---
+    // マウス
     result = mouseDevice->GetDeviceState(sizeof(mouseState), &mouseState);
     if (FAILED(result)) {
         mouseDevice->Unacquire();
-        result = mouseDevice->Acquire();
-        while (result == DIERR_INPUTLOST) {
-            result = mouseDevice->Acquire();
-        }
+        while ((result = mouseDevice->Acquire()) == DIERR_INPUTLOST) {}
         mouseDevice->GetDeviceState(sizeof(mouseState), &mouseState);
+    }
+
+    // ゲームパッド
+    ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
+    DWORD padResult = XInputGetState(0, &gamepadState);
+    if (padResult != ERROR_SUCCESS) {
+        ZeroMemory(&gamepadState, sizeof(XINPUT_STATE)); // 未接続
     }
 }
 
-// ---------------- キーボード ----------------
-
-bool InputManager::IsKeyPressed(BYTE keyCode) const
-{
+bool InputManager::IsKeyPressed(BYTE keyCode) const {
     return (keyState[keyCode] & 0x80) != 0;
 }
 
-bool InputManager::IsKeyTriggered(BYTE keyCode) const
-{
+bool InputManager::IsKeyTriggered(BYTE keyCode) const {
     return (keyState[keyCode] & 0x80) && !(prevKeyState[keyCode] & 0x80);
 }
 
-// ---------------- マウス ----------------
-
-bool InputManager::IsMouseButtonPressed(int button) const
-{
+bool InputManager::IsMouseButtonPressed(int button) const {
     return (mouseState.rgbButtons[button] & 0x80) != 0;
 }
 
-bool InputManager::IsMouseButtonTriggered(int button) const
-{
+bool InputManager::IsMouseButtonTriggered(int button) const {
     return (mouseState.rgbButtons[button] & 0x80) && !(prevMouseState.rgbButtons[button] & 0x80);
 }
 
-Vector2 InputManager::GetMouseMoveDelta() const
-{
+Vector2 InputManager::GetMouseMoveDelta() const {
     return { (float)mouseState.lX, (float)mouseState.lY };
+}
+
+Vector2 InputManager::GetGamepadLeftStick() const {
+    const SHORT deadZone = XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE;
+    SHORT lx = gamepadState.Gamepad.sThumbLX;
+    SHORT ly = gamepadState.Gamepad.sThumbLY;
+
+    float x = (abs(lx) > deadZone) ? lx / 32768.0f : 0.0f;
+    float y = (abs(ly) > deadZone) ? ly / 32768.0f : 0.0f;
+    return { x, y };
+}
+
+Vector2 InputManager::GetGamepadRightStick() const {
+    const SHORT deadZone = XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
+    SHORT rx = gamepadState.Gamepad.sThumbRX;
+    SHORT ry = gamepadState.Gamepad.sThumbRY;
+
+    float x = (abs(rx) > deadZone) ? rx / 32768.0f : 0.0f;
+    float y = (abs(ry) > deadZone) ? ry / 32768.0f : 0.0f;
+    return { x, y };
+}
+
+bool InputManager::IsGamepadButtonPressed(WORD button) const {
+    return (gamepadState.Gamepad.wButtons & button) != 0;
 }
