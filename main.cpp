@@ -618,9 +618,9 @@ Transform transformSphire = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{1.0f, 0.0f,
 
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-#ifdef _DEBUG
+
 	D3DResourceLeakChecker leakChecker;
-#endif
+
 
 	// DXの初期化とComPtrによるリソース生成
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
@@ -935,23 +935,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	descriptionRootSignatrue.pStaticSamplers = staticSamplers;
 	descriptionRootSignatrue.NumStaticSamplers = _countof(staticSamplers);
-
-
-	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
-	Microsoft::WRL::ComPtr<ID3D12Resource> materialResouces = createBufferResouces(device, sizeof(Material));
-
-	//マテリアル用のデータを書き込む
-	Material* materrialData = nullptr;
-
-	//書き込むためのアドレスを取得
-	materialResouces->Map(0, nullptr, reinterpret_cast<void**>(&materrialData));
-
-	//今回は赤を書き込んでみる
-	materrialData->color = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
-	materrialData->selectedLighting = 0;
-	materrialData->uvTransform = math-> makeIdentity4x4();
-
-
 
 
 
@@ -1314,6 +1297,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// =============================
 	// ▼ 通常マテリアルリソース（モデル/オブジェクト用）
 	// =============================
+
+	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
+	Microsoft::WRL::ComPtr<ID3D12Resource> materialResouces = createBufferResouces(device, sizeof(Material));
 	Material* materialData = nullptr;
 	materialResouces->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -1570,6 +1556,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// ★追加する行
 	bool audioPlayedOnce = false; // 音声が一度再生されたかどうかのフラグ
+	bool isDebaugCamera = false;; // デバッグカメラの使用フラグ
 
 	static int selectedLightingUI = 0;
 
@@ -1580,6 +1567,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	DebugCamera* debugCamera = new DebugCamera();;
 	debugCamera->Initialize();
 	debugCamera->SetInputManager(inputManager);
+
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
@@ -1611,10 +1599,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				audioPlayedOnce = true; // フラグを立てて、二度と再生しないようにする
 			}
 		
-			if (inputManager) {
-				OutputDebugStringA("inputManager is null!\n");
-			
-			}
 			bool temp_enableLighting = (materialData->enableLighting != 0);
 
 			// ---------------- ImGui フレーム開始 ----------------
@@ -1626,18 +1610,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			// ▼ 描画切り替えメニュー
 			static int selected = 0;
-			const char* items[] = { "Plane & sprite", "sprite", "sphire", "sphire & obj", "Teapot", "bunny", "MultiMesh", "multiMaterial", "Suzanne" };
+			const char* items[] = { "Plane & sprite", "sprite", "sphire", "sphire & obj", "Teapot", "bunny", "MultiMesh", "Suzanne" };
 			ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
 
 			// ▼ ライティング方式選択
 			const char* enableLighting[] = { "None", "enableLighting", "enableLightingHaef" };
 			ImGui::Combo("Lighting", &materialData->selectedLighting, enableLighting, IM_ARRAYSIZE(enableLighting));
 
+			ImGui::Checkbox("use Debag Camera", &isDebaugCamera);
+
 			// ▼ Obj 変換設定
-			if (ImGui::CollapsingHeader("object##obj")) {
-				ImGui::DragFloat3("Translate", &transformObj.translate.x, 0.001f);
-				ImGui::DragFloat3("Rotate", &transformObj.rotate.x, 0.001f);
-				ImGui::DragFloat3("Scale", &transformObj.scale.x, 0.001f);
+			if (ImGui::CollapsingHeader("Obj Object")) {
+				ImGui::DragFloat3("Translate##Obj", &transformObj.translate.x, 0.001f);
+				ImGui::DragFloat3("Rotate##Obj", &transformObj.rotate.x, 0.001f);
+				ImGui::DragFloat3("Scale##Obj", &transformObj.scale.x, 0.001f);
 			}
 
 			// ▼ ライティング設定
@@ -1648,21 +1634,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			}
 
 			// ▼ スプライトのマテリアル設定
-			if (ImGui::CollapsingHeader("Material##sprite")) {
-				ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-				ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-				ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z, 0.001f);
-				ImGui::ColorEdit4("color", &materialDataSprite->color.x);
+			if (ImGui::CollapsingHeader("SpriteObject##Sprite")) {
+				ImGui::DragFloat3("Translate##Sprite", &transformSprite.translate.x, 1.0f);
+				ImGui::DragFloat3("Rotate##Sprite", &transformSprite.rotate.x, 0.001f);
+				ImGui::DragFloat3("Scale##Sprite", &transformSprite.scale.x, 0.001f);
 
-				if (ImGui::CollapsingHeader("Object##sprite")) {
-					ImGui::DragFloat3("Translate", &transformSprite.translate.x, 0.001f);
-					ImGui::DragFloat3("Rotate", &transformSprite.rotate.x, 0.001f);
-					ImGui::DragFloat3("Scale", &transformSprite.scale.x, 0.001f);
+				if (ImGui::CollapsingHeader("Material##sprite")) {
+					ImGui::DragFloat2("UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+					ImGui::DragFloat2("UVScale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+					ImGui::SliderAngle("UVRotate", &uvTransformSprite.rotate.z, 0.001f);
+					ImGui::ColorEdit4("color", &materialDataSprite->color.x);
 				}
-			}
 
+			}
+			
 			// ▼ 球体
-			if (ImGui::CollapsingHeader("object##sphire")) {
+			if (ImGui::CollapsingHeader("Sphere Object##sphire")) {
 				ImGui::DragFloat3("SphireTranslate", &transformSphire.translate.x, 0.001f);
 				ImGui::DragFloat3("SphireRotate", &transformSphire.rotate.x, 0.001f);
 				ImGui::DragFloat3("SphireScale", &transformSphire.scale.x, 0.001f);
@@ -1673,22 +1660,45 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			
 			// ---------------- 行列の更新 ----------------
+			if (isDebaugCamera)
+			{
+				// Obj用デバックカメラ版
+				Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
+				Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+				Matrix4x4 viewMatrixObj = debugCamera->GetViewMatrix();
+				Matrix4x4 projectionMatrixObj = debugCamera->GetProjectionMatrix();
+				Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
+				wvpObjData->WVP = worldViewProjectionMatrixObj;
+				wvpObjData->world = worldMatrixObj;
 
-			// Obj用
-			Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
-			Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixObj = debugCamera->GetViewMatrix();
-			Matrix4x4 projectionMatrixObj = debugCamera->GetProjectionMatrix();
-			Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
-			wvpObjData->WVP = worldViewProjectionMatrixObj;
-			wvpObjData->world = worldMatrixObj;
+				// Sphire用デバックカメラ
+				Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
+				Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixObj, projectionMatrixObj));
+				wvpSphireData->WVP = worldViewProjectionMatrixSphire;
+				wvpSphireData->world = worldMatrixSphire;
+			}
+			else
+			{
+				// Obj用通常版
+				Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
+				Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+				Matrix4x4 viewMatrixObj = math->Inverse(cameraMatrixObj);
+				Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+				Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
+				wvpObjData->WVP = worldViewProjectionMatrixObj;
+				wvpObjData->world = worldMatrixObj;
 
-			// Sphire用
-			Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
-			Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixObj, projectionMatrixObj));
-			wvpSphireData->WVP = worldViewProjectionMatrixSphire;
-			wvpSphireData->world = worldMatrixSphire;
+				//shire用
+				Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
+				Matrix4x4 cameraMatrixSphire = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+				Matrix4x4 viewMatrixSphire = math->Inverse(cameraMatrixObj);
+				Matrix4x4 projectionMatrixSphire = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+				Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixSphire, projectionMatrixSphire));
+				wvpSphireData->WVP = worldViewProjectionMatrixSphire;
+				wvpSphireData->world = worldMatrixSphire;
 
+			}
+		
 			// Sprite用
 			Matrix4x4 worldMatrixSprite = math->MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = math->makeIdentity4x4();
@@ -1755,6 +1765,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			{
 			case 0: // Plane & sprite
 				// Plane
+
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
@@ -1872,22 +1883,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 				commandList->DrawInstanced(static_cast<UINT>(modelMultiMeshData.vertices.size()), 1, 0, 0);
 				break;
-			case 7:
-				//MultiMaterial
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				//wvpのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
-				//directionalLightのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-
-				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU6);
-				commandList->IASetVertexBuffers(0, 1, &vertexMultiMaterialBufferView);
-
-				commandList->DrawInstanced(static_cast<UINT>(modelMultiMaterialData.vertices.size()), 1, 0, 0);
-				break;
-			case 8: 
+		
+			case 7: 
 				//Suzanne
 				//マテリアルcBubufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
