@@ -1556,6 +1556,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// ★追加する行
 	bool audioPlayedOnce = false; // 音声が一度再生されたかどうかのフラグ
+	bool isDebaugCamera = false;; // デバッグカメラの使用フラグ
 
 	static int selectedLightingUI = 0;
 
@@ -1616,6 +1617,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			const char* enableLighting[] = { "None", "enableLighting", "enableLightingHaef" };
 			ImGui::Combo("Lighting", &materialData->selectedLighting, enableLighting, IM_ARRAYSIZE(enableLighting));
 
+			ImGui::Checkbox("use Debag Camera", &isDebaugCamera);
+
 			// ▼ Obj 変換設定
 			if (ImGui::CollapsingHeader("Obj Object")) {
 				ImGui::DragFloat3("Translate##Obj", &transformObj.translate.x, 0.001f);
@@ -1657,22 +1660,45 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			
 			// ---------------- 行列の更新 ----------------
+			if (isDebaugCamera)
+			{
+				// Obj用デバックカメラ版
+				Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
+				Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+				Matrix4x4 viewMatrixObj = debugCamera->GetViewMatrix();
+				Matrix4x4 projectionMatrixObj = debugCamera->GetProjectionMatrix();
+				Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
+				wvpObjData->WVP = worldViewProjectionMatrixObj;
+				wvpObjData->world = worldMatrixObj;
 
-			// Obj用
-			Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
-			Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrixObj = debugCamera->GetViewMatrix();
-			Matrix4x4 projectionMatrixObj = debugCamera->GetProjectionMatrix();
-			Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
-			wvpObjData->WVP = worldViewProjectionMatrixObj;
-			wvpObjData->world = worldMatrixObj;
+				// Sphire用デバックカメラ
+				Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
+				Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixObj, projectionMatrixObj));
+				wvpSphireData->WVP = worldViewProjectionMatrixSphire;
+				wvpSphireData->world = worldMatrixSphire;
+			}
+			else
+			{
+				// Obj用通常版
+				Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
+				Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+				Matrix4x4 viewMatrixObj = math->Inverse(cameraMatrixObj);
+				Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+				Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
+				wvpObjData->WVP = worldViewProjectionMatrixObj;
+				wvpObjData->world = worldMatrixObj;
 
-			// Sphire用
-			Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
-			Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixObj, projectionMatrixObj));
-			wvpSphireData->WVP = worldViewProjectionMatrixSphire;
-			wvpSphireData->world = worldMatrixSphire;
+				//shire用
+				Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
+				Matrix4x4 cameraMatrixSphire = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+				Matrix4x4 viewMatrixSphire = math->Inverse(cameraMatrixObj);
+				Matrix4x4 projectionMatrixSphire = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+				Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixSphire, projectionMatrixSphire));
+				wvpSphireData->WVP = worldViewProjectionMatrixSphire;
+				wvpSphireData->world = worldMatrixSphire;
 
+			}
+		
 			// Sprite用
 			Matrix4x4 worldMatrixSprite = math->MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = math->makeIdentity4x4();
