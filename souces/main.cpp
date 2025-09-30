@@ -23,11 +23,10 @@
 #include <wrl.h>
 #include<xaudio2.h>
 #include <dinput.h>
-#include "AudioPlayer.h"
+#include "../hadear/AudioPlayer.h"
 #include "Math.h"
-#include "debugCamera.h"
-#include "InputManager.h"
-#include "WinApp.h"
+#include "../hadear/debugCamera.h"
+#include "../hadear/InputManager.h"
 
 
 
@@ -264,6 +263,27 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>CreateDescriptorHeap(
 
 
 
+
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
+	WPARAM wparam, LPARAM lparam)
+{
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
+	{
+		return true;
+	}
+
+	//メッセージに応じてゲーム固有の処理を行う
+	switch (msg)
+	{
+		//windowsが放棄された
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		return 0;
+	}
+	//標準メッセージを行う
+	return DefWindowProc(hwnd, msg, wparam, lparam);
+}
 
 
 Microsoft::WRL::ComPtr<IDxcBlob> CompileShander(
@@ -640,8 +660,37 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//ファイル名
 	std::string  logFilePath = std::format("logs/") + dateStrings + "log";
 	std::ofstream logStrem(logFilePath);
-	WinApp winApp;
-	winApp.Initialize(L"CG2", 1280, 720);
+	WNDCLASS wc{};
+	//windowプロシージャ
+	wc.lpfnWndProc = WindowProc;
+	//windowクラス名
+	wc.lpszClassName = L"CG2WindowClass";
+	//インスタンスハンドル
+	wc.hInstance = GetModuleHandle(nullptr);
+	//カーソル
+	wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	//windowクラスを登録する
+	RegisterClass(&wc);
+
+	const int32_t kClientWidth = 1280;
+	const int32_t kClientHeight = 720;
+	RECT wrc = { 0, 0, kClientWidth, kClientHeight };
+	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
+	//windowsの生成
+	HWND hwnd = CreateWindow(
+		wc.lpszClassName, // 利用するクラス名
+		L"CG2", // タイトルバーの文字
+		WS_OVERLAPPEDWINDOW, // よく見るウィンドウタイトル
+		CW_USEDEFAULT, // 表示X座標
+		CW_USEDEFAULT, // 表示Y座標
+		wrc.right - wrc.left, // ウィンドウ横幅
+		wrc.bottom - wrc.top, // ウィンドウ縦幅
+		nullptr, // 親ウィンドウハンドル
+		nullptr, // メニューハンドル
+		wc.hInstance, // インスタンスハンドル
+		nullptr); // オプション
+
+	ShowWindow(hwnd, SW_SHOW);
 
 
 #ifdef _DEBUG
@@ -758,15 +807,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//スラップチェインを作成する
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain = nullptr;
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-	swapChainDesc.Width = WinApp::kClientWidth;//画面幅
-	swapChainDesc.Height = WinApp::kClientHeight;//画面高さ
+	swapChainDesc.Width = kClientWidth;//画面幅
+	swapChainDesc.Height = kClientHeight;//画面高さ
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;//色の形式
 	swapChainDesc.SampleDesc.Count = 1;//マルチサンプルしない
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), winApp.GetHwnd(), &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
+	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
 	assert(SUCCEEDED(hr));
 
 	//DEscriptSizeを取得しておく
@@ -1312,8 +1361,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// ▼ ビューポートとシザー矩形の設定
 	// =============================
 	D3D12_VIEWPORT viewport{};
-	viewport.Width = WinApp::kClientWidth;
-	viewport.Height = WinApp::kClientHeight;
+	viewport.Width = kClientWidth;
+	viewport.Height = kClientHeight;
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
 	viewport.MinDepth = 0.0f;
@@ -1321,9 +1370,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	D3D12_RECT scissorRect{};
 	scissorRect.left = 0;
-	scissorRect.right = WinApp::kClientWidth;
+	scissorRect.right = kClientWidth;
 	scissorRect.top = 0;
-	scissorRect.bottom = WinApp::kClientHeight;
+	scissorRect.bottom = kClientHeight;
 
 	// =============================
 	// ▼ ImGui 初期化
@@ -1332,7 +1381,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplWin32_Init(winApp.GetHwnd());
+	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX12_Init(
 		device.Get(),
 		swapChainDesc.BufferCount,
@@ -1475,7 +1524,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// DepthStencil用テクスチャ作成
 	// ----------------------------
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStenscilResouces =
-		CreateDepthStencilTextResouces(device, WinApp::kClientWidth, WinApp::kClientHeight);
+		CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 
 	// DSV設定
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
@@ -1514,7 +1563,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// --- 初期化 ---
 	InputManager* inputManager = new InputManager();
-	inputManager->Initialize(winApp.GetHwnd());
+	inputManager->Initialize(hwnd);
 	DebugCamera* debugCamera = new DebugCamera();;
 	debugCamera->Initialize();
 	debugCamera->SetInputManager(inputManager);
@@ -1543,7 +1592,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// 入力更新
 			inputManager->Update();
 			debugCamera->Update();
-			winApp.Update();
 
 			// 音声再生を一度だけにする制御
 			if (!audioPlayedOnce) {
@@ -1635,7 +1683,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				Matrix4x4 worldMatrixObj = math->MakeAffineMatrix(transformObj.scale, transformObj.rotate, transformObj.translate);
 				Matrix4x4 cameraMatrixObj = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
 				Matrix4x4 viewMatrixObj = math->Inverse(cameraMatrixObj);
-				Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(WinApp::kClientWidth) / float(WinApp::kClientHeight), 0.1f, 100.0f);
+				Matrix4x4 projectionMatrixObj = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
 				Matrix4x4 worldViewProjectionMatrixObj = math->Multiply(worldMatrixObj, math->Multiply(viewMatrixObj, projectionMatrixObj));
 				wvpObjData->WVP = worldViewProjectionMatrixObj;
 				wvpObjData->world = worldMatrixObj;
@@ -1644,7 +1692,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				Matrix4x4 worldMatrixSphire = math->MakeAffineMatrix(transformSphire.scale, transformSphire.rotate, transformSphire.translate);
 				Matrix4x4 cameraMatrixSphire = math->MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
 				Matrix4x4 viewMatrixSphire = math->Inverse(cameraMatrixObj);
-				Matrix4x4 projectionMatrixSphire = math->MakePerspectiveFovMatrix(0.45f, float(WinApp::kClientWidth) / float(WinApp::kClientHeight), 0.1f, 100.0f);
+				Matrix4x4 projectionMatrixSphire = math->MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
 				Matrix4x4 worldViewProjectionMatrixSphire = math->Multiply(worldMatrixSphire, math->Multiply(viewMatrixSphire, projectionMatrixSphire));
 				wvpSphireData->WVP = worldViewProjectionMatrixSphire;
 				wvpSphireData->world = worldMatrixSphire;
@@ -1654,7 +1702,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// Sprite用
 			Matrix4x4 worldMatrixSprite = math->MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = math->makeIdentity4x4();
-			Matrix4x4 projectionMatrixSprite = math->MakeOrthographicMatrix(0.0f, 0.0f, float(WinApp::kClientWidth), float(WinApp::kClientHeight), 0.0f, 100.0f);
+			Matrix4x4 projectionMatrixSprite = math->MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprite = math->Multiply(worldMatrixSprite, math->Multiply(viewMatrixSprite, projectionMatrixSprite));
 
 			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
@@ -1893,7 +1941,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	}
 
-	CloseWindow(winApp.GetHwnd());
+	CloseWindow(hwnd);
 	//サウンドのRelese
 	audioPlayer-> SoundUnload(&soundData1);
 	xAudio2.Reset();
