@@ -9,8 +9,7 @@ public:
     // 初期化（ウィンドウを作成）
     void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
 
-    // 毎フレーム処理（主にメッセージループ処理を入れる）
-    void Update();
+    bool Update();
 
     // アクセサ
     HWND GetHwnd() const { return hwnd_; }

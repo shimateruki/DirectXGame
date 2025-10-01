@@ -1,7 +1,16 @@
 #include "WinApp.h"
 #include <Windows.h>
+#include "externals/imgui/imgui_impl_win32.h"
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+    // ★★★ このif文をまるごと追加してください ★★★
+    // ImGuiにメッセージを処理させる。ImGuiが処理した場合はtrueを返す。
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
+        return true;
+    }
+
+    // ↓ 元の処理はそのまま残す
     switch (msg) {
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -37,10 +46,20 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     ShowWindow(hwnd_, SW_SHOW);
 }
 
-void WinApp::Update() {
+bool WinApp::Update() {
     MSG msg{};
+
+    // メッセージがあるか
     if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    // 終了メッセージが来たらtrueを返す
+    if (msg.message == WM_QUIT) {
+        return true;
+    }
+
+    // 続ける場合はfalseを返す
+    return false;
 }
