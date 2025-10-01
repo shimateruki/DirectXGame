@@ -582,6 +582,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_BLEND_DESC blendDescs{};
 	blendDescs.RenderTarget[0].RenderTargetWriteMask =
 		D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDescs.RenderTarget[0].BlendEnable = true;
+	blendDescs.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	blendDescs.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	blendDescs.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	blendDescs.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	blendDescs.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	blendDescs.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 
 	//rasiterzerstateの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
@@ -1169,12 +1176,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Combo("Lighting", &materialData->selectedLighting, enableLighting, IM_ARRAYSIZE(enableLighting));
 
 			ImGui::Checkbox("use Debag Camera", &isDebaugCamera);
-
+			ImGui::ColorEdit4("color", &materialData->color.x);
 			// ▼ Obj 変換設定
 			if (ImGui::CollapsingHeader("Obj Object")) {
 				ImGui::DragFloat3("Translate##Obj", &transformObj.translate.x, 0.001f);
 				ImGui::DragFloat3("Rotate##Obj", &transformObj.rotate.x, 0.001f);
 				ImGui::DragFloat3("Scale##Obj", &transformObj.scale.x, 0.001f);
+
 			}
 
 			// ▼ ライティング設定
