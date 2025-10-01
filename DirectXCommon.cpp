@@ -6,6 +6,7 @@
 #include <vector>
 #include <dxcapi.h>
 #include <fstream>
+#include <thread>
 
 // ログ出力用のヘルパー関数（グローバル）
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }
@@ -24,6 +25,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     assert(winApp);
     winApp_ = winApp;
 
+	InitalaizeFixFPS();
     InitializeDXGIDevice();
     CreateCommand();
     CreateSwapChain();
@@ -80,6 +82,36 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
     return resource;
 }
 
+
+void DirectXCommon::InitalaizeFixFPS()
+{
+	// 現在の時刻を取得して記録
+	reference_ = std::chrono::steady_clock::now();
+}
+
+void DirectXCommon::UpdateFixFPS()
+{
+    //1/60秒びったりの時間
+    const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
+    //1/60秒よりわずかに短い時間
+    const std::chrono::microseconds  kMinCheckTime(uint64_t(1000000.0f / 65.0f));
+	// 現在の時刻を取得
+	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+	// 前回記録した時刻からの経過時間を計算
+	std::chrono::microseconds elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - reference_);
+//1/60秒(よりわずかに短い時間)立っていない場合
+    if (elapsed < kMinTimer)
+    {
+        //1/60経過するまでの微小なスリープを繰り返す
+        while (std::chrono::steady_clock::now() - reference_ < kMinTimer)
+        {
+			std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+    }
+	// 現在の時刻を再取得
+	reference_ = std::chrono::steady_clock::now();
+}
 
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     const std::wstring& filePath, const wchar_t* profile)
@@ -176,6 +208,8 @@ void DirectXCommon::PostDraw() {
 
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
+
+    UpdateFixFPS();
 
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
     commandQueue_->ExecuteCommandLists(1, commandLists);

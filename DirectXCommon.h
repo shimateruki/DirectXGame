@@ -5,6 +5,7 @@
 #include <dxgi1_6.h>
 #include <wrl.h> // ComPtrを使うのに必要
 #include <string>
+#include <chrono>
 
 // ======== 外部ライブラリのヘッダーファイル ========
 #include <dxcapi.h> // シェーダーコンパイルに必要
@@ -58,6 +59,8 @@ public:
 	size_t GetBackBufferCount() const { return backBufferCount_; }
 	ID3D12DescriptorHeap* GetSrvDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 
+	void InitalaizeFixFPS();
+	void UpdateFixFPS();
 
 	// --- ユーティリティ関数（便利なヘルパー機能） ---
 
@@ -118,6 +121,9 @@ private:
 	// ======== privateなメンバ変数（このクラスが内部で保持するデータ） ========
 
 	WinApp* winApp_ = nullptr; // WindowsAPIクラス
+
+	//記録時間
+	std::chrono::steady_clock::time_point reference_;
 
 	// --- DirectXオブジェクト ---
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_ = nullptr;
