@@ -30,6 +30,8 @@
 #include "WinApp.h"
 #include"DirectXCommon.h"
 #include "D3DResouceLeakChecKer.h"
+#include "SpriteCommon.h"
+#include "Sprite.h"
 
 
 
@@ -427,6 +429,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	AudioPlayer* audioPlayer = new AudioPlayer();
 	Math* math = new Math();
+	SpriteCommon* spriteCommon = nullptr;
+	spriteCommon = new SpriteCommon();
+	spriteCommon->Initialize();
+	Sprite* sprite = new Sprite();
+	sprite->Initialize();
+
 
 	// COMライブラリの初期化 
 	HRESULT result = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -1430,6 +1438,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	xAudio2.Reset();
 
 	dxCommon->Finalize();
+
+	delete sprite;
+	delete spriteCommon;
 	//comの終了時
 	CoUninitialize();
 
