@@ -1,6 +1,8 @@
 #include "WinApp.h"
 #include <Windows.h>
 #include "externals/imgui/imgui_impl_win32.h"
+
+#pragma comment(lib, "winmm.lib")
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
@@ -21,6 +23,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 void WinApp::Initialize(const wchar_t* title, int width, int height) {
     hInstance_ = GetModuleHandle(nullptr);
+	timeBeginPeriod(1);
 
     WNDCLASS wc{};
     wc.lpfnWndProc = WindowProc;
