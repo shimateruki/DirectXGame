@@ -75,6 +75,8 @@
       <Filter>ソース ファイル</Filter>
     </None>
     <None Include="Object3d.hlsli" />
+    <None Include="Sprite.PS.hlsl" />
+    <None Include="Sprite.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Object3d.VS.hlsl" />
