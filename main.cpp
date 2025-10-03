@@ -1070,6 +1070,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	debugCamera->Initialize();
 	debugCamera->SetInputManager(inputManager);
 
+
+
+	std::vector<Sprite*> sprites;
+	for (int i = 0; i < 5; ++i) {
+		Sprite* sprite = new Sprite();
+		sprite->Initialize(dxCommon, uvCheckerTexHandle);
+		// 位置やサイズを少しずつずらす
+		sprite->SetPosition({ 100.0f + i * 120.0f, 100.0f });
+		sprite->SetSize({ 100.0f, 100.0f });
+		sprite->SetColor({ 1.0f,1.0f,1.0f,1.0f });
+		sprites.push_back(sprite);
+	}
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (winApp.Update()==false)
@@ -1125,15 +1137,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				ImGui::ColorEdit4("color", &directLightData->color.x);
 			}
 
-			// ▼ スプライトのマテリアル設定
-			// ★★★ ImGuiの操作対象を sprite->... に変更 ★★★
-			if (ImGui::CollapsingHeader("Sprite Object")) {
-				ImGui::DragFloat3("Translate", &sprite->transform_.translate.x, 1.0f);
-				ImGui::DragFloat3("Rotate", &sprite->transform_.rotate.x, 0.01f);
-				ImGui::DragFloat3("Scale", &sprite->transform_.scale.x, 0.01f);
-				ImGui::ColorEdit4("Color", &sprite->color_.x);
+			// ★★★ ImGuiで先頭のスプライトを操作 ★★★
+			if (!sprites.empty()) {
+				Sprite* firstSprite = sprites[0];
+				if (ImGui::CollapsingHeader("Sprite Object")) {
+					Vector2 pos = firstSprite->GetPosition();
+					if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) {
+						firstSprite->SetPosition(pos);
+					}
+					float rot = firstSprite->GetRotation();
+					if (ImGui::SliderAngle("Rotation", &rot)) {
+						firstSprite->SetRotation(rot);
+					}
+					Vector2 size = firstSprite->GetSize();
+					if (ImGui::DragFloat2("Size", &size.x, 1.0f)) {
+						firstSprite->SetSize(size);
+					}
+					Vector4 color = firstSprite->GetColor();
+					if (ImGui::ColorEdit4("Color", &color.x)) {
+						firstSprite->SetColor(color);
+					}
+				}
 			}
-
 			// ▼ 球体
 			if (ImGui::CollapsingHeader("Sphere Object##sphire")) {
 				ImGui::DragFloat3("SphireTranslate", &transformSphire.translate.x, 0.001f);
@@ -1184,7 +1209,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			}
 
-			sprite->Update();
+			for (Sprite* sprite : sprites) {
+				sprite->Update();
+			}
+
 
 			dxCommon->PreDraw();
 
@@ -1208,12 +1236,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
 				// Sprite
-				sprite->Draw(commandList);
+				for (Sprite* sprite : sprites) {
+					sprite->Draw(commandList);
+				}
 				break;
 
 			case 1:
 				//sorite
-				sprite->Draw(commandList);
+				for (Sprite* sprite : sprites) {
+					sprite->Draw(commandList);
+				}
 				// 描画処理2
 				break;
 			case 2:
