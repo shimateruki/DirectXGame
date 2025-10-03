@@ -1093,7 +1093,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//BYTE key[256] = {};
 			//keyboardDevice->GetDeviceState(sizeof(key), key);
 
-			// 入力更新
+			// 入力更新　
 			inputManager->Update();
 			debugCamera->Update();
 
