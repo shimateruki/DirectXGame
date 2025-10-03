@@ -1,4 +1,4 @@
-﻿#define DIRECTINPUT_VERSION 0x0800
+#define DIRECTINPUT_VERSION 0x0800
 
 #include <windows.h>
 #include <cstdint>
@@ -476,17 +476,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// テクスチャをロードし、ハンドル(番号)を取得
 	uint32_t uvCheckerTexHandle = 1; // 元のコードでuvChecker.pngがSRVの1番だったので
 
-	// ★★★ 複数のスプライトを生成・初期化 ★★★
-	std::vector<Sprite*> sprites;
-	for (int i = 0; i < 5; ++i) {
-		Sprite* sprite = new Sprite();
-		sprite->Initialize(dxCommon, uvCheckerTexHandle);
-		// 位置やサイズを少しずつずらす
-		sprite->SetPosition({ 100.0f + i * 120.0f, 100.0f });
-		sprite->SetSize({ 100.0f, 100.0f });
-		sprites.push_back(sprite);
-	}
-
+	// Spriteクラスのインスタンスを作成・初期化
+	Sprite* sprite = new Sprite();
+	sprite->Initialize(dxCommon, uvCheckerTexHandle);
 
 #
 	HRESULT hr = S_OK;
@@ -1087,6 +1079,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
+	std::vector<Sprite*> sprites;
+	for (int i = 0; i < 5; ++i) {
+		Sprite* sprite = new Sprite();
+		sprite->Initialize(dxCommon, uvCheckerTexHandle);
+		// 位置やサイズを少しずつずらす
+		sprite->SetPosition({ 100.0f + i * 120.0f, 100.0f });
+		sprite->SetSize({ 100.0f, 100.0f });
+		sprite->SetColor({ 1.0f,1.0f,1.0f,1.0f });
+		sprites.push_back(sprite);
+	}
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (winApp.Update()==false)
@@ -1098,7 +1100,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//BYTE key[256] = {};
 			//keyboardDevice->GetDeviceState(sizeof(key), key);
 
-			// 入力更新
+			// 入力更新　
 			inputManager->Update();
 			debugCamera->Update();
 
@@ -1165,7 +1167,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 					}
 				}
 			}
-
 			// ▼ 球体
 			if (ImGui::CollapsingHeader("Sphere Object##sphire")) {
 				ImGui::DragFloat3("SphireTranslate", &transformSphire.translate.x, 0.001f);
@@ -1232,7 +1233,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			switch (selected)
 			{
-			case 0: { // Plane & sprite
+			case 0: // Plane & sprite
 				// Plane
 
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
@@ -1242,12 +1243,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
 				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
+				// Sprite
 				for (Sprite* sprite : sprites) {
-					sprite->SetColor({ 1,1,1,1 });
 					sprite->Draw(commandList);
-
-				};
-			}
+				}
 				break;
 
 			case 1:
@@ -1379,7 +1378,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	dxCommon->Finalize();
 
-
+	delete sprite;
 	//comの終了時
 	CoUninitialize();
 
