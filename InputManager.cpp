@@ -55,7 +55,7 @@ void InputManager::Update()
     ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
     DWORD padResult = XInputGetState(0, &gamepadState);
     if (padResult != ERROR_SUCCESS) {
-        ZeroMemory(&gamepadState, sizeof(XINPUT_STATE)); // 未接続
+        ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
     }
 }
 
