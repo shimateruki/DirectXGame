@@ -7,7 +7,7 @@
 class DirectXCommon;
 
 class Sprite {
-public: // “à•”\‘¢‘Ì‚Ì’è‹`
+public: // å†…éƒ¨æ§‹é€ ä½“ã®å®šç¾©
 	struct Transform
 	{
 		Vector3 scale;
@@ -31,23 +31,23 @@ public: // “à•”\‘¢‘Ì‚Ì’è‹`
 		Matrix4x4 World;
 	};
 
-public: // ƒƒ“ƒoŠÖ”
+public: // ãƒ¡ãƒ³ãƒé–¢æ•°
 	/// <summary>
-	/// ‰Šú‰»
+	/// åˆæœŸåŒ–
 	/// </summary>
 	void Initialize(DirectXCommon* dxCommon, uint32_t textureHandle);
 
 	/// <summary>
-	/// XVˆ—
+	/// æ›´æ–°å‡¦ç†
 	/// </summary>
 	void Update();
 
 	/// <summary>
-	/// •`‰æ
+	/// æç”»
 	/// </summary>
 	void Draw(ID3D12GraphicsCommandList* commandList);
 
-	// --- ƒQƒbƒ^[/ƒZƒbƒ^[ ---
+	// --- ã‚²ãƒƒã‚¿ãƒ¼/ã‚»ãƒƒã‚¿ãƒ¼ ---
 	const Vector2& GetPosition() const { return position_; }
 	void SetPosition(const Vector2& position) { position_ = position; }
 
@@ -60,19 +60,19 @@ public: // ƒƒ“ƒoŠÖ”
 	const Vector4& GetColor() const { return materialData_->color; }
 	void SetColor(const Vector4& color) { materialData_->color = color; }
 
-private: // ƒƒ“ƒo•Ï”
+private: // ãƒ¡ãƒ³ãƒå¤‰æ•°
 	DirectXCommon* dxCommon_ = nullptr;
 	uint32_t textureHandle_ = 0;
 
-	// Šî–{“I‚ÈÀ•WE‰ñ“]EƒTƒCƒY
+	// åŸºæœ¬çš„ãªåº§æ¨™ãƒ»å›è»¢ãƒ»ã‚µã‚¤ã‚º
 	Vector2 position_ = { 0.0f, 0.0f };
 	float rotation_ = 0.0f;
 	Vector2 size_ = { 100.0f, 100.0f };
 
-	// “à•”‚Åg‚¤Transform
+	// å†…éƒ¨ã§ä½¿ã†Transform
 	Transform transform_ = { {1.0f,1.0f ,1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f,0.0f, 0.0f} };
 
-	// ƒŠƒ\[ƒX
+	// ãƒªã‚½ãƒ¼ã‚¹
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
 	VertexData* vertexData_ = nullptr;
