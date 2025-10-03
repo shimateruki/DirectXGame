@@ -7,34 +7,27 @@
 class DirectXCommon;
 
 class Sprite {
-public:
+public: // 内部構造体の定義
+	struct VertexData {
+		Vector4 position;
+		Vector2 texcoord;
+		Vector3 normal;
+	};
+	struct Material {
+		Vector4 color;
+		int32_t enableLighting;
+		float padding[3];
+		Matrix4x4 uvTransform;
+	};
+	struct TransformationMatrix {
+		Matrix4x4 WVP;
+		Matrix4x4 World;
+	};
 	struct Transform
 	{
 		Vector3 scale;
 		Vector3 rotate;
 		Vector3 translate;
-	};
-
-	// 構造体の定義
-	// 頂点データ構造体（スライド準拠）
-	struct VertexData {
-		Vector4 position;
-		Vector2 texcoord;
-		Vector3 normal; // 3Dオブジェクトとシェーダーを共有するため残す
-	};
-
-	// マテリアル用構造体（スライド準拠）
-	struct Material {
-		Vector4 color;
-		int32_t enableLighting; // 3Dオブジェクトとシェーダーを共有するため残す
-		float padding[3];
-		Matrix4x4 uvTransform; // 3Dオブジェクトとシェーダーを共有するため残す
-	};
-
-	// 座標変換行列用構造体（スライド準拠）
-	struct TransformationMatrix {
-		Matrix4x4 WVP;
-		Matrix4x4 World;
 	};
 
 public: // メンバ関数
@@ -53,14 +46,32 @@ public: // メンバ関数
 	/// </summary>
 	void Draw(ID3D12GraphicsCommandList* commandList);
 
-public: 
-	Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
-	Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+	// --- ゲッター/セッター ---
+	const Vector2& GetPosition() const { return position_; }
+	void SetPosition(const Vector2& position) { position_ = position; }
+
+	float GetRotation() const { return rotation_; }
+	void SetRotation(float rotation) { rotation_ = rotation; }
+
+	const Vector2& GetSize() const { return size_; }
+	void SetSize(const Vector2& size) { size_ = size; }
+
+	const Vector4& GetColor() const { return materialData_->color; }
+	void SetColor(const Vector4& color) { materialData_->color = color; }
 
 private: // メンバ変数
 	DirectXCommon* dxCommon_ = nullptr;
 	uint32_t textureHandle_ = 0;
 
+	// 基本的な座標・回転・サイズ
+	Vector2 position_ = { 0.0f, 0.0f };
+	float rotation_ = 0.0f;
+	Vector2 size_ = { 100.0f, 100.0f };
+
+	// 内部で使うTransform
+	Transform transform_ = { {1.0f,1.0f ,1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f,0.0f, 0.0f} };
+
+	// リソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
 	VertexData* vertexData_ = nullptr;
@@ -74,5 +85,4 @@ private: // メンバ変数
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
 	TransformationMatrix* wvpData_ = nullptr;
-	Math* math = new Math();
 };
