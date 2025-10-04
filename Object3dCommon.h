@@ -1,20 +1,23 @@
 #pragma once
-#include <d3d12.h>
+
+#include "DirectXCommon.h"
 #include <wrl.h>
 
-class DirectXCommon; // 前方宣言
-
+/// <summary>
+/// 3Dオブジェクトの描画に関わる共通処理をまとめたクラス
+/// </summary>
 class Object3dCommon {
 public:
     /// <summary>
-    /// 初期化
+    /// 初期化処理
     /// </summary>
+    /// <param name="dxCommon">DirectX汎用クラスのインスタンス</param>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// 描画前の共通コマンド（描画前に呼ぶ）
+    /// 3Dオブジェクト描画前の共通コマンドを設定する
     /// </summary>
-    void PreDraw(ID3D12GraphicsCommandList* commandList);
+    void SetGraphicsCommand();
 
 private:
     /// <summary>
@@ -23,15 +26,15 @@ private:
     void CreateRootSignature();
 
     /// <summary>
-    /// グラフィックスパイプラインの生成
+    /// パイプラインステートの作成
     /// </summary>
-    void CreateGraphicsPipeline();
+    void CreatePipelineState();
 
 private:
-    // DirectX基盤クラスのポインタ
+    // DirectX汎用クラス（ポインタ）
     DirectXCommon* dxCommon_ = nullptr;
     // ルートシグネチャ
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
-    // パイプラインステートオブジェクト
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
+    // パイプラインステート
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
 };
