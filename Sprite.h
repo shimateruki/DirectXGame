@@ -66,6 +66,20 @@ public: // メンバ関数
 	const Vector4& GetColor() const { return materialData_->color; }
 	void SetColor(const Vector4& color) { materialData_->color = color; }
 
+	void SetAnchorPoint(const Vector2& anchorPoint) { anchorPoint_ = anchorPoint; }
+	const Vector2& GetAnchorPoint() const { return anchorPoint_; }
+
+	void SetIsFlipX(bool isFlipX) { isFlipX_ = isFlipX; }
+	bool GetIsFlipX() const { return isFlipX_; }
+
+	void SetIsFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
+	bool GetIsFlipY() const { return isFlipY_; }
+
+	void SetTextureRect(const Vector2& texLeftTop, const Vector2& texSize) {
+		textureLeftTop_ = texLeftTop;
+		textureSize_ = texSize;
+	}
+
 private: // メンバ変数
 	DirectXCommon* dxCommon_ = nullptr;
 	uint32_t textureHandle_ = 0;
@@ -79,6 +93,17 @@ private: // メンバ変数
 	Transform transform_ = { {1.0f,1.0f ,1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f,0.0f, 0.0f} };
 
 
+	// アンカーポイント
+	Vector2 anchorPoint_ = { 0.5f, 0.5f }; // 中央を原点に
+	// 反転フラグ
+	bool isFlipX_ = false;
+	bool isFlipY_ = false;
+	// テクスチャの切り出し範囲
+	Vector2 textureLeftTop_ = { 0.0f, 0.0f };
+	Vector2 textureSize_ = { 100.0f, 100.0f }; // 初期値は後で上書きされる
+
+	// ★★★ サイズをテクスチャに合わせるための private 関数 ★★★
+	void AdjustTextureSize();
 
 	// リソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;

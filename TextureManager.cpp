@@ -92,6 +92,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
 
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+    newData.metadata = metadata; // 読み込んだメタデータを保存);
     newData.resource = dxCommon_->CreateTextureResource(metadata);
     UploadTextureData(
         newData.resource.Get(), mipImages, &newData.intermediateResource,
@@ -120,4 +121,9 @@ D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetGPUHandle(uint32_t textureHandle)
     // ハンドルは1から始まるので、vectorのインデックスに合わせるために -kSRVIndexTop
     assert(textureHandle >= kSRVIndexTop && textureHandle < textureDatas_.size() + kSRVIndexTop);
     return textureDatas_[textureHandle - kSRVIndexTop].srvHandleGPU;
+}
+
+const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
+    assert(textureHandle >= kSRVIndexTop && textureHandle < textureDatas_.size() + kSRVIndexTop);
+    return textureDatas_[textureHandle - kSRVIndexTop].metadata;
 }
