@@ -1,101 +1,123 @@
 #include "TextureManager.h"
-#include "externals/DirectXTex/d3dx12.h" // UpdateSubresourcesã‚’ä½¿ã†ãŸã‚
 #include <cassert>
+#include "externals/DirectXTex/d3dx12.h"
+
+void UploadTextureData(
+    ID3D12Resource* texture,
+    const DirectX::ScratchImage& mipImages,
+    ID3D12Resource** intermediateResource,
+    ID3D12Device* device,
+    ID3D12GraphicsCommandList* commandList)
+{
+    std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+    HRESULT hr = DirectX::PrepareUpload(device, mipImages.GetImages(), mipImages.GetImageCount(), mipImages.GetMetadata(), subresources);
+    assert(SUCCEEDED(hr));
+
+    uint64_t intermediateSize = GetRequiredIntermediateSize(texture, 0, UINT(subresources.size()));
+
+    D3D12_HEAP_PROPERTIES uploadHeapProperties{};
+    uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC bufferDesc{};
+    bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    bufferDesc.Width = intermediateSize;
+    bufferDesc.Height = 1;
+    bufferDesc.DepthOrArraySize = 1;
+    bufferDesc.MipLevels = 1;
+    bufferDesc.SampleDesc.Count = 1;
+    bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    hr = device->CreateCommittedResource(
+        &uploadHeapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(intermediateResource));
+    assert(SUCCEEDED(hr));
+
+    UpdateSubresources(commandList, texture, *intermediateResource, 0, 0, UINT(subresources.size()), subresources.data());
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = texture;
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+
+    commandList->ResourceBarrier(1, &barrier);
+}
+
+
+// ƒVƒ“ƒOƒ‹ƒgƒ“ƒCƒ“ƒXƒ^ƒ“ƒX
+TextureManager* TextureManager::instance_ = nullptr;
 
 TextureManager* TextureManager::GetInstance() {
-	static TextureManager instance;
-	return &instance;
+    if (instance_ == nullptr) {
+        instance_ = new TextureManager();
+    }
+    return instance_;
+}
+
+void TextureManager::DestroyInstance() {
+    delete instance_;
+    instance_ = nullptr;
 }
 
 void TextureManager::Initialize(DirectXCommon* dxCommon) {
-	assert(dxCommon);
-	dxCommon_ = dxCommon;
-	textureDatas_.reserve(DirectXCommon::kMaxSRVCount);
+    assert(dxCommon);
+    dxCommon_ = dxCommon;
+    device_ = dxCommon_->GetDevice();
+    srvDescriptorHeap_ = dxCommon_->GetSrvDescriptorHeap();
+    descriptorSizeSRV_ = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+    textureDatas_.reserve(DirectXCommon::kMaxSRVCount);
 }
 
 uint32_t TextureManager::Load(const std::string& filePath) {
-	// èª­ã¿è¾¼ã¿æ¸ˆã¿ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’æ¤œç´¢
-	for (size_t i = 0; i < textureDatas_.size(); ++i) {
-		if (textureDatas_[i].filePath == filePath) {
-			return static_cast<uint32_t>(i + kSRVIndexTop); // ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹+é–‹å§‹ç•ªå·ã‚’è¿”ã™
-		}
-	}
+    auto it = textureHandleMap_.find(filePath);
+    if (it != textureHandleMap_.end()) {
+        return it->second;
+    }
 
-	// æœ€å¤§æ•°ã‚’è¶…ãˆãªã„ã‹ãƒã‚§ãƒƒã‚¯
-	assert(textureDatas_.size() + kSRVIndexTop < DirectXCommon::kMaxSRVCount);
+    // ššš ‘—¿‚ÌuÅ‘å”ƒ`ƒFƒbƒNv‚ğ”½‰f ššš
+    assert(textureDatas_.size() + kSRVIndexTop < DirectXCommon::kMaxSRVCount);
 
-	// æ–°ã—ã„ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒ‡ãƒ¼ã‚¿ã‚’ã‚³ãƒ³ãƒ†ãƒŠã«è¿½åŠ 
-	textureDatas_.resize(textureDatas_.size() + 1);
-	TextureData& textureData = textureDatas_.back();
-	textureData.filePath = filePath;
+    // ƒnƒ“ƒhƒ‹‚ğŒvZivector‚ÌŒ»İ‚Ì—v‘f”‚ª‚»‚Ì‚Ü‚ÜŸ‚ÌƒCƒ“ƒfƒbƒNƒX‚É‚È‚éj
+    uint32_t handle = static_cast<uint32_t>(textureDatas_.size()) + kSRVIndexTop;
 
-	// ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ã¨ãƒŸãƒƒãƒ—ãƒãƒƒãƒ—ç”Ÿæˆ
-	DirectX::ScratchImage mipImages{};
-	std::wstring filePathW = ConvertString(filePath);
-	HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, mipImages);
-	assert(SUCCEEDED(hr));
-	if (FAILED(hr)) {
-		// èª­ã¿è¾¼ã¿å¤±æ•—æ™‚ã«å¿…ãšã“ã“ã§æ­¢ã¾ã‚‹ã‚ˆã†ã«ã™ã‚‹
-		assert(false && "Failed to load texture file. Check the file path.");
-	}
-	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+    textureDatas_.emplace_back();
+    TextureData& newData = textureDatas_.back();
+    newData.filePath = filePath;
 
+    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
+    const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+    newData.resource = dxCommon_->CreateTextureResource(metadata);
+    UploadTextureData(
+        newData.resource.Get(), mipImages, &newData.intermediateResource,
+        device_.Get(), dxCommon_->GetCommandList());
 
-	// ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒªã‚½ãƒ¼ã‚¹ä½œæˆ
-	textureData.resource = dxCommon_->CreateTextureResource(metadata);
-	if (!textureData.resource) {
-		// ãƒªã‚½ãƒ¼ã‚¹ä½œæˆãŒnullptrã‚’è¿”ã—ãŸå ´åˆã«å¿…ãšã“ã“ã§æ­¢ã¾ã‚‹ã‚ˆã†ã«ã™ã‚‹
-		assert(false && "dxCommon->CreateTextureResource returned nullptr. Check texture data.");
-	}
-	// ä¸­é–“ãƒªã‚½ãƒ¼ã‚¹ã‚’ä½¿ã£ã¦ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒ‡ãƒ¼ã‚¿ã‚’GPUã«ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰
-	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
-	DirectX::PrepareUpload(dxCommon_->GetDevice(), mipImages.GetImages(), mipImages.GetImageCount(), metadata, subresources);
-	uint64_t intermediateSize = GetRequiredIntermediateSize(textureData.resource.Get(), 0, UINT(subresources.size()));
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource = dxCommon_->CreateBufferResource(intermediateSize);
-	UpdateSubresources(dxCommon_->GetCommandList(), textureData.resource.Get(), intermediateResource.Get(), 0, 0, UINT(subresources.size()), subresources.data());
+    // ššš ‘—¿‚ÌuSRVƒCƒ“ƒfƒbƒNƒXŒvZv‚ğ”½‰f ššš
+    uint32_t srvIndex = handle; // ƒnƒ“ƒhƒ‹‚ª‚»‚Ì‚Ü‚ÜSRVƒCƒ“ƒfƒbƒNƒX‚É‚È‚é
+    newData.srvHandleCPU = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    newData.srvHandleCPU.ptr += (descriptorSizeSRV_ * srvIndex);
+    newData.srvHandleGPU = srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart();
+    newData.srvHandleGPU.ptr += (descriptorSizeSRV_ * srvIndex);
 
-	// ãƒãƒªã‚¢ã‚’å¼µã£ã¦çŠ¶æ…‹ã‚’é·ç§»
-	D3D12_RESOURCE_BARRIER barrier{};
-	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier.Transition.pResource = textureData.resource.Get();
-	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-	dxCommon_->GetCommandList()->ResourceBarrier(1, &barrier);
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = metadata.format;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
+    device_->CreateShaderResourceView(newData.resource.Get(), &srvDesc, newData.srvHandleCPU);
 
-	// SRVã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã‚’è¨ˆç®—
-	uint32_t srvIndex = static_cast<uint32_t>(textureDatas_.size() - 1) + kSRVIndexTop;
+    textureHandleMap_[filePath] = handle;
 
-	// ãƒãƒ³ãƒ‰ãƒ«ã‚’å–å¾—
-	const auto& srvHeap = dxCommon_->GetSrvDescriptorHeap();
-	const auto descriptorSize = dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureData.srvHandleCPU.ptr = srvHeap->GetCPUDescriptorHandleForHeapStart().ptr + (descriptorSize * srvIndex);
-	textureData.srvHandleGPU.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + (descriptorSize * srvIndex);
-
-	// SRVãƒ‡ã‚¹ã‚¯ãƒªãƒ—ã‚·ãƒ§ãƒ³
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Format = metadata.format;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels = static_cast<UINT>(metadata.mipLevels);
-
-	// SRVã‚’ä½œæˆ
-	dxCommon_->GetDevice()->CreateShaderResourceView(textureData.resource.Get(), &srvDesc, textureData.srvHandleCPU);
-
-	return srvIndex;
+    return handle;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetSrvHandleGPU(uint32_t textureIndex) {
-	// ImGuiã®åˆ†ã‚’è€ƒæ…®ã—ã¦ã€å®Ÿéš›ã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã«å¤‰æ›
-	uint32_t actualIndex = textureIndex - kSRVIndexTop;
-	assert(actualIndex < textureDatas_.size());
-	return textureDatas_[actualIndex].srvHandleGPU;
-}
-
-std::wstring TextureManager::ConvertString(const std::string& str) {
-	if (str.empty()) { return std::wstring(); }
-	auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0);
-	if (sizeNeeded == 0) { return std::wstring(); }
-	std::wstring result(sizeNeeded, 0);
-	MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
-	return result;
+D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetGPUHandle(uint32_t textureHandle) {
+    // ƒnƒ“ƒhƒ‹‚Í1‚©‚çn‚Ü‚é‚Ì‚ÅAvector‚ÌƒCƒ“ƒfƒbƒNƒX‚É‡‚í‚¹‚é‚½‚ß‚É -kSRVIndexTop
+    assert(textureHandle >= kSRVIndexTop && textureHandle < textureDatas_.size() + kSRVIndexTop);
+    return textureDatas_[textureHandle - kSRVIndexTop].srvHandleGPU;
 }

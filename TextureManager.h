@@ -1,41 +1,47 @@
 #pragma once
-#include "DirectXCommon.h"
+
+#include <d3d12.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <wrl.h>
+#include "DirectXCommon.h"
 
 class TextureManager {
 public:
-	static TextureManager* GetInstance();
-	void Initialize(DirectXCommon* dxCommon);
+    struct TextureData {
+        std::string filePath;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
+        D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;
+        D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;
+    };
 
-	/// <summary>
-	/// ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’èª­ã¿è¾¼ã‚€ã€‚ã™ã§ã«èª­ã¿è¾¼ã¿æ¸ˆã¿ã®å ´åˆã¯ãã®ãƒãƒ³ãƒ‰ãƒ«ã‚’è¿”ã™ã€‚
-	/// </summary>
-	uint32_t Load(const std::string& filePath);
-
-	/// <summary>
-	/// GPUãƒãƒ³ãƒ‰ãƒ«ã‚’å–å¾—ã™ã‚‹
-	/// </summary>
-	D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU(uint32_t textureIndex);
-
-private:
-	TextureManager() = default;
-	~TextureManager() = default;
-	TextureManager(const TextureManager&) = delete;
-	const TextureManager& operator=(const TextureManager&) = delete;
-
-	static std::wstring ConvertString(const std::string& str);
-
-	struct TextureData {
-		std::string filePath;
-		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-		D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;
-		D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;
-	};
+public: // ƒVƒ“ƒOƒ‹ƒgƒ“
+    static TextureManager* GetInstance();
+    static void DestroyInstance();
 
 private:
-	DirectXCommon* dxCommon_ = nullptr;
-	std::vector<TextureData> textureDatas_;
-	static const uint32_t kSRVIndexTop = 1;
+    TextureManager() = default;
+    ~TextureManager() = default;
+    TextureManager(const TextureManager&) = delete;
+    const TextureManager& operator=(const TextureManager&) = delete;
+    static TextureManager* instance_;
+
+public: // ƒƒ“ƒoŠÖ”
+    void Initialize(DirectXCommon* dxCommon);
+    uint32_t Load(const std::string& filePath);
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t textureHandle);
+
+private:
+    DirectXCommon* dxCommon_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Device> device_;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_;
+    uint32_t descriptorSizeSRV_ = 0;
+
+    std::vector<TextureData> textureDatas_;
+    std::map<std::string, uint32_t> textureHandleMap_;
+
+    // SRVƒCƒ“ƒfƒbƒNƒX‚ÌŠJn”Ô†iImGui‚ª0”Ô‚ğg‚Á‚Ä‚¢‚é‚½‚ßj
+    static const uint32_t kSRVIndexTop = 1;
 };

@@ -31,6 +31,7 @@
 #include"DirectXCommon.h"
 #include "D3DResouceLeakChecKer.h"
 #include "Sprite.h"
+#include"TextureManager.h"
 
 
 
@@ -100,6 +101,7 @@ struct DirectionalLight
 struct MateriaData
 {
 	std::string textureFilePath;
+	uint32_t textureHandle = 0; // テクスチャハンドルを保持するメンバを追加
 };
 struct  ModelData
 {
@@ -475,10 +477,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// テクスチャをロードし、ハンドル(番号)を取得
 	uint32_t uvCheckerTexHandle = 1; // 元のコードでuvChecker.pngがSRVの1番だったので
-
-	// Spriteクラスのインスタンスを作成・初期化
+	TextureManager::GetInstance()->Initialize(dxCommon);
+	// ★★★ Spriteの初期化方法を変更 ★★★
 	Sprite* sprite = new Sprite();
-	sprite->Initialize(dxCommon, uvCheckerTexHandle);
+	// ファイルパスを直接渡すように
+	sprite->Initialize(dxCommon, "resouces/uvChecker.png");
 
 #
 	HRESULT hr = S_OK;
@@ -911,149 +914,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialData->uvTransform = math->makeIdentity4x4();
 	materialResouces->Unmap(0, nullptr);
 
-	//----------------------------
-	// テクスチャ1: uvChecker.png 読み込み & リソース作成
-	// ----------------------------
-	DirectX::ScratchImage mipImages = DirectXCommon::LoadTexture("resouces/uvChecker.png");
-	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureResouces = dxCommon->CreateTextureResource(metadata);
+	// ★★★ 代わりに、モデル読み込み直後にテクスチャをロードしてハンドルを格納 ★★★
+	modelPlaneData.material.textureHandle = TextureManager::GetInstance()->Load(modelPlaneData.material.textureFilePath);
+	modelTeapotData.material.textureHandle = TextureManager::GetInstance()->Load(modelTeapotData.material.textureFilePath);
+	modelbunnyData.material.textureHandle = TextureManager::GetInstance()->Load(modelbunnyData.material.textureFilePath);
+	modelMultiMeshData.material.textureHandle = TextureManager::GetInstance()->Load(modelMultiMeshData.material.textureFilePath);
+	modelMultiMaterialData.material.textureHandle = TextureManager::GetInstance()->Load(modelMultiMaterialData.material.textureFilePath);
+	modelSuzanneData.material.textureHandle = TextureManager::GetInstance()->Load(modelSuzanneData.material.textureFilePath);
 
-	// ----------------------------
-	// Planeモデルのテクスチャ
-	// ----------------------------
-	DirectX::ScratchImage mipImages2 = DirectXCommon::LoadTexture(modelPlaneData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces2 = dxCommon->CreateTextureResource(metadata2);
-
-	// ----------------------------
-	// Teapotモデルのテクスチャ
-	// ----------------------------
-	DirectX::ScratchImage mipImages3 = DirectXCommon::LoadTexture(modelTeapotData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata3 = mipImages3.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces3 = dxCommon->CreateTextureResource(metadata3);
-
-	// ----------------------------
-	// Bunnyモデルのテクスチャ
-	// ----------------------------
-	DirectX::ScratchImage mipImages4 = DirectXCommon::LoadTexture(modelbunnyData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata4 = mipImages4.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces4 = dxCommon->CreateTextureResource(metadata4);
-
-	// ----------------------------
-	// MultiMeshモデルのテクスチャ
-	// ----------------------------
-	DirectX::ScratchImage mipImages5 = DirectXCommon::LoadTexture(modelMultiMeshData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata5 = mipImages5.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces5 = dxCommon->CreateTextureResource(metadata5);
-
-	// ----------------------------
-	// MultiMaterialモデルのテクスチャ
-	// ----------------------------
-	DirectX::ScratchImage mipImages6 = DirectXCommon::LoadTexture(modelMultiMaterialData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata6 = mipImages6.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces6 = dxCommon->CreateTextureResource(metadata6);
-
-	// ----------------------------
-	// Suzanneモデルのテクスチャ
-	// ----------------------------
-	DirectX::ScratchImage mipImages7 = DirectXCommon::LoadTexture(modelSuzanneData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata7 = mipImages7.GetMetadata();
-	Microsoft::WRL::ComPtr<ID3D12Resource> textureRouces7 = dxCommon->CreateTextureResource(metadata7);;
-
-	// ----------------------------
-	// 各テクスチャのSRV設定
-	// ----------------------------
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Format = metadata.format;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
-	srvDesc2.Format = metadata2.format;
-	srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3{};
-	srvDesc3.Format = metadata3.format;
-	srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc3.Texture2D.MipLevels = UINT(metadata3.mipLevels);
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc4{};
-	srvDesc4.Format = metadata4.format;
-	srvDesc4.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc4.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc4.Texture2D.MipLevels = UINT(metadata4.mipLevels);
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc5{};
-	srvDesc5.Format = metadata5.format;
-	srvDesc5.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc5.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc5.Texture2D.MipLevels = UINT(metadata5.mipLevels);
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc6{};
-	srvDesc6.Format = metadata6.format;
-	srvDesc6.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc6.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc6.Texture2D.MipLevels = UINT(metadata6.mipLevels);
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc7{};
-	srvDesc7.Format = metadata7.format;
-	srvDesc7.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc7.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc7.Texture2D.MipLevels = UINT(metadata7.mipLevels);
-
-	// ----------------------------
-	// SRVハンドルの取得（SRVヒープのスロット1～7に配置）
-	// ----------------------------
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 1);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 1);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 2);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 2);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU3 = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 3);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 3);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU4 = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 4);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU4 = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 4);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU5 = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 5);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU5 = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 5);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU6 = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 6);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU6 = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 6);
-
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU7 = GetCPUDescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 7);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU7 = GetGpudescriptorHandle(srvDescriptorHeap, descriptorSizeSRV, 7);
-
-	// ----------------------------
-	// SRVを作成
-	// ----------------------------
-	device->CreateShaderResourceView(textureResouces.Get(), &srvDesc, textureSrvHandleCPU);
-	device->CreateShaderResourceView(textureRouces2.Get(), &srvDesc2, textureSrvHandleCPU2);
-	device->CreateShaderResourceView(textureRouces3.Get(), &srvDesc3, textureSrvHandleCPU3);
-	device->CreateShaderResourceView(textureRouces4.Get(), &srvDesc4, textureSrvHandleCPU4);
-	device->CreateShaderResourceView(textureRouces5.Get(), &srvDesc5, textureSrvHandleCPU5);
-	device->CreateShaderResourceView(textureRouces6.Get(), &srvDesc6, textureSrvHandleCPU6);
-	device->CreateShaderResourceView(textureRouces7.Get(), &srvDesc7, textureSrvHandleCPU7);
-
-
-
-	// ----------------------------
-	// テクスチャデータをGPUにアップロード
-	// ----------------------------
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces = UploadTextureDeta(textureResouces, mipImages, device, commandList,dxCommon);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces2 = UploadTextureDeta(textureRouces2, mipImages2, device, commandList,dxCommon);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces3 = UploadTextureDeta(textureRouces3, mipImages3, device, commandList,dxCommon);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces4 = UploadTextureDeta(textureRouces4, mipImages4, device, commandList,dxCommon);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResouces5 = UploadTextureDeta(textureRouces5, mipImages5, device, commandList,dxCommon);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResoucse6 = UploadTextureDeta(textureRouces6, mipImages6, device, commandList,dxCommon);
-	Microsoft::WRL::ComPtr<ID3D12Resource> intermediteResoucse7 = UploadTextureDeta(textureRouces7, mipImages7, device, commandList,dxCommon);
-	//初期化
-
+	// Sphere用に使うテクスチャもロードしておく
+	uint32_t spriteTextureHandleuv = TextureManager::GetInstance()->Load("resouces/uvChecker.png");
+	uint32_t spriteTextureHandlemn = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
 		// ----------------------------
 	// サウンド読み込み
 	// ----------------------------
@@ -1077,18 +948,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	debugCamera->Initialize();
 	debugCamera->SetInputManager(inputManager);
 
-
-
 	std::vector<Sprite*> sprites;
-	for (int i = 0; i < 5; ++i) {
-		Sprite* sprite = new Sprite();
-		sprite->Initialize(dxCommon, uvCheckerTexHandle);
-		// 位置やサイズを少しずつずらす
-		sprite->SetPosition({ 100.0f + i * 120.0f, 100.0f });
-		sprite->SetSize({ 100.0f, 100.0f });
-		sprite->SetColor({ 1.0f,1.0f,1.0f,1.0f });
-		sprites.push_back(sprite);
-	}
+
+	// スプライト1 (monsterBall.png)
+	Sprite* sprite1 = new Sprite();
+	sprite1->Initialize(dxCommon, spriteTextureHandlemn); // ファイルパスで指定
+	sprite1->SetPosition({ 100.0f, 200.0f });
+	sprite1->SetSize({ 100.0f, 100.0f });
+	sprite1->SetColor({ 1.0f,1.0f,1.0f,1.0f });
+	sprites.push_back(sprite1);
+
+	// スプライト2 (uvChecker.png)
+	Sprite* sprite2 = new Sprite();
+	sprite2->Initialize(dxCommon, spriteTextureHandleuv);
+	sprite2->SetPosition({ 220.0f, 200.0f });
+	sprite2->SetSize({ 100.0f, 100.0f });
+	sprite2->SetColor({ 1.0f,1.0f,1.0f,1.0f });
+	sprites.push_back(sprite2);
+
+
+	dxCommon->FlushCommandQueue();
+
 	//ResoucesObject depthStencilResouces = CreateDepthStencilTextResouces(device, kClientWidth, kClientHeight);
 	//windowの×ボタンが押されるまでループ
 	while (winApp.Update()==false)
@@ -1239,10 +1119,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-				commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
-				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 
+				commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
+				commandList->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetGPUHandle(modelPlaneData.material.textureHandle));
+				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
 				// Sprite
 				for (Sprite* sprite : sprites) {
 					sprite->Draw(commandList);
@@ -1256,113 +1136,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				}
 				// 描画処理2
 				break;
-			case 2:
-
-				//球
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(1, wvpSphireResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
-				commandList->IASetIndexBuffer(&indexBufferViewSphere);
-				//作画
-				commandList->DrawIndexedInstanced(static_cast<UINT>(sphereIndices.size()), 1, 0, 0, 0);
-
-
-
-				break;
-
-			case 3:
-
-				//obj 平面
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				//wvpのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
-				//directionalLightのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-				commandList->IASetVertexBuffers(0, 1, &vertexPlaneBufferView);
-				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU2);
-				commandList->DrawInstanced(static_cast<UINT>(modelPlaneData.vertices.size()), 1, 0, 0);
-
-
-				//球
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(1, wvpSphireResouces->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
-				commandList->IASetIndexBuffer(&indexBufferViewSphere);
-				//作画
-				commandList->DrawIndexedInstanced(static_cast<UINT>(sphereIndices.size()), 1, 0, 0, 0);
-
-
-
-				break;
-			case 4:
-				//teapot
-					//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				//wvpのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
-				//directionalLightのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-
-				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
-				commandList->IASetVertexBuffers(0, 1, &vertexTeapotBufferView);
-
-				commandList->DrawInstanced(static_cast<UINT>(modelTeapotData.vertices.size()), 1, 0, 0);
-				break;
-			case 5:
-				//bunny
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				//wvpのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
-				//directionalLightのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-
-				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU4);
-				commandList->IASetVertexBuffers(0, 1, &vertexbunnyBufferView);
-
-				commandList->DrawInstanced(static_cast<UINT>(modelbunnyData.vertices.size()), 1, 0, 0);
-				break;
-			case 6:
-				//MultiMesh
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				//wvpのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
-				//directionalLightのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-
-				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU5);
-				commandList->IASetVertexBuffers(0, 1, &vertexMultiMeshBufferView);
-
-				commandList->DrawInstanced(static_cast<UINT>(modelMultiMeshData.vertices.size()), 1, 0, 0);
-				break;
-
-			case 7:
-				//Suzanne
-				//マテリアルcBubufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-				//wvpのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(1, wvpObjResouces->GetGPUVirtualAddress());
-				//directionalLightのcBufferの場所設定
-				commandList->SetGraphicsRootConstantBufferView(3, DirectionalLightResouces->GetGPUVirtualAddress());
-
-				//テクスチャのSRVの場所設定
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU7);
-				commandList->IASetVertexBuffers(0, 1, &vertexSuzanneBufferView);
-
-				commandList->DrawInstanced(static_cast<UINT>(modelSuzanneData.vertices.size()), 1, 0, 0);
-				break;
+	
 			}
 
 			dxCommon->PostDraw();
