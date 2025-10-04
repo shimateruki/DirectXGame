@@ -31,7 +31,7 @@ void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle)
 
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
-
+	materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	wvpResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
 	wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
 
@@ -130,9 +130,9 @@ void Sprite::Update() {
 void Sprite::Draw(ID3D12GraphicsCommandList* commandList) {
 	commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 	commandList->IASetIndexBuffer(&indexBufferView_);
+	commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
 
-	commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
-	commandList->SetGraphicsRootConstantBufferView(1, wvpResource_->GetGPUVirtualAddress());
 
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGpu = {};
 	const auto& srvHeap = dxCommon_->GetSrvDescriptorHeap();
