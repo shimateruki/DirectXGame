@@ -48,9 +48,13 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
             output.color = gMaterial.color * textureColor;
             break;
-        case 1:
-         cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
-            output.color = gMaterial.color * textureColor * gDirectionalLight.color * cos * gDirectionalLight.intenssity;;
+        case 1: 
+            cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
+            // RGBの計算
+            output.color.rgb = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
+            // アルファの計算を分離
+            output.color.a = gMaterial.color.a * textureColor.a;
+            break;
             break;
         case 2:
              NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
