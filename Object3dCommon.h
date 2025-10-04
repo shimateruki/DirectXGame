@@ -19,6 +19,8 @@ public:
     /// </summary>
     void SetGraphicsCommand();
 
+    DirectXCommon* GetDxCommon() const { return dxCommon_; }
+
 private:
     /// <summary>
     /// ルートシグネチャの作成
