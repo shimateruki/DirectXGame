@@ -59,6 +59,8 @@ public:
 	size_t GetBackBufferCount() const { return backBufferCount_; }
 	ID3D12DescriptorHeap* GetSrvDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 
+	// 最大SRV数（最大テクスcha枚数）
+	static const uint32_t kMaxSRVCount = 512;
 	void InitalaizeFixFPS();
 	void UpdateFixFPS();
 
@@ -93,7 +95,7 @@ public:
 	/// string を wstring に変換する (staticなのでインスタンス不要)
 	/// </summary>
 	static std::wstring ConvertString(const std::string& str);
-
+	void FlushCommandQueue();
 
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========

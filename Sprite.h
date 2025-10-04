@@ -3,6 +3,7 @@
 #include <wrl.h>
 #include "Math.h"
 #include <cstdint>
+#include <string>
 
 class DirectXCommon;
 
@@ -20,11 +21,15 @@ public: // 内部構造体の定義
 		Vector2 texcoord;
 		Vector3 normal;
 	};
-	struct Material {
+	struct Material
+	{
 		Vector4 color;
 		int32_t enableLighting;
-		float padding[3];
+		float padding1[3];
 		Matrix4x4 uvTransform;
+		int32_t selectedLighting;
+		float padding2[3];
+
 	};
 	struct TransformationMatrix {
 		Matrix4x4 WVP;
@@ -35,6 +40,7 @@ public: // メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
+	void Initialize(DirectXCommon* dxCommon, const std::string& textureFilePath);
 	void Initialize(DirectXCommon* dxCommon, uint32_t textureHandle);
 
 	/// <summary>
@@ -71,6 +77,8 @@ private: // メンバ変数
 
 	// 内部で使うTransform
 	Transform transform_ = { {1.0f,1.0f ,1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f,0.0f, 0.0f} };
+
+
 
 	// リソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;

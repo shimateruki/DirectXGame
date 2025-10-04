@@ -341,7 +341,7 @@ void DirectXCommon::CreateFence() {
 void DirectXCommon::InitializeImGui() {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = 128;
+    srvHeapDesc.NumDescriptors = kMaxSRVCount; // 128から定数に変更
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     HRESULT hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap_));
     assert(SUCCEEDED(hr));
@@ -491,4 +491,34 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
     std::wstring result(sizeNeeded, 0);
     MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
     return result;
+}
+
+void DirectXCommon::FlushCommandQueue() {
+    // コマンドリストをクローズする
+    HRESULT hr = commandList_->Close();
+    assert(SUCCEEDED(hr));
+
+    // GPUにコマンドリストの実行を指示する
+    ID3D12CommandList* commandLists[] = { commandList_.Get() };
+    commandQueue_->ExecuteCommandLists(1, commandLists);
+
+    // fenceの値もインクリメントしておく
+    fenceValue_++;
+    // GPUにSignalコマンドを送信する
+    commandQueue_->Signal(fence_.Get(), fenceValue_);
+
+    // fenceの値が指定したSignal値に到達するのを待つ
+    if (fence_->GetCompletedValue() < fenceValue_) {
+        // イベントハンドルの取得
+        // イベントはfenceのSignal値に到達したときに発行されるように指定
+        fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+        // イベント待機
+        WaitForSingleObject(fenceEvent_, INFINITE);
+    }
+
+    // 次のコマンドリストを準備
+    hr = commandAllocator_->Reset();
+    assert(SUCCEEDED(hr));
+    hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
+    assert(SUCCEEDED(hr));
 }

@@ -2,15 +2,24 @@
 #include "DirectXCommon.h"
 #include "WinApp.h"
 #include <cassert>
+#include "TextureManager.h"
 
 /// <summary>
 /// 初期化
 /// </summary>
-void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle) {
+ void Sprite::Initialize(DirectXCommon* dxCommon, const std::string& textureFilePath) {
+	// ファイルパスからテクスチャハンドルを取得
+uint32_t handle = TextureManager::GetInstance()->Load(textureFilePath);
+// 取得したハンドルを使って、もう片方のInitialize関数を呼び出す
+Initialize(dxCommon, handle);
+}
+
+
+void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle)
+{
 	assert(dxCommon);
 	dxCommon_ = dxCommon;
-	textureHandle_ = textureHandle;
-
+	textureHandle_ = textureHandle; // 受け取ったハンドルをそのままメンバ変数に保存
 	// 各種リソース作成
 	vertexResource_ = dxCommon_->CreateBufferResource(sizeof(VertexData) * 4);
 	vertexBufferView_ = { vertexResource_->GetGPUVirtualAddress(), sizeof(VertexData) * 4, sizeof(VertexData) };
@@ -39,6 +48,7 @@ void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle) {
 	// インデックスデータ
 	indexData_[0] = 0; indexData_[1] = 1; indexData_[2] = 2;
 	indexData_[3] = 1; indexData_[4] = 3; indexData_[5] = 2;
+
 }
 
 /// <summary>
