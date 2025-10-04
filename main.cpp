@@ -609,7 +609,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
 
 	//裏面時計回りに表示しない
-	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
 
 	//三角形の中を塗りつぶす
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
@@ -956,6 +956,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	sprite1->SetPosition({ 100.0f, 200.0f });
 	sprite1->SetSize({ 100.0f, 100.0f });
 	sprite1->SetColor({ 1.0f,1.0f,1.0f,1.0f });
+	sprite1->SetAnchorPoint({ 0.5f, 1.0f });
+	sprite1->SetIsFlipX(true);
+	sprite1->SetIsFlipY(true);
 	sprites.push_back(sprite1);
 
 	// スプライト2 (uvChecker.png)

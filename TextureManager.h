@@ -11,6 +11,7 @@ class TextureManager {
 public:
     struct TextureData {
         std::string filePath;
+        DirectX::TexMetadata metadata;
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
         D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU;
@@ -32,6 +33,7 @@ public: // ÉÅÉìÉoä÷êî
     void Initialize(DirectXCommon* dxCommon);
     uint32_t Load(const std::string& filePath);
     D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t textureHandle);
+    const DirectX::TexMetadata& GetMetadata(uint32_t textureHandle);
 
 private:
     DirectXCommon* dxCommon_ = nullptr;
