@@ -4,17 +4,14 @@
 #include <sstream>
 #include <cassert>
 
-void Model::Initialize(ModelCommon* common, const std::string& modelFilePath) {
+// ★★★ 引数をファイルパスから、ディレクトリパスとファイル名に変更 ★★★
+void Model::Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename) {
     assert(common);
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
-    // .objファイル名の解析
-    std::string directoryPath = modelFilePath.substr(0, modelFilePath.find_last_of('/'));
-    std::string fileName = modelFilePath.substr(modelFilePath.find_last_of('/') + 1);
-
     // モデルデータの読み込み
-    modelData_ = LoadObjFile(directoryPath, fileName);
+    modelData_ = LoadObjFile(directoryPath, filename); // 引数をそのまま渡す
     // テクスチャの読み込みとハンドルの保存
     modelData_.material.textureHandle = TextureManager::GetInstance()->Load(modelData_.material.textureFilePath);
 
@@ -34,42 +31,31 @@ void Model::Initialize(ModelCommon* common, const std::string& modelFilePath) {
     materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
-    materialData_->selectedLighting = 1; // Lambertianをデフォルトに
+    materialData_->selectedLighting = 1;
     Math math;
     materialData_->uvTransform = math.makeIdentity4x4();
 }
 
 void Model::Draw(ID3D12GraphicsCommandList* commandList, ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource) {
-    // 頂点バッファを設定
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-
-    // 定数バッファを設定
     commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-
-    // テクスチャを設定
     commandList->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetGPUHandle(modelData_.material.textureHandle));
-
-    // 描画！
     commandList->DrawInstanced(UINT(modelData_.vertices.size()), 1, 0, 0);
 }
-
 Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std::string& filename) {
     ModelData modelData;
     std::vector<Vector4> positions;
     std::vector<Vector3> normals;
     std::vector<Vector2> texcoords;
     std::string line;
-
     std::ifstream file(directoryPath + "/" + filename);
     assert(file.is_open());
-
     while (std::getline(file, line)) {
         std::string identifier;
         std::istringstream s(line);
         s >> identifier;
-
         if (identifier == "v") {
             Vector4 position;
             s >> position.x >> position.y >> position.z;
@@ -113,18 +99,15 @@ Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std:
     }
     return modelData;
 }
-
 Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
     MaterialData materialData;
     std::string line;
     std::ifstream file(directoryPath + "/" + filename);
     assert(file.is_open());
-
     while (std::getline(file, line)) {
         std::string identifier;
         std::istringstream s(line);
         s >> identifier;
-
         if (identifier == "map_Kd") {
             std::string textureFilename;
             s >> textureFilename;
