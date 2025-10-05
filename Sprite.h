@@ -102,7 +102,6 @@ private: // メンバ変数
 	Vector2 textureLeftTop_ = { 0.0f, 0.0f };
 	Vector2 textureSize_ = { 100.0f, 100.0f }; // 初期値は後で上書きされる
 
-	// ★★★ サイズをテクスチャに合わせるための private 関数 ★★★
 	void AdjustTextureSize();
 
 	// リソース
