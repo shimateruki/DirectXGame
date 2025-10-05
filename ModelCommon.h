@@ -1,29 +1,22 @@
-//================================================================
-// ModelCommon.h (新規作成)
-//================================================================
 #pragma once
 
-// 前方宣言
 class DirectXCommon;
 
-/// <summary>
-/// 3Dモデルで共通して利用するデータや処理をまとめたクラス
-/// </summary>
+// 3Dモデルの共通部分
 class ModelCommon {
 public:
     /// <summary>
-    /// 初期化処理
+    /// 初期化
     /// </summary>
-    /// <param name="dxCommon">DirectXの基盤オブジェクト</param>
+    /// <param name="dxCommon">DirectX基盤</param>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// DirectXCommonのポインタを取得する
+    /// DirectX基盤を取得
     /// </summary>
-    /// <returns>DirectXCommonのポインタ</returns>
+    /// <returns>DirectX基盤</returns>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
 private:
-    // DirectX基盤 (外部から借りてくる)
     DirectXCommon* dxCommon_ = nullptr;
 };

@@ -1,5 +1,5 @@
 // =================================================================
-// 修正後の main.cpp (完全版)
+// 修正後の main.cpp (クラス分割対応版)
 // =================================================================
 #define DIRECTINPUT_VERSION 0x0800
 
@@ -21,8 +21,10 @@
 #include "TextureManager.h"
 #include "Sprite.h"
 #include "Object3dCommon.h"
-#include "Object3d.h" // 新しくインクルード
-#include "SpriteCommon.h" 
+#include "Object3d.h"
+#include "SpriteCommon.h"
+#include "ModelCommon.h" // 新しくインクルード
+#include "Model.h"       // 新しくインクルード
 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
@@ -66,23 +68,45 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     auto object3dCommon = std::make_unique<Object3dCommon>();
     object3dCommon->Initialize(dxCommon);
 
+    // ========== モデル関連の初期化 ==========
+    auto modelCommon = std::make_unique<ModelCommon>();
+    modelCommon->Initialize(dxCommon);
+
+    // モデルの生成
+    auto planeModel = std::make_unique<Model>();
+    planeModel->Initialize(modelCommon.get(), "resouces/plane.obj");
+
+    auto teapotModel = std::make_unique<Model>();
+    teapotModel->Initialize(modelCommon.get(), "resouces/teapot.obj");
+
+    auto bunnyModel = std::make_unique<Model>();
+    bunnyModel->Initialize(modelCommon.get(), "resouces/bunny.obj");
+    // ======================================
+
+
     // 表示したい3Dオブジェクトを生成
     std::vector<std::unique_ptr<Object3d>> objects;
     objects.emplace_back(std::make_unique<Object3d>()); // Plane
     objects.emplace_back(std::make_unique<Object3d>()); // Teapot
     objects.emplace_back(std::make_unique<Object3d>()); // Bunny
 
-    // 各オブジェクトを初期化
-    objects[0]->Initialize(object3dCommon.get(), "resouces/plane.obj");
-    objects[1]->Initialize(object3dCommon.get(), "resouces/teapot.obj");
-    objects[2]->Initialize(object3dCommon.get(), "resouces/bunny.obj");
+    // 各オブジェクトを初期化し、モデルをセット
+    objects[0]->Initialize(object3dCommon.get());
+    objects[0]->SetModel(planeModel.get());
+
+    objects[1]->Initialize(object3dCommon.get());
+    objects[1]->SetModel(teapotModel.get());
+
+    objects[2]->Initialize(object3dCommon.get());
+    objects[2]->SetModel(bunnyModel.get());
+
 
     // スプライトの生成
     uint32_t spriteTexHandle = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
     auto sprite = std::make_unique<Sprite>();
     sprite->Initialize(dxCommon, spriteTexHandle);
-    sprite->SetPosition({ 200.0f, 360.0f }); // 例えば画面中央に表示
-	sprite->SetSize({ 100.0f, 100.0f }); // サイズを指定
+    sprite->SetPosition({ 200.0f, 360.0f });
+    sprite->SetSize({ 100.0f, 100.0f });
 
     // --- ゲームループ ---
     while (winApp.Update() == false)
@@ -108,8 +132,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
         // 選択中のオブジェクトのポインタを取得
         Object3d* currentObject = objects[selected].get();
-        Object3d::Transform* transform = currentObject->GetTransform(); // ★★★ このように修正 ★★★
-        Object3d::Material* material = currentObject->GetMaterial();
+        Object3d::Transform* transform = currentObject->GetTransform();
+        Model::Material* material = currentObject->GetMaterial(); // Model::Material* に変更
         Object3d::DirectionalLight* light = currentObject->GetDirectionalLight();
 
         if (ImGui::CollapsingHeader("Object Transform")) {
@@ -122,9 +146,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
             ImGui::DragFloat3("Light Direction", &light->direction.x, 0.01f);
             ImGui::DragFloat("Light Intensity", &light->intensity, 0.01f);
         }
-        if (ImGui::CollapsingHeader("Material")) {
+        // materialがnullptrでないことを確認してからUIを表示
+        if (material && ImGui::CollapsingHeader("Material")) {
             ImGui::ColorEdit4("Color", &material->color.x);
-            const char* lightingTypes[] = { "None","Lambertian", "Half Lambert"};
+            const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
             ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
         }
 
@@ -156,7 +181,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     }
 
     // --- 解放処理 ---
-    // unique_ptrを使っているのでdeleteは不要
     objects.clear();
     audioPlayer->SoundUnload(&soundData1);
     delete audioPlayer;

@@ -1,10 +1,8 @@
 #pragma once
 
 #include "Math.h"
-#include "TextureManager.h"
 #include "Object3dCommon.h"
-#include <string>
-#include <vector>
+#include "Model.h" // Modelクラスをインクルード
 #include <wrl.h>
 
 /// <summary>
@@ -17,35 +15,6 @@ public: // メンバクラス（構造体）
         Vector3 scale;
         Vector3 rotate;
         Vector3 translate;
-    };
-
-    // 頂点データ構造体
-    struct VertexData {
-        Vector4 position;
-        Vector2 texcoord;
-        Vector3 normal;
-    };
-
-    // マテリアルデータ構造体（.mtlファイルの情報）
-    struct MaterialData {
-        std::string textureFilePath;
-        uint32_t textureHandle = 0;
-    };
-
-    // モデルデータ構造体
-    struct ModelData {
-        std::vector<VertexData> vertices;
-        MaterialData material;
-    };
-
-    // マテリアル定数バッファ用構造体
-    struct Material {
-        Vector4 color;
-        int32_t enableLighting;
-        float padding1[3];
-        Matrix4x4 uvTransform;
-        int32_t selectedLighting;
-        float padding2[3];
     };
 
     // 座標変換行列定数バッファ用構造体
@@ -61,24 +30,11 @@ public: // メンバクラス（構造体）
         float intensity; // 輝度
     };
 
-public: // 静的メンバ関数
-    /// <summary>
-    /// OBJファイルからモデルデータを読み込む
-    /// </summary>
-    static ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
-
-private: // 静的メンバ関数
-    /// <summary>
-    /// MTLファイルからマテリアルデータを読み込む
-    /// </summary>
-    static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
-
-
 public: // メンバ関数
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize(Object3dCommon* common, const std::string& modelFilePath);
+    void Initialize(Object3dCommon* common);
 
     /// <summary>
     /// 更新
@@ -91,6 +47,11 @@ public: // メンバ関数
     void Draw(ID3D12GraphicsCommandList* commandList);
 
     /// <summary>
+    /// モデルをセット
+    /// </summary>
+    void SetModel(Model* model) { model_ = model; }
+
+    /// <summary>
     /// トランスフォーム情報の取得
     /// </summary>
     Transform* GetTransform() { return &transform_; }
@@ -98,7 +59,7 @@ public: // メンバ関数
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)
     /// </summary>
-    Material* GetMaterial() { return materialData_; }
+    Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
 
     /// <summary>
     /// 平行光源情報の取得 (ImGuiでの操作用)
@@ -108,16 +69,8 @@ public: // メンバ関数
 private: // メンバ変数
     // 共通部品へのポインタ
     Object3dCommon* common_ = nullptr;
-    // モデルデータ
-    ModelData modelData_{};
-
-    // 頂点バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
-
-    // マテリアル定数バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
-    Material* materialData_ = nullptr;
+    // モデルへのポインタ
+    Model* model_ = nullptr;
 
     // 座標変換行列定数バッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;

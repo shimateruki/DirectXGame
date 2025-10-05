@@ -1,12 +1,13 @@
-// Model.cpp
 #include "Model.h"
+#include "DirectXCommon.h"
 #include <fstream>
 #include <sstream>
 #include <cassert>
 
-void Model::Initialize(Object3dCommon* common, const std::string& modelFilePath) {
+void Model::Initialize(ModelCommon* common, const std::string& modelFilePath) {
     assert(common);
     common_ = common;
+    DirectXCommon* dxCommon = common_->GetDxCommon();
 
     // .objファイル名の解析
     std::string directoryPath = modelFilePath.substr(0, modelFilePath.find_last_of('/'));
@@ -18,11 +19,10 @@ void Model::Initialize(Object3dCommon* common, const std::string& modelFilePath)
     modelData_.material.textureHandle = TextureManager::GetInstance()->Load(modelData_.material.textureFilePath);
 
     // 頂点バッファの作成
-    vertexResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(VertexData) * modelData_.vertices.size());
+    vertexResource_ = dxCommon->CreateBufferResource(sizeof(VertexData) * modelData_.vertices.size());
     vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
     vertexBufferView_.SizeInBytes = UINT(sizeof(VertexData) * modelData_.vertices.size());
     vertexBufferView_.StrideInBytes = sizeof(VertexData);
-
     // 頂点データの書き込み
     VertexData* vertexData = nullptr;
     vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
@@ -30,7 +30,7 @@ void Model::Initialize(Object3dCommon* common, const std::string& modelFilePath)
     vertexResource_->Unmap(0, nullptr);
 
     // マテリアル用定数バッファの作成
-    materialResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(Material));
+    materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
     materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
@@ -39,12 +39,14 @@ void Model::Initialize(Object3dCommon* common, const std::string& modelFilePath)
     materialData_->uvTransform = math.makeIdentity4x4();
 }
 
-void Model::Draw(ID3D12GraphicsCommandList* commandList) {
+void Model::Draw(ID3D12GraphicsCommandList* commandList, ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource) {
     // 頂点バッファを設定
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 
-    // マテリアルCBufferを設定
+    // 定数バッファを設定
     commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
 
     // テクスチャを設定
     commandList->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetGPUHandle(modelData_.material.textureHandle));
