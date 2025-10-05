@@ -1,6 +1,4 @@
-// =================================================================
-// 修正後の main.cpp (クラス分割対応版)
-// =================================================================
+
 #define DIRECTINPUT_VERSION 0x0800
 
 #include <windows.h>
@@ -23,8 +21,7 @@
 #include "Object3dCommon.h"
 #include "Object3d.h"
 #include "SpriteCommon.h"
-#include "ModelCommon.h" // 新しくインクルード
-#include "Model.h"       // 新しくインクルード
+#include "ModelManager.h"  
 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
@@ -41,11 +38,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     DirectXCommon* dxCommon = DirectXCommon::GetInstance();
     dxCommon->Initialize(&winApp);
 
+    // ★★★ 3Dモデルマネージャの初期化 ★★★
+    ModelManager::GetInstance()->Initialize(dxCommon);
+
     ID3D12GraphicsCommandList* commandList = dxCommon->GetCommandList();
 
     TextureManager::GetInstance()->Initialize(dxCommon);
 
-    // オーディオ初期化
+
     AudioPlayer* audioPlayer = new AudioPlayer();
     Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
     IXAudio2MasteringVoice* masteringVoice = nullptr;
@@ -54,7 +54,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     SoundData soundData1 = audioPlayer->SoundLoadWave("resouces/Alarm02.wav");
     bool audioPlayedOnce = false;
 
-    // 入力、デバッグカメラ初期化
     InputManager* inputManager = new InputManager();
     inputManager->Initialize(winApp.GetHwnd());
     DebugCamera* debugCamera = new DebugCamera();
@@ -64,25 +63,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     auto spriteCommon = std::make_unique<SpriteCommon>();
     spriteCommon->Initialize(dxCommon);
 
-    // 3Dオブジェクト共通部の生成と初期化
     auto object3dCommon = std::make_unique<Object3dCommon>();
     object3dCommon->Initialize(dxCommon);
 
-    // ========== モデル関連の初期化 ==========
-    auto modelCommon = std::make_unique<ModelCommon>();
-    modelCommon->Initialize(dxCommon);
 
-    // モデルの生成
-    auto planeModel = std::make_unique<Model>();
-    planeModel->Initialize(modelCommon.get(), "resouces/plane.obj");
 
-    auto teapotModel = std::make_unique<Model>();
-    teapotModel->Initialize(modelCommon.get(), "resouces/teapot.obj");
-
-    auto bunnyModel = std::make_unique<Model>();
-    bunnyModel->Initialize(modelCommon.get(), "resouces/bunny.obj");
-    // ======================================
-
+    ModelManager::GetInstance()->LoadModel("resouces/plane.obj");
+    ModelManager::GetInstance()->LoadModel("resouces/teapot.obj");
+    ModelManager::GetInstance()->LoadModel("resouces/bunny.obj");
 
     // 表示したい3Dオブジェクトを生成
     std::vector<std::unique_ptr<Object3d>> objects;
@@ -90,16 +78,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     objects.emplace_back(std::make_unique<Object3d>()); // Teapot
     objects.emplace_back(std::make_unique<Object3d>()); // Bunny
 
-    // 各オブジェクトを初期化し、モデルをセット
+    // 各オブジェクトを初期化し、ファイルパスでモデルをセット
     objects[0]->Initialize(object3dCommon.get());
-    objects[0]->SetModel(planeModel.get());
+    objects[0]->SetModel("resouces/plane.obj");
 
     objects[1]->Initialize(object3dCommon.get());
-    objects[1]->SetModel(teapotModel.get());
+    objects[1]->SetModel("resouces/teapot.obj");
+    objects[1]->SetTranslate({ 2.0f, 0.0f, 0.0f }); // 新しいセッターを使用
 
     objects[2]->Initialize(object3dCommon.get());
-    objects[2]->SetModel(bunnyModel.get());
-
+    objects[2]->SetModel("resouces/bunny.obj");
+    objects[2]->SetTranslate({ -2.0f, 0.0f, 0.0f }); // 新しいセッターを使用
 
     // スプライトの生成
     uint32_t spriteTexHandle = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
@@ -111,9 +100,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     // --- ゲームループ ---
     while (winApp.Update() == false)
     {
+        // ... (入力、デバッグカメラ更新、オーディオ再生は変更なし) ...
         inputManager->Update();
         debugCamera->Update();
-
         if (!audioPlayedOnce) {
             audioPlayer->SoundPlayWave(xAudio2.Get(), soundData1);
             audioPlayedOnce = true;
@@ -124,18 +113,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        // ... (ImGuiの中身は変更なし) ...
         ImGui::Begin("Object Settings");
-
         static int selected = 0;
         const char* items[] = { "Plane", "Teapot", "Bunny" };
         ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
-
-        // 選択中のオブジェクトのポインタを取得
         Object3d* currentObject = objects[selected].get();
         Object3d::Transform* transform = currentObject->GetTransform();
-        Model::Material* material = currentObject->GetMaterial(); // Model::Material* に変更
+        Model::Material* material = currentObject->GetMaterial();
         Object3d::DirectionalLight* light = currentObject->GetDirectionalLight();
-
         if (ImGui::CollapsingHeader("Object Transform")) {
             ImGui::DragFloat3("Translate", &transform->translate.x, 0.01f);
             ImGui::DragFloat3("Rotate", &transform->rotate.x, 0.01f);
@@ -146,19 +132,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
             ImGui::DragFloat3("Light Direction", &light->direction.x, 0.01f);
             ImGui::DragFloat("Light Intensity", &light->intensity, 0.01f);
         }
-        // materialがnullptrでないことを確認してからUIを表示
         if (material && ImGui::CollapsingHeader("Material")) {
             ImGui::ColorEdit4("Color", &material->color.x);
             const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
             ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
         }
-
         ImGui::End();
 
         // --- 更新処理 ---
         Matrix4x4 viewMatrix = debugCamera->GetViewMatrix();
         Matrix4x4 projectionMatrix = debugCamera->GetProjectionMatrix();
-        // すべての3Dオブジェクトを更新
         for (auto& obj : objects) {
             obj->Update(viewMatrix, projectionMatrix);
         }
@@ -166,15 +149,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
         // --- 描画処理 ---
         dxCommon->PreDraw();
-
-        // 3Dオブジェクトの描画準備
         object3dCommon->SetGraphicsCommand();
 
-        // 選択中の3Dオブジェクトを描画
-        objects[selected]->Draw(commandList);
+        // ★★★ すべてのオブジェクトを描画 ★★★
+        for (const auto& obj : objects) {
+            obj->Draw(commandList);
+        }
 
         spriteCommon->SetPipeline(commandList);
-        // スプライトの描画
         sprite->Draw(commandList);
 
         dxCommon->PostDraw();
@@ -186,6 +168,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     delete audioPlayer;
     delete inputManager;
     delete debugCamera;
+
+    // ★★★ 3Dモデルマネージャの終了処理 ★★★
+    ModelManager::GetInstance()->Finalize();
 
     dxCommon->Finalize();
     CoUninitialize();
