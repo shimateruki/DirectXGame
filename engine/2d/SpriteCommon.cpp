@@ -3,40 +3,40 @@
 #include <cassert>
 
 /// <summary>
-/// ‰Šú‰»
+/// åˆæœŸåŒ–
 /// </summary>
 void SpriteCommon::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
 
-    // ƒ‹[ƒgƒVƒOƒlƒ`ƒƒ‚ÆƒpƒCƒvƒ‰ƒCƒ“‚Ìì¬‚ğ‡”Ô‚ÉŒÄ‚Ño‚·
+    // ãƒ«ãƒ¼ãƒˆã‚·ã‚°ãƒãƒãƒ£ã¨ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ã®ä½œæˆã‚’é †ç•ªã«å‘¼ã³å‡ºã™
     CreateRootSignature();
     CreatePipeline();
 }
 
 /// <summary>
-/// ‹¤’Ê•`‰æİ’è
+/// å…±é€šæç”»è¨­å®š
 /// </summary>
 void SpriteCommon::SetPipeline(ID3D12GraphicsCommandList* commandList) {
-    // •`‰æ‘O‚ÉƒpƒCƒvƒ‰ƒCƒ“‚Æƒ‹[ƒgƒVƒOƒlƒ`ƒƒ‚ğİ’è‚·‚é
+    // æç”»å‰ã«ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ã¨ãƒ«ãƒ¼ãƒˆã‚·ã‚°ãƒãƒãƒ£ã‚’è¨­å®šã™ã‚‹
     commandList->SetPipelineState(pipelineState_.Get());
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
-    // ƒXƒvƒ‰ƒCƒg•`‰æ‚È‚Ì‚ÅAƒvƒŠƒ~ƒeƒBƒuŒ`ó‚Í TRIANGLELIST ‚ÉŒÅ’è
+    // ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆæç”»ãªã®ã§ã€ãƒ—ãƒªãƒŸãƒ†ã‚£ãƒ–å½¢çŠ¶ã¯ TRIANGLELIST ã«å›ºå®š
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 /// <summary>
-/// ƒ‹[ƒgƒVƒOƒlƒ`ƒƒ‚Ìì¬
+/// ãƒ«ãƒ¼ãƒˆã‚·ã‚°ãƒãƒãƒ£ã®ä½œæˆ
 /// </summary>
 void SpriteCommon::CreateRootSignature() {
-    // •K—v‚Èƒ|ƒCƒ“ƒ^‚ğæ“¾
+    // å¿…è¦ãªãƒã‚¤ãƒ³ã‚¿ã‚’å–å¾—
     ID3D12Device* device = dxCommon_->GetDevice();
 
-    // ƒ‹[ƒgƒVƒOƒlƒ`ƒƒ‚ÌƒfƒXƒNƒŠƒvƒVƒ‡ƒ“
+    // ãƒ«ãƒ¼ãƒˆã‚·ã‚°ãƒãƒãƒ£ã®ãƒ‡ã‚¹ã‚¯ãƒªãƒ—ã‚·ãƒ§ãƒ³
     D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
     descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-    // ƒ‹[ƒgƒpƒ‰ƒ[ƒ^
+    // ãƒ«ãƒ¼ãƒˆãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿
     D3D12_ROOT_PARAMETER rootParameters[3] = {};
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
@@ -45,7 +45,7 @@ void SpriteCommon::CreateRootSignature() {
     rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[1].Descriptor.ShaderRegister = 1;
 
-    // SRV—p‚ÌƒfƒBƒXƒNƒŠƒvƒ^ƒŒƒ“ƒW
+    // SRVç”¨ã®ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿ãƒ¬ãƒ³ã‚¸
     D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
     descriptorRange[0].BaseShaderRegister = 0;
     descriptorRange[0].NumDescriptors = 1;
@@ -60,7 +60,7 @@ void SpriteCommon::CreateRootSignature() {
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 
-    // ƒTƒ“ƒvƒ‰[
+    // ã‚µãƒ³ãƒ—ãƒ©ãƒ¼
     D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
     staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -73,7 +73,7 @@ void SpriteCommon::CreateRootSignature() {
     descriptionRootSignature.pStaticSamplers = staticSamplers;
     descriptionRootSignature.NumStaticSamplers = 1;
 
-    // ƒVƒŠƒAƒ‰ƒCƒY‚Æ¶¬
+    // ã‚·ãƒªã‚¢ãƒ©ã‚¤ã‚ºã¨ç”Ÿæˆ
     Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
     HRESULT hr = D3D12SerializeRootSignature(&descriptionRootSignature, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
@@ -85,13 +85,13 @@ void SpriteCommon::CreateRootSignature() {
 }
 
 /// <summary>
-/// ƒOƒ‰ƒtƒBƒbƒNƒXƒpƒCƒvƒ‰ƒCƒ“‚Ì¶¬
+/// ã‚°ãƒ©ãƒ•ã‚£ãƒƒã‚¯ã‚¹ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ã®ç”Ÿæˆ
 /// </summary>
 void SpriteCommon::CreatePipeline() {
-    // •K—v‚Èƒ|ƒCƒ“ƒ^‚ğæ“¾
+    // å¿…è¦ãªãƒã‚¤ãƒ³ã‚¿ã‚’å–å¾—
     ID3D12Device* device = dxCommon_->GetDevice();
 
-    // -- Šeíİ’è --
+    // -- å„ç¨®è¨­å®š --
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[2] = {};
     inputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
     inputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
@@ -114,11 +114,11 @@ void SpriteCommon::CreatePipeline() {
     D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
     depthStencilDesc.DepthEnable = false;
 
-    // ƒVƒF[ƒ_[‚ÌƒRƒ“ƒpƒCƒ‹
+    // ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«
     auto vsBlob = dxCommon_->CompileShader(L"resouces/shader/Sprite.VS.hlsl", L"vs_6_0");
     auto psBlob = dxCommon_->CompileShader(L"resouces/shader/Sprite.PS.hlsl", L"ps_6_0");
 
-    // PSO‚ÌƒfƒXƒNƒŠƒvƒVƒ‡ƒ“
+    // PSOã®ãƒ‡ã‚¹ã‚¯ãƒªãƒ—ã‚·ãƒ§ãƒ³
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = rootSignature_.Get();
     psoDesc.InputLayout = inputLayoutDesc;
@@ -134,7 +134,7 @@ void SpriteCommon::CreatePipeline() {
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
-    // PSO‚ğ¶¬
+    // PSOã‚’ç”Ÿæˆ
     HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState_));
     assert(SUCCEEDED(hr));
 }

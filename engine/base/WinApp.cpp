@@ -3,16 +3,15 @@
 #include "externals/imgui/imgui_impl_win32.h"
 
 #pragma comment(lib, "winmm.lib")
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-    // ššš ‚±‚Ìif•¶‚ğ‚Ü‚é‚²‚Æ’Ç‰Á‚µ‚Ä‚­‚¾‚³‚¢ ššš
-    // ImGui‚ÉƒƒbƒZ[ƒW‚ğˆ—‚³‚¹‚éBImGui‚ªˆ—‚µ‚½ê‡‚Ítrue‚ğ•Ô‚·B
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
         return true;
     }
 
-    // « Œ³‚Ìˆ—‚Í‚»‚Ì‚Ü‚Üc‚·
+    // â†“ å…ƒã®å‡¦ç†ã¯ãã®ã¾ã¾æ®‹ã™
     switch (msg) {
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -52,17 +51,17 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
 bool WinApp::Update() {
     MSG msg{};
 
-    // ƒƒbƒZ[ƒW‚ª‚ ‚é‚©
+    // ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ãŒã‚ã‚‹ã‹
     if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 
-    // I—¹ƒƒbƒZ[ƒW‚ª—ˆ‚½‚çtrue‚ğ•Ô‚·
+    // çµ‚äº†ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ãŒæ¥ãŸã‚‰trueã‚’è¿”ã™
     if (msg.message == WM_QUIT) {
         return true;
     }
 
-    // ‘±‚¯‚éê‡‚Ífalse‚ğ•Ô‚·
+    // ç¶šã‘ã‚‹å ´åˆã¯falseã‚’è¿”ã™
     return false;
 }

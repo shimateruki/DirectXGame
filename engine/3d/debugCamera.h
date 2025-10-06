@@ -23,7 +23,6 @@ private:
 	Matrix4x4 viewMatrix;
 	//射影行列
 	Matrix4x4 projectionMatrix;
-	Math* math;
 	InputManager* inputManager; // InputManagerのインスタンスへのポインタ
 };
 

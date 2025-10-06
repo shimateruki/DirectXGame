@@ -3,18 +3,18 @@
 #include <wrl.h>
 
 /// <summary>
-/// 3D�I�u�W�F�N�g�̕`��Ɋւ�鋤�ʏ������܂Ƃ߂��N���X
+/// 3Dオブジェクトの描画に関わる共通処理をまとめたクラス
 /// </summary>
 class Object3dCommon {
 public:
    /// <summary>
-   /// ����������
+   /// 初期化処理
    /// </summary>
-   /// <param name="dxCommon">DirectX�ėp�N���X�̃C���X�^���X</param>
+   /// <param name="dxCommon">DirectX汎用クラスのインスタンス</param>
    void Initialize(DirectXCommon* dxCommon);
 
    /// <summary>
-   /// 3D�I�u�W�F�N�g�`��O�̋��ʃR�}���h��ݒ肷��
+   /// 3Dオブジェクト描画前の共通コマンドを設定する
    /// </summary>
    void SetGraphicsCommand();
 
@@ -22,20 +22,20 @@ public:
 
 private:
    /// <summary>
-   /// ���[�g�V�O�l�`���̍쐬
+   /// ルートシグネチャの作成
    /// </summary>
    void CreateRootSignature();
 
    /// <summary>
-   /// �p�C�v���C���X�e�[�g�̍쐬
+   /// パイプラインステートの作成
    /// </summary>
    void CreatePipelineState();
 
 private:
-   // DirectX�ėp�N���X�i�|�C���^�j
+   // DirectX汎用クラス（ポインタ）
    DirectXCommon* dxCommon_ = nullptr;
-   // ���[�g�V�O�l�`��
+   // ルートシグネチャ
    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
-   // �p�C�v���C���X�e�[�g
+   // パイプラインステート
    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
 };

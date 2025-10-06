@@ -1,6 +1,6 @@
 #include "engine/3d/Object3d.h"
-#include"engine/base/DirectXCommon.h" // DirectXCommon‚ğƒCƒ“ƒNƒ‹[ƒh
-#include "engine/3d/ModelManager.h" // ModelManager‚ğƒCƒ“ƒNƒ‹[ƒh
+#include"engine/base/DirectXCommon.h" // DirectXCommonã‚’ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰
+#include "engine/3d/ModelManager.h" // ModelManagerã‚’ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰
 #include <cassert>
 
 void Object3d::Initialize(Object3dCommon* common) {
@@ -21,9 +21,9 @@ void Object3d::Initialize(Object3dCommon* common) {
     directionalLightData_->intensity = 1.0f;
 }
 
-//  ƒtƒ@ƒCƒ‹ƒpƒX‚Åƒ‚ƒfƒ‹‚ğİ’è‚·‚éƒI[ƒo[ƒ[ƒh‚ÌÀ‘•
+//  ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã§ãƒ¢ãƒ‡ãƒ«ã‚’è¨­å®šã™ã‚‹ã‚ªãƒ¼ãƒãƒ¼ãƒ­ãƒ¼ãƒ‰ã®å®Ÿè£…
 void Object3d::SetModel(const std::string& filePath) {
-    // ModelManager‚©‚çƒ‚ƒfƒ‹ƒf[ƒ^‚ğæ“¾‚µ‚ÄƒZƒbƒg
+    // ModelManagerã‹ã‚‰ãƒ¢ãƒ‡ãƒ«ãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—ã—ã¦ã‚»ãƒƒãƒˆ
     model_ = ModelManager::GetInstance()->FindModel(filePath);
 }
 

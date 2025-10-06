@@ -7,31 +7,31 @@
 #include "externals/imgui/imgui_impl_win32.h"
 
 void Game::Initialize() {
-    // ššš Šî’êƒNƒ‰ƒX(Framework)‚Ì‰Šú‰»ˆ—‚ğŒÄ‚Ño‚· ššš
+    // â˜…â˜…â˜… åŸºåº•ã‚¯ãƒ©ã‚¹(Framework)ã®åˆæœŸåŒ–å‡¦ç†ã‚’å‘¼ã³å‡ºã™ â˜…â˜…â˜…
     Framework::Initialize();
 
-    // ˆÈ‰ºAGameƒNƒ‰ƒX“Æ©‚Ì‰Šú‰»ˆ—
-    audioPlayer_ = std::make_unique<AudioPlayer>();
+    // ä»¥ä¸‹ã€Gameã‚¯ãƒ©ã‚¹ç‹¬è‡ªã®åˆæœŸåŒ–å‡¦ç†
+  /*  audioPlayer_ = std::make_unique<AudioPlayer>();
     XAudio2Create(&xAudio2_, 0, XAUDIO2_DEFAULT_PROCESSOR);
     xAudio2_->CreateMasteringVoice(&masteringVoice_);
-    soundData1_ = audioPlayer_->SoundLoadWave("resouces/Alarm02.wav");
+    soundData1_ = audioPlayer_->SoundLoadWave("resouces/Alarm02.wav");*/
 
     debugCamera_ = std::make_unique<DebugCamera>();
     debugCamera_->Initialize();
-    debugCamera_->SetInputManager(inputManager_.get()); // inputManager_‚ÍFramework‚Ìƒƒ“ƒo
+    debugCamera_->SetInputManager(inputManager_.get()); // inputManager_ã¯Frameworkã®ãƒ¡ãƒ³ãƒ
 
     spriteCommon_ = std::make_unique<SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_); // dxCommon_‚ÍFramework‚Ìƒƒ“ƒo
+    spriteCommon_->Initialize(dxCommon_); // dxCommon_ã¯Frameworkã®ãƒ¡ãƒ³ãƒ
 
     object3dCommon_ = std::make_unique<Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_); // dxCommon_‚ÍFramework‚Ìƒƒ“ƒo
+    object3dCommon_->Initialize(dxCommon_); // dxCommon_ã¯Frameworkã®ãƒ¡ãƒ³ãƒ
 
-    // --- ƒ‚ƒfƒ‹‚Ì“Ç‚İ‚İ ---
+    // --- ãƒ¢ãƒ‡ãƒ«ã®èª­ã¿è¾¼ã¿ ---
     ModelManager::GetInstance()->LoadModel("resouces/plane.obj");
     ModelManager::GetInstance()->LoadModel("resouces/teapot.obj");
     ModelManager::GetInstance()->LoadModel("resouces/bunny.obj");
 
-    // --- ƒIƒuƒWƒFƒNƒg‚Ì¶¬ ---
+    // --- ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ç”Ÿæˆ ---
     objects_.emplace_back(std::make_unique<Object3d>()); // Plane
     objects_.emplace_back(std::make_unique<Object3d>()); // Teapot
     objects_.emplace_back(std::make_unique<Object3d>()); // Bunny
@@ -47,16 +47,18 @@ void Game::Initialize() {
     objects_[2]->SetModel("resouces/bunny.obj");
     objects_[2]->SetTranslate({ -2.0f, 0.0f, 0.0f });
 
-    // --- ƒXƒvƒ‰ƒCƒg‚Ì¶¬ ---
+    // --- ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆã®ç”Ÿæˆ ---
     sprite_ = std::make_unique<Sprite>();
     uint32_t spriteTexHandle = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
     sprite_->Initialize(dxCommon_, spriteTexHandle);
     sprite_->SetPosition({ 200.0f, 360.0f });
     sprite_->SetSize({ 100.0f, 100.0f });
+;
+    dxCommon_->FlushCommandQueue(false);
 }
 
 void Game::Finalize() {
-    // --- GameƒNƒ‰ƒX“Æ©‚ÌI—¹ˆ— ---
+    // --- Gameã‚¯ãƒ©ã‚¹ç‹¬è‡ªã®çµ‚äº†å‡¦ç† ---
     objects_.clear();
     sprite_.reset();
     object3dCommon_.reset();
@@ -66,20 +68,20 @@ void Game::Finalize() {
     audioPlayer_->SoundUnload(&soundData1_);
     audioPlayer_.reset();
 
-    // ššš Šî’êƒNƒ‰ƒX(Framework)‚ÌI—¹ˆ—‚ğŒÄ‚Ño‚· ššš
+    // â˜…â˜…â˜… åŸºåº•ã‚¯ãƒ©ã‚¹(Framework)ã®çµ‚äº†å‡¦ç†ã‚’å‘¼ã³å‡ºã™ â˜…â˜…â˜…
     Framework::Finalize();
 }
 
 void Game::Update() {
-    // --- “ü—ÍEƒJƒƒ‰XV ---
-    inputManager_->Update(); // inputManager_‚ÍFramework‚Ìƒƒ“ƒo
+    // --- å…¥åŠ›ãƒ»ã‚«ãƒ¡ãƒ©æ›´æ–° ---
+    inputManager_->Update(); // inputManager_ã¯Frameworkã®ãƒ¡ãƒ³ãƒ
     debugCamera_->Update();
 
-    // --- ƒTƒEƒ“ƒhÄ¶ ---
-    if (!audioPlayedOnce_) {
-        audioPlayer_->SoundPlayWave(xAudio2_.Get(), soundData1_);
-        audioPlayedOnce_ = true;
-    }
+    // --- ã‚µã‚¦ãƒ³ãƒ‰å†ç”Ÿ ---
+    //if (!audioPlayedOnce_) {
+    //    audioPlayer_->SoundPlayWave(xAudio2_.Get(), soundData1_);
+    //    audioPlayedOnce_ = true;
+    //}
 
     // --- ImGui ---
     ImGui_ImplDX12_NewFrame();
@@ -111,7 +113,7 @@ void Game::Update() {
     }
     ImGui::End();
 
-    // --- ƒIƒuƒWƒFƒNƒgXV ---
+    // --- ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆæ›´æ–° ---
     Matrix4x4 viewMatrix = debugCamera_->GetViewMatrix();
     Matrix4x4 projectionMatrix = debugCamera_->GetProjectionMatrix();
     for (auto& obj : objects_) {
@@ -123,19 +125,19 @@ void Game::Update() {
 void Game::Draw() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 
-    // --- •`‰æ‘Oˆ— ---
+    // --- æç”»å‰å‡¦ç† ---
     dxCommon_->PreDraw();
 
-    // --- 3DƒIƒuƒWƒFƒNƒg•`‰æ ---
+    // --- 3Dã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆæç”» ---
     object3dCommon_->SetGraphicsCommand();
     for (const auto& obj : objects_) {
         obj->Draw(commandList);
     }
 
-    // --- ƒXƒvƒ‰ƒCƒg•`‰æ ---
+    // --- ã‚¹ãƒ—ãƒ©ã‚¤ãƒˆæç”» ---
     spriteCommon_->SetPipeline(commandList);
     sprite_->Draw(commandList);
 
-    // --- •`‰æŒãˆ— ---
+    // --- æç”»å¾Œå‡¦ç† ---
     dxCommon_->PostDraw();
 }

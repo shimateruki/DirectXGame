@@ -1,46 +1,46 @@
 #pragma once
 
-#include "../io/InputManager.h" // C³: ³‚µ‚¢‘Š‘ÎƒpƒX‚ğw’è
+#include "../io/InputManager.h" // ä¿®æ­£: æ­£ã—ã„ç›¸å¯¾ãƒ‘ã‚¹ã‚’æŒ‡å®š
 #include "WinApp.h"
 #include "DirectXCommon.h"
 #include <memory>
 
-// ƒQ[ƒ€ƒGƒ“ƒWƒ“‚Ì”Ä—p“I‚ÈŠî”ÕƒNƒ‰ƒX
+// ã‚²ãƒ¼ãƒ ã‚¨ãƒ³ã‚¸ãƒ³ã®æ±ç”¨çš„ãªåŸºç›¤ã‚¯ãƒ©ã‚¹
 class Framework {
 public:
 	/// <summary>
-	/// ƒfƒXƒgƒ‰ƒNƒ^
+	/// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 	/// </summary>
 	virtual ~Framework() = default;
 
 	/// <summary>
-	/// ‰Šú‰»
+	/// åˆæœŸåŒ–
 	/// </summary>
 	virtual void Initialize();
 
 	/// <summary>
-	/// I—¹ˆ—
+	/// çµ‚äº†å‡¦ç†
 	/// </summary>
 	virtual void Finalize();
 
 	/// <summary>
-	/// ƒƒCƒ“ƒ‹[ƒv‚ğÀs
+	/// ãƒ¡ã‚¤ãƒ³ãƒ«ãƒ¼ãƒ—ã‚’å®Ÿè¡Œ
 	/// </summary>
 	void Run();
 
 protected:
 	/// <summary>
-	/// –ˆƒtƒŒ[ƒ€‚ÌXVˆ—iŒp³æ‚ÅƒI[ƒo[ƒ‰ƒCƒhj
+	/// æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã®æ›´æ–°å‡¦ç†ï¼ˆç¶™æ‰¿å…ˆã§ã‚ªãƒ¼ãƒãƒ¼ãƒ©ã‚¤ãƒ‰ï¼‰
 	/// </summary>
-	virtual void Update() = 0; // ƒˆ‰¼‘zŠÖ”
+	virtual void Update() = 0; // ç´”ç²‹ä»®æƒ³é–¢æ•°
 
 	/// <summary>
-	/// •`‰æˆ—iŒp³æ‚ÅƒI[ƒo[ƒ‰ƒCƒhj
+	/// æç”»å‡¦ç†ï¼ˆç¶™æ‰¿å…ˆã§ã‚ªãƒ¼ãƒãƒ¼ãƒ©ã‚¤ãƒ‰ï¼‰
 	/// </summary>
-	virtual void Draw() = 0; // ƒˆ‰¼‘zŠÖ”
+	virtual void Draw() = 0; // ç´”ç²‹ä»®æƒ³é–¢æ•°
 
 protected:
-	// --- ƒGƒ“ƒWƒ“ƒVƒXƒeƒ€ ---
+	// --- ã‚¨ãƒ³ã‚¸ãƒ³ã‚·ã‚¹ãƒ†ãƒ  ---
 	std::unique_ptr<WinApp> winApp_;
 	DirectXCommon* dxCommon_ = nullptr;
 	std::unique_ptr<InputManager> inputManager_;

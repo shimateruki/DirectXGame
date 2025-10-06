@@ -5,12 +5,12 @@
 #include "engine/3d/TextureManager.h"
 
 /// <summary>
-/// ‰Šú‰»
+/// åˆæœŸåŒ–
 /// </summary>
  void Sprite::Initialize(DirectXCommon* dxCommon, const std::string& textureFilePath) {
-	// ƒtƒ@ƒCƒ‹ƒpƒX‚©‚çƒeƒNƒXƒ`ƒƒƒnƒ“ƒhƒ‹‚ğæ“¾
+	// ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã‹ã‚‰ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒãƒ³ãƒ‰ãƒ«ã‚’å–å¾—
 uint32_t handle = TextureManager::GetInstance()->Load(textureFilePath);
-// æ“¾‚µ‚½ƒnƒ“ƒhƒ‹‚ğg‚Á‚ÄA‚à‚¤•Ğ•û‚ÌInitializeŠÖ”‚ğŒÄ‚Ño‚·
+// å–å¾—ã—ãŸãƒãƒ³ãƒ‰ãƒ«ã‚’ä½¿ã£ã¦ã€ã‚‚ã†ç‰‡æ–¹ã®Initializeé–¢æ•°ã‚’å‘¼ã³å‡ºã™
 Initialize(dxCommon, handle);
 }
 
@@ -19,8 +19,8 @@ void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle)
 {
 	assert(dxCommon);
 	dxCommon_ = dxCommon;
-	textureHandle_ = textureHandle; // ó‚¯æ‚Á‚½ƒnƒ“ƒhƒ‹‚ğ‚»‚Ì‚Ü‚Üƒƒ“ƒo•Ï”‚É•Û‘¶
-	// ŠeíƒŠƒ\[ƒXì¬
+	textureHandle_ = textureHandle; // å—ã‘å–ã£ãŸãƒãƒ³ãƒ‰ãƒ«ã‚’ãã®ã¾ã¾ãƒ¡ãƒ³ãƒå¤‰æ•°ã«ä¿å­˜
+	// å„ç¨®ãƒªã‚½ãƒ¼ã‚¹ä½œæˆ
 	vertexResource_ = dxCommon_->CreateBufferResource(sizeof(VertexData) * 4);
 	vertexBufferView_ = { vertexResource_->GetGPUVirtualAddress(), sizeof(VertexData) * 4, sizeof(VertexData) };
 	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
@@ -35,17 +35,17 @@ void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle)
 	wvpResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
 	wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
 
-	// --- ’¸“_ƒf[ƒ^‚ğuƒTƒCƒY1x1v‚Ì‚à‚Ì‚É•ÏX ---
-	// ¶‰º
+	// --- é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ã‚’ã€Œã‚µã‚¤ã‚º1x1ã€ã®ã‚‚ã®ã«å¤‰æ›´ ---
+	// å·¦ä¸‹
 	vertexData_[0] = { { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }, {0.0f, 0.0f, -1.0f} };
-	// ¶ã
+	// å·¦ä¸Š
 	vertexData_[1] = { { 0.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }, {0.0f, 0.0f, -1.0f} };
-	// ‰E‰º
+	// å³ä¸‹
 	vertexData_[2] = { { 1.0f, 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }, {0.0f, 0.0f, -1.0f} };
-	// ‰Eã
+	// å³ä¸Š
 	vertexData_[3] = { { 1.0f, 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }, {0.0f, 0.0f, -1.0f} };
 
-	// ƒCƒ“ƒfƒbƒNƒXƒf[ƒ^
+	// ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ãƒ‡ãƒ¼ã‚¿
 	indexData_[0] = 0; indexData_[1] = 1; indexData_[2] = 2;
 	indexData_[3] = 1; indexData_[4] = 3; indexData_[5] = 2;
 
@@ -54,57 +54,57 @@ void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle)
 }
 
 /// <summary>
-/// XVˆ—
+/// æ›´æ–°å‡¦ç†
 /// </summary>
 void Sprite::Update() {
-	// ’¸“_‚ÌÀ•WŒvZ
+	// é ‚ç‚¹ã®åº§æ¨™è¨ˆç®—
 	{
-		// ƒAƒ“ƒJ[ƒ|ƒCƒ“ƒg‚ğl—¶‚µ‚½’¸“_‚²‚Æ‚Ìƒ[ƒJƒ‹À•W
+		// ã‚¢ãƒ³ã‚«ãƒ¼ãƒã‚¤ãƒ³ãƒˆã‚’è€ƒæ…®ã—ãŸé ‚ç‚¹ã”ã¨ã®ãƒ­ãƒ¼ã‚«ãƒ«åº§æ¨™
 		float left = (0.0f - anchorPoint_.x) * size_.x;
 		float right = (1.0f - anchorPoint_.x) * size_.x;
 		float top = (0.0f - anchorPoint_.y) * size_.y;
 		float bottom = (1.0f - anchorPoint_.y) * size_.y;
 
 		if (isFlipX_) {
-			// left‚Æright‚Ì’l‚ğ“ü‚ê‘Ö‚¦‚é
+			// leftã¨rightã®å€¤ã‚’å…¥ã‚Œæ›¿ãˆã‚‹
 			std::swap(left, right);
 		}
 		if (isFlipY_) {
-			// top‚Æbottom‚Ì’l‚ğ“ü‚ê‘Ö‚¦‚é
+			// topã¨bottomã®å€¤ã‚’å…¥ã‚Œæ›¿ãˆã‚‹
 			std::swap(top, bottom);
 		}
 	
 
-		// ‚S“_‚Ì’¸“_ƒf[ƒ^‚É”½‰f
-		vertexData_[0] = { { left, bottom, 0.0f, 1.0f } }; // ¶‰º
-		vertexData_[1] = { { left, top, 0.0f, 1.0f } };    // ¶ã
-		vertexData_[2] = { { right, bottom, 0.0f, 1.0f } };// ‰E‰º
-		vertexData_[3] = { { right, top, 0.0f, 1.0f } };   // ‰Eã
+		// ï¼”ç‚¹ã®é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ã«åæ˜ 
+		vertexData_[0] = { { left, bottom, 0.0f, 1.0f } }; // å·¦ä¸‹
+		vertexData_[1] = { { left, top, 0.0f, 1.0f } };    // å·¦ä¸Š
+		vertexData_[2] = { { right, bottom, 0.0f, 1.0f } };// å³ä¸‹
+		vertexData_[3] = { { right, top, 0.0f, 1.0f } };   // å³ä¸Š
 	}
 
 
-	// UVÀ•W‚ÌŒvZ
+	// UVåº§æ¨™ã®è¨ˆç®—
 	{
-		// ƒeƒNƒXƒ`ƒƒ‚Ìƒƒ^ƒf[ƒ^‚ğæ“¾
+		// ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®ãƒ¡ã‚¿ãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—
 		const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle_);
-		// ƒeƒNƒXƒ`ƒƒ‘S‘Ì‚ÌƒTƒCƒY
+		// ãƒ†ã‚¯ã‚¹ãƒãƒ£å…¨ä½“ã®ã‚µã‚¤ã‚º
 		float texWidth = (float)metadata.width;
 		float texHeight = (float)metadata.height;
-		// UVÀ•W‚É•ÏŠ·
+		// UVåº§æ¨™ã«å¤‰æ›
 		float tex_left = textureLeftTop_.x / texWidth;
 		float tex_right = (textureLeftTop_.x + textureSize_.x) / texWidth;
 		float tex_top = textureLeftTop_.y / texHeight;
 		float tex_bottom = (textureLeftTop_.y + textureSize_.y) / texHeight;
 
-		// ‚S“_‚ÌUVƒf[ƒ^‚É”½‰f
-		vertexData_[0].texcoord = { tex_left, tex_bottom }; // ¶‰º
-		vertexData_[1].texcoord = { tex_left, tex_top };    // ¶ã
-		vertexData_[2].texcoord = { tex_right, tex_bottom };// ‰E‰º
-		vertexData_[3].texcoord = { tex_right, tex_top };   // ‰Eã
+		// ï¼”ç‚¹ã®UVãƒ‡ãƒ¼ã‚¿ã«åæ˜ 
+		vertexData_[0].texcoord = { tex_left, tex_bottom }; // å·¦ä¸‹
+		vertexData_[1].texcoord = { tex_left, tex_top };    // å·¦ä¸Š
+		vertexData_[2].texcoord = { tex_right, tex_bottom };// å³ä¸‹
+		vertexData_[3].texcoord = { tex_right, tex_top };   // å³ä¸Š
 	}
 
-	// s—ñ‚ÌŒvZ
-	transform_.scale = { 1.0f, 1.0f, 1.0f }; // ’¸“_À•W‚ÅƒTƒCƒY’²®Ï‚İ‚È‚Ì‚Å1.0‚É
+	// è¡Œåˆ—ã®è¨ˆç®—
+	transform_.scale = { 1.0f, 1.0f, 1.0f }; // é ‚ç‚¹åº§æ¨™ã§ã‚µã‚¤ã‚ºèª¿æ•´æ¸ˆã¿ãªã®ã§1.0ã«
 	transform_.rotate = { 0.0f, 0.0f, rotation_ };
 	transform_.translate = { position_.x, position_.y, 0.0f };
 
@@ -114,7 +114,7 @@ void Sprite::Update() {
 	Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 100.0f);
 	Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
 
-	// ’è”ƒoƒbƒtƒ@‚É‘‚«‚İ
+	// å®šæ•°ãƒãƒƒãƒ•ã‚¡ã«æ›¸ãè¾¼ã¿
 	wvpData_->WVP = worldViewProjectionMatrix;
 	wvpData_->World = worldMatrix;
 	materialData_->enableLighting = false;
@@ -123,7 +123,7 @@ void Sprite::Update() {
 
 
 /// <summary>
-/// •`‰æ
+/// æç”»
 /// </summary>
 void Sprite::Draw(ID3D12GraphicsCommandList* commandList) {
 	commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);

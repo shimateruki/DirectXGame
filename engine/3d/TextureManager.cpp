@@ -49,7 +49,7 @@ void UploadTextureData(
 }
 
 
-// ƒVƒ“ƒOƒ‹ƒgƒ“ƒCƒ“ƒXƒ^ƒ“ƒX
+// ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹
 TextureManager* TextureManager::instance_ = nullptr;
 
 TextureManager* TextureManager::GetInstance() {
@@ -80,10 +80,10 @@ uint32_t TextureManager::Load(const std::string& filePath) {
         return it->second;
     }
 
-    // ‘—¿‚ÌuÅ‘å”ƒ`ƒFƒbƒNv‚ğ”½‰f 
+    // è³‡æ–™ã®ã€Œæœ€å¤§æ•°ãƒã‚§ãƒƒã‚¯ã€ã‚’åæ˜  
     assert(textureDatas_.size() + kSRVIndexTop < DirectXCommon::kMaxSRVCount);
 
-    // ƒnƒ“ƒhƒ‹‚ğŒvZivector‚ÌŒ»İ‚Ì—v‘f”‚ª‚»‚Ì‚Ü‚ÜŸ‚ÌƒCƒ“ƒfƒbƒNƒX‚É‚È‚éj
+    // ãƒãƒ³ãƒ‰ãƒ«ã‚’è¨ˆç®—ï¼ˆvectorã®ç¾åœ¨ã®è¦ç´ æ•°ãŒãã®ã¾ã¾æ¬¡ã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã«ãªã‚‹ï¼‰
     uint32_t handle = static_cast<uint32_t>(textureDatas_.size()) + kSRVIndexTop;
 
     textureDatas_.emplace_back();
@@ -92,14 +92,14 @@ uint32_t TextureManager::Load(const std::string& filePath) {
 
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-    newData.metadata = metadata; // “Ç‚İ‚ñ‚¾ƒƒ^ƒf[ƒ^‚ğ•Û‘¶);
+    newData.metadata = metadata; // èª­ã¿è¾¼ã‚“ã ãƒ¡ã‚¿ãƒ‡ãƒ¼ã‚¿ã‚’ä¿å­˜);
     newData.resource = dxCommon_->CreateTextureResource(metadata);
     UploadTextureData(
         newData.resource.Get(), mipImages, &newData.intermediateResource,
         device_.Get(), dxCommon_->GetCommandList());
 
-    // ššš ‘—¿‚ÌuSRVƒCƒ“ƒfƒbƒNƒXŒvZv‚ğ”½‰f ššš
-    uint32_t srvIndex = handle; // ƒnƒ“ƒhƒ‹‚ª‚»‚Ì‚Ü‚ÜSRVƒCƒ“ƒfƒbƒNƒX‚É‚È‚é
+    // â˜…â˜…â˜… è³‡æ–™ã®ã€ŒSRVã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹è¨ˆç®—ã€ã‚’åæ˜  â˜…â˜…â˜…
+    uint32_t srvIndex = handle; // ãƒãƒ³ãƒ‰ãƒ«ãŒãã®ã¾ã¾SRVã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã«ãªã‚‹
     newData.srvHandleCPU = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
     newData.srvHandleCPU.ptr += (descriptorSizeSRV_ * srvIndex);
     newData.srvHandleGPU = srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart();
@@ -118,7 +118,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetGPUHandle(uint32_t textureHandle) {
-    // ƒnƒ“ƒhƒ‹‚Í1‚©‚çn‚Ü‚é‚Ì‚ÅAvector‚ÌƒCƒ“ƒfƒbƒNƒX‚É‡‚í‚¹‚é‚½‚ß‚É -kSRVIndexTop
+    // ãƒãƒ³ãƒ‰ãƒ«ã¯1ã‹ã‚‰å§‹ã¾ã‚‹ã®ã§ã€vectorã®ã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã«åˆã‚ã›ã‚‹ãŸã‚ã« -kSRVIndexTop
     assert(textureHandle >= kSRVIndexTop && textureHandle < textureDatas_.size() + kSRVIndexTop);
     return textureDatas_[textureHandle - kSRVIndexTop].srvHandleGPU;
 }

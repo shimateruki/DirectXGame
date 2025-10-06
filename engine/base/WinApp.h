@@ -6,12 +6,12 @@ class WinApp {
 public:
     static const int32_t kClientWidth = 1280;
     static const int32_t  kClientHeight = 720;
-    // ‰Šú‰»iƒEƒBƒ“ƒhƒE‚ğì¬j
+    // åˆæœŸåŒ–ï¼ˆã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚’ä½œæˆï¼‰
     void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
 
     bool Update();
 
-    // ƒAƒNƒZƒT
+    // ã‚¢ã‚¯ã‚»ã‚µ
     HWND GetHwnd() const { return hwnd_; }
     HINSTANCE GetHInstance() const { return hInstance_; }
     ;

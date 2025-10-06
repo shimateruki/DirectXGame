@@ -4,29 +4,29 @@
 #include <sstream>
 #include <cassert>
 
-// ššš ˆø”‚ðƒtƒ@ƒCƒ‹ƒpƒX‚©‚çAƒfƒBƒŒƒNƒgƒŠƒpƒX‚Æƒtƒ@ƒCƒ‹–¼‚É•ÏX ššš
+// â˜…â˜…â˜… å¼•æ•°ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã‹ã‚‰ã€ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªãƒ‘ã‚¹ã¨ãƒ•ã‚¡ã‚¤ãƒ«åã«å¤‰æ›´ â˜…â˜…â˜…
 void Model::Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename) {
     assert(common);
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
-    // ƒ‚ƒfƒ‹ƒf[ƒ^‚Ì“Ç‚Ýž‚Ý
-    modelData_ = LoadObjFile(directoryPath, filename); // ˆø”‚ð‚»‚Ì‚Ü‚Ü“n‚·
-    // ƒeƒNƒXƒ`ƒƒ‚Ì“Ç‚Ýž‚Ý‚Æƒnƒ“ƒhƒ‹‚Ì•Û‘¶
+    // ãƒ¢ãƒ‡ãƒ«ãƒ‡ãƒ¼ã‚¿ã®èª­ã¿è¾¼ã¿
+    modelData_ = LoadObjFile(directoryPath, filename); // å¼•æ•°ã‚’ãã®ã¾ã¾æ¸¡ã™
+    // ãƒ†ã‚¯ã‚¹ãƒãƒ£ã®èª­ã¿è¾¼ã¿ã¨ãƒãƒ³ãƒ‰ãƒ«ã®ä¿å­˜
     modelData_.material.textureHandle = TextureManager::GetInstance()->Load(modelData_.material.textureFilePath);
 
-    // ’¸“_ƒoƒbƒtƒ@‚Ìì¬
+    // é ‚ç‚¹ãƒãƒƒãƒ•ã‚¡ã®ä½œæˆ
     vertexResource_ = dxCommon->CreateBufferResource(sizeof(VertexData) * modelData_.vertices.size());
     vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
     vertexBufferView_.SizeInBytes = UINT(sizeof(VertexData) * modelData_.vertices.size());
     vertexBufferView_.StrideInBytes = sizeof(VertexData);
-    // ’¸“_ƒf[ƒ^‚Ì‘‚«ž‚Ý
+    // é ‚ç‚¹ãƒ‡ãƒ¼ã‚¿ã®æ›¸ãè¾¼ã¿
     VertexData* vertexData = nullptr;
     vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
     std::memcpy(vertexData, modelData_.vertices.data(), sizeof(VertexData) * modelData_.vertices.size());
     vertexResource_->Unmap(0, nullptr);
 
-    // ƒ}ƒeƒŠƒAƒ‹—p’è”ƒoƒbƒtƒ@‚Ìì¬
+    // ãƒžãƒ†ãƒªã‚¢ãƒ«ç”¨å®šæ•°ãƒãƒƒãƒ•ã‚¡ã®ä½œæˆ
     materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
     materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
