@@ -1,6 +1,5 @@
-﻿#include "debugCamera.h"
-#include "InputManager.h"
-#include "Math.h"
+﻿#include "engine/3d/debugCamera.h"
+#include "engine/io/InputManager.h"
 
 void DebugCamera::Initialize()
 {

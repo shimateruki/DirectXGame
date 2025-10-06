@@ -5,7 +5,7 @@
 // Windowsアプリでのエントリーポイント
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
-    // ★★★ Frameworkクラスのポインタで、Gameクラスのインスタンスを生成 ★★★
+    // Frameworkクラスのポインタで、Gameクラスのインスタンスを生成
     std::unique_ptr<Framework> game = std::make_unique<Game>();
 
     // Frameworkの初期化

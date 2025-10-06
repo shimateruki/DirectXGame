@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <dinput.h>
 #include <windows.h>
-#include "math.h"
+#include "engine/base/Math.h"
 #include <Xinput.h>
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "xinput.lib")
