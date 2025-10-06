@@ -1,5 +1,4 @@
-ï»¿#pragma once
-
+#pragma once
 
 
 
@@ -45,8 +44,8 @@ Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
 
 class Math
 {
-  
- 
+
+
 public:
 
 	Matrix4x4 makeIdentity4x4();
@@ -57,11 +56,11 @@ public:
 	Matrix4x4 MakeTranslateMatrix(const Vector3& translate);
 	Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2);
 	Matrix4x4 Inverse(const Matrix4x4& m);
-	//é€è¦–æŠ•å½±è¡Œåˆ—
+	//“§‹“Š‰es—ñ
 	Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip);
 
-	//æ­£å°„å½±è¡Œåˆ—
-	Matrix4x4 MakeOrthographicMatrix(float left, float top, float right,float bottom, float nearClip, float farClip);
+	//³Ë‰es—ñ
+	Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip);
 
 	Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
 	Vector3 Normalize(const Vector3& v);
@@ -69,4 +68,3 @@ public:
 	Vector3 TransformNormal(const Vector3& v, const Matrix4x4& m);
 
 };
-

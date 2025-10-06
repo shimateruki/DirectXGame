@@ -1,6 +1,6 @@
-#include "Framework.h"
-#include "TextureManager.h"
-#include "ModelManager.h"
+#include "engine/base/Framework.h"
+#include "engine/3d/TextureManager.h"
+#include "engine/3d/ModelManager.h"
 
 void Framework::Initialize() {
     // COM‚Ì‰Šú‰»

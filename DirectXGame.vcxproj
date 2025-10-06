@@ -116,6 +116,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -129,10 +130,9 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AudioPlayer.cpp" />
-    <ClCompile Include="D3DResouceLeakChecKer.cpp" />
-    <ClCompile Include="debugCamera.cpp" />
-    <ClCompile Include="DirectXCommon.cpp" />
+    <ClCompile Include="engine\audio\AudioPlayer.cpp" />
+    <ClCompile Include="engine\3d\debugCamera.cpp" />
+    <ClCompile Include="engine\base\DirectXCommon.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp" />
     <ClCompile Include="externals\imgui\imgui_demo.cpp" />
     <ClCompile Include="externals\imgui\imgui_draw.cpp" />
@@ -140,23 +140,23 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="externals\imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="externals\imgui\imgui_tables.cpp" />
     <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="Framework.cpp" />
+    <ClCompile Include="engine\base\Framework.cpp" />
     <ClCompile Include="Game.cpp" />
-    <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="engine\io\InputManager.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MinSpace</Optimization>
     </ClCompile>
-    <ClCompile Include="Math.cpp" />
-    <ClCompile Include="Model.cpp" />
-    <ClCompile Include="ModelCommon.cpp" />
-    <ClCompile Include="ModelManager.cpp" />
-    <ClCompile Include="Object3d.cpp" />
-    <ClCompile Include="Object3dCommon.cpp" />
-    <ClCompile Include="Sprite.cpp" />
-    <ClCompile Include="SpriteCommon.cpp" />
-    <ClCompile Include="TextureManager.cpp" />
-    <ClCompile Include="WinApp.cpp" />
+    <ClCompile Include="engine\3d\Model.cpp" />
+    <ClCompile Include="engine\3d\ModelCommon.cpp" />
+    <ClCompile Include="engine\3d\ModelManager.cpp" />
+    <ClCompile Include="engine\3d\Object3d.cpp" />
+    <ClCompile Include="engine\3d\Object3dCommon.cpp" />
+    <ClCompile Include="engine\2d\Sprite.cpp" />
+    <ClCompile Include="engine\2d\SpriteCommon.cpp" />
+    <ClCompile Include="engine\3d\TextureManager.cpp" />
+    <ClCompile Include="engine\base\WinApp.cpp" />
+    <ClCompile Include="engine\base\Math.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
@@ -187,10 +187,10 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AudioPlayer.h" />
-    <ClInclude Include="D3DResouceLeakChecKer.h" />
-    <ClInclude Include="debugCamera.h" />
-    <ClInclude Include="DirectXCommon.h" />
+    <ClInclude Include="engine\audio\AudioPlayer.h" />
+    <ClInclude Include="engine\base\D3DResouceLeakChecKer.h" />
+    <ClInclude Include="engine\3d\debugCamera.h" />
+    <ClInclude Include="engine\base\DirectXCommon.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h" />
@@ -199,19 +199,19 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_rectpack.h" />
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
-    <ClInclude Include="Framework.h" />
+    <ClInclude Include="engine\base\Framework.h" />
     <ClInclude Include="Game.h" />
-    <ClInclude Include="InputManager.h" />
-    <ClInclude Include="Math.h" />
-    <ClInclude Include="Model.h" />
-    <ClInclude Include="ModelCommon.h" />
-    <ClInclude Include="ModelManager.h" />
-    <ClInclude Include="Object3d.h" />
-    <ClInclude Include="Object3dCommon.h" />
-    <ClInclude Include="Sprite.h" />
-    <ClInclude Include="SpriteCommon.h" />
-    <ClInclude Include="TextureManager.h" />
-    <ClInclude Include="WinApp.h" />
+    <ClInclude Include="engine\io\InputManager.h" />
+    <ClInclude Include="engine\3d\Model.h" />
+    <ClInclude Include="engine\3d\ModelCommon.h" />
+    <ClInclude Include="engine\3d\ModelManager.h" />
+    <ClInclude Include="engine\3d\Object3d.h" />
+    <ClInclude Include="engine\3d\Object3dCommon.h" />
+    <ClInclude Include="engine\2d\Sprite.h" />
+    <ClInclude Include="engine\2d\SpriteCommon.h" />
+    <ClInclude Include="engine\3d\TextureManager.h" />
+    <ClInclude Include="engine\base\WinApp.h" />
+    <ClInclude Include="engine\base\Math.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

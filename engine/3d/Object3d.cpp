@@ -1,6 +1,6 @@
-#include "Object3d.h"
-#include "DirectXCommon.h"
-#include "ModelManager.h" // ModelManagerをインクルード
+#include "engine/3d/Object3d.h"
+#include"engine/base/DirectXCommon.h" // DirectXCommonをインクルード
+#include "engine/3d/ModelManager.h" // ModelManagerをインクルード
 #include <cassert>
 
 void Object3d::Initialize(Object3dCommon* common) {

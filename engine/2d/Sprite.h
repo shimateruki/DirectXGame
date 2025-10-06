@@ -1,7 +1,7 @@
 #pragma once
 #include <d3d12.h>
 #include <wrl.h>
-#include "Math.h"
+#include "engine/base/Math.h"
 #include <cstdint>
 #include <string>
 
