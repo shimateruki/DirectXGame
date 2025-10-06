@@ -65,8 +65,6 @@ void Sprite::Update() {
 		float top = (0.0f - anchorPoint_.y) * size_.y;
 		float bottom = (1.0f - anchorPoint_.y) * size_.y;
 
-		// ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-		// 反転処理 (ここを修正)
 		if (isFlipX_) {
 			// leftとrightの値を入れ替える
 			std::swap(left, right);
@@ -75,7 +73,7 @@ void Sprite::Update() {
 			// topとbottomの値を入れ替える
 			std::swap(top, bottom);
 		}
-		// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+	
 
 		// ４点の頂点データに反映
 		vertexData_[0] = { { left, bottom, 0.0f, 1.0f } }; // 左下

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Math.h"
+#include "engine/base/Math.h"
 
 class InputManager; // 前方宣言
 

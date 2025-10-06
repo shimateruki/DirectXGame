@@ -21,7 +21,7 @@ void Object3d::Initialize(Object3dCommon* common) {
     directionalLightData_->intensity = 1.0f;
 }
 
-// ★★★ ファイルパスでモデルを設定するオーバーロードの実装 ★★★
+//  ファイルパスでモデルを設定するオーバーロードの実装
 void Object3d::SetModel(const std::string& filePath) {
     // ModelManagerからモデルデータを取得してセット
     model_ = ModelManager::GetInstance()->FindModel(filePath);

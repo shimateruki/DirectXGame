@@ -1,6 +1,4 @@
 #pragma once
-
-// C³: base/DirectXCommon.h ‚ÌƒpƒX‚ğ³‚µ‚¢‚à‚Ì‚É•ÏX
 #include "../base/DirectXCommon.h"  
 #include <wrl.h>
 

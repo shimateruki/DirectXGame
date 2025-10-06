@@ -80,7 +80,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
         return it->second;
     }
 
-    // ★★★ 資料の「最大数チェック」を反映 ★★★
+    // 資料の「最大数チェック」を反映 
     assert(textureDatas_.size() + kSRVIndexTop < DirectXCommon::kMaxSRVCount);
 
     // ハンドルを計算（vectorの現在の要素数がそのまま次のインデックスになる）

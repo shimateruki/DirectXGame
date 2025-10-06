@@ -8,7 +8,6 @@
 
 class Object3d {
 public: // メンバクラス（構造体）
-    // Transformはpublicに移動し、直接アクセス可能に
     struct Transform {
         Vector3 scale;
         Vector3 rotate;

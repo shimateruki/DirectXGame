@@ -41,7 +41,6 @@ public: // メンバ関数
     /// <summary>
     /// 初期化
     /// </summary>
-    // ★★★ 引数をファイルパスから、ディレクトリパスとファイル名に変更 ★★★
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
 
     /// <summary>
