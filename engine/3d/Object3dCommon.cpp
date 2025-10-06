@@ -114,9 +114,9 @@ void Object3dCommon::CreatePipelineState() {
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
     // Shader‚ğƒRƒ“ƒpƒCƒ‹
-    Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob = dxCommon_->CompileShader(L"Object3d.VS.hlsl", L"vs_6_0");
+    Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob = dxCommon_->CompileShader(L"resouces/shader/Object3d.VS.hlsl", L"vs_6_0");
     assert(vertexShaderBlob != nullptr);
-    Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob = dxCommon_->CompileShader(L"Object3d.PS.hlsl", L"ps_6_0");
+    Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob = dxCommon_->CompileShader(L"resouces/shader/Object3d.PS.hlsl", L"ps_6_0");
     assert(pixelShaderBlob != nullptr);
 
     // PSO‚ğì¬

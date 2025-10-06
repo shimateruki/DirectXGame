@@ -1,5 +1,5 @@
-#include "SpriteCommon.h"
-#include "DirectXCommon.h"
+#include "engine/2d/SpriteCommon.h"
+#include "engine/base/DirectXCommon.h"
 #include <cassert>
 
 /// <summary>
@@ -115,8 +115,8 @@ void SpriteCommon::CreatePipeline() {
     depthStencilDesc.DepthEnable = false;
 
     // シェーダーのコンパイル
-    auto vsBlob = dxCommon_->CompileShader(L"Sprite.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Sprite.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"resouces/shader/Sprite.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"resouces/shader/Sprite.PS.hlsl", L"ps_6_0");
 
     // PSOのデスクリプション
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};

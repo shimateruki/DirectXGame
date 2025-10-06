@@ -95,13 +95,13 @@
     <None Include="DUMPS\2025-0422-1117.dmp">
       <Filter>ソース ファイル</Filter>
     </None>
-    <None Include="Object3d.hlsli" />
-    <None Include="Sprite.PS.hlsl" />
-    <None Include="Sprite.VS.hlsl" />
+    <None Include="resouces\shader\Object3d.hlsli" />
+    <None Include="resouces\shader\Sprite.PS.hlsl" />
+    <None Include="resouces\shader\Sprite.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Object3d.VS.hlsl" />
-    <FxCompile Include="Object3d.PS.hlsl" />
+    <FxCompile Include="resouces\shader\Object3d.VS.hlsl" />
+    <FxCompile Include="resouces\shader\Object3d.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h">
