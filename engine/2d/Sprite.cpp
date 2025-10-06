@@ -1,8 +1,8 @@
 #include "Sprite.h"
-#include "DirectXCommon.h"
-#include "WinApp.h"
+#include "engine/base/DirectXCommon.h"
+#include "engine/base/WinApp.h"
 #include <cassert>
-#include "TextureManager.h"
+#include "engine/3d/TextureManager.h"
 
 /// <summary>
 /// ‰Šú‰»

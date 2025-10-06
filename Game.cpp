@@ -1,6 +1,6 @@
 #include "Game.h"
-#include "ModelManager.h"
-#include "TextureManager.h"
+#include "engine/3d/ModelManager.h"
+#include "engine/3d/TextureManager.h"
 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"

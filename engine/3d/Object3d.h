@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Math.h"
-#include "Object3dCommon.h"
-#include "Model.h"
+#include "engine/base/Math.h"
+#include "engine/3d/Object3dCommon.h"
+#include "engine/3d/Model.h"
 #include <wrl.h>
 #include <string> // std::string を使うためにインクルード
 
