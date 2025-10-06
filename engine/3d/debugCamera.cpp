@@ -10,8 +10,8 @@ void DebugCamera::Initialize()
 
     translation = { 0.0f, 0.0f, -10.0f };
     rotation = { 0.0f, 0.0f, 0.0f };
-
-    projectionMatrix = math->MakePerspectiveFovMatrix(fovY, aspectRatio, nearZ, farZ);
+    Math math;
+    projectionMatrix = math.MakePerspectiveFovMatrix(fovY, aspectRatio, nearZ, farZ);
 }
 
 void DebugCamera::Update()
@@ -48,15 +48,15 @@ void DebugCamera::Update()
     Vector2 leftStick = inputManager->GetGamepadLeftStick();
     move.x += -leftStick.x;
     move.z += leftStick.y;
-
+    Math math;
     // カメラ移動
-    Matrix4x4 rotateMat = math->MakeRotateMatrix(rotation);
-    Vector3 moveWorld = math->TransformNormal(move, rotateMat);
+    Matrix4x4 rotateMat = math. MakeRotateMatrix(rotation);
+    Vector3 moveWorld = math.TransformNormal(move, rotateMat);
     translation = translation + moveWorld * moveSpeed;
 
     // ビュー行列の更新
-    Matrix4x4 transMat = math->MakeTranslateMatrix(-translation);
-    Matrix4x4 invRotateMat = math->MakeRotateMatrix({ -rotation.x, -rotation.y, -rotation.z });
+    Matrix4x4 transMat = math.MakeTranslateMatrix(-translation);
+    Matrix4x4 invRotateMat = math.MakeRotateMatrix({ -rotation.x, -rotation.y, -rotation.z });
     viewMatrix = invRotateMat * transMat;
 }
 

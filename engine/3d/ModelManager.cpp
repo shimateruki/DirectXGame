@@ -2,7 +2,7 @@
 #include "ModelCommon.h"
 #include <cassert>
 
-// Ã“Iƒƒ“ƒo•Ï”‚ÌÀ‘Ì’è‹`
+// é™çš„ãƒ¡ãƒ³ãƒå¤‰æ•°ã®å®Ÿä½“å®šç¾©
 ModelManager* ModelManager::instance = nullptr;
 
 ModelManager* ModelManager::GetInstance() {
@@ -19,35 +19,35 @@ void ModelManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 void ModelManager::Finalize() {
-    // ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰ğ•ú
+    // ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’è§£æ”¾
     delete instance;
     instance = nullptr;
 }
 
 void ModelManager::LoadModel(const std::string& filePath) {
-    // Šù‚É“Ç‚İ‚İÏ‚İ‚Ìê‡‚Í‘ŠúƒŠƒ^[ƒ“
+    // æ—¢ã«èª­ã¿è¾¼ã¿æ¸ˆã¿ã®å ´åˆã¯æ—©æœŸãƒªã‚¿ãƒ¼ãƒ³
     if (models_.contains(filePath)) {
         return;
     }
 
-    // ƒ‚ƒfƒ‹‚Ì¶¬‚Æ‰Šú‰»
+    // ãƒ¢ãƒ‡ãƒ«ã®ç”Ÿæˆã¨åˆæœŸåŒ–
     auto model = std::make_unique<Model>();
-    // ƒtƒ@ƒCƒ‹ƒpƒX‚©‚çƒfƒBƒŒƒNƒgƒŠƒpƒX‚Æƒtƒ@ƒCƒ‹–¼‚ğ•ªŠ„
+    // ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã‹ã‚‰ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªãƒ‘ã‚¹ã¨ãƒ•ã‚¡ã‚¤ãƒ«åã‚’åˆ†å‰²
     std::string directoryPath = filePath.substr(0, filePath.find_last_of('/'));
     std::string fileName = filePath.substr(filePath.find_last_of('/') + 1);
 
-    // ModelƒNƒ‰ƒX‚ÌInitialize‚ğŒÄ‚Ño‚µ
+    // Modelã‚¯ãƒ©ã‚¹ã®Initializeã‚’å‘¼ã³å‡ºã—
     model->Initialize(modelCommon_.get(), directoryPath, fileName);
 
-    // ƒRƒ“ƒeƒi‚ÉŠi”[
+    // ã‚³ãƒ³ãƒ†ãƒŠã«æ ¼ç´
     models_.insert(std::make_pair(filePath, std::move(model)));
 }
 
 Model* ModelManager::FindModel(const std::string& filePath) {
-    // filePath‚É‘Î‰‚·‚éƒ‚ƒfƒ‹‚ªƒRƒ“ƒeƒi‚É‚ ‚ê‚Î•Ô‚·
+    // filePathã«å¯¾å¿œã™ã‚‹ãƒ¢ãƒ‡ãƒ«ãŒã‚³ãƒ³ãƒ†ãƒŠã«ã‚ã‚Œã°è¿”ã™
     if (models_.contains(filePath)) {
         return models_.at(filePath).get();
     }
-    // Œ©‚Â‚©‚ç‚È‚¯‚ê‚Înullptr‚ğ•Ô‚·
+    // è¦‹ã¤ã‹ã‚‰ãªã‘ã‚Œã°nullptrã‚’è¿”ã™
     return nullptr;
 }

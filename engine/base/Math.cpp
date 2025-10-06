@@ -1,4 +1,4 @@
-#include "Math.h"
+#include "engine/base/Math.h"
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -149,33 +149,33 @@ Matrix4x4 Math::Inverse(const Matrix4x4& m)
 		- a12 * a23 * a34 * a41 - a13 * a24 * a32 * a41 - a14 * a22 * a33 * a41
 		+ a14 * a23 * a32 * a41 + a13 * a22 * a34 * a41 + a12 * a24 * a33 * a41;
 	if (det == 0.0f) {
-		// ‹ts—ñ‚ª‘¶İ‚µ‚È‚¢is—ñ®‚ª0j
+		// é€†è¡Œåˆ—ãŒå­˜åœ¨ã—ãªã„ï¼ˆè¡Œåˆ—å¼ãŒ0ï¼‰
 		return result;
 	}
 
 	float invDet = 1.0f / det;
 
-	// ˆÈ‰ºAŠe—v‘f‚É‘Î‰‚·‚é—]ˆöq‚ğè“®ŒvZ‚µ‚Ä‘ã“üi“]’u‚ ‚èj
+	// ä»¥ä¸‹ã€å„è¦ç´ ã«å¯¾å¿œã™ã‚‹ä½™å› å­ã‚’æ‰‹å‹•è¨ˆç®—ã—ã¦ä»£å…¥ï¼ˆè»¢ç½®ã‚ã‚Šï¼‰
 
-	// 1s–Ú
+	// 1è¡Œç›®
 	result.m[0][0] = (a22 * (a33 * a44 - a34 * a43) - a23 * (a32 * a44 - a34 * a42) + a24 * (a32 * a43 - a33 * a42)) * invDet;
 	result.m[0][1] = -(a12 * (a33 * a44 - a34 * a43) - a13 * (a32 * a44 - a34 * a42) + a14 * (a32 * a43 - a33 * a42)) * invDet;
 	result.m[0][2] = (a12 * (a23 * a44 - a24 * a43) - a13 * (a22 * a44 - a24 * a42) + a14 * (a22 * a43 - a23 * a42)) * invDet;
 	result.m[0][3] = -(a12 * (a23 * a34 - a24 * a33) - a13 * (a22 * a34 - a24 * a32) + a14 * (a22 * a33 - a23 * a32)) * invDet;
 
-	// 2s–Ú
+	// 2è¡Œç›®
 	result.m[1][0] = -(a21 * (a33 * a44 - a34 * a43) - a23 * (a31 * a44 - a34 * a41) + a24 * (a31 * a43 - a33 * a41)) * invDet;
 	result.m[1][1] = (a11 * (a33 * a44 - a34 * a43) - a13 * (a31 * a44 - a34 * a41) + a14 * (a31 * a43 - a33 * a41)) * invDet;
 	result.m[1][2] = -(a11 * (a23 * a44 - a24 * a43) - a13 * (a21 * a44 - a24 * a41) + a14 * (a21 * a43 - a23 * a41)) * invDet;
 	result.m[1][3] = (a11 * (a23 * a34 - a24 * a33) - a13 * (a21 * a34 - a24 * a31) + a14 * (a21 * a33 - a23 * a31)) * invDet;
 
-	// 3s–Ú
+	// 3è¡Œç›®
 	result.m[2][0] = (a21 * (a32 * a44 - a34 * a42) - a22 * (a31 * a44 - a34 * a41) + a24 * (a31 * a42 - a32 * a41)) * invDet;
 	result.m[2][1] = -(a11 * (a32 * a44 - a34 * a42) - a12 * (a31 * a44 - a34 * a41) + a14 * (a31 * a42 - a32 * a41)) * invDet;
 	result.m[2][2] = (a11 * (a22 * a44 - a24 * a42) - a12 * (a21 * a44 - a24 * a41) + a14 * (a21 * a42 - a22 * a41)) * invDet;
 	result.m[2][3] = -(a11 * (a22 * a34 - a24 * a32) - a12 * (a21 * a34 - a24 * a31) + a14 * (a21 * a32 - a22 * a31)) * invDet;
 
-	// 4s–Ú
+	// 4è¡Œç›®
 	result.m[3][0] = -(a21 * (a32 * a43 - a33 * a42) - a22 * (a31 * a43 - a33 * a41) + a23 * (a31 * a42 - a32 * a41)) * invDet;
 	result.m[3][1] = (a11 * (a32 * a43 - a33 * a42) - a12 * (a31 * a43 - a33 * a41) + a13 * (a31 * a42 - a32 * a41)) * invDet;
 	result.m[3][2] = -(a11 * (a22 * a43 - a23 * a42) - a12 * (a21 * a43 - a23 * a41) + a13 * (a21 * a42 - a22 * a41)) * invDet;
@@ -241,7 +241,7 @@ Vector3 Math::Normalize(const Vector3& v)
 {
 	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 
-	if (length < 0.000001f) { // “KØ‚È epsilon ’l‚ğİ’è‚µ‚Ä‚­‚¾‚³‚¢
+	if (length < 0.000001f) { // é©åˆ‡ãª epsilon å€¤ã‚’è¨­å®šã—ã¦ãã ã•ã„
 		return { 0.0f, 0.0f, 0.0f };
 	}
 
@@ -253,7 +253,7 @@ Matrix4x4 Math::MakeRotateMatrix(const Vector3& rotate)
 	Matrix4x4 rotX = MakeRotateXMatrix(rotate.x);
 	Matrix4x4 rotY = MakeRotateYMatrix(rotate.y);
 	Matrix4x4 rotZ = MakeRotateZMatrix(rotate.z);
-	return Multiply(Multiply(rotZ, rotX), rotY); // Z¨X¨Y ‚Ì‡
+	return Multiply(Multiply(rotZ, rotX), rotY); // Zâ†’Xâ†’Y ã®é †
 }
 
 Vector3 Math::TransformNormal(const Vector3& v, const Matrix4x4& m)

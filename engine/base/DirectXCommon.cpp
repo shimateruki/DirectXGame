@@ -1,6 +1,6 @@
 
-#include "DirectXCommon.h"
-#include "WinApp.h"
+#include "engine/base/DirectXCommon.h"
+#include "engine/base/WinApp.h"
 #include <cassert>
 #include <format>
 #include <vector>
@@ -8,7 +8,7 @@
 #include <fstream>
 #include <thread>
 
-// ���O�o�͗p�̃w���p�[�֐��i�O���[�o���j
+// ログ出力用のヘルパー関数（グローバル）
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }
 std::string ConvertString(const std::wstring& str);
 
@@ -35,7 +35,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 
 
 
-    // �r���[�|�[�g�ƃV�U�[��`�̐ݒ�
+    // ビューポートとシザー矩形の設定
     viewport_.Width = (float)WinApp::kClientWidth;
     viewport_.Height = (float)WinApp::kClientHeight;
     viewport_.TopLeftX = 0;
@@ -58,24 +58,24 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_t sizeInBytes)
 {
-    //���_�ƃ��\�[�X�p�̃q�[�v�ݒ�
+    //頂点とリソース用のヒープ設定
     D3D12_HEAP_PROPERTIES uploadHeapProperties{};
     uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-    //���_���\�[�X�̐ݒ�
+    //頂点リソースの設定
     D3D12_RESOURCE_DESC vertResoucesDesc{};
-    //�o�b�t�@�[���\�[�X�e�N�X�`���̏ꍇ�͕ʂ̎w�������
+    //バッファーリソーステクスチャの場合は別の指定をする
     vertResoucesDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    vertResoucesDesc.Width = sizeInBytes; // ������ ���ӁF���̃R�[�h�� *3 �͍폜���܂��� ������
-    //�o�b�t�@�̏ꍇ��1�ɂ���
+    vertResoucesDesc.Width = sizeInBytes; // ★★★ 注意：元のコードの *3 は削除しました ★★★
+    //バッファの場合は1にする
     vertResoucesDesc.Height = 1;
     vertResoucesDesc.DepthOrArraySize = 1;
     vertResoucesDesc.MipLevels = 1;
     vertResoucesDesc.SampleDesc.Count = 1;
-    //�o�b�t�@�̏ꍇ�͂�������錈�܂�
+    //バッファの場合はこれをする決まり
     vertResoucesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    //���ۂɒ��_���\�[�X�����
+    //実際に頂点リソースを作る
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
-    // ������ device �������o�ϐ��� device_ �ɕύX ������
+    // ★★★ device をメンバ変数の device_ に変更 ★★★
     HRESULT hr = device_->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
         &vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&resource));
     assert(SUCCEEDED(hr));
@@ -85,42 +85,42 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
 
 void DirectXCommon::InitalaizeFixFPS()
 {
-	// ���݂̎������擾���ċL�^
+	// 現在の時刻を取得して記録
 	reference_ = std::chrono::steady_clock::now();
 }
 
 void DirectXCommon::UpdateFixFPS()
 {
-    //1/60�b�т�����̎���
+    //1/60秒びったりの時間
     const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
-    //1/60�b���킸���ɒZ������
+    //1/60秒よりわずかに短い時間
     const std::chrono::microseconds  kMinCheckTime(uint64_t(1000000.0f / 65.0f));
-	// ���݂̎������擾
+	// 現在の時刻を取得
 	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
-	// �O��L�^������������̌o�ߎ��Ԃ��v�Z
+	// 前回記録した時刻からの経過時間を計算
 	std::chrono::microseconds elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - reference_);
-//1/60�b(���킸���ɒZ������)�����Ă��Ȃ��ꍇ
+//1/60秒(よりわずかに短い時間)立っていない場合
     if (elapsed < kMinTimer)
     {
-        //1/60�o�߂���܂ł̔����ȃX���[�v���J��Ԃ�
+        //1/60経過するまでの微小なスリープを繰り返す
         while (std::chrono::steady_clock::now() - reference_ < kMinTimer)
         {
 			std::this_thread::sleep_for(std::chrono::microseconds(1));
         }
     }
-	// ���݂̎������Ď擾
+	// 現在の時刻を再取得
 	reference_ = std::chrono::steady_clock::now();
 }
 
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     const std::wstring& filePath, const wchar_t* profile)
 {
-    // ���O�o�͗p�̃X�g���[��������
+    // ログ出力用のストリームを準備
     std::ofstream logStream("shader_compile.log", std::ios_base::app);
 
     Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
-    // �����o�ϐ���dxcUtils_���g��
+    // メンバ変数のdxcUtils_を使う
     HRESULT hr = dxcUtils_->LoadFile(filePath.c_str(), nullptr, &shaderSource);
     assert(SUCCEEDED(hr));
 
@@ -135,7 +135,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     };
 
     Microsoft::WRL::ComPtr<IDxcResult> shaderResult = nullptr;
-    // �����o�ϐ���dxcCompiler_, includeHandler_���g��
+    // メンバ変数のdxcCompiler_, includeHandler_を使う
     hr = dxcCompiler_->Compile(
         &shaderSourceBuffer, arguments, _countof(arguments),
         includeHandler_.Get(), IID_PPV_ARGS(&shaderResult));
@@ -144,7 +144,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     Microsoft::WRL::ComPtr<IDxcBlobUtf8> shaderError = nullptr;
     shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
     if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
-        // Log(shaderError->GetStringPointer()); // ���O�֐����Ăяo��
+        // Log(shaderError->GetStringPointer()); // ログ関数を呼び出す
         assert(false);
     }
 
@@ -160,15 +160,23 @@ void DirectXCommon::Finalize() {
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 }
-
 void DirectXCommon::PreDraw() {
+    // コマンドアロケータをリセットします。
+    // これにより、新しいフレームのコマンドを記録するためにメモリ領域を再利用できます。
     HRESULT hr = commandAllocator_->Reset();
     assert(SUCCEEDED(hr));
+
+    // コマンドリストをリセットします。
+    // コマンドアロケータを関連付け、新しいコマンドの記録を開始できる状態にします。
     hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
     assert(SUCCEEDED(hr));
 
+    // 現在描画対象となっているバックバッファのインデックスを取得します。
+    // スワップチェーンは通常複数のバッファ（ダブルバッファリング、トリプルバッファリング）を持っています。
     backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
 
+    // リソースバリアを設定します。
+    // これから描画を行うバックバッファの状態を「表示用(PRESENT)」から「描画ターゲット用(RENDER_TARGET)」に切り替えます。
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -177,27 +185,43 @@ void DirectXCommon::PreDraw() {
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
     commandList_->ResourceBarrier(1, &barrier);
 
+    // レンダーターゲットビュー(RTV)のディスクリプタハンドルのポインタを取得します。
+    // バックバッファのインデックスを基に、正しいRTVを指すようにオフセットを計算しています。
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
     rtvHandle.ptr = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart().ptr + (backBufferIndex_ * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+
+    // 深度ステンシルビュー(DSV)のディスクリプタハンドルのポインタを取得します。
     D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    // 出力マージャ(OM)ステージに、描画先となるRTVとDSVを設定します。
     commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
+    // 画面を指定した色でクリアします (例: 青みがかった灰色)。
     float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
     commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+    // 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
     commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
+    // ビューポート（描画する画面内の領域）を設定します。
     commandList_->RSSetViewports(1, &viewport_);
+    // シザー矩形（ピクセルを描画する範囲を限定する矩形）を設定します。
     commandList_->RSSetScissorRects(1, &scissorRect_);
 
+    // これから使用するディスクリプタヒープを設定します。
+    // ここでは主にテクスチャなどで使用するSRV(シェーダーリソースビュー)用のヒープをセットしています。
     ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap_.Get() };
     commandList_->SetDescriptorHeaps(1, descriptorHeaps);
-
 }
 
 void DirectXCommon::PostDraw() {
+    // ImGuiの描画コマンドを生成します。
     ImGui::Render();
+    // 生成されたImGuiの描画データをコマンドリストに記録します。
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.Get());
 
+    // リソースバリアを再度設定します。
+    // 描画が終わったバックバッファの状態を「描画ターゲット用(RENDER_TARGET)」から「表示用(PRESENT)」に切り替えます。
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -206,30 +230,46 @@ void DirectXCommon::PostDraw() {
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
     commandList_->ResourceBarrier(1, &barrier);
 
+    // コマンドリストへのコマンドの記録を終了します。
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
 
+    // FPS固定のための更新処理（独自実装の関数）
     UpdateFixFPS();
 
+    // コマンドリストの配列を作成します（今回は1つだけ）。
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
+    // コマンドキューにコマンドリストを投入し、GPUに実行を指示します。
     commandQueue_->ExecuteCommandLists(1, commandLists);
 
+    // スワップチェーンに命令を送り、バックバッファをフロントバッファに表示（プレゼント）します。
+    // 第1引数: VSync同期間隔 (1ならVSync待ち)
+    // 第2引数: オプションフラグ
     swapChain_->Present(1, 0);
 
+    // --- ここから次のフレームのためのCPUとGPUの同期処理 ---
+
+    // フェンスの目標値をインクリメントします。
     fenceValue_++;
+    // GPUがコマンドキューのここまで処理を終えたら、フェンスに新しい値を書き込むよう指示します。
     commandQueue_->Signal(fence_.Get(), fenceValue_);
+
+    // GPUの処理がまだ完了していないかチェックします。
     if (fence_->GetCompletedValue() < fenceValue_) {
+        // GPUが指定したフェンス値に達したときに発火するイベントを設定します。
         fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+        // CPUは、そのイベントが発火するまでここで待機します。
+        // これにより、GPUが前のフレームの処理を終えるまで、CPUが次のフレームの準備を始めるのを防ぎます。
         WaitForSingleObject(fenceEvent_, INFINITE);
     }
 }
-
 void DirectXCommon::InitializeDXGIDevice() {
+
 #ifdef _DEBUG
     Microsoft::WRL::ComPtr<ID3D12Debug1> debugController;
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
         debugController->EnableDebugLayer();
-        debugController->SetEnableGPUBasedValidation(true);
+        //debugController->SetEnableGPUBasedValidation(true);
     }
 #endif
 
@@ -341,7 +381,7 @@ void DirectXCommon::CreateFence() {
 void DirectXCommon::InitializeImGui() {
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = kMaxSRVCount; // 128����萔�ɕύX
+    srvHeapDesc.NumDescriptors = kMaxSRVCount; // 128から定数に変更
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     HRESULT hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap_));
     assert(SUCCEEDED(hr));
@@ -387,7 +427,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const DirectX::TexMetadata & metadata)
 {
-    //metadata������Resouces�̐ݒ�
+    //metadataを軸にResoucesの設定
     D3D12_RESOURCE_DESC resouceDesc{};
     resouceDesc.Width = UINT(metadata.width);
     resouceDesc.Height = UINT(metadata.height);
@@ -397,13 +437,13 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(cons
     resouceDesc.SampleDesc.Count = 1;
     resouceDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
 
-    //���p����heap�̐ݒ�
+    //利用するheapの設定
     D3D12_HEAP_PROPERTIES heapProperties{};
     heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-    //resouces�̍쐬
+    //resoucesの作成
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
-    // ������ device �������o�ϐ��� device_ �ɕύX ������
+    // ★★★ device をメンバ変数の device_ に変更 ★★★
     HRESULT hr = device_->CreateCommittedResource(
         &heapProperties,
         D3D12_HEAP_FLAG_NONE,
@@ -438,14 +478,14 @@ void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resourc
 
 DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
 {
-    //�e�N�X�`���t�@�C����ǂݍ���Ńv���O�����ň�����悤�ɂ���
+    //テクスチャファイルを読み込んでプログラムで扱えるようにする
     DirectX::ScratchImage image{};
     DirectX::ScratchImage mipImages{};
-    // ������ �N���X���� static �֐����Ăяo���悤�ɕύX ������
+    // ★★★ クラス内の static 関数を呼び出すように変更 ★★★
     std::wstring filePathW = DirectXCommon::ConvertString(filePath);
     HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
 
-    //�e�N�X�`�����ǂݍ��܂�Ȃ������ꍇ�͔��F�̃e�N�X�`���𒣂�
+    //テクスチャが読み込まれなかった場合は白色のテクスチャを張る
     if (FAILED(hr))
     {
         D3D12_RESOURCE_DESC materialData;
@@ -455,7 +495,7 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
         materialData.MipLevels = 1;
         materialData.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         materialData.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        //���F�̃e�N�X�`�����쐬
+        //白色のテクスチャを作成
         DirectX::Image whiteImage;
         whiteImage.width = 1;
         whiteImage.height = 1;
@@ -472,7 +512,7 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
         return mipImages;
     }
 
-    //�~�j�}�b�v�̍쐬
+    //ミニマップの作成
     hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
     assert(SUCCEEDED(hr));
 
@@ -482,6 +522,7 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
 
 std::wstring DirectXCommon::ConvertString(const std::string& str) {
     if (str.empty()) {
+
         return std::wstring();
     }
     auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0);
@@ -492,33 +533,36 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
     MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
     return result;
 }
-
-void DirectXCommon::FlushCommandQueue() {
-    // �R�}���h���X�g���N���[�Y����
+void DirectXCommon::FlushCommandQueue(bool reset) {
+    // コマンドリストをクローズする
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
 
-    // GPU�ɃR�}���h���X�g�̎��s���w������
+    // GPUにコマンドリストの実行を指示する
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
     commandQueue_->ExecuteCommandLists(1, commandLists);
 
-    // fence�̒l���C���N�������g���Ă���
+    // fenceの値もインクリメントしておく
     fenceValue_++;
-    // GPU��Signal�R�}���h�𑗐M����
+    // GPUにSignalコマンドを送信する
     commandQueue_->Signal(fence_.Get(), fenceValue_);
 
-    // fence�̒l���w�肵��Signal�l�ɓ��B����̂�҂�
+    // fenceの値が指定したSignal値に到達するのを待つ
     if (fence_->GetCompletedValue() < fenceValue_) {
-        // �C�x���g�n���h���̎擾
-        // �C�x���g��fence��Signal�l�ɓ��B�����Ƃ��ɔ��s�����悤�Ɏw��
+        // イベントハンドルの取得
+        // イベントはfenceのSignal値に到達したときに発行されるように指定
         fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
-        // �C�x���g�ҋ@
+        // イベント待機
         WaitForSingleObject(fenceEvent_, INFINITE);
     }
 
-    // ���̃R�}���h���X�g������
-    hr = commandAllocator_->Reset();
-    assert(SUCCEEDED(hr));
-    hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
-    assert(SUCCEEDED(hr));
+
+    // resetがtrueの場合のみ、アロケータとリストをリセットする
+    if (reset) {
+        // 次のコマンドリストを準備
+        hr = commandAllocator_->Reset();
+        assert(SUCCEEDED(hr));
+        hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
+        assert(SUCCEEDED(hr));
+    }
 }

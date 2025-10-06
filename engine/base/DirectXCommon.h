@@ -1,57 +1,57 @@
 #pragma once
 
-// ======== DirectX‚ÌŠî–{‹@”\‚É•K—v‚Èƒwƒbƒ_[ƒtƒ@ƒCƒ‹ ========
+// ======== DirectXã®åŸºæœ¬æ©Ÿèƒ½ã«å¿…è¦ãªãƒ˜ãƒƒãƒ€ãƒ¼ãƒ•ã‚¡ã‚¤ãƒ« ========
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <wrl.h> // ComPtr‚ğg‚¤‚Ì‚É•K—v
+#include <wrl.h> // ComPtrã‚’ä½¿ã†ã®ã«å¿…è¦
 #include <string>
 #include <chrono>
 
-// ======== ŠO•”ƒ‰ƒCƒuƒ‰ƒŠ‚Ìƒwƒbƒ_[ƒtƒ@ƒCƒ‹ ========
-#include <dxcapi.h> // ƒVƒF[ƒ_[ƒRƒ“ƒpƒCƒ‹‚É•K—v
+// ======== å¤–éƒ¨ãƒ©ã‚¤ãƒ–ãƒ©ãƒªã®ãƒ˜ãƒƒãƒ€ãƒ¼ãƒ•ã‚¡ã‚¤ãƒ« ========
+#include <dxcapi.h> // ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ã«å¿…è¦
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/DirectXTex/DirectXTex.h"
 
-// ‘O•ûéŒ¾ 
+// å‰æ–¹å®£è¨€ 
 class WinApp;
 
 // =================================================================
-// DirectX‚Ì—lX‚È‰Šú‰»‚â‹@”\‚ğW–ñ‚µ‚½AƒvƒƒOƒ‰ƒ€‚ÌŠî”Õ‚Æ‚È‚éƒNƒ‰ƒX
-// Singletonƒpƒ^[ƒ“‚ÅAƒvƒƒOƒ‰ƒ€‘S‘Ì‚Å—Bˆê‚ÌƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‹¤—L‚·‚é
+// DirectXã®æ§˜ã€…ãªåˆæœŸåŒ–ã‚„æ©Ÿèƒ½ã‚’é›†ç´„ã—ãŸã€ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã®åŸºç›¤ã¨ãªã‚‹ã‚¯ãƒ©ã‚¹
+// Singletonãƒ‘ã‚¿ãƒ¼ãƒ³ã§ã€ãƒ—ãƒ­ã‚°ãƒ©ãƒ å…¨ä½“ã§å”¯ä¸€ã®ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’å…±æœ‰ã™ã‚‹
 // =================================================================
 class DirectXCommon {
 public:
-	// ======== public‚Èƒƒ“ƒoŠÖ”iŠO•”‚©‚çŒÄ‚Ño‚µ‚Äg‚¤‹@”\j ========
+	// ======== publicãªãƒ¡ãƒ³ãƒé–¢æ•°ï¼ˆå¤–éƒ¨ã‹ã‚‰å‘¼ã³å‡ºã—ã¦ä½¿ã†æ©Ÿèƒ½ï¼‰ ========
 
 	/// <summary>
-	/// SingletonƒCƒ“ƒXƒ^ƒ“ƒX‚Ìæ“¾
+	/// Singletonã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®å–å¾—
 	/// </summary>
 	static DirectXCommon* GetInstance();
 
 	/// <summary>
-	/// DirectX‚ÌŠeí‰Šú‰»ˆ—‚ğ‚Ü‚Æ‚ß‚½ŠÖ”
+	/// DirectXã®å„ç¨®åˆæœŸåŒ–å‡¦ç†ã‚’ã¾ã¨ã‚ãŸé–¢æ•°
 	/// </summary>
 	void Initialize(WinApp* winApp);
 
 	/// <summary>
-	/// I—¹ˆ— (ImGui‚ÌI—¹‚È‚Ç)
+	/// çµ‚äº†å‡¦ç† (ImGuiã®çµ‚äº†ãªã©)
 	/// </summary>
 	void Finalize();
 
 	/// <summary>
-	/// –ˆƒtƒŒ[ƒ€‚Ì•`‰æ‘O‚És‚¤ˆ—
+	/// æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã®æç”»å‰ã«è¡Œã†å‡¦ç†
 	/// </summary>
 	void PreDraw();
 
 	/// <summary>
-	/// –ˆƒtƒŒ[ƒ€‚Ì•`‰æŒã‚És‚¤ˆ—
+	/// æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã®æç”»å¾Œã«è¡Œã†å‡¦ç†
 	/// </summary>
 	void PostDraw();
 
 
-	// --- ƒQƒbƒ^[ŠÖ”iprivate‚Èƒƒ“ƒo•Ï”‚ğŠO•”‚©‚çˆÀ‘S‚Éæ“¾‚·‚éj ---
+	// --- ã‚²ãƒƒã‚¿ãƒ¼é–¢æ•°ï¼ˆprivateãªãƒ¡ãƒ³ãƒå¤‰æ•°ã‚’å¤–éƒ¨ã‹ã‚‰å®‰å…¨ã«å–å¾—ã™ã‚‹ï¼‰ ---
 
 	ID3D12Device* GetDevice() const { return device_.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
@@ -59,75 +59,75 @@ public:
 	size_t GetBackBufferCount() const { return backBufferCount_; }
 	ID3D12DescriptorHeap* GetSrvDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 
-	// Å‘åSRV”iÅ‘åƒeƒNƒXcha–‡”j
+	// æœ€å¤§SRVæ•°ï¼ˆæœ€å¤§ãƒ†ã‚¯ã‚¹chaæšæ•°ï¼‰
 	static const uint32_t kMaxSRVCount = 512;
 	void InitalaizeFixFPS();
 	void UpdateFixFPS();
 
-	// --- ƒ†[ƒeƒBƒŠƒeƒBŠÖ”i•Ö—˜‚Èƒwƒ‹ƒp[‹@”\j ---
+	// --- ãƒ¦ãƒ¼ãƒ†ã‚£ãƒªãƒ†ã‚£é–¢æ•°ï¼ˆä¾¿åˆ©ãªãƒ˜ãƒ«ãƒ‘ãƒ¼æ©Ÿèƒ½ï¼‰ ---
 
 	/// <summary>
-	/// HLSLƒVƒF[ƒ_[ƒtƒ@ƒCƒ‹‚ğƒRƒ“ƒpƒCƒ‹‚·‚é
+	/// HLSLã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ã™ã‚‹
 	/// </summary>
 	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profile);
 
 	/// <summary>
-	/// ”Ä—p“I‚Èƒoƒbƒtƒ@ƒŠƒ\[ƒX‚ğì¬‚·‚é
+	/// æ±ç”¨çš„ãªãƒãƒƒãƒ•ã‚¡ãƒªã‚½ãƒ¼ã‚¹ã‚’ä½œæˆã™ã‚‹
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
 
 	/// <summary>
-	/// ƒeƒNƒXƒ`ƒƒƒŠƒ\[ƒX‚ğì¬‚·‚é
+	/// ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒªã‚½ãƒ¼ã‚¹ã‚’ä½œæˆã™ã‚‹
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metadata);
 
 	/// <summary>
-	/// ƒeƒNƒXƒ`ƒƒƒf[ƒ^‚ğƒŠƒ\[ƒX‚ÉƒAƒbƒvƒ[ƒh‚·‚é (WriteToSubresource”Å)
+	/// ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒ‡ãƒ¼ã‚¿ã‚’ãƒªã‚½ãƒ¼ã‚¹ã«ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ (WriteToSubresourceç‰ˆ)
 	/// </summary>
 	void UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
 
 	/// <summary>
-	/// ƒeƒNƒXƒ`ƒƒƒtƒ@ƒCƒ‹‚ğ“Ç‚İ‚Ş (static‚È‚Ì‚ÅƒCƒ“ƒXƒ^ƒ“ƒX•s—v)
+	/// ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒ•ã‚¡ã‚¤ãƒ«ã‚’èª­ã¿è¾¼ã‚€ (staticãªã®ã§ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ä¸è¦)
 	/// </summary>
 	static DirectX::ScratchImage LoadTexture(const std::string& filePath);
 
 	/// <summary>
-	/// string ‚ğ wstring ‚É•ÏŠ·‚·‚é (static‚È‚Ì‚ÅƒCƒ“ƒXƒ^ƒ“ƒX•s—v)
+	/// string ã‚’ wstring ã«å¤‰æ›ã™ã‚‹ (staticãªã®ã§ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ä¸è¦)
 	/// </summary>
 	static std::wstring ConvertString(const std::string& str);
-	void FlushCommandQueue();
+	void FlushCommandQueue(bool reset = true);
 
 private:
-	// ======== private‚Èƒƒ“ƒoŠÖ”i‚±‚ÌƒNƒ‰ƒX‚Ì“à•”‚Å‚Ì‚İg‚¤‹@”\j ========
+	// ======== privateãªãƒ¡ãƒ³ãƒé–¢æ•°ï¼ˆã“ã®ã‚¯ãƒ©ã‚¹ã®å†…éƒ¨ã§ã®ã¿ä½¿ã†æ©Ÿèƒ½ï¼‰ ========
 
-	// Singleton‚É‚·‚é‚½‚ß‚ÌƒRƒ“ƒXƒgƒ‰ƒNƒ^“™‚Ìprivate‰»
+	// Singletonã«ã™ã‚‹ãŸã‚ã®ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ç­‰ã®privateåŒ–
 	DirectXCommon() = default;
 	~DirectXCommon() = default;
 	DirectXCommon(const DirectXCommon&) = delete;
 	const DirectXCommon& operator=(const DirectXCommon&) = delete;
 
-	// Šeí‰Šú‰»ˆ—
-	void InitializeDXGIDevice(); // DXGIƒfƒoƒCƒX‚Ì‰Šú‰»
-	void CreateCommand();        // ƒRƒ}ƒ“ƒhŠÖ˜A‚Ì‰Šú‰»
-	void CreateSwapChain();      // ƒXƒƒbƒvƒ`ƒFƒCƒ“‚Ìì¬
-	void CreateRTV();            // ƒŒƒ“ƒ_[ƒ^[ƒQƒbƒgƒrƒ…[‚Ìì¬
-	void CreateDSV();            // [“xƒXƒeƒ“ƒVƒ‹ƒrƒ…[‚Ìì¬
-	void CreateFence();          // ƒtƒFƒ“ƒX‚Ìì¬
-	void InitializeImGui();      // ImGui‚Ì‰Šú‰»
+	// å„ç¨®åˆæœŸåŒ–å‡¦ç†
+	void InitializeDXGIDevice(); // DXGIãƒ‡ãƒã‚¤ã‚¹ã®åˆæœŸåŒ–
+	void CreateCommand();        // ã‚³ãƒãƒ³ãƒ‰é–¢é€£ã®åˆæœŸåŒ–
+	void CreateSwapChain();      // ã‚¹ãƒ¯ãƒƒãƒ—ãƒã‚§ã‚¤ãƒ³ã®ä½œæˆ
+	void CreateRTV();            // ãƒ¬ãƒ³ãƒ€ãƒ¼ã‚¿ãƒ¼ã‚²ãƒƒãƒˆãƒ“ãƒ¥ãƒ¼ã®ä½œæˆ
+	void CreateDSV();            // æ·±åº¦ã‚¹ãƒ†ãƒ³ã‚·ãƒ«ãƒ“ãƒ¥ãƒ¼ã®ä½œæˆ
+	void CreateFence();          // ãƒ•ã‚§ãƒ³ã‚¹ã®ä½œæˆ
+	void InitializeImGui();      // ImGuiã®åˆæœŸåŒ–
 
-	// DSV—p‚ÌƒeƒNƒXƒ`ƒƒƒŠƒ\[ƒX‚ğì¬‚·‚éƒwƒ‹ƒp[
+	// DSVç”¨ã®ãƒ†ã‚¯ã‚¹ãƒãƒ£ãƒªã‚½ãƒ¼ã‚¹ã‚’ä½œæˆã™ã‚‹ãƒ˜ãƒ«ãƒ‘ãƒ¼
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(int32_t width, int32_t height);
 
 
 private:
-	// ======== private‚Èƒƒ“ƒo•Ï”i‚±‚ÌƒNƒ‰ƒX‚ª“à•”‚Å•Û‚·‚éƒf[ƒ^j ========
+	// ======== privateãªãƒ¡ãƒ³ãƒå¤‰æ•°ï¼ˆã“ã®ã‚¯ãƒ©ã‚¹ãŒå†…éƒ¨ã§ä¿æŒã™ã‚‹ãƒ‡ãƒ¼ã‚¿ï¼‰ ========
 
-	WinApp* winApp_ = nullptr; // WindowsAPIƒNƒ‰ƒX
+	WinApp* winApp_ = nullptr; // WindowsAPIã‚¯ãƒ©ã‚¹
 
-	//‹L˜^ŠÔ
+	//è¨˜éŒ²æ™‚é–“
 	std::chrono::steady_clock::time_point reference_;
 
-	// --- DirectXƒIƒuƒWƒFƒNƒg ---
+	// --- DirectXã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ ---
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue_ = nullptr;
@@ -140,21 +140,21 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
 
-	// --- GPU‚Æ‚Ì“¯Šú—p ---
+	// --- GPUã¨ã®åŒæœŸç”¨ ---
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence_ = nullptr;
 	uint64_t fenceValue_ = 0;
 	HANDLE fenceEvent_ = nullptr;
 
-	// --- •`‰æ—Ìˆæ ---
+	// --- æç”»é ˜åŸŸ ---
 	D3D12_VIEWPORT viewport_{};
 	D3D12_RECT scissorRect_{};
 
-	// --- ‚»‚Ì‘¼ ---
+	// --- ãã®ä»– ---
 	DXGI_FORMAT rtvFormat_ = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	UINT backBufferIndex_ = 0;
 	const size_t backBufferCount_ = 2;
 
-	// --- ƒVƒF[ƒ_[ƒRƒ“ƒpƒCƒ‹—p ---
+	// --- ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚³ãƒ³ãƒ‘ã‚¤ãƒ«ç”¨ ---
 	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_ = nullptr;

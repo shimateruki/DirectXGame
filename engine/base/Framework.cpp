@@ -3,10 +3,10 @@
 #include "engine/3d/ModelManager.h"
 
 void Framework::Initialize() {
-    // COM‚Ì‰Šú‰»
+    // COMã®åˆæœŸåŒ–
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    // --- ƒGƒ“ƒWƒ“ƒVƒXƒeƒ€‚Ì‰Šú‰» ---
+    // --- ã‚¨ãƒ³ã‚¸ãƒ³ã‚·ã‚¹ãƒ†ãƒ ã®åˆæœŸåŒ– ---
     winApp_ = std::make_unique<WinApp>();
     winApp_->Initialize(L"CG2", 1280, 720);
 
@@ -16,28 +16,28 @@ void Framework::Initialize() {
     inputManager_ = std::make_unique<InputManager>();
     inputManager_->Initialize(winApp_->GetHwnd());
 
-    // --- ƒ}ƒl[ƒWƒƒƒNƒ‰ƒX‚Ì‰Šú‰» ---
+    // --- ãƒãƒãƒ¼ã‚¸ãƒ£ã‚¯ãƒ©ã‚¹ã®åˆæœŸåŒ– ---
     ModelManager::GetInstance()->Initialize(dxCommon_);
     TextureManager::GetInstance()->Initialize(dxCommon_);
 }
 
 void Framework::Finalize() {
-    // --- ƒ}ƒl[ƒWƒƒƒNƒ‰ƒX‚ÌI—¹ˆ— ---
+    // --- ãƒãƒãƒ¼ã‚¸ãƒ£ã‚¯ãƒ©ã‚¹ã®çµ‚äº†å‡¦ç† ---
     ModelManager::GetInstance()->Finalize();
 
-    // --- ƒGƒ“ƒWƒ“ƒVƒXƒeƒ€‚ÌI—¹ˆ— ---
+    // --- ã‚¨ãƒ³ã‚¸ãƒ³ã‚·ã‚¹ãƒ†ãƒ ã®çµ‚äº†å‡¦ç† ---
     dxCommon_->Finalize();
 
-    // COM‚ÌI—¹ˆ—
+    // COMã®çµ‚äº†å‡¦ç†
     CoUninitialize();
 }
 
 void Framework::Run() {
-    // ƒƒCƒ“ƒ‹[ƒv
+    // ãƒ¡ã‚¤ãƒ³ãƒ«ãƒ¼ãƒ—
     while (winApp_->Update() == false) {
-        // XVˆ—
+        // æ›´æ–°å‡¦ç†
         Update();
-        // •`‰æˆ—
+        // æç”»å‡¦ç†
         Draw();
     }
 }

@@ -2,19 +2,19 @@
 
 class DirectXCommon;
 
-// 3Dƒ‚ƒfƒ‹‚Ì‹¤’Ê•”•ª
+// 3Dãƒ¢ãƒ‡ãƒ«ã®å…±é€šéƒ¨åˆ†
 class ModelCommon {
 public:
     /// <summary>
-    /// ‰Šú‰»
+    /// åˆæœŸåŒ–
     /// </summary>
-    /// <param name="dxCommon">DirectXŠî”Õ</param>
+    /// <param name="dxCommon">DirectXåŸºç›¤</param>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// DirectXŠî”Õ‚ğæ“¾
+    /// DirectXåŸºç›¤ã‚’å–å¾—
     /// </summary>
-    /// <returns>DirectXŠî”Õ</returns>
+    /// <returns>DirectXåŸºç›¤</returns>
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
 private:

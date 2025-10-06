@@ -2,36 +2,36 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-class DirectXCommon; // ‘O•ûéŒ¾
+class DirectXCommon; // å‰æ–¹å®£è¨€
 
 class SpriteCommon {
 public:
     /// <summary>
-    /// ‰Šú‰»
+    /// åˆæœŸåŒ–
     /// </summary>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// ‹¤’Ê•`‰æİ’èi•`‰æ‘O‚ÉŒÄ‚Ôj
+    /// å…±é€šæç”»è¨­å®šï¼ˆæç”»å‰ã«å‘¼ã¶ï¼‰
     /// </summary>
     void SetPipeline(ID3D12GraphicsCommandList* commandList);
 
 private:
     /// <summary>
-    /// ƒ‹[ƒgƒVƒOƒlƒ`ƒƒ‚Ìì¬
+    /// ãƒ«ãƒ¼ãƒˆã‚·ã‚°ãƒãƒãƒ£ã®ä½œæˆ
     /// </summary>
     void CreateRootSignature();
 
     /// <summary>
-    /// ƒOƒ‰ƒtƒBƒbƒNƒXƒpƒCƒvƒ‰ƒCƒ“‚Ì¶¬
+    /// ã‚°ãƒ©ãƒ•ã‚£ãƒƒã‚¯ã‚¹ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ã®ç”Ÿæˆ
     /// </summary>
     void CreatePipeline();
 
 private:
-    // DirectXŠî”ÕƒNƒ‰ƒX‚Ìƒ|ƒCƒ“ƒ^
+    // DirectXåŸºç›¤ã‚¯ãƒ©ã‚¹ã®ãƒã‚¤ãƒ³ã‚¿
     DirectXCommon* dxCommon_ = nullptr;
-    // ƒ‹[ƒgƒVƒOƒlƒ`ƒƒ
+    // ãƒ«ãƒ¼ãƒˆã‚·ã‚°ãƒãƒãƒ£
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
-    // ƒpƒCƒvƒ‰ƒCƒ“ƒXƒe[ƒgƒIƒuƒWƒFƒNƒg
+    // ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ã‚¹ãƒ†ãƒ¼ãƒˆã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_ = nullptr;
 };

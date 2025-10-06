@@ -18,7 +18,7 @@ public:
        D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU;
    };
 
-public: // ƒVƒ“ƒOƒ‹ƒgƒ“
+public: // ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³
    static TextureManager* GetInstance();
    static void DestroyInstance();
 
@@ -29,7 +29,7 @@ private:
    const TextureManager& operator=(const TextureManager&) = delete;
    static TextureManager* instance_;
 
-public: // ƒƒ“ƒoŠÖ”
+public: // ãƒ¡ãƒ³ãƒé–¢æ•°
    void Initialize(DirectXCommon* dxCommon);
    uint32_t Load(const std::string& filePath);
    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t textureHandle);
@@ -44,6 +44,6 @@ private:
    std::vector<TextureData> textureDatas_;
    std::map<std::string, uint32_t> textureHandleMap_;
 
-   // SRVƒCƒ“ƒfƒbƒNƒX‚ÌŠJn”Ô†iImGui‚ª0”Ô‚ğg‚Á‚Ä‚¢‚é‚½‚ßj
+   // SRVã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã®é–‹å§‹ç•ªå·ï¼ˆImGuiãŒ0ç•ªã‚’ä½¿ã£ã¦ã„ã‚‹ãŸã‚ï¼‰
    static const uint32_t kSRVIndexTop = 1;
 };

@@ -1,7 +1,6 @@
 #pragma once
 
-// C³: Framework.h ‚ÌƒpƒX‚ğ³‚µ‚¢‚à‚Ì‚É•ÏX
-#include "engine/base/Framework.h" // Šî’êƒNƒ‰ƒX‚ğƒCƒ“ƒNƒ‹[ƒh
+#include "engine/base/Framework.h" // åŸºåº•ã‚¯ãƒ©ã‚¹ã‚’ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰
 #include "engine/audio/AudioPlayer.h"
 #include "engine/3d/debugCamera.h"
 #include "engine/3d/Object3dCommon.h"
@@ -12,39 +11,39 @@
 #include <memory>
 #include <vector>
 
-// Framework‚ğŒp³‚µ‚½A‚±‚ÌƒQ[ƒ€“Æ©‚ÌƒNƒ‰ƒX
+// Frameworkã‚’ç¶™æ‰¿ã—ãŸã€ã“ã®ã‚²ãƒ¼ãƒ ç‹¬è‡ªã®ã‚¯ãƒ©ã‚¹
 class Game : public Framework {
 public:
    /// <summary>
-   /// ‰Šú‰»
+   /// åˆæœŸåŒ–
    /// </summary>
    void Initialize() override;
 
    /// <summary>
-   /// I—¹ˆ—
+   /// çµ‚äº†å‡¦ç†
    /// </summary>
    void Finalize() override;
 
 protected:
    /// <summary>
-   /// –ˆƒtƒŒ[ƒ€‚ÌXVˆ—
+   /// æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã®æ›´æ–°å‡¦ç†
    /// </summary>
    void Update() override;
 
    /// <summary>
-   /// •`‰æˆ—
+   /// æç”»å‡¦ç†
    /// </summary>
    void Draw() override;
 
 private:
-   // --- ƒI[ƒfƒBƒIŠÖ˜A ---
+   // --- ã‚ªãƒ¼ãƒ‡ã‚£ã‚ªé–¢é€£ ---
    std::unique_ptr<AudioPlayer> audioPlayer_;
    Microsoft::WRL::ComPtr<IXAudio2> xAudio2_;
    IXAudio2MasteringVoice* masteringVoice_ = nullptr;
    SoundData soundData1_{};
    bool audioPlayedOnce_ = false;
 
-   // --- •`‰æƒIƒuƒWƒFƒNƒgŠÖ˜A ---
+   // --- æç”»ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆé–¢é€£ ---
    std::unique_ptr<DebugCamera> debugCamera_;
    std::unique_ptr<Object3dCommon> object3dCommon_;
    std::unique_ptr<SpriteCommon> spriteCommon_;

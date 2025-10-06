@@ -4,10 +4,10 @@
 #include "engine/3d/Object3dCommon.h"
 #include "engine/3d/Model.h"
 #include <wrl.h>
-#include <string> // std::string ‚ğg‚¤‚½‚ß‚ÉƒCƒ“ƒNƒ‹[ƒh
+#include <string> // std::string ã‚’ä½¿ã†ãŸã‚ã«ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰
 
 class Object3d {
-public: // ƒƒ“ƒoƒNƒ‰ƒXi\‘¢‘Ìj
+public: // ãƒ¡ãƒ³ãƒã‚¯ãƒ©ã‚¹ï¼ˆæ§‹é€ ä½“ï¼‰
     struct Transform {
         Vector3 scale;
         Vector3 rotate;
@@ -25,33 +25,33 @@ public: // ƒƒ“ƒoƒNƒ‰ƒXi\‘¢‘Ìj
         float intensity;
     };
 
-public: // ƒƒ“ƒoŠÖ”
+public: // ãƒ¡ãƒ³ãƒé–¢æ•°
     void Initialize(Object3dCommon* common);
     void Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix);
     void Draw(ID3D12GraphicsCommandList* commandList);
 
-    // --- ƒZƒbƒ^[ ---
+    // --- ã‚»ãƒƒã‚¿ãƒ¼ ---
     void SetModel(Model* model) { model_ = model; }
-    // ššš ƒtƒ@ƒCƒ‹ƒpƒX‚Åƒ‚ƒfƒ‹‚ğİ’è‚·‚éƒI[ƒo[ƒ[ƒh‚ğ’Ç‰Á ššš
+    // â˜…â˜…â˜… ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã§ãƒ¢ãƒ‡ãƒ«ã‚’è¨­å®šã™ã‚‹ã‚ªãƒ¼ãƒãƒ¼ãƒ­ãƒ¼ãƒ‰ã‚’è¿½åŠ  â˜…â˜…â˜…
     void SetModel(const std::string& filePath);
 
-    // ššš Transform‚ÌƒZƒbƒ^[‚ğ’Ç‰Á ššš
+    // â˜…â˜…â˜… Transformã®ã‚»ãƒƒã‚¿ãƒ¼ã‚’è¿½åŠ  â˜…â˜…â˜…
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
     void SetRotate(const Vector3& rotate) { transform_.rotate = rotate; }
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
 
-    // --- ƒQƒbƒ^[ ---
+    // --- ã‚²ãƒƒã‚¿ãƒ¼ ---
     Transform* GetTransform() { return &transform_; }
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
     DirectionalLight* GetDirectionalLight() { return directionalLightData_; }
 
-    // ššš Transform‚ÌƒQƒbƒ^[‚ğ’Ç‰Á ššš
+    // â˜…â˜…â˜… Transformã®ã‚²ãƒƒã‚¿ãƒ¼ã‚’è¿½åŠ  â˜…â˜…â˜…
     const Vector3& GetScale() const { return transform_.scale; }
     const Vector3& GetRotate() const { return transform_.rotate; }
     const Vector3& GetTranslate() const { return transform_.translate; }
 
 
-private: // ƒƒ“ƒo•Ï”
+private: // ãƒ¡ãƒ³ãƒå¤‰æ•°
     Object3dCommon* common_ = nullptr;
     Model* model_ = nullptr;
 

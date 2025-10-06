@@ -11,7 +11,7 @@
 class Object3d;
 
 class Model {
-public: // ƒTƒuƒNƒ‰ƒX
+public: // ã‚µãƒ–ã‚¯ãƒ©ã‚¹
     struct VertexData {
         Vector4 position;
         Vector2 texcoord;
@@ -37,27 +37,27 @@ public: // ƒTƒuƒNƒ‰ƒX
         float padding2[3];
     };
 
-public: // ƒƒ“ƒoŠÖ”
+public: // ãƒ¡ãƒ³ãƒé–¢æ•°
     /// <summary>
-    /// ‰Šú‰»
+    /// åˆæœŸåŒ–
     /// </summary>
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
 
     /// <summary>
-    /// •`‰æ
+    /// æç”»
     /// </summary>
     void Draw(ID3D12GraphicsCommandList* commandList, ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource);
 
     /// <summary>
-    /// ƒ}ƒeƒŠƒAƒ‹î•ñ‚Ìæ“¾ (ImGui‚Å‚Ì‘€ì—p)
+    /// ãƒãƒ†ãƒªã‚¢ãƒ«æƒ…å ±ã®å–å¾— (ImGuiã§ã®æ“ä½œç”¨)
     /// </summary>
     Material* GetMaterial() { return materialData_; }
 
-private: // Ã“Iƒƒ“ƒoŠÖ”
+private: // é™çš„ãƒ¡ãƒ³ãƒé–¢æ•°
     static ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
     static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
-private: // ƒƒ“ƒo•Ï”
+private: // ãƒ¡ãƒ³ãƒå¤‰æ•°
     ModelCommon* common_ = nullptr;
     ModelData modelData_{};
 

@@ -8,35 +8,35 @@
 class DirectXCommon;
 class ModelCommon;
 
-// ƒ‚ƒfƒ‹ƒf[ƒ^‚ðŠÇ—‚·‚éƒNƒ‰ƒXiƒVƒ“ƒOƒ‹ƒgƒ“j
+// ãƒ¢ãƒ‡ãƒ«ãƒ‡ãƒ¼ã‚¿ã‚’ç®¡ç†ã™ã‚‹ã‚¯ãƒ©ã‚¹ï¼ˆã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ï¼‰
 class ModelManager {
 public:
     /// <summary>
-    /// ƒVƒ“ƒOƒ‹ƒgƒ“ƒCƒ“ƒXƒ^ƒ“ƒX‚ÌŽæ“¾
+    /// ã‚·ãƒ³ã‚°ãƒ«ãƒˆãƒ³ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã®å–å¾—
     /// </summary>
     static ModelManager* GetInstance();
 
     /// <summary>
-    /// ‰Šú‰»
+    /// åˆæœŸåŒ–
     /// </summary>
     void Initialize(DirectXCommon* dxCommon);
 
     /// <summary>
-    /// I—¹ˆ—
+    /// çµ‚äº†å‡¦ç†
     /// </summary>
     void Finalize();
 
     /// <summary>
-    /// ƒ‚ƒfƒ‹‚Ì“Ç‚Ýž‚Ý
+    /// ãƒ¢ãƒ‡ãƒ«ã®èª­ã¿è¾¼ã¿
     /// </summary>
-    /// <param name="filePath">ƒ‚ƒfƒ‹‚Ìƒtƒ@ƒCƒ‹ƒpƒX</param>
+    /// <param name="filePath">ãƒ¢ãƒ‡ãƒ«ã®ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹</param>
     void LoadModel(const std::string& filePath);
 
     /// <summary>
-    /// ƒ‚ƒfƒ‹ƒf[ƒ^‚ðŽæ“¾
+    /// ãƒ¢ãƒ‡ãƒ«ãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—
     /// </summary>
-    /// <param name="filePath">ƒ‚ƒfƒ‹‚Ìƒtƒ@ƒCƒ‹ƒpƒX</param>
-    /// <returns>Œ©‚Â‚©‚Á‚½ƒ‚ƒfƒ‹ƒf[ƒ^BŒ©‚Â‚©‚ç‚È‚¯‚ê‚Înullptr</returns>
+    /// <param name="filePath">ãƒ¢ãƒ‡ãƒ«ã®ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹</param>
+    /// <returns>è¦‹ã¤ã‹ã£ãŸãƒ¢ãƒ‡ãƒ«ãƒ‡ãƒ¼ã‚¿ã€‚è¦‹ã¤ã‹ã‚‰ãªã‘ã‚Œã°nullptr</returns>
     Model* FindModel(const std::string& filePath);
 
 private:
