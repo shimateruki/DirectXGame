@@ -1,0 +1,25 @@
+name: DebugBuild
+on: 
+  puch:
+  branches:
+     -master
+     env:
+     SOLUTION_FILE_PATH: project/DirectXGame.sin
+     CONFIGURATUON: Debug
+     jobs:
+     build:
+     runs-on: windows-2022
+
+     steps:
+     - name: Checkout
+     uses: actions/checkout@v4
+     name: Add MSBuild to PATH
+     uses: microsoft/setup-msbuild@v2
+     with:
+     msbuild-architecture: x64
+     -name: Bulid
+     run: |
+     msbuild ${{env.SOLUTTION_FILE_PATH}}/p:platform=x64,configuration=${{env.CONFIGURATION}}
+     
+     
+     
