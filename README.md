@@ -12,3 +12,4 @@
 2. `project/DirectXGame.sln` をVisual Studioで開きます。
 3. ビルドを実行します。
 [![DebugBuild](https://github.com/shimateruki/DirectXGame/actions/workflows/DebugBulid.yml/badge.svg)](https://github.com/shimateruki/DirectXGame/actions/workflows/DebugBulid.yml)
+[![ReleaseBuild](https://github.com/shimateruki/DirectXGame/actions/workflows/main.yml/badge.svg)](https://github.com/shimateruki/DirectXGame/actions/workflows/main.yml)
