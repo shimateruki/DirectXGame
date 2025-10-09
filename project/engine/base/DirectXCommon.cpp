@@ -26,6 +26,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     winApp_ = winApp;
 
 	InitalaizeFixFPS();
+	// 各種初期化処理
     InitializeDXGIDevice();
     CreateCommand();
     CreateSwapChain();
@@ -358,18 +359,30 @@ void DirectXCommon::CreateRTV() {
 }
 
 void DirectXCommon::CreateDSV() {
+    // 深度ステンシルビュー(DSV)用のディスクリプタヒープのデスクリプタ（設定）を定義
     D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
+    // ヒープの種類をDSV用に設定
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    // ヒープに格納するディスクリプタの数（今回は深度バッファ1つなので1）
     dsvHeapDesc.NumDescriptors = 1;
+    // 設定を基にDSV用ディスクリプタヒープを生成
     HRESULT hr = device_->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap_));
+    // ヒープの生成が成功したかチェック
     assert(SUCCEEDED(hr));
+
+    // 深度バッファとして使用するテクスチャリソースを作成
+    // サイズはクライアント領域（ウィンドウ）の幅と高さに合わせる
     depthStencilResource_ = CreateDepthStencilTextureResource(WinApp::kClientWidth, WinApp::kClientHeight);
+
+    // 深度ステンシルビューのデスクリプタ（設定）を定義
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+    // リソースのフォーマットを指定。D24_UNORM_S8_UINTは24bitの深度と8bitのステンシルを意味する
     dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    // どのような次元のリソースとして見るかを設定（今回は2Dテクスチャ）
     dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    // 上記の設定を基に、深度ステンシルビューを作成
     device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
 }
-
 void DirectXCommon::CreateFence() {
     HRESULT hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
     assert(SUCCEEDED(hr));

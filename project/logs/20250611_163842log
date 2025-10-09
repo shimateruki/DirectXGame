@@ -1,0 +1,18 @@
+use Adapater:NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatrueLevel
+complate crate D3D12Device!!!
+
+Begin CompileShader,path:Object3d.VS.hlsl, profile:vs_6_0
+
+Compile Succeeded, path:Object3d.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader,path:Object3d.PS.hlsl, profile:ps_6_0
+
+Object3d.PS.hlsl:42:16: error: cannot initialize return object of type 'PixelShanderOutput' with an rvalue of type 'float32_t4'
+        return float32_t4(normalize(input.normal), 1.0f);
+               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Object3d.PS.hlsl:46:16: error: cannot initialize return object of type 'PixelShanderOutput' with an rvalue of type 'float32_t4'
+        return float32_t4(gMaterial.color.rgb * textureColor.rgb, 1.0f); // <83><89><83>C<83>e<83>B<83><93><83>O<82>Ȃ<B5><82>ŕ\<8E><A6>
+               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+

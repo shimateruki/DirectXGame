@@ -1,0 +1,21 @@
+use Adapater:NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatrueLevel
+complate crate D3D12Device!!!
+
+Begin CompileShader,path:Object3d.VS.hlsl, profile:vs_6_0
+
+Compile Succeeded, path:Object3d.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader,path:Object3d.PS.hlsl, profile:ps_6_0
+
+Object3d.PS.hlsl:43:9: error: use of undeclared identifier 'outputColor'
+        outputColor = outputColor * gDirectionalLight.color * cosAngle * gDirectionalLight.intenssity;
+        ^
+Object3d.PS.hlsl:43:23: error: use of undeclared identifier 'outputColor'
+        outputColor = outputColor * gDirectionalLight.color * cosAngle * gDirectionalLight.intenssity;
+                      ^
+Object3d.PS.hlsl:46:12: error: use of undeclared identifier 'outputColor'
+    return outputColor;
+           ^
+
