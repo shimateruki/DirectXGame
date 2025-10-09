@@ -1,0 +1,33 @@
+use Adapater:NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatrueLevel
+complate crate D3D12Device!!!
+
+Begin CompileShader,path:Object3d.VS.hlsl, profile:vs_6_0
+
+Compile Succeeded, path:Object3d.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader,path:Object3d.PS.hlsl, profile:ps_6_0
+
+Object3d.PS.hlsl:53:19: error: redefinition of 'NdotL'
+            float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
+                  ^
+Object3d.PS.hlsl:48:15: note: previous definition is here
+        float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
+              ^
+Object3d.PS.hlsl:54:19: error: redefinition of 'cos'
+            float cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+                  ^
+Object3d.PS.hlsl:49:15: note: previous definition is here
+        float cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+              ^
+Object3d.PS.hlsl:52:9: error: cannot jump from switch statement to this case label
+        case 2:
+        ^
+Object3d.PS.hlsl:49:15: note: jump bypasses variable initialization
+        float cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
+              ^
+Object3d.PS.hlsl:48:15: note: jump bypasses variable initialization
+        float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
+              ^
+
