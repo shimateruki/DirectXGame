@@ -15,6 +15,8 @@
 /// </summary>
 class InputManager {
 public:
+    // ★★★ シングルトンインスタンスを取得する関数を追加 ★★★
+    static InputManager* GetInstance();
     /// <summary>
     /// 入力マネージャーを初期化する
     /// </summary>
@@ -80,6 +82,10 @@ public:
     bool IsGamepadButtonPressed(WORD button) const;
 
 private:
+    InputManager() = default;
+    ~InputManager() = default;
+    InputManager(const InputManager&) = delete;
+    InputManager& operator=(const InputManager&) = delete;
     // --- DirectInput関連 ---
     IDirectInput8* directInput = nullptr; // DirectInputのメインインターフェース
     IDirectInputDevice8* keyboardDevice = nullptr; // キーボード用のデバイス

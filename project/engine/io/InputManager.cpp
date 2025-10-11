@@ -2,6 +2,12 @@
 #include <cassert>        // assertマクロを使用するためにインクルード
 #include "math.h"         // abs()関数などを使用するためにインクルード
 
+
+InputManager* InputManager::GetInstance() {
+    static InputManager instance;
+    return &instance;
+}
+
 // InputManagerの初期化処理
 void InputManager::Initialize(HWND hwnd)
 {

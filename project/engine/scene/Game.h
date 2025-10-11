@@ -1,49 +1,19 @@
 #pragma once
-
-#include "engine/base/Framework.h" // 基底クラスをインクルード
-#include "engine/audio/AudioPlayer.h"
-#include "engine/3d/Object3dCommon.h"
-#include "engine/2d/SpriteCommon.h"
-#include "engine/3d/Object3d.h"
-#include "engine/2d/Sprite.h"
-
+#include "engine/base/Framework.h"
+#include "engine/scene/GamePlayScene.h" 
 #include <memory>
-#include <vector>
 
 // Frameworkを継承した、このゲーム独自のクラス
 class Game : public Framework {
 public:
-   /// <summary>
-   /// 初期化
-   /// </summary>
-   void Initialize() override;
-
-   /// <summary>
-   /// 終了処理
-   /// </summary>
-   void Finalize() override;
+	void Initialize() override;
+	void Finalize() override;
 
 protected:
-   /// <summary>
-   /// 毎フレームの更新処理
-   /// </summary>
-   void Update() override;
-
-   /// <summary>
-   /// 描画処理
-   /// </summary>
-   void Draw() override;
+	void Update() override;
+	void Draw() override;
 
 private:
-   
-
-   // --- 描画オブジェクト関連 ---
-
-   std::unique_ptr<Object3dCommon> object3dCommon_;
-   std::unique_ptr<SpriteCommon> spriteCommon_;
-
-   std::vector<std::unique_ptr<Object3d>> objects_;
-   std::unique_ptr<Sprite> sprite_;
-
-   AudioPlayer::AudioHandle bgmHandle_ = 0;
+	// ゲームプレイシーン
+	std::unique_ptr<GamePlayScene> gameScene_ = nullptr;
 };

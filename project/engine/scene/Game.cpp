@@ -1,138 +1,52 @@
 #include "Game.h"
-#include "engine/3d/ModelManager.h"
-#include "engine/3d/TextureManager.h"
-#include "engine/3d/CameraManager.h"
-
+#include "engine/scene/GamePlayScene.h" 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
 
 void Game::Initialize() {
-    // ★★★ 基底クラス(Framework)の初期化処理を呼び出す ★★★
+    // Frameworkの初期化処理
     Framework::Initialize();
 
-    // 以下、Gameクラス独自の初期化処理
-    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/Alarm02.mp3");
-
-    CameraManager::GetInstance()->Initialize();
-    CameraManager::GetInstance()->SetInputManager(inputManager_.get());
-
-    spriteCommon_ = std::make_unique<SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_); // dxCommon_はFrameworkのメンバ
-
-    object3dCommon_ = std::make_unique<Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_); // dxCommon_はFrameworkのメンバ
-
-    // --- モデルの読み込み ---
-    ModelManager::GetInstance()->LoadModel("resouces/plane.obj");
-    ModelManager::GetInstance()->LoadModel("resouces/teapot.obj");
-    ModelManager::GetInstance()->LoadModel("resouces/bunny.obj");
-
-    // --- オブジェクトの生成 ---
-    objects_.emplace_back(std::make_unique<Object3d>()); // Plane
-    objects_.emplace_back(std::make_unique<Object3d>()); // Teapot
-    objects_.emplace_back(std::make_unique<Object3d>()); // Bunny
-
-    objects_[0]->Initialize(object3dCommon_.get());
-    objects_[0]->SetModel("resouces/plane.obj");
-
-    objects_[1]->Initialize(object3dCommon_.get());
-    objects_[1]->SetModel("resouces/teapot.obj");
-    objects_[1]->SetTranslate({ 2.0f, 0.0f, 0.0f });
-
-    objects_[2]->Initialize(object3dCommon_.get());
-    objects_[2]->SetModel("resouces/bunny.obj");
-    objects_[2]->SetTranslate({ -2.0f, 0.0f, 0.0f });
-
-    // --- スプライトの生成 ---
-    sprite_ = std::make_unique<Sprite>();
-    uint32_t spriteTexHandle = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
-    sprite_->Initialize(dxCommon_, spriteTexHandle);
-    sprite_->SetPosition({ 200.0f, 360.0f });
-    sprite_->SetSize({ 100.0f, 100.0f });
-;
-    dxCommon_->FlushCommandQueue(false);
-}
-
-void Game::Finalize() {
-    // --- Gameクラス独自の終了処理 ---
-    objects_.clear();
-    sprite_.reset();
-    object3dCommon_.reset();
-    spriteCommon_.reset();
-
- 
-
-    // ★★★ 基底クラス(Framework)の終了処理を呼び出す ★★★
-    Framework::Finalize();
+    // ゲームプレイシーンを作成して初期化
+    gameScene_ = std::make_unique<GamePlayScene>();
+    gameScene_->Initialize();
 }
 
 void Game::Update() {
-    // --- 入力・カメラ更新 ---
-    inputManager_->Update(); // inputManager_はFrameworkのメンバ
-    CameraManager::GetInstance()->Update();
+    // 入力とImGuiのフレーム開始は、シーンの更新前に行う
+    InputManager::GetInstance()->Update(); 
 
-    if (inputManager_->IsKeyTriggered(DIK_P)) {
-        audioPlayer_->Play(bgmHandle_, true);
-    }
-    if (inputManager_->IsKeyTriggered(DIK_S)) {
-        audioPlayer_->Stop(bgmHandle_);
 
-    }
-
-    // --- ImGui ---
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("Object Settings");
-    static int selected = 0;
-    const char* items[] = { "Plane", "Teapot", "Bunny" };
-    ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
-    Object3d* currentObject = objects_[selected].get();
-    Object3d::Transform* transform = currentObject->GetTransform();
-    Model::Material* material = currentObject->GetMaterial();
-    Object3d::DirectionalLight* light = currentObject->GetDirectionalLight();
-    if (ImGui::CollapsingHeader("Object Transform")) {
-        ImGui::DragFloat3("Translate", &transform->translate.x, 0.01f);
-        ImGui::DragFloat3("Rotate", &transform->rotate.x, 0.01f);
-        ImGui::DragFloat3("Scale", &transform->scale.x, 0.01f);
+    // ゲームプレイシーンの更新処理を呼び出す
+    if (gameScene_) {
+        gameScene_->Update();
     }
-    if (ImGui::CollapsingHeader("Lighting")) {
-        ImGui::ColorEdit4("Light Color", &light->color.x);
-        ImGui::DragFloat3("Light Direction", &light->direction.x, 0.01f);
-        ImGui::DragFloat("Light Intensity", &light->intensity, 0.01f);
-    }
-    if (material && ImGui::CollapsingHeader("Material")) {
-        ImGui::ColorEdit4("Color", &material->color.x);
-        const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
-        ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
-    }
-    ImGui::End();
-
-    // --- オブジェクト更新 ---
-    for (auto& obj : objects_) {
-        obj->Update();
-    }
-    sprite_->Update();
 }
 
 void Game::Draw() {
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-
-    // --- 描画前処理 ---
+    // 描画前処理
     dxCommon_->PreDraw();
 
-    // --- 3Dオブジェクト描画 ---
-    object3dCommon_->SetGraphicsCommand();
-    for (const auto& obj : objects_) {
-        obj->Draw(commandList);
+    // ゲームプレイシーンの描画処理を呼び出す
+    if (gameScene_) {
+        gameScene_->Draw();
     }
 
-    // --- スプライト描画 ---
-    spriteCommon_->SetPipeline(commandList);
-    sprite_->Draw(commandList);
-
-    // --- 描画後処理 ---
+    // 描画後処理
     dxCommon_->PostDraw();
+}
+
+void Game::Finalize() {
+    // ゲームプレイシーンの終了処理
+    if (gameScene_) {
+        gameScene_->Finalize();
+    }
+
+    // Frameworkの終了処理
+    Framework::Finalize();
 }
