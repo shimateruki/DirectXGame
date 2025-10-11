@@ -2,6 +2,7 @@
 #include"engine/base/DirectXCommon.h" // DirectXCommonをインクルード
 #include "engine/3d/ModelManager.h" // ModelManagerをインクルード
 #include <cassert>
+#include "engine/3d/CameraManager.h"
 
 void Object3d::Initialize(Object3dCommon* common) {
     assert(common);
@@ -28,12 +29,17 @@ void Object3d::SetModel(const std::string& filePath) {
 }
 
 
-void Object3d::Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix) {
+void Object3d::Update() {
     Math math;
-    Matrix4x4 worldMatrix = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+
+        // ★★★ CameraManagerからビュー行列とプロジェクション行列を取得 ★★★
+     const Camera * camera = CameraManager::GetInstance()->GetMainCamera();
+    const Matrix4x4 & viewMatrix = camera->GetViewMatrix();
+    const Matrix4x4 & projectionMatrix = camera->GetProjectionMatrix();
+    
+     Matrix4x4 worldMatrix = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
     Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
     wvpData_->WVP = worldViewProjectionMatrix;
-    wvpData_->world = worldMatrix;
 
     directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
 }

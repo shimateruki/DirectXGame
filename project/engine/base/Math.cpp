@@ -264,3 +264,45 @@ Vector3 Math::TransformNormal(const Vector3& v, const Matrix4x4& m)
 	result.z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2];
 	return result;
 }
+
+float Math::Dot(const Vector3& v1, const Vector3& v2)
+{
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+float Math::Length(const Vector3& v)
+{
+	return std::sqrt(Dot(v, v));
+}
+
+Vector3 Math::Cross(const Vector3& v1, const Vector3& v2)
+{
+	return {
+		v1.y * v2.z - v1.z * v2.y,
+		v1.z * v2.x - v1.x * v2.z,
+		v1.x * v2.y - v1.y * v2.x
+	};
+}
+
+Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, const Vector3& up)
+{
+	Vector3 zaxis = Normalize(target - eye);
+	Vector3 xaxis = Normalize(Cross(up, zaxis));
+	Vector3 yaxis = Cross(zaxis, xaxis);
+
+	Matrix4x4 result = makeIdentity4x4();
+	result.m[0][0] = xaxis.x;
+	result.m[0][1] = yaxis.x;
+	result.m[0][2] = zaxis.x;
+	result.m[1][0] = xaxis.y;
+	result.m[1][1] = yaxis.y;
+	result.m[1][2] = zaxis.y;
+	result.m[2][0] = xaxis.z;
+	result.m[2][1] = yaxis.z;
+	result.m[2][2] = zaxis.z;
+	result.m[3][0] = -Dot(eye, xaxis);
+	result.m[3][1] = -Dot(eye, yaxis);
+	result.m[3][2] = -Dot(eye, zaxis);
+
+	return result;
+}

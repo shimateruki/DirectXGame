@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "engine/3d/ModelManager.h"
 #include "engine/3d/TextureManager.h"
+#include "engine/3d/CameraManager.h"
 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
@@ -13,9 +14,8 @@ void Game::Initialize() {
     // 以下、Gameクラス独自の初期化処理
     bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/Alarm02.mp3");
 
-    debugCamera_ = std::make_unique<DebugCamera>();
-    debugCamera_->Initialize();
-    debugCamera_->SetInputManager(inputManager_.get()); // inputManager_はFrameworkのメンバ
+    CameraManager::GetInstance()->Initialize();
+    CameraManager::GetInstance()->SetInputManager(inputManager_.get());
 
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_); // dxCommon_はFrameworkのメンバ
@@ -60,7 +60,6 @@ void Game::Finalize() {
     sprite_.reset();
     object3dCommon_.reset();
     spriteCommon_.reset();
-    debugCamera_.reset();
 
  
 
@@ -71,7 +70,7 @@ void Game::Finalize() {
 void Game::Update() {
     // --- 入力・カメラ更新 ---
     inputManager_->Update(); // inputManager_はFrameworkのメンバ
-    debugCamera_->Update();
+    CameraManager::GetInstance()->Update();
 
     if (inputManager_->IsKeyTriggered(DIK_P)) {
         audioPlayer_->Play(bgmHandle_, true);
@@ -112,10 +111,8 @@ void Game::Update() {
     ImGui::End();
 
     // --- オブジェクト更新 ---
-    Matrix4x4 viewMatrix = debugCamera_->GetViewMatrix();
-    Matrix4x4 projectionMatrix = debugCamera_->GetProjectionMatrix();
     for (auto& obj : objects_) {
-        obj->Update(viewMatrix, projectionMatrix);
+        obj->Update();
     }
     sprite_->Update();
 }

@@ -2,7 +2,6 @@
 
 #include "engine/base/Framework.h" // 基底クラスをインクルード
 #include "engine/audio/AudioPlayer.h"
-#include "engine/3d/debugCamera.h"
 #include "engine/3d/Object3dCommon.h"
 #include "engine/2d/SpriteCommon.h"
 #include "engine/3d/Object3d.h"
@@ -39,7 +38,7 @@ private:
    
 
    // --- 描画オブジェクト関連 ---
-   std::unique_ptr<DebugCamera> debugCamera_;
+
    std::unique_ptr<Object3dCommon> object3dCommon_;
    std::unique_ptr<SpriteCommon> spriteCommon_;
 

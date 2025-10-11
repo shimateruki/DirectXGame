@@ -148,6 +148,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="engine\3d\CameraManager.cpp" />
+    <ClCompile Include="engine\3d\Camera.cpp" />
     <ClCompile Include="engine\audio\AudioPlayer.cpp" />
     <ClCompile Include="engine\3d\debugCamera.cpp" />
     <ClCompile Include="engine\base\DirectXCommon.cpp" />
@@ -175,6 +177,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\3d\TextureManager.cpp" />
     <ClCompile Include="engine\base\WinApp.cpp" />
     <ClCompile Include="engine\base\Math.cpp" />
+    <ClCompile Include="engine\base\SrvManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
@@ -205,6 +208,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="engine\3d\CameraManager.h" />
+    <ClInclude Include="engine\3d\Camera.h" />
     <ClInclude Include="engine\audio\AudioPlayer.h" />
     <ClInclude Include="engine\base\D3DResouceLeakChecKer.h" />
     <ClInclude Include="engine\3d\debugCamera.h" />
@@ -230,6 +235,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\3d\TextureManager.h" />
     <ClInclude Include="engine\base\WinApp.h" />
     <ClInclude Include="engine\base\Math.h" />
+    <ClInclude Include="engine\base\SrvManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

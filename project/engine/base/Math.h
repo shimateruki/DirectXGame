@@ -66,5 +66,9 @@ public:
 	Vector3 Normalize(const Vector3& v);
 	Matrix4x4 MakeRotateMatrix(const Vector3& rotate);
 	Vector3 TransformNormal(const Vector3& v, const Matrix4x4& m);
+	Matrix4x4 MakeLookAtMatrix(const Vector3& eye, const Vector3& target, const Vector3& up);
+	Vector3 Cross(const Vector3& v1, const Vector3& v2);
+	float Dot(const Vector3& v1, const Vector3& v2);
+	float Length(const Vector3& v);
 
 };
