@@ -27,7 +27,7 @@ public: // メンバクラス（構造体）
 
 public: // メンバ関数
     void Initialize(Object3dCommon* common);
-    void Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix);
+    void Update();
     void Draw(ID3D12GraphicsCommandList* commandList);
 
     // --- セッター ---
@@ -35,7 +35,7 @@ public: // メンバ関数
     // ★★★ ファイルパスでモデルを設定するオーバーロードを追加 ★★★
     void SetModel(const std::string& filePath);
 
-    // ★★★ Transformのセッターを追加 ★★★
+    // Transformのセッターを追加
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
     void SetRotate(const Vector3& rotate) { transform_.rotate = rotate; }
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
@@ -45,7 +45,7 @@ public: // メンバ関数
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
     DirectionalLight* GetDirectionalLight() { return directionalLightData_; }
 
-    // ★★★ Transformのゲッターを追加 ★★★
+    // Transformのゲッター
     const Vector3& GetScale() const { return transform_.scale; }
     const Vector3& GetRotate() const { return transform_.rotate; }
     const Vector3& GetTranslate() const { return transform_.translate; }
