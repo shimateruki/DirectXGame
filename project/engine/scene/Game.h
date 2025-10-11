@@ -36,12 +36,7 @@ protected:
    void Draw() override;
 
 private:
-   // --- オーディオ関連 ---
-   std::unique_ptr<AudioPlayer> audioPlayer_;
-   Microsoft::WRL::ComPtr<IXAudio2> xAudio2_;
-   IXAudio2MasteringVoice* masteringVoice_ = nullptr;
-   SoundData soundData1_{};
-   bool audioPlayedOnce_ = false;
+   
 
    // --- 描画オブジェクト関連 ---
    std::unique_ptr<DebugCamera> debugCamera_;
@@ -50,4 +45,6 @@ private:
 
    std::vector<std::unique_ptr<Object3d>> objects_;
    std::unique_ptr<Sprite> sprite_;
+
+   AudioPlayer::AudioHandle bgmHandle_ = 0;
 };

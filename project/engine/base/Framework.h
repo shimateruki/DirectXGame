@@ -4,6 +4,7 @@
 #include "WinApp.h"
 #include "DirectXCommon.h"
 #include <memory>
+#include "engine/audio/AudioPlayer.h" // AudioPlayerをインクルード
 
 // ゲームエンジンの汎用的な基盤クラス
 class Framework {
@@ -44,4 +45,5 @@ protected:
 	std::unique_ptr<WinApp> winApp_;
 	DirectXCommon* dxCommon_ = nullptr;
 	std::unique_ptr<InputManager> inputManager_;
+	AudioPlayer* audioPlayer_ = nullptr; // AudioPlayerのポインタを追加
 };
