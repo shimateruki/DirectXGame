@@ -11,8 +11,8 @@ void Framework::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     dxCommon_->Initialize(winApp_.get());
 
-    inputManager_ = std::make_unique<InputManager>();
-    inputManager_->Initialize(winApp_->GetHwnd());
+
+    InputManager::GetInstance()->Initialize(winApp_->GetHwnd());
 
     // --- AudioPlayerの初期化を追加 ---
     audioPlayer_ = AudioPlayer::GetInstance();

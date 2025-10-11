@@ -44,6 +44,5 @@ protected:
 	// --- エンジンシステム ---
 	std::unique_ptr<WinApp> winApp_;
 	DirectXCommon* dxCommon_ = nullptr;
-	std::unique_ptr<InputManager> inputManager_;
 	AudioPlayer* audioPlayer_ = nullptr; // AudioPlayerのポインタを追加
 };
