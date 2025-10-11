@@ -11,10 +11,7 @@ void Game::Initialize() {
     Framework::Initialize();
 
     // 以下、Gameクラス独自の初期化処理
-  /*  audioPlayer_ = std::make_unique<AudioPlayer>();
-    XAudio2Create(&xAudio2_, 0, XAUDIO2_DEFAULT_PROCESSOR);
-    xAudio2_->CreateMasteringVoice(&masteringVoice_);
-    soundData1_ = audioPlayer_->SoundLoadWave("resouces/Alarm02.wav");*/
+    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/Alarm02.mp3");
 
     debugCamera_ = std::make_unique<DebugCamera>();
     debugCamera_->Initialize();
@@ -65,8 +62,7 @@ void Game::Finalize() {
     spriteCommon_.reset();
     debugCamera_.reset();
 
-    audioPlayer_->SoundUnload(&soundData1_);
-    audioPlayer_.reset();
+ 
 
     // ★★★ 基底クラス(Framework)の終了処理を呼び出す ★★★
     Framework::Finalize();
@@ -77,11 +73,13 @@ void Game::Update() {
     inputManager_->Update(); // inputManager_はFrameworkのメンバ
     debugCamera_->Update();
 
-    // --- サウンド再生 ---
-    //if (!audioPlayedOnce_) {
-    //    audioPlayer_->SoundPlayWave(xAudio2_.Get(), soundData1_);
-    //    audioPlayedOnce_ = true;
-    //}
+    if (inputManager_->IsKeyTriggered(DIK_P)) {
+        audioPlayer_->Play(bgmHandle_, true);
+    }
+    if (inputManager_->IsKeyTriggered(DIK_S)) {
+        audioPlayer_->Stop(bgmHandle_);
+
+    }
 
     // --- ImGui ---
     ImGui_ImplDX12_NewFrame();

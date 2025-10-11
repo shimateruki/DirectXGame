@@ -3,10 +3,8 @@
 #include "engine/3d/ModelManager.h"
 
 void Framework::Initialize() {
-    // COMの初期化
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    // --- エンジンシステムの初期化 ---
     winApp_ = std::make_unique<WinApp>();
     winApp_->Initialize(L"GE3", WinApp::kClientWidth, WinApp::kClientHeight);
 
@@ -16,7 +14,10 @@ void Framework::Initialize() {
     inputManager_ = std::make_unique<InputManager>();
     inputManager_->Initialize(winApp_->GetHwnd());
 
-    // --- マネージャクラスの初期化 ---
+    // --- AudioPlayerの初期化を追加 ---
+    audioPlayer_ = AudioPlayer::GetInstance();
+    audioPlayer_->Initialize();
+
     ModelManager::GetInstance()->Initialize(dxCommon_);
     TextureManager::GetInstance()->Initialize(dxCommon_);
 }
@@ -27,6 +28,7 @@ void Framework::Finalize() {
 
     // --- エンジンシステムの終了処理 ---
     dxCommon_->Finalize();
+
 
     // COMの終了処理
     CoUninitialize();
