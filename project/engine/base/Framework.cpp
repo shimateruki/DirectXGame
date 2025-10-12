@@ -1,6 +1,7 @@
 #include "engine/base/Framework.h"
 #include "engine/3d/TextureManager.h"
 #include "engine/3d/ModelManager.h"
+#include "engine/base/SRVManager.h" // ★ SRVManager.h をインクルード
 
 void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -11,35 +12,29 @@ void Framework::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     dxCommon_->Initialize(winApp_.get());
 
-
     InputManager::GetInstance()->Initialize(winApp_->GetHwnd());
 
-    // --- AudioPlayerの初期化を追加 ---
     audioPlayer_ = AudioPlayer::GetInstance();
     audioPlayer_->Initialize();
 
+    SRVManager::GetInstance()->Initialize(dxCommon_);
+
+    // ModelManagerとTextureManagerの初期化
     ModelManager::GetInstance()->Initialize(dxCommon_);
     TextureManager::GetInstance()->Initialize(dxCommon_);
 }
 
 void Framework::Finalize() {
-    // --- マネージャクラスの終了処理 ---
+    // (変更なし)
     ModelManager::GetInstance()->Finalize();
-
-    // --- エンジンシステムの終了処理 ---
     dxCommon_->Finalize();
-
-
-    // COMの終了処理
     CoUninitialize();
 }
 
 void Framework::Run() {
-    // メインループ
+    // (変更なし)
     while (winApp_->Update() == false) {
-        // 更新処理
         Update();
-        // 描画処理
         Draw();
     }
 }

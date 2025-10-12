@@ -7,6 +7,7 @@
 #include <dxcapi.h>
 #include <fstream>
 #include <thread>
+#include "engine/base/SRVManager.h"
 
 // ログ出力用のヘルパー関数（グローバル）
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }
@@ -25,16 +26,14 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     assert(winApp);
     winApp_ = winApp;
 
-	InitalaizeFixFPS();
-	// 各種初期化処理
+    InitalaizeFixFPS();
+    // 各種初期化処理
     InitializeDXGIDevice();
     CreateCommand();
     CreateSwapChain();
     CreateRTV();
     CreateDSV();
     CreateFence();
-
-
 
     // ビューポートとシザー矩形の設定
     viewport_.Width = (float)WinApp::kClientWidth;
@@ -52,7 +51,72 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler_));
     dxcUtils_->CreateDefaultIncludeHandler(&includeHandler_);
 
-    InitializeImGui();
+    //InitializeImGui();
+}
+
+void DirectXCommon::PreDraw() {
+    // コマンドアロケータをリセットします。
+    HRESULT hr = commandAllocator_->Reset();
+    assert(SUCCEEDED(hr));
+
+    // コマンドリストをリセットします。
+    hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
+    assert(SUCCEEDED(hr));
+
+    // 現在描画対象となっているバックバッファのインデックスを取得します。
+    backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
+
+    // リソースバリアを設定します。
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = swapChainResources_[backBufferIndex_].Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    commandList_->ResourceBarrier(1, &barrier);
+
+    // レンダーターゲットビュー(RTV)のディスクリプタハンドルのポインタを取得します。
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+    rtvHandle.ptr = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart().ptr + (backBufferIndex_ * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+
+    // 深度ステンシルビュー(DSV)のディスクリプタハンドルのポインタを取得します。
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    // 出力マージャ(OM)ステージに、描画先となるRTVとDSVを設定します。
+    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+    // 画面を指定した色でクリアします (例: 青みがかった灰色)。
+    float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
+    commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+    // 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
+    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+    // ビューポート（描画する画面内の領域）を設定します。
+    commandList_->RSSetViewports(1, &viewport_);
+    // シザー矩形（ピクセルを描画する範囲を限定する矩形）を設定します。
+    commandList_->RSSetScissorRects(1, &scissorRect_);
+
+    // ★★★ SRVManagerからデスクリプタヒープを取得して設定 ★★★
+    ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+    commandList_->SetDescriptorHeaps(1, descriptorHeaps);
+}
+
+void DirectXCommon::InitializeImGui() {
+    // ★★★ SRVManagerからSRV用のデスクリプタヒープを取得 ★★★
+    ID3D12DescriptorHeap* srvDescriptorHeap = SRVManager::GetInstance()->GetDescriptorHeap();
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplWin32_Init(winApp_->GetHwnd());
+    ImGui_ImplDX12_Init(
+        device_.Get(),
+        (UINT)backBufferCount_,
+        rtvFormat_,
+        srvDescriptorHeap,
+        srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+        srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 
@@ -157,69 +221,16 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 }
 
 void DirectXCommon::Finalize() {
-    ImGui_ImplDX12_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-}
-void DirectXCommon::PreDraw() {
-    // コマンドアロケータをリセットします。
-    // これにより、新しいフレームのコマンドを記録するためにメモリ領域を再利用できます。
-    HRESULT hr = commandAllocator_->Reset();
-    assert(SUCCEEDED(hr));
-
-    // コマンドリストをリセットします。
-    // コマンドアロケータを関連付け、新しいコマンドの記録を開始できる状態にします。
-    hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
-    assert(SUCCEEDED(hr));
-
-    // 現在描画対象となっているバックバッファのインデックスを取得します。
-    // スワップチェーンは通常複数のバッファ（ダブルバッファリング、トリプルバッファリング）を持っています。
-    backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
-
-    // リソースバリアを設定します。
-    // これから描画を行うバックバッファの状態を「表示用(PRESENT)」から「描画ターゲット用(RENDER_TARGET)」に切り替えます。
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = swapChainResources_[backBufferIndex_].Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    commandList_->ResourceBarrier(1, &barrier);
-
-    // レンダーターゲットビュー(RTV)のディスクリプタハンドルのポインタを取得します。
-    // バックバッファのインデックスを基に、正しいRTVを指すようにオフセットを計算しています。
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
-    rtvHandle.ptr = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart().ptr + (backBufferIndex_ * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
-
-    // 深度ステンシルビュー(DSV)のディスクリプタハンドルのポインタを取得します。
-    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-
-    // 出力マージャ(OM)ステージに、描画先となるRTVとDSVを設定します。
-    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
-
-    // 画面を指定した色でクリアします (例: 青みがかった灰色)。
-    float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
-    commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
-    // 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
-    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-    // ビューポート（描画する画面内の領域）を設定します。
-    commandList_->RSSetViewports(1, &viewport_);
-    // シザー矩形（ピクセルを描画する範囲を限定する矩形）を設定します。
-    commandList_->RSSetScissorRects(1, &scissorRect_);
-
-    // これから使用するディスクリプタヒープを設定します。
-    // ここでは主にテクスチャなどで使用するSRV(シェーダーリソースビュー)用のヒープをセットしています。
-    ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap_.Get() };
-    commandList_->SetDescriptorHeaps(1, descriptorHeaps);
+    //ImGui_ImplDX12_Shutdown();
+    //ImGui_ImplWin32_Shutdown();
+    //ImGui::DestroyContext();
 }
 
 void DirectXCommon::PostDraw() {
-    // ImGuiの描画コマンドを生成します。
-    ImGui::Render();
-    // 生成されたImGuiの描画データをコマンドリストに記録します。
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.Get());
+    //// ImGuiの描画コマンドを生成します。
+    //ImGui::Render();
+    //// 生成されたImGuiの描画データをコマンドリストに記録します。
+    //ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.Get());
 
     // リソースバリアを再度設定します。
     // 描画が終わったバックバッファの状態を「描画ターゲット用(RENDER_TARGET)」から「表示用(PRESENT)」に切り替えます。
@@ -391,24 +402,6 @@ void DirectXCommon::CreateFence() {
     fenceValue_ = 0;
 }
 
-void DirectXCommon::InitializeImGui() {
-    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = kMaxSRVCount; // 128から定数に変更
-    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    HRESULT hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvDescriptorHeap_));
-    assert(SUCCEEDED(hr));
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-    ImGui_ImplWin32_Init(winApp_->GetHwnd());
-    ImGui_ImplDX12_Init(
-        device_.Get(), (UINT)backBufferCount_, rtvFormat_,
-        srvDescriptorHeap_.Get(),
-        srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart(),
-        srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart());
-}
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureResource(int32_t width, int32_t height) {
     D3D12_RESOURCE_DESC resourceDesc{};

@@ -8,7 +8,7 @@
 #include "engine/base/DirectXCommon.h"
 
 // DirectXTex (テクスチャ読み込み用ライブラリ) を使用するために必要
-// プロジェクトのプロパティからインクルード・ライブラリディレクトリの設定が必要
+#include "externals/DirectXTex/DirectXTex.h"
 
 
 /// <summary>
@@ -24,21 +24,14 @@ public:
         DirectX::TexMetadata metadata; // テクスチャのメタデータ (幅、高さ、フォーマットなど)
         Microsoft::WRL::ComPtr<ID3D12Resource> resource; // テクスチャリソース本体 (VRAM上)
         Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource; // 中間リソース (アップロード用)
-        D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU; // SRVのCPUデスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU; // SRVのGPUデスクリプタハンドル
+        uint32_t srvHandle = 0; // SRVのハンドル (SRVManagerが管理)
     };
 
 public: // シングルトン
     /// <summary>
     /// シングルトンインスタンスを取得する
     /// </summary>
-    /// <returns>TextureManagerのインスタンス</returns>
     static TextureManager* GetInstance();
-
-    /// <summary>
-    /// シングルトンインスタンスを破棄する
-    /// </summary>
-    static void DestroyInstance();
 
 private:
     // シングルトンパターンのためのプライベートなコンストラクタ、デストラクタ、コピー制御
@@ -46,9 +39,6 @@ private:
     ~TextureManager() = default;
     TextureManager(const TextureManager&) = delete;
     const TextureManager& operator=(const TextureManager&) = delete;
-
-    // シングルトンインスタンスへの静的ポインタ
-    static TextureManager* instance_;
 
 public: // メンバ関数
     /// <summary>
@@ -65,13 +55,6 @@ public: // メンバ関数
     uint32_t Load(const std::string& filePath);
 
     /// <summary>
-    /// 指定したハンドルのテクスチャのGPUデスクリプタハンドルを取得する
-    /// </summary>
-    /// <param name="textureHandle">テクスチャハンドル</param>
-    /// <returns>GPUデスクリプタハンドル</returns>
-    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t textureHandle);
-
-    /// <summary>
     /// 指定したハンドルのテクスチャのメタデータを取得する
     /// </summary>
     /// <param name="textureHandle">テクスチャハンドル</param>
@@ -83,16 +66,9 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     // D3D12デバイス
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
-    // SRV (Shader Resource View) 用のデスクリプタヒープ
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_;
-    // SRVデスクリプタのサイズ
-    uint32_t descriptorSizeSRV_ = 0;
 
     // 読み込んだテクスチャデータを格納するコンテナ
     std::vector<TextureData> textureDatas_;
     // ファイルパスとテクスチャハンドルの対応を記録するマップ (多重読み込み防止用)
     std::map<std::string, uint32_t> textureHandleMap_;
-
-    // SRVインデックスの開始番号（ImGuiが0番を使っているため、ずらす）
-    static const uint32_t kSRVIndexTop = 1;
 };

@@ -18,9 +18,9 @@ void Game::Update() {
     InputManager::GetInstance()->Update(); 
 
 
-    ImGui_ImplDX12_NewFrame();
+ /*   ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
+    ImGui::NewFrame();*/
 
     // ゲームプレイシーンの更新処理を呼び出す
     if (gameScene_) {

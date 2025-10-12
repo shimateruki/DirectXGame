@@ -3,7 +3,7 @@
 #include "engine/base/WinApp.h"
 #include <cassert>
 #include "engine/3d/TextureManager.h"
-
+#include "engine/base/SRVManager.h"
 /// <summary>
 /// 初期化
 /// </summary>
@@ -132,11 +132,7 @@ void Sprite::Draw(ID3D12GraphicsCommandList* commandList) {
 	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
 
 
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGpu = {};
-	const auto& srvHeap = dxCommon_->GetSrvDescriptorHeap();
-	const auto descriptorSize = dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	textureSrvHandleGpu.ptr = srvHeap->GetGPUDescriptorHandleForHeapStart().ptr + (descriptorSize * textureHandle_);
-	commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGpu);
+	SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle_);
 
 	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
