@@ -57,9 +57,8 @@ public:
 	ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
 	DXGI_FORMAT GetRTVFormat() const { return rtvFormat_; }
 	size_t GetBackBufferCount() const { return backBufferCount_; }
-	ID3D12DescriptorHeap* GetSrvDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 
-	// 最大SRV数（最大テクスcha枚数）
+	// 最大SRV数（最大テクスチャ枚数）
 	static const uint32_t kMaxSRVCount = 512;
 	void InitalaizeFixFPS();
 	void UpdateFixFPS();
@@ -137,7 +136,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> swapChainResources_[2] = {};
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_ = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
 
 	// --- GPUとの同期用 ---

@@ -53,6 +53,11 @@ public: // メンバ関数
     /// </summary>
     Material* GetMaterial() { return materialData_; }
 
+    /// <summary>
+    /// テクスチャハンドルを取得
+    /// </summary>
+    uint32_t GetTextureHandle() const { return modelData_.material.textureHandle; }
+
 private: // 静的メンバ関数
     static ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
     static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
