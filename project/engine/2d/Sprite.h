@@ -4,7 +4,7 @@
 #include "engine/base/Math.h"
 #include <cstdint>
 #include <string>
-
+#include "engine/2d/SpriteCommon.h" 
 class DirectXCommon;
 
 class Sprite {
@@ -40,9 +40,8 @@ public: // メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
-	void Initialize(DirectXCommon* dxCommon, const std::string& textureFilePath);
-	void Initialize(DirectXCommon* dxCommon, uint32_t textureHandle);
-
+	void Initialize(SpriteCommon* common, uint32_t textureHandle);
+	void Initialize(SpriteCommon* common, const std::string& textureFilePath);
 	/// <summary>
 	/// 更新処理
 	/// </summary>
@@ -51,7 +50,8 @@ public: // メンバ関数
 	/// <summary>
 	/// 描画
 	/// </summary>
-	void Draw(ID3D12GraphicsCommandList* commandList);
+
+	void Draw();
 
 	// --- ゲッター/セッター ---
 	const Vector2& GetPosition() const { return position_; }
@@ -81,6 +81,7 @@ public: // メンバ関数
 	}
 
 private: // メンバ変数
+	SpriteCommon* common_ = nullptr;
 	DirectXCommon* dxCommon_ = nullptr;
 	uint32_t textureHandle_ = 0;
 
@@ -118,4 +119,6 @@ private: // メンバ変数
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
 	TransformationMatrix* wvpData_ = nullptr;
+
+
 };

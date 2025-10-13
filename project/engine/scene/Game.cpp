@@ -1,9 +1,6 @@
 #include "Game.h"
 #include "engine/scene/GamePlayScene.h" 
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
-
+#include"engine//io//ImguiManager.h"
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
@@ -17,15 +14,16 @@ void Game::Update() {
     // 入力とImGuiのフレーム開始は、シーンの更新前に行う
     InputManager::GetInstance()->Update(); 
 
-
- /*   ImGui_ImplDX12_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();*/
-
+      // ImGuiフレーム開始
+        ImGuiManager::GetInstance()->BeginFrame();
     // ゲームプレイシーンの更新処理を呼び出す
     if (gameScene_) {
         gameScene_->Update();
     }
+    // ImGuiフレーム終了
+    ImGuiManager::GetInstance()->EndFrame();
+
+	
 }
 
 void Game::Draw() {
@@ -36,7 +34,7 @@ void Game::Draw() {
     if (gameScene_) {
         gameScene_->Draw();
     }
-
+ 
     // 描画後処理
     dxCommon_->PostDraw();
 }

@@ -7,18 +7,18 @@
 /// <summary>
 /// 初期化
 /// </summary>
- void Sprite::Initialize(DirectXCommon* dxCommon, const std::string& textureFilePath) {
-	// ファイルパスからテクスチャハンドルを取得
-uint32_t handle = TextureManager::GetInstance()->Load(textureFilePath);
-// 取得したハンドルを使って、もう片方のInitialize関数を呼び出す
-Initialize(dxCommon, handle);
+void Sprite::Initialize(SpriteCommon* common, const std::string& textureFilePath) {
+	uint32_t handle = TextureManager::GetInstance()->Load(textureFilePath);
+	// ★★★ commonを渡して、もう片方のInitializeを呼び出す ★★★
+	Initialize(common, handle);
 }
 
-
-void Sprite::Initialize(DirectXCommon* dxCommon, uint32_t textureHandle)
+void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle)
 {
-	assert(dxCommon);
-	dxCommon_ = dxCommon;
+	assert(common);
+	common_ = common;
+	dxCommon_ = common_->GetDxCommon();
+
 	textureHandle_ = textureHandle; // 受け取ったハンドルをそのままメンバ変数に保存
 	// 各種リソース作成
 	vertexResource_ = dxCommon_->CreateBufferResource(sizeof(VertexData) * 4);
@@ -125,15 +125,17 @@ void Sprite::Update() {
 /// <summary>
 /// 描画
 /// </summary>
-void Sprite::Draw(ID3D12GraphicsCommandList* commandList) {
+void Sprite::Draw() {
+	// ★★★ メンバ変数の common_ を使う ★★★
+	assert(common_);
+	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+
+	common_->SetPipeline(commandList);
 	commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 	commandList->IASetIndexBuffer(&indexBufferView_);
 	commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
 	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
-
-
 	SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle_);
-
 	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
 

@@ -55,7 +55,7 @@ void GamePlayScene::Initialize() {
     // --- スプライトの生成 ---
     sprite_ = std::make_unique<Sprite>();
     uint32_t spriteTexHandle = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
-    sprite_->Initialize(dxCommon_, spriteTexHandle);
+    sprite_->Initialize(spriteCommon_.get(), spriteTexHandle);
     sprite_->SetPosition({ 200.0f, 360.0f });
     sprite_->SetSize({ 100.0f, 100.0f });
 
@@ -81,30 +81,30 @@ void GamePlayScene::Update() {
     }
 
     // --- ImGui ---
-    //ImGui::Begin("Object Settings");
-    //static int selected = 0;
-    //const char* items[] = { "Plane", "Teapot", "Bunny" };
-    //ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
-    //Object3d* currentObject = objects_[selected].get();
-    //Object3d::Transform* transform = currentObject->GetTransform();
-    //Model::Material* material = currentObject->GetMaterial();
-    //Object3d::DirectionalLight* light = currentObject->GetDirectionalLight();
-    //if (ImGui::CollapsingHeader("Object Transform")) {
-    //    ImGui::DragFloat3("Translate", &transform->translate.x, 0.01f);
-    //    ImGui::DragFloat3("Rotate", &transform->rotate.x, 0.01f);
-    //    ImGui::DragFloat3("Scale", &transform->scale.x, 0.01f);
-    //}
-    //if (ImGui::CollapsingHeader("Lighting")) {
-    //    ImGui::ColorEdit4("Light Color", &light->color.x);
-    //    ImGui::DragFloat3("Light Direction", &light->direction.x, 0.01f);
-    //    ImGui::DragFloat("Light Intensity", &light->intensity, 0.01f);
-    //}
-    //if (material && ImGui::CollapsingHeader("Material")) {
-    //    ImGui::ColorEdit4("Color", &material->color.x);
-    //    const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
-    //    ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
-    //}
-    //ImGui::End();
+    ImGui::Begin("Object Settings");
+    static int selected = 0;
+    const char* items[] = { "Plane", "Teapot", "Bunny" };
+    ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
+    Object3d* currentObject = objects_[selected].get();
+    Object3d::Transform* transform = currentObject->GetTransform();
+    Model::Material* material = currentObject->GetMaterial();
+    Object3d::DirectionalLight* light = currentObject->GetDirectionalLight();
+    if (ImGui::CollapsingHeader("Object Transform")) {
+        ImGui::DragFloat3("Translate", &transform->translate.x, 0.01f);
+        ImGui::DragFloat3("Rotate", &transform->rotate.x, 0.01f);
+        ImGui::DragFloat3("Scale", &transform->scale.x, 0.01f);
+    }
+    if (ImGui::CollapsingHeader("Lighting")) {
+        ImGui::ColorEdit4("Light Color", &light->color.x);
+        ImGui::DragFloat3("Light Direction", &light->direction.x, 0.01f);
+        ImGui::DragFloat("Light Intensity", &light->intensity, 0.01f);
+    }
+    if (material && ImGui::CollapsingHeader("Material")) {
+        ImGui::ColorEdit4("Color", &material->color.x);
+        const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
+        ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
+    }
+    ImGui::End();
 
     // --- オブジェクト更新 ---
     for (auto& obj : objects_) {
@@ -115,15 +115,13 @@ void GamePlayScene::Update() {
 }
 
 void GamePlayScene::Draw() {
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-
-    // --- 3Dオブジェクト描画 ---
+    // 3Dオブジェクトの描画
     object3dCommon_->SetGraphicsCommand();
-    for (const auto& obj : objects_) {
-        obj->Draw(commandList);
+    for (auto& obj : objects_) {
+        // ★★★ 引数が不要に ★★★
+        obj->Draw();
     }
 
-    // --- スプライト描画 ---
-    spriteCommon_->SetPipeline(commandList);
-    sprite_->Draw(commandList);
+    // スプライトの描画
+    sprite_->Draw();
 }

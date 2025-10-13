@@ -8,6 +8,7 @@
 #include <fstream>
 #include <thread>
 #include "engine/base/SRVManager.h"
+#include"engine/io/ImguiManager.h"
 
 // ログ出力用のヘルパー関数（グローバル）
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }
@@ -51,7 +52,6 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler_));
     dxcUtils_->CreateDefaultIncludeHandler(&includeHandler_);
 
-    //InitializeImGui();
 }
 
 void DirectXCommon::PreDraw() {
@@ -102,22 +102,6 @@ void DirectXCommon::PreDraw() {
     commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
 
-void DirectXCommon::InitializeImGui() {
-    // ★★★ SRVManagerからSRV用のデスクリプタヒープを取得 ★★★
-    ID3D12DescriptorHeap* srvDescriptorHeap = SRVManager::GetInstance()->GetDescriptorHeap();
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-    ImGui_ImplWin32_Init(winApp_->GetHwnd());
-    ImGui_ImplDX12_Init(
-        device_.Get(),
-        (UINT)backBufferCount_,
-        rtvFormat_,
-        srvDescriptorHeap,
-        srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-        srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-}
 
 
 
@@ -221,17 +205,11 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 }
 
 void DirectXCommon::Finalize() {
-    //ImGui_ImplDX12_Shutdown();
-    //ImGui_ImplWin32_Shutdown();
-    //ImGui::DestroyContext();
+;
 }
 
 void DirectXCommon::PostDraw() {
-    //// ImGuiの描画コマンドを生成します。
-    //ImGui::Render();
-    //// 生成されたImGuiの描画データをコマンドリストに記録します。
-    //ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList_.Get());
-
+    ImGuiManager::GetInstance()->Draw();
     // リソースバリアを再度設定します。
     // 描画が終わったバックバッファの状態を「描画ターゲット用(RENDER_TARGET)」から「表示用(PRESENT)」に切り替えます。
     D3D12_RESOURCE_BARRIER barrier{};

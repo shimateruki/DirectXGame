@@ -9,9 +9,6 @@
 
 // ======== 外部ライブラリのヘッダーファイル ========
 #include <dxcapi.h> // シェーダーコンパイルに必要
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
 #include "externals/DirectXTex/DirectXTex.h"
 
 // 前方宣言 
@@ -112,7 +109,6 @@ private:
 	void CreateRTV();            // レンダーターゲットビューの作成
 	void CreateDSV();            // 深度ステンシルビューの作成
 	void CreateFence();          // フェンスの作成
-	void InitializeImGui();      // ImGuiの初期化
 
 	// DSV用のテクスチャリソースを作成するヘルパー
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(int32_t width, int32_t height);

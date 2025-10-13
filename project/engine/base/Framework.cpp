@@ -2,7 +2,7 @@
 #include "engine/3d/TextureManager.h"
 #include "engine/3d/ModelManager.h"
 #include "engine/base/SRVManager.h" // ★ SRVManager.h をインクルード
-
+#include"engine//io/ImguiManager.h"
 void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
@@ -18,14 +18,14 @@ void Framework::Initialize() {
     audioPlayer_->Initialize();
 
     SRVManager::GetInstance()->Initialize(dxCommon_);
-
+    ImGuiManager::GetInstance()->Initialize(winApp_.get(), dxCommon_);
     // ModelManagerとTextureManagerの初期化
     ModelManager::GetInstance()->Initialize(dxCommon_);
     TextureManager::GetInstance()->Initialize(dxCommon_);
 }
 
 void Framework::Finalize() {
-    // (変更なし)
+    ImGuiManager::GetInstance()->Finalize();
     ModelManager::GetInstance()->Finalize();
     dxCommon_->Finalize();
     CoUninitialize();

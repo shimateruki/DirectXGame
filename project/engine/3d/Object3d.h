@@ -28,7 +28,7 @@ public: // メンバクラス（構造体）
 public: // メンバ関数
     void Initialize(Object3dCommon* common);
     void Update();
-    void Draw(ID3D12GraphicsCommandList* commandList);
+    void Draw();
 
     // --- セッター ---
     void SetModel(Model* model) { model_ = model; }
