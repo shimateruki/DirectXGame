@@ -42,14 +42,15 @@ void Object3d::Update() {
     directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
 }
 
-void Object3d::Draw(ID3D12GraphicsCommandList* commandList) {
+void Object3d::Draw() {
     if (model_ == nullptr) {
         return;
     }
 
-    // ★★★ テクスチャのインデックスを 2 に修正 ★★★
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
+    // ★★★ common_経由でコマンドリストを取得 ★★★
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
-    // モデルの描画
-    model_->Draw(commandList, wvpResource_.Get(), directionalLightResource_.Get());
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
+    model_->Draw(wvpResource_.Get(), directionalLightResource_.Get());
+
 }

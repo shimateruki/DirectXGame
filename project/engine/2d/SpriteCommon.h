@@ -15,6 +15,11 @@ public:
     /// 共通描画設定（描画前に呼ぶ）
     /// </summary>
     void SetPipeline(ID3D12GraphicsCommandList* commandList);
+    /// <summary>
+/// DirectX基盤を取得
+/// </summary>
+/// <returns>DirectX基盤</returns>
+    DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
 private:
     /// <summary>
@@ -27,6 +32,7 @@ private:
     /// </summary>
     void CreatePipeline();
 
+ 
 private:
     // DirectX基盤クラスのポインタ
     DirectXCommon* dxCommon_ = nullptr;

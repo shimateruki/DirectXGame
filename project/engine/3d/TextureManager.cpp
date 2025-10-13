@@ -3,6 +3,7 @@
 #include "engine/base/SRVManager.h"
 #include "externals/DirectXTex/d3dx12.h"
 
+
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>
@@ -55,7 +56,6 @@ void UploadTextureData(
     commandList->ResourceBarrier(1, &barrier);
 }
 
-
 TextureManager* TextureManager::GetInstance() {
     static TextureManager instance;
     return &instance;
@@ -68,50 +68,53 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 uint32_t TextureManager::Load(const std::string& filePath) {
-    // 1. 多重読み込みチェック
+    // 1. 過去に読み込み済みのテクスチャか検索
     auto it = textureHandleMap_.find(filePath);
     if (it != textureHandleMap_.end()) {
+        // 読み込み済みなら、そのハンドル（SRVハンドル）を返す
         return it->second;
     }
 
-    // 2. 新規読み込み
-    // ハンドルを計算（vectorの現在の要素数がそのまま次のインデックスになる）
-    uint32_t handle = static_cast<uint32_t>(textureDatas_.size());
+    // ★★★★★ ここからが新しいロジック ★★★★★
 
-    // 新しいテクスチャデータを格納
-    textureDatas_.emplace_back();
-    TextureData& newData = textureDatas_.back();
-    newData.filePath = filePath;
-
-    // テクスチャファイルを読み込み、ミップマップを生成
+    // 2. テクスチャファイルを読み込み、リソースを作成
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-    newData.metadata = metadata;
-
-    // GPU上にテクスチャリソースを作成
-    newData.resource = dxCommon_->CreateTextureResource(metadata);
-    // 作成したリソースに、読み込んだテクスチャデータをアップロード
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
+    Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
     UploadTextureData(
-        newData.resource.Get(), mipImages, &newData.intermediateResource,
+        resource.Get(), mipImages, &intermediateResource,
         device_.Get(), dxCommon_->GetCommandList());
 
-    // 3. SRV (Shader Resource View) の作成
+    // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
-    // SRVManagerにSRVの作成を依頼し、返ってきたハンドルを保存
-    newData.srvHandle = SRVManager::GetInstance()->CreateSRV(newData.resource.Get(), srvDesc);
+    // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
+    uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
 
-    // ファイルパスとハンドルの対応をマップに記録
-    textureHandleMap_[filePath] = handle;
+    // 4. 新しいテクスチャデータをmapに格納 (キーは本物のハンドル)
+    TextureData& newData = textureDatas_[srvHandle];
+    newData.filePath = filePath;
+    newData.metadata = metadata;
+    newData.resource = resource;
+    newData.intermediateResource = intermediateResource;
+    newData.srvHandle = srvHandle;
 
-    return handle;
+    // 5. ファイルパスと「本物のハンドル」の対応をマップに記録
+    textureHandleMap_[filePath] = srvHandle;
+
+    // 6. 「本物のハンドル」を返す
+    return srvHandle;
 }
 
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
-    assert(textureHandle < textureDatas_.size());
-    return textureDatas_[textureHandle].metadata;
+    // ★★★ 修正点：mapから検索 ★★★
+    auto it = textureDatas_.find(textureHandle);
+    // ハンドルがマップ内に存在するかチェック
+    assert(it != textureDatas_.end());
+    return it->second.metadata;
 }
