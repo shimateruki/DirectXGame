@@ -329,13 +329,9 @@ void DirectXCommon::CreateSwapChain() {
 }
 
 void DirectXCommon::CreateRTV() {
-    D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc{};
-    rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvDescriptorHeapDesc.NumDescriptors = (UINT)backBufferCount_;
-    HRESULT hr = device_->CreateDescriptorHeap(&rtvDescriptorHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap_));
-    assert(SUCCEEDED(hr));
+    rtvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, backBufferCount_, false);
     for (UINT i = 0; i < backBufferCount_; ++i) {
-        hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
+        HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
         assert(SUCCEEDED(hr));
         D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
         rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
@@ -348,16 +344,8 @@ void DirectXCommon::CreateRTV() {
 }
 
 void DirectXCommon::CreateDSV() {
-    // 深度ステンシルビュー(DSV)用のディスクリプタヒープのデスクリプタ（設定）を定義
-    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
-    // ヒープの種類をDSV用に設定
-    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-    // ヒープに格納するディスクリプタの数（今回は深度バッファ1つなので1）
-    dsvHeapDesc.NumDescriptors = 1;
-    // 設定を基にDSV用ディスクリプタヒープを生成
-    HRESULT hr = device_->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap_));
-    // ヒープの生成が成功したかチェック
-    assert(SUCCEEDED(hr));
+
+    dsvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 
     // 深度バッファとして使用するテクスチャリソースを作成
     // サイズはクライアント領域（ウィンドウ）の幅と高さに合わせる
@@ -372,6 +360,7 @@ void DirectXCommon::CreateDSV() {
     // 上記の設定を基に、深度ステンシルビューを作成
     device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
 }
+
 void DirectXCommon::CreateFence() {
     HRESULT hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
     assert(SUCCEEDED(hr));
@@ -549,4 +538,19 @@ void DirectXCommon::FlushCommandQueue(bool reset) {
         hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
         assert(SUCCEEDED(hr));
     }
+}
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DirectXCommon::CreateDescriptorHeap(
+    D3D12_DESCRIPTOR_HEAP_TYPE heapType,
+    UINT numDescriptors,
+    bool shaderVisible)
+{
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap = nullptr;
+    D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+    descriptorHeapDesc.Type = heapType;
+    descriptorHeapDesc.NumDescriptors = numDescriptors;
+    descriptorHeapDesc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    HRESULT hr = device_->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&descriptorHeap));
+    assert(SUCCEEDED(hr));
+    return descriptorHeap;
 }
