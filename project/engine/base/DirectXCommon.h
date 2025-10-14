@@ -93,6 +93,8 @@ public:
 	static std::wstring ConvertString(const std::string& str);
 	void FlushCommandQueue(bool reset = true);
 
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
+
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 

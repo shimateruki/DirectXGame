@@ -135,29 +135,29 @@
     <ClCompile Include="engine\base\WinApp.cpp">
       <Filter>ソース ファイル\engine\base</Filter>
     </ClCompile>
+    <ClCompile Include="engine\scene\BaseScene.cpp">
+      <Filter>ソース ファイル\engine\scene</Filter>
+    </ClCompile>
     <ClCompile Include="engine\3d\Camera.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
     <ClCompile Include="engine\3d\CameraManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\base\SrvManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
     <ClCompile Include="engine\scene\GamePlayScene.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\scene\BaseScene.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\engine\scene</Filter>
     </ClCompile>
     <ClCompile Include="engine\io\ImguiManager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\engine\io</Filter>
     </ClCompile>
     <ClCompile Include="engine\3d\ParticleCommon.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
     <ClCompile Include="engine\3d\ParticleSystem.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\engine\3d</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\base\SrvManager.cpp">
+      <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -264,29 +264,29 @@
     <ClInclude Include="engine\3d\TextureManager.h">
       <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
+    <ClInclude Include="engine\scene\BaseScene.h">
+      <Filter>ヘッダー ファイル\engine\scene</Filter>
+    </ClInclude>
     <ClInclude Include="engine\3d\Camera.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
     <ClInclude Include="engine\3d\CameraManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\base\SrvManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
     <ClInclude Include="engine\scene\GamePlayScene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\scene\BaseScene.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="engine\io\ImguiManager.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\engine\io</Filter>
     </ClInclude>
     <ClInclude Include="engine\3d\ParticleCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\engine\3d</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\base\SrvManager.h">
+      <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
     <ClInclude Include="engine\3d\ParticleSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

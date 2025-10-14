@@ -3,7 +3,7 @@
 
 void Camera::Initialize() {
     // デフォルトの視点、注視点、上方向を設定
-    eye_ = { 0.0f, 5.0f, -30.0f };
+    eye_ = { 0.0f, 5.0f, -20.0f };
     target_ = { 0.0f, 0.0f, 0.0f };
     up_ = { 0.0f, 1.0f, 0.0f };
     rotation_ = { 0.0f, 0.0f, 0.0f };
