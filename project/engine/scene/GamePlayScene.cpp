@@ -35,22 +35,32 @@ void GamePlayScene::Initialize() {
     ModelManager::GetInstance()->LoadModel("resouces/plane.obj");
     ModelManager::GetInstance()->LoadModel("resouces/teapot.obj");
     ModelManager::GetInstance()->LoadModel("resouces/bunny.obj");
+    ModelManager::GetInstance()->LoadModel("resouces/fence.obj");
 
     // --- オブジェクトの生成 ---
     objects_.emplace_back(std::make_unique<Object3d>()); // Plane
     objects_.emplace_back(std::make_unique<Object3d>()); // Teapot
     objects_.emplace_back(std::make_unique<Object3d>()); // Bunny
+    objects_.emplace_back(std::make_unique<Object3d>()); // fence
 
     objects_[0]->Initialize(object3dCommon_.get());
     objects_[0]->SetModel("resouces/plane.obj");
+    objects_[0]->SetBlendMode(BlendMode::kNormal);
 
     objects_[1]->Initialize(object3dCommon_.get());
     objects_[1]->SetModel("resouces/teapot.obj");
     objects_[1]->SetTranslate({ 2.0f, 0.0f, 0.0f });
+    objects_[1]->SetBlendMode(BlendMode::kAdd);
 
     objects_[2]->Initialize(object3dCommon_.get());
     objects_[2]->SetModel("resouces/bunny.obj");
     objects_[2]->SetTranslate({ -2.0f, 0.0f, 0.0f });
+	objects_[2]->SetBlendMode(BlendMode::kMultiply);
+
+	objects_[3]->Initialize(object3dCommon_.get());
+	objects_[3]->SetModel("resouces/fence.obj");
+	objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
+
 
     // --- スプライトの生成 ---
     sprite_ = std::make_unique<Sprite>();
@@ -58,6 +68,13 @@ void GamePlayScene::Initialize() {
     sprite_->Initialize(spriteCommon_.get(), spriteTexHandle);
     sprite_->SetPosition({ 200.0f, 360.0f });
     sprite_->SetSize({ 100.0f, 100.0f });
+
+    // --- パーティクルの初期化 ---
+    particleCommon_ = std::make_unique<ParticleCommon>();
+    particleCommon_->Initialize(dxCommon_);
+
+    particleSystem_ = std::make_unique<ParticleSystem>();
+    particleSystem_->Initialize(particleCommon_.get());
 
     dxCommon_->FlushCommandQueue(false);
 }
@@ -83,7 +100,7 @@ void GamePlayScene::Update() {
     // --- ImGui ---
     ImGui::Begin("Object Settings");
     static int selected = 0;
-    const char* items[] = { "Plane", "Teapot", "Bunny" };
+    const char* items[] = { "Plane", "Teapot", "Bunny","fence"};
     ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
     Object3d* currentObject = objects_[selected].get();
     Object3d::Transform* transform = currentObject->GetTransform();
@@ -104,24 +121,50 @@ void GamePlayScene::Update() {
         const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
         ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
     }
+
     ImGui::End();
 
-    // --- オブジェクト更新 ---
-    for (auto& obj : objects_) {
-        // CameraManagerの導入により、Updateの引数は不要になっています
-        obj->Update();
+    // (ImGuiのウィンドウ表示コード)
+    ImGui::Begin("Scene Control");
+    ImGui::Checkbox("Draw Particles", &isDrawParticles_);
+    if (isDrawParticles_) {
+        // マウス左クリックでパーティクルをスポーン
+        if (inputManager_->IsMouseButtonTriggered(0)) {
+            OutputDebugStringA("Spawn Particles Triggered!\n");
+            particleSystem_->SpawnParticles({ 0.0f, 0.1f, 0.0f }, 10);
+        }
     }
-    sprite_->Update();
+	ImGui::End();
+    if (isDrawParticles_) {
+        particleSystem_->Update();
+    }
+    else
+    {
+        // --- オブジェクト更新 ---
+        for (auto& obj : objects_) {
+            obj->Update();
+        }
+        sprite_->Update();
+    }
+
 }
 
 void GamePlayScene::Draw() {
-    // 3Dオブジェクトの描画
-    object3dCommon_->SetGraphicsCommand();
-    for (auto& obj : objects_) {
-        // ★★★ 引数が不要に ★★★
-        obj->Draw();
-    }
 
-    // スプライトの描画
-    sprite_->Draw();
+    if (isDrawParticles_) {
+        // --- パーティクル描画モード ---
+        particleSystem_->Draw();
+
+    } else {
+        // --- 通常描画モード ---
+
+        // 3Dオブジェクトの描画
+        object3dCommon_->SetGraphicsCommand();
+        for (auto& obj : objects_) {
+            obj->Draw();
+        }
+
+        // スプライトの描画
+        sprite_->Draw();
+    }
 }

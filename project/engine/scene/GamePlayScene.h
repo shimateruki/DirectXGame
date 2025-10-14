@@ -6,6 +6,8 @@
 #include "engine/3d/Object3d.h"
 #include "engine/2d/Sprite.h"
 #include "engine/audio/AudioPlayer.h"
+#include "engine/3d/ParticleSystem.h" 
+#include "engine/3d/ParticleCommon.h" 
 
 #include <memory>
 #include <vector>
@@ -51,6 +53,10 @@ private:
 
     std::vector<std::unique_ptr<Object3d>> objects_;
     std::unique_ptr<Sprite> sprite_;
+
+    std::unique_ptr<ParticleCommon> particleCommon_;
+    std::unique_ptr<ParticleSystem> particleSystem_;
+    bool isDrawParticles_ = false; // パーティクル描画フラグ
 
     // --- サウンドデータ ---
     AudioPlayer::AudioHandle bgmHandle_ = 0;
