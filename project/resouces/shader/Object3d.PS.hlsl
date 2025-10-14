@@ -63,8 +63,19 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             output.color.a = gMaterial.color.a * textureColor.a;
         break;
     }
-
+    if (textureColor.a <= 0.5)
+    {
+        discard;
+    }
+    if (textureColor.a == 0.0)
+    {
+        discard;
+    }
+    if (output.color.a ==0.0)
+    {
+        discard;
+    }
    
       
-    return output;
+        return output;
 }

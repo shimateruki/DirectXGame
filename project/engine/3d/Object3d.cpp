@@ -1,7 +1,7 @@
 #include "engine/3d/Object3d.h"
 #include "engine/base/DirectXCommon.h"
 #include "engine/3d/ModelManager.h"
-#include "engine/base/SRVManager.h" // SRVManagerをインクルード
+#include "engine/base/SRVManager.h"
 #include "engine/3d/CameraManager.h"
 #include <cassert>
 
@@ -29,16 +29,13 @@ void Object3d::SetModel(const std::string& filePath) {
 
 void Object3d::Update() {
     Math math;
-
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     const Matrix4x4& viewMatrix = camera->GetViewMatrix();
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
-
     Matrix4x4 worldMatrix = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
     Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
     wvpData_->WVP = worldViewProjectionMatrix;
     wvpData_->world = worldMatrix;
-
     directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
 }
 
@@ -47,10 +44,10 @@ void Object3d::Draw() {
         return;
     }
 
-    // ★★★ common_経由でコマンドリストを取得 ★★★
-    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
+    common_->SetPipelineState(blendMode_);
+
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
     model_->Draw(wvpResource_.Get(), directionalLightResource_.Get());
-
 }

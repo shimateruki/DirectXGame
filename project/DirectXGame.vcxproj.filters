@@ -153,11 +153,14 @@
     <ClCompile Include="engine\io\ImguiManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="engine\3d\ParticleCommon.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\3d\ParticleSystem.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="DUMPS\2025-0422-1117.dmp">
-      <Filter>ソース ファイル</Filter>
-    </None>
     <None Include="resouces\shader\Object3d.hlsli">
       <Filter>シェーダーファイル</Filter>
     </None>
@@ -167,12 +170,21 @@
     <None Include="resouces\shader\Sprite.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
+    <None Include="resouces\shader\Particle.VS.hlsl">
+      <Filter>シェーダーファイル</Filter>
+    </None>
+    <None Include="DUMPS\2025-0422-1117.dmp">
+      <Filter>ソース ファイル\engine\scene</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="resouces\shader\Object3d.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
     <FxCompile Include="resouces\shader\Object3d.PS.hlsl">
+      <Filter>シェーダーファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="resouces\shader\Particle.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
   </ItemGroup>
@@ -268,6 +280,12 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\io\ImguiManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\3d\ParticleCommon.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\3d\ParticleSystem.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
