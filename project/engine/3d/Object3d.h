@@ -28,7 +28,7 @@ public:
     void Draw();
 
     void SetModel(Model* model) { model_ = model; }
-    void SetModel(const std::string& filePath);
+    void SetModel(const std::string& modelName);
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
 
     // ブレンドモード用のセッターとゲッター

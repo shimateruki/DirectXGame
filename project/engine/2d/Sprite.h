@@ -80,6 +80,8 @@ public: // メンバ関数
 		textureSize_ = texSize;
 	}
 
+	static uint32_t LoadTexture(const std::string& fileName);
+
 private: // メンバ変数
 	SpriteCommon* common_ = nullptr;
 	DirectXCommon* dxCommon_ = nullptr;
@@ -104,6 +106,7 @@ private: // メンバ変数
 	Vector2 textureSize_ = { 100.0f, 100.0f }; // 初期値は後で上書きされる
 
 	void AdjustTextureSize();
+
 
 	// リソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;

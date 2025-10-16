@@ -3,7 +3,7 @@
 #include "engine/base/SRVManager.h"
 #include "externals/DirectXTex/d3dx12.h"
 
-
+//const std::string TextureManager::kDefaultBaseDirectory = "resouces/sprite/";
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>

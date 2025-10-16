@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Model.h"
 #include <string>
 #include <map>
@@ -8,36 +7,14 @@
 class DirectXCommon;
 class ModelCommon;
 
-// モデルデータを管理するクラス（シングルトン）
 class ModelManager {
 public:
-    /// <summary>
-    /// シングルトンインスタンスの取得
-    /// </summary>
     static ModelManager* GetInstance();
-
-    /// <summary>
-    /// 初期化
-    /// </summary>
     void Initialize(DirectXCommon* dxCommon);
-
-    /// <summary>
-    /// 終了処理
-    /// </summary>
     void Finalize();
 
-    /// <summary>
-    /// モデルの読み込み
-    /// </summary>
-    /// <param name="filePath">モデルのファイルパス</param>
-    void LoadModel(const std::string& filePath);
-
-    /// <summary>
-    /// モデルデータを取得
-    /// </summary>
-    /// <param name="filePath">モデルのファイルパス</param>
-    /// <returns>見つかったモデルデータ。見つからなければnullptr</returns>
-    Model* FindModel(const std::string& filePath);
+    // ★★★ モデル名で「探して、なければ読み込む」賢い関数に ★★★
+    Model* LoadModel(const std::string& modelName);
 
 private:
     ModelManager() = default;
@@ -48,6 +25,11 @@ private:
 private:
     static ModelManager* instance;
 
+    // ★★★ ModelCommonはManagerが一元管理する ★★★
     std::unique_ptr<ModelCommon> modelCommon_;
     std::map<std::string, std::unique_ptr<Model>> models_;
+
+    // ★★★ デフォルトのパスと拡張子を定数として定義 ★★★
+    static const std::string kDefaultBaseDirectory;
+    static const std::string kDefaultModelExtension;
 };

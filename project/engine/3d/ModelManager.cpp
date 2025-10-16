@@ -4,6 +4,8 @@
 
 // 静的メンバ変数の実体定義
 ModelManager* ModelManager::instance = nullptr;
+const std::string ModelManager::kDefaultBaseDirectory = "resouces/3DModel/";
+const std::string ModelManager::kDefaultModelExtension = ".obj";
 
 ModelManager* ModelManager::GetInstance() {
     if (instance == nullptr) {
@@ -19,35 +21,32 @@ void ModelManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 void ModelManager::Finalize() {
-    // インスタンスを解放
+    models_.clear(); // モデルを全て解放
+    modelCommon_.reset(); // ModelCommonを解放
     delete instance;
     instance = nullptr;
 }
 
-void ModelManager::LoadModel(const std::string& filePath) {
-    // 既に読み込み済みの場合は早期リターン
-    if (models_.contains(filePath)) {
-        return;
+
+Model* ModelManager::LoadModel(const std::string& modelName) {
+    // 1. 過去に読み込み済みのモデルか検索
+    auto it = models_.find(modelName);
+    if (it != models_.end()) {
+        return it->second.get();
     }
 
-    // モデルの生成と初期化
-    auto model = std::make_unique<Model>();
-    // ファイルパスからディレクトリパスとファイル名を分割
-    std::string directoryPath = filePath.substr(0, filePath.find_last_of('/'));
-    std::string fileName = filePath.substr(filePath.find_last_of('/') + 1);
+    // 2. 新しく読み込む
+    const std::string filePath = kDefaultBaseDirectory + modelName + "/" + modelName + kDefaultModelExtension;
 
-    // ModelクラスのInitializeを呼び出し
-    model->Initialize(modelCommon_.get(), directoryPath, fileName);
+    // ファイルパスからディレクトリとファイル名を分割
+    std::string directoryPath = kDefaultBaseDirectory + modelName;
+    std::string fileName = modelName + kDefaultModelExtension;
 
-    // コンテナに格納
-    models_.insert(std::make_pair(filePath, std::move(model)));
-}
+    auto newModel = std::make_unique<Model>();
+    // 注意: Model::Initializeにはディレクトリパスとファイル名を渡す
+    newModel->Initialize(modelCommon_.get(), directoryPath, fileName);
 
-Model* ModelManager::FindModel(const std::string& filePath) {
-    // filePathに対応するモデルがコンテナにあれば返す
-    if (models_.contains(filePath)) {
-        return models_.at(filePath).get();
-    }
-    // 見つからなければnullptrを返す
-    return nullptr;
+    // 3. 読み込んだモデルを登録して返す
+    auto result = models_.emplace(modelName, std::move(newModel));
+    return result.first->second.get();
 }
