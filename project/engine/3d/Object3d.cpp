@@ -24,8 +24,8 @@ void Object3d::Initialize(Object3dCommon* common) {
 }
 
 void Object3d::SetModel(const std::string& modelName) {
-    // ModelManager‚Éƒ‚ƒfƒ‹–¼‚Å—v‹‚·‚é‚¾‚¯I
-    // ’T‚µ‚ÄA‚È‚¯‚ê‚Î“Ç‚Ýž‚ñ‚Å‚­‚ê‚é
+    // ModelManagerã«ãƒ¢ãƒ‡ãƒ«åã§è¦æ±‚ã™ã‚‹ã ã‘ï¼
+    // æŽ¢ã—ã¦ã€ãªã‘ã‚Œã°èª­ã¿è¾¼ã‚“ã§ãã‚Œã‚‹
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
 }
 void Object3d::Update() {
