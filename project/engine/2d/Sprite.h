@@ -81,6 +81,23 @@ public: // メンバ関数
 	}
 
 	static uint32_t LoadTexture(const std::string& fileName);
+	// <summary>
+	/// アニメーションの設定
+	/// </summary>
+	/// <param name="frameCount">総フレーム数</param>
+	/// <param name="duration">1フレームあたりの再生時間(秒)</param>
+	/// <param name="loop">ループ再生するか</param>
+	void SetAnimation(int frameCount, float duration, bool loop);
+
+	/// <summary>
+	/// アニメーションの再生を開始
+	/// </summary>
+	void Play();
+
+	/// <summary>
+	/// アニメーションを停止
+	/// </summary>
+	void Stop();
 
 private: // メンバ変数
 	SpriteCommon* common_ = nullptr;
@@ -104,6 +121,15 @@ private: // メンバ変数
 	// テクスチャの切り出し範囲
 	Vector2 textureLeftTop_ = { 0.0f, 0.0f };
 	Vector2 textureSize_ = { 100.0f, 100.0f }; // 初期値は後で上書きされる
+	// アニメーション関連
+	bool isPlaying_ = false;         // 再生中か
+	bool isLooping_ = false;         // ループ再生するか
+	float frameDuration_ = 1.0f;     // 1フレームあたりの再生時間 (秒)
+	float animationTimer_ = 0.0f;    // アニメーションの経過時間タイマー
+	int totalFrames_ = 1;            // 総フレーム数
+	int currentFrame_ = 0;           // 現在のフレーム番号
+	int frameWidth_ = 0;             // 1フレームの横幅
+	int frameHeight_ = 0;            // 1フレームの縦幅
 
 	void AdjustTextureSize();
 

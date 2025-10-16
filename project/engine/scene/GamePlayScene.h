@@ -52,7 +52,7 @@ private:
     std::unique_ptr<SpriteCommon> spriteCommon_;
 
     std::vector<std::unique_ptr<Object3d>> objects_;
-    std::unique_ptr<Sprite> sprite_;
+    std::vector<std::unique_ptr<Sprite>> sprites_; 
 
     std::unique_ptr<ParticleCommon> particleCommon_;
     std::unique_ptr<ParticleSystem> particleSystem_;
