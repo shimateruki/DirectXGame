@@ -55,13 +55,22 @@ void GamePlayScene::Initialize() {
     objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
 
 
-    // --- スプライトの生成 ---
-    sprite_ = std::make_unique<Sprite>();
-    uint32_t spriteTexHandle = Sprite::LoadTexture("monsterBall");
+    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
+    auto monsterBallSprite = std::make_unique<Sprite>();
+    monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
+    monsterBallSprite->SetPosition({ 200.0f, 360.0f });
+    monsterBallSprite->SetSize({ 100.0f, 100.0f });
+    sprites_.push_back(std::move(monsterBallSprite)); // 配列に追加
 
-    sprite_->Initialize(spriteCommon_.get(), spriteTexHandle);
-    sprite_->SetPosition({ 200.0f, 360.0f });
-    sprite_->SetSize({ 100.0f, 100.0f });
+    // アニメーションサンプル
+    uint32_t sampleHandle = Sprite::LoadTexture("sample");
+    auto sampleAnnimation = std::make_unique<Sprite>();
+    sampleAnnimation->Initialize(spriteCommon_.get(), sampleHandle);
+    sampleAnnimation->SetAnimation(4, 0.15f, true); // アニメーション設定
+    sampleAnnimation->Play(); // 再生開始
+    sampleAnnimation->SetPosition({ 640.0f, 360.0f });
+	sampleAnnimation->SetSize({ 128.0f, 128.0f });
+    sprites_.push_back(std::move(sampleAnnimation)); // 配列に追加
 
     // --- パーティクルの初期化 ---
     particleCommon_ = std::make_unique<ParticleCommon>();
@@ -76,7 +85,7 @@ void GamePlayScene::Initialize() {
 void GamePlayScene::Finalize() {
     // Gameクラスから移動してきた終了処理
     objects_.clear();
-    sprite_.reset();
+	sprites_.clear();
     object3dCommon_.reset();
     spriteCommon_.reset();
 }
@@ -138,7 +147,9 @@ void GamePlayScene::Update() {
         for (auto& obj : objects_) {
             obj->Update();
         }
-        sprite_->Update();
+        for (auto& sprite : sprites_) {
+            sprite->Update();
+        }
     }
 
 }
@@ -158,7 +169,8 @@ void GamePlayScene::Draw() {
             obj->Draw();
         }
 
-        // スプライトの描画
-        sprite_->Draw();
+        for (auto& sprite : sprites_) {
+            sprite->Draw();
+        }
     }
 }
