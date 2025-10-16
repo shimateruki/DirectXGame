@@ -329,7 +329,7 @@ void DirectXCommon::CreateSwapChain() {
 }
 
 void DirectXCommon::CreateRTV() {
-    rtvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, backBufferCount_, false);
+    rtvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, (UINT)backBufferCount_, false);
     for (UINT i = 0; i < backBufferCount_; ++i) {
         HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
         assert(SUCCEEDED(hr));
