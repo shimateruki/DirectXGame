@@ -29,7 +29,7 @@ private:
 
 public:
     void Initialize(DirectXCommon* dxCommon);
-    uint32_t Load(const std::string& filePath);
+    uint32_t Load(const std::string& fileName);
     const DirectX::TexMetadata& GetMetadata(uint32_t textureHandle);
 
 private:
@@ -42,4 +42,6 @@ private:
 
     // ファイルパスからSRVハンドルへのマップはそのまま
     std::map<std::string, uint32_t> textureHandleMap_;
+
+
 };

@@ -14,13 +14,12 @@
 
 void GamePlayScene::Initialize() {
     // 基盤クラスのポインタを保持
-    // ★★★ 各マネージャのインスタンスをシングルトン経由で取得 ★★★
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
     audioPlayer_ = AudioPlayer::GetInstance();
 
     // 以下、Gameクラスから移動してきた初期化処理
-    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/Alarm02.mp3");
+    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
@@ -31,12 +30,6 @@ void GamePlayScene::Initialize() {
     object3dCommon_ = std::make_unique<Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
 
-    // --- モデルの読み込み ---
-    ModelManager::GetInstance()->LoadModel("resouces/plane.obj");
-    ModelManager::GetInstance()->LoadModel("resouces/teapot.obj");
-    ModelManager::GetInstance()->LoadModel("resouces/bunny.obj");
-    ModelManager::GetInstance()->LoadModel("resouces/fence.obj");
-
     // --- オブジェクトの生成 ---
     objects_.emplace_back(std::make_unique<Object3d>()); // Plane
     objects_.emplace_back(std::make_unique<Object3d>()); // Teapot
@@ -44,27 +37,28 @@ void GamePlayScene::Initialize() {
     objects_.emplace_back(std::make_unique<Object3d>()); // fence
 
     objects_[0]->Initialize(object3dCommon_.get());
-    objects_[0]->SetModel("resouces/plane.obj");
+    objects_[0]->SetModel("plane");
     objects_[0]->SetBlendMode(BlendMode::kNormal);
 
     objects_[1]->Initialize(object3dCommon_.get());
-    objects_[1]->SetModel("resouces/teapot.obj");
+    objects_[1]->SetModel("teapot");
     objects_[1]->SetTranslate({ 2.0f, 0.0f, 0.0f });
     objects_[1]->SetBlendMode(BlendMode::kAdd);
 
     objects_[2]->Initialize(object3dCommon_.get());
-    objects_[2]->SetModel("resouces/bunny.obj");
+    objects_[2]->SetModel("bunny");
     objects_[2]->SetTranslate({ -2.0f, 0.0f, 0.0f });
-	objects_[2]->SetBlendMode(BlendMode::kMultiply);
+    objects_[2]->SetBlendMode(BlendMode::kMultiply);
 
-	objects_[3]->Initialize(object3dCommon_.get());
-	objects_[3]->SetModel("resouces/fence.obj");
-	objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
+    objects_[3]->Initialize(object3dCommon_.get());
+    objects_[3]->SetModel("fence");
+    objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
 
 
     // --- スプライトの生成 ---
     sprite_ = std::make_unique<Sprite>();
-    uint32_t spriteTexHandle = TextureManager::GetInstance()->Load("resouces/monsterBall.png");
+    uint32_t spriteTexHandle = Sprite::LoadTexture("monsterBall");
+
     sprite_->Initialize(spriteCommon_.get(), spriteTexHandle);
     sprite_->SetPosition({ 200.0f, 360.0f });
     sprite_->SetSize({ 100.0f, 100.0f });

@@ -23,10 +23,11 @@ void Object3d::Initialize(Object3dCommon* common) {
     directionalLightData_->intensity = 1.0f;
 }
 
-void Object3d::SetModel(const std::string& filePath) {
-    model_ = ModelManager::GetInstance()->FindModel(filePath);
+void Object3d::SetModel(const std::string& modelName) {
+    // ModelManagerにモデル名で要求するだけ！
+    // 探して、なければ読み込んでくれる
+    model_ = ModelManager::GetInstance()->LoadModel(modelName);
 }
-
 void Object3d::Update() {
     Math math;
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();

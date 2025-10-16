@@ -144,3 +144,14 @@ void Sprite::AdjustTextureSize() {
 	size_ = { (float)metadata.width, (float)metadata.height };
 	textureSize_ = { (float)metadata.width, (float)metadata.height };
 }
+uint32_t Sprite::LoadTexture(const std::string& fileName) {
+	// スプライト用のデフォルトのディレクトリパスと拡張子を定義
+	const std::string baseDirectory = "resouces/sprite/";
+	const std::string defaultExtension = ".png"; // ★ これを追加！
+
+	// 完全なファイルパスを組み立てる
+	const std::string fullPath = baseDirectory + fileName + defaultExtension;
+
+	// 汎用的なTextureManagerに、完成したパスで読み込みを依頼する
+	return TextureManager::GetInstance()->Load(fullPath);
+}
