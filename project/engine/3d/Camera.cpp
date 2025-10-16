@@ -16,40 +16,48 @@ void Camera::Initialize() {
 }
 
 void Camera::Update() {
-    // --- デバッグ用のカメラ操作 ---
-    if (inputManager_) {
-        // マウス右クリックで回転
-        if (inputManager_->IsMouseButtonPressed(1)) {
-            Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-            const float rotateSpeed = 0.01f;
-            rotation_.x += mouseDelta.y * rotateSpeed;
-            rotation_.y += mouseDelta.x * rotateSpeed;
+    // ターゲットが設定されているか？
+    if (targetPosition_) {
+        // --- ターゲット追従カメラの処理 ---
+
+        // ターゲットの座標にオフセットを加えたものが、カメラの位置(eye)になる
+        eye_ = *targetPosition_ + followOffset_;
+
+        // カメラの注視点(target)は、ターゲットの座標そのもの
+        target_ = *targetPosition_;
+
+    } else {
+        // --- 従来の自由移動カメラの処理 ---
+        if (inputManager_) {
+            // (ここは既存のWASD移動とマウス回転のコードなので変更なし)
+            if (inputManager_->IsMouseButtonPressed(1)) {
+                Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+                const float rotateSpeed = 0.01f;
+                rotation_.x += mouseDelta.y * rotateSpeed;
+                rotation_.y += mouseDelta.x * rotateSpeed;
+            }
+            Vector3 move = { 0, 0, 0 };
+            const float moveSpeed = 0.3f;
+            if (inputManager_->IsKeyPressed(DIK_W)) { move.z += moveSpeed; }
+            if (inputManager_->IsKeyPressed(DIK_S)) { move.z -= moveSpeed; }
+            if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
+            if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
+            if (inputManager_->IsKeyPressed(DIK_E)) { move.y += moveSpeed; }
+            if (inputManager_->IsKeyPressed(DIK_Q)) { move.y -= moveSpeed; }
+            Math math;
+            Matrix4x4 rotateMatrix = math.Multiply(math.MakeRotateXMatrix(rotation_.x), math.MakeRotateYMatrix(rotation_.y));
+            move = math.TransformNormal(move, rotateMatrix);
+            eye_ = eye_ + move;
         }
-
-        // キーボードで移動
-        Vector3 move = { 0, 0, 0 };
-        const float moveSpeed = 0.3f;
-        if (inputManager_->IsKeyPressed(DIK_W)) { move.z += moveSpeed; }
-        if (inputManager_->IsKeyPressed(DIK_S)) { move.z -= moveSpeed; }
-        if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
-        if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
-        if (inputManager_->IsKeyPressed(DIK_E)) { move.y += moveSpeed; }
-        if (inputManager_->IsKeyPressed(DIK_Q)) { move.y -= moveSpeed; }
-
-        // 回転行列を計算
-        Math math;
-        Matrix4x4 rotateMatrix = math.Multiply(math.MakeRotateXMatrix(rotation_.x), math.MakeRotateYMatrix(rotation_.y));
-
-        // 移動ベクトルをカメラのローカル座標系に変換
-        move = math.TransformNormal(move, rotateMatrix);
-
-        // 視点と注視点を移動
-        eye_ = eye_ + move;
-        target_ = target_ + move;
     }
 
-    // --- 行列の計算 ---
+    // --- 共通の行列計算 ---
+    // (Update関数の最後にあるこの部分は、追従でも自由移動でも共通で使うので変更なし)
     Math math;
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+}
+
+void Camera::SetTarget(const Vector3* target) {
+    targetPosition_ = target;
 }

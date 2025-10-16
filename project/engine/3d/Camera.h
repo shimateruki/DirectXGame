@@ -23,6 +23,7 @@ public:
     // --- ゲッター ---
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
     const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix_; }
+    void SetTarget(const Vector3* target);
 
 private:
     // --- カメラの三要素 ---
@@ -39,8 +40,14 @@ private:
     // --- 生成される行列 ---
     Matrix4x4 viewMatrix_;
     Matrix4x4 projectionMatrix_;
+    // 追尾対象のワールド座標へのポインタ
+    const Vector3* targetPosition_ = nullptr;
+    // 追尾対象からのオフセット (カメラがどれだけ離れるか)
+    Vector3 followOffset_ = { 0.0f, 5.0f, -15.0f };
 
     // --- デバッグカメラ用のメンバ ---
     InputManager* inputManager_ = nullptr; // 入力クラスへのポインタ
     Vector3 rotation_ = { 0.0f, 0.0f, 0.0f }; // デバッグ用の回転
+
+
 };
