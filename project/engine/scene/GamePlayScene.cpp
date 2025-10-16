@@ -55,6 +55,16 @@ void GamePlayScene::Initialize() {
     objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
 
 
+    // メインカメラを取得
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
+    // 追尾させたいオブジェクトのTransformを取得 (今回はTeapot)
+    Object3d::Transform* targetTransform = objects_[1]->GetTransform();
+
+    // カメラにターゲットの「translate」(座標)へのポインタを渡す
+    camera->SetTarget(&targetTransform->translate);
+
+
     uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
     auto monsterBallSprite = std::make_unique<Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
