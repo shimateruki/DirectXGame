@@ -14,63 +14,73 @@
 #include "Player.h"
 
 void GamePlayScene::Initialize() {
-    dxCommon_ = DirectXCommon::GetInstance();
-    inputManager_ = InputManager::GetInstance();
-    audioPlayer_ = AudioPlayer::GetInstance();
+        // --- 基盤クラスのポインタを保持 ---
+        dxCommon_ = DirectXCommon::GetInstance();
+        inputManager_ = InputManager::GetInstance();
+        audioPlayer_ = AudioPlayer::GetInstance();
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
+        // --- 各種初期化 ---
+        bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
+        CameraManager::GetInstance()->Initialize();
+        CameraManager::GetInstance()->SetInputManager(inputManager_);
+        spriteCommon_ = std::make_unique<SpriteCommon>();
+        spriteCommon_->Initialize(dxCommon_);
+        object3dCommon_ = std::make_unique<Object3dCommon>();
+        object3dCommon_->Initialize(dxCommon_);
 
-    CameraManager::GetInstance()->Initialize();
-    CameraManager::GetInstance()->SetInputManager(inputManager_);
+        // --- オブジェクトの生成 ---
+        // Plane
+        auto plane = std::make_unique<Object3d>();
+        plane->Initialize(object3dCommon_.get());
+        plane->SetModel("plane");
+        objects_.emplace_back(std::move(plane));
 
-    spriteCommon_ = std::make_unique<SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_);
+        // Player (Teapot)
+        auto player = std::make_unique<Player>();
+        player->Initialize(object3dCommon_.get()); // Player独自のInitializeが呼ばれる
+        player->SetModel("teapot");
+        player->SetTranslate({ 2.0f, 0.0f, 0.0f });
+        objects_.emplace_back(std::move(player));
 
-    object3dCommon_ = std::make_unique<Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_);
+        // Enemy (Bunny)
+        auto enemy = std::make_unique<Object3d>();
+        enemy->Initialize(object3dCommon_.get());
+        enemy->SetModel("bunny");
+        enemy->SetTranslate({ -2.0f, 0.0f, 0.0f });
+        objects_.emplace_back(std::move(enemy));
 
-    // --- オブジェクトの生成 ---
-    objects_.emplace_back(std::make_unique<Object3d>()); // Plane
-    objects_[0]->Initialize(object3dCommon_.get());
-    objects_[0]->SetModel("plane");
+        // Block (fence)
+        for (int i = 0; i < 5; ++i) {
+            auto block = std::make_unique<Object3d>();
+            block->Initialize(object3dCommon_.get());
+            block->SetModel("fence");
+            block->SetTranslate({ -4.0f, 0.0f, (float)i * 1.8f - 4.0f });
+            objects_.emplace_back(std::move(block));
+        }
 
-    // Player (Teapot) の生成
-    auto player = std::make_unique<Player>();
-    player->Initialize(object3dCommon_.get());
-    player->SetModel("teapot");
-    player->SetTranslate({ 2.0f, 0.0f, 0.0f });
-    objects_.emplace_back(std::move(player));
+        // --- カメラの追尾設定 ---
+        Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+        camera->SetTarget(&objects_[1]->GetTransform()->translate); // Playerを追尾
 
-    // Enemy (Bunny) の生成
-    auto enemy = std::make_unique<Object3d>();
-    enemy->Initialize(object3dCommon_.get());
-    enemy->SetModel("bunny");
-    enemy->SetTranslate({ -2.0f, 0.0f, 0.0f });
-    objects_.emplace_back(std::move(enemy));
-
-    objects_.emplace_back(std::make_unique<Object3d>()); // fence
-    objects_[3]->Initialize(object3dCommon_.get());
-    objects_[3]->SetModel("fence");
-    objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
-
-    // --- カメラの追尾設定 ---
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    Object3d::Transform* targetTransform = objects_[1]->GetTransform(); // Playerを追尾
-    camera->SetTarget(&targetTransform->translate);
-
-    // --- 衝突判定の設定 ---
-    CollisionManager::GetInstance()->ClearObjects();
-    // プレイヤーを登録
-    objects_[1]->SetCollisionAttribute(kPlayer);
-    objects_[1]->SetCollisionMask(~kPlayer); // プレイヤー自身とは当たらない
-    objects_[1]->SetCollisionRadius(1.0f);
-    CollisionManager::GetInstance()->AddObject(objects_[1].get());
-    // 敵を登録
-    objects_[2]->SetCollisionAttribute(kEnemy);
-    objects_[2]->SetCollisionMask(~kEnemy); // 敵自身とは当たらない
-    objects_[2]->SetCollisionRadius(1.0f);
-    CollisionManager::GetInstance()->AddObject(objects_[2].get());
-
+        // --- 衝突判定の設定 ---
+        CollisionManager::GetInstance()->ClearObjects();
+        // Player
+        objects_[1]->SetCollisionAttribute(kPlayer);
+        objects_[1]->SetCollisionMask(~kPlayer);
+        objects_[1]->SetCollisionRadius(1.0f);
+        CollisionManager::GetInstance()->AddObject(objects_[1].get());
+        // Enemy
+        objects_[2]->SetCollisionAttribute(kEnemy);
+        objects_[2]->SetCollisionMask(~kEnemy);
+        objects_[2]->SetCollisionRadius(1.0f);
+        CollisionManager::GetInstance()->AddObject(objects_[2].get());
+        // Blocks
+        for (size_t i = 3; i < objects_.size(); ++i) {
+            objects_[i]->SetCollisionAttribute(kGround);
+            objects_[i]->SetCollisionMask(~kGround);
+            objects_[i]->SetCollisionRadius(1.0f);
+            CollisionManager::GetInstance()->AddObject(objects_[i].get());
+        }
     // --- スプライトの生成 ---
     // (以前のままなので省略)
     uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
