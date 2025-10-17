@@ -24,8 +24,8 @@ public:
     };
 
 public:
-    void Initialize(Object3dCommon* common);
-    void Update();
+    virtual void Initialize(Object3dCommon* common);
+    virtual void Update();
     void Draw();
 
     void SetModel(Model* model) { model_ = model; }

@@ -21,6 +21,15 @@ Vector3 operator+(const Vector3& v1, const Vector3& v2)
 
 }
 
+Vector3 operator/(const Vector3& v, float scalar) {
+	// 0除算を避けるための小さなチェック
+	if (scalar != 0.0f) {
+		return { v.x / scalar, v.y / scalar, v.z / scalar };
+	}
+	// 0で割ろうとした場合は、とりあえずゼロベクトルを返す
+	return { 0.0f, 0.0f, 0.0f };
+}
+
 Vector3 operator-(const Vector3& v)
 {
 	return { -v.x, -v.y, -v.z };
@@ -43,6 +52,12 @@ Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2)
 	return result;
 }
 
+Vector3& operator+=(Vector3& v1, const Vector3& v2) {
+	v1.x += v2.x;
+	v1.y += v2.y;
+	v1.z += v2.z;
+	return v1;
+}
 
 Matrix4x4 Math::makeIdentity4x4()
 {

@@ -37,10 +37,11 @@ struct Matrix4x4
 Vector3 operator-(const Vector3& v1, const Vector3& v2);
 Vector3 operator*(const Vector3& v, float scalar);
 Vector3 operator+(const Vector3& v1, const Vector3& v2);
-
+Vector3 operator/(const Vector3& v, float scalar);
 Vector3 operator-(const Vector3& v);
 
 Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
+Vector3& operator+=(Vector3& v1, const Vector3& v2);
 
 class Math
 {
