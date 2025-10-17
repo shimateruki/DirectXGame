@@ -9,16 +9,15 @@
 #include "engine/3d/ModelManager.h"
 #include "engine/3d/TextureManager.h"
 #include "engine/3d/CameraManager.h"
-
+#include "engine/3d/CollisionManager.h" 
 #include "externals/imgui/imgui.h"
+#include "Player.h"
 
 void GamePlayScene::Initialize() {
-    // 基盤クラスのポインタを保持
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
     audioPlayer_ = AudioPlayer::GetInstance();
 
-    // 以下、Gameクラスから移動してきた初期化処理
     bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 
     CameraManager::GetInstance()->Initialize();
@@ -32,76 +31,74 @@ void GamePlayScene::Initialize() {
 
     // --- オブジェクトの生成 ---
     objects_.emplace_back(std::make_unique<Object3d>()); // Plane
-    objects_.emplace_back(std::make_unique<Object3d>()); // Teapot
-    objects_.emplace_back(std::make_unique<Object3d>()); // Bunny
-    objects_.emplace_back(std::make_unique<Object3d>()); // fence
-
     objects_[0]->Initialize(object3dCommon_.get());
     objects_[0]->SetModel("plane");
-    objects_[0]->SetBlendMode(BlendMode::kNormal);
 
-    objects_[1]->Initialize(object3dCommon_.get());
-    objects_[1]->SetModel("teapot");
-    objects_[1]->SetTranslate({ 2.0f, 0.0f, 0.0f });
-    objects_[1]->SetBlendMode(BlendMode::kAdd);
+    // Player (Teapot) の生成
+    auto player = std::make_unique<Player>();
+    player->Initialize(object3dCommon_.get());
+    player->SetModel("teapot");
+    player->SetTranslate({ 2.0f, 0.0f, 0.0f });
+    objects_.emplace_back(std::move(player));
 
-    objects_[2]->Initialize(object3dCommon_.get());
-    objects_[2]->SetModel("bunny");
-    objects_[2]->SetTranslate({ -2.0f, 0.0f, 0.0f });
-    objects_[2]->SetBlendMode(BlendMode::kMultiply);
+    // Enemy (Bunny) の生成
+    auto enemy = std::make_unique<Object3d>();
+    enemy->Initialize(object3dCommon_.get());
+    enemy->SetModel("bunny");
+    enemy->SetTranslate({ -2.0f, 0.0f, 0.0f });
+    objects_.emplace_back(std::move(enemy));
 
+    objects_.emplace_back(std::make_unique<Object3d>()); // fence
     objects_[3]->Initialize(object3dCommon_.get());
     objects_[3]->SetModel("fence");
     objects_[3]->SetTranslate({ 0.0f, 0.0f, 5.0f });
 
-
-    // メインカメラを取得
+    // --- カメラの追尾設定 ---
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
-    // 追尾させたいオブジェクトのTransformを取得 (今回はTeapot)
-    Object3d::Transform* targetTransform = objects_[1]->GetTransform();
-
-    // カメラにターゲットの「translate」(座標)へのポインタを渡す
+    Object3d::Transform* targetTransform = objects_[1]->GetTransform(); // Playerを追尾
     camera->SetTarget(&targetTransform->translate);
 
+    // --- 衝突判定の設定 ---
+    CollisionManager::GetInstance()->ClearObjects();
+    // プレイヤーを登録
+    objects_[1]->SetCollisionAttribute(kPlayer);
+    objects_[1]->SetCollisionMask(~kPlayer); // プレイヤー自身とは当たらない
+    objects_[1]->SetCollisionRadius(1.0f);
+    CollisionManager::GetInstance()->AddObject(objects_[1].get());
+    // 敵を登録
+    objects_[2]->SetCollisionAttribute(kEnemy);
+    objects_[2]->SetCollisionMask(~kEnemy); // 敵自身とは当たらない
+    objects_[2]->SetCollisionRadius(1.0f);
+    CollisionManager::GetInstance()->AddObject(objects_[2].get());
 
+    // --- スプライトの生成 ---
+    // (以前のままなので省略)
     uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
     auto monsterBallSprite = std::make_unique<Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
     monsterBallSprite->SetPosition({ 200.0f, 360.0f });
     monsterBallSprite->SetSize({ 100.0f, 100.0f });
-    sprites_.push_back(std::move(monsterBallSprite)); // 配列に追加
-
-    // アニメーションサンプル
-    uint32_t sampleHandle = Sprite::LoadTexture("sample");
-    auto sampleAnnimation = std::make_unique<Sprite>();
-    sampleAnnimation->Initialize(spriteCommon_.get(), sampleHandle);
-    sampleAnnimation->SetAnimation(4, 0.15f, true); // アニメーション設定
-    sampleAnnimation->Play(); // 再生開始
-    sampleAnnimation->SetPosition({ 640.0f, 360.0f });
-	sampleAnnimation->SetSize({ 128.0f, 128.0f });
-    sprites_.push_back(std::move(sampleAnnimation)); // 配列に追加
+    sprites_.push_back(std::move(monsterBallSprite));
+    uint32_t flameHandle = Sprite::LoadTexture("sample");
+    auto flameSprite = std::make_unique<Sprite>();
+    flameSprite->Initialize(spriteCommon_.get(), flameHandle);
+    flameSprite->SetAnimation(4, 0.15f, true);
+    flameSprite->Play();
+    flameSprite->SetPosition({ 640.0f, 360.0f });
+    sprites_.push_back(std::move(flameSprite));
 
     // --- パーティクルの初期化 ---
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
-
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get());
 
     dxCommon_->FlushCommandQueue(false);
 }
 
-void GamePlayScene::Finalize() {
-    // Gameクラスから移動してきた終了処理
-    objects_.clear();
-	sprites_.clear();
-    object3dCommon_.reset();
-    spriteCommon_.reset();
-}
-
 void GamePlayScene::Update() {
     CameraManager::GetInstance()->Update();
+    CollisionManager::GetInstance()->Update(); // ★ 衝突判定の更新を追加
 
     if (inputManager_->IsKeyTriggered(DIK_P)) {
         audioPlayer_->Play(bgmHandle_, true);
@@ -112,8 +109,8 @@ void GamePlayScene::Update() {
 
     // --- ImGui ---
     ImGui::Begin("Object Settings");
-    static int selected = 0;
-    const char* items[] = { "Plane", "Teapot", "Bunny","fence"};
+    static int selected = 1; // デフォルトでPlayer(Teapot)を選択
+    const char* items[] = { "Plane", "Player (Teapot)", "Enemy (Bunny)","fence"};
     ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
     Object3d* currentObject = objects_[selected].get();
     Object3d::Transform* transform = currentObject->GetTransform();
@@ -134,51 +131,41 @@ void GamePlayScene::Update() {
         const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
         ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
     }
-
     ImGui::End();
 
-    // (ImGuiのウィンドウ表示コード)
     ImGui::Begin("Scene Control");
     ImGui::Checkbox("Draw Particles", &isDrawParticles_);
-    if (isDrawParticles_) {
-        // マウス左クリックでパーティクルをスポーン
-        if (inputManager_->IsMouseButtonTriggered(0)) {
-            OutputDebugStringA("Spawn Particles Triggered!\n");
-            particleSystem_->SpawnParticles({ 0.0f, 0.1f, 0.0f }, 10);
-        }
+    if (isDrawParticles_ && inputManager_->IsMouseButtonTriggered(0)) {
+        particleSystem_->SpawnParticles({ 0.0f, 0.1f, 0.0f }, 10);
     }
-	ImGui::End();
+    ImGui::End();
+
     if (isDrawParticles_) {
         particleSystem_->Update();
+    } else {
+        // オブジェクトとスプライトの更新
+        for (auto& obj : objects_) { obj->Update(); }
+        for (auto& sprite : sprites_) { sprite->Update(); }
     }
-    else
-    {
-        // --- オブジェクト更新 ---
-        for (auto& obj : objects_) {
-            obj->Update();
-        }
-        for (auto& sprite : sprites_) {
-            sprite->Update();
-        }
-    }
+}
 
+// Draw() と Finalize() は以前の複数スプライト対応版から変更ありません
+void GamePlayScene::Finalize() {
+    objects_.clear();
+    sprites_.clear();
+    object3dCommon_.reset();
+    spriteCommon_.reset();
 }
 
 void GamePlayScene::Draw() {
-
     if (isDrawParticles_) {
-        // --- パーティクル描画モード ---
         particleSystem_->Draw();
-
     } else {
-        // --- 通常描画モード ---
-
-        // 3Dオブジェクトの描画
         object3dCommon_->SetGraphicsCommand();
         for (auto& obj : objects_) {
             obj->Draw();
         }
-
+        spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
         for (auto& sprite : sprites_) {
             sprite->Draw();
         }
