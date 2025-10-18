@@ -1,36 +1,52 @@
+#define NOMINMAX
 #include "Character.h"
 #include "engine/3d/CollisionConfig.h"
 #include "engine/base/Math.h"
-#include "engine/3d/Model.h"
+#include <algorithm> // std::min, std::max
+#include <cmath>     // std::abs
 
-void Character::Initialize(Object3dCommon* common) {
 
+
+
+
+// --- Character::OnCollision の実装 ---
+
+void Character::Initialize(Object3dCommon* common)
+{
 }
 
-void Character::Update() {
-  
-
+void Character::Update()
+{
 }
 
 void Character::OnCollision(Object3d* other) {
-    // 相手が何らかの地形属性を持っていたら、押し戻し処理を行う
-    if (other->GetCollisionAttribute() & kAllGround) {
-        Vector3 posA = this->GetWorldPosition();
-        Vector3 posB = other->GetWorldPosition();
-        Vector3 vecAtoB = posB - posA;
-        Math math;
-        float distance = math.Length(vecAtoB);
-        float totalRadius = this->GetCollisionRadius() + other->GetCollisionRadius();
-        float penetration = totalRadius - distance;
+    // 相手が地形(kAllGround)でなければ、物理応答はしない
+    if (!(other->GetCollisionAttribute() & kAllGround)) {
+        return;
+    }
 
-        if (penetration > 0) {
-            Vector3 pushBackDirection = { 0,0,0 };
-            if (distance > 0.001f) {
-                pushBackDirection = (vecAtoB / distance) * -1.0f;
-            } else {
-                pushBackDirection = { 1.0f, 0.0f, 0.0f };
-            }
-            transform_.translate += pushBackDirection * penetration;
-        }
+    ColliderType myType = this->GetColliderType();
+    ColliderType otherType = other->GetColliderType();
+    CollisionInfo collision;
+    collision.isColliding = false; // 初期化
+
+    if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
+        collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
+    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
+        collision = CheckSphereCollision(
+            this->GetWorldPosition(), this->GetCollisionRadius(),
+            other->GetWorldPosition(), other->GetCollisionRadius());
+    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
+        collision = CheckSphereAABBCollision(
+            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetAABB());
+        collision.normal = collision.normal * -1.0f; // 法線を反転
+    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
+        collision = CheckSphereAABBCollision(
+            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
+    }
+
+    // 衝突していたら、自分を押し戻す
+    if (collision.isColliding) {
+        transform_.translate += collision.normal * collision.penetration;
     }
 }

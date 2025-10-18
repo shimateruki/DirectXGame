@@ -321,3 +321,14 @@ Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, cons
 
 	return result;
 }
+
+float Math::Clamp(float value, float min, float max)
+{
+	if (value < min) {
+		return min;
+	}
+	if (value > max) {
+		return max;
+	}
+	return value;
+}

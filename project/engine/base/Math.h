@@ -72,4 +72,5 @@ public:
 	float Dot(const Vector3& v1, const Vector3& v2);
 	float Length(const Vector3& v);
 
+	float Clamp(float value, float min, float max); 
 };
