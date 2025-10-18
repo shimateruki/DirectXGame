@@ -8,6 +8,11 @@ void Game::Initialize() {
     // ゲームプレイシーンを作成して初期化
     gameScene_ = std::make_unique<GamePlayScene>();
     gameScene_->Initialize();
+    // デバッグビルドの場合のみ、デバッグエディタを初期化
+#ifdef _DEBUG
+    debugEditor_ = std::make_unique<DebugEditor>();
+    debugEditor_->Initialize(gameScene_.get()); // gameScene_ のポインタを渡す
+#endif
 }
 
 void Game::Update() {
@@ -16,6 +21,11 @@ void Game::Update() {
 
       // ImGuiフレーム開始
         ImGuiManager::GetInstance()->BeginFrame();
+#ifdef _DEBUG
+        if (debugEditor_) {
+            debugEditor_->Update();
+        }
+#endif
     // ゲームプレイシーンの更新処理を呼び出す
     if (gameScene_) {
         gameScene_->Update();
@@ -40,6 +50,12 @@ void Game::Draw() {
 }
 
 void Game::Finalize() {
+#ifdef _DEBUG
+    if (debugEditor_) {
+        debugEditor_->Finalize();
+        debugEditor_.reset(); // unique_ptrを解放
+    }
+#endif
     // ゲームプレイシーンの終了処理
     if (gameScene_) {
         gameScene_->Finalize();

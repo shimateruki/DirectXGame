@@ -41,6 +41,7 @@ public:
     /// </summary>
     void Draw();
 
+    std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
 private:
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;

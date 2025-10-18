@@ -22,6 +22,7 @@ void Framework::Initialize() {
     // ModelManagerとTextureManagerの初期化
     ModelManager::GetInstance()->Initialize(dxCommon_);
     TextureManager::GetInstance()->Initialize(dxCommon_);
+
 }
 
 void Framework::Finalize() {
