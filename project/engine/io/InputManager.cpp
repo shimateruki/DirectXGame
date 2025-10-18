@@ -147,3 +147,9 @@ bool InputManager::IsGamepadButtonPressed(WORD button) const {
     // wButtonsはビットマスク。指定されたボタンのビットが立っているかを調べる
     return (gamepadState.Gamepad.wButtons & button) != 0;
 }
+
+// マウスホイールのスクロール量を取得
+float InputManager::GetMouseWheelDelta() const {
+    // DIMOUSESTATE構造体のlZメンバがホイールの移動量
+    return (float)mouseState.lZ;
+}
