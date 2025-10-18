@@ -20,7 +20,7 @@ void Player::Update() {
     if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
     if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
     transform_.translate += move;
-    Object3d::Update();
+ 
 }
 
 void Player::OnCollision(Object3d* other) {

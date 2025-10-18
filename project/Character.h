@@ -7,8 +7,7 @@
 /// </summary>
 class Character : public Object3d {
 public:
-    void Initialize(Object3dCommon* common) override;
-    void Update() override;
+    
 
     // 衝突応答の基本処理（押し戻し）を実装
     void OnCollision(Object3d* other) override;

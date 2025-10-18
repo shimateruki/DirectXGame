@@ -11,13 +11,7 @@
 
 // --- Character::OnCollision の実装 ---
 
-void Character::Initialize(Object3dCommon* common)
-{
-}
 
-void Character::Update()
-{
-}
 
 void Character::OnCollision(Object3d* other) {
     // 相手が地形(kAllGround)でなければ、物理応答はしない

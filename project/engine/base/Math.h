@@ -70,7 +70,7 @@ public:
 	Matrix4x4 MakeLookAtMatrix(const Vector3& eye, const Vector3& target, const Vector3& up);
 	Vector3 Cross(const Vector3& v1, const Vector3& v2);
 	float Dot(const Vector3& v1, const Vector3& v2);
-	float Length(const Vector3& v);
 
 	float Clamp(float value, float min, float max); 
+	float Length(const Vector3& v); 
 };

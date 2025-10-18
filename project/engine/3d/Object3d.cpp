@@ -28,7 +28,13 @@ void Object3d::SetModel(const std::string& modelName) {
     // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
 }
+// ▼▼▼ ロジック用のUpdate (中身は空) ▼▼▼
 void Object3d::Update() {
+    // 派生クラス (Playerなど) でオーバーライドされる用
+}
+
+// ▼▼▼ 行列計算用のUpdateMatrix (元のUpdateの中身) ▼▼▼
+void Object3d::UpdateMatrix() {
     Math math;
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     const Matrix4x4& viewMatrix = camera->GetViewMatrix();

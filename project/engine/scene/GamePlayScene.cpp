@@ -59,7 +59,7 @@ void GamePlayScene::Initialize() {
     for (int i = 0; i < 5; ++i) {
         auto block = std::make_unique<Object3d>();
         block->Initialize(object3dCommon_.get());
-        block->SetModel("fence");
+        block->SetModel("block");
         block->SetTranslate({ -4.0f, 0.0f, (float)i * 1.8f - 4.0f });
         objects_.emplace_back(std::move(block));
     }
@@ -89,7 +89,7 @@ void GamePlayScene::Initialize() {
         objects_[i]->SetCollisionAttribute(kGround);
         objects_[i]->SetCollisionMask(~kGround);
         objects_[i]->SetColliderType(ColliderType::kAABB); // ★ 地形はAABB
-        objects_[i]->SetCollisionSize({ 2.0f, 1.0f, 1.0f }); // (フェンスの大きさに合わせる)
+        objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f }); // (フェンスの大きさに合わせる)
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
 
@@ -129,9 +129,8 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::Update() {
+    // --- 0. 先に更新が必要なもの ---
     CameraManager::GetInstance()->Update();
-    // CollisionManager::GetInstance()->Update(); // ★ ここから移動
-
     if (inputManager_->IsKeyTriggered(DIK_P)) {
         audioPlayer_->Play(bgmHandle_, true);
     }
@@ -141,10 +140,10 @@ void GamePlayScene::Update() {
 
     // --- ImGui ---
     ImGui::Begin("Object Settings");
-    static int selected = 1; 
-    const char* items[] = { "Plane", "Player (Teapot)", "Enemy (Bunny)","fence"}; 
+    static int selected = 1;
+    const char* items[] = { "Plane", "Player (Teapot)", "Enemy (Bunny)","fence" };
     ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
-    if (selected < objects_.size()) { 
+    if (selected < objects_.size()) {
         Object3d* currentObject = objects_[selected].get();
         Object3d::Transform* transform = currentObject->GetTransform();
         Model::Material* material = currentObject->GetMaterial();
@@ -175,26 +174,39 @@ void GamePlayScene::Update() {
             particleSystem_->SpawnParticles({ 0.0f, 0.1f, 0.0f }, 10);
         }
     }
-	ImGui::End();
+    ImGui::End();
 
     if (isDrawParticles_) {
         particleSystem_->Update();
     }
-    else
-    {
-        // ★★★ 1. 先に全てのオブジェクトの移動処理を行う ★★★
-        // (ここでPlayerが壁にめり込む)
+
+    // ▼▼▼ ★★★ 処理順序を根本的に修正 ★★★ ▼▼▼
+
+    if (isDrawParticles_) {
+        particleSystem_->Update();
+    } else {
+        // --- 1. ゲームロジックの更新 (移動) ---
+        // (Playerはここで壁にめり込む)
         for (auto& obj : objects_) {
-            obj->Update(); 
+            obj->Update(); // ★ obj->Update() から変更
         }
         for (auto& sprite : sprites_) {
             sprite->Update();
         }
     }
 
-    // ★★★ 2. 移動処理の後で、衝突判定と押し戻し処理を行う ★★★
-    // (めり込んだPlayerを正しい位置に押し戻す)
-    CollisionManager::GetInstance()->Update(); 
+    // --- 2. 物理演算の更新 (衝突判定と押し戻し) ---
+    // (めり込んだPlayerが正しい位置に戻される)
+    CollisionManager::GetInstance()->Update();
+
+    // --- 3. 行列の更新 (描画準備) ---
+    // (押し戻された「後」の正しい座標で、全オブジェクトの行列を計算し直す)
+    if (!isDrawParticles_) {
+        for (auto& obj : objects_) {
+            obj->UpdateMatrix(); // ★ このループを丸ごと追加
+        }
+    }
+
 }
 
 void GamePlayScene::Draw() {
