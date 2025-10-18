@@ -26,6 +26,11 @@ public:
 public:
     virtual void Initialize(Object3dCommon* common);
     virtual void Update();
+
+    /// <summary>
+    /// ワールド行列の計算と定数バッファへの転送
+    /// </summary>
+    void UpdateMatrix();
     void Draw();
 
     void SetModel(Model* model) { model_ = model; }
