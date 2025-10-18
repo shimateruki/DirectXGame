@@ -1,13 +1,5 @@
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <Windows.h>
-#undef min
-#undef max
 
-#include <fstream>
-#include <string>
-#include "externals/nlohmann/json.hpp"
-using json = nlohmann::json;
+
 
 #include "GamePlayScene.h"
 #include "engine/base/DirectXCommon.h"
@@ -27,8 +19,10 @@ using json = nlohmann::json;
 // ▼▼▼ ゲーム側のオブジェクトをインクルード ▼▼▼
 #include "Player.h"
 
-
-
+#include <fstream>
+#include <string>
+#include "externals/nlohmann/json.hpp"
+using json = nlohmann::json;
 
 
 void GamePlayScene::Initialize() {

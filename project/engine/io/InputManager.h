@@ -80,6 +80,7 @@ public:
     /// <param name="button">ボタンの種類 (例: XINPUT_GAMEPAD_A)</param>
     /// <returns>押されていればtrue</returns>
     bool IsGamepadButtonPressed(WORD button) const;
+    float GetMouseWheelDelta() const;
 
 private:
     InputManager() = default;
