@@ -1,3 +1,14 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <Windows.h>
+#undef min
+#undef max
+
+#include <fstream>
+#include <string>
+#include "externals/nlohmann/json.hpp"
+using json = nlohmann::json;
+
 #include "GamePlayScene.h"
 #include "engine/base/DirectXCommon.h"
 #include "engine/io/InputManager.h"
@@ -16,7 +27,13 @@
 // ▼▼▼ ゲーム側のオブジェクトをインクルード ▼▼▼
 #include "Player.h"
 
+
+
+
+
 void GamePlayScene::Initialize() {
+
+
     // --- 基盤クラスのポインタを保持 ---
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
@@ -46,7 +63,10 @@ void GamePlayScene::Initialize() {
     player->Initialize(object3dCommon_.get()); // Player独自のInitializeが呼ばれる
     player->SetModel("teapot");
     player->SetTranslate({ 2.0f, 0.0f, 0.0f });
+    player->SetName("Player");
     objects_.emplace_back(std::move(player));
+
+ 
 
     // Enemy (Bunny)
     auto enemy = std::make_unique<Object3d>();
@@ -114,6 +134,63 @@ void GamePlayScene::Initialize() {
     particleCommon_->Initialize(dxCommon_);
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get());
+
+
+    // デバッグエディタ用に保存されたシーンレイアウトを読み込む
+    std::ifstream file("scene_layout.json");
+    if (file.is_open()) {
+        json sceneData;
+        try {
+            sceneData = json::parse(file); // JSONファイルをパース
+
+            // "objects" 配列が存在するかチェック
+            if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+
+                // JSON内の全オブジェクトデータをループ
+                for (const auto& objData : sceneData["objects"]) {
+
+                    // 1. オブジェクト名をJSONから取得
+                    std::string name = objData["name"];
+
+                    // 2. objects_ リストから同じ名前のオブジェクトを検索
+                    Object3d* targetObject = nullptr;
+                    for (auto& obj : objects_) {
+                        if (obj->GetName() == name) {
+                            targetObject = obj.get();
+                            break;
+                        }
+                    }
+
+                    // 3. オブジェクトが見つかったら、Transformを上書き
+                    if (targetObject) {
+                        Object3d::Transform* transform = targetObject->GetTransform();
+
+                        transform->translate.x = objData["position"][0];
+                        transform->translate.y = objData["position"][1];
+                        transform->translate.z = objData["position"][2];
+
+                        transform->rotate.x = objData["rotation"][0];
+                        transform->rotate.y = objData["rotation"][1];
+                        transform->rotate.z = objData["rotation"][2];
+
+                        transform->scale.x = objData["scale"][0];
+                        transform->scale.y = objData["scale"][1];
+                        transform->scale.z = objData["scale"][2];
+                    }
+                }
+            }
+        }
+        catch (json::parse_error& e) {
+            // JSONのパースに失敗した場合（ファイルが壊れているなど）
+            OutputDebugStringA("Failed to parse scene_layout.json\n");
+            OutputDebugStringA(e.what());
+        }
+        file.close();
+    }
+
+
+
+
 
     dxCommon_->FlushCommandQueue(false);
 }

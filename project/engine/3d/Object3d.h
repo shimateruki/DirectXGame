@@ -62,6 +62,13 @@ public:
 
     void SetCollisionSize(const Vector3& size) { aabbSize_ = size; }
     const Vector3& GetCollisionSize() const { return aabbSize_; }
+    // const版も用意（読み取り専用）
+    const Transform& GetTransform() const { return transform_; }
+
+    // オブジェクトの識別名を設定
+    void SetName(const std::string& name) { name_ = name; }
+    // オブジェクトの識別名を取得
+    const std::string& GetName() const { return name_; }
 
     // --- ゲッター ---
     const Vector3& GetWorldPosition() const { return transform_.translate; }
@@ -72,6 +79,8 @@ public:
             {center.x + aabbSize_.x, center.y + aabbSize_.y, center.z + aabbSize_.z}
         };
     }
+
+
 
     /// <summary>
     /// 衝突時に呼び出される仮想関数 (中身は空)
@@ -98,4 +107,5 @@ protected: // ★★★ privateからprotectedに変更 ★★★
     uint32_t collisionMask_ = 0xFFFFFFFF;
     float radius_ = 1.0f;
     Vector3 aabbSize_ = { 1.0f, 1.0f, 1.0f };
+    std::string name_ = "Object"; // オブジェクトの識別名
 };
