@@ -1,5 +1,5 @@
-
-
+// ★★★ windows.h の min/max マクロ競合を回避するため、必ずファイルの先頭に置く ★★★
+#define NOMINMAX
 
 #include "GamePlayScene.h"
 #include "engine/base/DirectXCommon.h"
@@ -11,22 +11,24 @@
 #include "engine/2d/Sprite.h"
 #include "engine/3d/ModelManager.h"
 #include "engine/3d/TextureManager.h"
-#include "engine/3d/CameraManager.h"
-#include "engine/3d/CollisionManager.h" // ★ 追加
-#include "engine/3d/ParticleSystem.h" // ★ 追加
+#include "engine/3d/CameraManager.h"   // ★ Draw() で使うためインクルード
+#include "engine/3d/CollisionManager.h"
+#include "engine/3d/ParticleSystem.h"
 #include "externals/imgui/imgui.h"
 
 // ▼▼▼ ゲーム側のオブジェクトをインクルード ▼▼▼
-#include "Player.h"
+#include "Player.h" // (Playerクラスがあると仮定)
 
+// --- JSON (保存機能) ---
 #include <fstream>
 #include <string>
-#include "externals/nlohmann/json.hpp"
-using json = nlohmann::json;
+#include "externals/nlohmann/json.hpp" // (配置したパスに合わせてください)
+// ---------------------------------
 
 
 void GamePlayScene::Initialize() {
-
+    // ★ using 宣言は必ず関数の「内側」に書く
+    using json = nlohmann::json;
 
     // --- 基盤クラスのポインタを保持 ---
     dxCommon_ = DirectXCommon::GetInstance();
@@ -34,174 +36,219 @@ void GamePlayScene::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
 
     // --- 各種初期化 ---
-    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
+    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3"); // (パス注意)
     CameraManager::GetInstance()->Initialize();
-    CameraManager::GetInstance()->SetInputManager(inputManager_);
+    CameraManager::GetInstance()->SetInputManager(inputManager_); // カメラに InputManager を渡す
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
     object3dCommon_ = std::make_unique<Object3dCommon>();
     object3dCommon_->Initialize(dxCommon_);
+    particleCommon_ = std::make_unique<ParticleCommon>();
+    particleCommon_->Initialize(dxCommon_);
+    particleSystem_ = std::make_unique<ParticleSystem>();
+    particleSystem_->Initialize(particleCommon_.get());
 
     // --- オブジェクトの生成 ---
     // Plane
     auto plane = std::make_unique<Object3d>();
     plane->Initialize(object3dCommon_.get());
     plane->SetModel("plane");
-    // plane->SetCollisionAttribute(kGround); // 地面にも判定を持たせる場合はコメントアウト解除
-    // plane->SetColliderType(ColliderType::kAABB);
-    // plane->SetCollisionSize({10.0f, 0.1f, 10.0f}); // 薄い箱
+    plane->SetName("Plane"); // ★ デバッグエディタ用に名前を設定
     objects_.emplace_back(std::move(plane));
 
-    // Player (Teapot)
-    auto player = std::make_unique<Player>();
-    player->Initialize(object3dCommon_.get()); // Player独自のInitializeが呼ばれる
+    // Player (Teapot) - インデックス [1] になる
+    auto player = std::make_unique<Player>(); // Playerクラスを使う
+    player->Initialize(object3dCommon_.get()); // Player独自のInitialize
     player->SetModel("teapot");
     player->SetTranslate({ 2.0f, 0.0f, 0.0f });
-    player->SetName("Player");
+    player->SetName("Player"); // ★ デバッグエディタ用に名前を設定
     objects_.emplace_back(std::move(player));
 
- 
-
-    // Enemy (Bunny)
+    // Enemy (Bunny) - インデックス [2] になる
     auto enemy = std::make_unique<Object3d>();
     enemy->Initialize(object3dCommon_.get());
     enemy->SetModel("bunny");
     enemy->SetTranslate({ -2.0f, 0.0f, 0.0f });
+    enemy->SetName("Enemy"); // ★ デバッグエディタ用に名前を設定
     objects_.emplace_back(std::move(enemy));
 
-    // Block (fence)
+    // Block (fence) - インデックス [3] から
     for (int i = 0; i < 5; ++i) {
         auto block = std::make_unique<Object3d>();
         block->Initialize(object3dCommon_.get());
         block->SetModel("block");
         block->SetTranslate({ -4.0f, 0.0f, (float)i * 1.8f - 4.0f });
+        block->SetName("Block_" + std::to_string(i)); // ★ デバッグエディタ用に名前を設定
         objects_.emplace_back(std::move(block));
     }
 
-    // --- カメラの追尾設定 ---
+    // --- カメラの設定 ---
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    camera->SetTarget(&objects_[1]->GetTransform()->translate); // Playerを追尾
+
+    // 1. [共通] 追従対象（Player）を設定
+    // (デバッグビルド中は Camera::SetTarget 内部で自動的に無効化される)
+    camera->SetTarget(&objects_[1]->GetTransform()->translate);
+
+    // 2. [Release用] 追従モードとパラメータを設定 (どちらか一方を選ぶ)
+#ifndef _DEBUG // Releaseビルドの時だけ設定が有効になるように
+    // --- 例A：ズーム可能な第三者視点 ---
+    camera->SetFollowMode(Camera::FollowMode::kAimable);
+    camera->ConfigAimable(10.0f, 2.0f, 20.0f); // 初期距離, Min距離, Max距離
+
+    // --- 例B：一人称視点 ---
+    //camera->SetFollowMode(Camera::FollowMode::kFirstPerson);
+    //camera->ConfigFirstPerson({ 0.0f, 0.5f, 0.1f }); // 視点のオフセット (少し前に出す)
+
+    // --- 例C：固定視点 (デフォルト) ---
+    // camera->SetFollowMode(Camera::FollowMode::kFixed);
+    // camera->ConfigFixed({0.0f, 5.0f, -15.0f}); // 固定オフセット
+#endif
+
 
     // --- 衝突判定の設定 ---
     CollisionManager::GetInstance()->ClearObjects();
 
     // Player (Index 1)
     objects_[1]->SetCollisionAttribute(kPlayer);
-    objects_[1]->SetCollisionMask(~kPlayer);
-    // (形状とサイズは Player::Initialize で設定済み)
+    objects_[1]->SetCollisionMask(~kPlayer); // Player以外と当たる
+    // (形状とサイズは Player::Initialize で設定済みと仮定)
     CollisionManager::GetInstance()->AddObject(objects_[1].get());
 
     // Enemy (Index 2)
     objects_[2]->SetCollisionAttribute(kEnemy);
-    objects_[2]->SetCollisionMask(~kEnemy);
-    objects_[2]->SetColliderType(ColliderType::kSphere); // 敵は球判定にしてみる
+    objects_[2]->SetCollisionMask(~kEnemy); // Enemy以外と当たる
+    objects_[2]->SetColliderType(ColliderType::kSphere);
     objects_[2]->SetCollisionRadius(1.0f);
     CollisionManager::GetInstance()->AddObject(objects_[2].get());
 
     // Blocks (Index 3 から)
     for (size_t i = 3; i < objects_.size(); ++i) {
         objects_[i]->SetCollisionAttribute(kGround);
-        objects_[i]->SetCollisionMask(~kGround);
-        objects_[i]->SetColliderType(ColliderType::kAABB); // ★ 地形はAABB
-        objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f }); // (フェンスの大きさに合わせる)
+        objects_[i]->SetCollisionMask(~kGround); // Ground以外と当たる
+        objects_[i]->SetColliderType(ColliderType::kAABB);
+        objects_[i]->SetCollisionSize({ 0.5f, 0.5f, 0.5f }); // (ブロックモデルに合わせた半分のサイズ)
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
+    // Plane (Index 0) - 地面判定を追加する場合
+    /*
+    objects_[0]->SetCollisionAttribute(kGround);
+    objects_[0]->SetCollisionMask(~kGround);
+    objects_[0]->SetColliderType(ColliderType::kAABB);
+    objects_[0]->SetCollisionSize({10.0f, 0.1f, 10.0f}); // 薄い箱
+    CollisionManager::GetInstance()->AddObject(objects_[0].get());
+    */
+
 
     // --- スプライトの生成 ---
-    // (複数スプライト対応版のコード)
-    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
+    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall"); // resouces/sprite/monsterBall.png
     auto monsterBallSprite = std::make_unique<Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
     monsterBallSprite->SetPosition({ 200.0f, 360.0f });
     monsterBallSprite->SetSize({ 100.0f, 100.0f });
     sprites_.push_back(std::move(monsterBallSprite));
-    uint32_t flameHandle = Sprite::LoadTexture("flame");
+
+    uint32_t flameHandle = Sprite::LoadTexture("sample"); // resouces/sprite/sample.png
     auto flameSprite = std::make_unique<Sprite>();
     flameSprite->Initialize(spriteCommon_.get(), flameHandle);
-    flameSprite->SetAnimation(4, 0.15f, true);
+    flameSprite->SetAnimation(4, 0.15f, true); // 4コマ, 0.15秒/コマ, ループ
     flameSprite->Play();
     flameSprite->SetPosition({ 640.0f, 360.0f });
     sprites_.push_back(std::move(flameSprite));
 
-    // --- パーティクルの初期化 ---
-    particleCommon_ = std::make_unique<ParticleCommon>();
-    particleCommon_->Initialize(dxCommon_);
-    particleSystem_ = std::make_unique<ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get());
 
-
-    // デバッグエディタ用に保存されたシーンレイアウトを読み込む
+    // --- JSONレイアウトの読み込み (Initializeの最後) ---
     std::ifstream file("scene_layout.json");
     if (file.is_open()) {
         json sceneData;
         try {
-            sceneData = json::parse(file); // JSONファイルをパース
-
-            // "objects" 配列が存在するかチェック
+            sceneData = json::parse(file);
             if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
-
-                // JSON内の全オブジェクトデータをループ
                 for (const auto& objData : sceneData["objects"]) {
-
-                    // 1. オブジェクト名をJSONから取得
+                    if (!objData.contains("name")) continue; // 名前がないデータは無視
                     std::string name = objData["name"];
 
-                    // 2. objects_ リストから同じ名前のオブジェクトを検索
                     Object3d* targetObject = nullptr;
                     for (auto& obj : objects_) {
-                        if (obj->GetName() == name) {
+                        if (!obj->GetName().empty() && obj->GetName() == name) { // 名前が一致するか
                             targetObject = obj.get();
                             break;
                         }
                     }
 
-                    // 3. オブジェクトが見つかったら、Transformを上書き
                     if (targetObject) {
                         Object3d::Transform* transform = targetObject->GetTransform();
-
-                        transform->translate.x = objData["position"][0];
-                        transform->translate.y = objData["position"][1];
-                        transform->translate.z = objData["position"][2];
-
-                        transform->rotate.x = objData["rotation"][0];
-                        transform->rotate.y = objData["rotation"][1];
-                        transform->rotate.z = objData["rotation"][2];
-
-                        transform->scale.x = objData["scale"][0];
-                        transform->scale.y = objData["scale"][1];
-                        transform->scale.z = objData["scale"][2];
+                        if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
+                            transform->translate.x = objData["position"][0];
+                            transform->translate.y = objData["position"][1];
+                            transform->translate.z = objData["position"][2];
+                        }
+                        if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
+                            transform->rotate.x = objData["rotation"][0]; // JSONにはラジアンで保存されている前提
+                            transform->rotate.y = objData["rotation"][1];
+                            transform->rotate.z = objData["rotation"][2];
+                        }
+                        if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
+                            transform->scale.x = objData["scale"][0];
+                            transform->scale.y = objData["scale"][1];
+                            transform->scale.z = objData["scale"][2];
+                        }
                     }
                 }
             }
         }
         catch (json::parse_error& e) {
-            // JSONのパースに失敗した場合（ファイルが壊れているなど）
             OutputDebugStringA("Failed to parse scene_layout.json\n");
             OutputDebugStringA(e.what());
+            OutputDebugStringA("\n");
         }
         file.close();
     }
 
-
-
-
-
-    dxCommon_->FlushCommandQueue(false);
+    dxCommon_->FlushCommandQueue(false); // 初期化完了時にコマンドをフラッシュ
 }
 
 void GamePlayScene::Finalize() {
-    // Gameクラスから移動してきた終了処理
-    objects_.clear();
-    sprites_.clear(); // ★ 複数スプライト対応
-    object3dCommon_.reset();
+    // 解放漏れを防ぐため、逆順で解放するのが安全
+    particleSystem_.reset();
+    particleCommon_.reset();
+    sprites_.clear();
     spriteCommon_.reset();
-    particleCommon_.reset(); // ★ 追加
-    particleSystem_.reset(); // ★ 追加
+    objects_.clear();
+    object3dCommon_.reset();
+    // bgmHandle_ の解放処理があればここに追加
 }
 
 void GamePlayScene::Update() {
-    // --- 0. 先に更新が必要なもの ---
-    CameraManager::GetInstance()->Update();
+
+    // --- Releaseビルド時のカメラ入力処理 ---
+#ifndef _DEBUG
+    // デバッグビルド「でない」場合
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    Camera::FollowMode currentMode = camera->GetFollowMode(); // 現在のモードを取得
+
+    // モードに応じて入力をカメラに伝える
+    if (currentMode == Camera::FollowMode::kAimable) {
+        // マウスホイールでズーム
+        float wheelDelta = inputManager_->GetMouseWheelDelta();
+        if (wheelDelta != 0.0f) {
+            camera->AddZoom(wheelDelta);
+        }
+    }
+    if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+        // 右クリック(1)中だけ視点回転
+        if (inputManager_->IsMouseButtonPressed(1)) {
+            Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+            if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) { // 無駄な呼び出しを避ける
+                camera->AddRotation(mouseDelta);
+            }
+        }
+    }
+#endif
+
+    // --- 常に実行される更新 ---
+    CameraManager::GetInstance()->Update(); // カメラ行列の最終計算
+
+    // BGM再生・停止 (テスト用)
     if (inputManager_->IsKeyTriggered(DIK_P)) {
         audioPlayer_->Play(bgmHandle_, true);
     }
@@ -209,96 +256,82 @@ void GamePlayScene::Update() {
         audioPlayer_->Stop(bgmHandle_);
     }
 
-    // --- ImGui ---
-    ImGui::Begin("Object Settings");
-    static int selected = 1;
-    const char* items[] = { "Plane", "Player (Teapot)", "Enemy (Bunny)","fence" };
-    ImGui::Combo("View Select", &selected, items, IM_ARRAYSIZE(items));
-    if (selected < objects_.size()) {
-        Object3d* currentObject = objects_[selected].get();
-        Object3d::Transform* transform = currentObject->GetTransform();
-        Model::Material* material = currentObject->GetMaterial();
-        Object3d::DirectionalLight* light = currentObject->GetDirectionalLight();
-        if (ImGui::CollapsingHeader("Object Transform")) {
-            ImGui::DragFloat3("Translate", &transform->translate.x, 0.01f);
-            ImGui::DragFloat3("Rotate", &transform->rotate.x, 0.01f);
-            ImGui::DragFloat3("Scale", &transform->scale.x, 0.01f);
-        }
-        if (ImGui::CollapsingHeader("Lighting")) {
-            ImGui::ColorEdit4("Light Color", &light->color.x);
-            ImGui::DragFloat3("Light Direction", &light->direction.x, 0.01f);
-            ImGui::DragFloat("Light Intensity", &light->intensity, 0.01f);
-        }
-        if (material && ImGui::CollapsingHeader("Material")) {
-            ImGui::ColorEdit4("Color", &material->color.x);
-            const char* lightingTypes[] = { "None", "Lambertian", "Half Lambert" };
-            ImGui::Combo("Lighting Type", &material->selectedLighting, lightingTypes, IM_ARRAYSIZE(lightingTypes));
-        }
-    }
-    ImGui::End();
-
-    ImGui::Begin("Scene Control");
+    // --- ImGui (デバッグビルド時のみ表示される想定) ---
+#ifdef _DEBUG
+    // (DebugEditor側に移したので、シーン固有のImGuiは削除 or 必要なら追加)
+    /*
+    ImGui::Begin("Scene Control (GamePlayScene)");
     ImGui::Checkbox("Draw Particles", &isDrawParticles_);
     if (isDrawParticles_) {
-        if (inputManager_->IsMouseButtonTriggered(0)) {
+        if (inputManager_->IsMouseButtonTriggered(0)) { // 左クリックでパーティクル発生 (テスト用)
             OutputDebugStringA("Spawn Particles Triggered!\n");
             particleSystem_->SpawnParticles({ 0.0f, 0.1f, 0.0f }, 10);
         }
     }
     ImGui::End();
+    */
+#endif
 
+    // --- パーティクル更新 ---
+    // (isDrawParticles_ フラグでオンオフできるようにする)
     if (isDrawParticles_) {
         particleSystem_->Update();
     }
 
-    // ▼▼▼ ★★★ 処理順序を根本的に修正 ★★★ ▼▼▼
-
-    if (isDrawParticles_) {
-        particleSystem_->Update();
-    } else {
-        // --- 1. ゲームロジックの更新 (移動) ---
-        // (Playerはここで壁にめり込む)
-        for (auto& obj : objects_) {
-            obj->Update(); // ★ obj->Update() から変更
-        }
-        for (auto& sprite : sprites_) {
-            sprite->Update();
-        }
+    // --- 1. ゲームロジック (オブジェクト・スプライト) 更新 ---
+    for (auto& obj : objects_) {
+        obj->Update(); // Player::Update() などが呼ばれる
+    }
+    for (auto& sprite : sprites_) {
+        sprite->Update(); // アニメーション更新など
     }
 
-    // --- 2. 物理演算の更新 (衝突判定と押し戻し) ---
-    // (めり込んだPlayerが正しい位置に戻される)
+    // --- 2. 物理 (衝突判定) 更新 ---
     CollisionManager::GetInstance()->Update();
 
-    // --- 3. 行列の更新 (描画準備) ---
-    // (押し戻された「後」の正しい座標で、全オブジェクトの行列を計算し直す)
-    if (!isDrawParticles_) {
-        for (auto& obj : objects_) {
-            obj->UpdateMatrix(); // ★ このループを丸ごと追加
-        }
+    // --- 3. 行列 (描画準備) 更新 ---
+    for (auto& obj : objects_) {
+        obj->UpdateMatrix(); // ワールド行列の計算
     }
-
 }
 
 void GamePlayScene::Draw() {
 
+    // --- パーティクル描画 (オンの場合) ---
     if (isDrawParticles_) {
-        // --- パーティクル描画モード ---
         particleSystem_->Draw();
+    }
+    // --- 通常描画 (オフの場合) ---
+    else {
+        // --- Releaseビルド時の一人称視点判定 ---
+        bool isFirstPerson = false;
+#ifndef _DEBUG
+        Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+        // 追従対象が設定されており、かつモードが一人称視点か？
+        if (camera->GetTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+            isFirstPerson = true;
+        }
+#endif
 
-    } else {
-        // --- 通常描画モード ---
+        // --- 3Dオブジェクト描画 ---
+        object3dCommon_->SetGraphicsCommand(); // 共通コマンド設定
 
-        // 3Dオブジェクトの描画
-        object3dCommon_->SetGraphicsCommand();
-        for (auto& obj : objects_) {
-            obj->Draw();
+        for (size_t i = 0; i < objects_.size(); ++i) {
+            // ★ 一人称視点なら Player (Index 1) をスキップ
+            if (isFirstPerson && i == 1) {
+                continue;
+            }
+
+            // ブレンドモードを設定して描画 (必要なら)
+            // object3dCommon_->SetPipelineState(objects_[i]->GetBlendMode()); 
+            objects_[i]->Draw();
         }
 
-        // スプライトの描画
-        spriteCommon_->SetPipeline(dxCommon_->GetCommandList()); // ★ 複数スプライト対応
-        for (auto& sprite : sprites_) { // ★ 複数スプライト対応
+        // --- スプライト描画 ---
+        spriteCommon_->SetPipeline(dxCommon_->GetCommandList()); // スプライト用パイプライン設定
+        for (auto& sprite : sprites_) {
             sprite->Draw();
         }
     }
 }
+
