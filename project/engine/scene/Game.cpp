@@ -11,7 +11,8 @@ void Game::Initialize() {
     // デバッグビルドの場合のみ、デバッグエディタを初期化
 #ifdef _DEBUG
     debugEditor_ = std::make_unique<DebugEditor>();
-    debugEditor_->Initialize(gameScene_.get()); // gameScene_ のポインタを渡す
+    // ★ dxCommon_ を渡すように変更
+    debugEditor_->Initialize(gameScene_.get(), dxCommon_);
 #endif
 }
 
@@ -39,7 +40,12 @@ void Game::Update() {
 void Game::Draw() {
     // 描画前処理
     dxCommon_->PreDraw();
-
+#ifdef _DEBUG
+        if (debugEditor_) {
+            // ImGui描画の「前」に、コライダーなどを描画
+            debugEditor_->DrawDebug(dxCommon_->GetCommandList());
+        }
+#endif
     // ゲームプレイシーンの描画処理を呼び出す
     if (gameScene_) {
         gameScene_->Draw();

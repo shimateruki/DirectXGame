@@ -1,7 +1,17 @@
+// [修正] Camera.cpp
+
 #define NOMINMAX
 #include "engine/3d/Camera.h"
 #include "engine/base/WinApp.h" 
 #include <algorithm> // std::min, std::max のために追加
+
+// ★★★ 修正(1): ImGuiのヘッダーを追加 ★★★
+#include "externals/imgui/imgui.h"
+// (ImGuizmoも使う可能性があるため、念のためインクルードしておくと安全です)
+#include "externals/ImGuizmo/ImGuizmo.h"
+// ★★★ -------------------------------- ★★★
+
+
 // --- 角度変換ヘルパー ---
 #include <cmath> // M_PI が定義されていない場合のため
 #ifndef M_PI
@@ -9,6 +19,8 @@
 #endif
 
 const float PI = (float)M_PI;
+
+
 
 void Camera::Initialize() {
     // デフォルトの視点、注視点、上方向を設定
@@ -41,6 +53,20 @@ void Camera::Update() {
 
     // --- 1. 追従対象がいる (主にReleaseビルド) ---
     if (targetPosition_) {
+
+        // ★★★ 修正(2): ReleaseビルドでもImGui操作中は入力を無効化 ★★★
+#ifdef _DEBUG
+        // (デバッグビルド中はImGuiが有効なので、チェックを行う)
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+            // ImGuiが入力を使っているので、
+            // 追従カメラ用の入力 (AddRotation, AddZoom) は
+            // GamePlayScene::Update() 側でスキップさせる
+            // (この Update() 関数自体は行列計算のために実行継続)
+        }
+#endif
+        // ★★★ ------------------------------------------------ ★★★
+
 
         // ★ Release用モードに応じてカメラの座標を計算
         switch (followMode_) {
@@ -91,36 +117,49 @@ void Camera::Update() {
     else {
 #ifdef _DEBUG
         if (inputManager_) {
-            // 左クリック + マウス移動での回転
-            if (inputManager_->IsMouseButtonPressed(0)) {
-                Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-                const float rotateSpeed = 0.01f;
-                rotation_.x += mouseDelta.y * rotateSpeed;
-                rotation_.y += mouseDelta.x * rotateSpeed;
+
+            // ★★★ 修正(3): ImGuiの入力キャプチャをチェック ★★★
+            ImGuiIO& io = ImGui::GetIO();
+            if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+                // ImGuiがマウスかキーボードを使っている
+                // -> カメラ操作は行わず、早期リターン (行列計算は行う)
+            } else {
+                // ↓↓↓ ImGuiが入力を使っていない時だけ、以下の操作を行う ↓↓↓
+
+                // 左クリック + マウス移動での回転
+                if (inputManager_->IsMouseButtonPressed(0)) {
+                    Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+                    const float rotateSpeed = 0.01f;
+                    rotation_.x += mouseDelta.y * rotateSpeed;
+                    rotation_.y += mouseDelta.x * rotateSpeed;
+                }
+                // A/D/Q/E/W/S/Wheel での移動
+                Vector3 move = { 0, 0, 0 };
+                const float moveSpeed = 0.3f;
+                if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_E)) { move.y += moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_Q)) { move.y -= moveSpeed; }
+
+                float wheelDelta = inputManager_->GetMouseWheelDelta();
+                const float wheelSpeed = 0.005f; // (※元のコードでは 0.005f になっていました)
+
+                if (inputManager_->IsKeyPressed(DIK_W)) { move.z += moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_S)) { move.z -= moveSpeed; }
+
+                // ★ ホイール操作も io.WantCaptureMouse でガードされる
+                move.z += wheelDelta * wheelSpeed;
+
+                Matrix4x4 rotateMatrix = math.Multiply(math.MakeRotateXMatrix(rotation_.x), math.MakeRotateYMatrix(rotation_.y));
+                move = math.TransformNormal(move, rotateMatrix);
+                eye_ = eye_ + move;
+
+                // 注視点も一緒に動かす
+                Vector3 targetForward = { 0.0f, 0.0f, 1.0f };
+                targetForward = math.TransformNormal(targetForward, rotateMatrix);
+                target_ = eye_ + targetForward;
             }
-            // A/D/Q/E/W/S/Wheel での移動
-            Vector3 move = { 0, 0, 0 };
-            const float moveSpeed = 0.3f;
-            if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
-            if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
-            if (inputManager_->IsKeyPressed(DIK_E)) { move.y += moveSpeed; }
-            if (inputManager_->IsKeyPressed(DIK_Q)) { move.y -= moveSpeed; }
-
-            float wheelDelta = inputManager_->GetMouseWheelDelta();
-            const float wheelSpeed = 0.005f;
-
-            if (inputManager_->IsKeyPressed(DIK_W)) { move.z += moveSpeed; }
-            if (inputManager_->IsKeyPressed(DIK_S)) { move.z -= moveSpeed; }
-            move.z += wheelDelta * wheelSpeed;
-
-            Matrix4x4 rotateMatrix = math.Multiply(math.MakeRotateXMatrix(rotation_.x), math.MakeRotateYMatrix(rotation_.y));
-            move = math.TransformNormal(move, rotateMatrix);
-            eye_ = eye_ + move;
-
-            // 注視点も一緒に動かす
-            Vector3 targetForward = { 0.0f, 0.0f, 1.0f };
-            targetForward = math.TransformNormal(targetForward, rotateMatrix);
-            target_ = eye_ + targetForward;
+            // ★★★ ------------------------------------------ ★★★
         }
 #endif // _DEBUG
     }

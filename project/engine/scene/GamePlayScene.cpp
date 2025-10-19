@@ -64,7 +64,7 @@ void GamePlayScene::Initialize() {
     player->SetName("Player"); // ★ デバッグエディタ用に名前を設定
     objects_.emplace_back(std::move(player));
 
-    // Enemy (Bunny) - インデックス [2] になる
+    //// Enemy (Bunny) - インデックス [2] になる
     auto enemy = std::make_unique<Object3d>();
     enemy->Initialize(object3dCommon_.get());
     enemy->SetModel("bunny");
@@ -72,7 +72,7 @@ void GamePlayScene::Initialize() {
     enemy->SetName("Enemy"); // ★ デバッグエディタ用に名前を設定
     objects_.emplace_back(std::move(enemy));
 
-    // Block (fence) - インデックス [3] から
+    ////// Block (fence) - インデックス [3] から
     for (int i = 0; i < 5; ++i) {
         auto block = std::make_unique<Object3d>();
         block->Initialize(object3dCommon_.get());
@@ -126,17 +126,17 @@ void GamePlayScene::Initialize() {
         objects_[i]->SetCollisionAttribute(kGround);
         objects_[i]->SetCollisionMask(~kGround); // Ground以外と当たる
         objects_[i]->SetColliderType(ColliderType::kAABB);
-        objects_[i]->SetCollisionSize({ 0.5f, 0.5f, 0.5f }); // (ブロックモデルに合わせた半分のサイズ)
+        objects_[i]->SetCollisionSize({ 1.5f, 1.5f, 1.5f }); // (ブロックモデルに合わせた半分のサイズ)
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
     // Plane (Index 0) - 地面判定を追加する場合
-    /*
+    
     objects_[0]->SetCollisionAttribute(kGround);
     objects_[0]->SetCollisionMask(~kGround);
     objects_[0]->SetColliderType(ColliderType::kAABB);
     objects_[0]->SetCollisionSize({10.0f, 0.1f, 10.0f}); // 薄い箱
     CollisionManager::GetInstance()->AddObject(objects_[0].get());
-    */
+    
 
 
     // --- スプライトの生成 ---

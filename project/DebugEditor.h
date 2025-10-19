@@ -1,32 +1,68 @@
-// [新規作成] DebugEditor.h
-#pragma once
+// [修正] DebugEditor.h
 
-// (前方宣言)
+#pragma once
+#include <d3d12.h> 
+#include <wrl.h>   
+#include <vector>  
+#include "engine/base/Math.h" 
+
 class GamePlayScene;
 class Object3d;
+class DirectXCommon;
 
-/// <summary>
-/// デバッグビルド専用のインゲームエディタ
-/// </summary>
+// ★★★ アライメントエラー対策 ★★★
+// CBVは256バイトアライメントが必要なため、
+// 構造体サイズを256バイトにパディングする
+
+struct AlignedMatrix4x4 {
+    Matrix4x4 matrix;
+    // 256バイト (sizeof(Matrix4x4)=64)
+    char padding[256 - sizeof(Matrix4x4)];
+};
+
+struct AlignedVector4 {
+    Vector4 vector;
+    // 256バイト (sizeof(Vector4)=16)
+    char padding[256 - sizeof(Vector4)];
+};
+// ★★★ -------------------------- ★★★
+
+
 class DebugEditor {
 public:
-    /// <summary>
-    /// 初期化
-    /// </summary>
-    /// <param name="scene">操作対象のシーン</param>
-    void Initialize(GamePlayScene* scene);
-
-    /// <summary>
-    /// 更新 (ImGuiのウィンドウ描画)
-    /// </summary>
+    void Initialize(GamePlayScene* scene, DirectXCommon* dxCommon);
     void Update();
-
-    /// <summary>
-    /// 終了処理
-    /// </summary>
     void Finalize();
+    void DrawDebug(ID3D12GraphicsCommandList* commandList);
 
 private:
-    GamePlayScene* scene_ = nullptr; // 操作対象のシーン
-    Object3d* selectedObject_ = nullptr; // 現在選択中のオブジェクト
+    void InitializePrimitiveDrawing();
+    // ★ 修正: instanceIndex を引数に追加
+    void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
+
+private:
+    GamePlayScene* scene_ = nullptr;
+    Object3d* selectedObject_ = nullptr;
+    DirectXCommon* dxCommon_ = nullptr;
+
+    bool drawColliders_ = false;
+
+    // 同時に描画するコライダーの最大数
+    static const int kMaxInstances = 128;
+
+    // --- プリミティブ描画リソース ---
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> primitiveRootSignature_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> primitivePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> cubeVertexBuffer_;
+    D3D12_VERTEX_BUFFER_VIEW cubeVertexBufferView_{};
+    Microsoft::WRL::ComPtr<ID3D12Resource> cubeIndexBuffer_;
+    D3D12_INDEX_BUFFER_VIEW cubeIndexBufferView_{};
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> primitiveWVPBuffer_;
+    // ★ 修正: アライメント済み構造体のポインタに変更
+    AlignedMatrix4x4* primitiveWVPData_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> primitiveColorBuffer_;
+    // ★ 修正: アライメント済み構造体のポインタに変更
+    AlignedVector4* primitiveColorData_ = nullptr;
 };
