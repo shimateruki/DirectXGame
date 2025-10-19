@@ -41,6 +41,7 @@ void Character::OnCollision(Object3d* other) {
 
     // 衝突していたら、自分を押し戻す
     if (collision.isColliding) {
+
         transform_.translate += collision.normal * collision.penetration;
     }
 }

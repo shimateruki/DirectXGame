@@ -1,7 +1,7 @@
 {
     "objects": [
         {
-            "name": "Object",
+            "name": "Plane",
             "position": [
                 0.0,
                 0.0,
@@ -21,13 +21,13 @@
         {
             "name": "Player",
             "position": [
-                -6.7999958992004395,
+                -8.099994659423828,
                 0.0,
-                -1.3000003099441528
+                1.399999737739563
             ],
             "rotation": [
                 0.0,
-                -0.9800000190734863,
+                0.0,
                 0.0
             ],
             "scale": [
@@ -37,7 +37,7 @@
             ]
         },
         {
-            "name": "Object",
+            "name": "Enemy",
             "position": [
                 -2.0,
                 0.0,
@@ -55,7 +55,7 @@
             ]
         },
         {
-            "name": "Object",
+            "name": "Block_0",
             "position": [
                 -4.0,
                 0.0,
@@ -73,7 +73,7 @@
             ]
         },
         {
-            "name": "Object",
+            "name": "Block_1",
             "position": [
                 -4.0,
                 0.0,
@@ -91,7 +91,7 @@
             ]
         },
         {
-            "name": "Object",
+            "name": "Block_2",
             "position": [
                 -4.0,
                 0.0,
@@ -109,7 +109,7 @@
             ]
         },
         {
-            "name": "Object",
+            "name": "Block_3",
             "position": [
                 -4.0,
                 0.0,
@@ -127,7 +127,7 @@
             ]
         },
         {
-            "name": "Object",
+            "name": "Block_4",
             "position": [
                 -4.0,
                 0.0,
