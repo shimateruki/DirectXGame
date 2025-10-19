@@ -192,10 +192,17 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
+    <None Include="resouces\shader\DebugPrimitive.hlsli" />
+    <None Include="resouces\shader\DebugPrimitive.VS.hlsl" />
     <None Include="resouces\shader\Particle.VS.hlsl" />
     <None Include="resouces\shader\Object3d.hlsli" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="resouces\shader\DebugPrimitive.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+    </FxCompile>
     <FxCompile Include="resouces\shader\Particle.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>

@@ -194,6 +194,8 @@
     <None Include="DUMPS\2025-0422-1117.dmp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </None>
+    <None Include="resouces\shader\DebugPrimitive.hlsli" />
+    <None Include="resouces\shader\DebugPrimitive.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="resouces\shader\Object3d.VS.hlsl">
@@ -205,6 +207,7 @@
     <FxCompile Include="resouces\shader\Particle.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
+    <FxCompile Include="resouces\shader\DebugPrimitive.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h">

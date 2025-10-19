@@ -95,6 +95,17 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
 
+
+	/// <summary>
+	/// 標準的な深度ステンシルデスクリプタを取得する
+	/// </summary>
+	D3D12_DEPTH_STENCIL_DESC GetDefaultDepthStencilDesc() const;
+
+	/// <summary>
+	/// 深度ステンシルビューのフォーマットを取得する
+	/// </summary>
+	DXGI_FORMAT GetDSVFormat() const;
+
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 

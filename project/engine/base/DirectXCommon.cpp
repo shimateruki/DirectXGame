@@ -554,3 +554,34 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DirectXCommon::CreateDescriptorHeap
     assert(SUCCEEDED(hr));
     return descriptorHeap;
 }
+
+/// <summary>
+/// 標準的な深度ステンシルデスクリプタを取得する
+/// </summary>
+D3D12_DEPTH_STENCIL_DESC DirectXCommon::GetDefaultDepthStencilDesc() const {
+    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    // Depthの機能を有効化
+    depthStencilDesc.DepthEnable = TRUE;
+    // 書き込みします
+    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    // 比較関数はLessEqual。つまり、近ければ描画される
+    depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    // Stencilの機能は利用しない
+    depthStencilDesc.StencilEnable = FALSE;
+
+    return depthStencilDesc;
+}
+
+/// <summary>
+/// 深度ステンシルビューのフォーマットを取得する
+/// </summary>
+DXGI_FORMAT DirectXCommon::GetDSVFormat() const {
+    // 深度ステンシルリソース (depthStencilResource_) のフォーマットを返す
+    // Initialize() 内の CreateDSV() で設定したフォーマットと同じである必要があります。
+    // 一般的には DXGI_FORMAT_D32_FLOAT が使われます。
+    if (depthStencilResource_) {
+        return depthStencilResource_->GetDesc().Format;
+    }
+    // もしリソースがまだ作られていない場合は、デフォルトを返す (エラー処理を追加しても良い)
+    return DXGI_FORMAT_D32_FLOAT;
+}
