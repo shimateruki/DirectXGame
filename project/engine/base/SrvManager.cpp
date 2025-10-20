@@ -1,5 +1,5 @@
 #include "SRVManager.h"
-#include "engine/base/DirectXCommon.h"
+#include "DirectXCommon.h"
 #include <cassert>
 
 SRVManager* SRVManager::GetInstance() {

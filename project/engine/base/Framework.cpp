@@ -1,8 +1,8 @@
-#include "engine/base/Framework.h"
-#include "engine/3d/TextureManager.h"
-#include "engine/3d/ModelManager.h"
-#include "engine/base/SRVManager.h" // ★ SRVManager.h をインクルード
-#include"engine//io/ImguiManager.h"
+#include "Framework.h"
+#include "TextureManager.h"
+#include "ModelManager.h"
+#include "SRVManager.h" // ★ SRVManager.h をインクルード
+#include"ImguiManager.h"
 void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 

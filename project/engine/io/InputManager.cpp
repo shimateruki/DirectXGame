@@ -3,6 +3,7 @@
 #include "math.h"         // abs()関数などを使用するためにインクルード
 
 
+
 InputManager* InputManager::GetInstance() {
     static InputManager instance;
     return &instance;

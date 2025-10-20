@@ -1,7 +1,7 @@
 // [修正] Camera.h
 #pragma once
 #include "engine/base/Math.h"
-#include "engine/io/InputManager.h"
+#include "InputManager.h"
 
 /// <summary>
 /// 3Dシーンの視点を管理するカメラクラス

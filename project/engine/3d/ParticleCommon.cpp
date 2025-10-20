@@ -1,5 +1,5 @@
 #include "ParticleCommon.h"
-#include "engine/base/DirectXCommon.h"
+#include "DirectXCommon.h"
 #include <cassert>
 
 void ParticleCommon::Initialize(DirectXCommon* dxCommon) {

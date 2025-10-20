@@ -9,7 +9,7 @@
 
 // ======== 外部ライブラリのヘッダーファイル ========
 #include <dxcapi.h> // シェーダーコンパイルに必要
-#include "externals/DirectXTex/DirectXTex.h"
+#include "DirectXTex.h"
 
 // 前方宣言 
 class WinApp;

@@ -1,8 +1,8 @@
-#include "engine/3d/Object3d.h"
-#include "engine/base/DirectXCommon.h"
-#include "engine/3d/ModelManager.h"
-#include "engine/base/SRVManager.h"
-#include "engine/3d/CameraManager.h"
+#include "Object3d.h"
+#include "DirectXCommon.h"
+#include "ModelManager.h"
+#include "SRVManager.h"
+#include "CameraManager.h"
 #include <cassert>
 
 void Object3d::Initialize(Object3dCommon* common) {

@@ -1,7 +1,6 @@
-#include "engine/3d/CameraManager.h"
+#include "CameraManager.h"
 
-// 静的メンバ変数の実体
-// static CameraManager* instance = nullptr; // 仮
+
 
 CameraManager* CameraManager::GetInstance() {
     static CameraManager instance;

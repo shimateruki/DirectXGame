@@ -1,6 +1,6 @@
 #include "Game.h"
-#include "engine/scene/GamePlayScene.h" 
-#include"engine//io//ImguiManager.h"
+#include "GamePlayScene.h" 
+#include"ImguiManager.h"
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();

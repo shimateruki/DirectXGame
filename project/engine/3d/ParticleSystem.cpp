@@ -1,9 +1,9 @@
 #include "ParticleSystem.h"
 #include "ParticleCommon.h"
-#include "engine/base/DirectXCommon.h"
-#include "engine/3d/TextureManager.h"
-#include "engine/3d/CameraManager.h"
-#include "engine/base/SRVManager.h"
+#include "DirectXCommon.h"
+#include "TextureManager.h"
+#include "CameraManager.h"
+#include "SRVManager.h"
 #include <cassert>
 #include <string>
 #include <format>

@@ -1,7 +1,7 @@
 #include "TextureManager.h"
 #include <cassert>
-#include "engine/base/SRVManager.h"
-#include "externals/DirectXTex/d3dx12.h"
+#include "SRVManager.h"
+#include "d3dx12.h"
 
 //const std::string TextureManager::kDefaultBaseDirectory = "resouces/sprite/";
 /// <summary>

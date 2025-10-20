@@ -1,7 +1,7 @@
 
 #include <fstream>
 #include "Model.h"
-#include "engine/base/DirectXCommon.h"
+#include "DirectXCommon.h"
 #include "engine/base/Math.h"
 #include <sstream>
 #include <cassert>

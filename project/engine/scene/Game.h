@@ -1,6 +1,6 @@
 #pragma once
-#include "engine/base/Framework.h"
-#include "engine/scene/GamePlayScene.h" 
+#include "Framework.h"
+#include "GamePlayScene.h" 
 #include <memory>
 #ifdef _DEBUG
 #include "DebugEditor.h" 

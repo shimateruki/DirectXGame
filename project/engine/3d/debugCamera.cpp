@@ -1,6 +1,6 @@
 ﻿#include "engine/3d/debugCamera.h"
 #include "engine/io/InputManager.h"
-
+#include <cmath> // C++ の数学ライブラリ
 void DebugCamera::Initialize()
 {
     float fovY = 0.45f * 3.141592f; // 約25度

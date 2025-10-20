@@ -1,6 +1,6 @@
 #pragma once
 #include "Character.h" // 親クラスをCharacterに変更
-#include "engine/io/InputManager.h"   // InputManager をインクルード
+#include "InputManager.h"   // InputManager をインクルード
 
 // Characterを継承したPlayerクラス
 class Player : public Character {

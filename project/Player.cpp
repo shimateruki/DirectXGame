@@ -1,6 +1,6 @@
 #include "Player.h"
-#include "engine/3d/Model.h"
-#include "engine/3d/CollisionConfig.h"
+#include "Model.h"
+#include "CollisionConfig.h"
 #include "engine/base/Math.h"
 #include <string> // ★ OutputDebugStringA のために追加
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "engine/3d/Object3d.h"
+#include "Object3d.h"
 #include <vector>
 #include <list>
 

@@ -1,9 +1,9 @@
 #include "Sprite.h"
-#include "engine/base/DirectXCommon.h"
-#include "engine/base/WinApp.h"
+#include "DirectXCommon.h"
+#include "WinApp.h"
 #include <cassert>
-#include "engine/3d/TextureManager.h"
-#include "engine/base/SRVManager.h"
+#include "TextureManager.h"
+#include "SRVManager.h"
 
 /// <summary>
 /// 初期化 (ファイルパス指定)

@@ -1,14 +1,14 @@
 
-#include "engine/base/DirectXCommon.h"
-#include "engine/base/WinApp.h"
+#include "DirectXCommon.h"
+#include "WinApp.h"
 #include <cassert>
 #include <format>
 #include <vector>
 #include <dxcapi.h>
 #include <fstream>
 #include <thread>
-#include "engine/base/SRVManager.h"
-#include"engine/io/ImguiManager.h"
+#include "SRVManager.h"
+#include"ImguiManager.h"
 
 // ログ出力用のヘルパー関数（グローバル）
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }

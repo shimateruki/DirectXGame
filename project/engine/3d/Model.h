@@ -1,8 +1,8 @@
 #pragma once
 
 #include "engine/base/Math.h"
-#include "engine/3d/TextureManager.h"
-#include "engine/3d/ModelCommon.h"
+#include "TextureManager.h"
+#include "ModelCommon.h"
 #include <string>
 #include <vector>
 #include <d3d12.h>
