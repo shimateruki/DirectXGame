@@ -1,17 +1,10 @@
-// [修正] Camera.cpp
 
 #define NOMINMAX
-#include "engine/3d/Camera.h"
-#include "engine/base/WinApp.h" 
+#include "Camera.h"
+#include "WinApp.h" 
 #include <algorithm> // std::min, std::max のために追加
-
-// ★★★ 修正(1): ImGuiのヘッダーを追加 ★★★
-#include "externals/imgui/imgui.h"
-// (ImGuizmoも使う可能性があるため、念のためインクルードしておくと安全です)
-#include "externals/ImGuizmo/ImGuizmo.h"
-// ★★★ -------------------------------- ★★★
-
-
+#include "imgui.h"
+#include "ImGuizmo.h"
 // --- 角度変換ヘルパー ---
 #include <cmath> // M_PI が定義されていない場合のため
 #ifndef M_PI
@@ -65,7 +58,7 @@ void Camera::Update() {
             // (この Update() 関数自体は行列計算のために実行継続)
         }
 #endif
-        // ★★★ ------------------------------------------------ ★★★
+       
 
 
         // ★ Release用モードに応じてカメラの座標を計算
@@ -159,7 +152,6 @@ void Camera::Update() {
                 targetForward = math.TransformNormal(targetForward, rotateMatrix);
                 target_ = eye_ + targetForward;
             }
-            // ★★★ ------------------------------------------ ★★★
         }
 #endif // _DEBUG
     }

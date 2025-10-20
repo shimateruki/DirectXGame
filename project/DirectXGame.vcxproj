@@ -81,7 +81,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -107,7 +107,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -133,7 +133,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -1,13 +1,13 @@
 #pragma once
 
 // ★★★ ヘッダーファイルをインクルードするように修正 ★★★
-#include "engine/3d/Object3dCommon.h"
-#include "engine/2d/SpriteCommon.h"
-#include "engine/3d/Object3d.h"
-#include "engine/2d/Sprite.h"
-#include "engine/audio/AudioPlayer.h"
-#include "engine/3d/ParticleSystem.h" 
-#include "engine/3d/ParticleCommon.h" 
+#include "Object3dCommon.h"
+#include "SpriteCommon.h"
+#include "Object3d.h"
+#include "Sprite.h"
+#include "AudioPlayer.h"
+#include "ParticleSystem.h" 
+#include "ParticleCommon.h" 
 
 #include <memory>
 #include <vector>

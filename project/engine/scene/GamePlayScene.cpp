@@ -2,27 +2,25 @@
 #define NOMINMAX
 
 #include "GamePlayScene.h"
-#include "engine/base/DirectXCommon.h"
-#include "engine/io/InputManager.h"
-#include "engine/audio/AudioPlayer.h"
-#include "engine/3d/Object3dCommon.h"
-#include "engine/2d/SpriteCommon.h"
-#include "engine/3d/Object3d.h"
-#include "engine/2d/Sprite.h"
-#include "engine/3d/ModelManager.h"
-#include "engine/3d/TextureManager.h"
-#include "engine/3d/CameraManager.h"   // ★ Draw() で使うためインクルード
-#include "engine/3d/CollisionManager.h"
-#include "engine/3d/ParticleSystem.h"
-#include "externals/imgui/imgui.h"
-
-// ▼▼▼ ゲーム側のオブジェクトをインクルード ▼▼▼
-#include "Player.h" // (Playerクラスがあると仮定)
+#include "DirectXCommon.h"
+#include "InputManager.h"
+#include "AudioPlayer.h"
+#include "Object3dCommon.h"
+#include "SpriteCommon.h"
+#include "Object3d.h"
+#include "Sprite.h"
+#include "ModelManager.h"
+#include "TextureManager.h"
+#include "CameraManager.h"   // ★ Draw() で使うためインクルード
+#include "CollisionManager.h"
+#include "ParticleSystem.h"
+#include "imgui.h"
+#include "Player.h" 
 
 // --- JSON (保存機能) ---
 #include <fstream>
 #include <string>
-#include "externals/nlohmann/json.hpp" // (配置したパスに合わせてください)
+#include "json.hpp" 
 // ---------------------------------
 
 

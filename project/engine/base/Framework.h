@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../io/InputManager.h" // 修正: 正しい相対パスを指定
+#include "InputManager.h" // 修正: 正しい相対パスを指定
 #include "WinApp.h"
 #include "DirectXCommon.h"
 #include <memory>
-#include "engine/audio/AudioPlayer.h" // AudioPlayerをインクルード
+#include "AudioPlayer.h" // AudioPlayerをインクルード
 
 // ゲームエンジンの汎用的な基盤クラス
 class Framework {

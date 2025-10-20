@@ -4,7 +4,7 @@
 #include "engine/base/Math.h"
 #include <cstdint>
 #include <string>
-#include "engine/2d/SpriteCommon.h" 
+#include "SpriteCommon.h" 
 class DirectXCommon;
 
 class Sprite {

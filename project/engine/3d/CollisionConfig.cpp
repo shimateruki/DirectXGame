@@ -1,11 +1,11 @@
-#include "engine/3d/CollisionConfig.h"
+#include "CollisionConfig.h"
 #include "engine/base/Math.h"
 #include <algorithm> // std::min, std::max
 #include <cmath>     // std::abs, std::sqrt
 
 // --- ヘルパー関数群 (実装) ---
 
-// [1] AABB vs AABB 判定 (★★★ 再度、正しいロジックに修正 ★★★)
+// [1] AABB vs AABB 判定
 CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
     CollisionInfo info;
     info.isColliding = false; // 初期化
@@ -57,7 +57,7 @@ CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
 }
 
 
-// [2] Sphere vs Sphere 判定 (変更なし)
+// [2] Sphere vs Sphere 判定 
 CollisionInfo CheckSphereCollision(
     const Vector3& posA, float rA, const Vector3& posB, float rB) {
     // (以前のコードのまま)
@@ -82,7 +82,7 @@ CollisionInfo CheckSphereCollision(
     return info;
 }
 
-// [3] Sphere vs AABB 判定 (変更なし)
+// [3] Sphere vs AABB 判定 
 CollisionInfo CheckSphereAABBCollision(
     const Vector3& spherePos, float sphereRadius, const AABB& aabb) {
     // (以前のコードのまま)

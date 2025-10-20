@@ -1,11 +1,11 @@
 #pragma once
-#include "engine/base/DirectXCommon.h"
-#include "engine/base/WinApp.h"
+#include "DirectXCommon.h"
+#include "WinApp.h"
 
 // externals
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
+#include "imgui.h"
+#include "imgui_impl_dx12.h"
+#include "imgui_impl_win32.h"
 
 /// <summary>
 /// ImGuiの管理クラス

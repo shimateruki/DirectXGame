@@ -1,7 +1,8 @@
-#include "engine/base/Math.h"
+#include "Math.h"
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <cmath> // C++ の数学ライブラリ
 
 
 Vector3 operator-(const Vector3 & v1, const Vector3 & v2)

@@ -5,8 +5,8 @@
 #include <vector>
 #include <map>
 #include <wrl.h>
-#include "engine/base/DirectXCommon.h"
-#include "externals/DirectXTex/DirectXTex.h"
+#include "DirectXCommon.h"
+#include "DirectXTex.h"
 
 class TextureManager {
 public:
