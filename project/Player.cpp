@@ -10,7 +10,7 @@ void Player::Initialize(Object3dCommon* common) {
     SetColliderType(ColliderType::kAABB);
     SetCollisionSize({ 0.5f, 1.0f, 0.5f });
 }
-
+//
 void Player::Update() {
     // --- キー入力による移動処理 ---
     Vector3 move = { 0.0f, 0.0f, 0.0f };
