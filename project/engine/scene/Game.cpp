@@ -1,72 +1,57 @@
 #include "Game.h"
-#include "GamePlayScene.h" 
-#include"ImguiManager.h"
+// #include "GamePlayScene.h" // <- SceneManagerが管理
+#include "SceneManager.h"    // ★ 追加
+#include "ImguiManager.h"
+#include "InputManager.h"    // ★ Updateで使うため
+
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
 
-    // ゲームプレイシーンを作成して初期化
-    gameScene_ = std::make_unique<GamePlayScene>();
-    gameScene_->Initialize();
-    // デバッグビルドの場合のみ、デバッグエディタを初期化
-#ifdef _DEBUG
-    debugEditor_ = std::make_unique<DebugEditor>();
-    // ★ dxCommon_ を渡すように変更
-    debugEditor_->Initialize(gameScene_.get(), dxCommon_);
-#endif
+    // ★ SceneManager を作成して初期化
+    sceneManager_ = std::make_unique<SceneManager>();
+    sceneManager_->Initialize();
+}
+
+void Game::Finalize() {
+    // ★ SceneManager の終了処理
+    if (sceneManager_) {
+        sceneManager_->Finalize();
+    }
+
+
+    // ★ 基底クラスの終了処理を呼ぶ
+    Framework::Finalize();
 }
 
 void Game::Update() {
     // 入力とImGuiのフレーム開始は、シーンの更新前に行う
-    InputManager::GetInstance()->Update(); 
+    InputManager::GetInstance()->Update();
+    ImGuiManager::GetInstance()->BeginFrame();
 
-      // ImGuiフレーム開始
-        ImGuiManager::GetInstance()->BeginFrame();
-#ifdef _DEBUG
-        if (debugEditor_) {
-            debugEditor_->Update();
-        }
-#endif
-    // ゲームプレイシーンの更新処理を呼び出す
-    if (gameScene_) {
-        gameScene_->Update();
+
+    // ★ SceneManager の更新処理を呼び出す
+    if (sceneManager_) {
+        sceneManager_->Update();
     }
+
     // ImGuiフレーム終了
     ImGuiManager::GetInstance()->EndFrame();
-
-	
 }
 
 void Game::Draw() {
     // 描画前処理
     dxCommon_->PreDraw();
-#ifdef _DEBUG
-        if (debugEditor_) {
-            // ImGui描画の「前」に、コライダーなどを描画
-            debugEditor_->DrawDebug(dxCommon_->GetCommandList());
-        }
-#endif
-    // ゲームプレイシーンの描画処理を呼び出す
-    if (gameScene_) {
-        gameScene_->Draw();
+
+
+    // ★ SceneManager の描画処理を呼び出す
+    if (sceneManager_) {
+        sceneManager_->Draw();
     }
- 
+
+    // ★ ImGui の描画
+    ImGuiManager::GetInstance()->Draw();
+
     // 描画後処理
     dxCommon_->PostDraw();
-}
-
-void Game::Finalize() {
-#ifdef _DEBUG
-    if (debugEditor_) {
-        debugEditor_->Finalize();
-        debugEditor_.reset(); // unique_ptrを解放
-    }
-#endif
-    // ゲームプレイシーンの終了処理
-    if (gameScene_) {
-        gameScene_->Finalize();
-    }
-
-    // Frameworkの終了処理
-    Framework::Finalize();
 }

@@ -1,5 +1,5 @@
 #pragma once
-
+#include"SceneManager.h"
 /// <summary>
 /// シーンの基底クラス
 /// </summary>
@@ -25,6 +25,15 @@ public:
     /// </summary>
     virtual void Draw() = 0;
 
-protected:
+    virtual void Finalize() = 0;
 
+    /// <summary>
+    /// シーンマネージャのポインタを設定する（仮想関数）
+    /// </summary>
+    virtual void SetSceneManager(SceneManager* sceneManager) {
+        sceneManager_ = sceneManager; // ポインタをメンバ変数に保持
+    }
+
+protected:
+    SceneManager* sceneManager_ = nullptr;
 };

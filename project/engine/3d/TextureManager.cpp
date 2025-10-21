@@ -2,6 +2,8 @@
 #include <cassert>
 #include "SRVManager.h"
 #include "d3dx12.h"
+// ★ DirectXCommon.h をインクルード
+#include "DirectXCommon.h" 
 
 //const std::string TextureManager::kDefaultBaseDirectory = "resouces/sprite/";
 /// <summary>
@@ -67,36 +69,54 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
     device_ = dxCommon->GetDevice();
 }
 
+
+
 uint32_t TextureManager::Load(const std::string& filePath) {
     // 1. 過去に読み込み済みのテクスチャか検索
     auto it = textureHandleMap_.find(filePath);
     if (it != textureHandleMap_.end()) {
-        // 読み込み済みなら、そのハンドル（SRVハンドル）を返す
         return it->second;
     }
-
-    // ★★★★★ ここからが新しいロジック ★★★★★
 
     // 2. テクスチャファイルを読み込み、リソースを作成
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
+
+    // ★★★ この時点では Framework::Run によりリストは Open ★★★
+
     UploadTextureData(
         resource.Get(), mipImages, &intermediateResource,
-        device_.Get(), dxCommon_->GetCommandList());
+        device_.Get(), dxCommon_->GetCommandList()); // ★ コマンドが積まれる
+
+    // ★★★ 既存の FlushCommandQueue(true) を呼び出す ★★★
+    // (true を渡すことで、Close -> Execute -> Wait -> Reset(Open) を行う)
+    // (これによりテクスチャアップロードが完了し、リストは再び Open に戻る)
+    dxCommon_->FlushCommandQueue(true);
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
+
+    // ★★★ キューブマップ対応 (前回の修正) ★★★
+    if (metadata.IsCubemap()) {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+        srvDesc.TextureCube.MostDetailedMip = 0;
+        srvDesc.TextureCube.MipLevels = UINT(metadata.mipLevels);
+        srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+    } else if (metadata.dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
+    }
+    // ★★★★★★★★★★★★★★★★★★★★★★★
 
     // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
     uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
 
-    // 4. 新しいテクスチャデータをmapに格納 (キーは本物のハンドル)
+    // 4. 新しいテクスチャデータをmapに格納
     TextureData& newData = textureDatas_[srvHandle];
     newData.filePath = filePath;
     newData.metadata = metadata;
