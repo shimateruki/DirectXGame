@@ -26,11 +26,19 @@ void Framework::Initialize() {
 }
 
 void Framework::Finalize() {
+    if (dxCommon_) {
+        // --- GPU処理が完全に終わるまで待機し、リセット ---
+        dxCommon_->FlushCommandQueue(true);
+    }
+
     ImGuiManager::GetInstance()->Finalize();
     ModelManager::GetInstance()->Finalize();
+
     dxCommon_->Finalize();
     CoUninitialize();
 }
+
+
 
 void Framework::Run() {
     // (変更なし)

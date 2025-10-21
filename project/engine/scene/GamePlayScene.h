@@ -1,6 +1,5 @@
 #pragma once
-
-// ★★★ ヘッダーファイルをインクルードするように修正 ★★★
+#include "BaseScene.h" 
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
 #include "Object3d.h"
@@ -15,50 +14,72 @@
 // --- 前方宣言 (ポインタで持つものだけ) ---
 class DirectXCommon;
 class InputManager;
+class SceneManager; // ★ SceneManager を前方宣言
+
+// ★ デバッグビルド時のみ DebugEditor をインクルード
+#ifdef _DEBUG
+#include "DebugEditor.h" 
+#endif
 
 /// <summary>
 /// ゲームプレイシーン
 /// </summary>
-class GamePlayScene {
+// ★ BaseScene を継承
+class GamePlayScene : public BaseScene {
 public:
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize();
+    // ★ override を追加
+    void Initialize() override;
 
     /// <summary>
     /// 終了処理
     /// </summary>
-    void Finalize();
+    // ★ override を追加
+    void Finalize() override;
 
     /// <summary>
     /// 更新
     /// </summary>
-    void Update();
+    // ★ override を追加
+    void Update() override;
 
     /// <summary>
     /// 描画
     /// </summary>
-    void Draw();
+    // ★ override を追加
+    void Draw() override;
 
     std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
+
+
+
 private:
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;
 
+
     // --- ゲームオブジェクト ---
-    std::unique_ptr<Object3dCommon> object3dCommon_;
-    std::unique_ptr<SpriteCommon> spriteCommon_;
-
+    std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
+    std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
+    std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
     std::vector<std::unique_ptr<Object3d>> objects_;
-    std::vector<std::unique_ptr<Sprite>> sprites_; 
+    std::vector<std::unique_ptr<Sprite>> sprites_;
+    std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
 
-    std::unique_ptr<ParticleCommon> particleCommon_;
-    std::unique_ptr<ParticleSystem> particleSystem_;
-    bool isDrawParticles_ = false; // パーティクル描画フラグ
+    // --- BGM・SE ---
+    uint32_t bgmHandle_ = 0;
+    bool isBGMPlaying_ = false;
+    uint32_t particleSEHandle_ = 0;
 
-    // --- サウンドデータ ---
-    AudioPlayer::AudioHandle bgmHandle_ = 0;
+    // --- ImGui用フラグ ---
+    bool isDrawParticles_ = false;
+
+    // ★ DebugEditor のインスタンス
+#ifdef _DEBUG
+    std::unique_ptr<DebugEditor> debugEditor_ = nullptr;
+#endif
 };

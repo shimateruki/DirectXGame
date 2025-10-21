@@ -106,6 +106,19 @@ public:
 	/// </summary>
 	DXGI_FORMAT GetDSVFormat() const;
 
+
+
+	void WaitForGPUAndReset();
+
+
+
+	ID3D12CommandAllocator* GetCommandAllocator() const { return commandAllocator_.Get(); }
+	ID3D12CommandQueue* GetCommandQueue() const { return commandQueue_.Get(); }
+	ID3D12Fence* GetFence() const { return fence_.Get(); }
+	uint64_t GetFenceValue() const { return fenceValue_; }
+	HANDLE GetFenceEvent() const { return fenceEvent_; }
+
+
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 
@@ -125,6 +138,7 @@ private:
 
 	// DSV用のテクスチャリソースを作成するヘルパー
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(int32_t width, int32_t height);
+
 
 
 private:

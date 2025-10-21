@@ -1,10 +1,8 @@
 #pragma once
 #include "Framework.h"
-#include "GamePlayScene.h" 
 #include <memory>
-#ifdef _DEBUG
-#include "DebugEditor.h" 
-#endif
+// ★ SceneManager をインクルード
+#include "SceneManager.h"
 
 // Frameworkを継承した、このゲーム独自のクラス
 class Game : public Framework {
@@ -17,9 +15,8 @@ protected:
 	void Draw() override;
 
 private:
-	// ゲームプレイシーン
-	std::unique_ptr<GamePlayScene> gameScene_ = nullptr;
-#ifdef _DEBUG
-	std::unique_ptr<DebugEditor> debugEditor_ = nullptr;
-#endif
+	// ★ gameScene_ と debugEditor_ の代わりに SceneManager を持つ
+	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
+
+
 };

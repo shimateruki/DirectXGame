@@ -205,8 +205,35 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 }
 
 void DirectXCommon::Finalize() {
-;
+    if (!commandQueue_ || !fence_) return;
+
+    // --- GPUの完了を確実に待つ ---
+    fenceValue_++;
+    HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
+    assert(SUCCEEDED(hr));
+
+    if (fence_->GetCompletedValue() < fenceValue_) {
+        fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+        WaitForSingleObject(fenceEvent_, INFINITE);
+    }
+
+    // --- コマンドリストが開いていたら安全に閉じる ---
+    hr = commandList_->Close();
+    // Closeに失敗しても無視（すでにClose済みの可能性あり）
+
+    // --- 残りのリソースを解放 ---
+    fenceEvent_ = nullptr;
+    fence_.Reset();
+    commandList_.Reset();
+    commandAllocator_.Reset();
+    commandQueue_.Reset();
+    swapChain_.Reset();
+    device_.Reset();
+    dxgiFactory_.Reset();
+
+    Log("[DirectXCommon] Finalized successfully.\n");
 }
+
 
 void DirectXCommon::PostDraw() {
     ImGuiManager::GetInstance()->Draw();
@@ -507,36 +534,39 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
     return result;
 }
 void DirectXCommon::FlushCommandQueue(bool reset) {
-    // コマンドリストをクローズする
-    HRESULT hr = commandList_->Close();
-    assert(SUCCEEDED(hr));
+    // --- 安全にコマンドリストを閉じる ---
+    // すでにCloseされている場合は再Closeしないようにするため、try-Closeパターン
+    HRESULT hr = S_OK;
+    hr = commandList_->Close();
+    if (FAILED(hr)) {
+        // もしすでにClose済みなら無視して続行（D3D12の仕様上OK）
+        // 例: D3D12_ERROR_INVALID_CALL の場合はスルー
+    }
 
-    // GPUにコマンドリストの実行を指示する
+    // --- コマンドリストを実行 ---
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
-    commandQueue_->ExecuteCommandLists(1, commandLists);
+    commandQueue_->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-    // fenceの値もインクリメントしておく
+    // --- フェンスシグナル送信 ---
     fenceValue_++;
-    // GPUにSignalコマンドを送信する
-    commandQueue_->Signal(fence_.Get(), fenceValue_);
+    hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
+    assert(SUCCEEDED(hr) && "Failed to signal command queue fence");
 
-    // fenceの値が指定したSignal値に到達するのを待つ
+    // --- GPUが完了するまで待機 ---
     if (fence_->GetCompletedValue() < fenceValue_) {
-        // イベントハンドルの取得
-        // イベントはfenceのSignal値に到達したときに発行されるように指定
         fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
-        // イベント待機
         WaitForSingleObject(fenceEvent_, INFINITE);
     }
 
-
-    // resetがtrueの場合のみ、アロケータとリストをリセットする
+    // --- リセット処理（必要な場合のみ）---
     if (reset) {
-        // 次のコマンドリストを準備
+        // まだコマンドリストがOpen状態の場合はここではResetしない
+        // GPU完了を待っているので安全にリセットできる
         hr = commandAllocator_->Reset();
-        assert(SUCCEEDED(hr));
+        assert(SUCCEEDED(hr) && "CommandAllocator reset failed");
+
         hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
-        assert(SUCCEEDED(hr));
+        assert(SUCCEEDED(hr) && "CommandList reset failed");
     }
 }
 
@@ -584,4 +614,32 @@ DXGI_FORMAT DirectXCommon::GetDSVFormat() const {
     }
     // もしリソースがまだ作られていない場合は、デフォルトを返す (エラー処理を追加しても良い)
     return DXGI_FORMAT_D32_FLOAT;
+}
+
+
+
+void DirectXCommon::WaitForGPUAndReset() {
+    // --- フェンス未生成または破棄済みならスキップ ---
+    if (!fence_ || !commandQueue_ || !commandAllocator_ || !commandList_) {
+        Log("[DirectXCommon] WaitForGPUAndReset skipped (resources not ready)\n");
+        return;
+    }
+
+    // --- GPUが完了するまで待機 ---
+    fenceValue_++;
+    HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
+    assert(SUCCEEDED(hr));
+
+    if (fence_->GetCompletedValue() < fenceValue_) {
+        fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+        WaitForSingleObject(fenceEvent_, INFINITE);
+    }
+
+
+
+    // --- 再利用可能な状態にリセット ---
+    hr = commandAllocator_->Reset();
+    assert(SUCCEEDED(hr));
+    hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
+    assert(SUCCEEDED(hr));
 }

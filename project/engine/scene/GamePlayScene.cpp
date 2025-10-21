@@ -11,11 +11,21 @@
 #include "Sprite.h"
 #include "ModelManager.h"
 #include "TextureManager.h"
-#include "CameraManager.h"   // ★ Draw() で使うためインクルード
+#include "CameraManager.h"    // ★ Draw() で使うためインクルード
 #include "CollisionManager.h"
 #include "ParticleSystem.h"
 #include "imgui.h"
 #include "Player.h" 
+
+// ★★★ シーンマネージャ対応で追加 ★★★
+#include "SceneManager.h" // SceneManager をインクルード
+#include <cassert>        // assert() のために追加
+
+// ★ デバッグビルド時のみ DebugEditor をインクルード
+#ifdef _DEBUG
+#include "DebugEditor.h" 
+#endif
+// ★★★★★★★★★★★★★★★★★★★★★
 
 // --- JSON (保存機能) ---
 #include <fstream>
@@ -27,6 +37,8 @@
 void GamePlayScene::Initialize() {
     // ★ using 宣言は必ず関数の「内側」に書く
     using json = nlohmann::json;
+
+
 
     // --- 基盤クラスのポインタを保持 ---
     dxCommon_ = DirectXCommon::GetInstance();
@@ -127,14 +139,14 @@ void GamePlayScene::Initialize() {
         objects_[i]->SetCollisionSize({ 1.5f, 1.5f, 1.5f }); // (ブロックモデルに合わせた半分のサイズ)
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
+
     // Plane (Index 0) - 地面判定を追加する場合
-    
     objects_[0]->SetCollisionAttribute(kGround);
     objects_[0]->SetCollisionMask(~kGround);
     objects_[0]->SetColliderType(ColliderType::kAABB);
-    objects_[0]->SetCollisionSize({10.0f, 0.1f, 10.0f}); // 薄い箱
+    objects_[0]->SetCollisionSize({ 10.0f, 0.1f, 10.0f }); // 薄い箱
     CollisionManager::GetInstance()->AddObject(objects_[0].get());
-    
+
 
 
     // --- スプライトの生成 ---
@@ -151,6 +163,7 @@ void GamePlayScene::Initialize() {
     flameSprite->SetAnimation(4, 0.15f, true); // 4コマ, 0.15秒/コマ, ループ
     flameSprite->Play();
     flameSprite->SetPosition({ 640.0f, 360.0f });
+    flameSprite->SetSize({ 64.0f,64.0f });
     sprites_.push_back(std::move(flameSprite));
 
 
@@ -202,10 +215,34 @@ void GamePlayScene::Initialize() {
         file.close();
     }
 
+    // ★ シーンマネージャ対応: DebugEditor を作成して初期化 (JSON読み込みの後)
+#ifdef _DEBUG
+    debugEditor_ = std::make_unique<DebugEditor>();
+    debugEditor_->Initialize(this, dxCommon_);
+#endif
+
     dxCommon_->FlushCommandQueue(false); // 初期化完了時にコマンドをフラッシュ
 }
 
 void GamePlayScene::Finalize() {
+    // ★ シーンマネージャ対応: DebugEditor の終了処理 (先に)
+#ifdef _DEBUG
+    if (debugEditor_) {
+        debugEditor_->Finalize();
+    }
+#endif
+
+    // ★ シーンマネージャ対応: BGMの停止
+    // (isBGMPlaying_ は GamePlayScene.h で宣言されている前提)
+    if (isBGMPlaying_) {
+        audioPlayer_->Stop(bgmHandle_); // ★ 関数名を Stop() に修正
+        isBGMPlaying_ = false;
+    }
+
+    // ★ シーンマネージャ対応: CollisionManager をクリア
+    CollisionManager::GetInstance()->ClearObjects();
+
+    // (↓ ユーザー提供のコード)
     // 解放漏れを防ぐため、逆順で解放するのが安全
     particleSystem_.reset();
     particleCommon_.reset();
@@ -217,6 +254,14 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::Update() {
+
+    // ★ シーンマネージャ対応: DebugEditor の更新
+    // (注: ImGui::BeginFrame は Game.cpp の Update() で呼ばれます)
+#ifdef _DEBUG
+    if (debugEditor_) {
+        debugEditor_->Update();
+    }
+#endif
 
     // --- Releaseビルド時のカメラ入力処理 ---
 #ifndef _DEBUG
@@ -249,9 +294,11 @@ void GamePlayScene::Update() {
     // BGM再生・停止 (テスト用)
     if (inputManager_->IsKeyTriggered(DIK_P)) {
         audioPlayer_->Play(bgmHandle_, true);
+        isBGMPlaying_ = true; // ★ シーンマネージャ対応: フラグ更新
     }
     if (inputManager_->IsKeyTriggered(DIK_S)) {
         audioPlayer_->Stop(bgmHandle_);
+        isBGMPlaying_ = false; // ★ シーンマネージャ対応: フラグ更新
     }
 
     // --- ImGui (デバッグビルド時のみ表示される想定) ---
@@ -295,6 +342,14 @@ void GamePlayScene::Update() {
 
 void GamePlayScene::Draw() {
 
+    // ★ シーンマネージャ対応: DebugEditor のデバッグ描画 (3Dオブジェクトより先に描画)
+    // (注: dxCommon_->PreDraw() は Game.cpp の Draw() で呼ばれます)
+#ifdef _DEBUG
+    if (debugEditor_) {
+        debugEditor_->DrawDebug(dxCommon_->GetCommandList());
+    }
+#endif
+
     // --- パーティクル描画 (オンの場合) ---
     if (isDrawParticles_) {
         particleSystem_->Draw();
@@ -331,5 +386,6 @@ void GamePlayScene::Draw() {
             sprite->Draw();
         }
     }
-}
 
+    // (注: ImGui::Draw() と dxCommon_->PostDraw() は Game.cpp の Draw() で呼ばれます)
+}
