@@ -13,3 +13,4 @@
 3. ビルドを実行します。
 [![DebugBuild](https://github.com/shimateruki/DirectXGame/actions/workflows/DebugBulid.yml/badge.svg)](https://github.com/shimateruki/DirectXGame/actions/workflows/DebugBulid.yml)
 [![ReleaseBuild](https://github.com/shimateruki/DirectXGame/actions/workflows/main.yml/badge.svg)](https://github.com/shimateruki/DirectXGame/actions/workflows/main.yml)
+[![DevelopmentBuild](https://github.com/shimateruki/DirectXGame/actions/workflows/DevelopmentBuild.yml/badge.svg)](https://github.com/shimateruki/DirectXGame/actions/workflows/DevelopmentBuild.yml)
