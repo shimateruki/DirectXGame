@@ -7,6 +7,7 @@
 #include "AudioPlayer.h"
 #include "ParticleSystem.h" 
 #include "ParticleCommon.h" 
+#include"SpriteDebugEditor.h"
 
 #include <memory>
 #include <vector>
@@ -27,6 +28,8 @@ class SceneManager; // ★ SceneManager を前方宣言
 // ★ BaseScene を継承
 class GamePlayScene : public BaseScene {
 public:
+    void LoadObjectLayout(const std::string& filename);
+    void LoadSpriteLayout(const std::string& filename);
     /// <summary>
     /// 初期化
     /// </summary>
@@ -52,6 +55,7 @@ public:
     void Draw() override;
 
     std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
+    std::vector<std::unique_ptr<Sprite>>& GetSprites() { return sprites_; }   // スプライトリスト取得 (SpriteDebugEditor用)
 
 
 
@@ -81,5 +85,7 @@ private:
     // ★ DebugEditor のインスタンス
 #ifdef _DEBUG
     std::unique_ptr<DebugEditor> debugEditor_ = nullptr;
+    std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_ = nullptr; // スプライト編集用
+
 #endif
 };

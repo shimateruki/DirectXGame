@@ -1,4 +1,4 @@
-﻿#include "AudioPlayer.h"
+#include "AudioPlayer.h"
 #include <string>
 
 AudioPlayer* AudioPlayer::GetInstance() {
@@ -16,13 +16,45 @@ void AudioPlayer::Initialize() {
 }
 
 void AudioPlayer::Finalize() {
-	// ★★★ ハンドルで管理しているサウンドデータを停止 ★★★
-	for (auto const& [handle, data] : streamingSoundDatas_) {
+
+
+	for (auto const& [handle, dataPtr] : streamingSoundDatas_) {
+		SoundDataStreaming* data = dataPtr.get();
+		if (!data) {
+			continue;
+		}
+
+		// 1. もし再生中 (スレッドが動作中) なら、まず Stop を呼ぶ
 		if (data->isPlaying) {
-			Stop(handle);
+			StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
+		}
+		// 2. 再生中でなくても、古いボイスが残っている場合 (ワンショット再生終了後など)
+		else if (data->sourceVoice) {
+			if (data->decodeThread.joinable()) {
+				data->decodeThread.join();
+			}
+			data->sourceVoice->Stop(0);
+			data->sourceVoice->FlushSourceBuffers();
+			data->sourceVoice->DestroyVoice();
+			data->sourceVoice = nullptr;
+		}
+		// 3. スレッドだけ残っている場合 (ほぼないはずだが念のため)
+		else if (data->decodeThread.joinable()) {
+			data->decodeThread.join();
+		}
+
+
+		if (data->sourceReader) {
+			data->sourceReader.Reset();
 		}
 	}
+
+	// ★ マップ自体もクリアして、unique_ptr がデストラクタを呼ぶのを防ぐ
+	// これでプログラム終了時にデストラクタが走っても、中身は空になっている
+	streamingSoundDatas_.clear();
+
 	MFShutdown();
+	// xAudio2_ は ComPtr なので、この関数の後デストラクタで自動解放される
 }
 
 AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename) {
@@ -67,7 +99,9 @@ AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename)
 	return newHandle;
 }
 
-void AudioPlayer::Play(AudioHandle handle, bool loop) {
+
+void AudioPlayer::PlaySE(AudioHandle handle, bool loop, float volume)
+{
 	auto it = streamingSoundDatas_.find(handle);
 	if (it == streamingSoundDatas_.end()) {
 		return; // 無効なハンドル
@@ -75,21 +109,49 @@ void AudioPlayer::Play(AudioHandle handle, bool loop) {
 
 	SoundDataStreaming* data = it->second.get();
 
+
+	// 1. もし今まさに再生中 (スレッドが動作中) なら、まず Stop する
 	if (data->isPlaying) {
-		Stop(handle);
+		StopSe(handle); // Stop がスレッド join と DestroyVoice を行う
+	}
+	// 2. 再生中でなくても、古いボイスが残っている場合 (ワンショット再生終了後など)
+	else if (data->sourceVoice) {
+		// (念のため) スレッドがもし万が一 joinable なら終了を待つ
+		if (data->decodeThread.joinable()) {
+			data->decodeThread.join();
+		}
+		// 古いボイスを明示的に破棄する
+		data->sourceVoice->Stop(0);
+		data->sourceVoice->FlushSourceBuffers();
+		data->sourceVoice->DestroyVoice();
+		data->sourceVoice = nullptr;
 	}
 
+	PROPVARIANT var = {};
+	PropVariantInit(&var);
+	var.vt = VT_I8;
+	var.hVal.QuadPart = 0;
+	data->sourceReader->SetCurrentPosition(GUID_NULL, var);
+	PropVariantClear(&var);
+
+
 	xAudio2_->CreateSourceVoice(&data->sourceVoice, data->waveFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback, NULL, NULL);
+
+	// ★ 新しい引数 volume を設定 ★
+	data->sourceVoice->SetVolume(volume);
+
 	data->sourceVoice->Start(0);
 
+	// 状態をリセット
 	data->isPlaying = true;
 	data->isEndOfStream = false;
 	data->loop = loop;
 
+	// 新しいデコードスレッドを開始
 	data->decodeThread = std::thread(&AudioPlayer::DecodeThread, this, data);
 }
 
-void AudioPlayer::Stop(AudioHandle handle) {
+void AudioPlayer::StopSe(AudioHandle handle) {
 	auto it = streamingSoundDatas_.find(handle);
 	if (it == streamingSoundDatas_.end() || !it->second->isPlaying) {
 		return;
@@ -238,4 +300,45 @@ void AudioPlayer::SoundPlayWave(const SoundData& soundData, bool loop)
 	}
 	result = pSourceVoice->SubmitSourceBuffer(&buf);
 	result = pSourceVoice->Start(0);
+}
+
+/// <summary>
+/// BGMを再生（または継続）します。
+/// </summary>
+void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
+	// 1. 既に再生したいBGMが再生中なら、何もしない
+	if (currentBgmHandle_ == handle && IsPlaying(handle)) {
+		return; // そのまま再生を続ける
+	}
+
+	// 2. 違うBGMが再生中なら、それを止める
+	if (currentBgmHandle_ != kInvalidAudioHandle && IsPlaying(currentBgmHandle_)) {
+		StopSe(currentBgmHandle_);
+	}
+
+	// 3. 新しいBGMを再生する
+	PlaySE(handle, loop, volume); // 既存のPlay関数を呼び出す
+	currentBgmHandle_ = handle; // 今再生中のBGMとして記憶
+}
+
+/// <summary>
+/// 現在再生中のBGMを停止します。
+/// </summary>
+void AudioPlayer::StopBGM() {
+	if (currentBgmHandle_ != kInvalidAudioHandle) {
+		StopSe(currentBgmHandle_); // 既存のStop関数を呼び出す
+		currentBgmHandle_ = kInvalidAudioHandle; // 再生中BGMの記憶をクリア
+	}
+}
+
+/// <summary>
+/// 指定したハンドルが現在再生中か確認します。
+/// </summary>
+bool AudioPlayer::IsPlaying(AudioHandle handle) const {
+	auto it = streamingSoundDatas_.find(handle);
+	if (it == streamingSoundDatas_.end()) {
+		return false; // ロードされていない
+	}
+	// スレッドが動作中か (isPlaying フラグ) で判断
+	return it->second->isPlaying;
 }

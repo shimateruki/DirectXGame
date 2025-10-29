@@ -79,7 +79,10 @@ public: // メンバ関数
 		textureLeftTop_ = texLeftTop;
 		textureSize_ = texSize;
 	}
-
+	/// <summary>
+/// 現在設定されているテクスチャハンドルを取得
+/// </summary>
+	uint32_t GetTextureHandle() const { return textureHandle_; }
 	static uint32_t LoadTexture(const std::string& fileName);
 	// <summary>
 	/// アニメーションの設定
@@ -89,6 +92,17 @@ public: // メンバ関数
 	/// <param name="loop">ループ再生するか</param>
 	void SetAnimation(int frameCount, float duration, bool loop);
 
+
+
+// --- 名前関連 (デバッグエディタ用) ---
+/// <summary>
+/// スプライトの名前を設定
+/// </summary>
+	void SetName(const std::string& name) { name_ = name; }
+	/// <summary>
+/// スプライトの名前を取得
+/// </summary>
+	const std::string& GetName() const { return name_; }
 	/// <summary>
 	/// アニメーションの再生を開始
 	/// </summary>
@@ -112,7 +126,7 @@ private: // メンバ変数
 	// 内部で使うTransform
 	Transform transform_ = { {1.0f,1.0f ,1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f,0.0f, 0.0f} };
 
-
+	std::string name_ = "Sprite"; // デフォルト名
 	// アンカーポイント
 	Vector2 anchorPoint_ = { 0.5f, 0.5f }; // 中央を原点に
 	// 反転フラグ
