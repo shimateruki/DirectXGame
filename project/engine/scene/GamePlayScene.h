@@ -28,6 +28,7 @@ class SceneManager; // ★ SceneManager を前方宣言
 // ★ BaseScene を継承
 class GamePlayScene : public BaseScene {
 public:
+	// --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
     void LoadSpriteLayout(const std::string& filename);
     /// <summary>
