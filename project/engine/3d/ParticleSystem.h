@@ -27,8 +27,8 @@ private:
 
     // 頂点シェーダーに送る、各パーティクルの情報
     struct ParticleForGPU {
-        Matrix4x4 world;
         Vector4 color;
+        Matrix4x4 world;
     };
     // カメラの行列
     struct TransformationMatrix {
@@ -36,15 +36,20 @@ private:
     };
 
 public:
-    void Initialize(ParticleCommon* common);
+    void Initialize(ParticleCommon* common, const std::string& texturePath);
     void Update();
     void Draw();
-    void SpawnParticles(const Vector3& position, int count);
-
+    void SpawnParticles(const Vector3& position, int count,
+        float initialSpeed = 2.0f, // 基本速度
+        const Vector3* direction = nullptr, // 方向指定 (nullptrならランダム)
+        float spreadAngle = 0.0f, // 方向のばらつき角度 (ラジアン)
+        Vector4 initialColor = { 1,1,1,1 }, // 初期色
+        float lifeTimeMin = 1.0f, float lifeTimeMax = 3.0f);
+    void Clear();
 private:
     void CreateResources();
-    Particle CreateParticle(const Vector3& position);
-
+    Particle CreateParticle(const Vector3& position, float speed, const Vector3& dir,
+        const Vector4& color, float life);
 private:
     static const int kMaxParticles = 1024;
     ParticleCommon* common_ = nullptr;

@@ -4,6 +4,7 @@
 #include "TextureManager.h"
 #include "CameraManager.h"
 #include "SRVManager.h"
+#include"Sprite.h"
 #include <cassert>
 #include <string>
 #include <format>
@@ -14,11 +15,13 @@ struct ParticleVertex {
     Vector2 texcoord;
 };
 
-void ParticleSystem::Initialize(ParticleCommon* common) {
+void ParticleSystem::Initialize(ParticleCommon* common, const std::string& texturePath) {
     assert(common);
     common_ = common;
-    // パーティクル用のテクスチャを読み込む 
-    textureHandle_ = TextureManager::GetInstance()->Load("resouces/uvChecker.png");
+
+    textureHandle_ = TextureManager::GetInstance()->Load(texturePath);
+
+    assert(textureHandle_ != 0); // 読み込みチェック
     CreateResources();
     particles_.reserve(kMaxParticles);
     std::random_device seed_gen;
@@ -63,6 +66,11 @@ void ParticleSystem::Update() {
 
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
     matrixData_->viewProjection = m.Multiply(viewMatrix, projectionMatrix);
+    char buffer[128]; // 文字列バッファ
+    // sprintf_s を使ってフォーマット文字列を作成
+    sprintf_s(buffer, sizeof(buffer), "ParticleSystem::Update - Active particleCount_: %u\n", particleCount_);
+    // 出力ウィンドウに表示
+    OutputDebugStringA(buffer);
 }
 
 void ParticleSystem::Draw() {
@@ -81,24 +89,66 @@ void ParticleSystem::Draw() {
     commandList->DrawIndexedInstanced(6, particleCount_, 0, 0, 0);
 }
 
-void ParticleSystem::SpawnParticles(const Vector3& position, int count) {
+void ParticleSystem::SpawnParticles(const Vector3& position, int count,
+    float initialSpeed, const Vector3* direction, float spreadAngle,
+    Vector4 initialColor, float lifeTimeMin, float lifeTimeMax)
+{
+
+    std::uniform_real_distribution<float> lifeDist(lifeTimeMin, lifeTimeMax);
+    Math m;
+
     for (int i = 0; i < count; ++i) {
         if (particles_.size() < kMaxParticles) {
-            particles_.push_back(CreateParticle(position));
+            Vector3 spawnDir;
+            if (direction) { // 方向指定あり
+                spawnDir = *direction;
+                // ばらつきを追加
+                if (spreadAngle > 0.0f) {
+                    std::uniform_real_distribution<float> angleDist(-spreadAngle / 2.0f, spreadAngle / 2.0f);
+                    float randomAngleX = angleDist(randomEngine_);
+                    float randomAngleY = angleDist(randomEngine_);
+                    Matrix4x4 rotX = m.MakeRotateXMatrix(randomAngleX);
+                    Matrix4x4 rotY = m.MakeRotateYMatrix(randomAngleY);
+                    spawnDir = m.TransformNormal(spawnDir, rotX);
+                    spawnDir = m.TransformNormal(spawnDir, rotY);
+                    spawnDir = m.Normalize(spawnDir); // 再正規化
+                }
+            } else { // 方向指定なし (ランダム)
+                std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+                spawnDir = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
+
+                // ▼▼▼ ゼロベクトル対策 (Math クラスの LengthSq を使う形に修正) ▼▼▼
+                // m.LengthSq(spawnDir) でベクトルの長さの2乗を取得
+                while (m.Length(spawnDir) < 0.001f) {
+                    // ほぼゼロベクトルなら作り直す
+                    spawnDir = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
+                }
+                spawnDir = m.Normalize(spawnDir); // 速度を計算する前に正規化
+                // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+            }
+            float life = lifeDist(randomEngine_);
+            particles_.push_back(CreateParticle(position, initialSpeed, spawnDir, initialColor, life));
+        } else {
+            // OutputDebugStringA("Warning: kMaxParticles reached!\n");
+            break;
         }
     }
 }
 
-ParticleSystem::Particle ParticleSystem::CreateParticle(const Vector3& position) {
+
+// CreateParticle の実装を修正
+ParticleSystem::Particle ParticleSystem::CreateParticle(const Vector3& position, float speed, const Vector3& dir,
+    const Vector4& color, float life)
+{
     Particle p;
-    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-    std::uniform_real_distribution<float> lifeDist(1.0f, 3.0f);
     p.position = position;
-    Vector3 velocity = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
-    p.velocity = Math().Normalize(velocity) * 2.0f;
-    p.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    p.lifeTime = lifeDist(randomEngine_);
+    p.velocity = dir * speed; // ★ 引数で受け取った方向と速度を使う
+    p.color = color;          // ★ 引数で受け取った色を使う
+    p.lifeTime = life;        // ★ 引数で受け取った寿命を使う
     p.currentTime = 0.0f;
+
+
+
     return p;
 }
 
@@ -133,4 +183,10 @@ void ParticleSystem::CreateResources() {
     // --- カメラ行列用リソース ---
     matrixResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
     matrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&matrixData_));
+}
+
+// ParticleSystem.cpp の最後などに追加
+void ParticleSystem::Clear() {
+    particles_.clear(); // list の中身を全部消す
+    particleCount_ = 0; // カウントもリセット
 }

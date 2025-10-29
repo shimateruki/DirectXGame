@@ -30,7 +30,7 @@ void Framework::Finalize() {
         // --- GPU処理が完全に終わるまで待機し、リセット ---
         dxCommon_->FlushCommandQueue(true);
     }
-
+    AudioPlayer::GetInstance()->Finalize();
     ImGuiManager::GetInstance()->Finalize();
     ModelManager::GetInstance()->Finalize();
 

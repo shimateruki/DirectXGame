@@ -78,7 +78,6 @@ void Sprite::Update() {
 		textureSize_.x = (float)frameWidth_;
 		textureSize_.y = (float)frameHeight_;
 	}
-	// ▲▲▲ ここまでアニメーション処理 ▲▲▲
 
 
 	// --- 頂点座標計算 ---
@@ -96,7 +95,6 @@ void Sprite::Update() {
 			std::swap(top, bottom);
 		}
 
-		// ★★★ エラー箇所を修正 ★★★
 		// ４点の頂点データに反映
 		vertexData_[0].position = { left, bottom, 0.0f, 1.0f };
 		vertexData_[1].position = { left, top, 0.0f, 1.0f };
@@ -165,14 +163,12 @@ void Sprite::AdjustTextureSize() {
 /// テクスチャ読み込みの静的ラッパー関数 (ファイルパス省略版)
 /// </summary>
 uint32_t Sprite::LoadTexture(const std::string& fileName) {
-	// ★★★ この便利な関数はそのまま残します！ ★★★
 	const std::string baseDirectory = "resouces/sprite/";
 	const std::string defaultExtension = ".png";
 	const std::string fullPath = baseDirectory + fileName + defaultExtension;
 	return TextureManager::GetInstance()->Load(fullPath);
 }
 
-// ▼▼▼ ここからアニメーション用の関数を一番下に追加 ▼▼▼
 
 /// <summary>
 /// アニメーションの設定

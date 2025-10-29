@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <xaudio2.h>
 #include <fstream>
@@ -87,8 +87,27 @@ public:
 
 	// 新しいストリーミング再生機能
 	AudioHandle LoadSoundFile(const std::string& filename);
-	void Play(AudioHandle handle, bool loop = false);
-	void Stop(AudioHandle handle);
+	void PlaySE(AudioHandle handle, bool loop, float volume);
+	void StopSe(AudioHandle handle);
+
+	/// <summary>
+	/// BGMを再生（または継続）します。
+	/// </summary>
+	/// <param name="handle">再生するBGMのハンドル</param>
+	/// <param name="loop">ループ再生するか</param>
+	/// <param name="volume">音量</param>
+	void PlayBGM(AudioHandle handle, bool loop, float volume = 1.0f);
+
+	/// <summary>
+	/// 現在再生中のBGMを停止します。
+	/// </summary>
+	void StopBGM();
+
+	// ▼▼▼ IsPlaying を追加（あると便利） ▼▼▼
+	/// <summary>
+	/// 指定したハンドルが現在再生中か確認します。
+	/// </summary>
+	bool IsPlaying(AudioHandle handle) const;
 
 private:
 	AudioPlayer() = default;
@@ -108,4 +127,5 @@ private:
 	std::map<AudioHandle, std::unique_ptr<SoundDataStreaming>> streamingSoundDatas_;
 	std::map<std::string, AudioHandle> audioHandleMap_; // ファイルパスからハンドルを引くためのマップ
 	AudioHandle nextHandle_ = 0; // 次に割り当てるハンドル番号
+	AudioHandle currentBgmHandle_ = kInvalidAudioHandle;
 };

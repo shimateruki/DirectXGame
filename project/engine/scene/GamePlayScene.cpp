@@ -34,6 +34,166 @@
 // ---------------------------------
 
 
+void GamePlayScene::LoadObjectLayout(const std::string& filename) {
+    using json = nlohmann::json;
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::string warnMsg = "Warning: Could not open " + filename + " for Object layout.\n";
+        OutputDebugStringA(warnMsg.c_str());
+        return; // ファイルが開けなければ処理中断
+    }
+
+    json sceneData;
+    try {
+        sceneData = json::parse(file);
+        if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+            for (const auto& objData : sceneData["objects"]) {
+                if (!objData.contains("name") || !objData["name"].is_string()) continue;
+                std::string name = objData["name"].get<std::string>(); // .get<string>() を使う
+
+                // objects_ 配列から名前で検索
+                Object3d* targetObject = nullptr;
+                for (auto& obj : objects_) {
+                    // ★ GetName() が実装されている前提
+                    if (obj && !obj->GetName().empty() && obj->GetName() == name) {
+                        targetObject = obj.get();
+                        break;
+                    }
+                }
+
+                // 見つかったら Transform を更新
+                if (targetObject) {
+                    Object3d::Transform* transform = targetObject->GetTransform();
+
+                    if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
+                        transform->translate.x = objData["position"][0].get<float>(); // .get<float>()
+                        transform->translate.y = objData["position"][1].get<float>();
+                        transform->translate.z = objData["position"][2].get<float>();
+                    }
+                    if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
+                        transform->rotate.x = objData["rotation"][0].get<float>(); // ラジアン前提
+                        transform->rotate.y = objData["rotation"][1].get<float>();
+                        transform->rotate.z = objData["rotation"][2].get<float>();
+                    }
+                    if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
+                        transform->scale.x = objData["scale"][0].get<float>();
+                        transform->scale.y = objData["scale"][1].get<float>();
+                        transform->scale.z = objData["scale"][2].get<float>();
+                    }
+
+                    // ★ 更新を即時反映させるため Update を呼ぶ
+                    //   (ただし、UpdateMatrix を統合した場合は Object3d::Update() を呼ぶ)
+                    targetObject->Update();
+                }
+            } // for (objData) 終わり
+        } // if contains("objects") 終わり
+    }
+    catch (json::parse_error& e) {
+        OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
+        OutputDebugStringA(e.what());
+        OutputDebugStringA("\n");
+    }
+
+    file.close();
+}
+
+void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
+    using json = nlohmann::json;
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        // ファイルが開けなかった場合 (初回起動時など) は何もしないか、警告を出す
+        std::string warnMsg = "Warning: Could not open " + filename + "\n";
+        OutputDebugStringA(warnMsg.c_str());
+        return;
+    }
+
+    json layoutData;
+    try {
+        layoutData = json::parse(file); // JSON をパース
+
+        // "sprites" 配列が存在し、配列形式かチェック
+        if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
+
+            // JSON 配列内の各スプライトデータを処理
+            for (const auto& spriteData : layoutData["sprites"]) {
+
+                // "name" がなければスキップ (名前で識別するため必須)
+                if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
+                    continue;
+                }
+                std::string name = spriteData["name"];
+
+                // --- 名前を使って sprites_ ベクターから該当スプライトを検索 ---
+                Sprite* targetSprite = nullptr;
+                for (auto& sprite : sprites_) {
+                    // Sprite クラスに GetName() が実装されている前提
+                    if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
+                        targetSprite = sprite.get();
+                        break;
+                    }
+                }
+
+                // --- 見つかったスプライトのプロパティを更新 ---
+                if (targetSprite) {
+
+                    // Position (Vector2)
+                    if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
+                        targetSprite->SetPosition({
+                            spriteData["position"][0].get<float>(), // .get<float>() で型を指定
+                            spriteData["position"][1].get<float>()
+                            });
+                    }
+
+                    // Size (Vector2)
+                    if (spriteData.contains("size") && spriteData["size"].is_array() && spriteData["size"].size() == 2) {
+                        targetSprite->SetSize({
+                            spriteData["size"][0].get<float>(),
+                            spriteData["size"][1].get<float>()
+                            });
+                    }
+
+                    // Anchor Point (Vector2)
+                    if (spriteData.contains("anchor") && spriteData["anchor"].is_array() && spriteData["anchor"].size() == 2) {
+                        targetSprite->SetAnchorPoint({
+                            spriteData["anchor"][0].get<float>(),
+                            spriteData["anchor"][1].get<float>()
+                            });
+                    }
+
+                    // Color (Vector4)
+                    if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
+                        targetSprite->SetColor({
+                            spriteData["color"][0].get<float>(),
+                            spriteData["color"][1].get<float>(),
+                            spriteData["color"][2].get<float>(),
+                            spriteData["color"][3].get<float>()
+                            });
+                    }
+
+                    // Rotation (float) - もし Sprite に回転があれば
+                    // if (spriteData.contains("rotation") && spriteData["rotation"].is_number()) {
+                    //     targetSprite->SetRotation(spriteData["rotation"].get<float>());
+                    // }
+
+                    // ★ 更新したプロパティを反映させるために Update() を呼ぶ (重要)
+                    targetSprite->Update();
+                }
+            } // for (spriteData) 終わり
+        } // if (contains("sprites")) 終わり
+
+    }
+    catch (json::parse_error& e) {
+        // JSON パース失敗時のエラー処理
+        OutputDebugStringA("Failed to parse sprite_layout.json\n");
+        OutputDebugStringA(e.what());
+        OutputDebugStringA("\n");
+    }
+
+    file.close(); // ファイルを閉じる
+}
+
 void GamePlayScene::Initialize() {
     // ★ using 宣言は必ず関数の「内側」に書く
     using json = nlohmann::json;
@@ -46,7 +206,7 @@ void GamePlayScene::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
 
     // --- 各種初期化 ---
-    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3"); // (パス注意)
+    bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3"); 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_); // カメラに InputManager を渡す
     spriteCommon_ = std::make_unique<SpriteCommon>();
@@ -56,7 +216,6 @@ void GamePlayScene::Initialize() {
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
     particleSystem_ = std::make_unique<ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get());
 
     // --- オブジェクトの生成 ---
     // Plane
@@ -166,59 +325,15 @@ void GamePlayScene::Initialize() {
     flameSprite->SetSize({ 64.0f,64.0f });
     sprites_.push_back(std::move(flameSprite));
 
-
-    // --- JSONレイアウトの読み込み (Initializeの最後) ---
-    std::ifstream file("scene_layout.json");
-    if (file.is_open()) {
-        json sceneData;
-        try {
-            sceneData = json::parse(file);
-            if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
-                for (const auto& objData : sceneData["objects"]) {
-                    if (!objData.contains("name")) continue; // 名前がないデータは無視
-                    std::string name = objData["name"];
-
-                    Object3d* targetObject = nullptr;
-                    for (auto& obj : objects_) {
-                        if (!obj->GetName().empty() && obj->GetName() == name) { // 名前が一致するか
-                            targetObject = obj.get();
-                            break;
-                        }
-                    }
-
-                    if (targetObject) {
-                        Object3d::Transform* transform = targetObject->GetTransform();
-                        if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
-                            transform->translate.x = objData["position"][0];
-                            transform->translate.y = objData["position"][1];
-                            transform->translate.z = objData["position"][2];
-                        }
-                        if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
-                            transform->rotate.x = objData["rotation"][0]; // JSONにはラジアンで保存されている前提
-                            transform->rotate.y = objData["rotation"][1];
-                            transform->rotate.z = objData["rotation"][2];
-                        }
-                        if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
-                            transform->scale.x = objData["scale"][0];
-                            transform->scale.y = objData["scale"][1];
-                            transform->scale.z = objData["scale"][2];
-                        }
-                    }
-                }
-            }
-        }
-        catch (json::parse_error& e) {
-            OutputDebugStringA("Failed to parse scene_layout.json\n");
-            OutputDebugStringA(e.what());
-            OutputDebugStringA("\n");
-        }
-        file.close();
-    }
+    LoadObjectLayout("scene_layout.json"); // 3Dオブジェクト配置読み込み
+	LoadSpriteLayout("sprite_layout.json"); // スプライト配置読み込み
 
     // ★ シーンマネージャ対応: DebugEditor を作成して初期化 (JSON読み込みの後)
 #ifdef _DEBUG
     debugEditor_ = std::make_unique<DebugEditor>();
     debugEditor_->Initialize(this, dxCommon_);
+	spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
+	spriteDebugEditor_->Initialize(this);
 #endif
 
     dxCommon_->FlushCommandQueue(false); // 初期化完了時にコマンドをフラッシュ
@@ -230,14 +345,12 @@ void GamePlayScene::Finalize() {
     if (debugEditor_) {
         debugEditor_->Finalize();
     }
+    if (spriteDebugEditor_) {
+        spriteDebugEditor_->Finalize();
+    }
 #endif
 
-    // ★ シーンマネージャ対応: BGMの停止
-    // (isBGMPlaying_ は GamePlayScene.h で宣言されている前提)
-    if (isBGMPlaying_) {
-        audioPlayer_->Stop(bgmHandle_); // ★ 関数名を Stop() に修正
-        isBGMPlaying_ = false;
-    }
+  
 
     // ★ シーンマネージャ対応: CollisionManager をクリア
     CollisionManager::GetInstance()->ClearObjects();
@@ -261,6 +374,9 @@ void GamePlayScene::Update() {
     if (debugEditor_) {
         debugEditor_->Update();
     }
+	if (spriteDebugEditor_) {
+		spriteDebugEditor_->Update();
+	}
 #endif
 
     // --- Releaseビルド時のカメラ入力処理 ---
@@ -291,15 +407,7 @@ void GamePlayScene::Update() {
     // --- 常に実行される更新 ---
     CameraManager::GetInstance()->Update(); // カメラ行列の最終計算
 
-    // BGM再生・停止 (テスト用)
-    if (inputManager_->IsKeyTriggered(DIK_P)) {
-        audioPlayer_->Play(bgmHandle_, true);
-        isBGMPlaying_ = true; // ★ シーンマネージャ対応: フラグ更新
-    }
-    if (inputManager_->IsKeyTriggered(DIK_S)) {
-        audioPlayer_->Stop(bgmHandle_);
-        isBGMPlaying_ = false; // ★ シーンマネージャ対応: フラグ更新
-    }
+ 
 
     // --- ImGui (デバッグビルド時のみ表示される想定) ---
 #ifdef _DEBUG
