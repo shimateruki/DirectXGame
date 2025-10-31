@@ -4,9 +4,9 @@
 #include "engine/base/Math.h"
 #include <string> // ★ OutputDebugStringA のために追加
 
-void Player::Initialize(Object3dCommon* common) {
+void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
     Object3d::Initialize(common);
-    inputManager_ = InputManager::GetInstance();
+    inputManager_ = inputManager;
     SetColliderType(ColliderType::kAABB);
     SetCollisionSize({ 0.5f, 1.0f, 0.5f });
 }

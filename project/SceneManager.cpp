@@ -4,6 +4,7 @@
 #include "GamePlayScene.h"
 #include "DirectXCommon.h"
 #include <cassert>
+#include <utility>
 
 /// <summary>
 /// デストラクタ
@@ -17,7 +18,7 @@ SceneManager::~SceneManager() {
 /// </summary>
 void SceneManager::Initialize() {
     // 最初のシーンとして TitleScene を生成
-    currentScene_ = new TitleScene;
+    currentScene_ = std::make_unique<TitleScene>();
 
     // SceneManagerのポインタを渡す
     currentScene_->SetSceneManager(this);
@@ -35,7 +36,7 @@ void SceneManager::Finalize() {
 
     if (currentScene_) {
         currentScene_->Finalize();
-        delete currentScene_;
+        currentScene_.reset();
         currentScene_ = nullptr;
     }
 }
@@ -58,11 +59,11 @@ void SceneManager::Update() {
         // 2. 現在のシーンを終了・破棄
         if (currentScene_) {
             currentScene_->Finalize();
-            delete currentScene_;
+            currentScene_.reset();
         }
 
         // 3. 次のシーンを現在のシーンに設定
-        currentScene_ = nextScene_;
+        currentScene_ = std::move(nextScene_);
         nextScene_ = nullptr;
 
         // 4. 新しいシーンを初期化（commandList は既にOpen状態）
@@ -88,7 +89,6 @@ void SceneManager::Draw() {
 /// <summary>
 /// 次のシーンを予約する
 /// </summary>
-void SceneManager::SetNextScene(BaseScene* nextScene) {
-    assert(nextScene_ == nullptr); // 二重予約防止
-    nextScene_ = nextScene;
+void SceneManager::SetNextScene(std::unique_ptr<BaseScene> nextScene) {
+    nextScene_ = std::move(nextScene);
 }

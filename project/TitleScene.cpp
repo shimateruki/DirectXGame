@@ -54,7 +54,7 @@ void TitleScene::Update() {
         nextScene->SetSceneManager(sceneManager_);
 
         // 3. SceneManager に次のシーンを予約する
-        sceneManager_->SetNextScene(nextScene);
+        sceneManager_->SetNextScene(std::make_unique<GamePlayScene>());
 
         return;
     }

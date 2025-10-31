@@ -1,5 +1,6 @@
 #pragma once
-#include"SceneManager.h"
+
+class SceneManager; // ★ 代わりに前方宣言を追加
 /// <summary>
 /// シーンの基底クラス
 /// </summary>

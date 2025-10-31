@@ -227,7 +227,7 @@ void GamePlayScene::Initialize() {
 
     // Player (Teapot) - インデックス [1] になる
     auto player = std::make_unique<Player>(); // Playerクラスを使う
-    player->Initialize(object3dCommon_.get()); // Player独自のInitialize
+    player->Initialize(object3dCommon_.get(), inputManager_);
     player->SetModel("teapot");
     player->SetTranslate({ 2.0f, 0.0f, 0.0f });
     player->SetName("Player"); // ★ デバッグエディタ用に名前を設定

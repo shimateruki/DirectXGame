@@ -5,7 +5,7 @@
 // Characterを継承したPlayerクラス
 class Player : public Character {
 public:
-    void Initialize(Object3dCommon* common) override;
+    void Initialize(Object3dCommon* common, InputManager* inputManager);
     void Update() override;
 
     /// <summary>
