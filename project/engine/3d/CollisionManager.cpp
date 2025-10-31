@@ -16,29 +16,56 @@ void CollisionManager::ClearObjects() {
 
 void CollisionManager::Update() {
     // オブジェクトのリストを総当たりでチェック
+    // std::list::iterator を使う
     for (auto itA = objects_.begin(); itA != objects_.end(); ++itA) {
         Object3d* objA = *itA;
 
+        // イテレータをコピーして1つ進める
         auto itB = itA;
         itB++;
+
         for (; itB != objects_.end(); ++itB) {
             Object3d* objB = *itB;
 
-            // 衝突フィルタリング
+            // 1. 衝突フィルタリング
             // (AのマスクとBの属性) AND (BのマスクとAの属性) が両方通らなければスキップ
             if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
                 (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
                 continue;
             }
 
-            // 2点間の距離を計算
-            Vector3 posA = objA->GetWorldPosition();
-            Vector3 posB = objB->GetWorldPosition();
-            float distance = Math().Length(posA - posB);
+            // 2. 形状タイプに応じて衝突判定
+            ColliderType typeA = objA->GetColliderType();
+            ColliderType typeB = objB->GetColliderType();
+            CollisionInfo collisionInfo; // 衝突情報を格納する
+            collisionInfo.isColliding = false; // 初期化
 
-            // 衝突しているか？ (距離 < 半径の合計)
-            if (distance <= objA->GetCollisionRadius() + objB->GetCollisionRadius()) {
-                // 衝突した双方の OnCollision 関数を呼び出す
+            // AABB vs AABB
+            if (typeA == ColliderType::kAABB && typeB == ColliderType::kAABB) {
+                collisionInfo = CheckAABBCollision(objA->GetAABB(), objB->GetAABB());
+            }
+            // Sphere vs Sphere
+            else if (typeA == ColliderType::kSphere && typeB == ColliderType::kSphere) {
+                collisionInfo = CheckSphereCollision(
+                    objA->GetWorldPosition(), objA->GetCollisionRadius(),
+                    objB->GetWorldPosition(), objB->GetCollisionRadius());
+            }
+            // Sphere vs AABB
+            else if (typeA == ColliderType::kSphere && typeB == ColliderType::kAABB) {
+                collisionInfo = CheckSphereAABBCollision(
+                    objA->GetWorldPosition(), objA->GetCollisionRadius(), objB->GetAABB());
+            }
+            // AABB vs Sphere
+            else if (typeA == ColliderType::kAABB && typeB == ColliderType::kSphere) {
+                collisionInfo = CheckSphereAABBCollision(
+                    objB->GetWorldPosition(), objB->GetCollisionRadius(), objA->GetAABB());
+                collisionInfo.normal = collisionInfo.normal * -1.0f;
+            }
+
+
+            // 3. 衝突していたら、両方のオブジェクトに通知
+            if (collisionInfo.isColliding) {
+                // お互いの OnCollision 関数を呼び出す
                 objA->OnCollision(objB);
                 objB->OnCollision(objA);
             }

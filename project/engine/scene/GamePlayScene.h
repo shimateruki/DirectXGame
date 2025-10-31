@@ -8,6 +8,8 @@
 #include "ParticleSystem.h" 
 #include "ParticleCommon.h" 
 #include"SpriteDebugEditor.h"
+#include"Player.h"
+#include"Text.h"
 
 #include <memory>
 #include <vector>
@@ -74,6 +76,8 @@ private:
     std::vector<std::unique_ptr<Object3d>> objects_;
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
+    std::unique_ptr<Text>  debugText_;
+    Player* player_ = nullptr;
 
     // --- BGM・SE ---
     uint32_t bgmHandle_ = 0;

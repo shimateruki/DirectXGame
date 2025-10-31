@@ -11,7 +11,7 @@ public:
     /// <summary>
     /// 衝突時に呼び出される関数 (親の関数をオーバーライド)
     /// </summary>
-    void OnCollision(Object3d* other) override;
+    bool OnCollision(Object3d* other) override;
 
 private:
     InputManager* inputManager_ = nullptr;

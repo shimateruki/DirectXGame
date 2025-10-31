@@ -15,7 +15,6 @@
 #include "CollisionManager.h"
 #include "ParticleSystem.h"
 #include "imgui.h"
-#include "Player.h" 
 
 // ★★★ シーンマネージャ対応で追加 ★★★
 #include "SceneManager.h" // SceneManager をインクルード
@@ -226,20 +225,24 @@ void GamePlayScene::Initialize() {
     objects_.emplace_back(std::move(plane));
 
     // Player (Teapot) - インデックス [1] になる
-    auto player = std::make_unique<Player>(); // Playerクラスを使う
-    player->Initialize(object3dCommon_.get(), inputManager_);
-    player->SetModel("teapot");
-    player->SetTranslate({ 2.0f, 0.0f, 0.0f });
-    player->SetName("Player"); // ★ デバッグエディタ用に名前を設定
-    objects_.emplace_back(std::move(player));
+    auto playerObj = std::make_unique<Player>(); // 1. 一時的な unique_ptr として作成
+    playerObj->Initialize(object3dCommon_.get(), inputManager_);
+    playerObj->SetModel("block");
+    playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
+    playerObj->SetName("Player");
+
+    player_ = playerObj.get(); // 2. ★ メンバ変数(player_)に「生ポインタ」をキャッシュする
+    objects_.emplace_back(std::move(playerObj)); // 3. 所有権は objects_[1] に移す
 
     //// Enemy (Bunny) - インデックス [2] になる
     auto enemy = std::make_unique<Object3d>();
     enemy->Initialize(object3dCommon_.get());
     enemy->SetModel("bunny");
-    enemy->SetTranslate({ -2.0f, 0.0f, 0.0f });
-    enemy->SetName("Enemy"); // ★ デバッグエディタ用に名前を設定
+    enemy->SetTranslate({ 2.0f, 0.0f, 0.0f }); 
+    enemy->SetName("Enemy");
+    enemy->SetParent(player_); // 4. ★ .get() は不要。キャッシュした生ポインタを渡す
     objects_.emplace_back(std::move(enemy));
+
 
     ////// Block (fence) - インデックス [3] から
     for (int i = 0; i < 5; ++i) {
@@ -295,7 +298,7 @@ void GamePlayScene::Initialize() {
         objects_[i]->SetCollisionAttribute(kGround);
         objects_[i]->SetCollisionMask(~kGround); // Ground以外と当たる
         objects_[i]->SetColliderType(ColliderType::kAABB);
-        objects_[i]->SetCollisionSize({ 1.5f, 1.5f, 1.5f }); // (ブロックモデルに合わせた半分のサイズ)
+        objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f }); // (ブロックモデルに合わせた半分のサイズ)
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
 
@@ -324,6 +327,9 @@ void GamePlayScene::Initialize() {
     flameSprite->SetPosition({ 640.0f, 360.0f });
     flameSprite->SetSize({ 64.0f,64.0f });
     sprites_.push_back(std::move(flameSprite));
+
+
+
 
     LoadObjectLayout("scene_layout.json"); // 3Dオブジェクト配置読み込み
 	LoadSpriteLayout("sprite_layout.json"); // スプライト配置読み込み
@@ -408,23 +414,6 @@ void GamePlayScene::Update() {
     CameraManager::GetInstance()->Update(); // カメラ行列の最終計算
 
  
-
-    // --- ImGui (デバッグビルド時のみ表示される想定) ---
-#ifdef _DEBUG
-    // (DebugEditor側に移したので、シーン固有のImGuiは削除 or 必要なら追加)
-    /*
-    ImGui::Begin("Scene Control (GamePlayScene)");
-    ImGui::Checkbox("Draw Particles", &isDrawParticles_);
-    if (isDrawParticles_) {
-        if (inputManager_->IsMouseButtonTriggered(0)) { // 左クリックでパーティクル発生 (テスト用)
-            OutputDebugStringA("Spawn Particles Triggered!\n");
-            particleSystem_->SpawnParticles({ 0.0f, 0.1f, 0.0f }, 10);
-        }
-    }
-    ImGui::End();
-    */
-#endif
-
     // --- パーティクル更新 ---
     // (isDrawParticles_ フラグでオンオフできるようにする)
     if (isDrawParticles_) {
@@ -435,17 +424,36 @@ void GamePlayScene::Update() {
     for (auto& obj : objects_) {
         obj->Update(); // Player::Update() などが呼ばれる
     }
+
+    // [フェーズ1] 全オブジェクトのローカル行列を計算
+    if (player_) {
+        player_->UpdateLocalMatrix();
+    }
+    for (const auto& object : objects_) {
+        object->UpdateLocalMatrix();
+    }
+
+    if (player_) {
+        player_->UpdateWorldMatrix(); // Playerが親なら先に計算
+    }
+    for (const auto& object : objects_) {
+ 
+        object->UpdateWorldMatrix(); // 子のワールド行列計算
+    }
+
+
+
+
     for (auto& sprite : sprites_) {
         sprite->Update(); // アニメーション更新など
     }
+
 
     // --- 2. 物理 (衝突判定) 更新 ---
     CollisionManager::GetInstance()->Update();
 
     // --- 3. 行列 (描画準備) 更新 ---
-    for (auto& obj : objects_) {
-        obj->UpdateMatrix(); // ワールド行列の計算
-    }
+
 }
 
 void GamePlayScene::Draw() {
