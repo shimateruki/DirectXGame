@@ -7,10 +7,18 @@
 /// </summary>
 class Character : public Object3d {
 public:
-    
+
 
     // 衝突応答の基本処理（押し戻し）を実装
-    void OnCollision(Object3d* other) override;
+    bool OnCollision(Object3d* other) override;
 
+    // ▼▼▼ 以下を追加 ▼▼▼
+    /// <summary>
+    /// 物理挙動を適用した更新処理
+    /// </summary>
+    void Update() override;
+
+protected:
+    Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
 
 };

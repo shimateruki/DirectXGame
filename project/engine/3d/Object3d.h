@@ -30,7 +30,20 @@ public:
     /// <summary>
     /// ワールド行列の計算と定数バッファへの転送
     /// </summary>
-    void UpdateMatrix();
+    void UpdateLocalMatrix();
+
+    void UpdateWorldMatrix();
+
+    /// <summary>
+    /// 親オブジェクトを設定する
+    /// </summary>
+    void SetParent(Object3d* parent);
+
+    /// <summary>
+    /// ワールド行列を取得する
+    /// </summary>
+    const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
+
     void Draw();
 
     void SetModel(Model* model) { model_ = model; }
@@ -83,14 +96,15 @@ public:
 
 
     /// <summary>
-    /// 衝突時に呼び出される仮想関数 (中身は空)
+    /// 衝突時に呼び出される仮想関数 
     /// </summary>
-    virtual void OnCollision(Object3d* other) {
+    virtual  bool OnCollision(Object3d* other) {
         (void)other; // 未使用引数の警告避け
+        return false;
     }
 
 
-protected: // ★★★ privateからprotectedに変更 ★★★
+protected: 
     Object3dCommon* common_ = nullptr;
     Model* model_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
@@ -100,6 +114,10 @@ protected: // ★★★ privateからprotectedに変更 ★★★
 
     Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
     BlendMode blendMode_ = BlendMode::kNormal;
+    Matrix4x4 localMatrix_ = {}; // ローカル行列
+    Matrix4x4 worldMatrix_ = {}; // 親の影響を含めたワールド行列
+    Object3d* parent_ = nullptr;  // 親オブジェクトへのポインタ
+
 
     // ▼▼▼ あたり判定用のメンバ変数 ▼▼▼
     ColliderType colliderType_ = ColliderType::kNone;

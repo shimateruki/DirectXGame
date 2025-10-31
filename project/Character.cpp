@@ -5,20 +5,24 @@
 #include <algorithm> // std::min, std::max
 #include <cmath>     // std::abs
 
+// ★ Math のインスタンスを作成
+static Math math;
 
 
+void Character::Update() {
+
+    transform_.translate += velocity_;
+}
 
 
-// --- Character::OnCollision の実装 ---
-
-
-
-void Character::OnCollision(Object3d* other) {
+bool Character::OnCollision(Object3d* other) {
     // 相手が地形(kAllGround)でなければ、物理応答はしない
     if (!(other->GetCollisionAttribute() & kAllGround)) {
-        return;
+        return false;
     }
 
+    // --- 1. 衝突判定の実行 ---
+    // (ご提供いただいたコードからそのまま流用)
     ColliderType myType = this->GetColliderType();
     ColliderType otherType = other->GetColliderType();
     CollisionInfo collision;
@@ -39,9 +43,23 @@ void Character::OnCollision(Object3d* other) {
             this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
     }
 
-    // 衝突していたら、自分を押し戻す
+    // --- 2. 衝突応答 (ここが最重要) ---
     if (collision.isColliding) {
 
-        transform_.translate += collision.normal * collision.penetration;
+        // ★ 2-1. 座標を押し戻す (めり込んだ分だけ座標を補正)
+        // (この処理が抜けていると、めり込み続ける)
+        this->transform_.translate += (collision.normal * collision.penetration);
+
+        // ★ 2-2. 速度を補正 (壁にめり込む速度成分を打ち消す)
+        float dot = math.Dot(velocity_, collision.normal); // ★ 修正
+
+        // ★★★ 修正点: (dot > 0) ではなく (dot < 0) ★★★
+        // 速度が法線と逆向き (dot < 0) ＝ めり込もうとしている場合のみ
+        if (dot < 0) {
+            // 法線方向の速度成分（dot）を、速度ベクトルから差し引く
+            // (これにより、壁に対して平行な速度成分 = スライドする速度だけが残る)
+            velocity_ = velocity_ - (collision.normal * dot);
+        }
     }
+    return collision.isColliding;
 }

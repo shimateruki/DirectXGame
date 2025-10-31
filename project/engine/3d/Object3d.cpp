@@ -33,18 +33,45 @@ void Object3d::Update() {
     // 派生クラス (Playerなど) でオーバーライドされる用
 }
 
-// ▼▼▼ 行列計算用のUpdateMatrix ▼▼▼
-void Object3d::UpdateMatrix() {
+void Object3d::UpdateLocalMatrix() {
     Math math;
+
+    // ★ localMatrix_ を計算する
+    localMatrix_ = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+
+    // ★ 親がいない場合、ローカル行列 = ワールド行列とする
+    if (parent_ == nullptr) {
+        worldMatrix_ = localMatrix_;
+    }
+
+}
+
+
+void Object3d::UpdateWorldMatrix() {
+    Math math;
+
+    // --- 親子関係の処理 ---
+    if (parent_ != nullptr) {
+        // 親のワールド行列を取得し、それに自分のローカル行列を乗算する
+        worldMatrix_ = math.Multiply(localMatrix_, parent_->GetWorldMatrix());
+    }
+     
+
+    // --- 既存の WVP とライティングの処理（ここから）---
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     const Matrix4x4& viewMatrix = camera->GetViewMatrix();
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
-    Matrix4x4 worldMatrix = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-    Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
+
+    // ★ 計算対象の行列を worldMatrix_ に変更
+    Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix_, math.Multiply(viewMatrix, projectionMatrix));
+
     wvpData_->WVP = worldViewProjectionMatrix;
-    wvpData_->world = worldMatrix;
+    wvpData_->world = worldMatrix_; // ★ worldMatrix_ をセット
     directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
 }
+
+
+
 
 void Object3d::Draw() {
     if (model_ == nullptr) {
@@ -57,4 +84,8 @@ void Object3d::Draw() {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
     model_->Draw(wvpResource_.Get(), directionalLightResource_.Get());
+}
+
+void Object3d::SetParent(Object3d* parent) {
+    parent_ = parent;
 }
