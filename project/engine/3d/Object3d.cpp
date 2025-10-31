@@ -33,7 +33,7 @@ void Object3d::Update() {
     // 派生クラス (Playerなど) でオーバーライドされる用
 }
 
-// ▼▼▼ 行列計算用のUpdateMatrix (元のUpdateの中身) ▼▼▼
+// ▼▼▼ 行列計算用のUpdateMatrix ▼▼▼
 void Object3d::UpdateMatrix() {
     Math math;
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();

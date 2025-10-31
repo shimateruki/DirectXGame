@@ -1,7 +1,7 @@
 #pragma once
+#include <memory>
+#include "BaseScene.h"
 
-// 前方宣言
-class BaseScene;
 
 /// <summary>
 /// シーンを管理するクラス
@@ -37,9 +37,9 @@ public:
     /// 次のシーンを予約する
     /// </summary>
     /// <param name="nextScene">次に切り替えるシーンのインスタンス</param>
-    void SetNextScene(BaseScene* nextScene);
+    void SetNextScene(std::unique_ptr<BaseScene> nextScene);
 
 private:
-    BaseScene* currentScene_ = nullptr; // 現在のシーン
-    BaseScene* nextScene_ = nullptr;    // 次に予約されているシーン
+    std::unique_ptr<BaseScene> currentScene_ = nullptr;
+    std::unique_ptr<BaseScene> nextScene_ = nullptr;
 };
