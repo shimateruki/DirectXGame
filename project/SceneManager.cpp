@@ -18,7 +18,7 @@ SceneManager::~SceneManager() {
 /// </summary>
 void SceneManager::Initialize() {
     // 最初のシーンとして TitleScene を生成
-    currentScene_ = std::make_unique<TitleScene>();
+    currentScene_ = std::make_unique<GamePlayScene>();
 
     // SceneManagerのポインタを渡す
     currentScene_->SetSceneManager(this);

@@ -7,10 +7,23 @@
 
 // ★ Math のインスタンスを作成
 static Math math;
-
+static const float kGravity = 0.015f;
+static const float kMaxFallSpeed = 1.0f;
 
 void Character::Update() {
 
+    // ★ 1. 更新の最初に、接地フラグを「false」にリセット
+    isGrounded_ = false;
+
+    // ★ 2. 重力（Y軸マイナスの加速度）を速度に加算
+    velocity_.y -= kGravity;
+
+    // ★ (お好みで) 落下速度が速くなりすぎないように制限（クランプ）
+    if (velocity_.y < -kMaxFallSpeed) {
+        velocity_.y = -kMaxFallSpeed;
+    }
+
+    // ★ 3. 速度を座標に反映 
     transform_.translate += velocity_;
 }
 
@@ -22,7 +35,6 @@ bool Character::OnCollision(Object3d* other) {
     }
 
     // --- 1. 衝突判定の実行 ---
-    // (ご提供いただいたコードからそのまま流用)
     ColliderType myType = this->GetColliderType();
     ColliderType otherType = other->GetColliderType();
     CollisionInfo collision;
@@ -43,23 +55,27 @@ bool Character::OnCollision(Object3d* other) {
             this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
     }
 
-    // --- 2. 衝突応答 (ここが最重要) ---
+    // --- 2. 衝突応答 ---
     if (collision.isColliding) {
 
-        // ★ 2-1. 座標を押し戻す (めり込んだ分だけ座標を補正)
-        // (この処理が抜けていると、めり込み続ける)
+        // ★ 座標を押し戻す (めり込んだ分だけ座標を補正)
         this->transform_.translate += (collision.normal * collision.penetration);
 
-        // ★ 2-2. 速度を補正 (壁にめり込む速度成分を打ち消す)
-        float dot = math.Dot(velocity_, collision.normal); // ★ 修正
+        //  速度を補正 (壁にめり込む速度成分を打ち消す)
+        float dot = math.Dot(velocity_, collision.normal);
 
-        // ★★★ 修正点: (dot > 0) ではなく (dot < 0) ★★★
         // 速度が法線と逆向き (dot < 0) ＝ めり込もうとしている場合のみ
         if (dot < 0) {
             // 法線方向の速度成分（dot）を、速度ベクトルから差し引く
-            // (これにより、壁に対して平行な速度成分 = スライドする速度だけが残る)
             velocity_ = velocity_ - (collision.normal * dot);
         }
+
+        //接地判定
+        if (collision.normal.y > 0.9f) {
+            isGrounded_ = true;
+        }
     }
+
+    // 衝突したかどうかを返す
     return collision.isColliding;
 }

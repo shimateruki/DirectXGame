@@ -1,17 +1,17 @@
 #define NOMINMAX
 #include "TitleScene.h"
 #include "SceneManager.h"
-#include "GamePlayScene.h" // ★ 次のシーン
-#include "DirectXCommon.h" // ★
-#include "SpriteCommon.h"  // ★
-#include "Sprite.h"        // ★
+#include "GamePlayScene.h"  
+#include "DirectXCommon.h" 
+#include "SpriteCommon.h"  
+#include "Sprite.h"        
 #include <cassert>
 
 void TitleScene::Initialize() {
     // --- 基盤クラスのポインタを保持 ---
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
-    assert(sceneManager_); // SetSceneManagerが呼ばれているか確認
+    assert(sceneManager_);
 
     // --- スプライト共通処理の初期化 ---
     spriteCommon_ = std::make_unique<SpriteCommon>();

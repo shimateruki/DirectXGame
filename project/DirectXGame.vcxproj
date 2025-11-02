@@ -171,6 +171,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\io\InputManager.cpp" />
     <ClCompile Include="engine\scene\GamePlayScene.cpp" />
     <ClCompile Include="engine\io\ImguiManager.cpp" />
+    <ClCompile Include="Light.cpp" />
+    <ClCompile Include="LightManager.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MinSpace</Optimization>
@@ -274,6 +276,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\io\ImguiManager.h" />
     <ClInclude Include="engine\3d\ParticleCommon.h" />
     <ClInclude Include="engine\3d\ParticleSystem.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="LightManager.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="engine\2d\SpriteDebugEditor.h" />
