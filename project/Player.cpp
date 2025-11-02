@@ -12,14 +12,27 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
 }
 //
 void Player::Update() {
-    // --- キー入力による移動処理 ---
+
+// --- キー入力による移動処理 ---
     Vector3 move = { 0.0f, 0.0f, 0.0f };
     const float moveSpeed = 0.1f;
     if (inputManager_->IsKeyPressed(DIK_W)) { move.z += moveSpeed; }
     if (inputManager_->IsKeyPressed(DIK_S)) { move.z -= moveSpeed; }
     if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
     if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
-    transform_.translate += move;
+    
+    // ★ 1. 水平方向の移動は velocity_ に直接代入する
+    velocity_.x = move.x;
+    velocity_.z = move.z;
+
+    // ★ 2. ジャンプ処理 
+    if (isGrounded_ && inputManager_->IsKeyTriggered(DIK_SPACE)) {
+        const float kJumpVelocity = 0.5f; // ジャンプの初速 (要調整)
+        velocity_.y = kJumpVelocity;      // Y軸の速度に初速を与える
+    }
+
+
+    Character::Update();
  
 }
 

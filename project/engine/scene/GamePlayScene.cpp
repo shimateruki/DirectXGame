@@ -1,6 +1,5 @@
-// ★★★ windows.h の min/max マクロ競合を回避するため、必ずファイルの先頭に置く ★★★
-#define NOMINMAX
 
+#define NOMINMAX
 #include "GamePlayScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -15,6 +14,7 @@
 #include "CollisionManager.h"
 #include "ParticleSystem.h"
 #include "imgui.h"
+#include"LightManager.h"
 
 // ★★★ シーンマネージャ対応で追加 ★★★
 #include "SceneManager.h" // SceneManager をインクルード
@@ -24,13 +24,11 @@
 #ifdef _DEBUG
 #include "DebugEditor.h" 
 #endif
-// ★★★★★★★★★★★★★★★★★★★★★
 
 // --- JSON (保存機能) ---
 #include <fstream>
 #include <string>
 #include "json.hpp" 
-// ---------------------------------
 
 
 void GamePlayScene::LoadObjectLayout(const std::string& filename) {
@@ -374,8 +372,11 @@ void GamePlayScene::Finalize() {
 
 void GamePlayScene::Update() {
 
+    // ★ ライトマネージャの更新を追加
+    LightManager::GetInstance()->Update();
+
+
     // ★ シーンマネージャ対応: DebugEditor の更新
-    // (注: ImGui::BeginFrame は Game.cpp の Update() で呼ばれます)
 #ifdef _DEBUG
     if (debugEditor_) {
         debugEditor_->Update();

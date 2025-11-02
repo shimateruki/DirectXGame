@@ -18,7 +18,10 @@ public:
     /// </summary>
     void Update() override;
 
+    bool IsGrounded() const { return isGrounded_; }
 protected:
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
+
+    bool isGrounded_ = false;
 
 };

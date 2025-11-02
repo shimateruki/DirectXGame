@@ -129,17 +129,15 @@ void Camera::Update() {
                 // A/D/Q/E/W/S/Wheel での移動
                 Vector3 move = { 0, 0, 0 };
                 const float moveSpeed = 0.3f;
-                if (inputManager_->IsKeyPressed(DIK_A)) { move.x -= moveSpeed; }
-                if (inputManager_->IsKeyPressed(DIK_D)) { move.x += moveSpeed; }
-                if (inputManager_->IsKeyPressed(DIK_E)) { move.y += moveSpeed; }
-                if (inputManager_->IsKeyPressed(DIK_Q)) { move.y -= moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_LEFT)) { move.x -= moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_RIGHT)) { move.x += moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_UP)) { move.y += moveSpeed; }
+                if (inputManager_->IsKeyPressed(DIK_DOWN)) { move.y -= moveSpeed; }
 
                 float wheelDelta = inputManager_->GetMouseWheelDelta();
                 const float wheelSpeed = 0.005f; // (※元のコードでは 0.005f になっていました)
 
-                if (inputManager_->IsKeyPressed(DIK_W)) { move.z += moveSpeed; }
-                if (inputManager_->IsKeyPressed(DIK_S)) { move.z -= moveSpeed; }
-
+    
                 // ★ ホイール操作も io.WantCaptureMouse でガードされる
                 move.z += wheelDelta * wheelSpeed;
 
