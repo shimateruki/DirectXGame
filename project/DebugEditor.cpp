@@ -29,6 +29,8 @@
 
 #include "engine/3d/CollisionConfig.h"
 
+#include"ModelManager.h"
+
 #include <cmath>
 
 #include <cassert> // assert() のために追加
@@ -135,6 +137,7 @@ void DebugEditor::Update() {
         // コライダー表示 (変更なし)
         ImGui::Separator();
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
+        DrawObjectSpawnerWindow();
 
     } else { // オブジェクト未選択
         ImGui::Text("No object selected.");
@@ -304,4 +307,77 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
 
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
+}
+
+/// <summary>
+/// Object Spawner ウィンドウの描画
+/// </summary>
+void DebugEditor::DrawObjectSpawnerWindow() {
+
+    // (ウィンドウ名は "Object Spawner" など任意)
+    if (!ImGui::Begin("Object Spawner")) {
+        ImGui::End();
+        return;
+    }
+
+    // --- 1. モデルリストの取得・更新 ---
+    // (ボタンが押された時だけリストを更新する)
+    if (ImGui::Button("Refresh Model List")) {
+        modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
+        selectedModelIndex_ = 0; // 選択をリセット
+    }
+
+    ImGui::Separator();
+
+    // --- 2. モデルリストの表示 ---
+    if (modelNames_.empty()) {
+        ImGui::Text("Model list is empty.");
+        ImGui::Text("Push 'Refresh' after loading.");
+    } else {
+        // C++の std::vector<std::string> を ImGui が
+        // 扱える形式 (const char* の配列) に変換する
+        std::vector<const char*> namesCStr;
+        for (const std::string& name : modelNames_) {
+            namesCStr.push_back(name.c_str());
+        }
+
+        // リストボックス
+        ImGui::ListBox(
+            "Models",                 // ラベル
+            &selectedModelIndex_,     // 選択中のインデックス (メンバ変数)
+            namesCStr.data(),         // 表示する const char* の配列
+            static_cast<int>(namesCStr.size()), // 配列のサイズ
+            5                         // リストボックスの高さ (5行分)
+        );
+
+        ImGui::Separator();
+
+        // --- 3. スポーン（生成）ボタン ---
+        if (ImGui::Button("Spawn Object")) {
+
+            // 選択が有効かチェック
+            if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
+
+                // 選択されたモデル名を取得
+                std::string modelName = modelNames_[selectedModelIndex_];
+
+                // (1) シーンから Object3dCommon を取得
+                Object3dCommon* common = scene_->GetObject3dCommon();
+
+                // (2) 新しい Object3d を作成
+                auto newObj = std::make_unique<Object3d>();
+                newObj->Initialize(common);
+                newObj->SetModel(modelName);
+
+                // (3) ユニークな名前を付ける (連番など)
+                static int spawnCount = 0;
+                newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
+
+                // (4) シーンのヘルパー関数を使って追加
+                scene_->AddObject(std::move(newObj));
+            }
+        }
+    }
+
+    ImGui::End();
 }

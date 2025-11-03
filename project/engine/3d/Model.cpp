@@ -62,6 +62,8 @@ void Model::Draw( ID3D12Resource* wvpResource, ID3D12Resource* directionalLightR
 
 
 
+
+
 // OBJファイルからモデルデータを読み込む関数
 Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std::string& filename) {
     ModelData modelData;
