@@ -44,7 +44,7 @@ void SceneManager::Finalize() {
 /// <summary>
 /// 更新（シーン切り替え処理と現在のシーンの更新）
 /// </summary>
-void SceneManager::Update() {
+void SceneManager::Update(float deltaTime) {
     // --- 次のシーンが予約されている場合 ---
     if (nextScene_ != nullptr) {
 
@@ -72,7 +72,7 @@ void SceneManager::Update() {
 
     // --- 現在のシーンを更新 ---
     if (currentScene_) {
-        currentScene_->Update();
+        currentScene_->Update(deltaTime);
     }
 }
 

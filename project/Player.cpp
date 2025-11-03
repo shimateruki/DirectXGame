@@ -3,6 +3,7 @@
 #include "CollisionConfig.h"
 #include "engine/base/Math.h"
 #include <string> // ★ OutputDebugStringA のために追加
+#include "EventManager.h" 
 
 void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
     Object3d::Initialize(common);
@@ -36,18 +37,28 @@ void Player::Update() {
  
 }
 
-// ★ 戻り値を bool に変更済みのはず
 bool Player::OnCollision(Object3d* other) {
     bool hitGround = false;
     uint32_t attribute = other->GetCollisionAttribute();
 
+    // --- 1. 物理処理 (地面との衝突) ---
     if (attribute & kAllGround) {
+        // 親(Character)の物理応答(精密判定 + 押し戻し)を呼ぶ
         hitGround = Character::OnCollision(other);
     }
 
-    if (attribute & kEnemy)
-    {
-        OutputDebugStringA("Hit");
+    // --- 2. ゲームロジック (敵との衝突) ---
+    // else if に変更し、
+    else if (attribute & kEnemy) {
+
+        CollisionInfo collision = CheckCollision(other);
+
+        // ★ 「本当に衝突していた」場合のみ、イベントを発行
+        if (collision.isColliding) {
+            PlayerHitEvent event;
+            event.hitObject = other;
+            EventManager::GetInstance()->Dispatch(event);
+        }
     }
 
     return hitGround;

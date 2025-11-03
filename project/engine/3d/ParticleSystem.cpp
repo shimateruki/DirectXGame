@@ -2,14 +2,19 @@
 #include "ParticleCommon.h"
 #include "DirectXCommon.h"
 #include "TextureManager.h"
-#include "CameraManager.h"
+#include "CameraManager.h" // カメラ行列のため
 #include "SRVManager.h"
-#include"Sprite.h"
+#include "engine/base/Math.h" // Math のため
 #include <cassert>
 #include <string>
-#include <format>
 
-// パーティクルの板ポリゴンを形成する頂点の構造体
+// 乱数とMathインスタンス
+static std::random_device rd;
+static std::mt19937 gen(rd());
+static std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
+static Math math;
+
+// 板ポリゴン頂点
 struct ParticleVertex {
     Vector4 position;
     Vector2 texcoord;
@@ -21,56 +26,179 @@ void ParticleSystem::Initialize(ParticleCommon* common, const std::string& textu
 
     textureHandle_ = TextureManager::GetInstance()->Load(texturePath);
 
-    assert(textureHandle_ != 0); // 読み込みチェック
+    assert(textureHandle_ != 0);
     CreateResources();
-    particles_.reserve(kMaxParticles);
+    particles_.reserve(kMaxParticles); // vector::reserve
     std::random_device seed_gen;
     randomEngine_.seed(seed_gen());
+
+    // Emitterの初期設定
+    spawnTimer_ = 0.0f;
+    params_.isEmitting = true; // デフォルトでON
 }
 
-void ParticleSystem::Update() {
-    particleCount_ = 0;
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    const Matrix4x4& viewMatrix = camera->GetViewMatrix();
-    Math m;
-
-    // ビルボード計算用の行列を作成
-    Matrix4x4 billboardMatrix = m.Inverse(viewMatrix);
-    billboardMatrix.m[3][0] = 0.0f;
-    billboardMatrix.m[3][1] = 0.0f;
-    billboardMatrix.m[3][2] = 0.0f;
-
-    for (auto it = particles_.begin(); it != particles_.end(); ) {
-        // --- 寿命と移動の計算 (コメントアウトを解除) ---
-        it->currentTime += 1.0f / 60.0f;
-        if (it->currentTime > it->lifeTime) {
-            it = particles_.erase(it);
-            continue;
-        }
-        it->position = it->position + it->velocity * (1.0f / 60.0f);
-
-        Matrix4x4 scaleMatrix = m.MakeScaleMatrix({ 1.0f, 1.0f, 1.0f });
-        Matrix4x4 translateMatrix = m.MakeTranslateMatrix(it->position);
-
-        // まず拡大とビルボード回転を合成
-        Matrix4x4 scaleAndBillboard = m.Multiply(scaleMatrix, billboardMatrix);
-        // その結果に平行移動を合成してワールド行列を完成させる
-        Matrix4x4 worldMatrix = m.Multiply(scaleAndBillboard, translateMatrix);
-
-        instancingData_[particleCount_].world = worldMatrix;
-        instancingData_[particleCount_].color = it->color;
-
-        particleCount_++;
-        ++it;
+/// <summary>
+/// 【使い方B】自動エミッターが内部で呼ぶSpawn
+/// </summary>
+void ParticleSystem::SpawnFromEmitter() {
+    if (particles_.size() >= kMaxParticles) {
+        return; // 最大数
     }
 
+    // params_ に基づいてランダムな値を決定
+    Vector3 pos = params_.spawnPosition;
+    pos.x += params_.spawnArea.x * dis(gen);
+    pos.y += params_.spawnArea.y * dis(gen);
+    pos.z += params_.spawnArea.z * dis(gen);
+
+    Vector3 vel = params_.initialVelocity;
+    vel.x += params_.velocityRandomness.x * dis(gen);
+    vel.y += params_.velocityRandomness.y * dis(gen);
+    vel.z += params_.velocityRandomness.z * dis(gen);
+
+    // ★ Particle 構造体に直接詰める
+    Particle p;
+    p.position = pos;
+    p.velocity = vel;
+    p.lifeTime = params_.particleLifetime;
+    p.currentTime = 0.0f;
+    p.startColor = params_.startColor;
+    p.endColor = params_.endColor;
+    p.startSize = params_.startSize;
+    p.endSize = params_.endSize;
+
+    particles_.push_back(p);
+}
+
+
+/// <summary>
+/// 【使い方A】手動で（単発で）発生させる関数
+/// </summary>
+void ParticleSystem::SpawnParticles(const Vector3& position, int count,
+    float initialSpeed, const Vector3* direction, float spreadAngle,
+    Vector4 initialColor, Vector4 endColor, 
+    float lifeTimeMin, float lifeTimeMax,
+    float startSize, float endSize)       
+{
+    std::uniform_real_distribution<float> lifeDist(lifeTimeMin, lifeTimeMax);
+
+    for (int i = 0; i < count; ++i) {
+        if (particles_.size() >= kMaxParticles) {
+            break; // 最大数
+        }
+
+        Vector3 spawnDir;
+        if (direction) { // 方向指定あり
+            spawnDir = *direction;
+            // ... (既存のばらつき計算) ...
+            if (spreadAngle > 0.0f) {
+                std::uniform_real_distribution<float> angleDist(-spreadAngle / 2.0f, spreadAngle / 2.0f);
+                Matrix4x4 rotX = math.MakeRotateXMatrix(angleDist(randomEngine_));
+                Matrix4x4 rotY = math.MakeRotateYMatrix(angleDist(randomEngine_));
+                spawnDir = math.TransformNormal(spawnDir, rotX * rotY);
+            }
+        } else { // 方向指定なし (ランダム)
+            std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+            spawnDir = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
+        }
+
+        if (math.Length(spawnDir) < 0.001f) {
+            spawnDir = { 0.0f, 1.0f, 0.0f }; // ゼロベクトル対策
+        }
+        spawnDir = math.Normalize(spawnDir);
+
+        // ★ Particle 構造体に直接詰める
+        Particle p;
+        p.position = position;
+        p.velocity = spawnDir * initialSpeed;
+        p.lifeTime = lifeDist(randomEngine_);
+        p.currentTime = 0.0f;
+        p.startColor = initialColor;
+        p.endColor = endColor;
+        p.startSize = startSize;
+        p.endSize = endSize;
+
+        particles_.push_back(p);
+    }
+}
+
+
+/// <summary>
+/// パーティクル全体の更新
+/// </summary>
+void ParticleSystem::Update(float deltaTime) {
+
+    // --- 1. エミッター（自動発生）の処理 ---
+    if (params_.isEmitting && params_.particlesPerSecond > 0.0f) {
+
+        float particlesToSpawn = params_.particlesPerSecond * deltaTime;
+        spawnTimer_ += particlesToSpawn;
+
+        while (spawnTimer_ >= 1.0f) {
+            spawnTimer_ -= 1.0f;
+            SpawnFromEmitter();
+        }
+    }
+
+    // --- 2. パーティクル（個々）の更新 (★ここが重要) ---
+
+    // (↓ 既存の Update() から持ってきたカメラ情報)
+    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    const Matrix4x4& viewMatrix = camera->GetViewMatrix();
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
-    matrixData_->viewProjection = m.Multiply(viewMatrix, projectionMatrix);
-    char buffer[128]; // 文字列バッファ
-    // sprintf_s を使ってフォーマット文字列を作成
-    sprintf_s(buffer, sizeof(buffer), "ParticleSystem::Update - Active particleCount_: %u\n", particleCount_);
-    // 出力ウィンドウに表示
-    OutputDebugStringA(buffer);
+    // (↓ CBV[0] にカメラ行列をセット)
+    matrixData_->viewProjection = viewMatrix * projectionMatrix;
+
+    // (↓ 既存の Update() から持ってきたビルボード行列)
+    Matrix4x4 backToFrontMatrix = math.Inverse(viewMatrix);
+    backToFrontMatrix.m[3][0] = 0.0f;
+    backToFrontMatrix.m[3][1] = 0.0f;
+    backToFrontMatrix.m[3][2] = 0.0f;
+
+    // GPUに送るカウントをリセット
+    particleCount_ = 0;
+
+    for (auto it = particles_.begin(); it != particles_.end(); ) {
+        Particle& p = *it;
+        p.currentTime += deltaTime;
+
+        if (p.currentTime >= p.lifeTime) {
+            it = particles_.erase(it); // 寿命で削除
+            continue;
+        }
+
+        // ★ 補間計算 (p が持つ start/end データを使う)
+        float lifeRatio = p.currentTime / p.lifeTime;
+        Vector4 currentColor = math.Lerp(p.startColor, p.endColor, lifeRatio);
+        float currentSize = math.Lerp(p.startSize, p.endSize, lifeRatio);
+
+        // ★ 速度を反映
+        p.position += p.velocity * deltaTime;
+
+        // ▼▼▼ ★★★ "消えていた" 処理 ★★★ ▼▼▼
+        //
+        // --- 3. Instancingデータへの書き込み ---
+        // (↓ 既存の Update() から持ってきた行列計算)
+
+        // スケール行列
+        Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize, currentSize, currentSize });
+        // トランスフォーム行列
+        Matrix4x4 translateMatrix = math.MakeTranslateMatrix(p.position);
+
+        // ワールド行列の計算 (ビルボード対応)
+        Matrix4x4 worldMatrix = scaleMatrix * backToFrontMatrix * translateMatrix;
+
+        // ★ GPUバッファ (instancingData_) にデータをコピー
+        instancingData_[particleCount_].world = worldMatrix;
+        instancingData_[particleCount_].color = currentColor;
+
+        // ★ カウントアップ (これが 0 のままだと Draw() が動かない)
+        particleCount_++;
+        //
+        // ▲▲▲ ★★★ "消えていた" 処理 ★★★ ▲▲▲
+
+        ++it;
+    }
 }
 
 void ParticleSystem::Draw() {
@@ -87,69 +215,6 @@ void ParticleSystem::Draw() {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, textureHandle_);
 
     commandList->DrawIndexedInstanced(6, particleCount_, 0, 0, 0);
-}
-
-void ParticleSystem::SpawnParticles(const Vector3& position, int count,
-    float initialSpeed, const Vector3* direction, float spreadAngle,
-    Vector4 initialColor, float lifeTimeMin, float lifeTimeMax)
-{
-
-    std::uniform_real_distribution<float> lifeDist(lifeTimeMin, lifeTimeMax);
-    Math m;
-
-    for (int i = 0; i < count; ++i) {
-        if (particles_.size() < kMaxParticles) {
-            Vector3 spawnDir;
-            if (direction) { // 方向指定あり
-                spawnDir = *direction;
-                // ばらつきを追加
-                if (spreadAngle > 0.0f) {
-                    std::uniform_real_distribution<float> angleDist(-spreadAngle / 2.0f, spreadAngle / 2.0f);
-                    float randomAngleX = angleDist(randomEngine_);
-                    float randomAngleY = angleDist(randomEngine_);
-                    Matrix4x4 rotX = m.MakeRotateXMatrix(randomAngleX);
-                    Matrix4x4 rotY = m.MakeRotateYMatrix(randomAngleY);
-                    spawnDir = m.TransformNormal(spawnDir, rotX);
-                    spawnDir = m.TransformNormal(spawnDir, rotY);
-                    spawnDir = m.Normalize(spawnDir); // 再正規化
-                }
-            } else { // 方向指定なし (ランダム)
-                std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-                spawnDir = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
-
-                // ▼▼▼ ゼロベクトル対策 (Math クラスの LengthSq を使う形に修正) ▼▼▼
-                // m.LengthSq(spawnDir) でベクトルの長さの2乗を取得
-                while (m.Length(spawnDir) < 0.001f) {
-                    // ほぼゼロベクトルなら作り直す
-                    spawnDir = { dist(randomEngine_), dist(randomEngine_), dist(randomEngine_) };
-                }
-                spawnDir = m.Normalize(spawnDir); // 速度を計算する前に正規化
-                // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-            }
-            float life = lifeDist(randomEngine_);
-            particles_.push_back(CreateParticle(position, initialSpeed, spawnDir, initialColor, life));
-        } else {
-            // OutputDebugStringA("Warning: kMaxParticles reached!\n");
-            break;
-        }
-    }
-}
-
-
-// CreateParticle の実装を修正
-ParticleSystem::Particle ParticleSystem::CreateParticle(const Vector3& position, float speed, const Vector3& dir,
-    const Vector4& color, float life)
-{
-    Particle p;
-    p.position = position;
-    p.velocity = dir * speed; // ★ 引数で受け取った方向と速度を使う
-    p.color = color;          // ★ 引数で受け取った色を使う
-    p.lifeTime = life;        // ★ 引数で受け取った寿命を使う
-    p.currentTime = 0.0f;
-
-
-
-    return p;
 }
 
 void ParticleSystem::CreateResources() {
@@ -185,8 +250,7 @@ void ParticleSystem::CreateResources() {
     matrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&matrixData_));
 }
 
-// ParticleSystem.cpp の最後などに追加
 void ParticleSystem::Clear() {
-    particles_.clear(); // list の中身を全部消す
-    particleCount_ = 0; // カウントもリセット
+    particles_.clear();
+    particleCount_ = 0;
 }

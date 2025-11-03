@@ -1,31 +1,32 @@
 #pragma once
 #include "engine/base/Math.h"
+#include "ParticleCommon.h" // ParticleCommon* のため
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
-#include <vector>
+#include <vector> // ★ std::vector を使う
 #include <random>
-
-class ParticleCommon;
+#include <string>
 
 /// <summary>
-/// パーティクルシステム
+/// パーティクルシステム (GPUインスタンシング対応)
 /// </summary>
 class ParticleSystem {
 private:
-    struct VertexData {
-        Vector3 position;
-        Vector4 color;
-    };
+
     struct Particle {
         Vector3 position;
         Vector3 velocity;
-        Vector4 color;
-        float lifeTime;
-        float currentTime;
+        float lifeTime;       // 生存期間
+        float currentTime;    // 現在の時間
+
+        // --- 補間用のデータ ---
+        Vector4 startColor;
+        Vector4 endColor;
+        float startSize;
+        float endSize;
     };
 
-    // 頂点シェーダーに送る、各パーティクルの情報
     struct ParticleForGPU {
         Vector4 color;
         Matrix4x4 world;
@@ -35,21 +36,59 @@ private:
         Matrix4x4 viewProjection;
     };
 
+
+
 public:
+    // ★ エディタで編集したい全パラメータ
+    struct EmitterParams {
+        Vector3 spawnPosition = { 0.0f, 0.0f, 0.0f };      // 発生座標
+        Vector3 spawnArea = { 1.0f, 1.0f, 1.0f };          // 発生範囲 (ランダム幅)
+        Vector3 initialVelocity = { 0.0f, 1.0f, 0.0f };    // 初速
+        Vector3 velocityRandomness = { 0.5f, 0.5f, 0.5f }; // 初速のランダム幅
+
+        float particlesPerSecond = 10.0f; // 毎秒の発生数
+        float particleLifetime = 2.0f;    // パーティクルの生存期間
+
+        Vector4 startColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 開始時の色
+        Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f };   // 終了時の色
+
+        float startSize = 1.0f; // 開始時のサイズ
+        float endSize = 0.1f;   // 終了時のサイズ
+
+        bool isEmitting = true; // 発生させるかどうか
+    };
+
     void Initialize(ParticleCommon* common, const std::string& texturePath);
-    void Update();
+
+
+    void Update(float deltaTime);
+
+
     void Draw();
+
+    // 【使い方A】手動で（単発で）発生させる関数
     void SpawnParticles(const Vector3& position, int count,
-        float initialSpeed = 2.0f, // 基本速度
-        const Vector3* direction = nullptr, // 方向指定 (nullptrならランダム)
-        float spreadAngle = 0.0f, // 方向のばらつき角度 (ラジアン)
-        Vector4 initialColor = { 1,1,1,1 }, // 初期色
-        float lifeTimeMin = 1.0f, float lifeTimeMax = 3.0f);
+        float initialSpeed = 2.0f,
+        const Vector3* direction = nullptr,
+        float spreadAngle = 0.0f,
+        Vector4 initialColor = { 1,1,1,1 }, 
+        Vector4 endColor = { 1,1,1,0 },     
+        float lifeTimeMin = 1.0f, float lifeTimeMax = 3.0f,
+        float startSize = 1.0f,           
+        float endSize = 0.1f);            
+
     void Clear();
+
+    EmitterParams params_;
+
 private:
     void CreateResources();
-    Particle CreateParticle(const Vector3& position, float speed, const Vector3& dir,
-        const Vector4& color, float life);
+
+
+
+    // 【使い方B】自動エミッターが呼ぶ内部ヘルパー
+    void SpawnFromEmitter();
+
 private:
     static const int kMaxParticles = 1024;
     ParticleCommon* common_ = nullptr;
@@ -57,7 +96,6 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
-    // インデックスバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
     D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
@@ -66,11 +104,13 @@ private:
     D3D12_VERTEX_BUFFER_VIEW instancingBufferView_{};
     ParticleForGPU* instancingData_ = nullptr;
 
-    // カメラ行列用のリソース
+    // カメラ行列用リソース
     Microsoft::WRL::ComPtr<ID3D12Resource> matrixResource_;
     TransformationMatrix* matrixData_ = nullptr;
 
-    std::vector<Particle> particles_;
+    std::vector<Particle> particles_; 
     std::mt19937 randomEngine_;
-    UINT particleCount_ = 0; // 現在のパーティクル数
+    UINT particleCount_ = 0;
+
+    float spawnTimer_ = 0.0f;
 };

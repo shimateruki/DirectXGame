@@ -333,3 +333,18 @@ float Math::Clamp(float value, float min, float max)
 	}
 	return value;
 }
+
+float Math::Lerp(float v1, float v2, float t) {
+	// t (0.0f～1.0f) の値に応じて、v1 から v2 への間の値を返す
+	return v1 + (v2 - v1) * t;
+}
+
+Vector4 Math::Lerp(const Vector4& v1, const Vector4& v2, float t) {
+	// Vector4 の各要素 (x, y, z, w) に対して Lerp を行う
+	Vector4 result;
+	result.x = Lerp(v1.x, v2.x, t);
+	result.y = Lerp(v1.y, v2.y, t);
+	result.z = Lerp(v1.z, v2.z, t);
+	result.w = Lerp(v1.w, v2.w, t);
+	return result;
+}

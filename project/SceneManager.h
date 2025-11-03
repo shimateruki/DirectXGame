@@ -26,7 +26,7 @@ public:
     /// <summary>
     /// 更新 (シーン切り替え処理と、現在のシーンの更新)
     /// </summary>
-    void Update();
+    void Update(float deltaTime);
 
     /// <summary>
     /// 描画 (現在のシーンの描画)

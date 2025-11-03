@@ -19,7 +19,7 @@ public:
     /// <summary>
     /// 更新
     /// </summary>
-    virtual void Update() = 0;
+    virtual void Update(float deltaTime) = 0;
 
     /// <summary>
     /// 描画

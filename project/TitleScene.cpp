@@ -38,7 +38,7 @@ void TitleScene::Finalize() {
     spriteCommon_.reset();
 }
 
-void TitleScene::Update() {
+void TitleScene::Update(float deltaTime) {
     // ★ BaseScene の sceneManager_ を使う
     assert(inputManager_ && sceneManager_);
     // ★ スプライトの座標計算などを実行

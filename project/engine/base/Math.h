@@ -73,4 +73,12 @@ public:
 
 	float Clamp(float value, float min, float max); 
 	float Length(const Vector3& v); 
+	/// <summary>
+	/// 線形補間 (float)
+	/// </summary>
+	float Lerp(float v1, float v2, float t);
+	/// <summary>
+	/// 線形補間 (Vector4)
+	/// </summary>
+	Vector4 Lerp(const Vector4& v1, const Vector4& v2, float t);
 };
