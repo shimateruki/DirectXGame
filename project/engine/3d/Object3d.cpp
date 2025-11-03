@@ -89,3 +89,29 @@ void Object3d::Draw() {
 void Object3d::SetParent(Object3d* parent) {
     parent_ = parent;
 }
+
+CollisionInfo Object3d::CheckCollision(Object3d* other) {
+
+    ColliderType myType = this->GetColliderType();
+    ColliderType otherType = other->GetColliderType();
+    CollisionInfo collision;
+    collision.isColliding = false; // 初期化
+
+    // (↓ Character::OnCollision から移動してきたロジック)
+    if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
+        collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
+    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
+        collision = CheckSphereCollision(
+            this->GetWorldPosition(), this->GetCollisionRadius(),
+            other->GetWorldPosition(), other->GetCollisionRadius());
+    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
+        collision = CheckSphereAABBCollision(
+            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetAABB());
+        collision.normal = collision.normal * -1.0f; // 法線を反転
+    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
+        collision = CheckSphereAABBCollision(
+            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
+    }
+
+    return collision;
+}

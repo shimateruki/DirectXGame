@@ -17,6 +17,5 @@ protected:
 private:
 	// ★ gameScene_ と debugEditor_ の代わりに SceneManager を持つ
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
-
-
+	std::chrono::high_resolution_clock::time_point lastTime_;
 };

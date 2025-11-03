@@ -10,6 +10,8 @@
 #include"SpriteDebugEditor.h"
 #include"Player.h"
 #include"Text.h"
+#include "Event.h"
+#include "ParticleEditor.h"
 
 #include <memory>
 #include <vector>
@@ -27,42 +29,43 @@ class SceneManager; // ★ SceneManager を前方宣言
 /// <summary>
 /// ゲームプレイシーン
 /// </summary>
-// ★ BaseScene を継承
 class GamePlayScene : public BaseScene {
 public:
-	// --- オブジェクトレイアウト読み込み関数 ---
-    void LoadObjectLayout(const std::string& filename);
-    void LoadSpriteLayout(const std::string& filename);
+
     /// <summary>
     /// 初期化
     /// </summary>
-    // ★ override を追加
     void Initialize() override;
 
     /// <summary>
     /// 終了処理
     /// </summary>
-    // ★ override を追加
     void Finalize() override;
 
     /// <summary>
     /// 更新
     /// </summary>
-    // ★ override を追加
-    void Update() override;
+    void Update(float deltaTime) override;
 
     /// <summary>
     /// 描画
     /// </summary>
-    // ★ override を追加
     void Draw() override;
 
     std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
     std::vector<std::unique_ptr<Sprite>>& GetSprites() { return sprites_; }   // スプライトリスト取得 (SpriteDebugEditor用)
 
-
+private:
+    // --- オブジェクトレイアウト読み込み関数 ---
+    void LoadObjectLayout(const std::string& filename);
+    void LoadSpriteLayout(const std::string& filename);
+    /// <summary>
+    /// PlayerHitEvent を受け取ったときに呼ばれるコールバック関数
+    /// </summary>
+    void OnPlayerHit(const PlayerHitEvent& event);
 
 private:
+
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -93,4 +96,6 @@ private:
     std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_ = nullptr; // スプライト編集用
 
 #endif
+
+    std::unique_ptr<ParticleEditor> particleEditor_;
 };

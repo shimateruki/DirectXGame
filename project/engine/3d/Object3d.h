@@ -93,7 +93,12 @@ public:
         };
     }
 
-
+    /// <summary>
+    /// 別のObject3dとの精密な衝突判定を実行する
+    /// </summary>
+    /// <param name="other">衝突相手</param>
+    /// <returns>衝突情報 (isColliding が true なら衝突)</returns>
+    CollisionInfo CheckCollision(Object3d* other);
 
     /// <summary>
     /// 衝突時に呼び出される仮想関数 

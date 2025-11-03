@@ -15,6 +15,7 @@
 #include "ParticleSystem.h"
 #include "imgui.h"
 #include"LightManager.h"
+#include <EventManager.h>
 
 // ★★★ シーンマネージャ対応で追加 ★★★
 #include "SceneManager.h" // SceneManager をインクルード
@@ -29,6 +30,7 @@
 #include <fstream>
 #include <string>
 #include "json.hpp" 
+
 
 
 void GamePlayScene::LoadObjectLayout(const std::string& filename) {
@@ -213,6 +215,8 @@ void GamePlayScene::Initialize() {
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
     particleSystem_ = std::make_unique<ParticleSystem>();
+    // ( "particle.png" など、使用するテクスチャパスを指定)
+    particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
 
     // --- オブジェクトの生成 ---
     // Plane
@@ -238,7 +242,7 @@ void GamePlayScene::Initialize() {
     enemy->SetModel("bunny");
     enemy->SetTranslate({ 2.0f, 0.0f, 0.0f }); 
     enemy->SetName("Enemy");
-    enemy->SetParent(player_); // 4. ★ .get() は不要。キャッシュした生ポインタを渡す
+    //enemy->SetParent(player_); // 4. ★ .get() は不要。キャッシュした生ポインタを渡す
     objects_.emplace_back(std::move(enemy));
 
 
@@ -326,6 +330,7 @@ void GamePlayScene::Initialize() {
     flameSprite->SetSize({ 64.0f,64.0f });
     sprites_.push_back(std::move(flameSprite));
 
+  
 
 
 
@@ -338,7 +343,18 @@ void GamePlayScene::Initialize() {
     debugEditor_->Initialize(this, dxCommon_);
 	spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
 	spriteDebugEditor_->Initialize(this);
+    particleEditor_ = std::make_unique<ParticleEditor>();
+    particleEditor_->Initialize(particleSystem_.get());
 #endif
+
+    EventManager::GetInstance()->Subscribe(
+        [this](const PlayerHitEvent& event) {
+            // イベントが発生したら、OnPlayerHit 関数を呼ぶ
+            this->OnPlayerHit(event);
+        }
+    );
+
+
 
     dxCommon_->FlushCommandQueue(false); // 初期化完了時にコマンドをフラッシュ
 }
@@ -370,7 +386,7 @@ void GamePlayScene::Finalize() {
     // bgmHandle_ の解放処理があればここに追加
 }
 
-void GamePlayScene::Update() {
+void GamePlayScene::Update(float deltaTime) {
 
     // ★ ライトマネージャの更新を追加
     LightManager::GetInstance()->Update();
@@ -384,6 +400,9 @@ void GamePlayScene::Update() {
 	if (spriteDebugEditor_) {
 		spriteDebugEditor_->Update();
 	}
+    if (particleEditor_) {
+        particleEditor_->Update();
+    }
 #endif
 
     // --- Releaseビルド時のカメラ入力処理 ---
@@ -416,10 +435,10 @@ void GamePlayScene::Update() {
 
  
     // --- パーティクル更新 ---
-    // (isDrawParticles_ フラグでオンオフできるようにする)
-    if (isDrawParticles_) {
-        particleSystem_->Update();
-    }
+
+        particleSystem_->Update(deltaTime);
+    
+
 
     // --- 1. ゲームロジック (オブジェクト・スプライト) 更新 ---
     for (auto& obj : objects_) {
@@ -449,11 +468,20 @@ void GamePlayScene::Update() {
         sprite->Update(); // アニメーション更新など
     }
 
+    if (inputManager_->IsKeyTriggered(DIK_P)) {
+        particleSystem_->SpawnParticles(
+            { 0.0f, 1.0f, 0.0f }, 100, // 場所, 数
+            5.0f, nullptr, 1.0f,     // 速度, 方向, ばらつき
+            { 1.0f, 0.5f, 0.0f, 1.0f }, { 1.0f, 1.0f, 0.0f, 0.0f }, // 開始色, 終了色
+            0.5f, 3.0f,                // 寿命(min, max)
+            1.0f, 0.1f                 // サイズ(start, end)
+        );
+    }
 
     // --- 2. 物理 (衝突判定) 更新 ---
     CollisionManager::GetInstance()->Update();
 
-    // --- 3. 行列 (描画準備) 更新 ---
+
 
 }
 
@@ -466,13 +494,9 @@ void GamePlayScene::Draw() {
         debugEditor_->DrawDebug(dxCommon_->GetCommandList());
     }
 #endif
+     
 
-    // --- パーティクル描画 (オンの場合) ---
-    if (isDrawParticles_) {
-        particleSystem_->Draw();
-    }
-    // --- 通常描画 (オフの場合) ---
-    else {
+   
         // --- Releaseビルド時の一人称視点判定 ---
         bool isFirstPerson = false;
 #ifndef _DEBUG
@@ -502,7 +526,22 @@ void GamePlayScene::Draw() {
         for (auto& sprite : sprites_) {
             sprite->Draw();
         }
+        particleSystem_->Draw();
+
     }
 
-    // (注: ImGui::Draw() と dxCommon_->PostDraw() は Game.cpp の Draw() で呼ばれます)
+
+
+/// <summary>
+/// PlayerHitEvent を処理する関数 
+/// </summary>
+void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
+
+    uint32_t attribute = event.hitObject->GetCollisionAttribute();
+
+    if (attribute & kEnemy) {
+        // 敵に当たった！
+        OutputDebugStringA("Hit Enemy! (Handled by GamePlayScene)\n");
+    }
+  
 }

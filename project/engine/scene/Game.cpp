@@ -3,6 +3,7 @@
 #include "SceneManager.h"    // ★ 追加
 #include "ImguiManager.h"
 #include "InputManager.h"    // ★ Updateで使うため
+#include <chrono>
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -11,6 +12,8 @@ void Game::Initialize() {
     // ★ SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
     sceneManager_->Initialize();
+    //  lastTime_ を「起動時」の時間で初期化
+    lastTime_ = std::chrono::high_resolution_clock::now();
 }
 
 void Game::Finalize() {
@@ -28,11 +31,14 @@ void Game::Update() {
     // 入力とImGuiのフレーム開始は、シーンの更新前に行う
     InputManager::GetInstance()->Update();
     ImGuiManager::GetInstance()->BeginFrame();
-
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> duration = currentTime - lastTime_; // メンバ変数の lastTime_ を使う
+    float deltaTime = duration.count();
+    lastTime_ = currentTime; // メンバ変数の lastTime_ を更新する
 
     // ★ SceneManager の更新処理を呼び出す
     if (sceneManager_) {
-        sceneManager_->Update();
+        sceneManager_->Update(deltaTime);
     }
 
     // ImGuiフレーム終了
