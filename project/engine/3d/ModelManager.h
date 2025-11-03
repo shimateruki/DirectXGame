@@ -1,8 +1,9 @@
 #pragma once
 #include "Model.h"
 #include <string>
-#include <map>
 #include <memory>
+#include <vector> 
+#include <map>    
 
 class DirectXCommon;
 class ModelCommon;
@@ -15,7 +16,10 @@ public:
 
     // ★★★ モデル名で「探して、なければ読み込む」賢い関数に ★★★
     Model* LoadModel(const std::string& modelName);
-
+    /// <summary>
+    /// ロード済みのすべてのモデル名を取得する
+    /// </summary>
+    std::vector<std::string> GetLoadedModelNames() const;
 private:
     ModelManager() = default;
     ~ModelManager() = default;

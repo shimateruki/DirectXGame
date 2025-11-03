@@ -5,14 +5,14 @@
 #include <wrl.h>   
 #include <vector>  
 #include "engine/base/Math.h" 
+#include <string> 
+
 
 class GamePlayScene;
 class Object3d;
 class DirectXCommon;
 
 // ★★★ アライメントエラー対策 ★★★
-// CBVは256バイトアライメントが必要なため、
-// 構造体サイズを256バイトにパディングする
 
 struct AlignedMatrix4x4 {
     Matrix4x4 matrix;
@@ -25,7 +25,7 @@ struct AlignedVector4 {
     // 256バイト (sizeof(Vector4)=16)
     char padding[256 - sizeof(Vector4)];
 };
-// ★★★ -------------------------- ★★★
+
 
 
 class DebugEditor {
@@ -65,4 +65,13 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> primitiveColorBuffer_;
     // ★ 修正: アライメント済み構造体のポインタに変更
     AlignedVector4* primitiveColorData_ = nullptr;
+
+    // モデル名一覧
+    std::vector<std::string> modelNames_;
+
+    // ImGui のリストボックスで選択されているインデックス
+    int selectedModelIndex_ = 0;
+
+    // ★ スポナーウィンドウを描画する private 関数
+    void DrawObjectSpawnerWindow();
 };

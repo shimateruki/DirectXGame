@@ -193,6 +193,25 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
     file.close(); // ファイルを閉じる
 }
 
+void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
+    if (object == nullptr) {
+        return;
+    }
+
+    // ★ デフォルトの衝突設定 (スポーンしたオブジェクト用)
+    // (必要に応じて変更してください)
+    object->SetCollisionAttribute(kGround); // 仮に「地面」
+    object->SetCollisionMask(~kGround);
+    object->SetColliderType(ColliderType::kAABB);
+    object->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
+
+    // 衝突マネージャに登録
+    CollisionManager::GetInstance()->AddObject(object.get());
+
+    // シーンのリストに追加
+    objects_.emplace_back(std::move(object));
+}
+
 void GamePlayScene::Initialize() {
     // ★ using 宣言は必ず関数の「内側」に書く
     using json = nlohmann::json;
@@ -477,6 +496,8 @@ void GamePlayScene::Update(float deltaTime) {
             1.0f, 0.1f                 // サイズ(start, end)
         );
     }
+
+
 
     // --- 2. 物理 (衝突判定) 更新 ---
     CollisionManager::GetInstance()->Update();

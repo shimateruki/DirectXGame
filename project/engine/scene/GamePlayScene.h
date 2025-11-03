@@ -16,6 +16,7 @@
 #include <memory>
 #include <vector>
 
+
 // --- 前方宣言 (ポインタで持つものだけ) ---
 class DirectXCommon;
 class InputManager;
@@ -54,11 +55,20 @@ public:
 
     std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
     std::vector<std::unique_ptr<Sprite>>& GetSprites() { return sprites_; }   // スプライトリスト取得 (SpriteDebugEditor用)
+    /// <summary>
+ /// シーンに新しいObject3dを動的に追加する
+ /// </summary>
+    void AddObject(std::unique_ptr<Object3d> object);
 
+    /// <summary>
+    /// Object3dCommon へのポインタを取得する (Editor用)
+    /// </summary>
+    Object3dCommon* GetObject3dCommon() { return object3dCommon_.get(); }
 private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
     void LoadSpriteLayout(const std::string& filename);
+ 
     /// <summary>
     /// PlayerHitEvent を受け取ったときに呼ばれるコールバック関数
     /// </summary>
