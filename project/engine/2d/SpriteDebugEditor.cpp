@@ -1,74 +1,73 @@
 #include "SpriteDebugEditor.h"
-#include "engine/scene/GamePlayScene.h" // GamePlayScene にアクセスするため
-#include "engine/2d/Sprite.h"          // Sprite にアクセスするため
-#include "externals/imgui/imgui.h"     // ImGui を使うため
-#include "externals/nlohmann/json.hpp" // JSON保存用
-#include <fstream>                     // ファイル出力用
-#include <string>                      // std::string 用
-#include "SpriteCommon.h"
+#include "Sprite.h"
+#include "imgui.h"
+#include "json.hpp"
+#include <fstream>
+#include <string>
+#include "SpriteCommon.h" 
+#include "SceneManager.h"  
+#include "BaseScene.h"    
+#include "InputManager.h"
 
-void SpriteDebugEditor::Initialize(GamePlayScene* scene, InputManager* inputManager) {
-    scene_ = scene;
+// (Initialize の実装)
+void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inputManager) {
+    sceneManager_ = sceneManager; // ★ GamePlayScene* ではなく SceneManager* を保持
     inputManager_ = inputManager;
     selectedSprite_ = nullptr;
     isMovingX_ = false;
     isMovingY_ = false;
 
-    // ▼▼▼ ★ 1. ギズモの初期化 ★ ▼▼▼
-    // (GamePlayScene から SpriteCommon を取得)
-    SpriteCommon* spriteCommon = scene_->GetSpriteCommon();
-    assert(spriteCommon);
 
-    gizmoTextureHandle_ = Sprite::LoadTexture("white"); 
-
-    // X軸ギズモ (赤色で、横長の矢印っぽくする)
-    gizmoArrowX_ = std::make_unique<Sprite>();
-    gizmoArrowX_->Initialize(spriteCommon, gizmoTextureHandle_);
-    gizmoArrowX_->SetSize({ 50.0f, 10.0f }); // 横長
-    gizmoArrowX_->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f }); // 赤・半透明
-    gizmoArrowX_->SetAnchorPoint({ 0.0f, 0.5f }); // 左端が基点
-
-    // Y軸ギズモ (緑色で、縦長の矢印っぽくする)
-    gizmoArrowY_ = std::make_unique<Sprite>();
-    gizmoArrowY_->Initialize(spriteCommon, gizmoTextureHandle_);
-    gizmoArrowY_->SetSize({ 10.0f, 50.0f }); // 縦長
-    gizmoArrowY_->SetColor({ 0.0f, 1.0f, 0.0f, 0.8f }); // 緑・半透明
-    gizmoArrowY_->SetAnchorPoint({ 0.5f, 0.0f }); // 上端が基点
- 
+    gizmoArrowX_ = nullptr;
+    gizmoArrowY_ = nullptr;
+    gizmoTextureHandle_ = 0;
+    initializedSpriteCommon_ = nullptr;
 }
+
+
 void SpriteDebugEditor::Finalize() {
-    // 今は特に何もしない
+    // (unique_ptr が自動で解放するので、特に何もしない)
 }
 
 /// <summary>
 /// ピッキング、ギズモ操作、インスペクタ描画のメイン処理
 /// </summary>
 void SpriteDebugEditor::Update() {
-    if (scene_ == nullptr || inputManager_ == nullptr) {
+    if (sceneManager_ == nullptr || inputManager_ == nullptr) {
         return;
     }
 
-    // ImGuiのウィンドウがマウスを使っているか（クリックなどを邪魔しないため）
+    // ▼▼▼ ★ 1. カレントシーンを SceneManager から取得 ★ ▼▼▼
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) {
+        return; // アクティブなシーンがなければ何もしない
+    }
+
+    if (lastUpdatedScene_ != currentScene) {
+        // シーンが切り替わった！
+        // 選択を強制的に解除
+        selectedSprite_ = nullptr;
+        isMovingX_ = false;
+        isMovingY_ = false;
+
+        // 最後に更新したシーンを「今」のシーンに更新
+        lastUpdatedScene_ = currentScene;
+    }
+
     bool isImGuiBusy = ImGui::GetIO().WantCaptureMouse;
 
     // --- 1. ギズモ操作 (ドラッグ処理) ---
-    // (※ 選択中スプライトがある場合のみ)
     if (selectedSprite_) {
-
         // (A) ドラッグ開始判定
-        // (ImGuiがビジーでなく、左クリックが押された瞬間)
         if (!isImGuiBusy && inputManager_->IsMouseButtonTriggered(0)) {
-
-            // X軸ギズモがクリックされたか？
-            if (IsMouseOver(gizmoArrowX_.get())) {
+            // (ギズモがまだ作られていなければ何もしない)
+            if (gizmoArrowX_ && IsMouseOver(gizmoArrowX_.get())) {
                 isMovingX_ = true;
-                isMovingY_ = false; // Yは確実に false
+                isMovingY_ = false;
                 dragStartMousePos_ = inputManager_->GetMousePosition();
                 dragStartSpritePos_ = selectedSprite_->GetPosition();
-            }
-            // Y軸ギズモがクリックされたか？
-            else if (IsMouseOver(gizmoArrowY_.get())) {
-                isMovingX_ = false; // Xは確実に false
+            } else if (gizmoArrowY_ && IsMouseOver(gizmoArrowY_.get())) {
+                isMovingX_ = false;
                 isMovingY_ = true;
                 dragStartMousePos_ = inputManager_->GetMousePosition();
                 dragStartSpritePos_ = selectedSprite_->GetPosition();
@@ -77,22 +76,20 @@ void SpriteDebugEditor::Update() {
 
         // (B) ドラッグ中の処理
         Vector2 mousePos = inputManager_->GetMousePosition();
-
         if (isMovingX_) {
-            float deltaX = mousePos.x - dragStartMousePos_.x; // マウスの移動差分(X)
+            float deltaX = mousePos.x - dragStartMousePos_.x;
             Vector2 newPos = dragStartSpritePos_;
-            newPos.x = dragStartSpritePos_.x + deltaX; // スプライトのX座標に反映
+            newPos.x = dragStartSpritePos_.x + deltaX;
             selectedSprite_->SetPosition(newPos);
         }
         if (isMovingY_) {
-            float deltaY = mousePos.y - dragStartMousePos_.y; // マウスの移動差分(Y)
+            float deltaY = mousePos.y - dragStartMousePos_.y;
             Vector2 newPos = dragStartSpritePos_;
-            newPos.y = dragStartSpritePos_.y + deltaY; // スプライトのY座標に反映
+            newPos.y = dragStartSpritePos_.y + deltaY;
             selectedSprite_->SetPosition(newPos);
         }
 
         // (C) ドラッグ終了判定
-        // (※ IsMouseButtonReleased がない場合は !inputManager_->IsMouseButtonPressed(0) で代用)
         if (inputManager_->IsMouseButtonReleased(0)) {
             isMovingX_ = false;
             isMovingY_ = false;
@@ -100,39 +97,34 @@ void SpriteDebugEditor::Update() {
     }
 
     // --- 2. スプライトピッキング (選択処理) ---
-
-    // (ImGuiがビジーでなく、ギズモをドラッグ中でなく、左クリックが押された瞬間)
     if (!isImGuiBusy && !isMovingX_ && !isMovingY_ && inputManager_->IsMouseButtonTriggered(0)) {
-
         Vector2 mousePos = inputManager_->GetMousePosition();
-        bool hit = false; // ヒットしたか
+        bool hit = false;
 
-        // 全スプライトを逆順（手前が先）にチェック
-        auto& sprites = scene_->GetSprites();
-        for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
-            Sprite* sprite = it->get();
-            if (sprite == nullptr) continue;
+        // ▼▼▼ ★ 2. インターフェース経由でスプライトリストを取得 ★ ▼▼▼
+        std::vector<std::unique_ptr<Sprite>>& sprites = currentScene->GetSprites();
 
-            // マウス座標がスプライトの矩形内にあるか判定
-            if (IsMouseOver(sprite)) {
+        // (リストが空でなければ処理)
+        if (!sprites.empty()) {
+            for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
+                Sprite* sprite = it->get();
+                if (sprite == nullptr) continue;
 
-                // ★ ヒット！
-                selectedSprite_ = sprite; // 選択対象を更新
-                hit = true;
-                break; // 一番手前のものだけ選んで終了
+                if (IsMouseOver(sprite)) {
+                    selectedSprite_ = sprite;
+                    hit = true;
+                    break;
+                }
             }
         }
 
-        // 何もヒットしなかったら、選択を解除
         if (!hit) {
             selectedSprite_ = nullptr;
         }
     }
 
     // --- 3. インスペクタウィンドウの描画 ---
-
     if (!ImGui::Begin("Sprite Inspector")) {
-        // ウィンドウがたたまれているなどで描画不要なら即終了
         ImGui::End();
         return;
     }
@@ -141,7 +133,6 @@ void SpriteDebugEditor::Update() {
         ImGui::Text("No sprite selected.");
         ImGui::Text("Click on a sprite in the game view.");
     } else {
-        // ★ 選択中のスプライトの情報を表示・編集
         ImGui::Text("Selected: %s", selectedSprite_->GetName().c_str());
         ImGui::Separator();
 
@@ -149,84 +140,110 @@ void SpriteDebugEditor::Update() {
         if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) {
             selectedSprite_->SetPosition(pos);
         }
-
         Vector2 size = selectedSprite_->GetSize();
         if (ImGui::DragFloat2("Size", &size.x, 1.0f)) {
             selectedSprite_->SetSize(size);
         }
-
         Vector4 color = selectedSprite_->GetColor();
         if (ImGui::ColorEdit4("Color", &color.x)) {
             selectedSprite_->SetColor(color);
         }
-
         Vector2 anchor = selectedSprite_->GetAnchorPoint();
         if (ImGui::DragFloat2("Anchor", &anchor.x, 0.01f, 0.0f, 1.0f)) {
             selectedSprite_->SetAnchorPoint(anchor);
         }
+        ImGui::Separator();
+        if (ImGui::Button("Save Sprite Layout")) {
 
-      
+            SaveSpriteLayout("sprite_layout.json");
+        }
     }
 
     ImGui::End();
 }
+
+// (Draw の実装)
 void SpriteDebugEditor::Draw() {
-    // 選択中のスプライトがあり、かつImGuiがビジーでない時
-    if (selectedSprite_ != nullptr && !ImGui::GetIO().WantCaptureMouse) {
-
-        // ギズモを選択中スプライトの位置に合わせる
-        Vector2 pos = selectedSprite_->GetPosition();
-        gizmoArrowX_->SetPosition(pos);
-        gizmoArrowY_->SetPosition(pos);
-
-        // ギズモのスプライト行列を更新
-        gizmoArrowX_->Update();
-        gizmoArrowY_->Update();
-
-        // ギズモを描画
-        // (※SpriteCommon::SetPipeline は GamePlayScene::Draw で呼ばれる前提)
-        gizmoArrowX_->Draw();
-        gizmoArrowY_->Draw();
+    if (sceneManager_ == nullptr || selectedSprite_ == nullptr || ImGui::GetIO().WantCaptureMouse) {
+        return;
     }
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) {
+        return;
+    }
+    SpriteCommon* currentSpriteCommon = currentScene->GetSpriteCommon();
+    if (currentSpriteCommon == nullptr) {
+        return;
+    }
+    if (gizmoArrowX_ == nullptr || initializedSpriteCommon_ != currentSpriteCommon) {
+
+        // ギズモを「現在のシーンの Common」で再作成
+        gizmoTextureHandle_ = Sprite::LoadTexture("white");
+
+        gizmoArrowX_ = std::make_unique<Sprite>();
+        gizmoArrowX_->Initialize(currentSpriteCommon, gizmoTextureHandle_);
+        gizmoArrowX_->SetSize({ 50.0f, 10.0f });
+        gizmoArrowX_->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
+        gizmoArrowX_->SetAnchorPoint({ 0.0f, 0.5f });
+
+        gizmoArrowY_ = std::make_unique<Sprite>();
+        gizmoArrowY_->Initialize(currentSpriteCommon, gizmoTextureHandle_);
+        gizmoArrowY_->SetSize({ 10.0f, 50.0f });
+        gizmoArrowY_->SetColor({ 0.0f, 1.0f, 0.0f, 0.8f });
+        gizmoArrowY_->SetAnchorPoint({ 0.5f, 0.0f });
+
+        // ★ 「今使った Common」を記憶する
+        initializedSpriteCommon_ = currentSpriteCommon;
+    }
+
+    // --- ギズモの描画 ---
+    Vector2 pos = selectedSprite_->GetPosition();
+    gizmoArrowX_->SetPosition(pos);
+    gizmoArrowY_->SetPosition(pos);
+
+    gizmoArrowX_->Update();
+    gizmoArrowY_->Update();
+
+    gizmoArrowX_->Draw();
+    gizmoArrowY_->Draw();
 }
 
-// --- (任意) スプライトレイアウト保存処理 ---
+// (SaveSpriteLayout の実装)
 void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
     using json = nlohmann::json;
     json root;
     json spriteArray = json::array();
 
-    if (!scene_) return;
-    std::vector<std::unique_ptr<Sprite>>& sprites = scene_->GetSprites();
+    if (sceneManager_ == nullptr) return;
+
+    // ▼▼▼ ★ 3. カレントシーンからスプライトリストを取得 ★ ▼▼▼
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) return;
+    std::vector<std::unique_ptr<Sprite>>& sprites = currentScene->GetSprites();
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    if (sprites.empty()) return; // 保存対象なし
 
     for (const auto& sprite : sprites) {
         if (!sprite) continue;
-
         json spriteData;
-        // Sprite に GetName(), GetTextureName() がある前提
         spriteData["name"] = sprite->GetName();
-        // spriteData["texture"] = sprite->GetTextureName(); // テクスチャ名も保存したい場合
         Vector2 pos = sprite->GetPosition();
         Vector2 size = sprite->GetSize();
         Vector2 anchor = sprite->GetAnchorPoint();
         Vector4 color = sprite->GetColor();
-
         spriteData["position"] = { pos.x, pos.y };
         spriteData["size"] = { size.x, size.y };
         spriteData["anchor"] = { anchor.x, anchor.y };
         spriteData["color"] = { color.x, color.y, color.z, color.w };
-        // 必要なら回転なども保存
-        // spriteData["rotation"] = sprite->GetRotation();
-        // spriteData["visible"] = sprite->IsVisible();
-
         spriteArray.push_back(spriteData);
     }
-
     root["sprites"] = spriteArray;
 
     std::ofstream file(filename);
     if (file.is_open()) {
-        file << root.dump(4); // 整形して出力
+        file << root.dump(4);
         file.close();
         OutputDebugStringA(("Saved sprite layout to " + filename + "\n").c_str());
     } else {
@@ -234,12 +251,11 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
     }
 }
 
-//マウスオーバー判定ヘルパー
-bool SpriteDebugEditor::IsMouseOver(Sprite * sprite) const {
-    if (sprite == nullptr) return false;
+// (IsMouseOver の実装)
+bool SpriteDebugEditor::IsMouseOver(Sprite* sprite) const {
+    if (sprite == nullptr || inputManager_ == nullptr) return false;
 
     Vector2 mousePos = inputManager_->GetMousePosition();
-
     Vector2 pos = sprite->GetPosition();
     Vector2 size = sprite->GetSize();
     Vector2 anchor = sprite->GetAnchorPoint();
@@ -252,10 +268,8 @@ bool SpriteDebugEditor::IsMouseOver(Sprite * sprite) const {
     return (mousePos.x >= minX && mousePos.x <= maxX &&
         mousePos.y >= minY && mousePos.y <= maxY);
 }
-/// <summary>
-/// スプライトエディタがマウスを（ギズモ操作で）使用中か
-/// </summary>
+
+// (IsMouseBusy の実装)
 bool SpriteDebugEditor::IsMouseBusy() const {
-    // X軸またはY軸をドラッグ中なら「ビジー(true)」を返す
     return isMovingX_ || isMovingY_;
 }

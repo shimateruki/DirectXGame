@@ -53,18 +53,11 @@ public:
     /// </summary>
     void Draw() override;
 
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
-    std::vector<std::unique_ptr<Sprite>>& GetSprites() { return sprites_; }   // スプライトリスト取得 (SpriteDebugEditor用)
-    /// <summary>
- /// シーンに新しいObject3dを動的に追加する
- /// </summary>
-    void AddObject(std::unique_ptr<Object3d> object);
-
-    /// <summary>
-    /// Object3dCommon へのポインタを取得する (Editor用)
-    /// </summary>
-    Object3dCommon* GetObject3dCommon() { return object3dCommon_.get(); }
-    SpriteCommon* GetSpriteCommon() { return spriteCommon_.get(); }
+    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objects_; }
+    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    void AddObject(std::unique_ptr<Object3d> object) override;
+    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+    SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
 private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
@@ -103,8 +96,7 @@ private:
 
     // ★ DebugEditor のインスタンス
 #ifdef _DEBUG
-    std::unique_ptr<DebugEditor> debugEditor_ = nullptr;
-    std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_ = nullptr; // スプライト編集用
+
 
 #endif
 

@@ -1,61 +1,40 @@
-
 #define NOMINMAX
-
 #include "DebugEditor.h"
-
-#include "engine/scene/GamePlayScene.h"
-
-#include "engine/3d/Object3d.h"
-
-#include "externals/imgui/imgui.h"
-
+#include "SceneManager.h"    
+#include "BaseScene.h"      
+#include "Object3d.h"
+#include "imgui.h"
 #include <fstream>
-
 #include <string>
-
 #include <vector>
-
-#include "externals/nlohmann/json.hpp"
-
-#include "externals/ImGuizmo/ImGuizmo.h"
-
-#include "engine/3d/CameraManager.h"
-
-#include "engine/base/WinApp.h"
-
-#include "engine/base/Math.h"
-
-#include "engine/base/DirectXCommon.h"
-
-#include "engine/3d/CollisionConfig.h"
-
-#include"ModelManager.h"
-
+#include "json.hpp"
+#include "ImGuizmo.h"
+#include "CameraManager.h"
+#include "WinApp.h"
+#include "Math.h"
+#include "DirectXCommon.h"
+#include "CollisionConfig.h"
+#include "ModelManager.h"      
+#include "InputManager.h"   
 #include <cmath>
-
-#include <cassert> // assert() のために追加
-
-
+#include <cassert> 
 
 #ifndef M_PI
-
 #define M_PI 3.14159265358979323846
-
 #endif
 
 const float PI = (float)M_PI;
 
 float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
-
 float ToDegrees(float radians) { return radians * (180.0f / PI); }
+
 // ========================================================================
 // 初期化
 // ========================================================================
-void DebugEditor::Initialize(GamePlayScene* scene, DirectXCommon* dxCommon) {
-    // (変更なし)
-    scene_ = scene;
-    selectedObject_ = nullptr;
+void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+    sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
+    selectedObject_ = nullptr;
     InitializePrimitiveDrawing();
 }
 
@@ -65,23 +44,28 @@ void DebugEditor::Initialize(GamePlayScene* scene, DirectXCommon* dxCommon) {
 void DebugEditor::Update() {
     using json = nlohmann::json;
     ImGuizmo::BeginFrame();
-    if (scene_ == nullptr) return;
+    if (sceneManager_ == nullptr) return;
 
-    // --- ★★★ 修正 (1): ギズモ設定変数を関数の先頭に移動 ★★★ ---
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) {
+        ImGui::Begin("Object List"); ImGui::Text("No active scene."); ImGui::End();
+        ImGui::Begin("Inspector"); ImGui::Text("No active scene."); ImGui::End();
+        DrawObjectSpawnerWindow();
+        return;
+    }
+
     static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
     static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
     static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
     static float snapRotation = 15.0f;
     static float snapScale = 0.1f;
-    // --- ★★★ --------------------------------------- ★★★ ---
 
     // --- オブジェクトリスト ---
     ImGui::Begin("Object List");
-    // (変更なし)
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
         ImGui::SetNextFrameWantCaptureKeyboard(true);
     }
-    std::vector<std::unique_ptr<Object3d>>& objects = scene_->GetObjects();
+    std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
     for (auto& obj : objects) {
         const std::string& objName = obj->GetName();
         if (objName.empty()) continue;
@@ -94,7 +78,6 @@ void DebugEditor::Update() {
     // --- インスペクター ---
     ImGui::Begin("Inspector");
     if (selectedObject_) {
-        // トランスフォーム (変更なし)
         ImGui::Text("Name: %s", selectedObject_->GetName().c_str());
         Object3d::Transform* transform = selectedObject_->GetTransform();
         ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
@@ -104,11 +87,10 @@ void DebugEditor::Update() {
         }
         ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
 
-        // 保存ボタン (変更なし)
         ImGui::Separator();
-        if (ImGui::Button("Save Scene Layout")) { /* ... 保存処理 ... */
+        if (ImGui::Button("Save Scene Layout")) {
             json sceneData; sceneData["objects"] = json::array();
-            std::vector<std::unique_ptr<Object3d>>& allObjects = scene_->GetObjects();
+            std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
             for (auto& obj : allObjects) {
                 if (obj->GetName().empty()) continue;
                 Object3d::Transform* objTr = obj->GetTransform(); json d;
@@ -118,8 +100,6 @@ void DebugEditor::Update() {
             } std::ofstream f("scene_layout.json"); f << sceneData.dump(4); f.close();
         }
 
-        // ギズモUI
-        // (★ 修正: static 変数宣言を削除。関数先頭のものを使う)
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
             if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
             if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
@@ -134,24 +114,17 @@ void DebugEditor::Update() {
         else ImGui::InputFloat("Snap Scale", &snapScale, 0.01f, 0.1f);
         ImGui::Text("Hold [Left Ctrl] to snap.");
 
-        // コライダー表示 (変更なし)
-        ImGui::Separator();
-        ImGui::Checkbox("Draw Colliders", &drawColliders_);
-        DrawObjectSpawnerWindow();
-
-    } else { // オブジェクト未選択
+    } else {
         ImGui::Text("No object selected.");
         ImGui::Separator();
-        ImGui::Checkbox("Draw Colliders", &drawColliders_);
     }
+    ImGui::Checkbox("Draw Colliders", &drawColliders_);
     ImGui::End(); // Inspector
+
+    DrawObjectSpawnerWindow();
 
     // --- 3Dギズモ描画 ---
     if (selectedObject_) {
-
-        // --- ★★★ 修正 (2): ラムダ式による static 宣言をすべて削除 ★★★ ---
-        // (関数先頭で宣言した変数をそのまま使う)
-
         const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
         const Matrix4x4& view = camera->GetViewMatrix(); const Matrix4x4& proj = camera->GetProjectionMatrix();
         Object3d::Transform* tr = selectedObject_->GetTransform(); Math m; Matrix4x4 world = m.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
@@ -164,7 +137,6 @@ void DebugEditor::Update() {
 
         float* snap = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) ? snapVals : nullptr;
 
-        // ★ これでラジオボタンで変更した currentOperation が渡されるようになる
         ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], currentOperation, currentMode, &world.m[0][0], nullptr, snap);
 
         if (ImGuizmo::IsUsing()) {
@@ -178,7 +150,6 @@ void DebugEditor::Update() {
 // 終了処理
 // ========================================================================
 void DebugEditor::Finalize() {
-    // (変更なし)
     if (primitiveWVPData_) { primitiveWVPBuffer_->Unmap(0, nullptr); primitiveWVPData_ = nullptr; }
     if (primitiveColorData_) { primitiveColorBuffer_->Unmap(0, nullptr); primitiveColorData_ = nullptr; }
 }
@@ -187,20 +158,17 @@ void DebugEditor::Finalize() {
 // プリミティブ描画の初期化
 // ========================================================================
 void DebugEditor::InitializePrimitiveDrawing() {
-    // (変更なし、アライメント対応済みのまま)
     assert(dxCommon_); ID3D12Device* device = dxCommon_->GetDevice(); HRESULT hr;
 
-    // --- ルートシグネチャ ---
     D3D12_ROOT_SIGNATURE_DESC rsDesc{}; rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     D3D12_ROOT_PARAMETER params[2] = {};
-    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; params[0].Descriptor.ShaderRegister = 0; // WVP (b0)
-    params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; params[1].Descriptor.ShaderRegister = 1; // Color (b1)
+    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; params[0].Descriptor.ShaderRegister = 0;
+    params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; params[1].Descriptor.ShaderRegister = 1;
     rsDesc.pParameters = params; rsDesc.NumParameters = _countof(params);
     Microsoft::WRL::ComPtr<ID3DBlob> sigBlob, errBlob;
     hr = D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errBlob); if (FAILED(hr)) { OutputDebugStringA((char*)errBlob->GetBufferPointer()); assert(false); }
     hr = device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), IID_PPV_ARGS(&primitiveRootSignature_)); assert(SUCCEEDED(hr));
 
-    // --- PSO ---
     D3D12_INPUT_ELEMENT_DESC inputElems[] = { { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } };
     D3D12_INPUT_LAYOUT_DESC inputLayout = { inputElems, _countof(inputElems) };
     D3D12_RASTERIZER_DESC rasterDesc{}; rasterDesc.CullMode = D3D12_CULL_MODE_NONE; rasterDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
@@ -224,7 +192,6 @@ void DebugEditor::InitializePrimitiveDrawing() {
 
     hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&primitivePipelineState_)); assert(SUCCEEDED(hr));
 
-    // --- 立方体 VBV/IBV (LINELIST用) ---
     Vector4 cubeVerts[] = { {-0.5f,-0.5f,-0.5f,1}, {0.5f,-0.5f,-0.5f,1}, {-0.5f,0.5f,-0.5f,1}, {0.5f,0.5f,-0.5f,1}, {-0.5f,-0.5f,0.5f,1}, {0.5f,-0.5f,0.5f,1}, {-0.5f,0.5f,0.5f,1}, {0.5f,0.5f,0.5f,1} };
     uint32_t cubeIdx[] = { 0,1, 1,3, 3,2, 2,0, 4,5, 5,7, 7,6, 6,4, 0,4, 1,5, 2,6, 3,7 };
     cubeVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeVerts)); cubeVertexBufferView_ = { cubeVertexBuffer_->GetGPUVirtualAddress(), sizeof(cubeVerts), sizeof(Vector4) };
@@ -232,7 +199,6 @@ void DebugEditor::InitializePrimitiveDrawing() {
     cubeIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeIdx)); cubeIndexBufferView_ = { cubeIndexBuffer_->GetGPUVirtualAddress(), sizeof(cubeIdx), DXGI_FORMAT_R32_UINT };
     void* ibData; hr = cubeIndexBuffer_->Map(0, nullptr, &ibData); assert(SUCCEEDED(hr)); memcpy(ibData, cubeIdx, sizeof(cubeIdx)); cubeIndexBuffer_->Unmap(0, nullptr);
 
-    // --- 定数バッファ (アライメント済み配列として確保) ---
     primitiveWVPBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedMatrix4x4) * kMaxInstances);
     hr = primitiveWVPBuffer_->Map(0, nullptr, (void**)&primitiveWVPData_);
     assert(SUCCEEDED(hr));
@@ -246,8 +212,12 @@ void DebugEditor::InitializePrimitiveDrawing() {
 // コライダー描画処理 (Game::Draw から呼ばれる)
 // ========================================================================
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
-    // (変更なし、アライメント対応済みのまま)
-    if (!drawColliders_ || !scene_) return;
+    if (!drawColliders_ || sceneManager_ == nullptr) return;
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) return;
+    std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
+    if (objects.empty()) return;
 
     commandList->SetPipelineState(primitivePipelineState_.Get());
     commandList->SetGraphicsRootSignature(primitiveRootSignature_.Get());
@@ -256,7 +226,6 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 
     Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
-    std::vector<std::unique_ptr<Object3d>>& objects = scene_->GetObjects();
 
     int instanceIndex = 0;
 
@@ -281,7 +250,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             if (r <= 0) continue;
             Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ r * 2, r * 2, r * 2 }), math.MakeTranslateMatrix(c));
 
-            DrawWireCube(commandList, world, { 0.0f, 0.0f, 1.0f, 1.0f }, instanceIndex); // Blue (Sphere)
+            DrawWireCube(commandList, world, { 0.0f, 0.0f, 1.0f, 1.0f }, instanceIndex);
             instanceIndex++;
         }
     }
@@ -291,7 +260,6 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 // ワイヤーフレームの立方体を描画する内部関数
 // ========================================================================
 void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
-    // (変更なし、アライメント対応済みのまま)
     Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
 
     primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
@@ -309,72 +277,60 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
 }
 
-/// <summary>
-/// Object Spawner ウィンドウの描画
-/// </summary>
+// ========================================================================
+// スポナーウィンドウ
+// ========================================================================
 void DebugEditor::DrawObjectSpawnerWindow() {
-
-    // (ウィンドウ名は "Object Spawner" など任意)
     if (!ImGui::Begin("Object Spawner")) {
         ImGui::End();
         return;
     }
 
-    // --- 1. モデルリストの取得・更新 ---
-    // (ボタンが押された時だけリストを更新する)
     if (ImGui::Button("Refresh Model List")) {
         modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
-        selectedModelIndex_ = 0; // 選択をリセット
+        selectedModelIndex_ = 0;
     }
 
     ImGui::Separator();
 
-    // --- 2. モデルリストの表示 ---
     if (modelNames_.empty()) {
         ImGui::Text("Model list is empty.");
         ImGui::Text("Push 'Refresh' after loading.");
     } else {
-        // C++の std::vector<std::string> を ImGui が
-        // 扱える形式 (const char* の配列) に変換する
         std::vector<const char*> namesCStr;
         for (const std::string& name : modelNames_) {
             namesCStr.push_back(name.c_str());
         }
 
-        // リストボックス
         ImGui::ListBox(
-            "Models",                 // ラベル
-            &selectedModelIndex_,     // 選択中のインデックス (メンバ変数)
-            namesCStr.data(),         // 表示する const char* の配列
-            static_cast<int>(namesCStr.size()), // 配列のサイズ
-            5                         // リストボックスの高さ (5行分)
+            "Models",
+            &selectedModelIndex_,
+            namesCStr.data(),
+            static_cast<int>(namesCStr.size()),
+            5
         );
 
         ImGui::Separator();
 
-        // --- 3. スポーン（生成）ボタン ---
         if (ImGui::Button("Spawn Object")) {
 
-            // 選択が有効かチェック
-            if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
+            BaseScene* currentScene = sceneManager_->GetCurrentScene();
 
-                // 選択されたモデル名を取得
+            if (currentScene != nullptr && selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
+
                 std::string modelName = modelNames_[selectedModelIndex_];
 
-                // (1) シーンから Object3dCommon を取得
-                Object3dCommon* common = scene_->GetObject3dCommon();
+                Object3dCommon* common = currentScene->GetObject3dCommon();
 
-                // (2) 新しい Object3d を作成
-                auto newObj = std::make_unique<Object3d>();
-                newObj->Initialize(common);
-                newObj->SetModel(modelName);
+                if (common) {
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common);
+                    newObj->SetModel(modelName);
+                    static int spawnCount = 0;
+                    newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
 
-                // (3) ユニークな名前を付ける (連番など)
-                static int spawnCount = 0;
-                newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
-
-                // (4) シーンのヘルパー関数を使って追加
-                scene_->AddObject(std::move(newObj));
+                    currentScene->AddObject(std::move(newObj));
+                }
             }
         }
     }

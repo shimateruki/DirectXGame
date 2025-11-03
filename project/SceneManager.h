@@ -39,6 +39,11 @@ public:
     /// <param name="nextScene">次に切り替えるシーンのインスタンス</param>
     void SetNextScene(std::unique_ptr<BaseScene> nextScene);
 
+    // <summary>
+    /// 現在のシーンのポインタを取得する (Editor用)
+    /// </summary>
+    BaseScene* GetCurrentScene() const;
+
 private:
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
     std::unique_ptr<BaseScene> nextScene_ = nullptr;

@@ -18,7 +18,7 @@ SceneManager::~SceneManager() {
 /// </summary>
 void SceneManager::Initialize() {
     // 最初のシーンとして TitleScene を生成
-    currentScene_ = std::make_unique<GamePlayScene>();
+    currentScene_ = std::make_unique<TitleScene>();
 
     // SceneManagerのポインタを渡す
     currentScene_->SetSceneManager(this);
@@ -91,4 +91,8 @@ void SceneManager::Draw() {
 /// </summary>
 void SceneManager::SetNextScene(std::unique_ptr<BaseScene> nextScene) {
     nextScene_ = std::move(nextScene);
+}
+BaseScene* SceneManager::GetCurrentScene() const {
+    // 保持しているカレントシーンの生ポインタを返す
+    return currentScene_.get();
 }

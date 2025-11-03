@@ -11,7 +11,7 @@
 #include "InputManager.h"
 #include <memory> // unique_ptr のため
 class DirectXCommon; // 前方宣言
-// ★★★★★★★★★★★★★★★★★★★
+
 
 class TitleScene :public BaseScene
 {
@@ -20,14 +20,21 @@ public:
     void Finalize()override;
     void Update(float deltaTime)override;
     void Draw()override;
-
+    void LoadObjectLayout(const std::string& filename);
+    void LoadSpriteLayout(const std::string& filename);
+    std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
+    SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
+    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objects_; }
+    Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
 
 private:
-    // ★★★ メンバ変数を追加 ★★★
     DirectXCommon* dxCommon_ = nullptr;
-    std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
-    std::unique_ptr<Sprite> titleSprite_ = nullptr; // タイトル用スプライト
-    // ★★★★★★★★★★★★★★★★★
+    std::unique_ptr<SpriteCommon> spriteCommon_;
+    std::vector<std::unique_ptr<Sprite>> sprites_;
+
+    std::unique_ptr<Object3dCommon> object3dCommon_;
+    std::vector<std::unique_ptr<Object3d>> objects_;
 
     InputManager* inputManager_ = nullptr;
+    uint32_t titleLogoHandle_ = 0;
 };
