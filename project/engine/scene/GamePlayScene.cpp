@@ -361,7 +361,7 @@ void GamePlayScene::Initialize() {
     debugEditor_ = std::make_unique<DebugEditor>();
     debugEditor_->Initialize(this, dxCommon_);
 	spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
-	spriteDebugEditor_->Initialize(this);
+	spriteDebugEditor_->Initialize(this,inputManager_);
     particleEditor_ = std::make_unique<ParticleEditor>();
     particleEditor_->Initialize(particleSystem_.get());
 #endif
@@ -407,8 +407,7 @@ void GamePlayScene::Finalize() {
 
 void GamePlayScene::Update(float deltaTime) {
 
-    // ★ ライトマネージャの更新を追加
-    LightManager::GetInstance()->Update();
+    bool isSpriteEditorBusy = false; // 2Dギズモが使用中か
 
 
     // ★ シーンマネージャ対応: DebugEditor の更新
@@ -416,12 +415,16 @@ void GamePlayScene::Update(float deltaTime) {
     if (debugEditor_) {
         debugEditor_->Update();
     }
-	if (spriteDebugEditor_) {
-		spriteDebugEditor_->Update();
-	}
+    if (spriteDebugEditor_) {
+        spriteDebugEditor_->Update(); 
+
+        //  ギズモがマウスを使っているか確認
+        isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy();
+    }
     if (particleEditor_) {
         particleEditor_->Update();
     }
+
 #endif
 
     // --- Releaseビルド時のカメラ入力処理 ---
@@ -448,7 +451,8 @@ void GamePlayScene::Update(float deltaTime) {
         }
     }
 #endif
-
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    camera->SetInputEnabled(!isSpriteEditorBusy);
     // --- 常に実行される更新 ---
     CameraManager::GetInstance()->Update(); // カメラ行列の最終計算
 
@@ -544,9 +548,15 @@ void GamePlayScene::Draw() {
 
         // --- スプライト描画 ---
         spriteCommon_->SetPipeline(dxCommon_->GetCommandList()); // スプライト用パイプライン設定
+
         for (auto& sprite : sprites_) {
             sprite->Draw();
         }
+#ifdef _DEBUG
+        if (spriteDebugEditor_) {
+            spriteDebugEditor_->Draw();
+        }
+#endif
         particleSystem_->Draw();
 
     }

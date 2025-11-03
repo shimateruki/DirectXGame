@@ -44,18 +44,17 @@ void Camera::Initialize() {
 void Camera::Update() {
     Math math;
 
-    // --- 1. 追従対象がいる (主にReleaseビルド) ---
+    // 追従対象がいる場合
     if (targetPosition_) {
 
-        // ★★★ 修正(2): ReleaseビルドでもImGui操作中は入力を無効化 ★★★
+        //ReleaseビルドでもImGui操作中は入力を無効化 
 #ifdef _DEBUG
         // (デバッグビルド中はImGuiが有効なので、チェックを行う)
         ImGuiIO& io = ImGui::GetIO();
-        if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+        if (io.WantCaptureMouse || io.WantCaptureKeyboard || !isInputEnabled_) {
             // ImGuiが入力を使っているので、
             // 追従カメラ用の入力 (AddRotation, AddZoom) は
             // GamePlayScene::Update() 側でスキップさせる
-            // (この Update() 関数自体は行列計算のために実行継続)
         }
 #endif
        
@@ -111,9 +110,9 @@ void Camera::Update() {
 #ifdef _DEBUG
         if (inputManager_) {
 
-            // ★★★ 修正(3): ImGuiの入力キャプチャをチェック ★★★
+            //ImGuiの入力キャプチャをチェック
             ImGuiIO& io = ImGui::GetIO();
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard) {
+            if (io.WantCaptureMouse || io.WantCaptureKeyboard || !isInputEnabled_) {
                 // ImGuiがマウスかキーボードを使っている
                 // -> カメラ操作は行わず、早期リターン (行列計算は行う)
             } else {
@@ -122,7 +121,7 @@ void Camera::Update() {
                 // 左クリック + マウス移動での回転
                 if (inputManager_->IsMouseButtonPressed(0)) {
                     Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-                    const float rotateSpeed = 0.01f;
+                    const float rotateSpeed = 0.001f;
                     rotation_.x += mouseDelta.y * rotateSpeed;
                     rotation_.y += mouseDelta.x * rotateSpeed;
                 }
@@ -135,7 +134,7 @@ void Camera::Update() {
                 if (inputManager_->IsKeyPressed(DIK_DOWN)) { move.y -= moveSpeed; }
 
                 float wheelDelta = inputManager_->GetMouseWheelDelta();
-                const float wheelSpeed = 0.005f; // (※元のコードでは 0.005f になっていました)
+                const float wheelSpeed = 0.005f; 
 
     
                 // ★ ホイール操作も io.WantCaptureMouse でガードされる

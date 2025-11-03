@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory> // unique_ptr
 #include <string>
+#include "InputManager.h"
 
 // 前方宣言
 class GamePlayScene;
@@ -12,7 +13,7 @@ public:
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize(GamePlayScene* scene);
+    void Initialize(GamePlayScene* scene, InputManager* inputManager);
 
     /// <summary>
     /// 終了処理
@@ -27,12 +28,26 @@ public:
     /// <summary>
     /// (任意) デバッグ描画 (選択中のスプライト枠など)
     /// </summary>
-    void DrawDebug(); // 今は空にしておく
-
+    void Draw(); // 今は空にしておく
+    bool IsMouseOver(Sprite* sprite) const;
+    /// <summary>
+    /// スプライトエディタがマウスを（ギズモ操作で）使用中か
+    /// </summary>
+    bool IsMouseBusy() const;
 private:
+       // プライトレイアウト保存用
+       void SaveSpriteLayout(const std::string& filename);
     GamePlayScene* scene_ = nullptr; // シーンの参照 (スプライトリスト取得用)
     Sprite* selectedSprite_ = nullptr; // 現在選択中のスプライトへのポインタ
+    InputManager* inputManager_ = nullptr; // マウス座標とクリック用
 
-    // (任意) スプライトレイアウト保存用
-    void SaveSpriteLayout(const std::string& filename);
+
+    std::unique_ptr<Sprite> gizmoArrowX_; // X軸（赤）
+    std::unique_ptr<Sprite> gizmoArrowY_; // Y軸（緑）
+    uint32_t gizmoTextureHandle_ = 0;     // ギズモ用テクスチャハンドル
+
+    bool isMovingX_ = false; // X軸をドラッグ中か
+    bool isMovingY_ = false; // Y軸をドラッグ中か
+    Vector2 dragStartMousePos_; // ドラッグ開始時のマウス座標
+    Vector2 dragStartSpritePos_; // ドラッグ開始時のスプライト座標
 };

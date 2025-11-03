@@ -1,4 +1,4 @@
-﻿#include "InputManager.h" // 対応するヘッダーファイルをインクルード
+#include "InputManager.h" // 対応するヘッダーファイルをインクルード
 #include <cassert>        // assertマクロを使用するためにインクルード
 #include "math.h"         // abs()関数などを使用するためにインクルード
 
@@ -13,7 +13,7 @@ InputManager* InputManager::GetInstance() {
 void InputManager::Initialize(HWND hwnd)
 {
     HRESULT result;
-
+    hwnd_ = hwnd;
     // DirectInputのインターフェースを作成
     result = DirectInput8Create(
         GetModuleHandle(nullptr),       // アプリケーションのインスタンスハンドル
@@ -33,7 +33,7 @@ void InputManager::Initialize(HWND hwnd)
     // 協調レベルの設定 (フォアグラウンドかつ非排他的)
     // DISCL_FOREGROUND: ウィンドウがアクティブな時だけ入力を受け取る
     // DISCL_NONEXCLUSIVE: 他のアプリケーションもデバイスにアクセスできる
-    result = keyboardDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    result = keyboardDevice->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
     assert(SUCCEEDED(result));
     // デバイスの制御を開始 (入力を受け取れるようにする)
     keyboardDevice->Acquire();
@@ -46,7 +46,7 @@ void InputManager::Initialize(HWND hwnd)
     result = mouseDevice->SetDataFormat(&c_dfDIMouse);
     assert(SUCCEEDED(result));
     // 協調レベルの設定
-    result = mouseDevice->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+    result = mouseDevice->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
     assert(SUCCEEDED(result));
     // デバイスの制御を開始
     mouseDevice->Acquire();
@@ -153,4 +153,33 @@ bool InputManager::IsGamepadButtonPressed(WORD button) const {
 float InputManager::GetMouseWheelDelta() const {
     // DIMOUSESTATE構造体のlZメンバがホイールの移動量
     return (float)mouseState.lZ;
+}
+/// <summary>
+/// マウスカーソルの「絶対座標」（ウィンドウ内）を取得する
+/// </summary>
+Vector2 InputManager::GetMousePosition() const {
+
+    // (1) Windows API で「スクリーン全体」のカーソル位置を取得
+    POINT screenPos;
+    if (!GetCursorPos(&screenPos)) {
+        return { 0.0f, 0.0f };
+    }
+
+    // (2) 「スクリーン全体」の座標を、「ウィンドウ内」の座標に変換
+    // (※ hwnd_ が Initialize で保存されている必要がある)
+    if (!ScreenToClient(hwnd_, &screenPos)) {
+        return { 0.0f, 0.0f };
+    }
+
+    // (3) Vector2 にキャストして返す
+    return { (float)screenPos.x, (float)screenPos.y };
+}
+
+/// <summary>
+/// 指定されたマウスボタンがこのフレームで離された瞬間か (リリース)
+/// </summary>
+bool InputManager::IsMouseButtonReleased(int button) const {
+    // (現在 離されている) かつ (前フレームでは 押されていた) 場合にtrue
+    // (※ IsMouseButtonTriggered とロジックが逆)
+    return !(mouseState.rgbButtons[button] & 0x80) && (prevMouseState.rgbButtons[button] & 0x80);
 }

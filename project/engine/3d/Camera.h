@@ -27,7 +27,10 @@ public:
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
     const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix_; }
 
-
+    /// <summary>
+    /// カメラの入力（マウス操作）を有効/無効にする
+    /// </summary>
+    void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
 
     /// <summary>
     /// 追従対象の座標を設定する (デバッグビルド中は無効化)
@@ -116,4 +119,5 @@ private:
 
     // kFirstPerson 用
     Vector3 firstPersonOffset_ = { 0.0f, 0.5f, 0.0f }; // ターゲットの座標からの視点のズレ
+    bool isInputEnabled_ = true;
 };
