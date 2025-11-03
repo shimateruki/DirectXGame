@@ -1,6 +1,12 @@
 #pragma once
+#include <vector>
+#include <memory>
+#include"Object3d.h"
+#include"Sprite.h"
 
-class SceneManager; // ★ 代わりに前方宣言を追加
+class SceneManager; 
+class Object3dCommon;
+class SpriteCommon;
 /// <summary>
 /// シーンの基底クラス
 /// </summary>
@@ -34,6 +40,24 @@ public:
     virtual void SetSceneManager(SceneManager* sceneManager) {
         sceneManager_ = sceneManager; // ポインタをメンバ変数に保持
     }
+
+    // (Editor用) シーンが持つ Object3d のリストを取得
+    virtual std::vector<std::unique_ptr<Object3d>>& GetObjects() {
+        static std::vector<std::unique_ptr<Object3d>> empty;
+        return empty;
+    }
+    // (Editor用) シーンが持つ Sprite のリストを取得
+    virtual std::vector<std::unique_ptr<Sprite>>& GetSprites() {
+        static std::vector<std::unique_ptr<Sprite>> empty;
+        return empty;
+    }
+    // (Spawner用) シーンに Object3d を追加
+    virtual void AddObject(std::unique_ptr<Object3d> object) { (void)object; }
+
+    // (Spawner用) 3Dオブジェクトの共通基盤を取得
+    virtual Object3dCommon* GetObject3dCommon() { return nullptr; }
+    // (Gizmo用) 2Dスプライトの共通基盤を取得
+    virtual SpriteCommon* GetSpriteCommon() { return nullptr; }
 
 protected:
     SceneManager* sceneManager_ = nullptr;

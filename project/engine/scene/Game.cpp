@@ -1,8 +1,7 @@
 #include "Game.h"
-// #include "GamePlayScene.h" // <- SceneManagerが管理
-#include "SceneManager.h"    // ★ 追加
+#include "SceneManager.h" 
 #include "ImguiManager.h"
-#include "InputManager.h"    // ★ Updateで使うため
+#include "InputManager.h"   
 #include <chrono>
 
 void Game::Initialize() {
@@ -14,6 +13,13 @@ void Game::Initialize() {
     sceneManager_->Initialize();
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();
+#ifdef _DEBUG
+    spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
+    spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
+
+    debugEditor_ = std::make_unique<DebugEditor>();
+    debugEditor_->Initialize(sceneManager_.get(), dxCommon_);
+#endif
 }
 
 void Game::Finalize() {
@@ -36,6 +42,24 @@ void Game::Update() {
     float deltaTime = duration.count();
     lastTime_ = currentTime; // メンバ変数の lastTime_ を更新する
 
+    bool isSpriteEditorBusy = false; 
+
+ 
+#ifdef _DEBUG
+    if (spriteDebugEditor_) {
+        spriteDebugEditor_->Update();
+        isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy(); // ★ 交通整理のため状態取得
+    }
+    if (debugEditor_) {
+        debugEditor_->Update();
+    }
+#endif
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        // ギズモがビジー(true)なら、カメラ入力は無効(false)にする
+        camera->SetInputEnabled(!isSpriteEditorBusy);
+    }
     // ★ SceneManager の更新処理を呼び出す
     if (sceneManager_) {
         sceneManager_->Update(deltaTime);
@@ -49,11 +73,23 @@ void Game::Draw() {
     // 描画前処理
     dxCommon_->PreDraw();
 
+#ifdef _DEBUG
+    if (debugEditor_) {
+        debugEditor_->DrawDebug(dxCommon_->GetCommandList());
+    }
+#endif
 
     // ★ SceneManager の描画処理を呼び出す
     if (sceneManager_) {
         sceneManager_->Draw();
     }
+
+#ifdef _DEBUG
+    if (spriteDebugEditor_) {
+        spriteDebugEditor_->Draw();
+    }
+#endif
+
 
     // ★ ImGui の描画
     ImGuiManager::GetInstance()->Draw();

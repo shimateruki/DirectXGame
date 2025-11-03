@@ -4,16 +4,18 @@
 #include <string>
 #include "InputManager.h"
 
-// 前方宣言
-class GamePlayScene;
-class Sprite;
 
+// 前方宣言
+class Sprite;
+class SceneManager;
+class  SpriteCommon;
+class BaseScene;
 class SpriteDebugEditor {
 public:
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize(GamePlayScene* scene, InputManager* inputManager);
+    void Initialize(SceneManager* sceneManager, InputManager* inputManager);
 
     /// <summary>
     /// 終了処理
@@ -37,9 +39,17 @@ public:
 private:
        // プライトレイアウト保存用
        void SaveSpriteLayout(const std::string& filename);
-    GamePlayScene* scene_ = nullptr; // シーンの参照 (スプライトリスト取得用)
+       SceneManager* sceneManager_ = nullptr;
+       /// <summary>
+    /// 最後に Update を実行したシーン
+    /// </summary>
+       BaseScene* lastUpdatedScene_ = nullptr;
     Sprite* selectedSprite_ = nullptr; // 現在選択中のスプライトへのポインタ
     InputManager* inputManager_ = nullptr; // マウス座標とクリック用
+    /// <summary>
+    /// ギズモの初期化に使った SpriteCommon のポインタ
+    /// </summary>
+    SpriteCommon* initializedSpriteCommon_ = nullptr;
 
 
     std::unique_ptr<Sprite> gizmoArrowX_; // X軸（赤）

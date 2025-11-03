@@ -1,5 +1,6 @@
-#include "engine/2d/SpriteCommon.h"
-#include "engine/base/DirectXCommon.h"
+#include "SpriteCommon.h"
+#include "DirectXCommon.h"
+#include"SrvManager.h"
 #include <cassert>
 
 /// <summary>
@@ -18,6 +19,7 @@ void SpriteCommon::Initialize(DirectXCommon* dxCommon) {
 /// 共通描画設定
 /// </summary>
 void SpriteCommon::SetPipeline(ID3D12GraphicsCommandList* commandList) {
+    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
     // 描画前にパイプラインとルートシグネチャを設定する
     commandList->SetPipelineState(pipelineState_.Get());
     commandList->SetGraphicsRootSignature(rootSignature_.Get());

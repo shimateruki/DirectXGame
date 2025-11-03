@@ -8,9 +8,9 @@
 #include <string> 
 
 
-class GamePlayScene;
 class Object3d;
 class DirectXCommon;
+class SceneManager;
 
 // ★★★ アライメントエラー対策 ★★★
 
@@ -30,7 +30,8 @@ struct AlignedVector4 {
 
 class DebugEditor {
 public:
-    void Initialize(GamePlayScene* scene, DirectXCommon* dxCommon);
+    void Initialize( SceneManager* sceneManager, DirectXCommon* dxCommon
+    );
     void Update();
     void Finalize();
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
@@ -41,7 +42,7 @@ private:
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 
 private:
-    GamePlayScene* scene_ = nullptr;
+    SceneManager* sceneManager_ = nullptr;
     Object3d* selectedObject_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr;
 

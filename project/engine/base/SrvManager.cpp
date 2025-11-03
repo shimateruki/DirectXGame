@@ -34,3 +34,14 @@ void SRVManager::SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* comma
     gpuHandle.ptr += (descriptorSize_ * srvHandle);
     commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuHandle);
 }
+
+
+
+
+void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
+    assert(srvDescriptorHeap_);
+
+    // 1つのディスクリプタヒープを設定
+    ID3D12DescriptorHeap* pHeaps[] = { srvDescriptorHeap_.Get() };
+    commandList->SetDescriptorHeaps(1, pHeaps);
+}
