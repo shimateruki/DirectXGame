@@ -451,8 +451,10 @@ void GamePlayScene::Update(float deltaTime) {
         }
     }
 #endif
+#ifdef _DEBUG
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     camera->SetInputEnabled(!isSpriteEditorBusy);
+#endif
     // --- 常に実行される更新 ---
     CameraManager::GetInstance()->Update(); // カメラ行列の最終計算
 
