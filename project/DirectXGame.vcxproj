@@ -284,7 +284,6 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="ParticleEditor.h" />
     <ClInclude Include="Player.h" />
-    <ClInclude Include="Registry.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="engine\2d\SpriteDebugEditor.h" />
     <ClInclude Include="Text.h" />

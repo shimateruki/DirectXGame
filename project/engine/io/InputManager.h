@@ -1,4 +1,4 @@
-﻿#pragma once // ヘッダーファイルの多重インクルードを防止するためのプリプロセッサディレクティブ
+#pragma once 
 
 #include <dinput.h>   // DirectInputを使用するために必要なヘッダー
 #include <windows.h>  // Windows APIの基本的な関数や型を使用するために必要
@@ -81,6 +81,15 @@ public:
     /// <returns>押されていればtrue</returns>
     bool IsGamepadButtonPressed(WORD button) const;
     float GetMouseWheelDelta() const;
+    /// <summary>
+    /// マウスカーソルの「絶対座標」（ウィンドウ内）を取得する
+    /// </summary>
+    Vector2 GetMousePosition() const; 
+
+    /// <summary>
+    /// 指定されたマウスボタンがこのフレームで離された瞬間か (リリース)
+    /// </summary>
+    bool IsMouseButtonReleased(int button) const;
 
 private:
     InputManager() = default;
@@ -102,4 +111,5 @@ private:
 
     // --- ゲームパッドの状態 ---
     XINPUT_STATE gamepadState{}; // 現在のフレームのゲームパッド状態
+    HWND hwnd_ = nullptr;
 };

@@ -64,6 +64,7 @@ public:
     /// Object3dCommon へのポインタを取得する (Editor用)
     /// </summary>
     Object3dCommon* GetObject3dCommon() { return object3dCommon_.get(); }
+    SpriteCommon* GetSpriteCommon() { return spriteCommon_.get(); }
 private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
