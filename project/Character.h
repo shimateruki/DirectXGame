@@ -19,9 +19,19 @@ public:
     void Update() override;
 
     bool IsGrounded() const { return isGrounded_; }
+    /// <summary>
+    /// このキャラクターに適用される重力を設定する
+    /// </summary>
+    void SetGravity(float gravity) { gravity_ = gravity; }
+
+    /// <summary>
+    /// このキャラクターの最大落下速度を設定する
+    /// </summary>
+    void SetMaxFallSpeed(float maxFallSpeed) { maxFallSpeed_ = maxFallSpeed; }
 protected:
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
-
+    float gravity_ = 0.015f;
+    float maxFallSpeed_ = 1.0f;
     bool isGrounded_ = false;
 
 };

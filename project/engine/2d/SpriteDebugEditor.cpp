@@ -37,30 +37,25 @@ void SpriteDebugEditor::Update() {
         return;
     }
 
-    // ▼▼▼ ★ 1. カレントシーンを SceneManager から取得 ★ ▼▼▼
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) {
-        return; // アクティブなシーンがなければ何もしない
+        selectedSprite_ = nullptr;
+        lastUpdatedScene_ = nullptr;
+        return;
     }
 
     if (lastUpdatedScene_ != currentScene) {
-        // シーンが切り替わった！
-        // 選択を強制的に解除
         selectedSprite_ = nullptr;
         isMovingX_ = false;
         isMovingY_ = false;
-
-        // 最後に更新したシーンを「今」のシーンに更新
         lastUpdatedScene_ = currentScene;
     }
 
     bool isImGuiBusy = ImGui::GetIO().WantCaptureMouse;
 
-    // --- 1. ギズモ操作 (ドラッグ処理) ---
+    // --- 1. ギズモ操作 (ロジック) ---
     if (selectedSprite_) {
-        // (A) ドラッグ開始判定
         if (!isImGuiBusy && inputManager_->IsMouseButtonTriggered(0)) {
-            // (ギズモがまだ作られていなければ何もしない)
             if (gizmoArrowX_ && IsMouseOver(gizmoArrowX_.get())) {
                 isMovingX_ = true;
                 isMovingY_ = false;
@@ -74,7 +69,6 @@ void SpriteDebugEditor::Update() {
             }
         }
 
-        // (B) ドラッグ中の処理
         Vector2 mousePos = inputManager_->GetMousePosition();
         if (isMovingX_) {
             float deltaX = mousePos.x - dragStartMousePos_.x;
@@ -89,22 +83,18 @@ void SpriteDebugEditor::Update() {
             selectedSprite_->SetPosition(newPos);
         }
 
-        // (C) ドラッグ終了判定
         if (inputManager_->IsMouseButtonReleased(0)) {
             isMovingX_ = false;
             isMovingY_ = false;
         }
     }
 
-    // --- 2. スプライトピッキング (選択処理) ---
+    // --- 2. スプライトピッキング (ロジック) ---
     if (!isImGuiBusy && !isMovingX_ && !isMovingY_ && inputManager_->IsMouseButtonTriggered(0)) {
         Vector2 mousePos = inputManager_->GetMousePosition();
         bool hit = false;
-
-        // ▼▼▼ ★ 2. インターフェース経由でスプライトリストを取得 ★ ▼▼▼
         std::vector<std::unique_ptr<Sprite>>& sprites = currentScene->GetSprites();
 
-        // (リストが空でなければ処理)
         if (!sprites.empty()) {
             for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
                 Sprite* sprite = it->get();
@@ -122,12 +112,14 @@ void SpriteDebugEditor::Update() {
             selectedSprite_ = nullptr;
         }
     }
+}
 
-    // --- 3. インスペクタウィンドウの描画 ---
-    if (!ImGui::Begin("Sprite Inspector")) {
-        ImGui::End();
-        return;
-    }
+void SpriteDebugEditor::DrawImGui() {
+    if (sceneManager_ == nullptr) return;
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) return;
+
+    // (ImGui::Begin/End は Game.cpp の "Master Editor" が行う)
 
     if (selectedSprite_ == nullptr) {
         ImGui::Text("No sprite selected.");
@@ -152,14 +144,12 @@ void SpriteDebugEditor::Update() {
         if (ImGui::DragFloat2("Anchor", &anchor.x, 0.01f, 0.0f, 1.0f)) {
             selectedSprite_->SetAnchorPoint(anchor);
         }
+
         ImGui::Separator();
         if (ImGui::Button("Save Sprite Layout")) {
-
             SaveSpriteLayout("sprite_layout.json");
         }
     }
-
-    ImGui::End();
 }
 
 // (Draw の実装)

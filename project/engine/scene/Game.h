@@ -22,6 +22,8 @@ private:
 	// ★ gameScene_ と debugEditor_ の代わりに SceneManager を持つ
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
 	std::chrono::high_resolution_clock::time_point lastTime_;
+	bool showDebugWindows_ = true;  // 3Dエディタ用
+	bool showSpriteInspector_ = true; // 2Dエディタ用
 #ifdef _DEBUG
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;

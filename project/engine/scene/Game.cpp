@@ -1,7 +1,10 @@
 #include "Game.h"
 #include "SceneManager.h" 
 #include "ImguiManager.h"
-#include "InputManager.h"   
+#include "InputManager.h"
+#include"imgui.h"
+#include "ImGuizmo.h" 
+#include "imgui.h"
 #include <chrono>
 
 void Game::Initialize() {
@@ -32,40 +35,72 @@ void Game::Finalize() {
     // ★ 基底クラスの終了処理を呼ぶ
     Framework::Finalize();
 }
-
 void Game::Update() {
-    // 入力とImGuiのフレーム開始は、シーンの更新前に行う
     InputManager::GetInstance()->Update();
+
     ImGuiManager::GetInstance()->BeginFrame();
+    ImGuizmo::BeginFrame();
+
     auto currentTime = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<float> duration = currentTime - lastTime_; // メンバ変数の lastTime_ を使う
+    std::chrono::duration<float> duration = currentTime - lastTime_;
     float deltaTime = duration.count();
-    lastTime_ = currentTime; // メンバ変数の lastTime_ を更新する
+    lastTime_ = currentTime;
+    if (deltaTime > 0.1f) { deltaTime = 1.0f / 60.0f; }
 
-    bool isSpriteEditorBusy = false; 
+    bool isSpriteEditorBusy = false;
+    bool is3DGizmoBusy = false;
 
- 
 #ifdef _DEBUG
+    // --- ロジックの更新 ---
     if (spriteDebugEditor_) {
         spriteDebugEditor_->Update();
-        isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy(); // ★ 交通整理のため状態取得
+        isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy();
     }
     if (debugEditor_) {
         debugEditor_->Update();
+        is3DGizmoBusy = ImGuizmo::IsUsing();
     }
+
+    // --- ImGui描画 (Master Editor) ---
+    ImGui::Begin("Master Editor", nullptr, ImGuiWindowFlags_MenuBar);
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("View")) {
+            ImGui::MenuItem("3D Editor", NULL, &showDebugWindows_);
+            ImGui::MenuItem("Sprite Inspector", NULL, &showSpriteInspector_);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    if (showDebugWindows_) {
+        if (ImGui::CollapsingHeader("3D Object Editor")) {
+            debugEditor_->DrawImGui();
+        }
+    }
+
+    if (showSpriteInspector_) {
+        if (ImGui::CollapsingHeader("Sprite Inspector")) {
+            spriteDebugEditor_->DrawImGui();
+        }
+    }
+
+    ImGui::End(); // "Master Editor"
+
 #endif
 
+    // --- 交通整理 ---
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
-        // ギズモがビジー(true)なら、カメラ入力は無効(false)にする
-        camera->SetInputEnabled(!isSpriteEditorBusy);
+        bool isEditorBusy = isSpriteEditorBusy || is3DGizmoBusy;
+        camera->SetInputEnabled(!isEditorBusy);
     }
-    // ★ SceneManager の更新処理を呼び出す
+
+    // --- シーンの更新 ---
     if (sceneManager_) {
         sceneManager_->Update(deltaTime);
     }
 
-    // ImGuiフレーム終了
     ImGuiManager::GetInstance()->EndFrame();
 }
 
