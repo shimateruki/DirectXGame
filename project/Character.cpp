@@ -7,29 +7,21 @@
 
 // ★ Math のインスタンスを作成
 static Math math;
-static const float kGravity = 0.015f;
-static const float kMaxFallSpeed = 1.0f;
+
 
 void Character::Update() {
-
-    // ★ 1. 更新の最初に、接地フラグを「false」にリセット
     isGrounded_ = false;
 
-    // ★ 2. 重力（Y軸マイナスの加速度）を速度に加算
-    velocity_.y -= kGravity;
+    velocity_.y -= gravity_; 
 
-    // ★ (お好みで) 落下速度が速くなりすぎないように制限（クランプ）
-    if (velocity_.y < -kMaxFallSpeed) {
-        velocity_.y = -kMaxFallSpeed;
+    if (velocity_.y < -maxFallSpeed_) { 
+        velocity_.y = -maxFallSpeed_; 
     }
 
-    // ★ 3. 速度を座標に反映 
     transform_.translate += velocity_;
 }
-
-
 bool Character::OnCollision(Object3d* other) {
-    // 相手が地形(kAllGround)でなければ、物理応答はしない
+
     if (!(other->GetCollisionAttribute() & kAllGround)) {
         return false;
     }

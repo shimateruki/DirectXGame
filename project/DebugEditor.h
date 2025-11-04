@@ -6,6 +6,7 @@
 #include <vector>  
 #include "engine/base/Math.h" 
 #include <string> 
+#include"BaseScene.h"
 
 
 class Object3d;
@@ -35,6 +36,7 @@ public:
     void Update();
     void Finalize();
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
+    void DrawImGui();
 
 private:
     void InitializePrimitiveDrawing();
@@ -47,6 +49,10 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
 
     bool drawColliders_ = false;
+    /// <summary>
+    /// 最後に Update を実行したシーン
+    /// </summary>
+    BaseScene* lastUpdatedScene_ = nullptr;
 
     // 同時に描画するコライダーの最大数
     static const int kMaxInstances = 128;

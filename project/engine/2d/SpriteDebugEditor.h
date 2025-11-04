@@ -30,7 +30,10 @@ public:
     /// <summary>
     /// (任意) デバッグ描画 (選択中のスプライト枠など)
     /// </summary>
-    void Draw(); // 今は空にしておく
+    void Draw(); 
+
+    void DrawImGui();
+
     bool IsMouseOver(Sprite* sprite) const;
     /// <summary>
     /// スプライトエディタがマウスを（ギズモ操作で）使用中か

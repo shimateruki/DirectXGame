@@ -35,6 +35,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
     selectedObject_ = nullptr;
+    lastUpdatedScene_ = nullptr;
     InitializePrimitiveDrawing();
 }
 
@@ -43,93 +44,48 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 // ========================================================================
 void DebugEditor::Update() {
     using json = nlohmann::json;
-    ImGuizmo::BeginFrame();
     if (sceneManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) {
-        ImGui::Begin("Object List"); ImGui::Text("No active scene."); ImGui::End();
-        ImGui::Begin("Inspector"); ImGui::Text("No active scene."); ImGui::End();
-        DrawObjectSpawnerWindow();
+        selectedObject_ = nullptr;
+        lastUpdatedScene_ = nullptr;
         return;
     }
 
-    static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
-    static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
-    static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
-    static float snapRotation = 15.0f;
-    static float snapScale = 0.1f;
 
-    // --- オブジェクトリスト ---
-    ImGui::Begin("Object List");
-    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
-        ImGui::SetNextFrameWantCaptureKeyboard(true);
-    }
-    std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
-    for (auto& obj : objects) {
-        const std::string& objName = obj->GetName();
-        if (objName.empty()) continue;
-        if (ImGui::Selectable(objName.c_str(), obj.get() == selectedObject_)) {
-            selectedObject_ = obj.get();
-        }
-    }
-    ImGui::End();
+    if (lastUpdatedScene_ != currentScene) {
+        // シーンが切り替わった！
+        // 選択していた 3D オブジェクトは破棄されているはず
+        selectedObject_ = nullptr;
 
-    // --- インスペクター ---
-    ImGui::Begin("Inspector");
+        // 最後に更新したシーンを「今」のシーンに更新
+        lastUpdatedScene_ = currentScene;
+    }
+
+    // ギズモ操作のロジックのみ
     if (selectedObject_) {
-        ImGui::Text("Name: %s", selectedObject_->GetName().c_str());
-        Object3d::Transform* transform = selectedObject_->GetTransform();
-        ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
-        Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
-        if (ImGui::DragFloat3("Rotation (Degrees)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
-            transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
-        }
-        ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
+        const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+        if (!camera) return;
 
-        ImGui::Separator();
-        if (ImGui::Button("Save Scene Layout")) {
-            json sceneData; sceneData["objects"] = json::array();
-            std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
-            for (auto& obj : allObjects) {
-                if (obj->GetName().empty()) continue;
-                Object3d::Transform* objTr = obj->GetTransform(); json d;
-                d["name"] = obj->GetName(); d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
-                d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z }; d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
-                sceneData["objects"].push_back(d);
-            } std::ofstream f("scene_layout.json"); f << sceneData.dump(4); f.close();
-        }
+        const Matrix4x4& view = camera->GetViewMatrix();
+        const Matrix4x4& proj = camera->GetProjectionMatrix();
+        Object3d::Transform* tr = selectedObject_->GetTransform();
+        Math m;
+        Matrix4x4 world = m.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
+        ImGuiIO& io = ImGui::GetIO();
+        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
-        if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
-            if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
-            if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
-            if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
-        }
-        ImGui::Separator(); ImGui::Text("Gizmo Mode:");
-        if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
-        if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
-        if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
-        if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("Snap Translate", snapTranslate, "%.2f");
-        else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("Snap Angle (Degrees)", &snapRotation, 1.0f, 5.0f);
-        else ImGui::InputFloat("Snap Scale", &snapScale, 0.01f, 0.1f);
-        ImGui::Text("Hold [Left Ctrl] to snap.");
+        // (static 変数をメンバ変数 currentOperation_ などに変えた場合)
+        // (static 変数を DrawImGui 側と共有している場合)
+        static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
+        static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
+        static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
+        static float snapRotation = 15.0f;
+        static float snapScale = 0.1f;
 
-    } else {
-        ImGui::Text("No object selected.");
-        ImGui::Separator();
-    }
-    ImGui::Checkbox("Draw Colliders", &drawColliders_);
-    ImGui::End(); // Inspector
-
-    DrawObjectSpawnerWindow();
-
-    // --- 3Dギズモ描画 ---
-    if (selectedObject_) {
-        const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
-        const Matrix4x4& view = camera->GetViewMatrix(); const Matrix4x4& proj = camera->GetProjectionMatrix();
-        Object3d::Transform* tr = selectedObject_->GetTransform(); Math m; Matrix4x4 world = m.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
-        ImGuiIO& io = ImGui::GetIO(); ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-
+        // (Inspector 側で static 変数が更新される)
+        // (ここでは Manipulate だけ実行)
         float snapVals[3];
         if (currentOperation == ImGuizmo::ROTATE) snapVals[0] = snapVals[1] = snapVals[2] = snapRotation;
         else if (currentOperation == ImGuizmo::SCALE) snapVals[0] = snapVals[1] = snapVals[2] = snapScale;
@@ -140,8 +96,11 @@ void DebugEditor::Update() {
         ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], currentOperation, currentMode, &world.m[0][0], nullptr, snap);
 
         if (ImGuizmo::IsUsing()) {
-            Vector3 s, rDeg, t; ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &t.x, &rDeg.x, &s.x);
-            tr->translate = t; tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) }; tr->scale = s;
+            Vector3 s, rDeg, t;
+            ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &t.x, &rDeg.x, &s.x);
+            tr->translate = t;
+            tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+            tr->scale = s;
         }
     }
 }
@@ -277,22 +236,99 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
 }
 
-// ========================================================================
-// スポナーウィンドウ
-// ========================================================================
-void DebugEditor::DrawObjectSpawnerWindow() {
-    if (!ImGui::Begin("Object Spawner")) {
-        ImGui::End();
+
+void DebugEditor::DrawImGui() {
+    using json = nlohmann::json;
+    if (sceneManager_ == nullptr) return;
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) {
+        ImGui::Text("No active scene.");
         return;
     }
+
+    // --- Inspector ---
+    ImGui::Text("--- Inspector ---");
+    if (selectedObject_ == nullptr) {
+        ImGui::Text("No object selected.");
+        ImGui::Separator();
+        ImGui::Checkbox("Draw Colliders", &drawColliders_);
+    } else {
+        ImGui::Text("Name: %s", selectedObject_->GetName().c_str());
+        Object3d::Transform* transform = selectedObject_->GetTransform();
+        ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
+        Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
+        if (ImGui::DragFloat3("Rotation (Degrees)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
+            transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
+        }
+        ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
+
+        ImGui::Separator();
+        if (ImGui::Button("Save Scene Layout")) {
+            json sceneData; sceneData["objects"] = json::array();
+            std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
+            for (auto& obj : allObjects) {
+                if (obj->GetName().empty()) continue;
+                Object3d::Transform* objTr = obj->GetTransform(); json d;
+                d["name"] = obj->GetName(); d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
+                d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z }; d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
+                sceneData["objects"].push_back(d);
+            } std::ofstream f("scene_layout.json"); f << sceneData.dump(4); f.close();
+        }
+
+        static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
+        static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
+        static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
+        static float snapRotation = 15.0f;
+        static float snapScale = 0.1f;
+
+        if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
+            if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
+        }
+        ImGui::Separator(); ImGui::Text("Gizmo Mode:");
+        if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
+        if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
+        if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
+        if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("Snap Translate", snapTranslate, "%.2f");
+        else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("Snap Angle (Degrees)", &snapRotation, 1.0f, 5.0f);
+        else ImGui::InputFloat("Snap Scale", &snapScale, 0.01f, 0.1f);
+        ImGui::Text("Hold [Left Ctrl] to snap.");
+
+        ImGui::Separator();
+        ImGui::Checkbox("Draw Colliders", &drawColliders_);
+    }
+
+    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+    // --- Object List ---
+    ImGui::Text("--- Object List ---");
+
+    ImGui::BeginChild("ObjectListChild", ImVec2(0, 150), true, 0);
+
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
+        ImGui::SetNextFrameWantCaptureKeyboard(true);
+    }
+    std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
+    for (auto& obj : objects) {
+        const std::string& objName = obj->GetName();
+        if (objName.empty()) continue;
+        if (ImGui::Selectable(objName.c_str(), obj.get() == selectedObject_)) {
+            selectedObject_ = obj.get();
+        }
+    }
+    ImGui::EndChild();
+    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+    // --- Object Spawner (旧 DrawObjectSpawnerWindow) ---
+    ImGui::Text("--- Object Spawner ---");
 
     if (ImGui::Button("Refresh Model List")) {
         modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
         selectedModelIndex_ = 0;
     }
-
     ImGui::Separator();
-
     if (modelNames_.empty()) {
         ImGui::Text("Model list is empty.");
         ImGui::Text("Push 'Refresh' after loading.");
@@ -301,39 +337,22 @@ void DebugEditor::DrawObjectSpawnerWindow() {
         for (const std::string& name : modelNames_) {
             namesCStr.push_back(name.c_str());
         }
-
-        ImGui::ListBox(
-            "Models",
-            &selectedModelIndex_,
-            namesCStr.data(),
-            static_cast<int>(namesCStr.size()),
-            5
-        );
-
+        ImGui::ListBox("Models", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
         ImGui::Separator();
 
         if (ImGui::Button("Spawn Object")) {
-
-            BaseScene* currentScene = sceneManager_->GetCurrentScene();
-
-            if (currentScene != nullptr && selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
-
+            if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
                 std::string modelName = modelNames_[selectedModelIndex_];
-
                 Object3dCommon* common = currentScene->GetObject3dCommon();
-
                 if (common) {
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common);
                     newObj->SetModel(modelName);
                     static int spawnCount = 0;
                     newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
-
                     currentScene->AddObject(std::move(newObj));
                 }
             }
         }
     }
-
-    ImGui::End();
 }
