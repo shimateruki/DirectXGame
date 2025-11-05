@@ -11,4 +11,5 @@ public:
     /// シーンを生成する
     /// </summary>
     std::unique_ptr<BaseScene> CreateScene(const std::string& sceneName) override;
+
 };
