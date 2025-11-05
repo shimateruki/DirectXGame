@@ -1,0 +1,18 @@
+use Adapater:NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatrueLevel
+complate crate D3D12Device!!!
+
+Begin CompileShader,path:Object3d.VS.hlsl, profile:vs_6_0
+
+In file included from Object3d.VS.hlsl:1:
+./Object3d.hlsli:5:5: error: unknown type name 'flaot32_t3'
+    flaot32_t3 normal : NORMAL0;
+    ^
+Object3d.VS.hlsl:15:26: error: unknown type name 'VertexShanderInput'; did you mean 'VertexShader'?
+VecrtexShaderOutput main(VertexShanderInput input)
+                         ^~~~~~~~~~~~~~~~~~
+                         VertexShader
+note: 'VertexShader' declared here
+Object3d.VS.hlsl:15:26: warning: effect object ignored - effect syntax is deprecated [-Weffects-syntax]
+

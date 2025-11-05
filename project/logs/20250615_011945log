@@ -1,0 +1,15 @@
+use Adapater:NVIDIA GeForce RTX 4060 Laptop GPU
+
+FeatrueLevel
+complate crate D3D12Device!!!
+
+Begin CompileShader,path:Object3d.VS.hlsl, profile:vs_6_0
+
+Compile Succeeded, path:Object3d.VS.hlsl, profile:vs_6_0
+
+Begin CompileShader,path:Object3d.PS.hlsl, profile:ps_6_0
+
+Object3d.PS.hlsl:38:43: error: too many elements in vector initialization (expected 3 elements, have 4)
+    float3 transformedUV = mul(float32_t3(input.texcoord,0.0f, 1.0f), gMaterial.uvTransform);
+                                          ^
+

@@ -1,0 +1,3 @@
+﻿  DirectXTexWIC.cpp
+BCDirectCompute.obj : error LNK2038: 'RuntimeLibrary' の不一致が検出されました。値 'MT_StaticRelease' が MD_DynamicRelease の値 'BC.obj' と一致しません。
+LINK : fatal error LNK1561: エントリー ポイントを定義しなければなりません。
