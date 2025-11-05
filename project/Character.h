@@ -28,6 +28,8 @@ public:
     /// このキャラクターの最大落下速度を設定する
     /// </summary>
     void SetMaxFallSpeed(float maxFallSpeed) { maxFallSpeed_ = maxFallSpeed; }
+
+    std::unique_ptr<Object3d> Clone() const override;
 protected:
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
     float gravity_ = 0.015f;

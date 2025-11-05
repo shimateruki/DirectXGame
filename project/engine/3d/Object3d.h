@@ -73,7 +73,10 @@ public:
     void SetCollisionRadius(float radius) { radius_ = radius; }
     float GetCollisionRadius() const { return radius_; }
 
-    void SetCollisionSize(const Vector3& size) { aabbSize_ = size; }
+    void SetCollisionSize(const Vector3& size) { 
+    aabbSize_ = size;
+    collisionSize_ = size;
+    }
     const Vector3& GetCollisionSize() const { return aabbSize_; }
     // const版も用意（読み取り専用）
     const Transform& GetTransform() const { return transform_; }
@@ -99,6 +102,13 @@ public:
     /// <param name="other">衝突相手</param>
     /// <returns>衝突情報 (isColliding が true なら衝突)</returns>
     CollisionInfo CheckCollision(Object3d* other);
+
+    /// <summary>
+    /// このオブジェクトのコピーを作成する (仮想)
+    /// </summary>
+    /// <returns>作成されたオブジェクトの unique_ptr</returns>
+    virtual std::unique_ptr<Object3d> Clone() const;
+
 
     /// <summary>
     /// 衝突時に呼び出される仮想関数 
@@ -130,5 +140,8 @@ protected:
     uint32_t collisionMask_ = 0xFFFFFFFF;
     float radius_ = 1.0f;
     Vector3 aabbSize_ = { 1.0f, 1.0f, 1.0f };
-    std::string name_ = "Object"; // オブジェクトの識別名
+    std::string name_ = "Object"; 
+    std::string modelName_;      
+    Vector3 collisionSize_;
+
 };

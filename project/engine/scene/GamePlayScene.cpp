@@ -163,11 +163,6 @@ void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
     if (object == nullptr) {
         return;
     }
-    object->SetCollisionAttribute(kGround);
-    object->SetCollisionMask(~kGround);
-    object->SetColliderType(ColliderType::kAABB);
-    object->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-
     CollisionManager::GetInstance()->AddObject(object.get());
     objects_.emplace_back(std::move(object));
 }

@@ -52,3 +52,37 @@ bool Character::OnCollision(Object3d* other) {
     // 衝突したかどうかを返す
     return collision.isColliding;
 }
+
+std::unique_ptr<Object3d> Character::Clone() const {
+    auto newObj = std::make_unique<Character>();
+
+    assert(common_ != nullptr);
+    newObj->Initialize(common_);
+
+    //  modelName_ (文字列) を使ってモデルをセット
+    if (!modelName_.empty()) {
+        newObj->SetModel(this->modelName_);
+    }
+
+    // Object3d の Transform 情報をコピー
+    newObj->transform_ = this->transform_;
+
+    // Object3d の名前をコピー
+    newObj->name_ = this->name_;
+
+    // Object3d のコライダー情報をコピー
+    newObj->collisionAttribute_ = this->collisionAttribute_;
+    newObj->collisionMask_ = this->collisionMask_;
+    newObj->colliderType_ = this->colliderType_;
+
+    // collisionSize_ (または半径) をコピー
+    newObj->collisionSize_ = this->collisionSize_;
+
+    // ---Character 独自のメンバをコピー ---
+    newObj->velocity_ = this->velocity_;
+    newObj->isGrounded_ = this->isGrounded_;
+    newObj->gravity_ = this->gravity_;
+    newObj->maxFallSpeed_ = this->maxFallSpeed_;
+
+    return newObj;
+}

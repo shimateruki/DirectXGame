@@ -295,8 +295,21 @@ void DebugEditor::DrawImGui() {
         else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("Snap Angle (Degrees)", &snapRotation, 1.0f, 5.0f);
         else ImGui::InputFloat("Snap Scale", &snapScale, 0.01f, 0.1f);
         ImGui::Text("Hold [Left Ctrl] to snap.");
-
         ImGui::Separator();
+        if (ImGui::Button("Duplicate")) {
+            // 1. 選択中のオブジェクトを Clone() する
+            std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
+
+            // 2. 新しい名前を付ける (連番など)
+            static int duplicateCount = 0;
+            newObj->SetName(selectedObject_->GetName() + "_copy" + std::to_string(duplicateCount++));
+
+            // 3. シーンに追加する
+            currentScene->AddObject(std::move(newObj));
+
+      
+        }
+        ImGui::SameLine(); 
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
     }
 
