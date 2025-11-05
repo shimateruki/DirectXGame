@@ -26,7 +26,7 @@ private:
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
 	std::chrono::high_resolution_clock::time_point lastTime_;
 	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
-
+	float timeScale_ = 1.0f;
 #ifdef _DEBUG
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;

@@ -58,7 +58,7 @@ void Game::Update() {
     float deltaTime = duration.count();
     lastTime_ = currentTime;
     if (deltaTime > 0.1f) { deltaTime = 1.0f / 60.0f; }
-
+    float finalDeltaTime = deltaTime * timeScale_;
     bool isSpriteEditorBusy = false;
     bool is3DGizmoBusy = false;
 
@@ -78,7 +78,17 @@ void Game::Update() {
 
     // --- ImGui描画 (Master Editor) ---
     ImGui::Begin("Master Editor", nullptr, ImGuiWindowFlags_MenuBar);
+    float fps = 1.0f / deltaTime;
+    ImGui::Text("FPS: %.1f", fps);
+    Vector2 mousePos = InputManager::GetInstance()->GetMousePosition();
+    ImGui::Text("Mouse: (%.0f, %.0f)", mousePos.x, mousePos.y);
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene) {
+        ImGui::Text("Objects: %d", (int)currentScene->GetObjects().size());
+        ImGui::Text("Sprites: %d", (int)currentScene->GetSprites().size());
+    }
 
+    ImGui::Separator(); // 区切り線
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("3D Editor", NULL, &showDebugWindows_);
