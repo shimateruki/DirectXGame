@@ -2,7 +2,7 @@
 #include "engine/base/Framework.h" // Frameworkをインクルード
 #include <memory>
 
-// Windowsアプリでのエントリーポイント
+// Windowsアプリでのエントリーポイント//
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     // Frameworkクラスのポインタで、Gameクラスのインスタンスを生成
