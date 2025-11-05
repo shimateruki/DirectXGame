@@ -16,6 +16,7 @@
 #include "LightManager.h"
 #include <EventManager.h>
 #include "SceneManager.h"
+#include"DebugConsole.h"
 #include <cassert>
 
 // ParticleEditor は GamePlayScene に残す
@@ -278,16 +279,6 @@ void GamePlayScene::Initialize() {
     LoadSpriteLayout("sprite_layout.json");
 
 
-    // --- Editor の初期化 ---
-#ifdef _DEBUG
-    // (DebugEditor と SpriteDebugEditor の初期化を削除)
-
-    // ★ ParticleEditor の初期化は "残す"
-    particleEditor_ = std::make_unique<ParticleEditor>();
-    particleEditor_->Initialize(particleSystem_.get());
-#endif
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
     // --- イベント購読 ---
     EventManager::GetInstance()->Subscribe(
         [this](const PlayerHitEvent& event) {
@@ -313,14 +304,7 @@ void GamePlayScene::Finalize() {
 
 void GamePlayScene::Update(float deltaTime) {
 
-#ifdef _DEBUG
- 
 
-    // ★ ParticleEditor の Update は "残す"
-    if (particleEditor_) {
-        particleEditor_->Update();
-    }
-#endif
 
 #ifndef _DEBUG
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -425,6 +409,6 @@ void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
     uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
     if (attribute & kEnemy) {
-        OutputDebugStringA("Hit Enemy! (Handled by GamePlayScene)\n");
+        DebugConsole::GetInstance()->AddLog("enemyHit");
     }
 }

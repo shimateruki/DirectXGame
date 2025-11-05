@@ -28,7 +28,7 @@ void Framework::Initialize() {
 void Framework::Finalize() {
     if (dxCommon_) {
         // --- GPU処理が完全に終わるまで待機し、リセット ---
-        dxCommon_->FlushCommandQueue(true);
+        dxCommon_->FlushCommandQueue();
     }
     AudioPlayer::GetInstance()->Finalize();
     ImGuiManager::GetInstance()->Finalize();

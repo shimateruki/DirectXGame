@@ -3,12 +3,15 @@
 #include <memory>
 #include "SceneManager.h"
 #include"CameraManager.h"
-
+#include"AbstractSceneFactory.h"
 #ifdef _DEBUG
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
+#include "ParticleEditor.h"
 #endif
-// Frameworkを継承した、このゲーム独自のクラス
+
+
+
 class Game : public Framework {
 public:
 	void Initialize() override;
@@ -22,10 +25,15 @@ private:
 	// ★ gameScene_ と debugEditor_ の代わりに SceneManager を持つ
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
 	std::chrono::high_resolution_clock::time_point lastTime_;
-	bool showDebugWindows_ = true;  // 3Dエディタ用
-	bool showSpriteInspector_ = true; // 2Dエディタ用
+	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
+
 #ifdef _DEBUG
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
+	std::unique_ptr<ParticleEditor> particleEditor_;
+	bool showParticleEditor_ = true;
+	bool showDebugWindows_ = true;  // 3Dエディタ用
+	bool showSpriteInspector_ = true; // 2Dエディタ用
+	bool showDebugConsole_ = true;
 #endif
 };

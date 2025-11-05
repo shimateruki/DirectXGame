@@ -11,7 +11,6 @@
 #include"Player.h"
 #include"Text.h"
 #include "Event.h"
-#include "ParticleEditor.h"
 
 #include <memory>
 #include <vector>
@@ -53,11 +52,13 @@ public:
     /// </summary>
     void Draw() override;
 
+    //Edotor用
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objects_; }
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
     void AddObject(std::unique_ptr<Object3d> object) override;
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
+    ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
 private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
@@ -84,6 +85,7 @@ private:
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     std::unique_ptr<Text>  debugText_;
+
     Player* player_ = nullptr;
 
     // --- BGM・SE ---
@@ -100,5 +102,4 @@ private:
 
 #endif
 
-    std::unique_ptr<ParticleEditor> particleEditor_;
 };
