@@ -27,6 +27,7 @@ void Object3d::SetModel(const std::string& modelName) {
     // ModelManagerにモデル名で要求するだけ！
     // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
+    modelName_ = modelName;
 }
 // ▼▼▼ ロジック用のUpdate (中身は空) ▼▼▼
 void Object3d::Update() {
@@ -114,4 +115,32 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
     }
 
     return collision;
+}
+
+
+std::unique_ptr<Object3d> Object3d::Clone() const {
+    auto newObj = std::make_unique<Object3d>();
+
+    assert(common_ != nullptr);
+    newObj->Initialize(common_);
+
+    //  modelName_ (文字列) を使ってモデルをセット
+    if (!modelName_.empty()) {
+        newObj->SetModel(this->modelName_);
+    }
+
+    // 4. Transform 情報をコピー
+    newObj->transform_ = this->transform_;
+
+    // 5. 名前をコピー
+    newObj->name_ = this->name_;
+
+    // ★ 2コライダー情報をコピー
+    newObj->collisionAttribute_ = this->collisionAttribute_;
+    newObj->collisionMask_ = this->collisionMask_;
+    newObj->colliderType_ = this->colliderType_;
+    newObj->collisionSize_ = this->collisionSize_;
+
+
+    return newObj;
 }
