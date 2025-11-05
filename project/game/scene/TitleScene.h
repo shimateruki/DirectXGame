@@ -26,6 +26,7 @@ public:
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objects_; }
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
+    void RequestRemoveObject(Object3d* object) override;
 
 private:
     DirectXCommon* dxCommon_ = nullptr;
@@ -37,4 +38,14 @@ private:
 
     InputManager* inputManager_ = nullptr;
     uint32_t titleLogoHandle_ = 0;
+
+    /// <summary>
+    /// 削除予約されたオブジェクトのリスト
+    /// </summary>
+    std::vector<Object3d*> removalList_;
+
+    /// <summary>
+    /// 予約されたオブジェクトを安全に削除する
+    /// </summary>
+    void ProcessRemovals();
 };

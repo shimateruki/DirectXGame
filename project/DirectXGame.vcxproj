@@ -81,7 +81,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)engine/game/scene;$(ProjectDir)engine/game/character;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -148,9 +148,9 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Character.cpp" />
-    <ClCompile Include="DebugConsole.cpp" />
-    <ClCompile Include="DebugEditor.cpp" />
+    <ClCompile Include="game\character\Character.cpp" />
+    <ClCompile Include="engine\debug\DebugConsole.cpp" />
+    <ClCompile Include="engine\debug\DebugEditor.cpp" />
     <ClCompile Include="engine\3d\CollisionConfig.cpp" />
     <ClCompile Include="engine\3d\CollisionManager.cpp" />
     <ClCompile Include="engine\scene\BaseScene.cpp" />
@@ -159,7 +159,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\audio\AudioPlayer.cpp" />
     <ClCompile Include="engine\3d\debugCamera.cpp" />
     <ClCompile Include="engine\base\DirectXCommon.cpp" />
-    <ClCompile Include="EventManager.cpp" />
+    <ClCompile Include="game\character\EventManager.cpp" />
     <ClCompile Include="externals\ImGuizmo\ImGuizmo.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp" />
     <ClCompile Include="externals\imgui\imgui_demo.cpp" />
@@ -173,8 +173,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\io\InputManager.cpp" />
     <ClCompile Include="engine\scene\GamePlayScene.cpp" />
     <ClCompile Include="engine\io\ImguiManager.cpp" />
-    <ClCompile Include="Light.cpp" />
-    <ClCompile Include="LightManager.cpp" />
+    <ClCompile Include="engine\3d\Light.cpp" />
+    <ClCompile Include="engine\3d\LightManager.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MinSpace</Optimization>
@@ -190,15 +190,15 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\base\WinApp.cpp" />
     <ClCompile Include="engine\base\Math.cpp" />
     <ClCompile Include="engine\base\SrvManager.cpp" />
-    <ClCompile Include="engine\3d\ParticleCommon.cpp" />
-    <ClCompile Include="engine\3d\ParticleSystem.cpp" />
-    <ClCompile Include="ParticleEditor.cpp" />
-    <ClCompile Include="Player.cpp" />
-    <ClCompile Include="SceneFactory.cpp" />
-    <ClCompile Include="SceneManager.cpp" />
+    <ClCompile Include="engine\particle\ParticleCommon.cpp" />
+    <ClCompile Include="engine\particle\ParticleSystem.cpp" />
+    <ClCompile Include="engine\debug\ParticleEditor.cpp" />
+    <ClCompile Include="game\character\Player.cpp" />
+    <ClCompile Include="engine\scene\SceneFactory.cpp" />
+    <ClCompile Include="engine\scene\SceneManager.cpp" />
     <ClCompile Include="engine\2d\SpriteDebugEditor.cpp" />
-    <ClCompile Include="Text.cpp" />
-    <ClCompile Include="TitleScene.cpp" />
+    <ClCompile Include="engine\2d\Text.cpp" />
+    <ClCompile Include="game\scene\TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
@@ -242,10 +242,10 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AbstractSceneFactory.h" />
-    <ClInclude Include="Character.h" />
-    <ClInclude Include="DebugConsole.h" />
-    <ClInclude Include="DebugEditor.h" />
+    <ClInclude Include="engine\scene\AbstractSceneFactory.h" />
+    <ClInclude Include="game\character\Character.h" />
+    <ClInclude Include="engine\debug\DebugConsole.h" />
+    <ClInclude Include="engine\debug\DebugEditor.h" />
     <ClInclude Include="engine\3d\CollisionConfig.h" />
     <ClInclude Include="engine\3d\CollisionManager.h" />
     <ClInclude Include="engine\scene\BaseScene.h" />
@@ -255,8 +255,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\base\D3DResouceLeakChecKer.h" />
     <ClInclude Include="engine\3d\debugCamera.h" />
     <ClInclude Include="engine\base\DirectXCommon.h" />
-    <ClInclude Include="Event.h" />
-    <ClInclude Include="EventManager.h" />
+    <ClInclude Include="game\character\Event.h" />
+    <ClInclude Include="game\character\EventManager.h" />
     <ClInclude Include="externals\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="externals\imgui\imconfig.h" />
     <ClInclude Include="externals\imgui\imgui.h" />
@@ -282,17 +282,17 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\base\SrvManager.h" />
     <ClInclude Include="engine\scene\GamePlayScene.h" />
     <ClInclude Include="engine\io\ImguiManager.h" />
-    <ClInclude Include="engine\3d\ParticleCommon.h" />
-    <ClInclude Include="engine\3d\ParticleSystem.h" />
-    <ClInclude Include="Light.h" />
-    <ClInclude Include="LightManager.h" />
-    <ClInclude Include="ParticleEditor.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="SceneFactory.h" />
-    <ClInclude Include="SceneManager.h" />
+    <ClInclude Include="engine\particle\ParticleCommon.h" />
+    <ClInclude Include="engine\particle\ParticleSystem.h" />
+    <ClInclude Include="engine\3d\Light.h" />
+    <ClInclude Include="engine\3d\LightManager.h" />
+    <ClInclude Include="engine\debug\ParticleEditor.h" />
+    <ClInclude Include="game\character\Player.h" />
+    <ClInclude Include="engine\scene\SceneFactory.h" />
+    <ClInclude Include="engine\scene\SceneManager.h" />
     <ClInclude Include="engine\2d\SpriteDebugEditor.h" />
-    <ClInclude Include="Text.h" />
-    <ClInclude Include="TitleScene.h" />
+    <ClInclude Include="engine\2d\Text.h" />
+    <ClInclude Include="game\scene\TitleScene.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

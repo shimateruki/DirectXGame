@@ -19,7 +19,6 @@
 #include"DebugConsole.h"
 #include <cassert>
 
-// ParticleEditor は GamePlayScene に残す
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -28,145 +27,6 @@
 #include <fstream>
 #include <string>
 #include "json.hpp" 
-
-void GamePlayScene::LoadObjectLayout(const std::string& filename) {
-    using json = nlohmann::json;
-    std::ifstream file(filename);
-
-    if (!file.is_open()) {
-        std::string warnMsg = "Warning: Could not open " + filename + " for Object layout.\n";
-        OutputDebugStringA(warnMsg.c_str());
-        return;
-    }
-
-    json sceneData;
-    try {
-        sceneData = json::parse(file);
-        if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
-            for (const auto& objData : sceneData["objects"]) {
-                if (!objData.contains("name") || !objData["name"].is_string()) continue;
-                std::string name = objData["name"].get<std::string>();
-
-                Object3d* targetObject = nullptr;
-                for (auto& obj : objects_) {
-                    if (obj && !obj->GetName().empty() && obj->GetName() == name) {
-                        targetObject = obj.get();
-                        break;
-                    }
-                }
-
-                if (targetObject) {
-                    Object3d::Transform* transform = targetObject->GetTransform();
-
-                    if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
-                        transform->translate.x = objData["position"][0].get<float>();
-                        transform->translate.y = objData["position"][1].get<float>();
-                        transform->translate.z = objData["position"][2].get<float>();
-                    }
-                    if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
-                        transform->rotate.x = objData["rotation"][0].get<float>();
-                        transform->rotate.y = objData["rotation"][1].get<float>();
-                        transform->rotate.z = objData["rotation"][2].get<float>();
-                    }
-                    if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
-                        transform->scale.x = objData["scale"][0].get<float>();
-                        transform->scale.y = objData["scale"][1].get<float>();
-                        transform->scale.z = objData["scale"][2].get<float>();
-                    }
-                    targetObject->Update();
-                }
-            }
-        }
-    }
-    catch (json::parse_error& e) {
-        OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
-        OutputDebugStringA(e.what());
-        OutputDebugStringA("\n");
-    }
-
-    file.close();
-}
-
-void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
-    using json = nlohmann::json;
-    std::ifstream file(filename);
-
-    if (!file.is_open()) {
-        std::string warnMsg = "Warning: Could not open " + filename + "\n";
-        OutputDebugStringA(warnMsg.c_str());
-        return;
-    }
-
-    json layoutData;
-    try {
-        layoutData = json::parse(file);
-
-        if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
-            for (const auto& spriteData : layoutData["sprites"]) {
-
-                if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
-                    continue;
-                }
-                std::string name = spriteData["name"];
-
-                Sprite* targetSprite = nullptr;
-                for (auto& sprite : sprites_) {
-                    if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
-                        targetSprite = sprite.get();
-                        break;
-                    }
-                }
-
-                if (targetSprite) {
-                    if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
-                        targetSprite->SetPosition({
-                            spriteData["position"][0].get<float>(),
-                            spriteData["position"][1].get<float>()
-                            });
-                    }
-                    if (spriteData.contains("size") && spriteData["size"].is_array() && spriteData["size"].size() == 2) {
-                        targetSprite->SetSize({
-                            spriteData["size"][0].get<float>(),
-                            spriteData["size"][1].get<float>()
-                            });
-                    }
-                    if (spriteData.contains("anchor") && spriteData["anchor"].is_array() && spriteData["anchor"].size() == 2) {
-                        targetSprite->SetAnchorPoint({
-                            spriteData["anchor"][0].get<float>(),
-                            spriteData["anchor"][1].get<float>()
-                            });
-                    }
-                    if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
-                        targetSprite->SetColor({
-                            spriteData["color"][0].get<float>(),
-                            spriteData["color"][1].get<float>(),
-                            spriteData["color"][2].get<float>(),
-                            spriteData["color"][3].get<float>()
-                            });
-                    }
-                    targetSprite->Update();
-                }
-            }
-        }
-
-    }
-    catch (json::parse_error& e) {
-        OutputDebugStringA("Failed to parse sprite_layout.json\n");
-        OutputDebugStringA(e.what());
-        OutputDebugStringA("\n");
-    }
-
-    file.close();
-}
-
-
-void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
-    if (object == nullptr) {
-        return;
-    }
-    CollisionManager::GetInstance()->AddObject(object.get());
-    objects_.emplace_back(std::move(object));
-}
 
 
 void GamePlayScene::Initialize() {
@@ -334,7 +194,6 @@ void GamePlayScene::Update(float deltaTime) {
     particleSystem_->Update(deltaTime);
 
     // --- 1. ゲームロジック (オブジェクト・スプライト) 更新 ---
-    // (↓ 変更なし)
     for (auto& obj : objects_) {
         obj->Update();
     }
@@ -369,12 +228,13 @@ void GamePlayScene::Update(float deltaTime) {
 
     // --- 2. 物理 (衝突判定) 更新 ---
     CollisionManager::GetInstance()->Update();
+
+    ProcessRemovals();
 }
 
 void GamePlayScene::Draw() {
 
     // --- Releaseビルド時の一人称視点判定 ---
-    // (↓ 変更なし)
     bool isFirstPerson = false;
 #ifndef _DEBUG
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -384,7 +244,6 @@ void GamePlayScene::Draw() {
 #endif
 
     // --- 3Dオブジェクト描画 ---
-    // (↓ 変更なし)
     object3dCommon_->SetGraphicsCommand();
     for (size_t i = 0; i < objects_.size(); ++i) {
         if (isFirstPerson && i == 1) {
@@ -394,7 +253,6 @@ void GamePlayScene::Draw() {
     }
 
     // --- スプライト描画 ---
-    // (↓ 変更なし)
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_) {
         sprite->Draw();
@@ -404,7 +262,6 @@ void GamePlayScene::Draw() {
     particleSystem_->Draw();
 }
 
-// (OnPlayerHit は変更なし)
 void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
     uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
@@ -412,3 +269,182 @@ void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
         DebugConsole::GetInstance()->AddLog("enemyHit");
     }
 }
+
+
+#pragma region Editor Functions
+void GamePlayScene::LoadObjectLayout(const std::string& filename) {
+    using json = nlohmann::json;
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::string warnMsg = "Warning: Could not open " + filename + " for Object layout.\n";
+        OutputDebugStringA(warnMsg.c_str());
+        return;
+    }
+
+    json sceneData;
+    try {
+        sceneData = json::parse(file);
+        if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+            for (const auto& objData : sceneData["objects"]) {
+                if (!objData.contains("name") || !objData["name"].is_string()) continue;
+                std::string name = objData["name"].get<std::string>();
+
+                Object3d* targetObject = nullptr;
+                for (auto& obj : objects_) {
+                    if (obj && !obj->GetName().empty() && obj->GetName() == name) {
+                        targetObject = obj.get();
+                        break;
+                    }
+                }
+
+                if (targetObject) {
+                    Object3d::Transform* transform = targetObject->GetTransform();
+
+                    if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
+                        transform->translate.x = objData["position"][0].get<float>();
+                        transform->translate.y = objData["position"][1].get<float>();
+                        transform->translate.z = objData["position"][2].get<float>();
+                    }
+                    if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
+                        transform->rotate.x = objData["rotation"][0].get<float>();
+                        transform->rotate.y = objData["rotation"][1].get<float>();
+                        transform->rotate.z = objData["rotation"][2].get<float>();
+                    }
+                    if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
+                        transform->scale.x = objData["scale"][0].get<float>();
+                        transform->scale.y = objData["scale"][1].get<float>();
+                        transform->scale.z = objData["scale"][2].get<float>();
+                    }
+                    targetObject->Update();
+                }
+            }
+        }
+    }
+    catch (json::parse_error& e) {
+        OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
+        OutputDebugStringA(e.what());
+        OutputDebugStringA("\n");
+    }
+
+    file.close();
+}
+
+void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
+    using json = nlohmann::json;
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::string warnMsg = "Warning: Could not open " + filename + "\n";
+        OutputDebugStringA(warnMsg.c_str());
+        return;
+    }
+
+    json layoutData;
+    try {
+        layoutData = json::parse(file);
+
+        if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
+            for (const auto& spriteData : layoutData["sprites"]) {
+
+                if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
+                    continue;
+                }
+                std::string name = spriteData["name"];
+
+                Sprite* targetSprite = nullptr;
+                for (auto& sprite : sprites_) {
+                    if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
+                        targetSprite = sprite.get();
+                        break;
+                    }
+                }
+
+                if (targetSprite) {
+                    if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
+                        targetSprite->SetPosition({
+                            spriteData["position"][0].get<float>(),
+                            spriteData["position"][1].get<float>()
+                            });
+                    }
+                    if (spriteData.contains("size") && spriteData["size"].is_array() && spriteData["size"].size() == 2) {
+                        targetSprite->SetSize({
+                            spriteData["size"][0].get<float>(),
+                            spriteData["size"][1].get<float>()
+                            });
+                    }
+                    if (spriteData.contains("anchor") && spriteData["anchor"].is_array() && spriteData["anchor"].size() == 2) {
+                        targetSprite->SetAnchorPoint({
+                            spriteData["anchor"][0].get<float>(),
+                            spriteData["anchor"][1].get<float>()
+                            });
+                    }
+                    if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
+                        targetSprite->SetColor({
+                            spriteData["color"][0].get<float>(),
+                            spriteData["color"][1].get<float>(),
+                            spriteData["color"][2].get<float>(),
+                            spriteData["color"][3].get<float>()
+                            });
+                    }
+                    targetSprite->Update();
+                }
+            }
+        }
+
+    }
+    catch (json::parse_error& e) {
+        OutputDebugStringA("Failed to parse sprite_layout.json\n");
+        OutputDebugStringA(e.what());
+        OutputDebugStringA("\n");
+    }
+
+    file.close();
+}
+
+
+void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
+    if (object == nullptr) {
+        return;
+    }
+    CollisionManager::GetInstance()->AddObject(object.get());
+    objects_.emplace_back(std::move(object));
+}
+
+
+
+void GamePlayScene::RequestRemoveObject(Object3d* object) {
+    if (object) {
+        removalList_.push_back(object);
+    }
+}
+
+void GamePlayScene::ProcessRemovals() {
+    if (removalList_.empty()) {
+        return;
+    }
+
+    CollisionManager* colManager = CollisionManager::GetInstance();
+
+    // 1. CollisionManager から削除
+    for (Object3d* obj : removalList_) {
+        colManager->RemoveObject(obj);
+    }
+
+    // 2. objects_ (unique_ptr) リストから削除
+    auto it = std::remove_if(objects_.begin(), objects_.end(),
+        [this](const std::unique_ptr<Object3d>& p) {
+            for (Object3d* removalObj : removalList_) {
+                if (p.get() == removalObj) {
+                    return true; // 削除対象
+                }
+            }
+            return false;
+        }
+    );
+    objects_.erase(it, objects_.end());
+
+    // 3. 予約リストをクリア
+    removalList_.clear();
+}
+#pragma endregion

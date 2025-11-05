@@ -78,10 +78,13 @@ void Game::Update() {
 
     // --- ImGui描画 (Master Editor) ---
     ImGui::Begin("Master Editor", nullptr, ImGuiWindowFlags_MenuBar);
+    //fpsの可視化
     float fps = 1.0f / deltaTime;
     ImGui::Text("FPS: %.1f", fps);
+    //マウスポジションの可視化
     Vector2 mousePos = InputManager::GetInstance()->GetMousePosition();
     ImGui::Text("Mouse: (%.0f, %.0f)", mousePos.x, mousePos.y);
+    //object sprite数の可視化
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene) {
         ImGui::Text("Objects: %d", (int)currentScene->GetObjects().size());

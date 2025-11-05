@@ -311,6 +311,10 @@ void DebugEditor::DrawImGui() {
         }
         ImGui::SameLine(); 
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
+        if (ImGui::Button("Delete")) {
+            currentScene->RequestRemoveObject(selectedObject_);
+            selectedObject_ = nullptr; // ダングリングポインタを防ぐ
+        }
     }
 
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -334,7 +338,7 @@ void DebugEditor::DrawImGui() {
     ImGui::EndChild();
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-    // --- Object Spawner (旧 DrawObjectSpawnerWindow) ---
+    // --- Object Spawner ( ---
     ImGui::Text("--- Object Spawner ---");
 
     if (ImGui::Button("Refresh Model List")) {

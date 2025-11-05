@@ -155,3 +155,19 @@ void CollisionManager::Update() {
         }
     }
 }
+
+/// <summary>
+/// 衝突リストからオブジェクトを削除する
+/// </summary>
+void CollisionManager::RemoveObject(Object3d* object) {
+    if (object == nullptr) {
+        return;
+    }
+
+    // std::erase_if (C++20) または旧来の erase-removeイディオム
+    // (※ C++17 以前の場合)
+    auto it = std::remove(objects_.begin(), objects_.end(), object);
+    objects_.erase(it, objects_.end());
+
+    
+}

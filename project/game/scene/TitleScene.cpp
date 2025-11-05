@@ -8,6 +8,7 @@
 #include "engine/3d/ModelManager.h"   // ★ 3Dモデル用
 #include "engine/3d/Object3d.h"       // ★ 3Dオブジェクト用
 #include "engine/3d/Object3dCommon.h" // ★ 3D基盤用
+#include <CollisionManager.h>
 
 void TitleScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
@@ -93,6 +94,7 @@ void TitleScene::Update(float deltaTime) {
         // 3. SceneManager に次のシーンを予約する
         sceneManager_->SetNextScene(std::make_unique<GamePlayScene>());
     }
+    ProcessRemovals();
 }
 
 void TitleScene::Draw() {
@@ -110,9 +112,7 @@ void TitleScene::Draw() {
     }
 }
 
-
-
-
+#pragma region Editor Functions
 void TitleScene::LoadObjectLayout(const std::string& filename) {
     using json = nlohmann::json;
     std::ifstream file(filename);
@@ -241,3 +241,39 @@ void TitleScene::LoadSpriteLayout(const std::string& filename) {
 
     file.close();
 }
+
+void TitleScene::RequestRemoveObject(Object3d* object) {
+    if (object) {
+        removalList_.push_back(object);
+    }
+}
+
+void TitleScene::ProcessRemovals() {
+    if (removalList_.empty()) {
+        return;
+    }
+
+    CollisionManager* colManager = CollisionManager::GetInstance();
+
+    // 1. CollisionManager から削除
+    for (Object3d* obj : removalList_) {
+        colManager->RemoveObject(obj);
+    }
+
+    // 2. objects_ (unique_ptr) リストから削除
+    auto it = std::remove_if(objects_.begin(), objects_.end(),
+        [this](const std::unique_ptr<Object3d>& p) {
+            for (Object3d* removalObj : removalList_) {
+                if (p.get() == removalObj) {
+                    return true; // 削除対象
+                }
+            }
+            return false;
+        }
+    );
+    objects_.erase(it, objects_.end());
+
+    // 3. 予約リストをクリア
+    removalList_.clear();
+}
+#pragma endregion

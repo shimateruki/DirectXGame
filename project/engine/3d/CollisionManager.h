@@ -27,6 +27,8 @@ public:
     /// </summary>
     void Update();
 
+    void RemoveObject(Object3d* object);
+
     /// <summary>
     /// 衝突判定リストにオブジェクトを追加
     /// </summary>
