@@ -59,6 +59,8 @@ public:
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
+    void RequestRemoveObject(Object3d* object) override;
+
 private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
@@ -96,10 +98,14 @@ private:
     // --- ImGui用フラグ ---
     bool isDrawParticles_ = false;
 
-    // ★ DebugEditor のインスタンス
-#ifdef _DEBUG
+    /// <summary>
+    /// 削除予約されたオブジェクトのリスト
+    /// </summary>
+    std::vector<Object3d*> removalList_;
 
-
-#endif
+    /// <summary>
+    /// 予約されたオブジェクトを安全に削除する
+    /// </summary>
+    void ProcessRemovals();
 
 };

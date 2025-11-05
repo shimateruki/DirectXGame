@@ -65,6 +65,10 @@ public:
     /// </summary>
     virtual ParticleSystem* GetParticleSystem() { return nullptr; }
 
+    /// <summary>
+      /// オブジェクトの削除を予約する (純粋仮想)
+      /// </summary>
+    virtual void RequestRemoveObject(Object3d* object) = 0;
 protected:
     SceneManager* sceneManager_ = nullptr;
 };
