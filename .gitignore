@@ -326,3 +326,6 @@ logs/
 
 # 3. ダンプフォルダ (大文字/小文字を区別せず)
 [Dd]umps/
+
+# GitHub Actions ワークフロー
+.github/
