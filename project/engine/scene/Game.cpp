@@ -2,18 +2,20 @@
 #include "SceneManager.h" 
 #include "ImguiManager.h"
 #include "InputManager.h"
+#include"DebugConsole.h"
+#include "SceneFactory.h"
 #include"imgui.h"
 #include "ImGuizmo.h" 
-#include "imgui.h"
 #include <chrono>
 
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
-
+    sceneFactory_ = std::make_unique<SceneFactory>();
     // ★ SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
     sceneManager_->Initialize();
+
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();
 #ifdef _DEBUG
@@ -22,6 +24,11 @@ void Game::Initialize() {
 
     debugEditor_ = std::make_unique<DebugEditor>();
     debugEditor_->Initialize(sceneManager_.get(), dxCommon_);
+    particleEditor_ = std::make_unique<ParticleEditor>();
+    particleEditor_->Initialize(sceneManager_.get());
+
+    DebugConsole::GetInstance()->Initialize();
+
 #endif
 }
 
@@ -30,7 +37,12 @@ void Game::Finalize() {
     if (sceneManager_) {
         sceneManager_->Finalize();
     }
-
+#ifdef _DEBUG
+    particleEditor_.reset(); 
+    spriteDebugEditor_.reset();
+    debugEditor_.reset();
+   DebugConsole::GetInstance()->Finalize();
+#endif
 
     // ★ 基底クラスの終了処理を呼ぶ
     Framework::Finalize();
@@ -60,6 +72,9 @@ void Game::Update() {
         debugEditor_->Update();
         is3DGizmoBusy = ImGuizmo::IsUsing();
     }
+    if (particleEditor_) {
+        particleEditor_->Update();
+    }
 
     // --- ImGui描画 (Master Editor) ---
     ImGui::Begin("Master Editor", nullptr, ImGuiWindowFlags_MenuBar);
@@ -68,6 +83,8 @@ void Game::Update() {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("3D Editor", NULL, &showDebugWindows_);
             ImGui::MenuItem("Sprite Inspector", NULL, &showSpriteInspector_);
+            ImGui::MenuItem("Particle Editor", NULL, &showParticleEditor_);
+            ImGui::MenuItem("Debug Console", NULL, &showDebugConsole_);
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
@@ -84,7 +101,16 @@ void Game::Update() {
             spriteDebugEditor_->DrawImGui();
         }
     }
-
+    if (showParticleEditor_) {
+        if (ImGui::CollapsingHeader("Particle Editor")) {
+            particleEditor_->DrawImGui();
+        }
+    }
+    if (showDebugConsole_) {
+        if (ImGui::CollapsingHeader("Debug Console")) {
+            DebugConsole::GetInstance()->DrawImGui();
+        }
+    }
     ImGui::End(); // "Master Editor"
 
 #endif

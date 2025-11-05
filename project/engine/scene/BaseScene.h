@@ -7,6 +7,7 @@
 class SceneManager; 
 class Object3dCommon;
 class SpriteCommon;
+class ParticleSystem;
 /// <summary>
 /// シーンの基底クラス
 /// </summary>
@@ -41,6 +42,7 @@ public:
         sceneManager_ = sceneManager; // ポインタをメンバ変数に保持
     }
 
+
     // (Editor用) シーンが持つ Object3d のリストを取得
     virtual std::vector<std::unique_ptr<Object3d>>& GetObjects() {
         static std::vector<std::unique_ptr<Object3d>> empty;
@@ -58,6 +60,10 @@ public:
     virtual Object3dCommon* GetObject3dCommon() { return nullptr; }
     // (Gizmo用) 2Dスプライトの共通基盤を取得
     virtual SpriteCommon* GetSpriteCommon() { return nullptr; }
+    /// <summary>
+    /// このシーンの ParticleSystem を取得する (仮想)
+    /// </summary>
+    virtual ParticleSystem* GetParticleSystem() { return nullptr; }
 
 protected:
     SceneManager* sceneManager_ = nullptr;
