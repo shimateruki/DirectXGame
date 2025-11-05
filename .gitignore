@@ -318,3 +318,11 @@ DirectXGame/imgui.ini
 # DirectXTex Compiled Shaders
 **/DirectXTex/Shaders/Compiled/
 /DUMPS
+# 1. imgui のウィンドウ設定ファイル
+imgui.ini
+
+# 2. ログフォルダ
+logs/
+
+# 3. ダンプフォルダ (大文字/小文字を区別せず)
+[Dd]umps/
