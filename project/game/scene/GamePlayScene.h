@@ -21,7 +21,7 @@ class DirectXCommon;
 class InputManager;
 class SceneManager; // ★ SceneManager を前方宣言
 
-// ★ デバッグビルド時のみ DebugEditor をインクルード
+
 #ifdef _DEBUG
 #include "DebugEditor.h" 
 #endif

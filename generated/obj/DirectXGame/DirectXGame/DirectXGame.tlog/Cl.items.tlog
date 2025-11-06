@@ -21,7 +21,7 @@ C:\二年前期\CG2\project\externals\imgui\imgui_widgets.cpp;C:\二年前期\CG
 C:\二年前期\CG2\project\engine\base\Framework.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Framework.obj
 C:\二年前期\CG2\project\engine\scene\Game.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Game.obj
 C:\二年前期\CG2\project\engine\io\InputManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\InputManager.obj
-C:\二年前期\CG2\project\engine\scene\GamePlayScene.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\GamePlayScene.obj
+C:\二年前期\CG2\project\game\scene\GamePlayScene.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\GamePlayScene.obj
 C:\二年前期\CG2\project\engine\io\ImguiManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\ImguiManager.obj
 C:\二年前期\CG2\project\engine\3d\Light.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Light.obj
 C:\二年前期\CG2\project\engine\3d\LightManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\LightManager.obj

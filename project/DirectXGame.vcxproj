@@ -74,7 +74,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -108,6 +108,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -134,6 +136,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)engine/base;$(ProjectDir)engine/io;$(ProjectDir)engine/3d;$(ProjectDir)engine/2d;$(ProjectDir)engine/scene;$(ProjectDir)engine/audio;$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -160,18 +163,34 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\3d\debugCamera.cpp" />
     <ClCompile Include="engine\base\DirectXCommon.cpp" />
     <ClCompile Include="game\character\EventManager.cpp" />
-    <ClCompile Include="externals\ImGuizmo\ImGuizmo.cpp" />
-    <ClCompile Include="externals\imgui\imgui.cpp" />
-    <ClCompile Include="externals\imgui\imgui_demo.cpp" />
-    <ClCompile Include="externals\imgui\imgui_draw.cpp" />
-    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp" />
-    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="externals\imgui\imgui_tables.cpp" />
-    <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="externals\ImGuizmo\ImGuizmo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_demo.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_draw.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_tables.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="externals\imgui\imgui_widgets.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="engine\base\Framework.cpp" />
     <ClCompile Include="engine\scene\Game.cpp" />
     <ClCompile Include="engine\io\InputManager.cpp" />
-    <ClCompile Include="engine\scene\GamePlayScene.cpp" />
+    <ClCompile Include="game\scene\GamePlayScene.cpp" />
     <ClCompile Include="engine\io\ImguiManager.cpp" />
     <ClCompile Include="engine\3d\Light.cpp" />
     <ClCompile Include="engine\3d\LightManager.cpp" />
@@ -280,7 +299,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\base\WinApp.h" />
     <ClInclude Include="engine\base\Math.h" />
     <ClInclude Include="engine\base\SrvManager.h" />
-    <ClInclude Include="engine\scene\GamePlayScene.h" />
+    <ClInclude Include="game\scene\GamePlayScene.h" />
     <ClInclude Include="engine\io\ImguiManager.h" />
     <ClInclude Include="engine\particle\ParticleCommon.h" />
     <ClInclude Include="engine\particle\ParticleSystem.h" />

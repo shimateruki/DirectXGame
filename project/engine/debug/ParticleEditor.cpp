@@ -15,6 +15,7 @@ void ParticleEditor::Update() {
 
 // ImGui描画専用
 void ParticleEditor::DrawImGui() {
+#ifdef USE_IMGUI
     if (sceneManager_ == nullptr) return;
 
     // 1. シーンマネージャーから現在のシーンを取得
@@ -48,4 +49,5 @@ void ParticleEditor::DrawImGui() {
     ImGui::ColorEdit4("End Color", &params.endColor.x);
     ImGui::DragFloat("Start Size", &params.startSize, 0.1f);
     ImGui::DragFloat("End Size", &params.endSize, 0.1f);
+#endif
 }

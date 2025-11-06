@@ -6,7 +6,10 @@ ImGuiManager* ImGuiManager::GetInstance() {
     return &instance;
 }
 
-void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
+void ImGuiManager::Initialize(WinApp* winApp,DirectXCommon* dxCommon) {
+    (void)winApp;
+    (void)dxCommon;
+#ifdef USE_IMGUI
     dxCommon_ = dxCommon;
 
     // ImGuiのコンテキストを生成
@@ -29,21 +32,26 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
         srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
         srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart()
     );
+#endif
 }
 
 void ImGuiManager::Finalize() {
+#ifdef USE_IMGUI
     // バックエンドをシャットダウン
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
     // ImGuiのコンテキストを破棄
     ImGui::DestroyContext();
+#endif
 }
 
 void ImGuiManager::BeginFrame() {
+#ifdef USE_IMGUI
     // フレームの開始をImGuiに伝える
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+#endif
 }
 
 void ImGuiManager::EndFrame() {
@@ -51,9 +59,11 @@ void ImGuiManager::EndFrame() {
 }
 
 void ImGuiManager::Draw() {
+#ifdef USE_IMGUI
     // ImGuiの内部コマンドを生成
     ImGui::Render();
 
     // ImGuiの描画コマンドをコマンドリストに記録
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon_->GetCommandList());
+#endif
 }
