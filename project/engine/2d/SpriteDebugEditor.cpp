@@ -33,6 +33,7 @@ void SpriteDebugEditor::Finalize() {
 /// ピッキング、ギズモ操作、インスペクタ描画のメイン処理
 /// </summary>
 void SpriteDebugEditor::Update() {
+#ifdef USE_IMGUI
     if (sceneManager_ == nullptr || inputManager_ == nullptr) {
         return;
     }
@@ -112,9 +113,11 @@ void SpriteDebugEditor::Update() {
             selectedSprite_ = nullptr;
         }
     }
+#endif
 }
 
 void SpriteDebugEditor::DrawImGui() {
+#ifdef USE_IMGUI
     if (sceneManager_ == nullptr) return;
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) return;
@@ -150,10 +153,12 @@ void SpriteDebugEditor::DrawImGui() {
             SaveSpriteLayout("sprite_layout.json");
         }
     }
+#endif
 }
 
 // (Draw の実装)
 void SpriteDebugEditor::Draw() {
+#ifdef USE_IMGUI
     if (sceneManager_ == nullptr || selectedSprite_ == nullptr || ImGui::GetIO().WantCaptureMouse) {
         return;
     }
@@ -197,10 +202,13 @@ void SpriteDebugEditor::Draw() {
 
     gizmoArrowX_->Draw();
     gizmoArrowY_->Draw();
+#endif
 }
 
 // (SaveSpriteLayout の実装)
 void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
+
+
     using json = nlohmann::json;
     json root;
     json spriteArray = json::array();

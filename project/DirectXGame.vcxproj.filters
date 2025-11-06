@@ -144,7 +144,7 @@
     <ClCompile Include="engine\3d\CameraManager.cpp">
       <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
-    <ClCompile Include="engine\scene\GamePlayScene.cpp">
+    <ClCompile Include="game\scene\GamePlayScene.cpp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </ClCompile>
     <ClCompile Include="engine\io\ImguiManager.cpp">
@@ -324,7 +324,7 @@
     <ClInclude Include="engine\3d\CameraManager.h">
       <Filter>ヘッダー ファイル\engine\3d</Filter>
     </ClInclude>
-    <ClInclude Include="engine\scene\GamePlayScene.h">
+    <ClInclude Include="game\scene\GamePlayScene.h">
       <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="engine\io\ImguiManager.h">

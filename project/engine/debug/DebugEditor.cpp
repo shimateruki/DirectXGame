@@ -43,6 +43,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 // 更新 (ImGui処理)
 // ========================================================================
 void DebugEditor::Update() {
+#ifdef USE_IMGUI
     using json = nlohmann::json;
     if (sceneManager_ == nullptr) return;
 
@@ -103,6 +104,7 @@ void DebugEditor::Update() {
             tr->scale = s;
         }
     }
+#endif
 }
 
 // ========================================================================
@@ -117,6 +119,7 @@ void DebugEditor::Finalize() {
 // プリミティブ描画の初期化
 // ========================================================================
 void DebugEditor::InitializePrimitiveDrawing() {
+
     assert(dxCommon_); ID3D12Device* device = dxCommon_->GetDevice(); HRESULT hr;
 
     D3D12_ROOT_SIGNATURE_DESC rsDesc{}; rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -238,6 +241,7 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
 
 
 void DebugEditor::DrawImGui() {
+#ifdef USE_IMGUI
     using json = nlohmann::json;
     if (sceneManager_ == nullptr) return;
 
@@ -372,4 +376,5 @@ void DebugEditor::DrawImGui() {
             }
         }
     }
+#endif
 }

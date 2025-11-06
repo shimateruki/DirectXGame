@@ -1,15 +1,20 @@
 #include "WinApp.h"
 #include <Windows.h>
+#ifdef USE_IMGUI
 #include "imgui_impl_win32.h"
+#endif
 
 #pragma comment(lib, "winmm.lib")
-
+#ifdef USE_IMGUI
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+#endif
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+#ifdef USE_IMGUI
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
         return true;
     }
+#endif
 
     // ↓ 元の処理はそのまま残す
     switch (msg) {

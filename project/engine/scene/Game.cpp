@@ -18,7 +18,7 @@ void Game::Initialize() {
 
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
 
@@ -37,7 +37,7 @@ void Game::Finalize() {
     if (sceneManager_) {
         sceneManager_->Finalize();
     }
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     particleEditor_.reset(); 
     spriteDebugEditor_.reset();
     debugEditor_.reset();
@@ -49,9 +49,10 @@ void Game::Finalize() {
 }
 void Game::Update() {
     InputManager::GetInstance()->Update();
-
+#ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
+#endif
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = currentTime - lastTime_;
@@ -62,7 +63,7 @@ void Game::Update() {
     bool isSpriteEditorBusy = false;
     bool is3DGizmoBusy = false;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // --- ロジックの更新 ---
     if (spriteDebugEditor_) {
         spriteDebugEditor_->Update();
@@ -125,7 +126,7 @@ void Game::Update() {
         }
     }
     ImGui::End(); // "Master Editor"
-
+    ImGuiManager::GetInstance()->EndFrame();
 #endif
 
     // --- 交通整理 ---
@@ -140,14 +141,14 @@ void Game::Update() {
         sceneManager_->Update(deltaTime);
     }
 
-    ImGuiManager::GetInstance()->EndFrame();
+
 }
 
 void Game::Draw() {
     // 描画前処理
     dxCommon_->PreDraw();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     if (debugEditor_) {
         debugEditor_->DrawDebug(dxCommon_->GetCommandList());
     }
@@ -158,16 +159,13 @@ void Game::Draw() {
         sceneManager_->Draw();
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     if (spriteDebugEditor_) {
         spriteDebugEditor_->Draw();
     }
-#endif
-
-
     // ★ ImGui の描画
     ImGuiManager::GetInstance()->Draw();
-
+#endif
     // 描画後処理
     dxCommon_->PostDraw();
 }

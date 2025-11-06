@@ -34,6 +34,7 @@ void DebugConsole::AddLog(const std::string& log) {
 }
 
 void DebugConsole::DrawImGui() {
+#ifdef USE_IMGUI
     if (ImGui::Button("Clear")) {
         std::lock_guard<std::mutex> lock(logMutex_);
         logs_.clear();
@@ -54,4 +55,5 @@ void DebugConsole::DrawImGui() {
         }
     }
     ImGui::EndChild();
+#endif
 }
