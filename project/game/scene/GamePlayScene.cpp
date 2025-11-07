@@ -100,6 +100,12 @@ void GamePlayScene::Initialize() {
     objects_[2]->SetColliderType(ColliderType::kSphere);
     objects_[2]->SetCollisionRadius(1.0f);
     CollisionManager::GetInstance()->AddObject(objects_[2].get());
+    objects_[0]->SetCollisionAttribute(kGround);
+    objects_[0]->SetCollisionMask(~kGround);
+    objects_[0]->SetColliderType(ColliderType::kAABB);
+    objects_[0]->SetCollisionSize({ 10.0f, 0.1f, 10.0f });
+    CollisionManager::GetInstance()->AddObject(objects_[0].get());
+
 
     for (size_t i = 3; i < objects_.size(); ++i) {
         objects_[i]->SetCollisionAttribute(kGround);
@@ -108,13 +114,6 @@ void GamePlayScene::Initialize() {
         objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
-    objects_[0]->SetCollisionAttribute(kGround);
-    objects_[0]->SetCollisionMask(~kGround);
-    objects_[0]->SetColliderType(ColliderType::kAABB);
-    objects_[0]->SetCollisionSize({ 10.0f, 0.1f, 10.0f });
-    CollisionManager::GetInstance()->AddObject(objects_[0].get());
-
-
     // --- スプライトの生成 ---
     uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
     auto monsterBallSprite = std::make_unique<Sprite>();
@@ -265,10 +264,49 @@ void GamePlayScene::Draw() {
 void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
     uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
+    // ★ ヘルパー関数で法線を「面」に変換
+    CollisionFace face = GetCollisionFace(event.normal);
+
+    // --- 敵に当たった場合の処理 ---
     if (attribute & kEnemy) {
-        DebugConsole::GetInstance()->AddLog("enemyHit");
+
+        switch (face) {
+        case CollisionFace::kTop: // 敵を上から踏んだ
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Top)");
+            // (ここに踏んだ時の処理を実装予定)
+            break;
+
+        case CollisionFace::kLeft:
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Left)");
+            // (ここに横から当たった時の処理を実装予定)
+            break;
+        case CollisionFace::kRight:
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Right)");
+            // (ここに横から当たった時の処理を実装予定)
+            break;
+        case CollisionFace::kFront:
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Front)");
+            // (ここに横から当たった時の処理を実装予定)
+            break;
+        case CollisionFace::kBack:
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Back)");
+            // (ここに横から当たった時の処理を実装予定)
+            break;
+        case CollisionFace::kBottom: // 敵の下から頭突きした
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Bottom)");
+            // (ここに下から当たった時の処理を実装予定)
+            break;
+        case CollisionFace::kOther:  // 斜めに当たった
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Other)");
+            // (ここに斜めに当たった時の処理を実装予定)
+            break;
+        default:
+            DebugConsole::GetInstance()->AddLog("ENEMY HIT! (face: Default/Unknown)");
+            break;
+        }
+        }
     }
-}
+
 
 
 #pragma region Editor Functions

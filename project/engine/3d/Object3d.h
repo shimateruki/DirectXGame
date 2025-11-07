@@ -44,7 +44,7 @@ public:
     /// </summary>
     const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
 
-    void Draw();
+    virtual void Draw();
 
     void SetModel(Model* model) { model_ = model; }
     void SetModel(const std::string& modelName);

@@ -7,6 +7,8 @@ class Player : public Character {
 public:
     void Initialize(Object3dCommon* common, InputManager* inputManager);
     void Update() override;
+    void Draw() override;
+    
 
     /// <summary>
     /// 衝突時に呼び出される関数 (親の関数をオーバーライド)

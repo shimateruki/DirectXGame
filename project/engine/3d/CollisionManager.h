@@ -6,7 +6,6 @@
 #include <cstdint>  // ★ int64_t をインクルード
 #include <set>      // ★ std::set をインクルード
 
-// (Vector3i 構造体を Math.h に追加するか、ここに定義)
 struct Vector3i {
     int x, y, z;
 };

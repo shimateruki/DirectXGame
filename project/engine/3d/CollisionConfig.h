@@ -7,11 +7,13 @@ enum CollisionAttribute : uint32_t {
     kPlayer = 1 << 0,  // プレイヤー
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
-    // 例: kIceGround   = 1 << 3,
 };
 
 // 地形属性をまとめたマスク (押し戻し処理の対象をまとめるのに便利)
-const uint32_t kAllGround = kGround; // | kIceGround;
+const uint32_t kAllGround = kGround;
+
+// 物理的に押し戻し処理を行う「固い」オブジェクトのマスク
+const uint32_t kAllSolid = kGround | kEnemy;
 
 /// <summary>
 /// コライダー（あたり判定）の形状タイプ
@@ -34,6 +36,26 @@ struct CollisionInfo {
     Vector3 normal = { 0,0,0 };   // 衝突法線 (押し戻す方向)
     float penetration = 0.0f;    // めり込み量
 };
+/// <summary>
+/// 衝突面（法線）がどの方向を向いているかを示す
+/// </summary>
+enum class CollisionFace {
+    kTop,    // 上面 (Y+)
+    kBottom, // 底面 (Y-)
+    kRight,  // 右面 (X+)
+    kLeft,   // 左面 (X-)
+    kFront,  // 正面 (Z+)
+    kBack,   // 背面 (Z-)
+    kOther   // 斜め
+};
+
+/// <summary>
+/// 衝突法線ベクトルから、最も近い衝突面 (CollisionFace) を判定する
+/// </summary>
+/// <param name="normal">衝突法線 (正規化されていること)</param>
+/// <param name="threshold">「斜め」と判断する閾値 (例: 0.8f)</param>
+/// <returns>CollisionFace</returns>
+CollisionFace GetCollisionFace(const Vector3& normal, float threshold = 0.8f);
 
 // --- 衝突判定ヘルパー関数群 (宣言) ---
 CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b);

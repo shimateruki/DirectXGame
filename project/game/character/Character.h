@@ -12,11 +12,12 @@ public:
     // 衝突応答の基本処理（押し戻し）を実装
     bool OnCollision(Object3d* other) override;
 
-    // ▼▼▼ 以下を追加 ▼▼▼
     /// <summary>
     /// 物理挙動を適用した更新処理
     /// </summary>
     void Update() override;
+
+    void Draw() override;
 
     bool IsGrounded() const { return isGrounded_; }
     /// <summary>
@@ -28,6 +29,8 @@ public:
     /// このキャラクターの最大落下速度を設定する
     /// </summary>
     void SetMaxFallSpeed(float maxFallSpeed) { maxFallSpeed_ = maxFallSpeed; }
+
+    void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
     std::unique_ptr<Object3d> Clone() const override;
 protected:
