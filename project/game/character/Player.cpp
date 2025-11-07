@@ -38,28 +38,34 @@ void Player::Update() {
 }
 
 bool Player::OnCollision(Object3d* other) {
-    bool hitGround = false;
     uint32_t attribute = other->GetCollisionAttribute();
 
-    // --- 1. 物理処理 (地面との衝突) ---
-    if (attribute & kAllGround) {
-        // 親(Character)の物理応答(精密判定 + 押し戻し)を呼ぶ
-        hitGround = Character::OnCollision(other);
+    // ★ 1. まず Player 側で CollisionInfo を取得
+    CollisionInfo info = CheckCollision(other);
+    if (!info.isColliding) {
+        return false; // 当たってないなら即終了
     }
 
-    // --- 2. ゲームロジック (敵との衝突) ---
-    // else if に変更し、
-    else if (attribute & kEnemy) {
-
-        CollisionInfo collision = CheckCollision(other);
-
-        // ★ 「本当に衝突していた」場合のみ、イベントを発行
-        if (collision.isColliding) {
-            PlayerHitEvent event;
-            event.hitObject = other;
-            EventManager::GetInstance()->Dispatch(event);
-        }
+    // --- 2. 物理処理 (地面) ---
+    if (attribute & kAllSolid) {
+        // ★ 親の物理処理関数を呼ぶ (押し戻し・接地判定)
+        ApplyPhysicsCollision(info, attribute);
     }
 
-    return hitGround;
+    // --- 3. イベント発行 ---
+    if (attribute & (kEnemy)) { 
+
+        // ★ イベントに法線(info.normal)を詰めて発行する
+        EventManager::GetInstance()->Dispatch(PlayerHitEvent{ other, info.normal });
+    }
+
+    return true; // (当たった)
+}
+
+/// <summary>
+/// 描画処理
+/// </summary>
+void Player::Draw() {
+
+    Character::Draw();
 }

@@ -117,3 +117,21 @@ CollisionInfo CheckSphereAABBCollision(
     }
     return info;
 }
+
+
+CollisionFace GetCollisionFace(const Vector3& normal, float threshold) {
+    // Y軸 (上下) の判定を優先
+    if (normal.y > threshold) { return CollisionFace::kTop; }
+    if (normal.y < -threshold) { return CollisionFace::kBottom; }
+
+    // X軸 (左右) の判定
+    if (normal.x > threshold) { return CollisionFace::kRight; }
+    if (normal.x < -threshold) { return CollisionFace::kLeft; }
+
+    // Z軸 (前後) の判定
+    if (normal.z > threshold) { return CollisionFace::kFront; }
+    if (normal.z < -threshold) { return CollisionFace::kBack; }
+
+    // どの軸にも強く当たっていない場合は「斜め」
+    return CollisionFace::kOther;
+}

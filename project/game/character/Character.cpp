@@ -21,38 +21,43 @@ void Character::Update() {
     transform_.translate += velocity_;
 }
 bool Character::OnCollision(Object3d* other) {
-
-    if (!(other->GetCollisionAttribute() & kAllGround)) {
+    // ★ 1. 衝突情報を取得
+    CollisionInfo info = CheckCollision(other);
+    if (!info.isColliding) {
         return false;
     }
 
-    CollisionInfo collision = CheckCollision(other);
+    // ★ 2. 新しい関数に処理を委譲
+    ApplyPhysicsCollision(info, other->GetCollisionAttribute());
 
-    // --- 2. 衝突応答 ---
-    if (collision.isColliding) {
-
-        // ★ 座標を押し戻す (めり込んだ分だけ座標を補正)
-        this->transform_.translate += (collision.normal * collision.penetration);
-
-        //  速度を補正 (壁にめり込む速度成分を打ち消す)
-        float dot = math.Dot(velocity_, collision.normal);
-
-        // 速度が法線と逆向き (dot < 0) ＝ めり込もうとしている場合のみ
-        if (dot < 0) {
-            // 法線方向の速度成分（dot）を、速度ベクトルから差し引く
-            velocity_ = velocity_ - (collision.normal * dot);
-        }
-
-        //接地判定
-        if (collision.normal.y > 0.9f) {
-            isGrounded_ = true;
-        }
-    }
-
-    // 衝突したかどうかを返す
-    return collision.isColliding;
+    return info.isColliding;
 }
 
+
+void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute) {
+    // 地面属性以外は物理処理しない
+    if (!(attribute & kAllSolid)) {
+        return;
+    }
+
+
+    // ★ 座標を押し戻す (めり込んだ分だけ座標を補正)
+    this->transform_.translate += (info.normal * info.penetration);
+
+    //  速度を補正 (壁にめり込む速度成分を打ち消す)
+    float dot = math.Dot(velocity_, info.normal);
+
+    // 速度が法線と逆向き (dot < 0) ＝ めり込もうとしている場合のみ
+    if (dot < 0) {
+        // 法線方向の速度成分（dot）を、速度ベクトルから差し引く
+        velocity_ = velocity_ - (info.normal * dot);
+    }
+
+    //接地判定
+    if (info.normal.y > 0.9f) {
+        isGrounded_ = true;
+    }
+}
 std::unique_ptr<Object3d> Character::Clone() const {
     auto newObj = std::make_unique<Character>();
 
@@ -85,4 +90,8 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->maxFallSpeed_ = this->maxFallSpeed_;
 
     return newObj;
+}
+void Character::Draw() {
+    // 親の描画処理をそのまま実行する
+    Object3d::Draw();
 }
