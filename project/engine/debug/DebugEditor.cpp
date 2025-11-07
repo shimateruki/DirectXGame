@@ -22,6 +22,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#include <DebugConsole.h>
 
 const float PI = (float)M_PI;
 
@@ -280,6 +281,18 @@ void DebugEditor::DrawImGui() {
             } std::ofstream f("scene_layout.json"); f << sceneData.dump(4); f.close();
         }
 
+        // ★ 保存先ファイルは "scene_layout.json" に固定
+        std::string targetSceneFile = "scene_layout.json";
+
+        if (ImGui::Button("Update This Object in Scene")) { 
+
+            
+            UpdateObjectInSceneJSON(selectedObject_, targetSceneFile); 
+        }
+        ImGui::SameLine();
+        ImGui::Text(("to: " + targetSceneFile).c_str()); 
+
+
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
         static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
         static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
@@ -377,4 +390,91 @@ void DebugEditor::DrawImGui() {
         }
     }
 #endif
+}
+
+
+
+/// <summary>
+/// scene_layout.json を読み込み、特定のオブジェクトの情報だけを更新して上書き保存する
+/// </summary>
+void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
+    if (object == nullptr) {
+        DebugConsole::GetInstance()->AddLog("ERROR: No object selected to update JSON.");
+        return;
+    }
+    std::string objectName = object->GetName();
+    if (objectName.empty()) {
+        DebugConsole::GetInstance()->AddLog("ERROR: Selected object has no name. Cannot update JSON.");
+        return;
+    }
+
+    using json = nlohmann::json;
+    json root;
+
+    // --- 1. 既存のJSONファイルを読み込む ---
+    std::ifstream file_in(filename);
+    if (!file_in.is_open()) {
+        DebugConsole::GetInstance()->AddLog("ERROR: Failed to open file for reading: " + filename);
+        return;
+    }
+
+    try {
+        root = json::parse(file_in); // JSONをパース
+    }
+    catch (json::parse_error& e) {
+        DebugConsole::GetInstance()->AddLog("ERROR: Failed to parse JSON: " + filename);
+        DebugConsole::GetInstance()->AddLog(e.what());
+        file_in.close();
+        return;
+    }
+    file_in.close(); // 読み込み終了
+
+    // --- 2. "objects" 配列を探し、該当する name のデータを上書き ---
+    bool objectFound = false;
+    if (root.contains("objects") && root["objects"].is_array()) {
+        for (auto& objData : root["objects"]) { // 配列をループ
+
+            // name が一致するかチェック
+            if (objData.contains("name") && objData["name"].get<std::string>() == objectName) {
+
+                // ★ 見つかった！ 選択中のオブジェクトの現在地で上書き
+                Object3d::Transform* transform = object->GetTransform();
+                objData["position"] = {
+                    transform->translate.x,
+                    transform->translate.y,
+                    transform->translate.z
+                };
+                objData["rotation"] = {
+                    transform->rotate.x,
+                    transform->rotate.y,
+                    transform->rotate.z
+                };
+                objData["scale"] = {
+                    transform->scale.x,
+                    transform->scale.y,
+                    transform->scale.z
+                };
+
+                objectFound = true;
+                break; // 更新完了
+            }
+        }
+    }
+
+    if (!objectFound) {
+        // スポーンなどで新しく作られ、JSONにまだ存在しないオブジェクトの場合
+        DebugConsole::GetInstance()->AddLog("Warning: Object '" + objectName + "' not found in " + filename);
+        DebugConsole::GetInstance()->AddLog("Use 'Save Scene Layout' (全体保存) to add new objects.");
+        return;
+    }
+
+    // --- 3. JSONファイルに上書き保存 ---
+    std::ofstream file_out(filename); // 同じファイル名で書き込み用に開く
+    if (file_out) {
+        file_out << root.dump(4); // 4スペースでインデントして書き出し
+        file_out.close();
+        DebugConsole::GetInstance()->AddLog("Updated " + objectName + " in " + filename);
+    } else {
+        DebugConsole::GetInstance()->AddLog("ERROR: Failed to open file for writing: " + filename);
+    }
 }

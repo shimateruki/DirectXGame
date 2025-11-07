@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include "BaseScene.h"
-
+#include "AbstractSceneFactory.h"
 
 /// <summary>
 /// シーンを管理するクラス
@@ -15,8 +15,8 @@ public:
 
     /// <summary>
     /// 初期化 (最初のシーンを設定)
-    /// </summary>
-    void Initialize();
+    /// </summary>;
+    void Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName);
 
     /// <summary>
     /// 終了処理 (現在のシーンを解放)
@@ -39,6 +39,11 @@ public:
     /// <param name="nextScene">次に切り替えるシーンのインスタンス</param>
     void SetNextScene(std::unique_ptr<BaseScene> nextScene);
 
+    /// <summary>
+    /// ファクトリーを使って、名前で次のシーンを予約する
+    /// </summary>
+    void ChangeScene(const std::string& sceneName);
+
     // <summary>
     /// 現在のシーンのポインタを取得する (Editor用)
     /// </summary>
@@ -47,4 +52,5 @@ public:
 private:
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
     std::unique_ptr<BaseScene> nextScene_ = nullptr;
+    AbstractSceneFactory* sceneFactory_ = nullptr; // ファクトリーのポインタ
 };

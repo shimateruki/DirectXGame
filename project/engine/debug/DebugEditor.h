@@ -38,11 +38,14 @@ public:
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
     void DrawImGui();
 
+    void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
+
 private:
     void InitializePrimitiveDrawing();
     // ★ 修正: instanceIndex を引数に追加
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 
+    
 private:
     SceneManager* sceneManager_ = nullptr;
     Object3d* selectedObject_ = nullptr;
