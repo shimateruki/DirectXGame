@@ -14,7 +14,7 @@ void Game::Initialize() {
     sceneFactory_ = std::make_unique<SceneFactory>();
     // ★ SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
-    sceneManager_->Initialize();
+    sceneManager_->Initialize(sceneFactory_.get(), "TITLE");
 
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();

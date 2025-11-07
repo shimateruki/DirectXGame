@@ -1,13 +1,12 @@
 #include "TitleScene.h"
 #include "SceneManager.h"    
-#include "GamePlayScene.h" 
 #include"CameraManager.h"
 #include <cassert>
-#include <fstream>          // ★ JSON ロード用
-#include "json.hpp"         // ★ JSON ロード用
-#include "engine/3d/ModelManager.h"   // ★ 3Dモデル用
-#include "engine/3d/Object3d.h"       // ★ 3Dオブジェクト用
-#include "engine/3d/Object3dCommon.h" // ★ 3D基盤用
+#include <fstream>          
+#include "json.hpp"         
+#include "ModelManager.h"   
+#include "Object3d.h"       
+#include "Object3dCommon.h" 
 #include <CollisionManager.h>
 
 void TitleScene::Initialize() {
@@ -85,14 +84,7 @@ void TitleScene::Update(float deltaTime) {
 
     // Enterキーが押されたら GamePlayScene に切り替え
     if (inputManager_->IsKeyTriggered(DIK_RETURN)) {
-        // 1. 次のシーン (GamePlayScene) を new する
-        BaseScene* nextScene = new GamePlayScene();
-
-        // ★ 2. BaseScene の仮想関数 SetSceneManager を呼ぶだけ（キャスト不要）
-        nextScene->SetSceneManager(sceneManager_);
-
-        // 3. SceneManager に次のシーンを予約する
-        sceneManager_->SetNextScene(std::make_unique<GamePlayScene>());
+        sceneManager_->ChangeScene("GAMEPLAY");
     }
     ProcessRemovals();
 }

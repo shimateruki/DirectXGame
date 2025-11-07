@@ -1,7 +1,6 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
-#include "TitleScene.h"
-#include "GamePlayScene.h"
+
 #include "DirectXCommon.h"
 #include <cassert>
 #include <utility>
@@ -16,9 +15,11 @@ SceneManager::~SceneManager() {
 /// <summary>
 /// 初期化（最初のシーンを設定）
 /// </summary>
-void SceneManager::Initialize() {
-    // 最初のシーンとして TitleScene を生成
-    currentScene_ = std::make_unique<TitleScene>();
+void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName) {
+
+    sceneFactory_ = factory; // ★ ファクトリーを保持
+
+    currentScene_ = sceneFactory_->CreateScene(firstSceneName); // ★ ファクトリー経由で生成
 
     // SceneManagerのポインタを渡す
     currentScene_->SetSceneManager(this);
@@ -26,7 +27,6 @@ void SceneManager::Initialize() {
     // シーンの初期化を呼び出す
     currentScene_->Initialize();
 }
-
 /// <summary>
 /// 終了処理（現在のシーンを解放）
 /// </summary>
@@ -53,9 +53,6 @@ void SceneManager::Update(float deltaTime) {
         // 1. GPU処理を完了してコマンドリストをOpen状態に戻す
         dxCommon->WaitForGPUAndReset();
 
-        // ※ WaitForGPUAndReset() 内で commandList->Reset() 済みなので、
-        // ここでは二度目の Reset() を呼ばない！
-
         // 2. 現在のシーンを終了・破棄
         if (currentScene_) {
             currentScene_->Finalize();
@@ -66,7 +63,7 @@ void SceneManager::Update(float deltaTime) {
         currentScene_ = std::move(nextScene_);
         nextScene_ = nullptr;
 
-        // 4. 新しいシーンを初期化（commandList は既にOpen状態）
+        // 4. 新しいシーンを初期化
         currentScene_->Initialize();
     }
 
@@ -95,4 +92,22 @@ void SceneManager::SetNextScene(std::unique_ptr<BaseScene> nextScene) {
 BaseScene* SceneManager::GetCurrentScene() const {
     // 保持しているカレントシーンの生ポインタを返す
     return currentScene_.get();
+}
+void SceneManager::ChangeScene(const std::string& sceneName) {
+    if (sceneFactory_ == nullptr) {
+        assert(false && "SceneFactory is not set in SceneManager.");
+        return;
+    }
+    if (nextScene_ != nullptr) {
+        // 既にシーン遷移中なので、新しいリクエストは無視
+        return;
+    }
+
+    // ファクトリーを使ってシーンを生成
+    std::unique_ptr<BaseScene> newScene = sceneFactory_->CreateScene(sceneName);
+
+    // SetNextScene に渡して、次のフレームで遷移させる
+    if (newScene) {
+        SetNextScene(std::move(newScene));
+    }
 }
