@@ -2,7 +2,6 @@
 #include <cassert>
 #include "SRVManager.h"
 #include "d3dx12.h"
-// ★ DirectXCommon.h をインクルード
 #include "DirectXCommon.h" 
 
 /// <summary>

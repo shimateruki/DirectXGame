@@ -14,17 +14,17 @@ public:
     ~SceneManager();
 
     /// <summary>
-    /// 初期化 (最初のシーンを設定)
+    /// 初期化 
     /// </summary>;
     void Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName);
 
     /// <summary>
-    /// 終了処理 (現在のシーンを解放)
+    /// 終了処理
     /// </summary>
     void Finalize();
 
     /// <summary>
-    /// 更新 (シーン切り替え処理と、現在のシーンの更新)
+    /// 更新
     /// </summary>
     void Update(float deltaTime);
 

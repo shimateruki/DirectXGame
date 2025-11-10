@@ -2,7 +2,7 @@
 #include "Model.h"
 #include "CollisionConfig.h"
 #include "engine/base/Math.h"
-#include <string> // ★ OutputDebugStringA のために追加
+#include <string> 
 #include "EventManager.h" 
 
 void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
@@ -28,7 +28,7 @@ void Player::Update() {
 
     // ★ 2. ジャンプ処理 
     if (isGrounded_ && inputManager_->IsKeyTriggered(DIK_SPACE)) {
-        const float kJumpVelocity = 0.5f; // ジャンプの初速 (要調整)
+        const float kJumpVelocity = 0.5f; // ジャンプの初速 
         velocity_.y = kJumpVelocity;      // Y軸の速度に初速を与える
     }
 

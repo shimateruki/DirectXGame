@@ -1,10 +1,10 @@
 #pragma once
 #include "engine/base/Math.h"
-#include "ParticleCommon.h" // ParticleCommon* のため
+#include "ParticleCommon.h" 
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
-#include <vector> // ★ std::vector を使う
+#include <vector>
 #include <random>
 #include <string>
 
@@ -39,7 +39,7 @@ private:
 
 
 public:
-    // ★ エディタで編集したい全パラメータ
+    // エディタで編集したい全パラメータ
     struct EmitterParams {
         Vector3 spawnPosition = { 0.0f, 0.0f, 0.0f };      // 発生座標
         Vector3 spawnArea = { 1.0f, 1.0f, 1.0f };          // 発生範囲 (ランダム幅)
@@ -86,7 +86,7 @@ private:
 
 
 
-    // 【使い方B】自動エミッターが呼ぶ内部ヘルパー
+    // 自動エミッターが呼ぶ内部ヘルパー
     void SpawnFromEmitter();
 
 private:

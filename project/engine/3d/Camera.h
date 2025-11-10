@@ -1,4 +1,4 @@
-// [修正] Camera.h
+
 #pragma once
 #include "engine/base/Math.h"
 #include "InputManager.h"
@@ -60,13 +60,11 @@ public:
 
     /// <summary>
     /// [Release用] kAimable, kFirstPerson モードで視点回転を加える
-    /// (PlayerクラスやSceneがマウス入力を取得して、この関数を呼ぶ)
     /// </summary>
     void AddRotation(const Vector2& mouseDelta);
 
     /// <summary>
     /// [Release用] kAimable モードでズーム距離を加える
-    /// (PlayerクラスやSceneがホイール入力を取得して、この関数を呼ぶ)
     /// </summary>
     void AddZoom(float wheelDelta);
     /// <summary>
@@ -79,25 +77,25 @@ public:
 
 
 private:
-    // --- カメラの三要素 (変更なし) ---
+    // --- カメラの三要素 ---
     Vector3 eye_ = { 0.0f, 0.0f, -10.0f };
     Vector3 target_ = { 0.0f, 0.0f, 0.0f };
     Vector3 up_ = { 0.0f, 1.0f, 0.0f };
 
-    // --- プロジェクション行列のパラメータ (変更なし) ---
+    // --- プロジェクション行列のパラメータ---
     float fovY_ = 0.45f;
     float aspectRatio_ = 16.0f / 9.0f;
     float nearClip_ = 0.1f;
     float farClip_ = 1000.0f;
 
-    // --- 行列 (変更なし) ---
+    // --- 行列 ---
     Matrix4x4 viewMatrix_ = {};
     Matrix4x4 projectionMatrix_ = {};
 
-    // --- ポインタ (変更なし) ---
+    // --- ポインタ ---
     InputManager* inputManager_ = nullptr;
 
-    // --- ★★★ 追従設定・モード管理用の変数を追加 ★★★ ---
+  
 
     // 追従対象の座標
     // (デバッグ中は nullptr, リリース中は Player の座標)

@@ -194,6 +194,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\io\ImguiManager.cpp" />
     <ClCompile Include="engine\3d\Light.cpp" />
     <ClCompile Include="engine\3d\LightManager.cpp" />
+    <ClCompile Include="engine\io\Log.cpp" />
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MinSpace</Optimization>
@@ -215,7 +216,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="game\character\Player.cpp" />
     <ClCompile Include="engine\scene\SceneFactory.cpp" />
     <ClCompile Include="engine\scene\SceneManager.cpp" />
-    <ClCompile Include="engine\2d\SpriteDebugEditor.cpp" />
+    <ClCompile Include="engine\debug\SpriteDebugEditor.cpp" />
     <ClCompile Include="engine\2d\Text.cpp" />
     <ClCompile Include="game\scene\TitleScene.cpp" />
   </ItemGroup>
@@ -309,9 +310,10 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="game\character\Player.h" />
     <ClInclude Include="engine\scene\SceneFactory.h" />
     <ClInclude Include="engine\scene\SceneManager.h" />
-    <ClInclude Include="engine\2d\SpriteDebugEditor.h" />
+    <ClInclude Include="engine\debug\SpriteDebugEditor.h" />
     <ClInclude Include="engine\2d\Text.h" />
     <ClInclude Include="game\scene\TitleScene.h" />
+    <ClInclude Include="engine\io\Log.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

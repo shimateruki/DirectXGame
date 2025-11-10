@@ -55,17 +55,13 @@ void DebugEditor::Update() {
         return;
     }
 
-
+    //シーンの更新
     if (lastUpdatedScene_ != currentScene) {
-        // シーンが切り替わった！
-        // 選択していた 3D オブジェクトは破棄されているはず
         selectedObject_ = nullptr;
-
-        // 最後に更新したシーンを「今」のシーンに更新
         lastUpdatedScene_ = currentScene;
     }
 
-    // ギズモ操作のロジックのみ
+    // ギズモ操作のロジック
     if (selectedObject_) {
         const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (!camera) return;
@@ -77,17 +73,11 @@ void DebugEditor::Update() {
         Matrix4x4 world = m.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
         ImGuiIO& io = ImGui::GetIO();
         ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-
-        // (static 変数をメンバ変数 currentOperation_ などに変えた場合)
-        // (static 変数を DrawImGui 側と共有している場合)
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
         static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
         static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
         static float snapRotation = 15.0f;
         static float snapScale = 0.1f;
-
-        // (Inspector 側で static 変数が更新される)
-        // (ここでは Manipulate だけ実行)
         float snapVals[3];
         if (currentOperation == ImGuizmo::ROTATE) snapVals[0] = snapVals[1] = snapVals[2] = snapRotation;
         else if (currentOperation == ImGuizmo::SCALE) snapVals[0] = snapVals[1] = snapVals[2] = snapScale;
@@ -172,7 +162,7 @@ void DebugEditor::InitializePrimitiveDrawing() {
 }
 
 // ========================================================================
-// コライダー描画処理 (Game::Draw から呼ばれる)
+// コライダー描画処理
 // ========================================================================
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     if (!drawColliders_ || sceneManager_ == nullptr) return;

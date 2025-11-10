@@ -53,7 +53,7 @@ enum class CollisionFace {
 /// 衝突法線ベクトルから、最も近い衝突面 (CollisionFace) を判定する
 /// </summary>
 /// <param name="normal">衝突法線 (正規化されていること)</param>
-/// <param name="threshold">「斜め」と判断する閾値 (例: 0.8f)</param>
+/// <param name="threshold">「斜め」と判断する閾値</param>
 /// <returns>CollisionFace</returns>
 CollisionFace GetCollisionFace(const Vector3& normal, float threshold = 0.8f);
 

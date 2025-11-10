@@ -42,7 +42,7 @@ public:
 
 private:
     void InitializePrimitiveDrawing();
-    // ★ 修正: instanceIndex を引数に追加
+    // instanceIndex を引数に追加
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 
     

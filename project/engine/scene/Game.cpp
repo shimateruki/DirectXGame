@@ -53,7 +53,7 @@ void Game::Update() {
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
 #endif
-
+    //フレームレート計算
     auto currentTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = currentTime - lastTime_;
     float deltaTime = duration.count();
@@ -154,7 +154,7 @@ void Game::Draw() {
     }
 #endif
 
-    // ★ SceneManager の描画処理を呼び出す
+    //SceneManager の描画処理を呼び出す
     if (sceneManager_) {
         sceneManager_->Draw();
     }
@@ -163,7 +163,7 @@ void Game::Draw() {
     if (spriteDebugEditor_) {
         spriteDebugEditor_->Draw();
     }
-    // ★ ImGui の描画
+    //ImGui の描画
     ImGuiManager::GetInstance()->Draw();
 #endif
     // 描画後処理

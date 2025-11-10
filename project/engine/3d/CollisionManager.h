@@ -2,9 +2,9 @@
 #include "Object3d.h"
 #include <vector>
 #include <list>
-#include <map>      // ★ std::map をインクルード
-#include <cstdint>  // ★ int64_t をインクルード
-#include <set>      // ★ std::set をインクルード
+#include <map>      
+#include <cstdint>  
+#include <set>
 
 struct Vector3i {
     int x, y, z;

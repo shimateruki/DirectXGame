@@ -19,7 +19,7 @@
 // --- 前方宣言 (ポインタで持つものだけ) ---
 class DirectXCommon;
 class InputManager;
-class SceneManager; // ★ SceneManager を前方宣言
+class SceneManager;
 
 
 #ifdef _DEBUG

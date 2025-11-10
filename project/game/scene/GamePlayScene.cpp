@@ -115,7 +115,7 @@ void GamePlayScene::Initialize() {
         CollisionManager::GetInstance()->AddObject(objects_[i].get());
     }
     // --- スプライトの生成 ---
-    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall");
+    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
     auto monsterBallSprite = std::make_unique<Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
     monsterBallSprite->SetPosition({ 200.0f, 360.0f });
@@ -123,7 +123,7 @@ void GamePlayScene::Initialize() {
     monsterBallSprite->SetName("MonsterBall");
     sprites_.push_back(std::move(monsterBallSprite));
 
-    uint32_t flameHandle = Sprite::LoadTexture("sample");
+    uint32_t flameHandle = Sprite::LoadTexture("sample.png");
     auto flameSprite = std::make_unique<Sprite>();
     flameSprite->Initialize(spriteCommon_.get(), flameHandle);
     flameSprite->SetAnimation(4, 0.15f, true);
@@ -146,6 +146,7 @@ void GamePlayScene::Initialize() {
         }
     );
 
+    //コマンドリストが安全に閉じるためのやつないとバグる
     dxCommon_->FlushCommandQueue(false);
 }
 
