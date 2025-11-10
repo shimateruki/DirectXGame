@@ -6,8 +6,8 @@ class ParticleEditor {
 public:
     void Initialize(SceneManager* sceneManager);
 
-    void Update(); // ★ ロジック用 (今は空)
-    void DrawImGui(); // ★ ImGui描画用 (旧 Update)
+    void Update(); // ロジック用
+    void DrawImGui(); //ImGui描画用
 
 private:
     SceneManager* sceneManager_ = nullptr;

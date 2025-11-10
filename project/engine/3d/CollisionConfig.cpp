@@ -3,8 +3,6 @@
 #include <algorithm> // std::min, std::max
 #include <cmath>     // std::abs, std::sqrt
 
-// --- ヘルパー関数群 (実装) ---
-
 // [1] AABB vs AABB 判定
 CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b) {
     CollisionInfo info;

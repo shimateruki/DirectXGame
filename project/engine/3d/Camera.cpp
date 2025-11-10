@@ -49,12 +49,8 @@ void Camera::Update() {
 
         //ReleaseビルドでもImGui操作中は入力を無効化 
 #ifdef _DEBUG
-        // (デバッグビルド中はImGuiが有効なので、チェックを行う)
         ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureMouse || io.WantCaptureKeyboard || !isInputEnabled_) {
-            // ImGuiが入力を使っているので、
-            // 追従カメラ用の入力 (AddRotation, AddZoom) は
-            // GamePlayScene::Update() 側でスキップさせる
         }
 #endif
        
@@ -114,7 +110,6 @@ void Camera::Update() {
             ImGuiIO& io = ImGui::GetIO();
             if (io.WantCaptureMouse || io.WantCaptureKeyboard || !isInputEnabled_) {
                 // ImGuiがマウスかキーボードを使っている
-                // -> カメラ操作は行わず、早期リターン (行列計算は行う)
             } else {
                 // ↓↓↓ ImGuiが入力を使っていない時だけ、以下の操作を行う ↓↓↓
 
@@ -137,7 +132,7 @@ void Camera::Update() {
                 const float wheelSpeed = 0.005f; 
 
     
-                // ★ ホイール操作も io.WantCaptureMouse でガードされる
+                //ホイール操作も io.WantCaptureMouse でガードされる
                 move.z += wheelDelta * wheelSpeed;
 
                 Matrix4x4 rotateMatrix = math.Multiply(math.MakeRotateXMatrix(rotation_.x), math.MakeRotateYMatrix(rotation_.y));
@@ -162,7 +157,6 @@ void Camera::Update() {
 
 
 void Camera::SetTarget(const Vector3* target) {
-    // (前回実装した、デバッグビルド中は無効化する処理)
 #ifdef _DEBUG
     (void)target; // 警告抑制
     targetPosition_ = nullptr;
@@ -191,12 +185,11 @@ void Camera::ConfigFirstPerson(const Vector3& eyeOffset) {
 
 void Camera::AddRotation(const Vector2& mouseDelta) {
     // kAimable と kFirstPerson で共用の回転処理
-    // (感度はデバッグカメラより少し抑えめにするなど、調整してください)
     const float rotateSpeed = 0.005f;
     rotation_.x += mouseDelta.y * rotateSpeed;
     rotation_.y += mouseDelta.x * rotateSpeed;
 
-    // X軸の回転（ピッチ）に制限をかける (見上げすぎ、見下ろしすぎ防止)
+    // X軸の回転（ピッチ）に制限をかける
     const float pitchLimit = (float)M_PI / 2.0f - 0.01f; // 90度少し手前
     rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
 }

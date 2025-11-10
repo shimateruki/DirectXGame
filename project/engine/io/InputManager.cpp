@@ -35,7 +35,7 @@ void InputManager::Initialize(HWND hwnd)
     // DISCL_NONEXCLUSIVE: 他のアプリケーションもデバイスにアクセスできる
     result = keyboardDevice->SetCooperativeLevel(hwnd_, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
     assert(SUCCEEDED(result));
-    // デバイスの制御を開始 (入力を受け取れるようにする)
+    // デバイスの制御を開始 
     keyboardDevice->Acquire();
 
     // --- マウスデバイスの初期化 ---

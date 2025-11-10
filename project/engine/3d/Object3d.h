@@ -26,6 +26,7 @@ public:
 public:
     virtual void Initialize(Object3dCommon* common);
     virtual void Update();
+    virtual void Draw();
 
     /// <summary>
     /// ワールド行列の計算と定数バッファへの転送
@@ -44,7 +45,7 @@ public:
     /// </summary>
     const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
 
-    virtual void Draw();
+
 
     void SetModel(Model* model) { model_ = model; }
     void SetModel(const std::string& modelName);

@@ -9,8 +9,8 @@
 #include"BaseScene.h"
 #include"SceneManager.h"
 #include "InputManager.h"
-#include <memory> // unique_ptr のため
-class DirectXCommon; // 前方宣言
+#include <memory> 
+class DirectXCommon; 
 
 
 class TitleScene :public BaseScene
@@ -32,10 +32,8 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     std::unique_ptr<SpriteCommon> spriteCommon_;
     std::vector<std::unique_ptr<Sprite>> sprites_;
-
     std::unique_ptr<Object3dCommon> object3dCommon_;
     std::vector<std::unique_ptr<Object3d>> objects_;
-
     InputManager* inputManager_ = nullptr;
     uint32_t titleLogoHandle_ = 0;
 

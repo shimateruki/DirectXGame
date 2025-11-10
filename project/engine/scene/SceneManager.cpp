@@ -13,13 +13,13 @@ SceneManager::~SceneManager() {
 }
 
 /// <summary>
-/// 初期化（最初のシーンを設定）
+/// 初期化
 /// </summary>
 void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName) {
 
-    sceneFactory_ = factory; // ★ ファクトリーを保持
+    sceneFactory_ = factory; // ファクトリーを保持
 
-    currentScene_ = sceneFactory_->CreateScene(firstSceneName); // ★ ファクトリー経由で生成
+    currentScene_ = sceneFactory_->CreateScene(firstSceneName); //ファクトリー経由で生成
 
     // SceneManagerのポインタを渡す
     currentScene_->SetSceneManager(this);
@@ -28,7 +28,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
     currentScene_->Initialize();
 }
 /// <summary>
-/// 終了処理（現在のシーンを解放）
+/// 終了処理
 /// </summary>
 void SceneManager::Finalize() {
     // GPU処理をすべて完了させてから破棄
@@ -42,7 +42,7 @@ void SceneManager::Finalize() {
 }
 
 /// <summary>
-/// 更新（シーン切り替え処理と現在のシーンの更新）
+/// 更新
 /// </summary>
 void SceneManager::Update(float deltaTime) {
     // --- 次のシーンが予約されている場合 ---

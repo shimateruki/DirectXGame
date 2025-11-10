@@ -53,7 +53,6 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     std::vector<std::string> names;
-    // models_ (map) に格納されている全キー（モデル名）を vector にコピー
     for (const auto& pair : models_) {
         names.push_back(pair.first);
     }

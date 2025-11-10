@@ -52,9 +52,9 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 /// 更新処理
 /// </summary>
 void Sprite::Update() {
-	// ▼▼▼ アニメーション処理 ▼▼▼
+	//  アニメーション処理 
 	if (isPlaying_) {
-		// タイマーを進める (60FPSを想定)
+		// タイマーを進める
 		animationTimer_ += 1.0f / 60.0f;
 
 		if (animationTimer_ >= frameDuration_) {
@@ -164,8 +164,7 @@ void Sprite::AdjustTextureSize() {
 /// </summary>
 uint32_t Sprite::LoadTexture(const std::string& fileName) {
 	const std::string baseDirectory = "resouces/sprite/";
-	const std::string defaultExtension = ".png";
-	const std::string fullPath = baseDirectory + fileName + defaultExtension;
+	const std::string fullPath = baseDirectory + fileName;
 	return TextureManager::GetInstance()->Load(fullPath);
 }
 

@@ -37,7 +37,7 @@ void TitleScene::Initialize() {
     objects_.emplace_back(std::move(plane));
 
     // タイトルロゴのスプライトを生成
-    titleLogoHandle_ = Sprite::LoadTexture("monsterBall");
+    titleLogoHandle_ = Sprite::LoadTexture("monsterBall.png");
     auto titleLogo = std::make_unique<Sprite>();
     titleLogo->Initialize(spriteCommon_.get(), titleLogoHandle_);
     titleLogo->SetPosition({ 640.0f, 360.0f });
@@ -50,6 +50,7 @@ void TitleScene::Initialize() {
     LoadObjectLayout("scene_layout.json");
     LoadSpriteLayout("sprite_layout.json");
 
+    //コマンドリストが安全に閉じるためのやつないとバグる
     dxCommon_->FlushCommandQueue(false);
 }
 

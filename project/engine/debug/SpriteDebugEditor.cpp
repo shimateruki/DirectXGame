@@ -9,9 +9,9 @@
 #include "BaseScene.h"    
 #include "InputManager.h"
 
-// (Initialize の実装)
+
 void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inputManager) {
-    sceneManager_ = sceneManager; // ★ GamePlayScene* ではなく SceneManager* を保持
+    sceneManager_ = sceneManager; 
     inputManager_ = inputManager;
     selectedSprite_ = nullptr;
     isMovingX_ = false;
@@ -205,7 +205,6 @@ void SpriteDebugEditor::Draw() {
 #endif
 }
 
-// (SaveSpriteLayout の実装)
 void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 
 
@@ -215,11 +214,10 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 
     if (sceneManager_ == nullptr) return;
 
-    // ▼▼▼ ★ 3. カレントシーンからスプライトリストを取得 ★ ▼▼▼
+    //  カレントシーンからスプライトリストを取得 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) return;
     std::vector<std::unique_ptr<Sprite>>& sprites = currentScene->GetSprites();
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     if (sprites.empty()) return; // 保存対象なし
 
@@ -249,7 +247,7 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
     }
 }
 
-// (IsMouseOver の実装)
+
 bool SpriteDebugEditor::IsMouseOver(Sprite* sprite) const {
     if (sprite == nullptr || inputManager_ == nullptr) return false;
 
@@ -267,7 +265,7 @@ bool SpriteDebugEditor::IsMouseOver(Sprite* sprite) const {
         mousePos.y >= minY && mousePos.y <= maxY);
 }
 
-// (IsMouseBusy の実装)
+
 bool SpriteDebugEditor::IsMouseBusy() const {
     return isMovingX_ || isMovingY_;
 }

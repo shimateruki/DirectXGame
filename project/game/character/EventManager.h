@@ -1,7 +1,7 @@
 #pragma once
-#include "Event.h"  // 作成したイベント構造体をインクルード
+#include "Event.h"  
 #include <list>
-#include <functional> // std::function のため
+#include <functional>
 
 class EventManager {
 public:

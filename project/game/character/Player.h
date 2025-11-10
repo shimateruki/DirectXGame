@@ -1,7 +1,6 @@
 #pragma once
-#include "Character.h" // 親クラスをCharacterに変更
-#include "InputManager.h"   // InputManager をインクルード
-
+#include "Character.h" 
+#include "InputManager.h"  
 // Characterを継承したPlayerクラス
 class Player : public Character {
 public:
@@ -11,7 +10,7 @@ public:
     
 
     /// <summary>
-    /// 衝突時に呼び出される関数 (親の関数をオーバーライド)
+    /// 衝突時に呼び出される関数 
     /// </summary>
     bool OnCollision(Object3d* other) override;
 

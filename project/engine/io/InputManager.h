@@ -1,21 +1,19 @@
 #pragma once 
+#include <dinput.h>   
+#include <windows.h>  
+#include "engine/base/Math.h" 
+#include <Xinput.h> 
 
-#include <dinput.h>   // DirectInputを使用するために必要なヘッダー
-#include <windows.h>  // Windows APIの基本的な関数や型を使用するために必要
-#include "engine/base/Math.h" // Vector2などの数学関連のクラスをインクルード
-#include <Xinput.h>   // XInput (ゲームパッド入力) を使用するために必要なヘッダー
-
-// リンカに対して、必要なライブラリファイルをリンクするように指示する
-#pragma comment(lib, "dinput8.lib") // DirectInput 8ライブラリ
-#pragma comment(lib, "xinput.lib")  // XInputライブラリ
-#pragma comment(lib, "dxguid.lib")  // DirectInputのGUID定義ライブラリ
+#pragma comment(lib, "dinput8.lib") 
+#pragma comment(lib, "xinput.lib")  
+#pragma comment(lib, "dxguid.lib")  
 
 /// <summary>
 /// キーボード、マウス、ゲームパッドからの入力を管理するクラス
 /// </summary>
 class InputManager {
 public:
-    // ★★★ シングルトンインスタンスを取得する関数を追加 ★★★
+    // シングルトンインスタンスを取得する関数
     static InputManager* GetInstance();
     /// <summary>
     /// 入力マネージャーを初期化する

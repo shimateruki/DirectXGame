@@ -2,9 +2,9 @@
 #include "ParticleCommon.h"
 #include "DirectXCommon.h"
 #include "TextureManager.h"
-#include "CameraManager.h" // カメラ行列のため
+#include "CameraManager.h"
 #include "SRVManager.h"
-#include "engine/base/Math.h" // Math のため
+#include "engine/base/Math.h" 
 #include <cassert>
 #include <string>
 
@@ -28,17 +28,17 @@ void ParticleSystem::Initialize(ParticleCommon* common, const std::string& textu
 
     assert(textureHandle_ != 0);
     CreateResources();
-    particles_.reserve(kMaxParticles); // vector::reserve
+    particles_.reserve(kMaxParticles); 
     std::random_device seed_gen;
     randomEngine_.seed(seed_gen());
 
     // Emitterの初期設定
     spawnTimer_ = 0.0f;
-    params_.isEmitting = true; // デフォルトでON
+    params_.isEmitting = true;
 }
 
 /// <summary>
-/// 【使い方B】自動エミッターが内部で呼ぶSpawn
+/// 自動エミッターが内部で呼ぶSpawn
 /// </summary>
 void ParticleSystem::SpawnFromEmitter() {
     if (particles_.size() >= kMaxParticles) {
@@ -72,7 +72,7 @@ void ParticleSystem::SpawnFromEmitter() {
 
 
 /// <summary>
-/// 【使い方A】手動で（単発で）発生させる関数
+///手動で（単発で）発生させる関数
 /// </summary>
 void ParticleSystem::SpawnParticles(const Vector3& position, int count,
     float initialSpeed, const Vector3* direction, float spreadAngle,
@@ -107,7 +107,7 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         }
         spawnDir = math.Normalize(spawnDir);
 
-        // ★ Particle 構造体に直接詰める
+        //Particle 構造体に直接詰める
         Particle p;
         p.position = position;
         p.velocity = spawnDir * initialSpeed;
@@ -140,16 +140,16 @@ void ParticleSystem::Update(float deltaTime) {
         }
     }
 
-    // --- 2. パーティクル（個々）の更新 (★ここが重要) ---
+    // パーティクルの更新
 
-    // (↓ 既存の Update() から持ってきたカメラ情報)
+//カメラ情報
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     const Matrix4x4& viewMatrix = camera->GetViewMatrix();
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
-    // (↓ CBV[0] にカメラ行列をセット)
+
     matrixData_->viewProjection = viewMatrix * projectionMatrix;
 
-    // (↓ 既存の Update() から持ってきたビルボード行列)
+//ビルボート行列計算
     Matrix4x4 backToFrontMatrix = math.Inverse(viewMatrix);
     backToFrontMatrix.m[3][0] = 0.0f;
     backToFrontMatrix.m[3][1] = 0.0f;
@@ -167,18 +167,14 @@ void ParticleSystem::Update(float deltaTime) {
             continue;
         }
 
-        // ★ 補間計算 (p が持つ start/end データを使う)
+        // 補間計算 
         float lifeRatio = p.currentTime / p.lifeTime;
         Vector4 currentColor = math.Lerp(p.startColor, p.endColor, lifeRatio);
         float currentSize = math.Lerp(p.startSize, p.endSize, lifeRatio);
 
-        // ★ 速度を反映
+        //速度を反映
         p.position += p.velocity * deltaTime;
 
-        // ▼▼▼ ★★★ "消えていた" 処理 ★★★ ▼▼▼
-        //
-        // --- 3. Instancingデータへの書き込み ---
-        // (↓ 既存の Update() から持ってきた行列計算)
 
         // スケール行列
         Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize, currentSize, currentSize });
@@ -188,14 +184,14 @@ void ParticleSystem::Update(float deltaTime) {
         // ワールド行列の計算 (ビルボード対応)
         Matrix4x4 worldMatrix = scaleMatrix * backToFrontMatrix * translateMatrix;
 
-        // ★ GPUバッファ (instancingData_) にデータをコピー
+        // GPUバッファ (instancingData_) にデータをコピー
         instancingData_[particleCount_].world = worldMatrix;
         instancingData_[particleCount_].color = currentColor;
 
-        // ★ カウントアップ (これが 0 のままだと Draw() が動かない)
+        // カウントアップ
         particleCount_++;
         //
-        // ▲▲▲ ★★★ "消えていた" 処理 ★★★ ▲▲▲
+
 
         ++it;
     }

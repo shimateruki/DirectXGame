@@ -1,7 +1,7 @@
 #include "CollisionManager.h"
 #include "engine/base/Math.h"
-#include <cmath> // floor のため
-#include <set>   // (h でインクルード済み)
+#include <cmath> 
+#include <set>   
 
 CollisionManager* CollisionManager::GetInstance() {
     static CollisionManager instance;
@@ -55,7 +55,7 @@ Vector3i CollisionManager::GetGridIndices(int64_t gridID) {
     int64_t id_y = (gridID >> bits) & mask;
     int64_t id_z = (gridID >> (bits * 2)) & mask;
 
-    // 符号ビットを見て負の数に戻す (符号拡張)
+    // 符号ビットを見て負の数に戻す 
     if (id_x & sign_mask) id_x |= ~mask;
     if (id_y & sign_mask) id_y |= ~mask;
     if (id_z & sign_mask) id_z |= ~mask;
@@ -72,8 +72,8 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
         return;
     }
 
-    // ★ 物理応答(Character)やゲームロジック(Player)は
-    // ★ 各オブジェクトの OnCollision が担当する (B-6タスクで実装済み)
+    //物理応答(Character)やゲームロジック(Player)は
+    //各オブジェクトの OnCollision が担当する 
     objA->OnCollision(objB);
     objB->OnCollision(objA);
 }
@@ -89,9 +89,7 @@ void CollisionManager::Update() {
     checkedPairs_.clear();
 
     // --- 2. グリッドの再構築 ---
-    // (注: オブジェクトの中心点が含まれるセルにのみ登録する簡易版)
     for (Object3d* obj : objects_) {
-        // (コライダーが kNone ならスキップしてもよい)
         if (obj->GetColliderType() == ColliderType::kNone) {
             continue;
         }
@@ -101,7 +99,6 @@ void CollisionManager::Update() {
     }
 
     // --- 3. 衝突判定の実行 ---
-    // 全オブジェクトのリストをイテレート
     for (Object3d* objA : objects_) {
 
         // (コライダーが kNone ならスキップ)
@@ -144,7 +141,7 @@ void CollisionManager::Update() {
                             continue;
                         }
 
-                        // ★ 判定実行
+                        //判定実行
                         CheckCollisionPair(pairA, pairB);
 
                         // 判定済みとして記録
@@ -163,9 +160,6 @@ void CollisionManager::RemoveObject(Object3d* object) {
     if (object == nullptr) {
         return;
     }
-
-    // std::erase_if (C++20) または旧来の erase-removeイディオム
-    // (※ C++17 以前の場合)
     auto it = std::remove(objects_.begin(), objects_.end(), object);
     objects_.erase(it, objects_.end());
 

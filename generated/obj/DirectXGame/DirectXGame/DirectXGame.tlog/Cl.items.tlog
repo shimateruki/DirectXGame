@@ -25,6 +25,7 @@ C:\二年前期\CG2\project\game\scene\GamePlayScene.cpp;C:\二年前期\CG2\gen
 C:\二年前期\CG2\project\engine\io\ImguiManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\ImguiManager.obj
 C:\二年前期\CG2\project\engine\3d\Light.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Light.obj
 C:\二年前期\CG2\project\engine\3d\LightManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\LightManager.obj
+C:\二年前期\CG2\project\engine\io\Log.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Log.obj
 C:\二年前期\CG2\project\main.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\main.obj
 C:\二年前期\CG2\project\engine\3d\Model.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Model.obj
 C:\二年前期\CG2\project\engine\3d\ModelCommon.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\ModelCommon.obj
@@ -43,6 +44,6 @@ C:\二年前期\CG2\project\engine\debug\ParticleEditor.cpp;C:\二年前期\CG2\
 C:\二年前期\CG2\project\game\character\Player.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Player.obj
 C:\二年前期\CG2\project\engine\scene\SceneFactory.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\SceneFactory.obj
 C:\二年前期\CG2\project\engine\scene\SceneManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\SceneManager.obj
-C:\二年前期\CG2\project\engine\2d\SpriteDebugEditor.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\SpriteDebugEditor.obj
+C:\二年前期\CG2\project\engine\debug\SpriteDebugEditor.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\SpriteDebugEditor.obj
 C:\二年前期\CG2\project\engine\2d\Text.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Text.obj
 C:\二年前期\CG2\project\game\scene\TitleScene.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\TitleScene.obj
