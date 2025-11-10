@@ -138,6 +138,7 @@ void GamePlayScene::Initialize() {
     LoadSpriteLayout("sprite_layout.json");
 
 
+
     // --- イベント購読 ---
     EventManager::GetInstance()->Subscribe(
         [this](const PlayerHitEvent& event) {

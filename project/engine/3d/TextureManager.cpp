@@ -5,7 +5,6 @@
 // ★ DirectXCommon.h をインクルード
 #include "DirectXCommon.h" 
 
-//const std::string TextureManager::kDefaultBaseDirectory = "resouces/sprite/";
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>
@@ -84,24 +83,21 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
 
-    // ★★★ この時点では Framework::Run によりリストは Open ★★★
 
     UploadTextureData(
         resource.Get(), mipImages, &intermediateResource,
-        device_.Get(), dxCommon_->GetCommandList()); // ★ コマンドが積まれる
+        device_.Get(), dxCommon_->GetCommandList()); //コマンドが積まれる
 
-    // ★★★ 既存の FlushCommandQueue(true) を呼び出す ★★★
-    // (true を渡すことで、Close -> Execute -> Wait -> Reset(Open) を行う)
-    // (これによりテクスチャアップロードが完了し、リストは再び Open に戻る)
+    // FlushCommandQueue(true) を呼び出す
     dxCommon_->FlushCommandQueue(true);
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+ 
 
     // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-    // ★★★ キューブマップ対応 (前回の修正) ★★★
+    // キューブマップ対応
     if (metadata.IsCubemap()) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
@@ -111,7 +107,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
     }
-    // ★★★★★★★★★★★★★★★★★★★★★★★
+
 
     // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
     uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
@@ -132,9 +128,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
 }
 
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
-    // ★★★ 修正点：mapから検索 ★★★
     auto it = textureDatas_.find(textureHandle);
-    // ハンドルがマップ内に存在するかチェック
     assert(it != textureDatas_.end());
     return it->second.metadata;
 }

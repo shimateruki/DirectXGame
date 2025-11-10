@@ -14,7 +14,7 @@ public:
     void Initialize(DirectXCommon* dxCommon);
     void Finalize();
 
-    // ★★★ モデル名で「探して、なければ読み込む」賢い関数に ★★★
+    // モデル名で「探して、なければ読み込む」賢い関数に
     Model* LoadModel(const std::string& modelName);
     /// <summary>
     /// ロード済みのすべてのモデル名を取得する
@@ -29,11 +29,11 @@ private:
 private:
     static ModelManager* instance;
 
-    // ★★★ ModelCommonはManagerが一元管理する ★★★
+    //ModelCommonはManagerが一元管理する
     std::unique_ptr<ModelCommon> modelCommon_;
     std::map<std::string, std::unique_ptr<Model>> models_;
 
-    // ★★★ デフォルトのパスと拡張子を定数として定義 ★★★
+    // デフォルトのパスと拡張子を定数として定義
     static const std::string kDefaultBaseDirectory;
     static const std::string kDefaultModelExtension;
 };

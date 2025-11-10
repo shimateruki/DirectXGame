@@ -44,7 +44,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 // モデルの描画処理
 void Model::Draw( ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource) {
 
-    // ★★★ common_経由でコマンドリストを取得 ★★★
+    // common_経由でコマンドリストを取得
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     // 頂点バッファをIAステージに設定
