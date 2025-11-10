@@ -32,6 +32,6 @@ private:
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
-    // ★ LightGroup ではなく LightGroup* (ポインタ) に修正
+    // LightGroup ではなく LightGroup* (ポインタ) に修正
     LightGroup* lightData_ = nullptr;
 };

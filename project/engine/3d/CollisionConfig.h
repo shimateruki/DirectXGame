@@ -9,10 +9,10 @@ enum CollisionAttribute : uint32_t {
     kGround = 1 << 2,  // 通常の地形
 };
 
-// 地形属性をまとめたマスク (押し戻し処理の対象をまとめるのに便利)
+// 地形属性をまとめたマスク 
 const uint32_t kAllGround = kGround;
 
-// 物理的に押し戻し処理を行う「固い」オブジェクトのマスク
+// 押し出し処理を適応させるやつを含ませる
 const uint32_t kAllSolid = kGround | kEnemy;
 
 /// <summary>

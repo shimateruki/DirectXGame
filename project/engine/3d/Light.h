@@ -20,7 +20,7 @@ struct PointLight {
     float intensity;    // 輝度
     float radius;       // 影響範囲
     float decay;        // 減衰率
-    int32_t isActive;   // 有効フラグ (シェーダーでのbool代わり)
+    int32_t isActive;   // 有効フラグ
     float padding;      // アライメント用
 };
 

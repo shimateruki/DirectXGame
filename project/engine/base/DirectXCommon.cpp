@@ -97,7 +97,7 @@ void DirectXCommon::PreDraw() {
     // シザー矩形（ピクセルを描画する範囲を限定する矩形）を設定します。
     commandList_->RSSetScissorRects(1, &scissorRect_);
 
-    // ★★★ SRVManagerからデスクリプタヒープを取得して設定 ★★★
+    //SRVManagerからデスクリプタヒープを取得して設定
     ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
     commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 }
@@ -114,7 +114,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
     D3D12_RESOURCE_DESC vertResoucesDesc{};
     //バッファーリソーステクスチャの場合は別の指定をする
     vertResoucesDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    vertResoucesDesc.Width = sizeInBytes; // ★★★ 注意：元のコードの *3 は削除しました ★★★
+    vertResoucesDesc.Width = sizeInBytes;
     //バッファの場合は1にする
     vertResoucesDesc.Height = 1;
     vertResoucesDesc.DepthOrArraySize = 1;
@@ -124,7 +124,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_
     vertResoucesDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     //実際に頂点リソースを作る
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
-    // ★★★ device をメンバ変数の device_ に変更 ★★★
     HRESULT hr = device_->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
         &vertResoucesDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&resource));
     assert(SUCCEEDED(hr));
@@ -219,7 +218,7 @@ void DirectXCommon::Finalize() {
 
     // --- コマンドリストが開いていたら安全に閉じる ---
     hr = commandList_->Close();
-    // Closeに失敗しても無視（すでにClose済みの可能性あり）
+    // Closeに失敗しても無視
 
     // --- 残りのリソースを解放 ---
     fenceEvent_ = nullptr;
@@ -238,7 +237,6 @@ void DirectXCommon::Finalize() {
 void DirectXCommon::PostDraw() {
     ImGuiManager::GetInstance()->Draw();
     // リソースバリアを再度設定します。
-    // 描画が終わったバックバッファの状態を「描画ターゲット用(RENDER_TARGET)」から「表示用(PRESENT)」に切り替えます。
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -251,17 +249,14 @@ void DirectXCommon::PostDraw() {
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
 
-    // FPS固定のための更新処理（独自実装の関数）
+    // FPS固定のための更新処理（
     UpdateFixFPS();
 
-    // コマンドリストの配列を作成します（今回は1つだけ）。
+    // コマンドリストの配列を作成します
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
     // コマンドキューにコマンドリストを投入し、GPUに実行を指示します。
     commandQueue_->ExecuteCommandLists(1, commandLists);
 
-    // スワップチェーンに命令を送り、バックバッファをフロントバッファに表示（プレゼント）します。
-    // 第1引数: VSync同期間隔 (1ならVSync待ち)
-    // 第2引数: オプションフラグ
     swapChain_->Present(1, 0);
 
     // --- ここから次のフレームのためのCPUとGPUの同期処理 ---
@@ -275,8 +270,6 @@ void DirectXCommon::PostDraw() {
     if (fence_->GetCompletedValue() < fenceValue_) {
         // GPUが指定したフェンス値に達したときに発火するイベントを設定します。
         fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
-        // CPUは、そのイベントが発火するまでここで待機します。
-        // これにより、GPUが前のフレームの処理を終えるまで、CPUが次のフレームの準備を始めるのを防ぎます。
         WaitForSingleObject(fenceEvent_, INFINITE);
     }
 }
@@ -443,7 +436,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(cons
 
     //resoucesの作成
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
-    // ★★★ device をメンバ変数の device_ に変更 ★★★
     HRESULT hr = device_->CreateCommittedResource(
         &heapProperties,
         D3D12_HEAP_FLAG_NONE,
@@ -481,7 +473,6 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
     //テクスチャファイルを読み込んでプログラムで扱えるようにする
     DirectX::ScratchImage image{};
     DirectX::ScratchImage mipImages{};
-    // ★★★ クラス内の static 関数を呼び出すように変更 ★★★
     std::wstring filePathW = DirectXCommon::ConvertString(filePath);
     HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
 
@@ -535,12 +526,9 @@ std::wstring DirectXCommon::ConvertString(const std::string& str) {
 }
 void DirectXCommon::FlushCommandQueue(bool reset) {
     // --- 安全にコマンドリストを閉じる ---
-    // すでにCloseされている場合は再Closeしないようにするため、try-Closeパターン
     HRESULT hr = S_OK;
     hr = commandList_->Close();
     if (FAILED(hr)) {
-        // もしすでにClose済みなら無視して続行（D3D12の仕様上OK）
-        // 例: D3D12_ERROR_INVALID_CALL の場合はスルー
     }
 
     // --- コマンドリストを実行 ---

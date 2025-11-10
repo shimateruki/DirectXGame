@@ -58,7 +58,6 @@ public:
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
     DirectionalLight* GetDirectionalLight() { return directionalLightData_; }
 
-    // ▼▼▼ ここからあたり判定用の機能 ▼▼▼
 
     // --- 属性フラグ関連 ---
     void SetCollisionAttribute(uint32_t attribute) { collisionAttribute_ = attribute; }

@@ -41,7 +41,6 @@ void Framework::Finalize() {
 
 
 void Framework::Run() {
-    // (変更なし)
     while (winApp_->Update() == false) {
         Update();
         Draw();

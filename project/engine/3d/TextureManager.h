@@ -36,7 +36,6 @@ private:
     DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
 
-    // ★★★ 修正点：vectorからmapに変更 ★★★
     // キーをSRVハンドル、値をテクスチャデータとする
     std::map<uint32_t, TextureData> textureDatas_;
 
