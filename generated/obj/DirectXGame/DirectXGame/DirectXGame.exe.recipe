@@ -2,15 +2,15 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\二年前期\CG2\generated\outputs\Debug\DirectXGame.exe</FullPath>
+      <FullPath>C:\二年前期\CG2\generated\outputs\Release\DirectXGame.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles>
     <ContentFile>
-      <FullPath>C:\二年前期\CG2\generated\outputs\Debug\DebugPrimitive.PS.cso</FullPath>
+      <FullPath>C:\二年前期\CG2\generated\outputs\Release\DebugPrimitive.PS.cso</FullPath>
     </ContentFile>
     <ContentFile>
-      <FullPath>C:\二年前期\CG2\generated\outputs\Debug\Particle.PS.cso</FullPath>
+      <FullPath>C:\二年前期\CG2\generated\outputs\Release\Particle.PS.cso</FullPath>
     </ContentFile>
   </ContentFiles>
   <SatelliteDlls />
