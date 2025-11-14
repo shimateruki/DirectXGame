@@ -71,8 +71,8 @@ public:
 	Vector3 Cross(const Vector3& v1, const Vector3& v2);
 	float Dot(const Vector3& v1, const Vector3& v2);
 
-	float Clamp(float value, float min, float max); 
-	float Length(const Vector3& v); 
+	float Clamp(float value, float min, float max);
+	float Length(const Vector3& v);
 	/// <summary>
 	/// 線形補間 (float)
 	/// </summary>

@@ -1,6 +1,6 @@
 
 #pragma once
-#include "Math.h"
+#include "engine/utility/math/Math.h"
 #include "InputManager.h"
 
 /// <summary>
@@ -14,7 +14,7 @@ public:
         kAimable,       // プレイヤーの後ろからマウスで視点操作・ズーム可能
         kFirstPerson,   // 一人称視点
     };
-   
+
 
 public:
     void Initialize();
@@ -72,7 +72,7 @@ public:
     /// </summary>
     FollowMode GetFollowMode() const { return followMode_; }
 
-    
+
 
 
 
@@ -95,7 +95,7 @@ private:
     // --- ポインタ ---
     InputManager* inputManager_ = nullptr;
 
-  
+
 
     // 追従対象の座標
     // (デバッグ中は nullptr, リリース中は Player の座標)

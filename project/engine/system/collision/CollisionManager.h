@@ -2,12 +2,22 @@
 #include "Object3d.h"
 #include <vector>
 #include <list>
-#include <map>      
+#include <unordered_map>
 #include <cstdint>  
-#include <set>
+#include <unordered_set>
 
 struct Vector3i {
     int x, y, z;
+};
+
+// 2つのポインタのペアをハッシュ化するためのカスタムハッシュ
+struct PairHash {
+    std::size_t operator()(const std::pair<Object3d*, Object3d*>& p) const {
+        // 簡易的なハッシュミックス
+        auto hashA = std::hash<Object3d*>{}(p.first);
+        auto hashB = std::hash<Object3d*>{}(p.second);
+        return hashA ^ (hashB << 1);
+    }
 };
 
 /// <summary>
@@ -50,13 +60,14 @@ private:
     CollisionManager& operator=(const CollisionManager&) = delete;
 
     /// ★ グリッドの1辺のサイズ (シーンの広さに合わせて調整)
-    float gridSize_ = 10.0f;
+    float gridSize_ = 5.0f;
 
     /// ★ 3D座標からグリッドID（ハッシュ値）を計算する
     int64_t GetGridID(const Vector3& pos);
 
-    /// ★ グリッドIDから (x, y, z) のインデックスを取得する
-    Vector3i GetGridIndices(int64_t gridID);
+    Vector3i GetGridIndices(const Vector3& pos);
+
+
 
     /// ★ (x, y, z) のインデックスからグリッドIDを計算する
     int64_t GetGridIDFromIndices(int x, int y, int z);
@@ -64,13 +75,25 @@ private:
     /// ★ 衝突判定のペアを実行するヘルパー関数
     void CheckCollisionPair(Object3d* objA, Object3d* objB);
 
+
+    /// <summary>
+    /// 静的オブジェクトを staticGrid_ に登録する (内部関数)
+    /// </summary>
+    void BuildStaticGrid();
+
+    // ★ 静的オブジェクト（地面、壁など）専用のグリッド
+    std::unordered_map<int64_t, std::list<Object3d*>> staticGrid_;
+
+    // ★ 静的グリッドを再構築する必要があるか
+    bool needsStaticGridRebuild_ = true;
+
 private:
     // 衝突判定を取りたいオブジェクトのリスト
     std::list<Object3d*> objects_;
 
     // ★ グリッド本体。キーはグリッドID、値はそのセル内のオブジェクトリスト
-    std::map<int64_t, std::list<Object3d*>> grid_;
+    std::unordered_map<int64_t, std::list<Object3d*>> grid_;
 
     // ★ 判定済みのペアを記録するためのセット
-    std::set<std::pair<Object3d*, Object3d*>> checkedPairs_;
+    std::unordered_set<std::pair<Object3d*, Object3d*>, PairHash> checkedPairs_;
 };

@@ -1,7 +1,8 @@
 #include "CollisionManager.h"
 #include "engine/utility/math/Math.h"
 #include <cmath> 
-#include <set>   
+#include <algorithm> // std::find
+
 
 CollisionManager* CollisionManager::GetInstance() {
     static CollisionManager instance;
@@ -9,143 +10,186 @@ CollisionManager* CollisionManager::GetInstance() {
 }
 
 void CollisionManager::AddObject(Object3d* object) {
-    // リストがクリアされるタイミングでポインタが無効にならないよう、
-    // objects_ に追加する
     objects_.push_back(object);
+    // 静的グリッドの再構築が必要
+    needsStaticGridRebuild_ = true;
+}
+
+void CollisionManager::RemoveObject(Object3d* object) {
+    auto it = std::find(objects_.begin(), objects_.end(), object);
+    if (it != objects_.end()) {
+        objects_.erase(it);
+        // 静的グリッドの再構築が必要
+        needsStaticGridRebuild_ = true;
+    }
 }
 
 void CollisionManager::ClearObjects() {
     objects_.clear();
-    grid_.clear(); // グリッドもクリア
-    checkedPairs_.clear(); // 判定済みセットもクリア
+    grid_.clear();
+    checkedPairs_.clear();
+    staticGrid_.clear();
+    needsStaticGridRebuild_ = true;
 }
 
-// 3D座標 -> グリッドID
+
+// --- グリッド座標計算 ---
+
+// 座標オフセット。負の座標を正のインデックス空間にマップする
+const float kGridOffset = 1048576.0f; // 2^20
+
+// 3D座標 -> グリッドID (すり抜け対策済み)
 int64_t CollisionManager::GetGridID(const Vector3& pos) {
-    // 座標をグリッドサイズで割り、整数に丸める
-    int x = static_cast<int>(std::floor(pos.x / gridSize_));
-    int y = static_cast<int>(std::floor(pos.y / gridSize_));
-    int z = static_cast<int>(std::floor(pos.z / gridSize_));
+    // 座標にオフセットを加えて必ず正の数にする
+    float offsetX = pos.x + (kGridOffset * gridSize_);
+    float offsetY = pos.y + (kGridOffset * gridSize_);
+    float offsetZ = pos.z + (kGridOffset * gridSize_);
+
+    int x = static_cast<int>(std::floor(offsetX / gridSize_));
+    int y = static_cast<int>(std::floor(offsetY / gridSize_));
+    int z = static_cast<int>(std::floor(offsetZ / gridSize_));
 
     return GetGridIDFromIndices(x, y, z);
 }
 
-// (x,y,z)インデックス -> グリッドID
-// (64bit整数内に、21bitずつ3つのインデックスを詰め込む)
+// 3D座標 -> (x,y,z)インデックス (AABB計算用)
+Vector3i CollisionManager::GetGridIndices(const Vector3& pos) {
+    float offsetX = pos.x + (kGridOffset * gridSize_);
+    float offsetY = pos.y + (kGridOffset * gridSize_);
+    float offsetZ = pos.z + (kGridOffset * gridSize_);
+
+    int x = static_cast<int>(std::floor(offsetX / gridSize_));
+    int y = static_cast<int>(std::floor(offsetY / gridSize_));
+    int z = static_cast<int>(std::floor(offsetZ / gridSize_));
+    return { x, y, z };
+}
+
+
+// (x,y,z)インデックス -> グリッドID (ハッシュ衝突対策済み)
 int64_t CollisionManager::GetGridIDFromIndices(int x, int y, int z) {
-    const int64_t bits = 21; // 各軸に21ビット (約+/- 100万セル)
-    const int64_t mask = (1LL << bits) - 1;
+    int64_t id_x = static_cast<int64_t>(x);
+    int64_t id_y = static_cast<int64_t>(y);
+    int64_t id_z = static_cast<int64_t>(z);
 
-    // 2の補数表現を考慮してビットマスクを適用
-    int64_t id_x = static_cast<int64_t>(x) & mask;
-    int64_t id_y = (static_cast<int64_t>(y) & mask) << bits;
-    int64_t id_z = (static_cast<int64_t>(z) & mask) << (bits * 2);
+    const int64_t mask = 0x1FFFFF; // 21ビットマスク
 
-    return id_x | id_y | id_z;
+    // マスクを適用してIDを生成
+    int64_t masked_x = id_x & mask;
+    int64_t masked_y = id_y & mask;
+    int64_t masked_z = id_z & mask;
+
+    return (masked_z << 42) | (masked_y << 21) | masked_x;
 }
 
-// グリッドID -> (x,y,z)インデックス
-Vector3i CollisionManager::GetGridIndices(int64_t gridID) {
-    const int64_t bits = 21;
-    const int64_t mask = (1LL << bits) - 1;
-    // 符号拡張のための処理
-    const int64_t sign_mask = 1LL << (bits - 1);
 
-    int64_t id_x = gridID & mask;
-    int64_t id_y = (gridID >> bits) & mask;
-    int64_t id_z = (gridID >> (bits * 2)) & mask;
+// --- メイン処理 ---
 
-    // 符号ビットを見て負の数に戻す 
-    if (id_x & sign_mask) id_x |= ~mask;
-    if (id_y & sign_mask) id_y |= ~mask;
-    if (id_z & sign_mask) id_z |= ~mask;
+// 静的オブジェクトを staticGrid_ に登録する
+void CollisionManager::BuildStaticGrid() {
 
-    return { static_cast<int>(id_x), static_cast<int>(id_y), static_cast<int>(id_z) };
-}
+    staticGrid_.clear();
 
-// 衝突ペアのチェック (精密判定は Character/Player の OnCollision が担当)
-void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
+    for (Object3d* obj : objects_) {
+        // 静的なオブジェクトでなければスキップ
+        if (!obj->IsStatic()) {
+            continue;
+        }
 
-    // 衝突フィルタリング (既存のロジック)
-    if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
-        (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
-        return;
+        AABB aabb = obj->GetAABB();
+        Vector3i minCell = GetGridIndices(aabb.min);
+        Vector3i maxCell = GetGridIndices(aabb.max);
+
+        // 静的グリッド (staticGrid_) に登録
+        for (int z = minCell.z; z <= maxCell.z; ++z) {
+            for (int y = minCell.y; y <= maxCell.y; ++y) {
+                for (int x = minCell.x; x <= maxCell.x; ++x) {
+                    int64_t cellID = GetGridIDFromIndices(x, y, z);
+                    staticGrid_[cellID].push_back(obj);
+                }
+            }
+        }
     }
 
-    //物理応答(Character)やゲームロジック(Player)は
-    //各オブジェクトの OnCollision が担当する 
-    objA->OnCollision(objB);
-    objB->OnCollision(objA);
+    needsStaticGridRebuild_ = false;
 }
 
 
-/// <summary>
-/// 更新処理 (グリッド分割版)
-/// </summary>
+// 更新処理 (静的/動的 分離版)
 void CollisionManager::Update() {
 
-    // --- 1. グリッドと判定済みセットをクリア ---
+    // 1. 静的グリッドの再構築 (必要な場合のみ)
+    if (needsStaticGridRebuild_) {
+        BuildStaticGrid();
+    }
+
+    // 2. 「動的グリッド」と「ペア記録」を毎フレームクリア
     grid_.clear();
     checkedPairs_.clear();
 
-    // --- 2. グリッドの再構築 ---
-    for (Object3d* obj : objects_) {
-        if (obj->GetColliderType() == ColliderType::kNone) {
+    // 3. 「動的オブジェクト」だけを「動的グリッド (grid_)」に登録
+    for (Object3d* objA : objects_) {
+        if (objA->IsStatic()) {
             continue;
         }
-        Vector3 pos = obj->GetWorldPosition();
-        int64_t gridID = GetGridID(pos);
-        grid_[gridID].push_back(obj);
+
+        AABB aabb = objA->GetAABB();
+        Vector3i minCell = GetGridIndices(aabb.min);
+        Vector3i maxCell = GetGridIndices(aabb.max);
+
+        // 「動的グリッド (grid_)」に登録
+        for (int z = minCell.z; z <= maxCell.z; ++z) {
+            for (int y = minCell.y; y <= maxCell.y; ++y) {
+                for (int x = minCell.x; x <= maxCell.x; ++x) {
+                    int64_t cellID = GetGridIDFromIndices(x, y, z);
+                    grid_[cellID].push_back(objA);
+                }
+            }
+        }
     }
 
-    // --- 3. 衝突判定の実行 ---
+    // 4. 「動的オブジェクト」を主語にして衝突チェック
     for (Object3d* objA : objects_) {
-
-        // (コライダーが kNone ならスキップ)
-        if (objA->GetColliderType() == ColliderType::kNone) {
+        if (objA->IsStatic()) {
             continue;
         }
 
-        // objA の中心点が含まれるグリッドのインデックスを取得
-        Vector3i indicesA = GetGridIndices(GetGridID(objA->GetWorldPosition()));
+        AABB aabb = objA->GetAABB();
+        Vector3i minCell = GetGridIndices(aabb.min);
+        Vector3i maxCell = GetGridIndices(aabb.max);
 
-        // 「自分のセル」と「周囲26セル」（3x3x3）をチェック対象にする
-        for (int x = -1; x <= 1; ++x) {
-            for (int y = -1; y <= 1; ++y) {
-                for (int z = -1; z <= 1; ++z) {
+        for (int z = minCell.z; z <= maxCell.z; ++z) {
+            for (int y = minCell.y; y <= maxCell.y; ++y) {
+                for (int x = minCell.x; x <= maxCell.x; ++x) {
+                    int64_t cellID = GetGridIDFromIndices(x, y, z);
 
-                    // チェック対象のセルIDを計算
-                    int64_t cellID = GetGridIDFromIndices(indicesA.x + x, indicesA.y + y, indicesA.z + z);
+                    // --- 4a. 「動的 vs 動的」チェック ---
+                    auto it_dynamic = grid_.find(cellID);
+                    if (it_dynamic != grid_.end()) {
+                        std::list<Object3d*>& cellObjects = it_dynamic->second;
+                        for (Object3d* objB : cellObjects) {
 
-                    // そのセルがグリッドマップに存在するか検索
-                    auto it = grid_.find(cellID);
-                    if (it == grid_.end()) {
-                        continue; // このセルには誰もいない
+                            if (objA == objB) continue;
+
+                            Object3d* pairA = (objA < objB) ? objA : objB;
+                            Object3d* pairB = (objA < objB) ? objB : objA;
+
+                            if (checkedPairs_.count({ pairA, pairB })) {
+                                continue;
+                            }
+
+                            CheckCollisionPair(pairA, pairB);
+                            checkedPairs_.insert({ pairA, pairB });
+                        }
                     }
 
-                    // セル内の全オブジェクト(objB)と判定
-                    std::list<Object3d*>& cellObjects = it->second;
-                    for (Object3d* objB : cellObjects) {
-
-                        // 自分自身とは判定しない
-                        if (objA == objB) {
-                            continue;
+                    // --- 4b. 「動的 vs 静的」チェック ---
+                    auto it_static = staticGrid_.find(cellID);
+                    if (it_static != staticGrid_.end()) {
+                        std::list<Object3d*>& cellObjects = it_static->second;
+                        for (Object3d* objB : cellObjects) {
+                            // (objB は静的なので、ペアチェックは不要)
+                            CheckCollisionPair(objA, objB);
                         }
-
-                        // 判定順序を固定 (A < B) して、重複チェックを防ぐ
-                        Object3d* pairA = (objA < objB) ? objA : objB;
-                        Object3d* pairB = (objA < objB) ? objB : objA;
-
-                        // 既にこのペアを判定済みかチェック
-                        if (checkedPairs_.count({ pairA, pairB })) {
-                            continue;
-                        }
-
-                        //判定実行
-                        CheckCollisionPair(pairA, pairB);
-
-                        // 判定済みとして記録
-                        checkedPairs_.insert({ pairA, pairB });
                     }
                 }
             }
@@ -153,15 +197,17 @@ void CollisionManager::Update() {
     }
 }
 
-/// <summary>
-/// 衝突リストからオブジェクトを削除する
-/// </summary>
-void CollisionManager::RemoveObject(Object3d* object) {
-    if (object == nullptr) {
+
+// 2つのオブジェクトの衝突をチェックする
+void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
+    // 衝突フィルタリング
+    if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
+        (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
         return;
     }
-    auto it = std::remove(objects_.begin(), objects_.end(), object);
-    objects_.erase(it, objects_.end());
 
-    
+    // 各オブジェクトのOnCollisionを呼び出す
+    // (精密判定と応答は OnCollision 側が担当する)
+    objA->OnCollision(objB);
+    objB->OnCollision(objA);
 }
