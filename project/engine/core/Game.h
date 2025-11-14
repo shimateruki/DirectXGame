@@ -4,7 +4,7 @@
 #include "SceneManager.h"
 #include"CameraManager.h"
 #include"AbstractSceneFactory.h"
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
 #include "ParticleEditor.h"
@@ -27,7 +27,7 @@ private:
 	std::chrono::high_resolution_clock::time_point lastTime_;
 	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
 	float timeScale_ = 1.0f;
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
 	std::unique_ptr<ParticleEditor> particleEditor_;
