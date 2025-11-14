@@ -53,7 +53,7 @@ void Camera::Update() {
         if (io.WantCaptureMouse || io.WantCaptureKeyboard || !isInputEnabled_) {
         }
 #endif
-       
+
 
 
         // ★ Release用モードに応じてカメラの座標を計算
@@ -129,9 +129,9 @@ void Camera::Update() {
                 if (inputManager_->IsKeyPressed(DIK_DOWN)) { move.y -= moveSpeed; }
 
                 float wheelDelta = inputManager_->GetMouseWheelDelta();
-                const float wheelSpeed = 0.005f; 
+                const float wheelSpeed = 0.005f;
 
-    
+
                 //ホイール操作も io.WantCaptureMouse でガードされる
                 move.z += wheelDelta * wheelSpeed;
 

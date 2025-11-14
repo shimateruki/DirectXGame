@@ -73,9 +73,9 @@ public:
     void SetCollisionRadius(float radius) { radius_ = radius; }
     float GetCollisionRadius() const { return radius_; }
 
-    void SetCollisionSize(const Vector3& size) { 
-    aabbSize_ = size;
-    collisionSize_ = size;
+    void SetCollisionSize(const Vector3& size) {
+        aabbSize_ = size;
+        collisionSize_ = size;
     }
     const Vector3& GetCollisionSize() const { return aabbSize_; }
     // const版も用意（読み取り専用）
@@ -118,8 +118,16 @@ public:
         return false;
     }
 
+    /// <summary>
+        /// このオブジェクトを静的（動かない）として設定する
+        /// </summary>
+    void SetStatic(bool isStatic) { isStatic_ = isStatic; }
 
-protected: 
+    /// <summary>
+    /// このオブジェクトが静的かを取得する
+    /// </summary>
+    bool IsStatic() const { return isStatic_; }
+protected:
     Object3dCommon* common_ = nullptr;
     Model* model_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
@@ -140,8 +148,10 @@ protected:
     uint32_t collisionMask_ = 0xFFFFFFFF;
     float radius_ = 1.0f;
     Vector3 aabbSize_ = { 1.0f, 1.0f, 1.0f };
-    std::string name_ = "Object"; 
-    std::string modelName_;      
+    std::string name_ = "Object";
+    std::string modelName_;
     Vector3 collisionSize_;
+
+    bool isStatic_ = false;
 
 };
