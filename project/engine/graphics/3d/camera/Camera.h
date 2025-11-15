@@ -72,7 +72,20 @@ public:
     /// </summary>
     FollowMode GetFollowMode() const { return followMode_; }
 
+    /// <summary>
+    /// カメラの視点（座標）を取得する
+    /// </summary>
+    const Vector3& GetEye() const { return eye_; }
 
+    /// <summary>
+    /// カメラの注視点（見ている先）を取得する
+    /// </summary>
+    const Vector3& GetTargetPoint() const { return target_; }
+
+    /// <summary>
+    /// カメラの回転角度（ラジアン）を取得する (kAimable, kFirstPerson用)
+    /// </summary>
+    const Vector3& GetRotation() const { return rotation_; }
 
 
 

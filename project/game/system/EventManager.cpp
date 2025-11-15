@@ -19,3 +19,15 @@ void EventManager::Dispatch(const PlayerHitEvent& event) {
         listener(event);
     }
 }
+
+void EventManager::Subscribe(std::function<void(const BulletHitEvent&)> callback) {
+    // Bullet 用のリストに追加する
+    bulletHitListeners_.push_back(callback);
+}
+
+void EventManager::Dispatch(const BulletHitEvent& event) {
+    // Bullet 用のリストのリスナーを実行する
+    for (auto& listener : bulletHitListeners_) {
+        listener(event);
+    }
+}

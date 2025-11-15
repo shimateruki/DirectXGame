@@ -7,6 +7,7 @@ enum CollisionAttribute : uint32_t {
     kPlayer = 1 << 0,  // プレイヤー
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
+    kAttributePlayerBullet = 1<<3,
 };
 
 // 地形属性をまとめたマスク 

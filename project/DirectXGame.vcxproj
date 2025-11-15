@@ -151,6 +151,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Bullet.cpp" />
+    <ClCompile Include="BulletManager.cpp" />
     <ClCompile Include="game\actor\Character.cpp" />
     <ClCompile Include="engine\utility\debug\DebugConsole.cpp" />
     <ClCompile Include="engine\utility\debug\editor\DebugEditor.cpp" />
@@ -262,6 +264,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Bullet.h" />
+    <ClInclude Include="BulletManager.h" />
     <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />
     <ClInclude Include="game\actor\Character.h" />
     <ClInclude Include="engine\utility\debug\DebugConsole.h" />

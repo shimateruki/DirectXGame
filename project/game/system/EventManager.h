@@ -19,6 +19,16 @@ public:
     /// </summary>
     void Dispatch(const PlayerHitEvent& event);
 
+    /// <summary>
+    /// BulletHitEvent のリスナー（購読者）を登録する
+    /// </summary>
+    void Subscribe(std::function<void(const BulletHitEvent&)> callback);
+
+    /// <summary>
+    /// BulletHitEvent を発行（ディスパッチ）する
+    /// </summary>
+    void Dispatch(const BulletHitEvent& event);
+
 
 
 private:
@@ -30,4 +40,6 @@ private:
 private:
     // PlayerHitEvent のリスナーリスト
     std::list<std::function<void(const PlayerHitEvent&)>> playerHitListeners_;
+
+    std::list<std::function<void(const BulletHitEvent&)>> bulletHitListeners_;
 };
