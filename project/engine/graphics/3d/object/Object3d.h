@@ -56,6 +56,10 @@ public:
     BlendMode GetBlendMode() const { return blendMode_; }
 
     Transform* GetTransform() { return &transform_; }
+    /// <summary>
+    /// 回転量を取得する
+    /// </summary>
+    const Vector3& GetRotation() const { return transform_.rotate; }
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
     DirectionalLight* GetDirectionalLight() { return directionalLightData_; }
 
@@ -80,6 +84,10 @@ public:
     const Vector3& GetCollisionSize() const { return aabbSize_; }
     // const版も用意（読み取り専用）
     const Transform& GetTransform() const { return transform_; }
+    /// <summary>
+    /// Y軸の回転を設定する
+    /// </summary>
+    void SetRotationY(float y) { transform_.rotate.y = y; }
 
     // オブジェクトの識別名を設定
     void SetName(const std::string& name) { name_ = name; }

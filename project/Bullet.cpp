@@ -36,7 +36,7 @@ bool Bullet::OnCollision(Object3d* other) {
     CollisionInfo info = CheckCollision(other);
 
     if (!info.isColliding) {
-        return false; // 当たっていない
+        return false; 
     }
     // 何かに当たったら死亡
     isDead_ = true;

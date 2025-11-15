@@ -11,7 +11,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
     SetColliderType(ColliderType::kAABB);
     SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 }
-//
+
 void Player::Update() {
     static Math math;
     Vector3 move = { 0.0f, 0.0f, 0.0f };
@@ -19,68 +19,91 @@ void Player::Update() {
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-    if (camera && inputManager_) { // カメラと入力がある場合のみ
+    if (camera && inputManager_) {
 
-        // (1) カメラの前方・右方ベクトルを取得
-        Vector3 cameraForward = camera->GetTargetPoint() - camera->GetEye();
-        Vector3 cameraRight = math.Cross({ 0.0f, 1.0f, 0.0f }, cameraForward);
+        if (isLockingOn_) {
+            // --- (A) ロックオン中の移動 (ストラフ) ---
 
-        // (2) Y軸を潰して正規化 (地面と平行にする)
-        cameraForward.y = 0.0f;
-        cameraRight.y = 0.0f;
+            // プレイヤーの現在の向き（敵の方向）を基準にする
+            Vector3 playerForward = { 0, 0, 1 }; // Z+ が前
+            Vector3 playerRight = { 1, 0, 0 };   // X+ が右
 
-        // ゼロベクトルでないことを確認してから正規化
-        if (math.Length(cameraForward) > 0.001f) {
-            cameraForward = math.Normalize(cameraForward);
+            // (Object3d.h に GetRotation() を追加した前提)
+            Matrix4x4 rotateMat = math.MakeRotateYMatrix(transform_.rotate.y);
+            playerForward = math.TransformNormal(playerForward, rotateMat);
+            playerRight = math.TransformNormal(playerRight, rotateMat);
+
+            // WASD入力で前後左右に平行移動
+            if (inputManager_->IsKeyPressed(DIK_W)) {
+                move += playerForward * moveSpeed;
+            }
+            if (inputManager_->IsKeyPressed(DIK_S)) {
+                move += (playerForward * moveSpeed) * -1.0f; 
+            }
+            if (inputManager_->IsKeyPressed(DIK_A)) {
+                move += (playerRight * moveSpeed) * -1.0f;
+            }
+            if (inputManager_->IsKeyPressed(DIK_D)) {
+                move += playerRight * moveSpeed;
+            }
+
+        } else {
+            // --- (B) 通常時の移動 (元のコード) ---
+
+            Vector3 cameraForward = camera->GetTargetPoint() - camera->GetEye();
+            Vector3 cameraRight = math.Cross({ 0.0f, 1.0f, 0.0f }, cameraForward);
+            cameraForward.y = 0.0f;
+            cameraRight.y = 0.0f;
+
+            // (ゼロベクトルチェック)
+            if (math.Length(cameraForward) > 0.001f) {
+                cameraForward = math.Normalize(cameraForward);
+            }
+            if (math.Length(cameraRight) > 0.001f) {
+                cameraRight = math.Normalize(cameraRight);
+            }
+
+            if (inputManager_->IsKeyPressed(DIK_W)) {
+                move += cameraForward * moveSpeed;
+            }
+            if (inputManager_->IsKeyPressed(DIK_S)) {
+                move += (cameraForward * moveSpeed) * -1.0f;
+            }
+            if (inputManager_->IsKeyPressed(DIK_A)) {
+                move += (cameraRight * moveSpeed) * -1.0f;
+            }
+            if (inputManager_->IsKeyPressed(DIK_D)) {
+                move += cameraRight * moveSpeed;
+            }
         }
-        if (math.Length(cameraRight) > 0.001f) {
-            cameraRight = math.Normalize(cameraRight);
+
+
+        // --- 速度に反映 ---
+        velocity_.x = move.x;
+        velocity_.z = move.z;
+
+        // ★ 3. 回転処理 
+        if (!isLockingOn_) {
+            Camera::FollowMode cameraMode = camera->GetFollowMode();
+
+            if (cameraMode == Camera::FollowMode::kFirstPerson) {
+                transform_.rotate.y = camera->GetRotation().y;
+            } else if (math.Length(move) > 0.001f) {
+                transform_.rotate.y = std::atan2(move.x, move.z);
+            }
         }
 
-        // (3) 入力から移動ベクトルを計算
-        if (inputManager_->IsKeyPressed(DIK_W)) {
-            move += cameraForward * moveSpeed;
-        }
-        if (inputManager_->IsKeyPressed(DIK_S)) {
-            move += (cameraForward * -moveSpeed);
-        }
-        if (inputManager_->IsKeyPressed(DIK_A)) {
-            move += (cameraRight * -moveSpeed); // Aは左
-        }
-        if (inputManager_->IsKeyPressed(DIK_D)) {
-            move += cameraRight * moveSpeed; 
-        }
-    }
-    
 
-    // ★ 2. 水平方向の移動は velocity_ に直接代入する
-    velocity_.x = move.x;
-    velocity_.z = move.z;
 
-    // --- 3. プレイヤーの「向き」の更新 ---
-    Camera::FollowMode cameraMode = camera ? camera->GetFollowMode() : Camera::FollowMode::kFixed;
-
-    // (1人称視点の場合)
-    if (cameraMode == Camera::FollowMode::kFirstPerson) {
-        // カメラのY軸回転をプレイヤーのY軸回転にコピー
-        transform_.rotate.y = camera->GetRotation().y;
-    }
-    // (3人称視点などで、移動入力があった場合)
-    else if (math.Length(move) > 0.001f) {
-        // 移動方向（moveベクトル）を向く
-        transform_.rotate.y = std::atan2(move.x, move.z);
-    }
-    // (※ 移動入力がない時は、向きをそのまま維持する)
-
-    // ★ 4. ジャンプ処理 (元のコード)
-    if (isGrounded_ && inputManager_->IsKeyTriggered(DIK_SPACE)) {
-        const float kJumpVelocity = 0.5f; // ジャンプの初速 
-        velocity_.y = kJumpVelocity;      // Y軸の速度に初速を与える
+        // 4. ジャンプ処理 
+        if (isGrounded_ && inputManager_->IsKeyTriggered(DIK_SPACE)) {
+            const float kJumpVelocity = 0.5f;
+            velocity_.y = kJumpVelocity;
+        }
     }
 
     // --- 5. 親(Character)のUpdateを呼ぶ ---
     Character::Update();
- 
 }
 
 bool Player::OnCollision(Object3d* other) {

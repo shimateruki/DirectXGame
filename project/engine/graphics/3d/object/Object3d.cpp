@@ -24,12 +24,11 @@ void Object3d::Initialize(Object3dCommon* common) {
 }
 
 void Object3d::SetModel(const std::string& modelName) {
-    // ModelManagerにモデル名で要求するだけ！
     // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
     modelName_ = modelName;
 }
-// ▼▼▼ ロジック用のUpdate (中身は空) ▼▼▼
+
 void Object3d::Update() {
     // 派生クラス (Playerなど) でオーバーライドされる用
 }

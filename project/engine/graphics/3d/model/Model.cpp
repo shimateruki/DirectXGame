@@ -36,7 +36,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
-    materialData_->selectedLighting = 1;
+    materialData_->selectedLighting = 2;
     Math math;
     materialData_->uvTransform = math.makeIdentity4x4();
 }
