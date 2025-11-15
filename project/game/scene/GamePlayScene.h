@@ -11,6 +11,7 @@
 #include"Player.h"
 #include"Text.h"
 #include "Event.h"
+#include "BulletManager.h"
 
 #include <memory>
 #include <vector>
@@ -70,6 +71,8 @@ private:
     /// PlayerHitEvent を受け取ったときに呼ばれるコールバック関数
     /// </summary>
     void OnPlayerHit(const PlayerHitEvent& event);
+
+    void OnBulletHit(const BulletHitEvent& event);
 
 private:
 

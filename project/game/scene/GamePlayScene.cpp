@@ -18,6 +18,7 @@
 #include "SceneManager.h"
 #include"DebugConsole.h"
 #include <cassert>
+#include "BulletManager.h"
 
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -69,7 +70,7 @@ void GamePlayScene::Initialize() {
 
 	auto enemy = std::make_unique<Object3d>();
 	enemy->Initialize(object3dCommon_.get());
-	enemy->SetModel("bunny");
+	enemy->SetModel("block");
 	enemy->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	enemy->SetName("Enemy");
 	enemy->SetStatic(true);
@@ -101,8 +102,8 @@ void GamePlayScene::Initialize() {
 
 	objects_[2]->SetCollisionAttribute(kEnemy);
 	objects_[2]->SetCollisionMask(~kEnemy);
-	objects_[2]->SetColliderType(ColliderType::kSphere);
-	objects_[2]->SetCollisionRadius(1.0f);
+	objects_[2]->SetColliderType(ColliderType::kAABB);
+	objects_[2]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 	CollisionManager::GetInstance()->AddObject(objects_[2].get());
 	objects_[0]->SetCollisionAttribute(kGround);
 	objects_[0]->SetCollisionMask(~kGround);
@@ -118,6 +119,7 @@ void GamePlayScene::Initialize() {
 		objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 		CollisionManager::GetInstance()->AddObject(objects_[i].get());
 	}
+
 	// --- スプライトの生成 ---
 	uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
 	auto monsterBallSprite = std::make_unique<Sprite>();
@@ -135,7 +137,11 @@ void GamePlayScene::Initialize() {
 	flameSprite->SetPosition({ 640.0f, 360.0f });
 	flameSprite->SetSize({ 64.0f,64.0f });
 	sprites_.push_back(std::move(flameSprite));
-
+	//弾の初期化
+	BulletManager::GetInstance()->Initialize(
+		object3dCommon_.get(),
+		CollisionManager::GetInstance()
+	);
 
 	// --- レイアウト読み込み ---
 	LoadObjectLayout("scene_layout.json");
@@ -150,6 +156,12 @@ void GamePlayScene::Initialize() {
 		}
 	);
 
+	EventManager::GetInstance()->Subscribe(
+		[this](const BulletHitEvent& event) {
+			this->OnBulletHit(event);
+		}
+	);
+
 	//コマンドリストが安全に閉じるためのやつないとバグる
 	dxCommon_->FlushCommandQueue(false);
 }
@@ -158,7 +170,7 @@ void GamePlayScene::Finalize() {
 
 
 	CollisionManager::GetInstance()->ClearObjects();
-
+	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
 	particleCommon_.reset();
 	sprites_.clear();
@@ -169,7 +181,7 @@ void GamePlayScene::Finalize() {
 
 void GamePlayScene::Update(float deltaTime) {
 
-
+	static Math math;
 
 #ifndef _DEBUG
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -231,6 +243,37 @@ void GamePlayScene::Update(float deltaTime) {
 		);
 	}
 
+
+
+	if (inputManager_->IsMouseButtonTriggered(0)) { // (左クリック)
+
+		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
+		Vector3 startPos = player_->GetWorldPosition();
+		startPos.y += 1.0f;
+
+		Vector3 direction = camera->GetTargetPoint() - camera->GetEye();
+
+		// (NaNチェックはそのまま)
+		if (math.Length(direction) < 0.001f) {
+			direction = { 0.0f, 0.0f, 1.0f };
+		} else {
+			direction = math.Normalize(direction);
+		}
+
+		const float bulletSpeed = 2.0f;
+		Vector3 velocity = direction * bulletSpeed;
+
+
+		BulletManager::GetInstance()->Fire(
+			startPos, velocity,
+			kAttributePlayerBullet,
+			kEnemy,
+			"block", 1.0f, 120
+		);
+	}
+	BulletManager::GetInstance()->Update();
+
 	// --- 2. 物理 (衝突判定) 更新 ---
 	CollisionManager::GetInstance()->Update();
 
@@ -256,6 +299,8 @@ void GamePlayScene::Draw() {
 		}
 		objects_[i]->Draw();
 	}
+
+	BulletManager::GetInstance()->Draw();
 
 	// --- スプライト描画 ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
@@ -313,7 +358,16 @@ void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
 	}
 }
 
+void GamePlayScene::OnBulletHit(const BulletHitEvent& event) {
 
+	// (デバッグ用：衝突した相手の属性を取得)
+	uint32_t attribute = event.hitObject->GetCollisionAttribute();
+
+	// (例：敵か地面に当たったらログを出す)
+	if (attribute & (kEnemy)) {
+		DebugConsole::GetInstance()->AddLog("BULLET HIT!");
+	}
+}
 
 #pragma region Editor Functions
 void GamePlayScene::LoadObjectLayout(const std::string& filename) {
