@@ -12,6 +12,7 @@
 #include"Text.h"
 #include "Event.h"
 #include "BulletManager.h"
+#include"Camera.h"
 
 #include <memory>
 #include <vector>
@@ -110,5 +111,25 @@ private:
     /// 予約されたオブジェクトを安全に削除する
     /// </summary>
     void ProcessRemovals();
+
+    Object3d* lockOnTarget_ = nullptr; // 現在ロックオンしている敵
+    bool isLockingOn_ = false;           // ロックオン中フラグ
+
+    /// <summary>
+    /// ロックオン処理（入力、対象検索、状態更新）
+    /// </summary>
+    void UpdateLockOn();
+
+    std::unique_ptr<Object3d> CreateStaticBlock(const Vector3& position, const std::string& name, const Vector3& collisionHalfSize);
+
+    /// <summary>
+    /// ロックオン対象として最適な敵を探す
+    /// </summary>
+    Object3d* FindBestLockOnTarget(Camera* camera);
+
+    /// <summary>
+    /// シーン内の敵リストを取得する
+    /// </summary>
+    std::vector<Object3d*> FindEnemies();
 
 };

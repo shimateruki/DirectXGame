@@ -52,12 +52,6 @@ void GamePlayScene::Initialize() {
 	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
 
 	// --- オブジェクトの生成 ---
-	auto plane = std::make_unique<Object3d>();
-	plane->Initialize(object3dCommon_.get());
-	plane->SetModel("plane");
-	plane->SetName("Plane");
-	plane->SetStatic(true);
-	objects_.emplace_back(std::move(plane));
 
 	auto playerObj = std::make_unique<Player>();
 	playerObj->Initialize(object3dCommon_.get(), inputManager_);
@@ -76,43 +70,117 @@ void GamePlayScene::Initialize() {
 	enemy->SetStatic(true);
 	objects_.emplace_back(std::move(enemy));
 
-	for (int i = 0; i < 2000; ++i) {
-		auto block = std::make_unique<Object3d>();
-		block->Initialize(object3dCommon_.get());
-		block->SetModel("block");
-		block->SetTranslate({ -4.0f, 0.0f, (float)i * 1.8f - 4.0f });
-		block->SetName("Block_" + std::to_string(i));
-		block->SetStatic(true);
-		objects_.emplace_back(std::move(block));
+	const float blockSize = 2.0f; // ブロックの1辺のサイズ 
+	const int fieldWidth = 30;  // X方向 (幅) の床の数
+	const int fieldDepth = 30;  // Z方向 (奥行) の床の数
+	const int wallHeight = 5;   // Y方向 (高さ) の壁の数
+
+	// フィールドの中心が (0, 0, 0) 付近になるようオフセットを計算
+	const float offsetX = (fieldWidth * blockSize) / 2.0f;
+	const float offsetZ = (fieldDepth * blockSize) / 2.0f;
+
+	// 衝突判定用のハーフサイズ
+	const Vector3 blockHalfSize = { blockSize / 2.0f, blockSize / 2.0f, blockSize / 2.0f };
+
+
+	// --- 1. 床 (Floor) の生成---
+	const float floorY = -blockSize;
+	for (int z = 0; z < fieldDepth; ++z) {
+		for (int x = 0; x < fieldWidth; ++x) {
+			auto block = std::make_unique<Object3d>();
+			block->Initialize(object3dCommon_.get());
+			block->SetModel("block");
+
+			float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
+			float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+			block->SetTranslate({ posX, floorY, posZ });
+
+			block->SetName("Floor_" + std::to_string(x) + "_" + std::to_string(z));
+			block->SetStatic(true);
+
+			// ★ ブロック生成と同時に衝突判定も設定
+			block->SetCollisionAttribute(kGround);
+			block->SetCollisionMask(~kGround);
+			block->SetColliderType(ColliderType::kAABB);
+			block->SetCollisionSize(blockHalfSize);
+			CollisionManager::GetInstance()->AddObject(block.get());
+
+			objects_.emplace_back(std::move(block));
+		}
+	}
+
+	// --- 2. 壁 (Walls) の生成 (Y= 0 ～ wallHeight) ---
+	for (int y = 0; y < wallHeight; ++y) {
+		float posY = y * blockSize; // 0.0, 2.0, 4.0 ...
+
+		// (A) X軸に沿った壁 (奥: Z+ と 手前: Z-)
+		for (int x = 0; x < fieldWidth; ++x) {
+			float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
+
+			// 奥の壁 (Z+)
+			float posZ_Back = (fieldDepth * blockSize) - offsetZ - (blockSize / 2.0f);
+			objects_.push_back(CreateStaticBlock(
+				{ posX, posY, posZ_Back },
+				"Wall_Back_" + std::to_string(x) + "_" + std::to_string(y),
+				blockHalfSize
+			));
+
+			// 手前の壁 (Z-)
+			float posZ_Front = -offsetZ + (blockSize / 2.0f);
+			objects_.push_back(CreateStaticBlock(
+				{ posX, posY, posZ_Front },
+				"Wall_Front_" + std::to_string(x) + "_" + std::to_string(y),
+				blockHalfSize
+			));
+		}
+
+		// (B) Z軸に沿った壁 
+		for (int z = 1; z < fieldDepth - 1; ++z) {
+			float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+
+			// 右の壁 (X+)
+			float posX_Right = (fieldWidth * blockSize) - offsetX - (blockSize / 2.0f);
+			objects_.push_back(CreateStaticBlock(
+				{ posX_Right, posY, posZ },
+				"Wall_Right_" + std::to_string(z) + "_" + std::to_string(y),
+				blockHalfSize
+			));
+
+			// 左の壁 (X-)
+			float posX_Left = -offsetX + (blockSize / 2.0f);
+			objects_.push_back(CreateStaticBlock(
+				{ posX_Left, posY, posZ },
+				"Wall_Left_" + std::to_string(z) + "_" + std::to_string(y),
+				blockHalfSize
+			));
+		}
 	}
 
 	// --- カメラの設定 ---
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-	camera->SetTarget(&objects_[1]->GetTransform()->translate);
+
 #ifndef _DEBUG 
-	camera->SetFollowMode(Camera::FollowMode::kAimable);
-	camera->ConfigAimable(10.0f, 2.0f, 20.0f);
+	camera->SetFollowTarget(player_);
+	camera->SetFollowMode(Camera::FollowMode::kAimable);//カメラのモード設定
+	camera->ConfigAimable(15.0f, 5.0f, 25.0f);//距離
+	camera->SetLockOnOffset({ 0.0f, 4.0f, -12.0f });//ロックオン時のカメラ
 #endif
 
 	// --- 衝突判定の設定 ---
 	CollisionManager::GetInstance()->ClearObjects();
-	objects_[1]->SetCollisionAttribute(kPlayer);
-	objects_[1]->SetCollisionMask(~kPlayer);
-	CollisionManager::GetInstance()->AddObject(objects_[1].get());
-
-	objects_[2]->SetCollisionAttribute(kEnemy);
-	objects_[2]->SetCollisionMask(~kEnemy);
-	objects_[2]->SetColliderType(ColliderType::kAABB);
-	objects_[2]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-	CollisionManager::GetInstance()->AddObject(objects_[2].get());
-	objects_[0]->SetCollisionAttribute(kGround);
-	objects_[0]->SetCollisionMask(~kGround);
-	objects_[0]->SetColliderType(ColliderType::kAABB);
-	objects_[0]->SetCollisionSize({ 10.0f, 0.1f, 10.0f });
+	objects_[0]->SetCollisionAttribute(kPlayer);
+	objects_[0]->SetCollisionMask(~kPlayer);
 	CollisionManager::GetInstance()->AddObject(objects_[0].get());
 
+	objects_[1]->SetCollisionAttribute(kEnemy);
+	objects_[1]->SetCollisionMask(~kEnemy);
+	objects_[1]->SetColliderType(ColliderType::kAABB);
+	objects_[1]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
+	CollisionManager::GetInstance()->AddObject(objects_[1].get());
 
-	for (size_t i = 3; i < objects_.size(); ++i) {
+
+
+	for (size_t i = 2; i < objects_.size(); ++i) {
 		objects_[i]->SetCollisionAttribute(kGround);
 		objects_[i]->SetCollisionMask(~kGround);
 		objects_[i]->SetColliderType(ColliderType::kAABB);
@@ -190,7 +258,6 @@ void GamePlayScene::Update(float deltaTime) {
 	if (currentMode == Camera::FollowMode::kAimable) {
 		float wheelDelta = inputManager_->GetMouseWheelDelta();
 		if (wheelDelta != 0.0f) {
-			camera->AddZoom(wheelDelta);
 		}
 	}
 	if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
@@ -209,6 +276,11 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 
 	particleSystem_->Update(deltaTime);
+
+
+	// Player の更新 [user request line 226] より先にロックオン状態を更新
+
+	UpdateLockOn();
 
 	// --- 1. ゲームロジック (オブジェクト・スプライト) 更新 ---
 	for (auto& obj : objects_) {
@@ -244,22 +316,33 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 
 
-
-	if (inputManager_->IsMouseButtonTriggered(0)) { // (左クリック)
+	// 【ロックオン用に弾発射ロジックを修正】
+	if (inputManager_->IsMouseButtonTriggered(0)) { 
 
 		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
 		Vector3 startPos = player_->GetWorldPosition();
-		startPos.y += 1.0f;
+		startPos.y += 1.0f; // 少し上から
 
-		Vector3 direction = camera->GetTargetPoint() - camera->GetEye();
+		Vector3 direction;
 
-		// (NaNチェックはそのまま)
+		// (1) ロックオン状態に応じて発射方向を切り替え
+		if (isLockingOn_ && lockOnTarget_) {
+			// (A) ロックオン中： 敵の方向を向く
+			Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
+			direction = enemyPos - startPos;
+		} else {
+			// (B) 通常時： カメラの視点方向
+			direction = camera->GetTargetPoint() - camera->GetEye();
+		}
+
+		// (2) NaNチェック 
 		if (math.Length(direction) < 0.001f) {
-			direction = { 0.0f, 0.0f, 1.0f };
+			direction = { 0.0f, 0.0f, 1.0f }; // デフォルト前方
 		} else {
 			direction = math.Normalize(direction);
 		}
+
+
 
 		const float bulletSpeed = 2.0f;
 		Vector3 velocity = direction * bulletSpeed;
@@ -268,10 +351,12 @@ void GamePlayScene::Update(float deltaTime) {
 		BulletManager::GetInstance()->Fire(
 			startPos, velocity,
 			kAttributePlayerBullet,
-			kEnemy,
+			kEnemy | kGround, 
 			"block", 1.0f, 120
 		);
 	}
+
+
 	BulletManager::GetInstance()->Update();
 
 	// --- 2. 物理 (衝突判定) 更新 ---
@@ -286,7 +371,9 @@ void GamePlayScene::Draw() {
 	bool isFirstPerson = false;
 #ifndef _DEBUG
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-	if (camera->GetTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+
+	// 【ロックオン用に修正】
+	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
 #endif
@@ -294,8 +381,9 @@ void GamePlayScene::Draw() {
 	// --- 3Dオブジェクト描画 ---
 	object3dCommon_->SetGraphicsCommand();
 	for (size_t i = 0; i < objects_.size(); ++i) {
+		// (i == 1 がプレイヤー という前提)
 		if (isFirstPerson && i == 1) {
-			continue;
+			continue; 
 		}
 		objects_[i]->Draw();
 	}
@@ -311,7 +399,6 @@ void GamePlayScene::Draw() {
 
 	particleSystem_->Draw();
 }
-
 void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
 	uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
@@ -546,3 +633,143 @@ void GamePlayScene::ProcessRemovals() {
 	removalList_.clear();
 }
 #pragma endregion
+
+
+
+/// <summary>
+/// シーン内の敵リストを取得する
+/// </summary>
+std::vector<Object3d*> GamePlayScene::FindEnemies() {
+	std::vector<Object3d*> enemies;
+	for (const auto& obj : objects_) {
+		// kEnemy 属性 を持ち、プレイヤー自身 ではないオブジェクトを検索
+		if ((obj->GetCollisionAttribute() & kEnemy) && (obj.get() != player_)) {
+			enemies.push_back(obj.get());
+		}
+	}
+	return enemies;
+}
+
+/// <summary>
+/// ロックオン対象として最適な敵を探す
+/// </summary>
+Object3d* GamePlayScene::FindBestLockOnTarget(Camera* camera) {
+	static Math math;
+	std::vector<Object3d*> enemies = FindEnemies();
+	if (enemies.empty() || !player_) { return nullptr; }
+
+	Object3d* bestTarget = nullptr;
+	float maxDot = -2.0f; // 内積の最小値(-1)より小さく
+
+	Vector3 playerPos = player_->GetWorldPosition();
+	Vector3 cameraForward = math.Normalize(camera->GetTargetPoint() - camera->GetEye());
+
+	const float maxLockOnDistance = 50.0f; // ロックオン最大距離
+	const float minLockOnDot = 0.5f;     // 視界（約60度）の外は無視
+
+	for (Object3d* enemy : enemies) {
+		Vector3 enemyPos = enemy->GetWorldPosition();
+		Vector3 toEnemy = enemyPos - playerPos;
+		float distance = math.Length(toEnemy);
+
+		// 遠すぎる敵は除外
+		if (distance > maxLockOnDistance || distance < 0.1f) {
+			continue;
+		}
+
+		Vector3 toEnemyNormalized = toEnemy / distance;
+		float dot = math.Dot(cameraForward, toEnemyNormalized);
+
+		// 視界内で、最もカメラ正面に近い敵を選ぶ
+		if (dot > minLockOnDot && dot > maxDot) {
+
+			//どこかでカメラがめり込んだ時の対処をしたいここで
+
+			maxDot = dot;
+			bestTarget = enemy;
+		}
+	}
+	return bestTarget;
+}
+
+
+/// <summary>
+/// ロックオン処理
+/// </summary>
+void GamePlayScene::UpdateLockOn() {
+	if (!player_ || !inputManager_) { return; }
+
+	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	if (!camera) { return; }
+
+	// (1) ★ Zキー でロックオン開始/解除
+	if (inputManager_->IsKeyTriggered(DIK_Z)) { 
+		isLockingOn_ = !isLockingOn_;
+
+		if (isLockingOn_) {
+			// (2) ロックオン開始 -> 対象を検索
+			lockOnTarget_ = FindBestLockOnTarget(camera);
+			if (lockOnTarget_ == nullptr) { // 対象が見つからなければ解除
+				isLockingOn_ = false;
+			}
+		}
+
+		if (!isLockingOn_) {
+			// (3) ロックオン解除
+			lockOnTarget_ = nullptr;
+			camera->SyncRotationToCurrentView();
+			camera->SetLockOnTarget(nullptr); // カメラの注視点を解除
+			camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モードに戻す
+		}
+
+		player_->SetLockOn(isLockingOn_); // Playerに状態を通知
+	}
+
+	// (4) ロックオン中の更新
+	if (isLockingOn_) {
+		if (lockOnTarget_ == nullptr) {
+			isLockingOn_ = false;
+			player_->SetLockOn(false);
+			camera->SetFollowMode(Camera::FollowMode::kAimable);
+			return;
+		}
+
+		// (5) プレイヤーの向きを敵に向ける
+		Vector3 playerPos = player_->GetWorldPosition();
+		Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
+		Vector3 toEnemy = enemyPos - playerPos;
+		toEnemy.y = 0.0f; // 高低差は無視
+
+		// プレイヤーのY軸回転を敵の方向に向ける 
+		player_->SetRotationY(std::atan2(toEnemy.x, toEnemy.z));
+		// (6) カメラをロックオンモードに設定
+		camera->SetFollowMode(Camera::FollowMode::kLockOn);
+		camera->SetLockOnTarget(lockOnTarget_); // 注視対象を敵にセット
+	}
+}
+
+
+/// <summary>
+/// 静的な壁/床ブロックを生成し、衝突判定に登録するヘルパー関数
+/// </summary>
+std::unique_ptr<Object3d> GamePlayScene::CreateStaticBlock(
+	const Vector3& position,
+	const std::string& name,
+	const Vector3& collisionHalfSize)
+{
+	auto block = std::make_unique<Object3d>();
+	block->Initialize(object3dCommon_.get());
+	block->SetModel("block");
+	block->SetTranslate(position);
+	block->SetName(name);
+	block->SetStatic(true);
+
+	// ★ 衝突判定も同時に設定
+	block->SetCollisionAttribute(kGround);
+	block->SetCollisionMask(~kGround);
+	block->SetColliderType(ColliderType::kAABB);
+	block->SetCollisionSize(collisionHalfSize);
+	CollisionManager::GetInstance()->AddObject(block.get());
+
+	return block;
+}

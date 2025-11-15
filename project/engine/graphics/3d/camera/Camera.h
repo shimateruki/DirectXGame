@@ -1,7 +1,8 @@
-
 #pragma once
 #include "engine/utility/math/Math.h"
 #include "InputManager.h"
+#include "Object3d.h" 
+
 
 /// <summary>
 /// 3Dシーンの視点を管理するカメラクラス
@@ -13,6 +14,8 @@ public:
         kFixed,         // 従来の固定オフセット追従
         kAimable,       // プレイヤーの後ろからマウスで視点操作・ズーム可能
         kFirstPerson,   // 一人称視点
+        kLockOn,        // ロックオンモード
+
     };
 
 
@@ -20,10 +23,10 @@ public:
     void Initialize();
     void Update();
 
-    // --- セッター (変更なし) ---
+    // --- セッター ---
     void SetInputManager(InputManager* inputManager) { inputManager_ = inputManager; }
 
-    // --- ゲッター (変更なし) ---
+    // --- ゲッター  ---
     const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
     const Matrix4x4& GetProjectionMatrix() const { return projectionMatrix_; }
 
@@ -33,47 +36,46 @@ public:
     void SetInputEnabled(bool enabled) { isInputEnabled_ = enabled; }
 
     /// <summary>
-    /// 追従対象の座標を設定する (デバッグビルド中は無効化)
+    ///  追従対象のオブジェクト (Player) を設定する
     /// </summary>
-    void SetTarget(const Vector3* target);
-    const Vector3* GetTarget() const { return targetPosition_; }
+    void SetFollowTarget(Object3d* target) { followObject_ = target; }
 
     /// <summary>
-    /// [Release用] 追従モードを切り替える (例: kFixed, kAimable)
+    ///  ロックオン対象のオブジェクト (Enemy) を設定する
+    /// </summary>
+    void SetLockOnTarget(Object3d* target) { targetObject_ = target; }
+
+    /// <summary>
+    ///  カメラモードを設定する
     /// </summary>
     void SetFollowMode(FollowMode mode);
+    
 
     /// <summary>
-    /// [Release用] kFixed モードのオフセットを設定する
-    /// </summary>
-    void ConfigFixed(const Vector3& offset);
-
-    /// <summary>
-    /// [Release用] kAimable モードの距離や範囲を設定する
-    /// </summary>
-    void ConfigAimable(float distance, float minDistance, float maxDistance);
-
-    /// <summary>
-    /// [Release用] kFirstPerson モードの視点オフセットを設定する
-    /// </summary>
-    void ConfigFirstPerson(const Vector3& eyeOffset);
-
-    /// <summary>
-    /// [Release用] kAimable, kFirstPerson モードで視点回転を加える
-    /// </summary>
-    void AddRotation(const Vector2& mouseDelta);
-
-    /// <summary>
-    /// [Release用] kAimable モードでズーム距離を加える
-    /// </summary>
-    void AddZoom(float wheelDelta);
-    /// <summary>
-    /// [Release用] 現在の追従モードを取得する
+    /// 現在のカメラモードを取得する 
     /// </summary>
     FollowMode GetFollowMode() const { return followMode_; }
 
     /// <summary>
-    /// カメラの視点（座標）を取得する
+    /// 追従対象のオブジェクト (Player) を取得する
+    /// </summary>
+    Object3d* GetFollowTarget() const { return followObject_; }
+
+
+
+    // --- モード別設定  ---
+    void ConfigFixed(const Vector3& offset);
+    void ConfigAimable(float distance, float minDistance, float maxDistance);
+    void ConfigFirstPerson(const Vector3& eyeOffset);
+
+    // --- 操作---
+    void AddRotation(const Vector2& mouseDelta);
+
+
+    // --- ゲッター ---
+
+    /// <summary>
+    /// カメラの座標（視点）を取得する
     /// </summary>
     const Vector3& GetEye() const { return eye_; }
 
@@ -87,7 +89,15 @@ public:
     /// </summary>
     const Vector3& GetRotation() const { return rotation_; }
 
-
+    /// <summary>
+    /// ロックオン時のオフセットを設定する
+    /// </summary>
+    void SetLockOnOffset(const Vector3& offset) { lockOnOffset_ = offset; }
+    /// <summary>
+    /// kAimable モードの回転(rotation_)を、
+    /// 現在のカメラの向き (Eye -> Target または Eye -> FollowObject) に合わせる
+    /// </summary>
+    void SyncRotationToCurrentView();
 
 private:
     // --- カメラの三要素 ---
@@ -110,25 +120,36 @@ private:
 
 
 
-    // 追従対象の座標
-    // (デバッグ中は nullptr, リリース中は Player の座標)
-    const Vector3* targetPosition_ = nullptr;
+    // 追従対象のオブジェクト (Player)
+    Object3d* followObject_ = nullptr;
 
-    // ★ デバッグカメラ / Releaseカメラ(Aimable/FPS) の両方で使う回転
+    // 注視対象のオブジェクト (Enemy)
+    Object3d* targetObject_ = nullptr;
+
+  
+
+
+    // --- モード/状態 ---
+    FollowMode followMode_ = FollowMode::kAimable; // (デフォルトモード)
+    bool isInputEnabled_ = true; // デフォルトで入力を有効化
+
+    // --- オフセット/距離 ---
+
+    // (kFixed 用)
+    Vector3 fixedOffset_ = { 0.0f, 5.0f, -10.0f };
+
+    // (kAimable 用)
+    float distance_ = 10.0f;
+    float minDistance_ = 3.0f;
+    float maxDistance_ = 20.0f;
+
+    // (kFirstPerson 用)
+    Vector3 firstPersonOffset_ = { 0.0f, 1.5f, 0.0f };
+
+    // (kAimable / kFirstPerson 共通の回転)
     Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };
 
-    // --- Release用モードとパラメータ ---
-    FollowMode followMode_ = FollowMode::kFixed; // Release時のデフォルトモード
+    // (kLockOn 用) プレイヤーのY回転基準のオフセット
+    Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f }; 
 
-    // kFixed 用
-    Vector3 fixedOffset_ = { 0.0f, 5.0f, -20.0f }; // (Initializeの値で上書き)
-
-    // kAimable 用
-    float distance_ = 10.0f;      // ターゲットからの距離
-    float minDistance_ = 2.0f;     // 最小ズーム距離
-    float maxDistance_ = 20.0f;    // 最大ズーム距離
-
-    // kFirstPerson 用
-    Vector3 firstPersonOffset_ = { 0.0f, 0.5f, 0.0f }; // ターゲットの座標からの視点のズレ
-    bool isInputEnabled_ = true;
 };
