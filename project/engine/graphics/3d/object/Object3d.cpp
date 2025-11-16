@@ -29,7 +29,7 @@ void Object3d::SetModel(const std::string& modelName) {
     modelName_ = modelName;
 }
 
-void Object3d::Update() {
+void Object3d::Update(float deltaTime) {
     // 派生クラス (Playerなど) でオーバーライドされる用
 }
 

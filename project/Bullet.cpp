@@ -8,7 +8,7 @@ void Bullet::Initialize(Object3dCommon* common) {
 }
 
 void Bullet::Fire(const Vector3& position, const Vector3& velocity,
-    int life, uint32_t attribute, uint32_t mask) {
+    float life, uint32_t attribute, uint32_t mask) {
 
     transform_.translate = position;
     velocity_ = velocity;
@@ -20,15 +20,15 @@ void Bullet::Fire(const Vector3& position, const Vector3& velocity,
     SetCollisionMask(mask);
 }
 
-void Bullet::Update() {
+void Bullet::Update(float deltaTime) {
     if (isDead_) { return; }
 
-    lifeTimer_--;
-    if (lifeTimer_ <= 0) {
+    lifeTimer_ -= deltaTime; 
+    if (lifeTimer_ <= 0.0f) {
         isDead_ = true;
     }
-    // 速度を座標に反映
-    transform_.translate += velocity_;
+    // 速度（秒速）を経過時間分だけ座標に加算
+    transform_.translate += velocity_ * deltaTime;
 }
 
 bool Bullet::OnCollision(Object3d* other) {

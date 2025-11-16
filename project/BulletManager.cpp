@@ -21,7 +21,7 @@ void BulletManager::Finalize() {
 
 void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     uint32_t attr, uint32_t mask,
-    const std::string& model, float radius, int life) {
+    const std::string& model, float radius, float life) {
 
     if (!common_ || !colManager_) {
         return; 
@@ -30,8 +30,8 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     auto bullet = std::make_unique<Bullet>();
     bullet->Initialize(common_);
     bullet->SetModel(model);
-    bullet->SetColliderType(ColliderType::kSphere); // ★ 型を Sphere に設定
-    bullet->SetCollisionRadius(radius);         // (GamePlayScene から 1.0f が渡ってくる)
+    bullet->SetColliderType(ColliderType::kSphere); // 型を Sphere に設定
+    bullet->SetCollisionRadius(radius);        
 
     // 2. 粗い判定（ブロードフェーズ）用のAABBサイズ
     bullet->SetCollisionSize({ radius, radius, radius });
@@ -42,12 +42,12 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     bullets_.push_back(std::move(bullet));
 }
 
-void BulletManager::Update() {
+void BulletManager::Update(float deltaTime) {
     if (!colManager_) { return; }
 
     // 1. 全ての弾を更新
     for (auto& bullet : bullets_) {
-        bullet->Update();
+        bullet->Update(deltaTime);
         bullet->UpdateLocalMatrix();
         bullet->UpdateWorldMatrix(); // WorldMatrix の更新
     }

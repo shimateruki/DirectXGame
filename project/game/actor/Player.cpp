@@ -12,10 +12,10 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
     SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 }
 
-void Player::Update() {
+void Player::Update(float deltaTime) {
     static Math math;
     Vector3 move = { 0.0f, 0.0f, 0.0f };
-    const float moveSpeed = 0.1f;
+    const float moveSpeed = 6.0f;
 
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
@@ -97,13 +97,13 @@ void Player::Update() {
 
         // 4. ジャンプ処理 
         if (isGrounded_ && inputManager_->IsKeyTriggered(DIK_SPACE)) {
-            const float kJumpVelocity = 0.5f;
+            const float kJumpVelocity = 30.0f;
             velocity_.y = kJumpVelocity;
         }
     }
 
     // --- 5. 親(Character)のUpdateを呼ぶ ---
-    Character::Update();
+    Character::Update(deltaTime);
 }
 
 bool Player::OnCollision(Object3d* other) {

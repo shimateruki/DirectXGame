@@ -25,7 +25,7 @@ public:
 
 public:
     virtual void Initialize(Object3dCommon* common);
-    virtual void Update();
+    virtual void Update(float deltaTime);
     virtual void Draw();
 
     /// <summary>

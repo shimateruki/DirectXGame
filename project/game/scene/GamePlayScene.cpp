@@ -284,7 +284,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 	// --- 1. ゲームロジック (オブジェクト・スプライト) 更新 ---
 	for (auto& obj : objects_) {
-		obj->Update();
+		obj->Update(deltaTime);
 	}
 
 	if (player_) {
@@ -344,7 +344,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 
 
-		const float bulletSpeed = 2.0f;
+		const float bulletSpeed = 120.0f;
 		Vector3 velocity = direction * bulletSpeed;
 
 
@@ -357,7 +357,7 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 
 
-	BulletManager::GetInstance()->Update();
+	BulletManager::GetInstance()->Update(deltaTime);
 
 	// --- 2. 物理 (衝突判定) 更新 ---
 	CollisionManager::GetInstance()->Update();
@@ -501,7 +501,6 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 						transform->scale.y = objData["scale"][1].get<float>();
 						transform->scale.z = objData["scale"][2].get<float>();
 					}
-					targetObject->Update();
 				}
 			}
 		}
@@ -635,7 +634,7 @@ void GamePlayScene::ProcessRemovals() {
 #pragma endregion
 
 
-
+#pragma region ターゲット処理関数
 /// <summary>
 /// シーン内の敵リストを取得する
 /// </summary>
@@ -773,3 +772,4 @@ std::unique_ptr<Object3d> GamePlayScene::CreateStaticBlock(
 
 	return block;
 }
+#pragma endregion

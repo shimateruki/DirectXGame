@@ -52,6 +52,14 @@ void Game::Update() {
 #ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
+    if (ImGui::Begin("Game Time")) {
+        // timeScale_ を 0.0f ～ 2.0f の範囲で操作
+        ImGui::SliderFloat("Time Scale", &timeScale_, 0.0f, 2.0f);
+        if (ImGui::Button("Reset (1.0x)")) { timeScale_ = 1.0f; }
+        ImGui::SameLine();
+        if (ImGui::Button("Slow (0.2x)")) { timeScale_ = 0.2f; }
+    }
+    ImGui::End();
 #endif
     //フレームレート計算
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -125,8 +133,7 @@ void Game::Update() {
             DebugConsole::GetInstance()->DrawImGui();
         }
     }
-    ImGui::End(); // "Master Editor"
-    ImGuiManager::GetInstance()->EndFrame();
+    ImGui::End();
 #endif
 
     // --- 交通整理 ---
@@ -138,10 +145,13 @@ void Game::Update() {
 
     // --- シーンの更新 ---
     if (sceneManager_) {
-        sceneManager_->Update(deltaTime);
+        float scaledDeltaTime = deltaTime * timeScale_;
+        sceneManager_->Update(scaledDeltaTime); 
     }
 
-
+#ifdef USE_IMGUI
+    ImGuiManager::GetInstance()->EndFrame(); // ★ EndFrame をここに移動
+#endif
 }
 
 void Game::Draw() {

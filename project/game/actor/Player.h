@@ -5,7 +5,7 @@
 class Player : public Character {
 public:
     void Initialize(Object3dCommon* common, InputManager* inputManager);
-    void Update() override;
+    void Update(float deltaTime) override;
     void Draw() override;
     
 

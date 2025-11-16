@@ -15,7 +15,7 @@ public:
     /// <summary>
     /// 物理挙動を適用した更新処理
     /// </summary>
-    void Update() override;
+    void Update(float deltaTime) override;
 
     void Draw() override;
 
@@ -35,8 +35,8 @@ public:
     std::unique_ptr<Object3d> Clone() const override;
 protected:
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
-    float gravity_ = 0.015f;
-    float maxFallSpeed_ = 1.0f;
+    float gravity_ = 54.0f;
+    float maxFallSpeed_ = 60.0f;
     bool isGrounded_ = false;
 
 };
