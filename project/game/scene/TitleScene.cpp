@@ -68,7 +68,7 @@ void TitleScene::Update(float deltaTime) {
     CameraManager::GetInstance()->Update();
     // 3Dオブジェクトの更新
     for (auto& obj : objects_) {
-        obj->Update();
+        obj->Update(deltaTime);
     }
     for (auto& obj : objects_) {
         obj->UpdateLocalMatrix();
@@ -149,7 +149,7 @@ void TitleScene::LoadObjectLayout(const std::string& filename) {
                         transform->scale.y = objData["scale"][1].get<float>();
                         transform->scale.z = objData["scale"][2].get<float>();
                     }
-                    targetObject->Update();
+                 
                 }
             }
         }
