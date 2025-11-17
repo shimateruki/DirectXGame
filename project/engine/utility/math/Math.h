@@ -13,6 +13,9 @@ struct Vector3
 	float x;
 	float y;
 	float z;
+	Vector3 operator/(const Vector3& v) const {
+		return { x / v.x, y / v.y, z / v.z };
+	}
 };
 
 
@@ -39,6 +42,7 @@ Vector3 operator*(const Vector3& v, float scalar);
 Vector3 operator+(const Vector3& v1, const Vector3& v2);
 Vector3 operator/(const Vector3& v, float scalar);
 Vector3 operator-(const Vector3& v);
+
 
 Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
 Vector3& operator+=(Vector3& v1, const Vector3& v2);

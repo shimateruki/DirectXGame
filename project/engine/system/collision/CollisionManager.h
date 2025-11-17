@@ -21,6 +21,17 @@ struct PairHash {
 };
 
 /// <summary>
+/// レイキャストの結果を格納する構造体
+/// </summary>
+struct RaycastHit {
+    bool isHit = false;            // 衝突したか
+    Object3d* hitObject = nullptr; // 衝突したオブジェクト
+    Vector3 hitPoint;              // 衝突した座標
+    float distance = 0.0f;         // 衝突点までの距離
+    Vector3 normal;                // 衝突点の法線
+};
+
+/// <summary>
 /// 衝突判定を管理するクラス
 /// </summary>
 class CollisionManager {
@@ -52,6 +63,19 @@ public:
     /// （デバッグ用）グリッドの1辺のサイズを設定
     /// </summary>
     void SetGridSize(float size) { gridSize_ = size; }
+
+
+    /// <summary>
+    /// レイ（光線）を飛ばし、指定したマスクのオブジェクトと衝突するか判定する
+    /// </summary>
+    /// <param name="start">レイの開始地点</param>
+    /// <param name="direction">レイの方向（正規化されている必要あり）</param>
+    /// <param name="maxDistance">レイの最大距離</param>
+    /// <param name="mask">衝突対象とする属性マスク (例: kGround)</param>
+    /// <returns>衝突情報 (衝突しなかった場合は hit.isHit = false)</returns>
+    RaycastHit Raycast(const Vector3& start, const Vector3& direction,
+        float maxDistance, uint32_t mask = 0xFFFFFFFF);
+
 
 private:
     CollisionManager() = default;

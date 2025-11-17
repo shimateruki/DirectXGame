@@ -221,6 +221,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\utility\debug\editor\SpriteDebugEditor.cpp" />
     <ClCompile Include="engine\graphics\2d\Text.cpp" />
     <ClCompile Include="game\scene\TitleScene.cpp" />
+    <ClCompile Include="MoveStrategy2D.cpp" />
+    <ClCompile Include="MoveStrategy3D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
@@ -318,6 +320,9 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\graphics\2d\Text.h" />
     <ClInclude Include="game\scene\TitleScene.h" />
     <ClInclude Include="engine\utility\debug\Log.h" />
+    <ClInclude Include="IMoveStrategy.h" />
+    <ClInclude Include="MoveStrategy2D.h" />
+    <ClInclude Include="MoveStrategy3D.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
