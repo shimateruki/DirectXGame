@@ -3,6 +3,7 @@
 #include"SrvManager.h"
 #include <cassert>
 
+
 /// <summary>
 /// 初期化
 /// </summary>
