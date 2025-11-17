@@ -1,5 +1,5 @@
-C:\二年前期\CG2\project\Bullet.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Bullet.obj
-C:\二年前期\CG2\project\BulletManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\BulletManager.obj
+C:\二年前期\CG2\project\game\actor\Bullet.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Bullet.obj
+C:\二年前期\CG2\project\game\system\BulletManager.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\BulletManager.obj
 C:\二年前期\CG2\project\game\actor\Character.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Character.obj
 C:\二年前期\CG2\project\engine\utility\debug\DebugConsole.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\DebugConsole.obj
 C:\二年前期\CG2\project\engine\utility\debug\editor\DebugEditor.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\DebugEditor.obj
@@ -49,5 +49,5 @@ C:\二年前期\CG2\project\engine\system\scene\SceneManager.cpp;C:\二年前期
 C:\二年前期\CG2\project\engine\utility\debug\editor\SpriteDebugEditor.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\SpriteDebugEditor.obj
 C:\二年前期\CG2\project\engine\graphics\2d\Text.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\Text.obj
 C:\二年前期\CG2\project\game\scene\TitleScene.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\TitleScene.obj
-C:\二年前期\CG2\project\MoveStrategy2D.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\MoveStrategy2D.obj
-C:\二年前期\CG2\project\MoveStrategy3D.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\MoveStrategy3D.obj
+C:\二年前期\CG2\project\game\component\MoveStrategy2D.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\MoveStrategy2D.obj
+C:\二年前期\CG2\project\game\component\MoveStrategy3D.cpp;C:\二年前期\CG2\generated\obj\DirectXGame\DirectXGame\MoveStrategy3D.obj

@@ -250,6 +250,7 @@ void GamePlayScene::Finalize() {
 	object3dCommon_.reset();
 }
 
+
 void GamePlayScene::Update(float deltaTime) {
 
 	static Math math;
