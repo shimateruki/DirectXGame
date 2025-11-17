@@ -19,6 +19,8 @@
 #include"DebugConsole.h"
 #include <cassert>
 #include "BulletManager.h"
+#include "MoveStrategy3D.h" 
+#include "MoveStrategy2D.h"
 
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -60,6 +62,7 @@ void GamePlayScene::Initialize() {
 	playerObj->SetName("Player");
 	playerObj->SetStatic(false);
 	player_ = playerObj.get();
+	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 	objects_.emplace_back(std::move(playerObj));
 
 	auto enemy = std::make_unique<Object3d>();
@@ -278,7 +281,7 @@ void GamePlayScene::Update(float deltaTime) {
 	particleSystem_->Update(deltaTime);
 
 
-	// Player の更新 [user request line 226] より先にロックオン状態を更新
+	// Player の更新 先にロックオン状態を更新
 
 	UpdateLockOn();
 
@@ -316,7 +319,7 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 
 
-	// 【ロックオン用に弾発射ロジックを修正】
+//弾の発射処理
 	if (inputManager_->IsMouseButtonTriggered(0)) { 
 
 		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -343,11 +346,10 @@ void GamePlayScene::Update(float deltaTime) {
 		}
 
 
-
 		const float bulletSpeed = 120.0f;
 		Vector3 velocity = direction * bulletSpeed;
 
-
+		//弾の呼び出し
 		BulletManager::GetInstance()->Fire(
 			startPos, velocity,
 			kAttributePlayerBullet,
@@ -356,12 +358,12 @@ void GamePlayScene::Update(float deltaTime) {
 		);
 	}
 
-
+	//弾の更新
 	BulletManager::GetInstance()->Update(deltaTime);
 
 	// --- 2. 物理 (衝突判定) 更新 ---
 	CollisionManager::GetInstance()->Update();
-
+	//オブジェクト削除関数
 	ProcessRemovals();
 }
 
@@ -372,7 +374,6 @@ void GamePlayScene::Draw() {
 #ifndef _DEBUG
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-	// 【ロックオン用に修正】
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
@@ -399,6 +400,8 @@ void GamePlayScene::Draw() {
 
 	particleSystem_->Draw();
 }
+
+#pragma region ヒット時処理の関数
 void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
 	uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
@@ -455,6 +458,7 @@ void GamePlayScene::OnBulletHit(const BulletHitEvent& event) {
 		DebugConsole::GetInstance()->AddLog("BULLET HIT!");
 	}
 }
+#pragma endregion
 
 #pragma region Editor Functions
 void GamePlayScene::LoadObjectLayout(const std::string& filename) {
@@ -633,7 +637,6 @@ void GamePlayScene::ProcessRemovals() {
 }
 #pragma endregion
 
-
 #pragma region ターゲット処理関数
 /// <summary>
 /// シーン内の敵リストを取得する
@@ -683,9 +686,20 @@ Object3d* GamePlayScene::FindBestLockOnTarget(Camera* camera) {
 		if (dot > minLockOnDot && dot > maxDot) {
 
 			//どこかでカメラがめり込んだ時の対処をしたいここで
+			RaycastHit hit = CollisionManager::GetInstance()->Raycast(
+				playerPos,          // 開始点
+				toEnemyNormalized,  // 方向
+				distance,           // 最大距離 (敵までの距離)
+				kGround             // 対象：地面・壁
+			);
 
-			maxDot = dot;
-			bestTarget = enemy;
+			// ★ ヒットしなかった場合のみ、ロックオン対象とする
+			if (!hit.isHit) {
+				maxDot = dot;
+				bestTarget = enemy;
+			}
+	
+
 		}
 	}
 	return bestTarget;

@@ -1,7 +1,9 @@
+#define NOMINMAX
 #include "CollisionManager.h"
 #include "engine/utility/math/Math.h"
 #include <cmath> 
 #include <algorithm> // std::find
+
 
 
 CollisionManager* CollisionManager::GetInstance() {
@@ -210,4 +212,82 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
     // (精密判定と応答は OnCollision 側が担当する)
     objA->OnCollision(objB);
     objB->OnCollision(objA);
+}
+
+
+/// <summary>
+/// (ヘルパー関数) レイ と AABB の交差判定
+/// </summary>
+/// <returns>衝突距離 (衝突しなかったら FLT_MAX)</returns>
+float IntersectRayAABB(const Vector3& start, const Vector3& direction,
+    const AABB& aabb) {
+
+    // 各軸で「衝突時間」(t) の最小と最大を計算
+    Vector3 tMin = (aabb.min - start) / direction;
+    Vector3 tMax = (aabb.max - start) / direction;
+
+    // (direction がマイナスの場合、tMin と tMax が逆転するので入れ替える)
+    Vector3 tNear = {
+        std::min(tMin.x, tMax.x),
+        std::min(tMin.y, tMax.y),
+        std::min(tMin.z, tMax.z)
+    };
+    Vector3 tFar = {
+        std::max(tMin.x, tMax.x),
+        std::max(tMin.y, tMax.y),
+        std::max(tMin.z, tMax.z)
+    };
+
+    // 3軸（X,Y,Z）すべてで重なっている領域の「最も近い点(tEnter)」を求める
+    float tEnter = std::max({ tNear.x, tNear.y, tNear.z });
+    // 3軸（X,Y,Z）すべてで重なっている領域の「最も遠い点(tExit)」を求める
+    float tExit = std::min({ tFar.x, tFar.y, tFar.z });
+
+    // 衝突していないパターン
+    if (tEnter > tExit || tExit < 0.0f) {
+        return std::numeric_limits<float>::max(); // 衝突しない
+    }
+
+    // 衝突している
+    return tEnter;
+}
+
+
+/// <summary>
+/// レイキャスト本体
+/// </summary>
+RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direction,
+    float maxDistance, uint32_t mask) {
+    RaycastHit closestHit;
+    closestHit.isHit = false;
+    closestHit.distance = maxDistance;
+
+    // 【簡易版】登録されている全てのオブジェクトをチェック
+    for (Object3d* object : objects_) {
+
+        // (1) マスク判定 (指定した対象か？)
+        if (!((object->GetCollisionAttribute()) & mask)) {
+            continue; // 対象外 
+        }
+
+        // (2) 形状判定 (AABBのみ対応)
+        if (object->GetColliderType() != ColliderType::kAABB) {
+            continue; // 球 や判定なし は（まだ）無視
+        }
+
+        AABB aabb = object->GetAABB(); 
+
+        // (3) 交差判定
+        float distance = IntersectRayAABB(start, direction, aabb);
+
+        // (4) 一番近いものを採用
+        if (distance < closestHit.distance) {
+            closestHit.isHit = true;
+            closestHit.distance = distance;
+            closestHit.hitObject = object;
+            closestHit.hitPoint = start + direction * distance;
+        }
+    }
+
+    return closestHit;
 }
