@@ -13,10 +13,25 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
-# Mono auto generated filesmono_crash.*
+# Mono auto generated files
+mono_crash.*
 
 # Build results
-generated/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -48,11 +63,39 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
 # StyleCop
 StyleCopReport.xml
 
 # Files built by Visual Studio
-
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
 
 # Chutzpah Test files
 _Chutzpah*
@@ -99,7 +142,9 @@ _TeamCity*
 !.axoCover/settings.json
 
 # Coverlet is a free, cross platform Code Coverage Tool
-coverage*[.json, .xml, .info]
+coverage*.json
+coverage*.xml
+coverage*.info
 
 # Visual Studio code coverage results
 *.coverage
@@ -312,20 +357,7 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
-DirectXGame/DirectXGame.exe
-DirectXGame/imgui.ini
 
-# DirectXTex Compiled Shaders
-**/DirectXTex/Shaders/Compiled/
-/DUMPS
-# 1. imgui のウィンドウ設定ファイル
-imgui.ini
-
-# 2. ログフォルダ
-logs/
-
-# 3. ダンプフォルダ (大文字/小文字を区別せず)
-[Dd]umps/
-
-# GitHub Actions ワークフロー
-.github/
+# Fody - auto-generated XML schema
+FodyWeavers.xsd
+/project/imgui.ini
