@@ -67,6 +67,7 @@ void Object3d::UpdateWorldMatrix() {
 
     wvpData_->WVP = worldViewProjectionMatrix;
     wvpData_->world = worldMatrix_; // ★ worldMatrix_ をセット
+
     directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
 }
 

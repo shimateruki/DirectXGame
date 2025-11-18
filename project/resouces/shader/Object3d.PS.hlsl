@@ -50,9 +50,9 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             break;
         case 1: 
             cos = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
-            // RGB‚ÌŒvZ
+            // RGBã®è¨ˆç®—
             output.color.rgb = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
-            // ƒAƒ‹ƒtƒ@‚ÌŒvZ‚ğ•ª—£
+            // ã‚¢ãƒ«ãƒ•ã‚¡ã®è¨ˆç®—ã‚’åˆ†é›¢
             output.color.a = gMaterial.color.a * textureColor.a;
             break;
             break;

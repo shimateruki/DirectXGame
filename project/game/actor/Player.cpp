@@ -5,9 +5,10 @@
 #include <string> 
 #include "EventManager.h"
 #include "CameraManager.h"
-void Player::Initialize(Object3dCommon* common, InputManager* inputManager) {
+void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem) {
     Object3d::Initialize(common);
     inputManager_ = inputManager;
+    particleSystem_ = particleSystem;
     SetColliderType(ColliderType::kAABB);
     SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 }
@@ -44,6 +45,25 @@ void Player::Update(float deltaTime) {
     if (isGrounded_ && inputManager_->IsKeyTriggered(DIK_SPACE)) {
         const float kJumpVelocity = 30.0f; 
         velocity_.y = kJumpVelocity;
+        //ジャンプパーティクル
+        if (particleSystem_) {
+            Vector3 pos = GetWorldPosition(); // 足元の位置
+            pos.y -= 1.0f; // ブロックの半分 (1.0f) 下、地面の位置
+
+            particleSystem_->SpawnParticles(
+                pos,                  
+                15,                       
+                1.5f,                   
+                nullptr,               
+                180.0f,                   
+                { 1.0f, 0.0f, 1.0f, 1.0f }, 
+                { 1.0f, 0.0f, 1.0f, 0.0f },
+                0.2f, 0.4f,             
+                0.3f,                     
+                0.8f                     
+            );
+
+        }
     }
 
     // --- 4. 親(Character)のUpdateを呼ぶ ---
