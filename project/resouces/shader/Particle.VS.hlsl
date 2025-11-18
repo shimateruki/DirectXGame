@@ -1,18 +1,18 @@
-// C++‘¤‚©‚ç‘—‚ç‚ê‚Ä‚­‚éAŠeƒp[ƒeƒBƒNƒ‹‚Ìî•ñ
+// C++å´ã‹ã‚‰é€ã‚‰ã‚Œã¦ãã‚‹ã€å„ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ã®æƒ…å ±
 struct ParticleForVS
 {
     float4 color : COLOR0;
-    matrix world : WORLD0; // WORLD0-WORLD3 ‚Ì4s‚ğg‚¤
+    matrix world : WORLD0; // WORLD0-WORLD3 ã®4è¡Œã‚’ä½¿ã†
 };
 
-// ’¸“_ƒVƒF[ƒ_[‚Ö‚Ì“ü—Í
+// é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã¸ã®å…¥åŠ›
 struct VSInput
 {
-    float4 position : POSITION0; // Šî–{‚Æ‚È‚élŠpŒ`‚Ì’¸“_À•W (-0.5, -0.5) ‚È‚Ç
+    float4 position : POSITION0; // åŸºæœ¬ã¨ãªã‚‹å››è§’å½¢ã®é ‚ç‚¹åº§æ¨™ (-0.5, -0.5) ãªã©
     float2 texcoord : TEXCOORD0;
 };
 
-// ƒsƒNƒZƒ‹ƒVƒF[ƒ_[‚Ö‚Ìo—Í
+// ãƒ”ã‚¯ã‚»ãƒ«ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã¸ã®å‡ºåŠ›
 struct VSOutput
 {
     float4 position : SV_POSITION;
@@ -20,21 +20,22 @@ struct VSOutput
     float4 color : COLOR0;
 };
 
-// ’è”ƒoƒbƒtƒ@
+// å®šæ•°ãƒãƒƒãƒ•ã‚¡
 cbuffer CameraMatrix : register(b0)
 {
     matrix viewProjectionMatrix;
 }
 
-// ’¸“_ƒVƒF[ƒ_[
+// é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼
 VSOutput main(VSInput input, ParticleForVS instance)
 {
     VSOutput output;
-    // ƒp[ƒeƒBƒNƒ‹‚Ìƒ[ƒ‹ƒhs—ñ‚ÆAŠî–{’¸“_À•W‚ğ‡¬‚µA‚³‚ç‚Éƒrƒ…[ƒvƒƒWƒFƒNƒVƒ‡ƒ“s—ñ‚ğ“K—p
+    // ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ã®ãƒ¯ãƒ¼ãƒ«ãƒ‰è¡Œåˆ—ã¨ã€åŸºæœ¬é ‚ç‚¹åº§æ¨™ã‚’åˆæˆã—ã€ã•ã‚‰ã«ãƒ“ãƒ¥ãƒ¼ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ã‚·ãƒ§ãƒ³è¡Œåˆ—ã‚’é©ç”¨
     output.position = mul(input.position, instance.world);
     output.position = mul(output.position, viewProjectionMatrix);
     
     output.texcoord = input.texcoord;
     output.color = instance.color;
+    
     return output;
 }
