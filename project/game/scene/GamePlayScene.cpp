@@ -56,7 +56,7 @@ void GamePlayScene::Initialize() {
 	// --- オブジェクトの生成 ---
 
 	auto playerObj = std::make_unique<Player>();
-	playerObj->Initialize(object3dCommon_.get(), inputManager_);
+	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
 	playerObj->SetModel("block");
 	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	playerObj->SetName("Player");
@@ -100,6 +100,7 @@ void GamePlayScene::Initialize() {
 
 			block->SetName("Floor_" + std::to_string(x) + "_" + std::to_string(z));
 			block->SetStatic(true);
+
 
 			// ★ ブロック生成と同時に衝突判定も設定
 			block->SetCollisionAttribute(kGround);
@@ -454,10 +455,26 @@ void GamePlayScene::OnBulletHit(const BulletHitEvent& event) {
 	// (デバッグ用：衝突した相手の属性を取得)
 	uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
-	// (例：敵か地面に当たったらログを出す)
-	if (attribute & (kEnemy)) {
+	if (attribute & (kEnemy | kGround)) {
 		DebugConsole::GetInstance()->AddLog("BULLET HIT!");
+		particleSystem_->SpawnParticles(
+			event.bullet->GetWorldPosition(),
+			10,
+			2.0f,
+			nullptr,
+			180.0f,   
+			{ 1.0f, 0.8f, 0.2f, 1.0f },
+			{ 0.3f, 0.1f, 0.0f, 0.0f },
+			0.3f, 0.5f,
+			1.0f,             
+			0.1f             
+		);
+		
+
+
 	}
+	
+	
 }
 #pragma endregion
 

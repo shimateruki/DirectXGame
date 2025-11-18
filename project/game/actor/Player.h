@@ -2,11 +2,12 @@
 #include "Character.h" 
 #include "InputManager.h"  
 #include "IMoveStrategy.h" 
+#include "ParticleSystem.h"
 #include <memory>          
 
 class Player : public Character {
 public:
-    void Initialize(Object3dCommon* common, InputManager* inputManager);
+    void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem);
     void Update(float deltaTime) override;
     void Draw() override;
     
@@ -34,4 +35,5 @@ private:
     InputManager* inputManager_ = nullptr;
     std::unique_ptr<IMoveStrategy> moveStrategy_ = nullptr;
     bool isLockingOn_ = false;
+    ParticleSystem* particleSystem_ = nullptr;
 };
