@@ -81,7 +81,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;$(ProjectDir)game/character;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/debug;$(ProjectDir)engine/utility/debug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;$(ProjectDir)game/character;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -107,7 +107,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/debug;$(ProjectDir)engine/utility/debug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <Optimization>MaxSpeed</Optimization>
     </ClCompile>
@@ -135,7 +135,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/debug;$(ProjectDir)engine/utility/debug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component</AdditionalIncludeDirectories>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
@@ -154,8 +154,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="game\actor\Bullet.cpp" />
     <ClCompile Include="game\system\BulletManager.cpp" />
     <ClCompile Include="game\actor\Character.cpp" />
-    <ClCompile Include="engine\utility\debug\DebugConsole.cpp" />
-    <ClCompile Include="engine\utility\debug\editor\DebugEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\DebugConsole.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\DebugEditor.cpp" />
     <ClCompile Include="engine\system\collision\CollisionConfig.cpp" />
     <ClCompile Include="engine\system\collision\CollisionManager.cpp" />
     <ClCompile Include="engine\system\scene\BaseScene.cpp" />
@@ -193,10 +193,10 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\core\Game.cpp" />
     <ClCompile Include="engine\system\input\InputManager.cpp" />
     <ClCompile Include="game\scene\GamePlayScene.cpp" />
-    <ClCompile Include="engine\utility\debug\ImguiManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
     <ClCompile Include="engine\graphics\3d\light\Light.cpp" />
     <ClCompile Include="engine\graphics\3d\light\LightManager.cpp" />
-    <ClCompile Include="engine\utility\debug\Log.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\Log.cpp" />
     <ClCompile Include="engine\core\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MinSpace</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MinSpace</Optimization>
@@ -214,11 +214,11 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="engine\graphics\core\SrvManager.cpp" />
     <ClCompile Include="engine\graphics\particle\ParticleCommon.cpp" />
     <ClCompile Include="engine\graphics\particle\ParticleSystem.cpp" />
-    <ClCompile Include="engine\utility\debug\editor\ParticleEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\ParticleEditor.cpp" />
     <ClCompile Include="game\actor\Player.cpp" />
     <ClCompile Include="engine\system\scene\SceneFactory.cpp" />
     <ClCompile Include="engine\system\scene\SceneManager.cpp" />
-    <ClCompile Include="engine\utility\debug\editor\SpriteDebugEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.cpp" />
     <ClCompile Include="engine\graphics\2d\Text.cpp" />
     <ClCompile Include="game\scene\TitleScene.cpp" />
     <ClCompile Include="game\component\MoveStrategy2D.cpp" />
@@ -270,15 +270,15 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="game\system\BulletManager.h" />
     <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />
     <ClInclude Include="game\actor\Character.h" />
-    <ClInclude Include="engine\utility\debug\DebugConsole.h" />
-    <ClInclude Include="engine\utility\debug\editor\DebugEditor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\DebugConsole.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\DebugEditor.h" />
     <ClInclude Include="game\actor\CollisionConfig.h" />
     <ClInclude Include="engine\system\collision\CollisionManager.h" />
     <ClInclude Include="engine\system\scene\BaseScene.h" />
     <ClInclude Include="engine\graphics\3d\camera\CameraManager.h" />
     <ClInclude Include="engine\graphics\3d\camera\Camera.h" />
     <ClInclude Include="engine\system\audio\AudioPlayer.h" />
-    <ClInclude Include="engine\utility\debug\D3DResouceLeakChecKer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\D3DResouceLeakChecKer.h" />
     <ClInclude Include="engine\graphics\3d\camera\debugCamera.h" />
     <ClInclude Include="engine\graphics\core\DirectXCommon.h" />
     <ClInclude Include="game\actor\Event.h" />
@@ -307,19 +307,19 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="engine\utility\math\Math.h" />
     <ClInclude Include="engine\graphics\core\SrvManager.h" />
     <ClInclude Include="game\scene\GamePlayScene.h" />
-    <ClInclude Include="engine\utility\debug\ImguiManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h" />
     <ClInclude Include="engine\graphics\particle\ParticleCommon.h" />
     <ClInclude Include="engine\graphics\particle\ParticleSystem.h" />
     <ClInclude Include="engine\graphics\3d\light\Light.h" />
     <ClInclude Include="engine\graphics\3d\light\LightManager.h" />
-    <ClInclude Include="engine\utility\debug\editor\ParticleEditor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\ParticleEditor.h" />
     <ClInclude Include="game\actor\Player.h" />
     <ClInclude Include="engine\system\scene\SceneFactory.h" />
     <ClInclude Include="engine\system\scene\SceneManager.h" />
-    <ClInclude Include="engine\utility\debug\editor\SpriteDebugEditor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.h" />
     <ClInclude Include="engine\graphics\2d\Text.h" />
     <ClInclude Include="game\scene\TitleScene.h" />
-    <ClInclude Include="engine\utility\debug\Log.h" />
+    <ClInclude Include="engine\utility\SystemDebug\Log.h" />
     <ClInclude Include="game\component\IMoveStrategy.h" />
     <ClInclude Include="game\component\MoveStrategy2D.h" />
     <ClInclude Include="game\component\MoveStrategy3D.h" />
