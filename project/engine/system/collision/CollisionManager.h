@@ -75,7 +75,10 @@ public:
     /// <returns>衝突情報 (衝突しなかった場合は hit.isHit = false)</returns>
     RaycastHit Raycast(const Vector3& start, const Vector3& direction,
         float maxDistance, uint32_t mask = 0xFFFFFFFF);
-
+	/// <summary>
+	/// 登録されている全オブジェクトの取得 (デバッグ用)
+    /// 
+    const std::list<Object3d*>& GetObjects() const { return objects_; }
 
 private:
     CollisionManager() = default;
@@ -110,6 +113,7 @@ private:
 
     // ★ 静的グリッドを再構築する必要があるか
     bool needsStaticGridRebuild_ = true;
+
 
 private:
     // 衝突判定を取りたいオブジェクトのリスト

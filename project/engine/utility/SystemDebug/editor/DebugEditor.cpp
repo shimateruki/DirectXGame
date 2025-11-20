@@ -23,6 +23,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 #include <DebugConsole.h>
+#include <CollisionManager.h>
 
 const float PI = (float)M_PI;
 
@@ -169,8 +170,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) return;
-    std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
-    if (objects.empty()) return;
+    const auto& colliders = CollisionManager::GetInstance()->GetObjects();
+    if (colliders.empty()) return;
 
     commandList->SetPipelineState(primitivePipelineState_.Get());
     commandList->SetGraphicsRootSignature(primitiveRootSignature_.Get());
@@ -182,7 +183,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     int instanceIndex = 0;
 
-    for (auto& obj : objects) {
+    for (auto& obj : colliders) {
         if (instanceIndex >= kMaxInstances) {
             break;
         }
