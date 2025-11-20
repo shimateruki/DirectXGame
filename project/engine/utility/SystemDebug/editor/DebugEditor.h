@@ -57,7 +57,7 @@ private:
     BaseScene* lastUpdatedScene_ = nullptr;
 
     // 同時に描画するコライダーの最大数
-    static const int kMaxInstances = 128;
+    static const int kMaxInstances = 2048;
 
     // --- プリミティブ描画リソース ---
     Microsoft::WRL::ComPtr<ID3D12RootSignature> primitiveRootSignature_;
