@@ -96,6 +96,35 @@ void Player::Update(float deltaTime) {
         );
     }
 
+
+    if (!isGrounded_ && velocity_.y > 0.0f) {
+        if (particleSystem_) {
+            // 足元の位置
+            Vector3 footPos = transform_.translate;
+            footPos.y -= 1.0f; // ブロックの下端にあわせる
+
+            // 少しランダムに散らす
+            float spread = 0.5f;
+            footPos.x += (static_cast<float>(rand()) / RAND_MAX - 0.5f) * spread;
+            footPos.z += (static_cast<float>(rand()) / RAND_MAX - 0.5f) * spread;
+
+            // 下向きのベクトル
+            Vector3 downVel = { 0.0f, -5.0f, 0.0f }; // 下に噴射
+
+            particleSystem_->SpawnParticles(
+                footPos,
+                1,                            // 個数：毎フレーム1個
+                0.0f,                         // 初速：
+                nullptr,
+                0.0f,
+                { 0.8f, 0.8f, 0.8f, 0.8f },   // 色：白/グレー（煙）
+                { 0.0f, 0.0f, 0.0f, 0.0f },   // 終了色：黒/透明
+                0.3f, 0.5f,                   // 寿命：短め
+                0.8f, 0.0f                    // サイズ
+            );
+        }
+    }
+
     // --- 4. 親(Character)のUpdateを呼ぶ ---
     Character::Update(deltaTime);
 }

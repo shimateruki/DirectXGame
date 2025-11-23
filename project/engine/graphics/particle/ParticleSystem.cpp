@@ -34,7 +34,7 @@ void ParticleSystem::Initialize(ParticleCommon* common, const std::string& textu
 
     // Emitterの初期設定
     spawnTimer_ = 0.0f;
-    params_.isEmitting = true;
+    params_.isEmitting = false;
 }
 
 /// <summary>

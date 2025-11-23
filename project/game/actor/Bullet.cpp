@@ -1,6 +1,7 @@
 #include "Bullet.h"
 #include "CollisionConfig.h" 
 #include <EventManager.h>
+#include"ParticleSystem.h"
 
 void Bullet::Initialize(Object3dCommon* common) {
     Object3d::Initialize(common);
@@ -29,6 +30,20 @@ void Bullet::Update(float deltaTime) {
     }
     // 速度（秒速）を経過時間分だけ座標に加算
     transform_.translate += velocity_ * deltaTime;
+    if (particleSystem_) {
+        // 弾の現在位置に「煙」を置く
+        particleSystem_->SpawnParticles(
+            transform_.translate,
+            1,                            // 個数: 毎フレーム1個
+            0.0f,                         // 初速: 0（その場に置く）
+            nullptr,
+            0.0f,
+            { 0.8f, 0.8f, 1.0f, 0.5f },   // 色: 薄い青白（半透明）
+            { 0.0f, 0.0f, 0.0f, 0.0f },   // 終了色: 透明へ
+            0.2f, 0.3f,                   // 寿命: 短め
+            0.5f, 0.0f                    // サイズ: 弾より少し小さめから0へ
+        );
+    }
 }
 
 bool Bullet::OnCollision(Object3d* other) {

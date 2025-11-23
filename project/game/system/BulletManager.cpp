@@ -7,9 +7,10 @@ BulletManager* BulletManager::GetInstance() {
     return &instance;
 }
 
-void BulletManager::Initialize(Object3dCommon* common, CollisionManager* colManager) {
+void BulletManager::Initialize(Object3dCommon* common, CollisionManager* colManager, ParticleSystem* particleSystem) {
     common_ = common;
     colManager_ = colManager;
+    particleSystem_ = particleSystem;
     bullets_.clear();
 }
 
@@ -32,7 +33,7 @@ void BulletManager::Fire(const Vector3& pos, const Vector3& vel,
     bullet->SetModel(model);
     bullet->SetColliderType(ColliderType::kSphere); // 型を Sphere に設定
     bullet->SetCollisionRadius(radius);        
-
+    bullet->SetParticleSystem(particleSystem_);
     // 2. 粗い判定（ブロードフェーズ）用のAABBサイズ
     bullet->SetCollisionSize({ radius, radius, radius });
 

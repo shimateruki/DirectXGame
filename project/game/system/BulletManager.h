@@ -7,7 +7,7 @@
 // 前方宣言
 class Object3dCommon;
 class CollisionManager;
-
+class ParticleSystem;
 /// <summary>
 /// 弾を管理する「エンジン側」のシステム
 /// </summary>
@@ -16,9 +16,9 @@ public:
     static BulletManager* GetInstance();
 
     /// <summary>
-    /// 初期化 (Object3dCommon と CollisionManager が必要)
+    /// 初期化 
     /// </summary>
-    void Initialize(Object3dCommon* common, CollisionManager* colManager);
+    void Initialize(Object3dCommon* object3dCommon, CollisionManager* collisionManager, ParticleSystem* particleSystem);
 
     /// <summary>
     /// 終了処理 
@@ -51,4 +51,5 @@ private:
     std::list<std::unique_ptr<Bullet>> bullets_;
     Object3dCommon* common_ = nullptr;
     CollisionManager* colManager_ = nullptr;
+    ParticleSystem* particleSystem_ = nullptr;
 };

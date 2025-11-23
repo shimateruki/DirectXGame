@@ -87,13 +87,14 @@ void GamePlayScene::Initialize() {
 	heimen->SetStatic(true);
 	objects_.emplace_back(std::move(heimen));
 
-	auto fence = std::make_unique<Object3d>();
-	fence->Initialize(object3dCommon_.get());
-	fence->SetModel("fence");
-	fence->SetTranslate({ 2.0f, 2.0f, 0.0f });
-	fence->SetName("Enemy");
-	fence->SetStatic(true);
-	objects_.emplace_back(std::move(fence));
+	auto skyDome = std::make_unique<Object3d>();
+	skyDome->Initialize(object3dCommon_.get());
+	skyDome->SetModel("skydome");
+	skyDome->SetName("SkyDome");
+	skyDome->SetStatic(true);
+	objects_.emplace_back(std::move(skyDome));
+
+
 
 	const float blockSize = 2.0f; // ブロックの1辺のサイズ 
 	const int fieldWidth = 30;  // X方向 (幅) の床の数
@@ -201,18 +202,12 @@ void GamePlayScene::Initialize() {
 	monsterBallSprite->SetName("MonsterBall");
 	sprites_.push_back(std::move(monsterBallSprite));
 
-	uint32_t flameHandle = Sprite::LoadTexture("sample.png");
-	auto flameSprite = std::make_unique<Sprite>();
-	flameSprite->Initialize(spriteCommon_.get(), flameHandle);
-	flameSprite->SetAnimation(4, 0.15f, true);
-	flameSprite->Play();
-	flameSprite->SetPosition({ 640.0f, 360.0f });
-	flameSprite->SetSize({ 64.0f,64.0f });
-	sprites_.push_back(std::move(flameSprite));
+
 	//弾の初期化
 	BulletManager::GetInstance()->Initialize(
 		object3dCommon_.get(),
-		CollisionManager::GetInstance()
+		CollisionManager::GetInstance(),
+		particleSystem_.get()
 	);
 
 	// --- レイアウト読み込み ---
@@ -255,6 +250,11 @@ void GamePlayScene::Finalize() {
 void GamePlayScene::Update(float deltaTime) {
 
 	static Math math;
+#ifdef _DEBUG
+	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+#endif // DEBUG
+
+	
 
 #ifndef _DEBUG
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -368,7 +368,19 @@ void GamePlayScene::Update(float deltaTime) {
 			direction = math.Normalize(direction);
 		}
 
+		Vector3 muzzlePos = startPos + (direction * 1.0f);
 
+		particleSystem_->SpawnParticles(
+			muzzlePos,
+			1,                            // 個数: 1個
+			0.0f,                         // 初速: 0
+			nullptr,                      // 方向
+			0.0f,                         // 拡散
+			{ 1.5f, 1.2f, 0.5f, 1.0f },   // 色: 黄色
+			{ 1.0f, 0.0f, 0.0f, 0.0f },   // 終了色: 赤くなって消える
+			0.1f, 0.15f,                  // 寿命: 0.1秒
+			2.5f, 0.0f                    // サイズ: ドカンと大きく出て、すぐ0になる
+		);
 		const float bulletSpeed = 120.0f;
 		Vector3 velocity = direction * bulletSpeed;
 
@@ -386,6 +398,64 @@ void GamePlayScene::Update(float deltaTime) {
 
 	// --- 2. 物理 (衝突判定) 更新 ---
 	CollisionManager::GetInstance()->Update();
+
+	Vector3 centerPos = { 0, 0, 0 };
+
+		// カメラの「注視点」を中心にすると、画面奥にいい感じに舞います
+		centerPos = camera->GetTargetPoint();
+
+	
+	
+
+	// 2. 生成頻度の調整
+	if (dis_color(gen_scene) < 1.0f) {
+
+		// 3. 発生位置をランダムにずらす（範囲: ±15.0f）
+		Vector3 spawnPos = centerPos;
+		float range = 15.0f;
+		spawnPos.x += (dis_color(gen_scene) - 0.5f) * 2.0f * range;
+		spawnPos.y += (dis_color(gen_scene) - 0.5f) * 2.0f * range;
+		spawnPos.z += (dis_color(gen_scene) - 0.5f) * 2.0f * range;
+
+		// 4. パーティクル生成
+		particleSystem_->SpawnParticles(
+			spawnPos,
+			1,                            // 個数：1回につき1個
+			0.5f,                         // 初速：ゆっくり漂う
+			nullptr,                      // 方向：ランダム
+			180.0f,                       // 拡散：全方位
+			{ 1.0f, 1.0f, 1.0f, 0.5f },   // 色：白、半透明 (0.5f)
+			{ 1.0f, 1.0f, 1.0f, 0.0f },   // 終了色：透明にフェードアウト
+			3.0f, 5.0f,                   // 寿命：3〜5秒（長く生きる）
+			0.2f, 0.0f                    // サイズ：小さく始めて消える
+		);
+	}
+
+	// 右クリック中だけ実行
+	if (inputManager_->IsMouseButtonPressed(1)) {
+		Vector3 playerPos = player_->GetWorldPosition();
+
+		// プレイヤーの周囲（半径2.0）にランダム配置
+		Vector3 offset;
+		offset.x = (dis_color(gen_scene) - 0.5f) * 4.0f; 
+		offset.y = (dis_color(gen_scene) - 0.5f) * 4.0f;
+		offset.z = (dis_color(gen_scene) - 0.5f) * 4.0f;
+
+		Vector3 spawnPos = playerPos + offset;
+
+		particleSystem_->SpawnParticles(
+			spawnPos,
+			1,
+			0.0f,                       // 速度0（漂う）
+			nullptr,
+			0.0f,
+			{ 0.0f, 1.0f, 1.0f, 1.0f }, // 色：シアン（エネルギー）
+			{ 0.0f, 0.0f, 1.0f, 0.0f }, // 青くなって消える
+			0.5f, 0.5f,
+			0.5f, 0.0f                  // サイズ：小→消失
+		);
+	}
+
 	//オブジェクト削除関数
 	ProcessRemovals();
 }
