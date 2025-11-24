@@ -36,4 +36,5 @@ private:
     std::unique_ptr<IMoveStrategy> moveStrategy_ = nullptr;
     bool isLockingOn_ = false;
     ParticleSystem* particleSystem_ = nullptr;
+    bool wasGrounded_ = false;
 };

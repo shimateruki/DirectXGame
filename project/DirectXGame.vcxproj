@@ -151,6 +151,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="game\actor\Bullet.cpp" />
     <ClCompile Include="game\system\BulletManager.cpp" />
     <ClCompile Include="game\actor\Character.cpp" />
@@ -266,6 +267,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="game\actor\Bullet.h" />
     <ClInclude Include="game\system\BulletManager.h" />
     <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />

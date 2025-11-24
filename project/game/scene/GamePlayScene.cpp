@@ -30,6 +30,7 @@
 #include <fstream>
 #include <string>
 #include "json.hpp" 
+#include <Enemy.h>
 
 // 乱数生成器
 static std::random_device rd_scene;
@@ -70,8 +71,8 @@ void GamePlayScene::Initialize() {
 	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 	objects_.emplace_back(std::move(playerObj));
 
-	auto enemy = std::make_unique<Object3d>();
-	enemy->Initialize(object3dCommon_.get());
+	auto enemy = std::make_unique<Enemy>();
+	enemy->Initialize(object3dCommon_.get(),{2.0f, 0.0f, 0.0f });
 	enemy->SetModel("bunny");
 	enemy->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	enemy->SetName("Enemy");
@@ -83,7 +84,7 @@ void GamePlayScene::Initialize() {
 	heimen->Initialize(object3dCommon_.get());
 	heimen->SetModel("heimen");
 	heimen->SetTranslate({ 2.0f, -1.0f, 0.0f });
-	heimen->SetName("Enemy");
+	heimen->SetName("Heimen");
 	heimen->SetStatic(true);
 	objects_.emplace_back(std::move(heimen));
 
@@ -185,7 +186,7 @@ void GamePlayScene::Initialize() {
 	CollisionManager::GetInstance()->AddObject(objects_[2].get());
 
 
-	for (size_t i = 3; i < objects_.size(); ++i) {
+	for (size_t i = 4; i < objects_.size(); ++i) {
 		objects_[i]->SetCollisionAttribute(kGround);
 		objects_[i]->SetCollisionMask(~kGround);
 		objects_[i]->SetColliderType(ColliderType::kAABB);
@@ -254,7 +255,7 @@ void GamePlayScene::Update(float deltaTime) {
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 #endif // DEBUG
 
-	
+
 
 #ifndef _DEBUG
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -286,6 +287,62 @@ void GamePlayScene::Update(float deltaTime) {
 	// Player の更新 先にロックオン状態を更新
 
 	UpdateLockOn();
+
+	if (isLockingOn_ && lockOnTarget_ && player_) {
+
+		// 1. 始点と終点を決める
+		// 始点：プレイヤーの胸元あたり（Y+1.0f）
+		Vector3 startPos = player_->GetWorldPosition();
+		startPos.y += 1.0f;
+
+		// 終点：敵の中心
+		Vector3 endPos = lockOnTarget_->GetWorldPosition();
+		endPos.y += 0.5f;
+
+		// 2. ベクトル計算 
+		Vector3 vectorToTarget = endPos - startPos;
+		float distance = math.Length(vectorToTarget); // 距離
+
+		// 距離が0近辺のときは処理しない（ゼロ除算防止）
+		if (distance > 0.1f) {
+			Vector3 direction = math.Normalize(vectorToTarget); // 方向
+
+			// 3. 一定間隔でパーティクルを置く
+			// step: この値を小さくすると密度が上がり、濃いレーザーになる
+			float step = 0.5f;
+
+			for (float d = 0.0f; d < distance; d += step) {
+				// 現在の配置座標
+				Vector3 spawnPos = startPos + (direction * d);
+
+				// パーティクル生成
+				particleSystem_->SpawnParticles(
+					spawnPos,
+					1,                            // 個数：1箇所に1個
+					0.0f,                         // 速度：0（その場に固定）
+					nullptr,                      // 方向
+					0.0f,                         // 拡散
+					{ 1.0f, 0.0f, 0.0f, 0.6f },   // 色：赤、半透明 (Alpha 0.6)
+					{ 1.0f, 0.0f, 0.0f, 0.0f },   // 終了色：透明へ
+					0.05f, 0.05f,                 // 寿命：超短命！ (1フレーム分だけ生きる)
+					0.15f, 0.1f                   // サイズ：細く (0.15くらい)
+				);
+			}
+
+			// 4.ターゲットに当たっている場所に「照準マーカー」を出す
+			particleSystem_->SpawnParticles(
+				endPos,
+				1,
+				0.0f,
+				nullptr,
+				0.0f,
+				{ 1.0f, 0.2f, 0.2f, 0.8f },   // 少し明るい赤
+				{ 1.0f, 0.0f, 0.0f, 0.0f },
+				0.05f, 0.05f,
+				0.5f, 0.4f                    // 少し大きめ
+			);
+		}
+	}
 
 	// --- 1. ゲームロジック (オブジェクト・スプライト) 更新 ---
 	for (auto& obj : objects_) {
@@ -327,23 +384,23 @@ void GamePlayScene::Update(float deltaTime) {
 
 		// 2. この爆発の「速度」もランダムに決める
 		float randomSpeed = dis_speed(gen_scene);
- 
-        particleSystem_->SpawnParticles(  
-           {1.0f, 2.0f, -1.0f }, 100,  
-           randomSpeed,         
-           nullptr,             
-           0.0f,              
-           randomColor,         
-           endColor,            
-           1.0f, 2.0f,            
-           0.3f,                
-           0.05f                                 
+
+		particleSystem_->SpawnParticles(
+			{ 1.0f, 2.0f, -1.0f }, 100,
+			randomSpeed,
+			nullptr,
+			0.0f,
+			randomColor,
+			endColor,
+			1.0f, 2.0f,
+			0.3f,
+			0.05f
 		);
 	}
 
 
-//弾の発射処理
-	if (inputManager_->IsMouseButtonTriggered(0)) { 
+	//弾の発射処理
+	if (inputManager_->IsMouseButtonTriggered(0)) {
 
 		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 		Vector3 startPos = player_->GetWorldPosition();
@@ -388,7 +445,7 @@ void GamePlayScene::Update(float deltaTime) {
 		BulletManager::GetInstance()->Fire(
 			startPos, velocity,
 			kAttributePlayerBullet,
-			kEnemy | kGround, 
+			kEnemy | kGround,
 			"block", 1.0f, 120
 		);
 	}
@@ -401,11 +458,11 @@ void GamePlayScene::Update(float deltaTime) {
 
 	Vector3 centerPos = { 0, 0, 0 };
 
-		// カメラの「注視点」を中心にすると、画面奥にいい感じに舞います
-		centerPos = camera->GetTargetPoint();
+	// カメラの「注視点」を中心にすると、画面奥にいい感じに舞います
+	centerPos = camera->GetTargetPoint();
 
-	
-	
+
+
 
 	// 2. 生成頻度の調整
 	if (dis_color(gen_scene) < 1.0f) {
@@ -437,7 +494,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 		// プレイヤーの周囲（半径2.0）にランダム配置
 		Vector3 offset;
-		offset.x = (dis_color(gen_scene) - 0.5f) * 4.0f; 
+		offset.x = (dis_color(gen_scene) - 0.5f) * 4.0f;
 		offset.y = (dis_color(gen_scene) - 0.5f) * 4.0f;
 		offset.z = (dis_color(gen_scene) - 0.5f) * 4.0f;
 
@@ -477,7 +534,7 @@ void GamePlayScene::Draw() {
 	for (size_t i = 0; i < objects_.size(); ++i) {
 		// (i == 1 がプレイヤー という前提)
 		if (isFirstPerson && i == 1) {
-			continue; 
+			continue;
 		}
 		objects_[i]->Draw();
 	}
@@ -543,356 +600,424 @@ void GamePlayScene::OnPlayerHit(const PlayerHitEvent& event) {
 
 void GamePlayScene::OnBulletHit(const BulletHitEvent& event) {
 
+	Object3d* hitObj = event.hitObject;
 	// (デバッグ用：衝突した相手の属性を取得)
 	uint32_t attribute = event.hitObject->GetCollisionAttribute();
 
-	if (attribute & (kEnemy | kGround)) {
-		DebugConsole::GetInstance()->AddLog("BULLET HIT!");
-		particleSystem_->SpawnParticles(
-			event.bullet->GetWorldPosition(),
-			10,
-			2.0f,
-			nullptr,
-			180.0f,   
-			{ 1.0f, 0.8f, 0.2f, 1.0f },
-			{ 0.3f, 0.1f, 0.0f, 0.0f },
-			0.3f, 0.5f,
-			1.0f,             
-			0.1f             
-		);
-		
+	Enemy* enemy = dynamic_cast<Enemy*>(hitObj);
+
+	if (enemy) {
+		// 1. ダメージを与える
+		enemy->OnHit(1);
+		DebugConsole::GetInstance()->AddLog("Enemy HP: " + std::to_string(enemy->GetHP())); // ※GetHP作るかhp_をpublicにする
+
+		// 2. 死亡判定
+		if (enemy->IsDead()) {
+			Vector3 enemyPos = enemy->GetWorldPosition();
+
+			// ★ ここで「撃破エフェクト（爆発）」を出す！
+			SpawnEnemyDeathEffect(enemyPos);
+
+			// 3. オブジェクト削除予約
+			RequestRemoveObject(enemy);
+
+			// ロックオン対象なら外す
+			if (lockOnTarget_ == enemy) {
+				lockOnTarget_ = nullptr;
+				isLockingOn_ = false;
+				player_->SetLockOn(false);
+				// カメラを通常モードへ
+				CameraManager::GetInstance()->GetMainCamera()->SetFollowMode(Camera::FollowMode::kAimable);
+			} else {
+				// 生きていれば「ヒットエフェクト（小）」
+				DebugConsole::GetInstance()->AddLog("BULLET HIT!");
+				particleSystem_->SpawnParticles(
+					event.bullet->GetWorldPosition(),
+					10,
+					2.0f,
+					nullptr,
+					180.0f,
+					{ 1.0f, 0.8f, 0.2f, 1.0f },
+					{ 0.3f, 0.1f, 0.0f, 0.0f },
+					0.3f, 0.5f,
+					1.0f,
+					0.1f
+				);
+
+			}
+		} else if (attribute & kGround) {
+			particleSystem_->SpawnParticles(
+				event.bullet->GetWorldPosition(),
+				10,
+				2.0f,
+				nullptr,
+				180.0f,
+				{ 1.0f, 0.8f, 0.2f, 1.0f },
+				{ 0.3f, 0.1f, 0.0f, 0.0f },
+				0.3f, 0.5f,
+				1.0f,
+				0.1f
+			);
+		}
 
 
 	}
-	
-	
 }
 #pragma endregion
 
 #pragma region Editor Functions
-void GamePlayScene::LoadObjectLayout(const std::string& filename) {
-	using json = nlohmann::json;
-	std::ifstream file(filename);
+	void GamePlayScene::LoadObjectLayout(const std::string & filename) {
+		using json = nlohmann::json;
+		std::ifstream file(filename);
 
-	if (!file.is_open()) {
-		std::string warnMsg = "Warning: Could not open " + filename + " for Object layout.\n";
-		OutputDebugStringA(warnMsg.c_str());
-		return;
-	}
-
-	json sceneData;
-	try {
-		sceneData = json::parse(file);
-		if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
-			for (const auto& objData : sceneData["objects"]) {
-				if (!objData.contains("name") || !objData["name"].is_string()) continue;
-				std::string name = objData["name"].get<std::string>();
-
-				Object3d* targetObject = nullptr;
-				for (auto& obj : objects_) {
-					if (obj && !obj->GetName().empty() && obj->GetName() == name) {
-						targetObject = obj.get();
-						break;
-					}
-				}
-
-				if (targetObject) {
-					Object3d::Transform* transform = targetObject->GetTransform();
-
-					if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
-						transform->translate.x = objData["position"][0].get<float>();
-						transform->translate.y = objData["position"][1].get<float>();
-						transform->translate.z = objData["position"][2].get<float>();
-					}
-					if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
-						transform->rotate.x = objData["rotation"][0].get<float>();
-						transform->rotate.y = objData["rotation"][1].get<float>();
-						transform->rotate.z = objData["rotation"][2].get<float>();
-					}
-					if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
-						transform->scale.x = objData["scale"][0].get<float>();
-						transform->scale.y = objData["scale"][1].get<float>();
-						transform->scale.z = objData["scale"][2].get<float>();
-					}
-				}
-			}
-		}
-	}
-	catch (json::parse_error& e) {
-		OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
-		OutputDebugStringA(e.what());
-		OutputDebugStringA("\n");
-	}
-
-	file.close();
-}
-
-void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
-	using json = nlohmann::json;
-	std::ifstream file(filename);
-
-	if (!file.is_open()) {
-		std::string warnMsg = "Warning: Could not open " + filename + "\n";
-		OutputDebugStringA(warnMsg.c_str());
-		return;
-	}
-
-	json layoutData;
-	try {
-		layoutData = json::parse(file);
-
-		if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
-			for (const auto& spriteData : layoutData["sprites"]) {
-
-				if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
-					continue;
-				}
-				std::string name = spriteData["name"];
-
-				Sprite* targetSprite = nullptr;
-				for (auto& sprite : sprites_) {
-					if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
-						targetSprite = sprite.get();
-						break;
-					}
-				}
-
-				if (targetSprite) {
-					if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
-						targetSprite->SetPosition({
-							spriteData["position"][0].get<float>(),
-							spriteData["position"][1].get<float>()
-							});
-					}
-					if (spriteData.contains("size") && spriteData["size"].is_array() && spriteData["size"].size() == 2) {
-						targetSprite->SetSize({
-							spriteData["size"][0].get<float>(),
-							spriteData["size"][1].get<float>()
-							});
-					}
-					if (spriteData.contains("anchor") && spriteData["anchor"].is_array() && spriteData["anchor"].size() == 2) {
-						targetSprite->SetAnchorPoint({
-							spriteData["anchor"][0].get<float>(),
-							spriteData["anchor"][1].get<float>()
-							});
-					}
-					if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
-						targetSprite->SetColor({
-							spriteData["color"][0].get<float>(),
-							spriteData["color"][1].get<float>(),
-							spriteData["color"][2].get<float>(),
-							spriteData["color"][3].get<float>()
-							});
-					}
-					targetSprite->Update();
-				}
-			}
-		}
-
-	}
-	catch (json::parse_error& e) {
-		OutputDebugStringA("Failed to parse sprite_layout.json\n");
-		OutputDebugStringA(e.what());
-		OutputDebugStringA("\n");
-	}
-
-	file.close();
-}
-
-
-void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
-	if (object == nullptr) {
-		return;
-	}
-	CollisionManager::GetInstance()->AddObject(object.get());
-	objects_.emplace_back(std::move(object));
-}
-
-
-
-void GamePlayScene::RequestRemoveObject(Object3d* object) {
-	if (object) {
-		removalList_.push_back(object);
-	}
-}
-
-void GamePlayScene::ProcessRemovals() {
-	if (removalList_.empty()) {
-		return;
-	}
-
-	CollisionManager* colManager = CollisionManager::GetInstance();
-
-	// 1. CollisionManager から削除
-	for (Object3d* obj : removalList_) {
-		colManager->RemoveObject(obj);
-	}
-
-	// 2. objects_ (unique_ptr) リストから削除
-	auto it = std::remove_if(objects_.begin(), objects_.end(),
-		[this](const std::unique_ptr<Object3d>& p) {
-			for (Object3d* removalObj : removalList_) {
-				if (p.get() == removalObj) {
-					return true; // 削除対象
-				}
-			}
-			return false;
-		}
-	);
-	objects_.erase(it, objects_.end());
-
-	// 3. 予約リストをクリア
-	removalList_.clear();
-}
-#pragma endregion
-
-#pragma region ターゲット処理関数
-/// <summary>
-/// シーン内の敵リストを取得する
-/// </summary>
-std::vector<Object3d*> GamePlayScene::FindEnemies() {
-	std::vector<Object3d*> enemies;
-	for (const auto& obj : objects_) {
-		// kEnemy 属性 を持ち、プレイヤー自身 ではないオブジェクトを検索
-		if ((obj->GetCollisionAttribute() & kEnemy) && (obj.get() != player_)) {
-			enemies.push_back(obj.get());
-		}
-	}
-	return enemies;
-}
-
-/// <summary>
-/// ロックオン対象として最適な敵を探す
-/// </summary>
-Object3d* GamePlayScene::FindBestLockOnTarget(Camera* camera) {
-	static Math math;
-	std::vector<Object3d*> enemies = FindEnemies();
-	if (enemies.empty() || !player_) { return nullptr; }
-
-	Object3d* bestTarget = nullptr;
-	float maxDot = -2.0f; // 内積の最小値(-1)より小さく
-
-	Vector3 playerPos = player_->GetWorldPosition();
-	Vector3 cameraForward = math.Normalize(camera->GetTargetPoint() - camera->GetEye());
-
-	const float maxLockOnDistance = 50.0f; // ロックオン最大距離
-	const float minLockOnDot = 0.5f;     // 視界（約60度）の外は無視
-
-	for (Object3d* enemy : enemies) {
-		Vector3 enemyPos = enemy->GetWorldPosition();
-		Vector3 toEnemy = enemyPos - playerPos;
-		float distance = math.Length(toEnemy);
-
-		// 遠すぎる敵は除外
-		if (distance > maxLockOnDistance || distance < 0.1f) {
-			continue;
-		}
-
-		Vector3 toEnemyNormalized = toEnemy / distance;
-		float dot = math.Dot(cameraForward, toEnemyNormalized);
-
-		// 視界内で、最もカメラ正面に近い敵を選ぶ
-		if (dot > minLockOnDot && dot > maxDot) {
-
-			//どこかでカメラがめり込んだ時の対処をしたいここで
-			RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-				playerPos,          // 開始点
-				toEnemyNormalized,  // 方向
-				distance,           // 最大距離 (敵までの距離)
-				kGround             // 対象：地面・壁
-			);
-
-			// ★ ヒットしなかった場合のみ、ロックオン対象とする
-			if (!hit.isHit) {
-				maxDot = dot;
-				bestTarget = enemy;
-			}
-	
-
-		}
-	}
-	return bestTarget;
-}
-
-
-/// <summary>
-/// ロックオン処理
-/// </summary>
-void GamePlayScene::UpdateLockOn() {
-	if (!player_ || !inputManager_) { return; }
-
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-	if (!camera) { return; }
-
-	// (1) ★ Zキー でロックオン開始/解除
-	if (inputManager_->IsKeyTriggered(DIK_Z)) { 
-		isLockingOn_ = !isLockingOn_;
-
-		if (isLockingOn_) {
-			// (2) ロックオン開始 -> 対象を検索
-			lockOnTarget_ = FindBestLockOnTarget(camera);
-			if (lockOnTarget_ == nullptr) { // 対象が見つからなければ解除
-				isLockingOn_ = false;
-			}
-		}
-
-		if (!isLockingOn_) {
-			// (3) ロックオン解除
-			lockOnTarget_ = nullptr;
-			camera->SyncRotationToCurrentView();
-			camera->SetLockOnTarget(nullptr); // カメラの注視点を解除
-			camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モードに戻す
-		}
-
-		player_->SetLockOn(isLockingOn_); // Playerに状態を通知
-	}
-
-	// (4) ロックオン中の更新
-	if (isLockingOn_) {
-		if (lockOnTarget_ == nullptr) {
-			isLockingOn_ = false;
-			player_->SetLockOn(false);
-			camera->SetFollowMode(Camera::FollowMode::kAimable);
+		if (!file.is_open()) {
+			std::string warnMsg = "Warning: Could not open " + filename + " for Object layout.\n";
+			OutputDebugStringA(warnMsg.c_str());
 			return;
 		}
 
-		// (5) プレイヤーの向きを敵に向ける
-		Vector3 playerPos = player_->GetWorldPosition();
-		Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
-		Vector3 toEnemy = enemyPos - playerPos;
-		toEnemy.y = 0.0f; // 高低差は無視
+		json sceneData;
+		try {
+			sceneData = json::parse(file);
+			if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+				for (const auto& objData : sceneData["objects"]) {
+					if (!objData.contains("name") || !objData["name"].is_string()) continue;
+					std::string name = objData["name"].get<std::string>();
 
-		// プレイヤーのY軸回転を敵の方向に向ける 
-		player_->SetRotationY(std::atan2(toEnemy.x, toEnemy.z));
-		// (6) カメラをロックオンモードに設定
-		camera->SetFollowMode(Camera::FollowMode::kLockOn);
-		camera->SetLockOnTarget(lockOnTarget_); // 注視対象を敵にセット
+					Object3d* targetObject = nullptr;
+					for (auto& obj : objects_) {
+						if (obj && !obj->GetName().empty() && obj->GetName() == name) {
+							targetObject = obj.get();
+							break;
+						}
+					}
+
+					if (targetObject) {
+						Object3d::Transform* transform = targetObject->GetTransform();
+
+						if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
+							transform->translate.x = objData["position"][0].get<float>();
+							transform->translate.y = objData["position"][1].get<float>();
+							transform->translate.z = objData["position"][2].get<float>();
+						}
+						if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
+							transform->rotate.x = objData["rotation"][0].get<float>();
+							transform->rotate.y = objData["rotation"][1].get<float>();
+							transform->rotate.z = objData["rotation"][2].get<float>();
+						}
+						if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
+							transform->scale.x = objData["scale"][0].get<float>();
+							transform->scale.y = objData["scale"][1].get<float>();
+							transform->scale.z = objData["scale"][2].get<float>();
+						}
+					}
+				}
+			}
+		}
+		catch (json::parse_error& e) {
+			OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
+			OutputDebugStringA(e.what());
+			OutputDebugStringA("\n");
+		}
+
+		file.close();
 	}
-}
+
+	void GamePlayScene::LoadSpriteLayout(const std::string & filename) {
+		using json = nlohmann::json;
+		std::ifstream file(filename);
+
+		if (!file.is_open()) {
+			std::string warnMsg = "Warning: Could not open " + filename + "\n";
+			OutputDebugStringA(warnMsg.c_str());
+			return;
+		}
+
+		json layoutData;
+		try {
+			layoutData = json::parse(file);
+
+			if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
+				for (const auto& spriteData : layoutData["sprites"]) {
+
+					if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
+						continue;
+					}
+					std::string name = spriteData["name"];
+
+					Sprite* targetSprite = nullptr;
+					for (auto& sprite : sprites_) {
+						if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
+							targetSprite = sprite.get();
+							break;
+						}
+					}
+
+					if (targetSprite) {
+						if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
+							targetSprite->SetPosition({
+								spriteData["position"][0].get<float>(),
+								spriteData["position"][1].get<float>()
+								});
+						}
+						if (spriteData.contains("size") && spriteData["size"].is_array() && spriteData["size"].size() == 2) {
+							targetSprite->SetSize({
+								spriteData["size"][0].get<float>(),
+								spriteData["size"][1].get<float>()
+								});
+						}
+						if (spriteData.contains("anchor") && spriteData["anchor"].is_array() && spriteData["anchor"].size() == 2) {
+							targetSprite->SetAnchorPoint({
+								spriteData["anchor"][0].get<float>(),
+								spriteData["anchor"][1].get<float>()
+								});
+						}
+						if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
+							targetSprite->SetColor({
+								spriteData["color"][0].get<float>(),
+								spriteData["color"][1].get<float>(),
+								spriteData["color"][2].get<float>(),
+								spriteData["color"][3].get<float>()
+								});
+						}
+						targetSprite->Update();
+					}
+				}
+			}
+
+		}
+		catch (json::parse_error& e) {
+			OutputDebugStringA("Failed to parse sprite_layout.json\n");
+			OutputDebugStringA(e.what());
+			OutputDebugStringA("\n");
+		}
+
+		file.close();
+	}
 
 
-/// <summary>
-/// 静的な壁/床ブロックを生成し、衝突判定に登録するヘルパー関数
-/// </summary>
-std::unique_ptr<Object3d> GamePlayScene::CreateStaticBlock(
-	const Vector3& position,
-	const std::string& name,
-	const Vector3& collisionHalfSize)
-{
-	auto block = std::make_unique<Object3d>();
-	block->Initialize(object3dCommon_.get());
-	block->SetModel("block");
-	block->SetTranslate(position);
-	block->SetName(name);
-	block->SetStatic(true);
+	void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
+		if (object == nullptr) {
+			return;
+		}
+		CollisionManager::GetInstance()->AddObject(object.get());
+		objects_.emplace_back(std::move(object));
+	}
 
-	// ★ 衝突判定も同時に設定
-	block->SetCollisionAttribute(kGround);
-	block->SetCollisionMask(~kGround);
-	block->SetColliderType(ColliderType::kAABB);
-	block->SetCollisionSize(collisionHalfSize);
-	CollisionManager::GetInstance()->AddObject(block.get());
 
-	return block;
-}
+
+	void GamePlayScene::RequestRemoveObject(Object3d * object) {
+		if (object) {
+			removalList_.push_back(object);
+		}
+	}
+
+	void GamePlayScene::ProcessRemovals() {
+		if (removalList_.empty()) {
+			return;
+		}
+
+		CollisionManager* colManager = CollisionManager::GetInstance();
+
+		// 1. CollisionManager から削除
+		for (Object3d* obj : removalList_) {
+			colManager->RemoveObject(obj);
+		}
+
+		// 2. objects_ (unique_ptr) リストから削除
+		auto it = std::remove_if(objects_.begin(), objects_.end(),
+			[this](const std::unique_ptr<Object3d>& p) {
+				for (Object3d* removalObj : removalList_) {
+					if (p.get() == removalObj) {
+						return true; // 削除対象
+					}
+				}
+				return false;
+			}
+		);
+		objects_.erase(it, objects_.end());
+
+		// 3. 予約リストをクリア
+		removalList_.clear();
+	}
 #pragma endregion
+
+#pragma region ターゲット処理関数
+	/// <summary>
+	/// シーン内の敵リストを取得する
+	/// </summary>
+	std::vector<Object3d*> GamePlayScene::FindEnemies() {
+		std::vector<Object3d*> enemies;
+		for (const auto& obj : objects_) {
+			// kEnemy 属性 を持ち、プレイヤー自身 ではないオブジェクトを検索
+			if ((obj->GetCollisionAttribute() & kEnemy) && (obj.get() != player_)) {
+				enemies.push_back(obj.get());
+			}
+		}
+		return enemies;
+	}
+
+	/// <summary>
+	/// ロックオン対象として最適な敵を探す
+	/// </summary>
+	Object3d* GamePlayScene::FindBestLockOnTarget(Camera * camera) {
+		static Math math;
+		std::vector<Object3d*> enemies = FindEnemies();
+		if (enemies.empty() || !player_) { return nullptr; }
+
+		Object3d* bestTarget = nullptr;
+		float maxDot = -2.0f; // 内積の最小値(-1)より小さく
+
+		Vector3 playerPos = player_->GetWorldPosition();
+		Vector3 cameraForward = math.Normalize(camera->GetTargetPoint() - camera->GetEye());
+
+		const float maxLockOnDistance = 50.0f; // ロックオン最大距離
+		const float minLockOnDot = 0.5f;     // 視界（約60度）の外は無視
+
+		for (Object3d* enemy : enemies) {
+			Vector3 enemyPos = enemy->GetWorldPosition();
+			Vector3 toEnemy = enemyPos - playerPos;
+			float distance = math.Length(toEnemy);
+
+			// 遠すぎる敵は除外
+			if (distance > maxLockOnDistance || distance < 0.1f) {
+				continue;
+			}
+
+			Vector3 toEnemyNormalized = toEnemy / distance;
+			float dot = math.Dot(cameraForward, toEnemyNormalized);
+
+			// 視界内で、最もカメラ正面に近い敵を選ぶ
+			if (dot > minLockOnDot && dot > maxDot) {
+
+				//どこかでカメラがめり込んだ時の対処をしたいここで
+				RaycastHit hit = CollisionManager::GetInstance()->Raycast(
+					playerPos,          // 開始点
+					toEnemyNormalized,  // 方向
+					distance,           // 最大距離 (敵までの距離)
+					kGround             // 対象：地面・壁
+				);
+
+				// ★ ヒットしなかった場合のみ、ロックオン対象とする
+				if (!hit.isHit) {
+					maxDot = dot;
+					bestTarget = enemy;
+				}
+
+
+			}
+		}
+		return bestTarget;
+	}
+
+
+	/// <summary>
+	/// ロックオン処理
+	/// </summary>
+	void GamePlayScene::UpdateLockOn() {
+		if (!player_ || !inputManager_) { return; }
+
+		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+		if (!camera) { return; }
+
+		// (1) ★ Zキー でロックオン開始/解除
+		if (inputManager_->IsKeyTriggered(DIK_Z)) {
+			isLockingOn_ = !isLockingOn_;
+
+			if (isLockingOn_) {
+				// (2) ロックオン開始 -> 対象を検索
+				lockOnTarget_ = FindBestLockOnTarget(camera);
+				if (lockOnTarget_ == nullptr) { // 対象が見つからなければ解除
+					isLockingOn_ = false;
+				}
+			}
+
+			if (!isLockingOn_) {
+				// (3) ロックオン解除
+				lockOnTarget_ = nullptr;
+				camera->SyncRotationToCurrentView();
+				camera->SetLockOnTarget(nullptr); // カメラの注視点を解除
+				camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モードに戻す
+			}
+
+			player_->SetLockOn(isLockingOn_); // Playerに状態を通知
+		}
+
+		// (4) ロックオン中の更新
+		if (isLockingOn_) {
+			if (lockOnTarget_ == nullptr) {
+				isLockingOn_ = false;
+				player_->SetLockOn(false);
+				camera->SetFollowMode(Camera::FollowMode::kAimable);
+				return;
+			}
+
+			// (5) プレイヤーの向きを敵に向ける
+			Vector3 playerPos = player_->GetWorldPosition();
+			Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
+			Vector3 toEnemy = enemyPos - playerPos;
+			toEnemy.y = 0.0f; // 高低差は無視
+
+			// プレイヤーのY軸回転を敵の方向に向ける 
+			player_->SetRotationY(std::atan2(toEnemy.x, toEnemy.z));
+			// (6) カメラをロックオンモードに設定
+			camera->SetFollowMode(Camera::FollowMode::kLockOn);
+			camera->SetLockOnTarget(lockOnTarget_); // 注視対象を敵にセット
+		}
+	}
+
+
+	/// <summary>
+	/// 静的な壁/床ブロックを生成し、衝突判定に登録するヘルパー関数
+	/// </summary>
+	std::unique_ptr<Object3d> GamePlayScene::CreateStaticBlock(
+		const Vector3 & position,
+		const std::string & name,
+		const Vector3 & collisionHalfSize)
+	{
+		auto block = std::make_unique<Object3d>();
+		block->Initialize(object3dCommon_.get());
+		block->SetModel("block");
+		block->SetTranslate(position);
+		block->SetName(name);
+		block->SetStatic(true);
+
+		// ★ 衝突判定も同時に設定
+		block->SetCollisionAttribute(kGround);
+		block->SetCollisionMask(~kGround);
+		block->SetColliderType(ColliderType::kAABB);
+		block->SetCollisionSize(collisionHalfSize);
+		CollisionManager::GetInstance()->AddObject(block.get());
+
+		return block;
+	}
+#pragma endregion
+
+
+	void GamePlayScene::SpawnEnemyDeathEffect(const Vector3& pos) {
+		// 1. 激しい火花（オレンジ）
+		particleSystem_->SpawnParticles(
+			pos,
+			30,                           // 数
+			10.0f,                        // 初速：爆発的に
+			nullptr,                      // 方向：全方位
+			180.0f,                       // 拡散
+			{ 1.0f, 0.6f, 0.1f, 1.0f },   // 色
+			{ 1.0f, 0.0f, 0.0f, 0.0f },   // 終了色
+			0.5f, 0.8f,                   // 寿命
+			2.0f, 0.0f                    // サイズ
+		);
+
+		// 2. 煙（グレー）
+		particleSystem_->SpawnParticles(
+			pos,
+			20,
+			3.0f,
+			nullptr,
+			180.0f,
+			{ 0.4f, 0.4f, 0.4f, 0.8f },   // 色
+			{ 0.0f, 0.0f, 0.0f, 0.0f },   // 透明へ
+			1.0f, 1.5f,                   // 長く残る
+			3.0f, 5.0f                    // むくむく広がる
+		);
+	}

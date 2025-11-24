@@ -122,6 +122,8 @@ private:
 
     std::unique_ptr<Object3d> CreateStaticBlock(const Vector3& position, const std::string& name, const Vector3& collisionHalfSize);
 
+    void SpawnEnemyDeathEffect(const Vector3& pos);
+
     /// <summary>
     /// ロックオン対象として最適な敵を探す
     /// </summary>

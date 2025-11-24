@@ -36,24 +36,7 @@
                 1.0
             ]
         },
-        {
-            "name": "Enemy",
-            "position": [
-                2.0,
-                0.0,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ]
-        },
+       
         {
             "name": "Wall_Back_0_0",
             "position": [

@@ -124,6 +124,41 @@ void Player::Update(float deltaTime) {
             );
         }
     }
+    if (!wasGrounded_ && isGrounded_) {
+
+        // 足元の位置
+        Vector3 footPos = transform_.translate;
+        footPos.y -= 1.0f; // ブロックの底面に合わせる
+
+        // 土煙を放射状に出す
+        particleSystem_->SpawnParticles(
+            footPos,
+            10,                           // 個数：10個くらいバッと出す
+            3.0f,                         // 初速：少し勢いよく
+            nullptr,                      // 方向：指定なし（全方位）
+            90.0f,                        // 拡散
+            { 0.6f, 0.5f, 0.4f, 1.0f },   // 色：茶色っぽい土色
+            { 0.6f, 0.5f, 0.4f, 0.0f },   // 終了色：透明へ
+            0.5f, 0.8f,                   // 寿命：0.5秒くらいかけてふわっと消える
+            2.0f, 4.0f                    // サイズ：2.0 から 4.0 へ大きく広がる
+        );
+
+        // 衝撃の瞬間に少し白い煙も混ぜるとリアル
+        particleSystem_->SpawnParticles(
+            footPos,
+            5,
+            5.0f,                         // 速い
+            nullptr,
+            90.0f,
+            { 0.9f, 0.9f, 0.9f, 0.8f },   // 白
+            { 1.0f, 1.0f, 1.0f, 0.0f },
+            0.2f, 0.4f,                   // 短命
+            1.0f, 0.0f
+        );
+    }
+
+    // 次のフレームのために今の状態を記録
+    wasGrounded_ = isGrounded_;
 
     // --- 4. 親(Character)のUpdateを呼ぶ ---
     Character::Update(deltaTime);
