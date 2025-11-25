@@ -195,13 +195,32 @@ void GamePlayScene::Initialize() {
 	}
 
 	// --- スプライトの生成 ---
-	uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
-	auto monsterBallSprite = std::make_unique<Sprite>();
-	monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
-	monsterBallSprite->SetPosition({ 200.0f, 360.0f });
-	monsterBallSprite->SetSize({ 100.0f, 100.0f });
-	monsterBallSprite->SetName("MonsterBall");
-	sprites_.push_back(std::move(monsterBallSprite));
+	uint32_t hidariKeysousaHandle = Sprite::LoadTexture("hidariKeysousa.png");
+	auto hidariKeysousaSprite = std::make_unique<Sprite>();
+	hidariKeysousaSprite->Initialize(spriteCommon_.get(), hidariKeysousaHandle);
+	hidariKeysousaSprite->SetPosition({ 200.0f, 360.0f });
+	hidariKeysousaSprite->SetSize({ 100.0f, 100.0f });
+	hidariKeysousaSprite->SetName("hidariKeysousa");
+	sprites_.push_back(std::move(hidariKeysousaSprite));
+
+	uint32_t pKeysousaHandle = Sprite::LoadTexture("pKeysousa.png");
+	auto pKeysousaSprite = std::make_unique<Sprite>();
+	pKeysousaSprite->Initialize(spriteCommon_.get(), pKeysousaHandle);
+	pKeysousaSprite->SetPosition({ 200.0f, 360.0f });
+	pKeysousaSprite->SetSize({ 100.0f, 100.0f });
+	pKeysousaSprite->SetName("pKeysousa");
+	sprites_.push_back(std::move(pKeysousaSprite));
+
+
+	uint32_t ZKeyshanabiHandle = Sprite::LoadTexture("ZKeyshanabi.png");
+	auto ZKeyshanabiSprite = std::make_unique<Sprite>();
+	ZKeyshanabiSprite->Initialize(spriteCommon_.get(), ZKeyshanabiHandle);
+	ZKeyshanabiSprite->SetPosition({ 200.0f, 360.0f });
+	ZKeyshanabiSprite->SetSize({ 100.0f, 100.0f });
+	ZKeyshanabiSprite->SetName("ZKeyshanabi");
+	sprites_.push_back(std::move(ZKeyshanabiSprite));
+
+
 
 
 	//弾の初期化
@@ -488,31 +507,6 @@ void GamePlayScene::Update(float deltaTime) {
 		);
 	}
 
-	// 右クリック中だけ実行
-	if (inputManager_->IsMouseButtonPressed(1)) {
-		Vector3 playerPos = player_->GetWorldPosition();
-
-		// プレイヤーの周囲（半径2.0）にランダム配置
-		Vector3 offset;
-		offset.x = (dis_color(gen_scene) - 0.5f) * 4.0f;
-		offset.y = (dis_color(gen_scene) - 0.5f) * 4.0f;
-		offset.z = (dis_color(gen_scene) - 0.5f) * 4.0f;
-
-		Vector3 spawnPos = playerPos + offset;
-
-		particleSystem_->SpawnParticles(
-			spawnPos,
-			1,
-			0.0f,                       // 速度0（漂う）
-			nullptr,
-			0.0f,
-			{ 0.0f, 1.0f, 1.0f, 1.0f }, // 色：シアン（エネルギー）
-			{ 0.0f, 0.0f, 1.0f, 0.0f }, // 青くなって消える
-			0.5f, 0.5f,
-			0.5f, 0.0f                  // サイズ：小→消失
-		);
-	}
-
 	//オブジェクト削除関数
 	ProcessRemovals();
 }
@@ -645,7 +639,9 @@ void GamePlayScene::OnBulletHit(const BulletHitEvent& event) {
 				);
 
 			}
-		} else if (attribute & kGround) {
+		}
+		}
+	if (attribute & kGround) {
 			particleSystem_->SpawnParticles(
 				event.bullet->GetWorldPosition(),
 				10,
@@ -661,7 +657,7 @@ void GamePlayScene::OnBulletHit(const BulletHitEvent& event) {
 		}
 
 
-	}
+	
 }
 #pragma endregion
 
