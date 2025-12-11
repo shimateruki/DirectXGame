@@ -34,7 +34,8 @@ public: // サブクラス
         float padding1[3];
         Matrix4x4 uvTransform;
         int32_t selectedLighting;
-        float padding2[3];
+        float shininess;  
+        float padding2[2]; 
     };
 
 public: // メンバ関数
@@ -46,7 +47,7 @@ public: // メンバ関数
     /// <summary>
     /// 描画
     /// </summary>
-    void Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource);
+    void Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource);
 
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)

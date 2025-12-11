@@ -16,11 +16,16 @@ public:
     struct TransformationMatrix {
         Matrix4x4 WVP;
         Matrix4x4 world;
+        Matrix4x4 WorldInverseTranspose;
     };
     struct DirectionalLight {
         Vector4 color;
         Vector3 direction;
         float intensity;
+    };
+
+    struct CameraForGPU {
+        Vector3 worldPosition;
     };
 
 public:
@@ -34,22 +39,32 @@ public:
     void UpdateLocalMatrix();
 
     void UpdateWorldMatrix();
-
+    void SetColor(const Vector4& color);
+    Vector4 GetColor() { return  directionalLightData_->color; }
+    const Vector3& GetScale() const { return transform_.scale; }
     /// <summary>
     /// 親オブジェクトを設定する
     /// </summary>
     void SetParent(Object3d* parent);
-
+    /// <summary>
+    /// 親オブジェクトを取得する
+    /// </summary>
+    Object3d* GetParent() const { return parent_; }
+    DirectionalLight* GetDirectionalLightData() { return directionalLightData_; }
     /// <summary>
     /// ワールド行列を取得する
     /// </summary>
     const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
 
-
+    OBB GetOBB() const;
 
     void SetModel(Model* model) { model_ = model; }
     void SetModel(const std::string& modelName);
+
+    Model* GetModel() const { return model_; }
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
+    void SetScale(const Vector3& scale) { transform_.scale = scale; }
+    void SetRotation(const Vector3& rotate) { transform_.rotate = rotate; }
 
     // ブレンドモード用のセッターとゲッター
     void SetBlendMode(BlendMode blendMode) { blendMode_ = blendMode; }
@@ -63,6 +78,11 @@ public:
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
     DirectionalLight* GetDirectionalLight() { return directionalLightData_; }
 
+
+    // 光の強さをセットする関数
+    void SetIntensity(float intensity);
+    // 現在の光の強さを取得する関数
+    float GetIntensity() const { return directionalLightData_->intensity; }
 
     // --- 属性フラグ関連 ---
     void SetCollisionAttribute(uint32_t attribute) { collisionAttribute_ = attribute; }
@@ -96,6 +116,8 @@ public:
 
     // --- ゲッター ---
     const Vector3& GetWorldPosition() const { return transform_.translate; }
+
+
     AABB GetAABB() const {
         Vector3 center = transform_.translate;
         return {
@@ -103,6 +125,7 @@ public:
             {center.x + aabbSize_.x, center.y + aabbSize_.y, center.z + aabbSize_.z}
         };
     }
+
 
     /// <summary>
     /// 別のObject3dとの精密な衝突判定を実行する
@@ -142,6 +165,8 @@ protected:
     TransformationMatrix* wvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     DirectionalLight* directionalLightData_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
+    CameraForGPU* cameraData_ = nullptr;
 
     Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
     BlendMode blendMode_ = BlendMode::kNormal;

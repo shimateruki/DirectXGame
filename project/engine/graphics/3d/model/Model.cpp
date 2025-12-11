@@ -37,12 +37,13 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
     materialData_->selectedLighting = 2;
+    materialData_->shininess = 50;
     Math math;
     materialData_->uvTransform = math.makeIdentity4x4();
 }
 
 // モデルの描画処理
-void Model::Draw( ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource) {
+void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource) {
 
     // common_経由でコマンドリストを取得
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -53,9 +54,10 @@ void Model::Draw( ID3D12Resource* wvpResource, ID3D12Resource* directionalLightR
     // ルートシグネチャに各定数バッファを設定
     commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-    // ★★★ 平行光源のインデックスを 3 に修正 ★★★
     commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-
+    if (cameraResource) {
+        commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
+    }
     // 描画コマンドの発行
     commandList->DrawInstanced(UINT(modelData_.vertices.size()), 1, 0, 0);
 }

@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "Object3d.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
@@ -21,7 +22,52 @@ void Object3d::Initialize(Object3dCommon* common) {
     directionalLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     directionalLightData_->direction = { 0.0f, -1.0f, 0.0f };
     directionalLightData_->intensity = 1.0f;
+
+    cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
+    cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+    cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
 }
+
+OBB Object3d::GetOBB() const
+{
+    OBB obb;
+
+    // ワールド行列から情報を抽出
+    const Matrix4x4& worldMat = GetWorldMatrix();
+
+    // 1. 中心座標 (Translate)
+    obb.center = { worldMat.m[3][0], worldMat.m[3][1], worldMat.m[3][2] };
+
+    // 2. 回転軸 (Axis)
+    // ※スケールが含まれていると長さが変わるので正規化する
+    Math math;
+    Vector3 xAxis = { worldMat.m[0][0], worldMat.m[0][1], worldMat.m[0][2] };
+    Vector3 yAxis = { worldMat.m[1][0], worldMat.m[1][1], worldMat.m[1][2] };
+    Vector3 zAxis = { worldMat.m[2][0], worldMat.m[2][1], worldMat.m[2][2] };
+
+    // 各軸の長さ（ワールドスケール）を取得
+    float lenX = math.Length(xAxis);
+    float lenY = math.Length(yAxis);
+    float lenZ = math.Length(zAxis);
+
+    // 向きベクトルは正規化
+    obb.orientations[0] = (lenX > 0.0f) ? (xAxis / lenX) : Vector3{ 1.0f, 0.0f, 0.0f };
+    obb.orientations[1] = (lenY > 0.0f) ? (yAxis / lenY) : Vector3{ 0.0f, 1.0f, 0.0f };
+    obb.orientations[2] = (lenZ > 0.0f) ? (zAxis / lenZ) : Vector3{ 0.0f, 0.0f, 1.0f };
+
+    // 3. サイズ (半サイズ)
+    // collisionSize_ は「全サイズ」で保持されている前提
+    Vector3 fullSize = collisionSize_;
+
+    // ワールドスケールを掛けて半サイズを算出（親のスケールも worldMat に反映される）
+    Vector3 worldScale = { lenX, lenY, lenZ };
+    obb.size.x = (fullSize.x * worldScale.x) * 0.5f;
+    obb.size.y = (fullSize.y * worldScale.y) * 0.5f;
+    obb.size.z = (fullSize.z * worldScale.z) * 0.5f;
+
+    return obb;
+}
+
 
 void Object3d::SetModel(const std::string& modelName) {
     // 探して、なければ読み込んでくれる
@@ -30,7 +76,6 @@ void Object3d::SetModel(const std::string& modelName) {
 }
 
 void Object3d::Update(float deltaTime) {
-    // 派生クラス (Playerなど) でオーバーライドされる用
 }
 
 void Object3d::UpdateLocalMatrix() {
@@ -52,25 +97,27 @@ void Object3d::UpdateWorldMatrix() {
 
     // --- 親子関係の処理 ---
     if (parent_ != nullptr) {
-        // 親のワールド行列を取得し、それに自分のローカル行列を乗算する
         worldMatrix_ = math.Multiply(localMatrix_, parent_->GetWorldMatrix());
     }
-     
 
-    // --- 既存の WVP とライティングの処理（ここから）---
+    // --- 既存の WVP とライティングの処理 ---
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    const Matrix4x4& viewMatrix = camera->GetViewMatrix();
-    const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
 
-    // ★ 計算対象の行列を worldMatrix_ に変更
-    Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix_, math.Multiply(viewMatrix, projectionMatrix));
+    // カメラがあれば計算する
+    if (camera) {
+        const Matrix4x4& viewMatrix = camera->GetViewMatrix();
+        const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
 
-    wvpData_->WVP = worldViewProjectionMatrix;
-    wvpData_->world = worldMatrix_; // ★ worldMatrix_ をセット
+        Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix_, math.Multiply(viewMatrix, projectionMatrix));
 
-    directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
+        wvpData_->WVP = worldViewProjectionMatrix;
+        wvpData_->world = worldMatrix_;
+        wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix_));
+        directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
+        cameraData_->worldPosition = camera->GetEye();
+    }
+
 }
-
 
 
 
@@ -84,7 +131,10 @@ void Object3d::Draw() {
 
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
-    model_->Draw(wvpResource_.Get(), directionalLightResource_.Get());
+    if (model_) {
+
+        model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get());
+    }
 }
 
 void Object3d::SetParent(Object3d* parent) {
@@ -98,7 +148,7 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
     CollisionInfo collision;
     collision.isColliding = false; // 初期化
 
-    // (↓ Character::OnCollision から移動してきたロジック)
+    //タイプを指定して
     if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
         collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
     } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
@@ -113,7 +163,20 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
         collision = CheckSphereAABBCollision(
             this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
     }
-
+    if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
+        collision = CheckSphereOBBCollision(this->GetWorldPosition(), this->GetCollisionRadius(), other->GetOBB());
+    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
+        // 引数の順序を入れ替えて呼び出し、法線を反転
+        collision = CheckSphereOBBCollision(other->GetWorldPosition(), other->GetCollisionRadius(), this->GetOBB());
+        collision.normal = collision.normal * -1.0f;
+    }
+    // 2. OBB vs OBB
+    else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
+        collision = CheckOBBCollision(this->GetOBB(), other->GetOBB());
+    }
+    // 3. AABB vs OBB 
+    else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
+    }
     return collision;
 }
 
@@ -143,4 +206,14 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
 
 
     return newObj;
+}
+void Object3d::SetColor(const Vector4& color) {
+    if (directionalLightData_) {
+        directionalLightData_->color = color;
+    }
+}
+void Object3d::SetIntensity(float intensity) {
+    if (directionalLightData_) {
+        directionalLightData_->intensity = intensity;
+    }
 }

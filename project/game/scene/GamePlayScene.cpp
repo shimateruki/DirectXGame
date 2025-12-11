@@ -57,7 +57,7 @@ void GamePlayScene::Initialize() {
 
 	auto playerObj = std::make_unique<Player>();
 	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
-	playerObj->SetModel("block");
+	playerObj->SetModel("sample");
 	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	playerObj->SetName("Player");
 	playerObj->SetStatic(false);
@@ -360,6 +360,9 @@ void GamePlayScene::Update(float deltaTime) {
 		);
 	}
 
+
+
+
 	//弾の更新
 	BulletManager::GetInstance()->Update(deltaTime);
 
@@ -367,6 +370,76 @@ void GamePlayScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 	//オブジェクト削除関数
 	ProcessRemovals();
+
+#ifdef USE_IMGUI
+	ImGui::Begin("Debug Control");
+
+	if (ImGui::CollapsingHeader("Player")) {
+		if (player_) {
+			// PlayerはObject3dを継承しているので、モデルやライトデータを直接取得可能
+			Model* model = player_->GetModel();
+			Object3d::DirectionalLight* light = player_->GetDirectionalLightData(); 
+
+			// --- 1. マテリアル設定 (反射する側の設定) ---
+			if (model) {
+				Model::Material* material = model->GetMaterial();
+				if (material) {
+					if (ImGui::TreeNode("Material Settings")) {
+						Vector3 scale = player_->GetScale();
+						if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.1f, 10.0f)) {
+							player_->SetScale(scale);
+						}
+						// ライティング種類の選択
+						const char* lightingTypes[] = { "None", "Lambert", "Phong" };
+						int currentType = material->selectedLighting;
+						if (ImGui::Combo("Type", &currentType, lightingTypes, IM_ARRAYSIZE(lightingTypes))) {
+							material->selectedLighting = currentType;
+						}
+
+						// Phongの時だけShininess調整
+						if (material->selectedLighting == 2) {
+							// ハイライトの鋭さ (1.0=鈍い ～ 100.0=鋭い)
+							ImGui::DragFloat("Shininess", &material->shininess, 0.5f, 1.0f, 100.0f);
+						}
+
+						// マテリアルの色（素材そのものの色）
+						ImGui::ColorEdit4("Material Color", &material->color.x);
+						ImGui::TreePop();
+					}
+				}
+			}
+
+			// --- 2. ライト設定 (照らす側の設定)  ---
+			if (light) {
+				if (ImGui::TreeNode("Light Settings")) {
+					// ライトの向きを変更
+					// x, y, z の値をいじって光の当たる角度を変える
+					// (0, -1, 0) なら真上から、(1, 0, 0) なら横から
+					ImGui::DragFloat3("Direction", &light->direction.x, 0.01f);
+
+					// ライトの色 (ハイライトの色にも影響します)
+					ImGui::ColorEdit4("Light Color", &light->color.x);
+
+					// ライトの強さ
+					ImGui::DragFloat("Intensity", &light->intensity, 0.01f, 0.0f, 5.0f);
+
+					ImGui::TreePop();
+				}
+			}
+
+			// --- 3. 座標設定 ---
+			if (ImGui::TreeNode("Transform")) {
+				Vector3 pos = player_->GetWorldPosition();
+				// 表示用（書き換えはSetTranslate等が必要ですが確認用として）
+				ImGui::DragFloat3("Position", &pos.x);
+				ImGui::TreePop();
+			}
+		}
+	}
+	ImGui::End();
+#endif
+
+
 }
 
 void GamePlayScene::Draw() {
