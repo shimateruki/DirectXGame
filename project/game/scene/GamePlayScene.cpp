@@ -41,22 +41,9 @@ void GamePlayScene::Initialize() {
 	inputManager_ = InputManager::GetInstance();
 	audioPlayer_ = AudioPlayer::GetInstance();
 
-	LightManager::GetInstance()->ClearAllLights();
 
-	// 点光源を追加
-	auto pointLight = LightManager::GetInstance()->AddPointLight();
-	pointLight->position = { 0.0f, 2.0f, 0.0f };
-	pointLight->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	pointLight->radius = 10.0f;
-	pointLight->decay = 1.0f;
 
-	// スポットライトを追加
-	auto spotLight = LightManager::GetInstance()->AddSpotLight();
-	spotLight->position = { 0.0f, 5.0f, 0.0f };
-	spotLight->direction = math_->Normalize(Vector3{ 0.0f, -1.0f, 0.0f });
-	spotLight->distance = 20.0f;
-	spotLight->cosAngle = std::cos(45.0f * 3.141592f / 180.0f);
-	spotLight->cosFalloffStart = std::cos(30.0f * 3.141592f / 180.0f);
+	
 
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
@@ -463,109 +450,7 @@ void GamePlayScene::Update(float deltaTime) {
 		}
 	}
 
-	// ==========================================================
-	// 2. ライトマネージャー (LightManager: Point & Spot)
-	// ==========================================================
-	if (ImGui::CollapsingHeader("Scene Light Manager")) {
-		auto lightManager = LightManager::GetInstance();
-
-		// --- 点光源 (Point Lights) ---
-		if (ImGui::TreeNode("Point Lights List")) {
-			// 追加ボタン
-			if (ImGui::Button("Add PointLight")) {
-				lightManager->AddPointLight();
-			}
-			ImGui::SameLine();
-			if (ImGui::Button("Clear All")) {
-				// 必要ならクリア機能も実装できます
-				// lightManager->ClearPointLights();
-			}
-
-			// リスト表示
-			auto& pointLights = lightManager->GetPointLights();
-			for (int i = 0; i < pointLights.size(); ++i) {
-				// IDを付与して識別可能にする
-				ImGui::PushID(i);
-				if (ImGui::TreeNode("Light", "PointLight %d", i)) {
-					ImGui::DragFloat3("Position", &pointLights[i].position.x, 0.1f);
-					ImGui::ColorEdit4("Color", &pointLights[i].color.x);
-					ImGui::DragFloat("Intensity", &pointLights[i].intensity, 0.01f, 0.0f, 10.0f);
-					ImGui::DragFloat("Radius", &pointLights[i].radius, 0.1f, 0.0f, 100.0f);
-					ImGui::DragFloat("Decay", &pointLights[i].decay, 0.01f, 0.0f, 10.0f);
-					ImGui::TreePop();
-				}
-				ImGui::PopID();
-			}
-			ImGui::TreePop();
-		}
-
-		// --- スポットライト (Spot Lights) ---
-		if (ImGui::TreeNode("Spot Lights List")) {
-			// 追加ボタン
-			if (ImGui::Button("Add SpotLight")) {
-				auto newLight = lightManager->AddSpotLight();
-				// 追加時にもデフォルト角度を入れておく
-				if (newLight) {
-					newLight->cosAngle = std::cos(45.0f * 3.141592f / 180.0f);
-					newLight->cosFalloffStart = std::cos(30.0f * 3.141592f / 180.0f);
-				}
-			}
-
-			// リスト表示
-			auto& spotLights = lightManager->GetSpotLights();
-			for (int i = 0; i < spotLights.size(); ++i) {
-				ImGui::PushID(i + 1000);
-				if (ImGui::TreeNode("Light", "SpotLight %d", i)) {
-					ImGui::DragFloat3("Position", &spotLights[i].position.x, 0.1f);
-					ImGui::DragFloat3("Direction", &spotLights[i].direction.x, 0.01f, -1.0f, 1.0f);
-					// 方向ベクトルは常に正規化しておくのが安全
-					// (必要ならMath::Normalizeを使う)
-
-					ImGui::ColorEdit4("Color", &spotLights[i].color.x);
-					ImGui::DragFloat("Intensity", &spotLights[i].intensity, 0.01f, 0.0f, 10.0f);
-					ImGui::DragFloat("Distance", &spotLights[i].distance, 0.1f, 0.0f, 100.0f);
-					ImGui::DragFloat("Decay", &spotLights[i].decay, 0.01f, 0.0f, 10.0f);
-
-					// ★★★ 角度調整 (Degree <-> Radian <-> Cos) ★★★
-
-					// 1. 現在の Cos値 から 角度(Degree) を計算して取り出す
-					// acos でラジアンにし、180/PI で度数法にする
-					float currentAngleDeg = std::acos(spotLights[i].cosAngle) * 180.0f / 3.141592f;
-					float currentFalloffDeg = std::acos(spotLights[i].cosFalloffStart) * 180.0f / 3.141592f;
-
-					// 2. ImGuiのスライダーで「角度」をいじらせる
-					bool angleChanged = false;
-					ImGui::Text("Cone Angle (Degree)");
-					// 0度～179度くらいの間で調整
-					if (ImGui::DragFloat("Limit Angle", &currentAngleDeg, 1.0f, 0.1f, 179.0f)) {
-						angleChanged = true;
-					}
-					if (ImGui::DragFloat("Falloff Start", &currentFalloffDeg, 1.0f, 0.1f, 179.0f)) {
-						angleChanged = true;
-					}
-
-					// 3. 変更があったら Cos値 に戻して保存する
-					if (angleChanged) {
-						// Falloffの方がLimitより大きくならないように制御
-						if (currentFalloffDeg > currentAngleDeg) {
-							currentFalloffDeg = currentAngleDeg;
-						}
-
-						// 度数法 -> ラジアン -> Cos
-						spotLights[i].cosAngle = std::cos(currentAngleDeg * 3.141592f / 180.0f);
-						spotLights[i].cosFalloffStart = std::cos(currentFalloffDeg * 3.141592f / 180.0f);
-					}
-
-					// デバッグ用にCos値を表示してもOK
-					ImGui::Text("Raw Cos: %.3f / %.3f", spotLights[i].cosAngle, spotLights[i].cosFalloffStart);
-
-					ImGui::TreePop();
-				}
-				ImGui::PopID();
-			}
-			ImGui::TreePop();
-		}
-	}
+	
 
 	ImGui::End();
 #endif
