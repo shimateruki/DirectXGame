@@ -47,7 +47,7 @@ public: // メンバ関数
     /// <summary>
     /// 描画
     /// </summary>
-    void Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource);
+    void Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)

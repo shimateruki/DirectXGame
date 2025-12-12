@@ -4,6 +4,7 @@
 #include "InputManager.h"
 #include"DebugConsole.h"
 #include "SceneFactory.h"
+#include "LightManager.h"
 #include"imgui.h"
 #include "ImGuizmo.h" 
 #include <chrono>
@@ -149,8 +150,9 @@ void Game::Update() {
         sceneManager_->Update(scaledDeltaTime); 
     }
 
+    LightManager::GetInstance()->Update();
 #ifdef USE_IMGUI
-    ImGuiManager::GetInstance()->EndFrame(); // ★ EndFrame をここに移動
+    ImGuiManager::GetInstance()->EndFrame();
 #endif
 }
 

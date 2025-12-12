@@ -21,11 +21,13 @@ void Object3d::Initialize(Object3dCommon* common) {
     directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
     directionalLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     directionalLightData_->direction = { 0.0f, -1.0f, 0.0f };
-    directionalLightData_->intensity = 1.0f;
+    directionalLightData_->intensity = 0.0f;
 
     cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
+
+
 }
 
 OBB Object3d::GetOBB() const
@@ -121,7 +123,7 @@ void Object3d::UpdateWorldMatrix() {
 
 
 
-void Object3d::Draw() {
+void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (model_ == nullptr) {
         return;
     }
@@ -133,7 +135,7 @@ void Object3d::Draw() {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
     if (model_) {
 
-        model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get());
+        model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource);
     }
 }
 

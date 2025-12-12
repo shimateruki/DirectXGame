@@ -30,6 +30,7 @@
 #include <fstream>
 #include <string>
 #include "json.hpp" 
+#include <numbers>
 
 
 void GamePlayScene::Initialize() {
@@ -39,6 +40,23 @@ void GamePlayScene::Initialize() {
 	dxCommon_ = DirectXCommon::GetInstance();
 	inputManager_ = InputManager::GetInstance();
 	audioPlayer_ = AudioPlayer::GetInstance();
+
+	LightManager::GetInstance()->ClearAllLights();
+
+	// 点光源を追加
+	auto pointLight = LightManager::GetInstance()->AddPointLight();
+	pointLight->position = { 0.0f, 2.0f, 0.0f };
+	pointLight->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	pointLight->radius = 10.0f;
+	pointLight->decay = 1.0f;
+
+	// スポットライトを追加
+	auto spotLight = LightManager::GetInstance()->AddSpotLight();
+	spotLight->position = { 0.0f, 5.0f, 0.0f };
+	spotLight->direction = math_->Normalize(Vector3{ 0.0f, -1.0f, 0.0f });
+	spotLight->distance = 20.0f;
+	spotLight->cosAngle = std::cos(45.0f * 3.141592f / 180.0f);
+	spotLight->cosFalloffStart = std::cos(30.0f * 3.141592f / 180.0f);
 
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
@@ -73,92 +91,100 @@ void GamePlayScene::Initialize() {
 	enemy->SetStatic(true);
 	objects_.emplace_back(std::move(enemy));
 
-	const float blockSize = 2.0f; // ブロックの1辺のサイズ 
-	const int fieldWidth = 30;  // X方向 (幅) の床の数
-	const int fieldDepth = 30;  // Z方向 (奥行) の床の数
-	const int wallHeight = 5;   // Y方向 (高さ) の壁の数
+	auto terrain = std::make_unique<Object3d>();
+	terrain->Initialize(object3dCommon_.get());
+	terrain->SetModel("terrain");
+	terrain->SetTranslate({ 2.0f, 0.0f, 0.0f });
+	terrain->SetName("terrain");
+	terrain->SetStatic(true);
+	objects_.emplace_back(std::move(terrain));
 
-	// フィールドの中心が (0, 0, 0) 付近になるようオフセットを計算
-	const float offsetX = (fieldWidth * blockSize) / 2.0f;
-	const float offsetZ = (fieldDepth * blockSize) / 2.0f;
+	//const float blockSize = 2.0f; // ブロックの1辺のサイズ 
+	//const int fieldWidth = 30;  // X方向 (幅) の床の数
+	//const int fieldDepth = 30;  // Z方向 (奥行) の床の数
+	//const int wallHeight = 5;   // Y方向 (高さ) の壁の数
 
-	// 衝突判定用のハーフサイズ
-	const Vector3 blockHalfSize = { blockSize / 2.0f, blockSize / 2.0f, blockSize / 2.0f };
+	//// フィールドの中心が (0, 0, 0) 付近になるようオフセットを計算
+	//const float offsetX = (fieldWidth * blockSize) / 2.0f;
+	//const float offsetZ = (fieldDepth * blockSize) / 2.0f;
 
-
-	// --- 1. 床 (Floor) の生成---
-	const float floorY = -blockSize;
-	for (int z = 0; z < fieldDepth; ++z) {
-		for (int x = 0; x < fieldWidth; ++x) {
-			auto block = std::make_unique<Object3d>();
-			block->Initialize(object3dCommon_.get());
-			block->SetModel("block");
-
-			float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
-			float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
-			block->SetTranslate({ posX, floorY, posZ });
-
-			block->SetName("Floor_" + std::to_string(x) + "_" + std::to_string(z));
-			block->SetStatic(true);
+	//// 衝突判定用のハーフサイズ
+	//const Vector3 blockHalfSize = { blockSize / 2.0f, blockSize / 2.0f, blockSize / 2.0f };
 
 
-			// ★ ブロック生成と同時に衝突判定も設定
-			block->SetCollisionAttribute(kGround);
-			block->SetCollisionMask(~kGround);
-			block->SetColliderType(ColliderType::kAABB);
-			block->SetCollisionSize(blockHalfSize);
-			CollisionManager::GetInstance()->AddObject(block.get());
+	//// --- 1. 床 (Floor) の生成---
+	//const float floorY = -blockSize;
+	//for (int z = 0; z < fieldDepth; ++z) {
+	//	for (int x = 0; x < fieldWidth; ++x) {
+	//		auto block = std::make_unique<Object3d>();
+	//		block->Initialize(object3dCommon_.get());
+	//		block->SetModel("block");
 
-			objects_.emplace_back(std::move(block));
-		}
-	}
+	//		float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
+	//		float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+	//		block->SetTranslate({ posX, floorY, posZ });
 
-	// --- 2. 壁 (Walls) の生成 (Y= 0 ～ wallHeight) ---
-	for (int y = 0; y < wallHeight; ++y) {
-		float posY = y * blockSize; // 0.0, 2.0, 4.0 ...
+	//		block->SetName("Floor_" + std::to_string(x) + "_" + std::to_string(z));
+	//		block->SetStatic(true);
 
-		// (A) X軸に沿った壁 (奥: Z+ と 手前: Z-)
-		for (int x = 0; x < fieldWidth; ++x) {
-			float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
 
-			// 奥の壁 (Z+)
-			float posZ_Back = (fieldDepth * blockSize) - offsetZ - (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX, posY, posZ_Back },
-				"Wall_Back_" + std::to_string(x) + "_" + std::to_string(y),
-				blockHalfSize
-			));
+	//		// ★ ブロック生成と同時に衝突判定も設定
+	//		block->SetCollisionAttribute(kGround);
+	//		block->SetCollisionMask(~kGround);
+	//		block->SetColliderType(ColliderType::kAABB);
+	//		block->SetCollisionSize(blockHalfSize);
+	//		CollisionManager::GetInstance()->AddObject(block.get());
 
-			// 手前の壁 (Z-)
-			float posZ_Front = -offsetZ + (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX, posY, posZ_Front },
-				"Wall_Front_" + std::to_string(x) + "_" + std::to_string(y),
-				blockHalfSize
-			));
-		}
+	//		objects_.emplace_back(std::move(block));
+	//	}
+	//}
 
-		// (B) Z軸に沿った壁 
-		for (int z = 1; z < fieldDepth - 1; ++z) {
-			float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+	//// --- 2. 壁 (Walls) の生成 (Y= 0 ～ wallHeight) ---
+	//for (int y = 0; y < wallHeight; ++y) {
+	//	float posY = y * blockSize; // 0.0, 2.0, 4.0 ...
 
-			// 右の壁 (X+)
-			float posX_Right = (fieldWidth * blockSize) - offsetX - (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX_Right, posY, posZ },
-				"Wall_Right_" + std::to_string(z) + "_" + std::to_string(y),
-				blockHalfSize
-			));
+	//	// (A) X軸に沿った壁 (奥: Z+ と 手前: Z-)
+	//	for (int x = 0; x < fieldWidth; ++x) {
+	//		float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
 
-			// 左の壁 (X-)
-			float posX_Left = -offsetX + (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX_Left, posY, posZ },
-				"Wall_Left_" + std::to_string(z) + "_" + std::to_string(y),
-				blockHalfSize
-			));
-		}
-	}
+	//		// 奥の壁 (Z+)
+	//		float posZ_Back = (fieldDepth * blockSize) - offsetZ - (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX, posY, posZ_Back },
+	//			"Wall_Back_" + std::to_string(x) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+
+	//		// 手前の壁 (Z-)
+	//		float posZ_Front = -offsetZ + (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX, posY, posZ_Front },
+	//			"Wall_Front_" + std::to_string(x) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+	//	}
+
+	//	// (B) Z軸に沿った壁 
+	//	for (int z = 1; z < fieldDepth - 1; ++z) {
+	//		float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+
+	//		// 右の壁 (X+)
+	//		float posX_Right = (fieldWidth * blockSize) - offsetX - (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX_Right, posY, posZ },
+	//			"Wall_Right_" + std::to_string(z) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+
+	//		// 左の壁 (X-)
+	//		float posX_Left = -offsetX + (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX_Left, posY, posZ },
+	//			"Wall_Left_" + std::to_string(z) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+	//	}
+	//}
 
 	// --- カメラの設定 ---
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -182,9 +208,15 @@ void GamePlayScene::Initialize() {
 	objects_[1]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 	CollisionManager::GetInstance()->AddObject(objects_[1].get());
 
+	objects_[2]->SetCollisionAttribute(kGround);
+	objects_[2]->SetCollisionMask(~kGround);
+	objects_[2]->SetColliderType(ColliderType::kAABB);
+	objects_[2]->SetCollisionSize({ 20.0f, 1.0f, 20.0f });
+	CollisionManager::GetInstance()->AddObject(objects_[2].get());
 
 
-	for (size_t i = 2; i < objects_.size(); ++i) {
+
+	for (size_t i = 3; i < objects_.size(); ++i) {
 		objects_[i]->SetCollisionAttribute(kGround);
 		objects_[i]->SetCollisionMask(~kGround);
 		objects_[i]->SetColliderType(ColliderType::kAABB);
@@ -374,68 +406,167 @@ void GamePlayScene::Update(float deltaTime) {
 #ifdef USE_IMGUI
 	ImGui::Begin("Debug Control");
 
-	if (ImGui::CollapsingHeader("Player")) {
+	// ==========================================================
+	// 1. プレイヤー設定 (Transform & Material)
+	// ==========================================================
+	if (ImGui::CollapsingHeader("Player Settings")) {
 		if (player_) {
-			// PlayerはObject3dを継承しているので、モデルやライトデータを直接取得可能
-			Model* model = player_->GetModel();
-			Object3d::DirectionalLight* light = player_->GetDirectionalLightData(); 
+			// Transform (位置・回転・スケール)
+			if (ImGui::TreeNode("Transform")) {
+				// 位置 (表示のみ)
+				Vector3 pos = player_->GetWorldPosition();
+				ImGui::DragFloat3("Position", &pos.x);
 
-			// --- 1. マテリアル設定 (反射する側の設定) ---
+				// スケール (変更可能)
+				Vector3 scale = player_->GetScale();
+				if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.1f, 10.0f)) {
+					player_->SetScale(scale);
+				}
+				ImGui::TreePop();
+			}
+
+			// Material (色・反射設定)
+			Model* model = player_->GetModel();
 			if (model) {
 				Model::Material* material = model->GetMaterial();
 				if (material) {
-					if (ImGui::TreeNode("Material Settings")) {
-						Vector3 scale = player_->GetScale();
-						if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.1f, 10.0f)) {
-							player_->SetScale(scale);
-						}
+					if (ImGui::TreeNode("Material")) {
 						// ライティング種類の選択
 						const char* lightingTypes[] = { "None", "Lambert", "Phong" };
 						int currentType = material->selectedLighting;
-						if (ImGui::Combo("Type", &currentType, lightingTypes, IM_ARRAYSIZE(lightingTypes))) {
+						if (ImGui::Combo("Lighting Type", &currentType, lightingTypes, IM_ARRAYSIZE(lightingTypes))) {
 							material->selectedLighting = currentType;
 						}
 
-						// Phongの時だけShininess調整
+						// Phongの時だけ光沢度を調整
 						if (material->selectedLighting == 2) {
-							// ハイライトの鋭さ (1.0=鈍い ～ 100.0=鋭い)
-							ImGui::DragFloat("Shininess", &material->shininess, 0.5f, 1.0f, 100.0f);
+							ImGui::DragFloat("Shininess", &material->shininess, 1.0f, 1.0f, 256.0f);
 						}
 
-						// マテリアルの色（素材そのものの色）
-						ImGui::ColorEdit4("Material Color", &material->color.x);
+						// 色
+						ImGui::ColorEdit4("Base Color", &material->color.x);
 						ImGui::TreePop();
 					}
 				}
 			}
 
-			// --- 2. ライト設定 (照らす側の設定)  ---
-			if (light) {
-				if (ImGui::TreeNode("Light Settings")) {
-					// ライトの向きを変更
-					// x, y, z の値をいじって光の当たる角度を変える
-					// (0, -1, 0) なら真上から、(1, 0, 0) なら横から
-					ImGui::DragFloat3("Direction", &light->direction.x, 0.01f);
-
-					// ライトの色 (ハイライトの色にも影響します)
-					ImGui::ColorEdit4("Light Color", &light->color.x);
-
-					// ライトの強さ
-					ImGui::DragFloat("Intensity", &light->intensity, 0.01f, 0.0f, 5.0f);
-
+			// 平行光源 (Directional Light) ※プレイヤーが持っている平行光源設定
+			Object3d::DirectionalLight* dirLight = player_->GetDirectionalLightData();
+			if (dirLight) {
+				if (ImGui::TreeNode("Directional Light (Local)")) {
+					ImGui::DragFloat3("Direction", &dirLight->direction.x, 0.01f, -1.0f, 1.0f);
+					ImGui::ColorEdit4("Color", &dirLight->color.x);
+					ImGui::DragFloat("Intensity", &dirLight->intensity, 0.01f, 0.0f, 5.0f);
 					ImGui::TreePop();
 				}
 			}
-
-			// --- 3. 座標設定 ---
-			if (ImGui::TreeNode("Transform")) {
-				Vector3 pos = player_->GetWorldPosition();
-				// 表示用（書き換えはSetTranslate等が必要ですが確認用として）
-				ImGui::DragFloat3("Position", &pos.x);
-				ImGui::TreePop();
-			}
 		}
 	}
+
+	// ==========================================================
+	// 2. ライトマネージャー (LightManager: Point & Spot)
+	// ==========================================================
+	if (ImGui::CollapsingHeader("Scene Light Manager")) {
+		auto lightManager = LightManager::GetInstance();
+
+		// --- 点光源 (Point Lights) ---
+		if (ImGui::TreeNode("Point Lights List")) {
+			// 追加ボタン
+			if (ImGui::Button("Add PointLight")) {
+				lightManager->AddPointLight();
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Clear All")) {
+				// 必要ならクリア機能も実装できます
+				// lightManager->ClearPointLights();
+			}
+
+			// リスト表示
+			auto& pointLights = lightManager->GetPointLights();
+			for (int i = 0; i < pointLights.size(); ++i) {
+				// IDを付与して識別可能にする
+				ImGui::PushID(i);
+				if (ImGui::TreeNode("Light", "PointLight %d", i)) {
+					ImGui::DragFloat3("Position", &pointLights[i].position.x, 0.1f);
+					ImGui::ColorEdit4("Color", &pointLights[i].color.x);
+					ImGui::DragFloat("Intensity", &pointLights[i].intensity, 0.01f, 0.0f, 10.0f);
+					ImGui::DragFloat("Radius", &pointLights[i].radius, 0.1f, 0.0f, 100.0f);
+					ImGui::DragFloat("Decay", &pointLights[i].decay, 0.01f, 0.0f, 10.0f);
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+
+		// --- スポットライト (Spot Lights) ---
+		if (ImGui::TreeNode("Spot Lights List")) {
+			// 追加ボタン
+			if (ImGui::Button("Add SpotLight")) {
+				auto newLight = lightManager->AddSpotLight();
+				// 追加時にもデフォルト角度を入れておく
+				if (newLight) {
+					newLight->cosAngle = std::cos(45.0f * 3.141592f / 180.0f);
+					newLight->cosFalloffStart = std::cos(30.0f * 3.141592f / 180.0f);
+				}
+			}
+
+			// リスト表示
+			auto& spotLights = lightManager->GetSpotLights();
+			for (int i = 0; i < spotLights.size(); ++i) {
+				ImGui::PushID(i + 1000);
+				if (ImGui::TreeNode("Light", "SpotLight %d", i)) {
+					ImGui::DragFloat3("Position", &spotLights[i].position.x, 0.1f);
+					ImGui::DragFloat3("Direction", &spotLights[i].direction.x, 0.01f, -1.0f, 1.0f);
+					// 方向ベクトルは常に正規化しておくのが安全
+					// (必要ならMath::Normalizeを使う)
+
+					ImGui::ColorEdit4("Color", &spotLights[i].color.x);
+					ImGui::DragFloat("Intensity", &spotLights[i].intensity, 0.01f, 0.0f, 10.0f);
+					ImGui::DragFloat("Distance", &spotLights[i].distance, 0.1f, 0.0f, 100.0f);
+					ImGui::DragFloat("Decay", &spotLights[i].decay, 0.01f, 0.0f, 10.0f);
+
+					// ★★★ 角度調整 (Degree <-> Radian <-> Cos) ★★★
+
+					// 1. 現在の Cos値 から 角度(Degree) を計算して取り出す
+					// acos でラジアンにし、180/PI で度数法にする
+					float currentAngleDeg = std::acos(spotLights[i].cosAngle) * 180.0f / 3.141592f;
+					float currentFalloffDeg = std::acos(spotLights[i].cosFalloffStart) * 180.0f / 3.141592f;
+
+					// 2. ImGuiのスライダーで「角度」をいじらせる
+					bool angleChanged = false;
+					ImGui::Text("Cone Angle (Degree)");
+					// 0度～179度くらいの間で調整
+					if (ImGui::DragFloat("Limit Angle", &currentAngleDeg, 1.0f, 0.1f, 179.0f)) {
+						angleChanged = true;
+					}
+					if (ImGui::DragFloat("Falloff Start", &currentFalloffDeg, 1.0f, 0.1f, 179.0f)) {
+						angleChanged = true;
+					}
+
+					// 3. 変更があったら Cos値 に戻して保存する
+					if (angleChanged) {
+						// Falloffの方がLimitより大きくならないように制御
+						if (currentFalloffDeg > currentAngleDeg) {
+							currentFalloffDeg = currentAngleDeg;
+						}
+
+						// 度数法 -> ラジアン -> Cos
+						spotLights[i].cosAngle = std::cos(currentAngleDeg * 3.141592f / 180.0f);
+						spotLights[i].cosFalloffStart = std::cos(currentFalloffDeg * 3.141592f / 180.0f);
+					}
+
+					// デバッグ用にCos値を表示してもOK
+					ImGui::Text("Raw Cos: %.3f / %.3f", spotLights[i].cosAngle, spotLights[i].cosFalloffStart);
+
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+	}
+
 	ImGui::End();
 #endif
 
@@ -454,6 +585,10 @@ void GamePlayScene::Draw() {
 	}
 #endif
 
+	// ライトのリソースを取得
+	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
+	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+
 	// --- 3Dオブジェクト描画 ---
 	object3dCommon_->SetGraphicsCommand();
 	for (size_t i = 0; i < objects_.size(); ++i) {
@@ -461,10 +596,10 @@ void GamePlayScene::Draw() {
 		if (isFirstPerson && i == 1) {
 			continue; 
 		}
-		objects_[i]->Draw();
+		objects_[i]->Draw(pointLightRes, spotLightRes);
 	}
 
-	BulletManager::GetInstance()->Draw();
+	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 
 	// --- スプライト描画 ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());

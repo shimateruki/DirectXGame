@@ -28,10 +28,32 @@ public:
         Vector3 worldPosition;
     };
 
+    struct PointLight {
+        Vector4 color;       // ライトの色
+        Vector3 position;    // ライトの位置
+        float intensity;     // 輝度（強さ）
+        float radius;        // ライトの届く最大距離
+        float decay;         // 減衰率
+        float padding[2];    // パディング
+    };
+
+
+    struct SpotLight {
+        Vector4 color;        // 色
+        Vector3 position;     // 位置
+        float intensity;      // 強さ
+        Vector3 direction;    // スポットライトの向いている方向
+        float distance;       // 届く距離
+        float decay;          // 減衰率
+        float cosAngle;       // スポットライトの余弦 (角度)
+        float cosFalloffStart;// ボケ足の開始角度
+        float padding[1];     // パディング
+    };
+
 public:
     virtual void Initialize(Object3dCommon* common);
     virtual void Update(float deltaTime);
-    virtual void Draw();
+    virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     /// <summary>
     /// ワールド行列の計算と定数バッファへの転送
@@ -78,7 +100,7 @@ public:
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
     DirectionalLight* GetDirectionalLight() { return directionalLightData_; }
 
-
+ 
     // 光の強さをセットする関数
     void SetIntensity(float intensity);
     // 現在の光の強さを取得する関数

@@ -62,8 +62,8 @@ void BulletManager::Update(float deltaTime) {
         });
 }
 
-void BulletManager::Draw() {
+void BulletManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     for (auto& bullet : bullets_) {
-        bullet->Draw();
+        bullet->Draw(pointLightResource, spotLightResource);
     }
 }

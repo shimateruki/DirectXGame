@@ -50,7 +50,7 @@ private:
     Object3d* selectedObject_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr;
 
-    bool drawColliders_ = false;
+    bool drawColliders_ = true;
     /// <summary>
     /// 最後に Update を実行したシーン
     /// </summary>

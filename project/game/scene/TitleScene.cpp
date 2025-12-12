@@ -94,9 +94,9 @@ void TitleScene::Draw() {
 
     // 3Dオブジェクトの描画
     object3dCommon_->SetGraphicsCommand();
-    for (auto& obj : objects_) {
+ /*   for (auto& obj : objects_) {
         obj->Draw();
-    }
+    }*/
 
     // スプライトの描画
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());

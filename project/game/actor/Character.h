@@ -17,7 +17,7 @@ public:
     /// </summary>
     void Update(float deltaTime) override;
 
-    void Draw() override;
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     bool IsGrounded() const { return isGrounded_; }
     /// <summary>
