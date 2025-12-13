@@ -44,6 +44,7 @@ void TitleScene::Initialize() {
     titleLogo->SetSize({ 200.0f, 200.0f });
     titleLogo->SetAnchorPoint({ 0.5f, 0.5f });
     titleLogo->SetName("TitleLogo");
+
     sprites_.push_back(std::move(titleLogo));
 
     // レイアウト読み込み
