@@ -128,7 +128,7 @@ bool Player::OnCollision(Object3d* other) {
 /// <summary>
 /// 描画処理
 /// </summary>
-void Player::Draw() {
+void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 
-    Character::Draw();
+    Character::Draw(pointLightResource, spotLightResource);
 }

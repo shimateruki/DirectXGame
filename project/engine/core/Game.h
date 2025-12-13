@@ -8,7 +8,9 @@
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
 #include "ParticleEditor.h"
+#include"LightEditor.h"
 #endif
+
 
 
 
@@ -31,6 +33,8 @@ private:
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
 	std::unique_ptr<ParticleEditor> particleEditor_;
+	std::unique_ptr<LightEditor> lightEditor_; 
+	bool showLightEditor_ = true; 
 	bool showParticleEditor_ = true;
 	bool showDebugWindows_ = true;  // 3Dエディタ用
 	bool showSpriteInspector_ = true; // 2Dエディタ用

@@ -9,7 +9,7 @@ class Player : public Character {
 public:
     void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem);
     void Update(float deltaTime) override;
-    void Draw() override;
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     
 
     /// <summary>

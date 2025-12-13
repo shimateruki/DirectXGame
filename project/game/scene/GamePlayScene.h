@@ -102,6 +102,14 @@ private:
     // --- ImGui用フラグ ---
     bool isDrawParticles_ = false;
 
+    //全体ライト(太陽の光)
+    Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
+    Object3d::PointLight* pointLightData_ = nullptr;
+   
+    // スポットライト
+    Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
+    Object3d::SpotLight* spotLightData_ = nullptr;
+
     /// <summary>
     /// 削除予約されたオブジェクトのリスト
     /// </summary>
@@ -131,5 +139,7 @@ private:
     /// シーン内の敵リストを取得する
     /// </summary>
     std::vector<Object3d*> FindEnemies();
+
+    Math* math_;
 
 };

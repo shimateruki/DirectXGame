@@ -44,6 +44,7 @@ void TitleScene::Initialize() {
     titleLogo->SetSize({ 200.0f, 200.0f });
     titleLogo->SetAnchorPoint({ 0.5f, 0.5f });
     titleLogo->SetName("TitleLogo");
+
     sprites_.push_back(std::move(titleLogo));
 
     // レイアウト読み込み
@@ -94,9 +95,9 @@ void TitleScene::Draw() {
 
     // 3Dオブジェクトの描画
     object3dCommon_->SetGraphicsCommand();
-    for (auto& obj : objects_) {
+ /*   for (auto& obj : objects_) {
         obj->Draw();
-    }
+    }*/
 
     // スプライトの描画
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());

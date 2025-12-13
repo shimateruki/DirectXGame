@@ -33,7 +33,7 @@ public:
     /// <summary>
     /// 全ての弾を描画
     /// </summary>
-    void Draw();
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     /// <summary>
     /// 弾を発射

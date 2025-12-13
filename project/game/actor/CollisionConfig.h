@@ -7,14 +7,14 @@ enum CollisionAttribute : uint32_t {
     kPlayer = 1 << 0,  // プレイヤー
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
-    kAttributePlayerBullet = 1<<3,
+    kAttributePlayerBullet = 1 << 3,
 };
 
 // 地形属性をまとめたマスク 
 const uint32_t kAllGround = kGround;
 
 // 押し出し処理を適応させるやつを含ませる
-const uint32_t kAllSolid = kGround | kEnemy;
+const uint32_t kAllSolid = kGround;
 
 /// <summary>
 /// コライダー（あたり判定）の形状タイプ
@@ -23,12 +23,20 @@ enum class ColliderType {
     kNone,   // 当たり判定なし
     kSphere, // 球
     kAABB,   // AABB（回転しない箱）
+    kOBB,
 };
 
 // AABB構造体
 struct AABB {
     Vector3 min; // 箱の最小座標
     Vector3 max; // 箱の最大座標
+};
+
+// OBB構造体 (中心、各軸の向き、サイズ)
+struct OBB {
+    Vector3 center;          // 中心点
+    Vector3 orientations[3]; // 座標軸 (正規化された X, Y, Z 軸)
+    Vector3 size;            // 中心からの半サイズ (width/2, height/2, depth/2)
 };
 
 // 衝突情報（結果）を格納する構造体
@@ -62,3 +70,5 @@ CollisionFace GetCollisionFace(const Vector3& normal, float threshold = 0.8f);
 CollisionInfo CheckAABBCollision(const AABB& a, const AABB& b);
 CollisionInfo CheckSphereCollision(const Vector3& posA, float rA, const Vector3& posB, float rB);
 CollisionInfo CheckSphereAABBCollision(const Vector3& spherePos, float sphereRadius, const AABB& aabb);
+CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadius, const OBB& obb);
+CollisionInfo CheckOBBCollision(const OBB& obb1, const OBB& obb2);

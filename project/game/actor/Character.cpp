@@ -92,7 +92,7 @@ std::unique_ptr<Object3d> Character::Clone() const {
 
     return newObj;
 }
-void Character::Draw() {
+void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 親の描画処理をそのまま実行する
-    Object3d::Draw();
+    Object3d::Draw(pointLightResource, spotLightResource);
 }

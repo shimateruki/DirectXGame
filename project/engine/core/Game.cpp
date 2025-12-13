@@ -4,6 +4,7 @@
 #include "InputManager.h"
 #include"DebugConsole.h"
 #include "SceneFactory.h"
+#include "LightManager.h"
 #include"imgui.h"
 #include "ImGuizmo.h" 
 #include <chrono>
@@ -26,10 +27,12 @@ void Game::Initialize() {
     debugEditor_->Initialize(sceneManager_.get(), dxCommon_);
     particleEditor_ = std::make_unique<ParticleEditor>();
     particleEditor_->Initialize(sceneManager_.get());
-
+    lightEditor_ = std::make_unique<LightEditor>();
+    lightEditor_->Initialize();
     DebugConsole::GetInstance()->Initialize();
 
 #endif
+    lightEditor_->LoadLightLayout("resources/light_layout.json");
 }
 
 void Game::Finalize() {
@@ -133,6 +136,9 @@ void Game::Update() {
             DebugConsole::GetInstance()->DrawImGui();
         }
     }
+    if (showLightEditor_) {
+        lightEditor_->DrawImGui();
+    }
     ImGui::End();
 #endif
 
@@ -149,8 +155,9 @@ void Game::Update() {
         sceneManager_->Update(scaledDeltaTime); 
     }
 
+    LightManager::GetInstance()->Update();
 #ifdef USE_IMGUI
-    ImGuiManager::GetInstance()->EndFrame(); // ★ EndFrame をここに移動
+    ImGuiManager::GetInstance()->EndFrame();
 #endif
 }
 

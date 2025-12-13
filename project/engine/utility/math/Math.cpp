@@ -348,3 +348,14 @@ Vector4 Math::Lerp(const Vector4& v1, const Vector4& v2, float t) {
 	result.w = Lerp(v1.w, v2.w, t);
 	return result;
 }
+
+Matrix4x4 Math::Transpose(const Matrix4x4& m)
+{
+	Matrix4x4 result;
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			result.m[i][j] = m.m[j][i]; // 行と列を入れ替える
+		}
+	}
+	return result;
+}

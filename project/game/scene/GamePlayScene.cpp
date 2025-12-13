@@ -30,12 +30,8 @@
 #include <fstream>
 #include <string>
 #include "json.hpp" 
+#include <numbers>
 
-// 乱数生成器
-static std::random_device rd_scene;
-static std::mt19937 gen_scene(rd_scene());
-static std::uniform_real_distribution<float> dis_color(0.0f, 1.0f); // 0.0～1.0 の色用
-static std::uniform_real_distribution<float> dis_speed(3.0f, 8.0f); // 3.0～8.0 の速度用
 
 void GamePlayScene::Initialize() {
 	using json = nlohmann::json;
@@ -44,6 +40,10 @@ void GamePlayScene::Initialize() {
 	dxCommon_ = DirectXCommon::GetInstance();
 	inputManager_ = InputManager::GetInstance();
 	audioPlayer_ = AudioPlayer::GetInstance();
+
+
+
+	
 
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
@@ -56,13 +56,13 @@ void GamePlayScene::Initialize() {
 	particleCommon_ = std::make_unique<ParticleCommon>();
 	particleCommon_->Initialize(dxCommon_);
 	particleSystem_ = std::make_unique<ParticleSystem>();
-	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/particle.png");
+	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
 
 	// --- オブジェクトの生成 ---
 
 	auto playerObj = std::make_unique<Player>();
 	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
-	playerObj->SetModel("block");
+	playerObj->SetModel("sample");
 	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	playerObj->SetName("Player");
 	playerObj->SetStatic(false);
@@ -72,88 +72,106 @@ void GamePlayScene::Initialize() {
 
 	auto enemy = std::make_unique<Object3d>();
 	enemy->Initialize(object3dCommon_.get());
-	enemy->SetModel("bunny");
+	enemy->SetModel("block");
 	enemy->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	enemy->SetName("Enemy");
 	enemy->SetStatic(true);
 	objects_.emplace_back(std::move(enemy));
 
-	//平面生成
-	auto heimen = std::make_unique<Object3d>();
-	heimen->Initialize(object3dCommon_.get());
-	heimen->SetModel("heimen");
-	heimen->SetTranslate({ 2.0f, -1.0f, 0.0f });
-	heimen->SetName("Enemy");
-	heimen->SetStatic(true);
-	objects_.emplace_back(std::move(heimen));
+	auto terrain = std::make_unique<Object3d>();
+	terrain->Initialize(object3dCommon_.get());
+	terrain->SetModel("terrain");
+	terrain->SetTranslate({ 2.0f, 0.0f, 0.0f });
+	terrain->SetName("terrain");
+	terrain->SetStatic(true);
+	objects_.emplace_back(std::move(terrain));
 
-	auto fence = std::make_unique<Object3d>();
-	fence->Initialize(object3dCommon_.get());
-	fence->SetModel("fence");
-	fence->SetTranslate({ 2.0f, 2.0f, 0.0f });
-	fence->SetName("Enemy");
-	fence->SetStatic(true);
-	objects_.emplace_back(std::move(fence));
+	//const float blockSize = 2.0f; // ブロックの1辺のサイズ 
+	//const int fieldWidth = 30;  // X方向 (幅) の床の数
+	//const int fieldDepth = 30;  // Z方向 (奥行) の床の数
+	//const int wallHeight = 5;   // Y方向 (高さ) の壁の数
 
-	const float blockSize = 2.0f; // ブロックの1辺のサイズ 
-	const int fieldWidth = 30;  // X方向 (幅) の床の数
-	const int fieldDepth = 30;  // Z方向 (奥行) の床の数
-	const int wallHeight = 5;   // Y方向 (高さ) の壁の数
+	//// フィールドの中心が (0, 0, 0) 付近になるようオフセットを計算
+	//const float offsetX = (fieldWidth * blockSize) / 2.0f;
+	//const float offsetZ = (fieldDepth * blockSize) / 2.0f;
 
-	// フィールドの中心が (0, 0, 0) 付近になるようオフセットを計算
-	const float offsetX = (fieldWidth * blockSize) / 2.0f;
-	const float offsetZ = (fieldDepth * blockSize) / 2.0f;
-
-	// 衝突判定用のハーフサイズ
-	const Vector3 blockHalfSize = { blockSize / 2.0f, blockSize / 2.0f, blockSize / 2.0f };
+	//// 衝突判定用のハーフサイズ
+	//const Vector3 blockHalfSize = { blockSize / 2.0f, blockSize / 2.0f, blockSize / 2.0f };
 
 
-	// --- 2. 壁 (Walls) の生成 (Y= 0 ～ wallHeight) ---
-	for (int y = 0; y < wallHeight; ++y) {
-		float posY = y * blockSize; // 0.0, 2.0, 4.0 ...
+	//// --- 1. 床 (Floor) の生成---
+	//const float floorY = -blockSize;
+	//for (int z = 0; z < fieldDepth; ++z) {
+	//	for (int x = 0; x < fieldWidth; ++x) {
+	//		auto block = std::make_unique<Object3d>();
+	//		block->Initialize(object3dCommon_.get());
+	//		block->SetModel("block");
 
-		// (A) X軸に沿った壁 (奥: Z+ と 手前: Z-)
-		for (int x = 0; x < fieldWidth; ++x) {
-			float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
+	//		float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
+	//		float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+	//		block->SetTranslate({ posX, floorY, posZ });
 
-			// 奥の壁 (Z+)
-			float posZ_Back = (fieldDepth * blockSize) - offsetZ - (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX, posY, posZ_Back },
-				"Wall_Back_" + std::to_string(x) + "_" + std::to_string(y),
-				blockHalfSize
-			));
+	//		block->SetName("Floor_" + std::to_string(x) + "_" + std::to_string(z));
+	//		block->SetStatic(true);
 
-			// 手前の壁 (Z-)
-			float posZ_Front = -offsetZ + (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX, posY, posZ_Front },
-				"Wall_Front_" + std::to_string(x) + "_" + std::to_string(y),
-				blockHalfSize
-			));
-		}
 
-		// (B) Z軸に沿った壁 
-		for (int z = 1; z < fieldDepth - 1; ++z) {
-			float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+	//		// ★ ブロック生成と同時に衝突判定も設定
+	//		block->SetCollisionAttribute(kGround);
+	//		block->SetCollisionMask(~kGround);
+	//		block->SetColliderType(ColliderType::kAABB);
+	//		block->SetCollisionSize(blockHalfSize);
+	//		CollisionManager::GetInstance()->AddObject(block.get());
 
-			// 右の壁 (X+)
-			float posX_Right = (fieldWidth * blockSize) - offsetX - (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX_Right, posY, posZ },
-				"Wall_Right_" + std::to_string(z) + "_" + std::to_string(y),
-				blockHalfSize
-			));
+	//		objects_.emplace_back(std::move(block));
+	//	}
+	//}
 
-			// 左の壁 (X-)
-			float posX_Left = -offsetX + (blockSize / 2.0f);
-			objects_.push_back(CreateStaticBlock(
-				{ posX_Left, posY, posZ },
-				"Wall_Left_" + std::to_string(z) + "_" + std::to_string(y),
-				blockHalfSize
-			));
-		}
-	}
+	//// --- 2. 壁 (Walls) の生成 (Y= 0 ～ wallHeight) ---
+	//for (int y = 0; y < wallHeight; ++y) {
+	//	float posY = y * blockSize; // 0.0, 2.0, 4.0 ...
+
+	//	// (A) X軸に沿った壁 (奥: Z+ と 手前: Z-)
+	//	for (int x = 0; x < fieldWidth; ++x) {
+	//		float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
+
+	//		// 奥の壁 (Z+)
+	//		float posZ_Back = (fieldDepth * blockSize) - offsetZ - (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX, posY, posZ_Back },
+	//			"Wall_Back_" + std::to_string(x) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+
+	//		// 手前の壁 (Z-)
+	//		float posZ_Front = -offsetZ + (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX, posY, posZ_Front },
+	//			"Wall_Front_" + std::to_string(x) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+	//	}
+
+	//	// (B) Z軸に沿った壁 
+	//	for (int z = 1; z < fieldDepth - 1; ++z) {
+	//		float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
+
+	//		// 右の壁 (X+)
+	//		float posX_Right = (fieldWidth * blockSize) - offsetX - (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX_Right, posY, posZ },
+	//			"Wall_Right_" + std::to_string(z) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+
+	//		// 左の壁 (X-)
+	//		float posX_Left = -offsetX + (blockSize / 2.0f);
+	//		objects_.push_back(CreateStaticBlock(
+	//			{ posX_Left, posY, posZ },
+	//			"Wall_Left_" + std::to_string(z) + "_" + std::to_string(y),
+	//			blockHalfSize
+	//		));
+	//	}
+	//}
 
 	// --- カメラの設定 ---
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -180,8 +198,9 @@ void GamePlayScene::Initialize() {
 	objects_[2]->SetCollisionAttribute(kGround);
 	objects_[2]->SetCollisionMask(~kGround);
 	objects_[2]->SetColliderType(ColliderType::kAABB);
-	objects_[2]->SetCollisionSize({ 50.0f, 0.5f, 50.0f });
+	objects_[2]->SetCollisionSize({ 20.0f, 1.0f, 20.0f });
 	CollisionManager::GetInstance()->AddObject(objects_[2].get());
+
 
 
 	for (size_t i = 3; i < objects_.size(); ++i) {
@@ -311,33 +330,12 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 
 	if (inputManager_->IsKeyTriggered(DIK_P)) {
-		// 1. この爆発の「色」をランダムに1つ決める
-		float r = dis_color(gen_scene);
-		float g = dis_color(gen_scene);
-		float b = dis_color(gen_scene);
-		// (少し明るく補正)
-		float total = r + g + b;
-		if (total < 1.0f) {
-			r += (1.0f - total) / 2.0f;
-			g += (1.0f - total) / 2.0f;
-		}
-
-		Vector4 randomColor = { r, g, b, 1.0f };
-		Vector4 endColor = { r * 0.5f, g * 0.5f, b * 0.5f, 0.0f }; // 少し暗くして消える
-
-		// 2. この爆発の「速度」もランダムに決める
-		float randomSpeed = dis_speed(gen_scene);
- 
-        particleSystem_->SpawnParticles(  
-           {1.0f, 2.0f, -1.0f }, 100,  
-           randomSpeed,         
-           nullptr,             
-           0.0f,              
-           randomColor,         
-           endColor,            
-           1.0f, 2.0f,            
-           0.3f,                
-           0.05f                                 
+		particleSystem_->SpawnParticles(
+			{ 0.0f, 1.0f, 0.0f }, 100,
+			5.0f, nullptr, 1.0f,
+			{ 1.0f, 0.5f, 0.0f, 1.0f }, { 1.0f, 1.0f, 0.0f, 0.0f },
+			0.5f, 3.0f,
+			1.0f, 0.1f
 		);
 	}
 
@@ -381,6 +379,9 @@ void GamePlayScene::Update(float deltaTime) {
 		);
 	}
 
+
+
+
 	//弾の更新
 	BulletManager::GetInstance()->Update(deltaTime);
 
@@ -388,6 +389,73 @@ void GamePlayScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 	//オブジェクト削除関数
 	ProcessRemovals();
+
+#ifdef USE_IMGUI
+	ImGui::Begin("Debug Control");
+
+	// ==========================================================
+	// 1. プレイヤー設定 (Transform & Material)
+	// ==========================================================
+	if (ImGui::CollapsingHeader("Player Settings")) {
+		if (player_) {
+			// Transform (位置・回転・スケール)
+			if (ImGui::TreeNode("Transform")) {
+				// 位置 (表示のみ)
+				Vector3 pos = player_->GetWorldPosition();
+				ImGui::DragFloat3("Position", &pos.x);
+
+				// スケール (変更可能)
+				Vector3 scale = player_->GetScale();
+				if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.1f, 10.0f)) {
+					player_->SetScale(scale);
+				}
+				ImGui::TreePop();
+			}
+
+			// Material (色・反射設定)
+			Model* model = player_->GetModel();
+			if (model) {
+				Model::Material* material = model->GetMaterial();
+				if (material) {
+					if (ImGui::TreeNode("Material")) {
+						// ライティング種類の選択
+						const char* lightingTypes[] = { "None", "Lambert", "Phong" };
+						int currentType = material->selectedLighting;
+						if (ImGui::Combo("Lighting Type", &currentType, lightingTypes, IM_ARRAYSIZE(lightingTypes))) {
+							material->selectedLighting = currentType;
+						}
+
+						// Phongの時だけ光沢度を調整
+						if (material->selectedLighting == 2) {
+							ImGui::DragFloat("Shininess", &material->shininess, 1.0f, 1.0f, 256.0f);
+						}
+
+						// 色
+						ImGui::ColorEdit4("Base Color", &material->color.x);
+						ImGui::TreePop();
+					}
+				}
+			}
+
+			// 平行光源 (Directional Light) ※プレイヤーが持っている平行光源設定
+			Object3d::DirectionalLight* dirLight = player_->GetDirectionalLightData();
+			if (dirLight) {
+				if (ImGui::TreeNode("Directional Light (Local)")) {
+					ImGui::DragFloat3("Direction", &dirLight->direction.x, 0.01f, -1.0f, 1.0f);
+					ImGui::ColorEdit4("Color", &dirLight->color.x);
+					ImGui::DragFloat("Intensity", &dirLight->intensity, 0.01f, 0.0f, 5.0f);
+					ImGui::TreePop();
+				}
+			}
+		}
+	}
+
+	
+
+	ImGui::End();
+#endif
+
+
 }
 
 void GamePlayScene::Draw() {
@@ -402,6 +470,10 @@ void GamePlayScene::Draw() {
 	}
 #endif
 
+	// ライトのリソースを取得
+	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
+	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+
 	// --- 3Dオブジェクト描画 ---
 	object3dCommon_->SetGraphicsCommand();
 	for (size_t i = 0; i < objects_.size(); ++i) {
@@ -409,10 +481,10 @@ void GamePlayScene::Draw() {
 		if (isFirstPerson && i == 1) {
 			continue; 
 		}
-		objects_[i]->Draw();
+		objects_[i]->Draw(pointLightRes, spotLightRes);
 	}
 
-	BulletManager::GetInstance()->Draw();
+	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 
 	// --- スプライト描画 ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());

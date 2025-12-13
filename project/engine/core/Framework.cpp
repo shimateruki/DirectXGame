@@ -1,8 +1,10 @@
 #include "Framework.h"
 #include "TextureManager.h"
 #include "ModelManager.h"
-#include "SRVManager.h" // ★ SRVManager.h をインクルード
+#include "SRVManager.h" 
 #include"ImguiManager.h"
+#include"LightManager.h"
+
 void Framework::Initialize() {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
@@ -22,6 +24,7 @@ void Framework::Initialize() {
     // ModelManagerとTextureManagerの初期化
     ModelManager::GetInstance()->Initialize(dxCommon_);
     TextureManager::GetInstance()->Initialize(dxCommon_);
+    LightManager::GetInstance()->Initialize(dxCommon_);
 
 }
 
