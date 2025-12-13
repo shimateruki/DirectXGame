@@ -56,14 +56,44 @@ void Player::Update(float deltaTime) {
                 1.5f,                   
                 nullptr,               
                 180.0f,                   
-                { 1.0f, 0.0f, 1.0f, 1.0f }, 
-                { 1.0f, 0.0f, 1.0f, 0.0f },
+                { 1.0f, 0.8f, 0.2f, 1.0f },
+                { 0.3f, 0.1f, 0.0f, 0.0f },
                 0.2f, 0.4f,             
-                0.3f,                     
-                0.8f                     
+                2.0f,                     
+                1.0f                     
             );
 
         }
+    }
+
+
+
+    // XZ平面の速度（速さ）を計算
+    Vector3 horizontalVelocity = { velocity_.x, 0.0f, velocity_.z };
+    float speed = math.Length(horizontalVelocity);
+
+    // 一定の速度以上で、かつ地面にいる時
+    const float kDashSpeedThreshold = 5.0f; // この値より速く走ったらエフェクトON
+    if (speed > kDashSpeedThreshold && isGrounded_ && particleSystem_) {
+
+        // 速度ベクトルの逆方向（後ろに流すため）
+        Vector3 direction = math.Normalize(horizontalVelocity) * -1.0f;
+
+        Vector3 pos = GetWorldPosition();
+        pos.y -= 1.0f; // 地面の位置
+
+        particleSystem_->SpawnParticles(
+            pos,                      // 発生座標 (足元)
+            3,                        // 個数 (毎フレーム出すので1個で十分)
+            1.0f,                     // 初速 (少しだけ)
+            &direction,               // 方向 (移動と逆方向)
+            30.0f,                    // 拡散範囲 (30度くらい)
+            { 0.8f, 0.8f, 0.8f, 1.0f }, // 初期色 (白/煙)
+            { 0.5f, 0.5f, 0.5f, 0.0f }, // 終了色 (暗く・透明に)
+            0.2f, 0.3f,               // 生存時間 (ごく短く)
+            2.0f,                     // 開始サイズ
+            1.0f                      // 終了サイズ (小さくなって消える)
+        );
     }
 
     // --- 4. 親(Character)のUpdateを呼ぶ ---

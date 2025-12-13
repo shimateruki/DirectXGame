@@ -1,4 +1,4 @@
-// 頂点シェーダーから受け取るデータ
+// 鬆らせ繧ｷ繧ｧ繝ｼ繝繝ｼ縺九ｉ蜿励￠蜿悶ｋ繝�繝ｼ繧ｿ
 struct VSOutput
 {
     float4 position : SV_POSITION;
@@ -9,9 +9,12 @@ struct VSOutput
 Texture2D<float4> gTexture : register(t0);
 SamplerState gSampler : register(s0);
 
-// ピクセルシェーダー
+// 繝斐け繧ｻ繝ｫ繧ｷ繧ｧ繝ｼ繝繝ｼ
 float4 main(VSOutput input) : SV_TARGET
 {
     float4 textureColor = gTexture.Sample(gSampler, input.texcoord);
     return textureColor * input.color;
+    
+  
+    
 }
