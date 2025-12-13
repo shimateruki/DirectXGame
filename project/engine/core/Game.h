@@ -8,10 +8,9 @@
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
 #include "ParticleEditor.h"
-#include"LightEditor.h"
 #endif
 
-
+#include"LightEditor.h"
 
 
 class Game : public Framework {
@@ -29,11 +28,12 @@ private:
 	std::chrono::high_resolution_clock::time_point lastTime_;
 	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
 	float timeScale_ = 1.0f;
+
+	std::unique_ptr<LightEditor> lightEditor_;
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
 	std::unique_ptr<ParticleEditor> particleEditor_;
-	std::unique_ptr<LightEditor> lightEditor_; 
 	bool showLightEditor_ = true; 
 	bool showParticleEditor_ = true;
 	bool showDebugWindows_ = true;  // 3Dエディタ用
