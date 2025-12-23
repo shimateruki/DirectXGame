@@ -47,6 +47,10 @@ public:
     std::vector<Object3d::PointLight>& GetPointLights() { return pointLights_; }
     std::vector<Object3d::SpotLight>& GetSpotLights() { return spotLights_; }
 
+    void SaveState(const std::string& filename);
+    void LoadState(const std::string& filename);
+
+
 private:
     LightManager() = default;
     ~LightManager() = default;

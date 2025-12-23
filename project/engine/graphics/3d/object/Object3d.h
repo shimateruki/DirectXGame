@@ -79,7 +79,7 @@ public:
     const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
 
     OBB GetOBB() const;
-
+    const std::string& GetModelName() const { return modelName_; }
     void SetModel(Model* model) { model_ = model; }
     void SetModel(const std::string& modelName);
 
@@ -180,6 +180,7 @@ public:
     /// このオブジェクトが静的かを取得する
     /// </summary>
     bool IsStatic() const { return isStatic_; }
+
 protected:
     Object3dCommon* common_ = nullptr;
     Model* model_ = nullptr;

@@ -235,8 +235,9 @@ void GamePlayScene::Initialize() {
 	);
 
 	// --- レイアウト読み込み ---
-	LoadObjectLayout("scene_layout.json");
-	LoadSpriteLayout("sprite_layout.json");
+	LoadObjectLayout("resouces/json/scene_layout.json");
+	LoadSpriteLayout("resouces/json/sprite_layout.json");
+	LightManager::GetInstance()->LoadState("resouces/json/light_layout.json");
 
 
 

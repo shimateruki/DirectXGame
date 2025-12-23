@@ -22,11 +22,8 @@
 class DirectXCommon;
 class InputManager;
 class SceneManager;
-
-
-#ifdef _DEBUG
 #include "DebugEditor.h" 
-#endif
+
 
 /// <summary>
 /// ゲームプレイシーン

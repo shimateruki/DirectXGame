@@ -32,7 +32,7 @@ void Game::Initialize() {
     DebugConsole::GetInstance()->Initialize();
 
 #endif
-    lightEditor_->LoadLightLayout("resources/light_layout.json");
+ 
 }
 
 void Game::Finalize() {

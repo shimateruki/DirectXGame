@@ -11,7 +11,8 @@
 class Object3d;
 
 class Model {
-public: // サブクラス
+public: 
+
     struct VertexData {
         Vector4 position;
         Vector2 texcoord;

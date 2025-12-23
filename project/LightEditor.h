@@ -10,12 +10,9 @@ public:
     // ImGui描画 (毎フレーム呼ぶ)
     void DrawImGui();
 
-    // JSONへ保存
-    void SaveLightLayout(const std::string& filename);
-    // JSONから読み込み
-    void LoadLightLayout(const std::string& filename);
+
 
 private:
     LightManager* lightManager_ = nullptr;
-    std::string currentSaveFile_ = "resources/light_layout.json"; // デフォルト保存先
+    char currentFileName_[128] = "light_layout.json";
 };

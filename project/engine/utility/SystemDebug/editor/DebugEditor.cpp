@@ -243,6 +243,10 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
+    // ★ 保存先のパスをここで定義（SaveボタンとUpdateボタンで共通して使います）
+    // ※ ユーザー指定: "resouces" (r抜き) フォルダを使用
+    std::string targetSceneFile = "resouces/json/scene_layout.json";
+
     // --- Inspector ---
     ImGui::Text("--- Inspector ---");
     if (selectedObject_ == nullptr) {
@@ -253,6 +257,7 @@ void DebugEditor::DrawImGui() {
         ImGui::Text("Name: %s", selectedObject_->GetName().c_str());
         Object3d::Transform* transform = selectedObject_->GetTransform();
         ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
+
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
         if (ImGui::DragFloat3("Rotation (Degrees)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
@@ -260,30 +265,49 @@ void DebugEditor::DrawImGui() {
         ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
 
         ImGui::Separator();
+
+        // ★★★ Save Scene Layout (全体保存) ★★★
         if (ImGui::Button("Save Scene Layout")) {
-            json sceneData; sceneData["objects"] = json::array();
+            json sceneData;
+            sceneData["objects"] = json::array();
             std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
+
             for (auto& obj : allObjects) {
                 if (obj->GetName().empty()) continue;
-                Object3d::Transform* objTr = obj->GetTransform(); json d;
-                d["name"] = obj->GetName(); d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
-                d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z }; d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
+
+                Object3d::Transform* objTr = obj->GetTransform();
+                json d;
+                d["name"] = obj->GetName();
+                // モデル名がないとロード時に困るので、もしGetterがあればここに追加推奨
+                // d["modelName"] = obj->GetModelName(); 
+
+                d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
+                d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
+                d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
+
                 sceneData["objects"].push_back(d);
-            } std::ofstream f("scene_layout.json"); f << sceneData.dump(4); f.close();
+            }
+
+            // ★ 変数 targetSceneFile を使って保存
+            std::ofstream f(targetSceneFile);
+            if (f.is_open()) {
+                f << sceneData.dump(4);
+                f.close();
+            } else {
+                // フォルダがない等の理由で開けなかった場合
+                OutputDebugStringA("Failed to save JSON! Check 'resouces/json' folder.\n");
+            }
         }
 
-        // ★ 保存先ファイルは "scene_layout.json" に固定
-        std::string targetSceneFile = "scene_layout.json";
-
-        if (ImGui::Button("Update This Object in Scene")) { 
-
-            
-            UpdateObjectInSceneJSON(selectedObject_, targetSceneFile); 
+        // ★★★ Update This Object (単体更新) ★★★
+        if (ImGui::Button("Update This Object in Scene")) {
+            UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
         }
         ImGui::SameLine();
-        ImGui::Text(("to: " + targetSceneFile).c_str()); 
+        ImGui::Text(("to: " + targetSceneFile).c_str());
 
 
+        // --- Gizmo ---
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
         static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
         static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
@@ -299,29 +323,27 @@ void DebugEditor::DrawImGui() {
         if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
         if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
         if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
+
         if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("Snap Translate", snapTranslate, "%.2f");
         else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("Snap Angle (Degrees)", &snapRotation, 1.0f, 5.0f);
         else ImGui::InputFloat("Snap Scale", &snapScale, 0.01f, 0.1f);
+
         ImGui::Text("Hold [Left Ctrl] to snap.");
         ImGui::Separator();
-        if (ImGui::Button("Duplicate")) {
-            // 1. 選択中のオブジェクトを Clone() する
-            std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
 
-            // 2. 新しい名前を付ける (連番など)
+        // --- Duplicate / Delete ---
+        if (ImGui::Button("Duplicate")) {
+            std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
             static int duplicateCount = 0;
             newObj->SetName(selectedObject_->GetName() + "_copy" + std::to_string(duplicateCount++));
-
-            // 3. シーンに追加する
             currentScene->AddObject(std::move(newObj));
-
-      
         }
-        ImGui::SameLine(); 
+        ImGui::SameLine();
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
+
         if (ImGui::Button("Delete")) {
             currentScene->RequestRemoveObject(selectedObject_);
-            selectedObject_ = nullptr; // ダングリングポインタを防ぐ
+            selectedObject_ = nullptr;
         }
     }
 
@@ -346,7 +368,7 @@ void DebugEditor::DrawImGui() {
     ImGui::EndChild();
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-    // --- Object Spawner ( ---
+    // --- Object Spawner ---
     ImGui::Text("--- Object Spawner ---");
 
     if (ImGui::Button("Refresh Model List")) {
@@ -375,6 +397,8 @@ void DebugEditor::DrawImGui() {
                     newObj->SetModel(modelName);
                     static int spawnCount = 0;
                     newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
+
+
                     currentScene->AddObject(std::move(newObj));
                 }
             }
@@ -382,7 +406,6 @@ void DebugEditor::DrawImGui() {
     }
 #endif
 }
-
 
 
 /// <summary>

@@ -219,3 +219,4 @@ void Object3d::SetIntensity(float intensity) {
         directionalLightData_->intensity = intensity;
     }
 }
+
