@@ -41,10 +41,6 @@ void GamePlayScene::Initialize() {
 	inputManager_ = InputManager::GetInstance();
 	audioPlayer_ = AudioPlayer::GetInstance();
 
-
-
-	
-
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 	CameraManager::GetInstance()->Initialize();
@@ -210,6 +206,8 @@ void GamePlayScene::Initialize() {
 		objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
 		CollisionManager::GetInstance()->AddObject(objects_[i].get());
 	}
+
+
 
 	// --- スプライトの生成 ---
 	uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");

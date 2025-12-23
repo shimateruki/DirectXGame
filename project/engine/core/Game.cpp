@@ -22,7 +22,8 @@ void Game::Initialize() {
 #ifdef USE_IMGUI
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
-
+    ghostRecorder_ = std::make_unique<GhostRecorder>();
+    ghostRecorder_->Initialize(sceneManager_.get());
     debugEditor_ = std::make_unique<DebugEditor>();
     debugEditor_->Initialize(sceneManager_.get(), dxCommon_);
     particleEditor_ = std::make_unique<ParticleEditor>();
@@ -44,6 +45,7 @@ void Game::Finalize() {
     particleEditor_.reset(); 
     spriteDebugEditor_.reset();
     debugEditor_.reset();
+    ghostRecorder_.reset();
    DebugConsole::GetInstance()->Finalize();
 #endif
 
@@ -87,6 +89,9 @@ void Game::Update() {
     if (particleEditor_) {
         particleEditor_->Update();
     }
+    if (ghostRecorder_) {
+        ghostRecorder_->Update();
+    }
 
     // --- ImGui描画 (Master Editor) ---
     ImGui::Begin("Master Editor", nullptr, ImGuiWindowFlags_MenuBar);
@@ -109,6 +114,7 @@ void Game::Update() {
             ImGui::MenuItem("3D Editor", NULL, &showDebugWindows_);
             ImGui::MenuItem("Sprite Inspector", NULL, &showSpriteInspector_);
             ImGui::MenuItem("Particle Editor", NULL, &showParticleEditor_);
+            ImGui::MenuItem("Ghost Recorder", NULL, &showGhostRecorder_);
             ImGui::MenuItem("Debug Console", NULL, &showDebugConsole_);
             ImGui::EndMenu();
         }
@@ -131,11 +137,20 @@ void Game::Update() {
             particleEditor_->DrawImGui();
         }
     }
+    if (showGhostRecorder_) {
+        // CollapsingHeaderで折り畳めるようにして表示
+        if (ImGui::CollapsingHeader("Ghost Recorder")) {
+            if (ghostRecorder_) {
+                ghostRecorder_->DrawImGui();
+            }
+        }
+    }
     if (showDebugConsole_) {
         if (ImGui::CollapsingHeader("Debug Console")) {
             DebugConsole::GetInstance()->DrawImGui();
         }
     }
+
     if (showLightEditor_) {
         lightEditor_->DrawImGui();
     }

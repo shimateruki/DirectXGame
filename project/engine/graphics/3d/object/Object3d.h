@@ -93,6 +93,7 @@ public:
     BlendMode GetBlendMode() const { return blendMode_; }
 
     Transform* GetTransform() { return &transform_; }
+    const Vector3& GetTranslate() { return transform_.translate; }
     /// <summary>
     /// 回転量を取得する
     /// </summary>
