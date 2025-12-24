@@ -41,6 +41,8 @@ void GamePlayScene::Initialize() {
 	inputManager_ = InputManager::GetInstance();
 	audioPlayer_ = AudioPlayer::GetInstance();
 
+	ModelManager::GetInstance()->LoadModel("player");
+	ModelManager::GetInstance()->LoadModel("teapot");
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 	CameraManager::GetInstance()->Initialize();
@@ -599,6 +601,12 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				}
 
 				if (targetObject) {
+					if (objData.contains("modelName") && objData["modelName"].is_string()) {
+						std::string modelName = objData["modelName"].get<std::string>();
+						if (targetObject->GetModelName() != modelName) {
+							targetObject->SetModel(modelName);
+						}
+					}
 					Object3d::Transform* transform = targetObject->GetTransform();
 
 					if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {

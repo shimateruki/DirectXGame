@@ -19,6 +19,7 @@ public:
     /// SRVヒープをコマンドリストに設定する
     /// </summary>
     void SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList);
+
 private:
     SRVManager() = default;
     ~SRVManager() = default;

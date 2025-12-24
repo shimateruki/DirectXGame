@@ -1,10 +1,11 @@
 {
     "objects": [
         {
+            "modelName": "teapot",
             "name": "Player",
             "position": [
                 2.0,
-                1.9999998807907104,
+                2.0,
                 0.0
             ],
             "rotation": [
@@ -19,6 +20,7 @@
             ]
         },
         {
+            "modelName": "block",
             "name": "Enemy",
             "position": [
                 2.0,
@@ -37,6 +39,7 @@
             ]
         },
         {
+            "modelName": "terrain",
             "name": "terrain",
             "position": [
                 2.0,

@@ -24,7 +24,8 @@
 #endif
 #include <DebugConsole.h>
 #include <CollisionManager.h>
-
+#include <filesystem> // ファイル操作用
+namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
 float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
@@ -235,26 +236,59 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
 void DebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
     using json = nlohmann::json;
+
+    // 1. プロジェクトウィンドウを表示
+    DrawProjectWindow();
+
     if (sceneManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) {
+        ImGui::Begin("Inspector");
         ImGui::Text("No active scene.");
+        ImGui::End();
         return;
     }
 
-    // ★ 保存先のパスをここで定義（SaveボタンとUpdateボタンで共通して使います）
-    // ※ ユーザー指定: "resouces" (r抜き) フォルダを使用
     std::string targetSceneFile = "resouces/json/scene_layout.json";
 
-    // --- Inspector ---
-    ImGui::Text("--- Inspector ---");
+    // --- Inspector Window ---
+    ImGui::Begin("Inspector");
+
     if (selectedObject_ == nullptr) {
         ImGui::Text("No object selected.");
+        ImGui::Text("Select from Object List.");
         ImGui::Separator();
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
     } else {
-        ImGui::Text("Name: %s", selectedObject_->GetName().c_str());
+        // --- オブジェクト情報の表示と編集 ---
+        char nameBuffer[256];
+        strcpy_s(nameBuffer, selectedObject_->GetName().c_str());
+        if (ImGui::InputText("Name", nameBuffer, 256)) {
+            selectedObject_->SetName(std::string(nameBuffer));
+        }
+
+        // --- ★ D&D受け入れエリア (Target) ---
+        ImGui::Separator();
+        ImGui::Text("Model Asset:");
+        ImGui::Button(" [ Drop Model Here ] ", ImVec2(-1, 30)); // 横幅いっぱいのボタン（見た目用）
+
+        // ドロップを受け付ける処理
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                const char* modelName = (const char*)payload->Data;
+
+                // ログ出力
+                DebugConsole::GetInstance()->AddLog("Switching model to: " + std::string(modelName));
+
+                // ★ モデル切り替え実行
+                selectedObject_->SetModel(modelName);
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::Separator();
+        // ----------------------------------
+
         Object3d::Transform* transform = selectedObject_->GetTransform();
         ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
 
@@ -266,7 +300,7 @@ void DebugEditor::DrawImGui() {
 
         ImGui::Separator();
 
-        // ★★★ Save Scene Layout (全体保存) ★★★
+        // --- 保存ボタン ---
         if (ImGui::Button("Save Scene Layout")) {
             json sceneData;
             sceneData["objects"] = json::array();
@@ -278,9 +312,7 @@ void DebugEditor::DrawImGui() {
                 Object3d::Transform* objTr = obj->GetTransform();
                 json d;
                 d["name"] = obj->GetName();
-                // モデル名がないとロード時に困るので、もしGetterがあればここに追加推奨
-                // d["modelName"] = obj->GetModelName(); 
-
+                 d["modelName"] = obj->GetModelName(); 
                 d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
                 d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
                 d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
@@ -288,50 +320,23 @@ void DebugEditor::DrawImGui() {
                 sceneData["objects"].push_back(d);
             }
 
-            // ★ 変数 targetSceneFile を使って保存
             std::ofstream f(targetSceneFile);
             if (f.is_open()) {
                 f << sceneData.dump(4);
                 f.close();
+                DebugConsole::GetInstance()->AddLog("Saved scene to " + targetSceneFile);
             } else {
-                // フォルダがない等の理由で開けなかった場合
-                OutputDebugStringA("Failed to save JSON! Check 'resouces/json' folder.\n");
+                DebugConsole::GetInstance()->AddLog("Failed to save JSON! Check folder.");
             }
         }
 
-        // ★★★ Update This Object (単体更新) ★★★
-        if (ImGui::Button("Update This Object in Scene")) {
+        // --- 単体更新ボタン ---
+        if (ImGui::Button("Update This Object")) {
             UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
         }
-        ImGui::SameLine();
-        ImGui::Text(("to: " + targetSceneFile).c_str());
 
-
-        // --- Gizmo ---
-        static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
-        static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
-        static float snapTranslate[3] = { 0.1f, 0.1f, 0.1f };
-        static float snapRotation = 15.0f;
-        static float snapScale = 0.1f;
-
-        if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
-            if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
-            if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
-            if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
-        }
-        ImGui::Separator(); ImGui::Text("Gizmo Mode:");
-        if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
-        if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
-        if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
-
-        if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("Snap Translate", snapTranslate, "%.2f");
-        else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("Snap Angle (Degrees)", &snapRotation, 1.0f, 5.0f);
-        else ImGui::InputFloat("Snap Scale", &snapScale, 0.01f, 0.1f);
-
-        ImGui::Text("Hold [Left Ctrl] to snap.");
+        // --- 複製 / 削除 ---
         ImGui::Separator();
-
-        // --- Duplicate / Delete ---
         if (ImGui::Button("Duplicate")) {
             std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
             static int duplicateCount = 0;
@@ -339,53 +344,70 @@ void DebugEditor::DrawImGui() {
             currentScene->AddObject(std::move(newObj));
         }
         ImGui::SameLine();
-        ImGui::Checkbox("Draw Colliders", &drawColliders_);
-
-        if (ImGui::Button("Delete")) {
+        if (ImGui::Button("Delete", ImVec2(0, 0))) { // 赤くしたいならPushStyleColor推奨
             currentScene->RequestRemoveObject(selectedObject_);
             selectedObject_ = nullptr;
         }
+
+        // --- Gizmo Control (選択中のみ表示) ---
+        ImGui::Separator();
+        ImGui::Text("Gizmo Operation:");
+
+        static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
+        static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
+        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f }; // スナップ値を少し大きくしました
+        static float snapRotation = 45.0f;
+        static float snapScale = 0.5f;
+
+        if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
+            if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
+        }
+
+        if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
+        if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
+        if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
+
+        // Snap設定
+        ImGui::Text("Snap (Hold Ctrl):");
+        ImGui::SameLine();
+        if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("##SnapT", snapTranslate);
+        else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("##SnapR", &snapRotation);
+        else ImGui::InputFloat("##SnapS", &snapScale);
     }
+    ImGui::End(); // End Inspector
 
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-    // --- Object List ---
-    ImGui::Text("--- Object List ---");
-
-    ImGui::BeginChild("ObjectListChild", ImVec2(0, 150), true, 0);
-
-    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
-        ImGui::SetNextFrameWantCaptureKeyboard(true);
-    }
+    // --- Object List Window ---
+    ImGui::Begin("Object List");
     std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
     for (auto& obj : objects) {
         const std::string& objName = obj->GetName();
         if (objName.empty()) continue;
-        if (ImGui::Selectable(objName.c_str(), obj.get() == selectedObject_)) {
+
+        // 選択状態のハイライト
+        bool isSelected = (obj.get() == selectedObject_);
+        if (ImGui::Selectable(objName.c_str(), isSelected)) {
             selectedObject_ = obj.get();
         }
     }
-    ImGui::EndChild();
-    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+    ImGui::End();
 
-    // --- Object Spawner ---
-    ImGui::Text("--- Object Spawner ---");
 
+    // --- Object Spawner Window ---
+    ImGui::Begin("Spawner");
     if (ImGui::Button("Refresh Model List")) {
         modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
         selectedModelIndex_ = 0;
     }
-    ImGui::Separator();
-    if (modelNames_.empty()) {
-        ImGui::Text("Model list is empty.");
-        ImGui::Text("Push 'Refresh' after loading.");
-    } else {
+
+    if (!modelNames_.empty()) {
         std::vector<const char*> namesCStr;
         for (const std::string& name : modelNames_) {
             namesCStr.push_back(name.c_str());
         }
-        ImGui::ListBox("Models", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
-        ImGui::Separator();
+        ImGui::ListBox("Loaded Models", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
 
         if (ImGui::Button("Spawn Object")) {
             if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
@@ -397,13 +419,16 @@ void DebugEditor::DrawImGui() {
                     newObj->SetModel(modelName);
                     static int spawnCount = 0;
                     newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
-
-
                     currentScene->AddObject(std::move(newObj));
+                    DebugConsole::GetInstance()->AddLog("Spawned: " + newObj->GetName());
                 }
             }
         }
+    } else {
+        ImGui::Text("No models loaded.");
     }
+    ImGui::End();
+
 #endif
 }
 
@@ -452,7 +477,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
             if (objData.contains("name") && objData["name"].get<std::string>() == objectName) {
 
                 // ★ 見つかった！ 選択中のオブジェクトの現在地で上書き
-                Object3d::Transform* transform = object->GetTransform();
+				Object3d::Transform* transform = object->GetTransform();
+				objData["modelName"] = object->GetModelName();
                 objData["position"] = {
                     transform->translate.x,
                     transform->translate.y,
@@ -491,4 +517,61 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     } else {
         DebugConsole::GetInstance()->AddLog("ERROR: Failed to open file for writing: " + filename);
     }
+}
+void DebugEditor::DrawProjectWindow() {
+    ImGui::Begin("Project (Assets)");
+
+    // ★ ModelManager のパス設定と一字一句合わせる
+    std::string baseDirectory = "resouces/3DModel";
+
+    if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
+        ImGui::Text("Drag model to Inspector!");
+        ImGui::Separator();
+
+        for (const auto& entry : fs::directory_iterator(baseDirectory)) {
+            if (entry.is_directory()) {
+                // 1. まずフォルダ名を取得
+                std::string folderName = entry.path().filename().string();
+
+                // 2. ★重要: フォルダの中にある .obj ファイルを実際に探す！
+                std::string foundObjName = "";
+                for (const auto& subEntry : fs::directory_iterator(entry.path())) {
+                    if (subEntry.path().extension() == ".obj") {
+                        // 拡張子(.obj)を抜いた名前を取得 
+                        foundObjName = subEntry.path().stem().string();
+                        break; // 1個見つけたら終わり（1フォルダ1モデルの前提）
+                    }
+                }
+
+                // .obj が見つからなかったら表示しない
+                if (foundObjName.empty()) continue;
+
+                // ボタン表示（フォルダ名で表示したほうが分かりやすいかも）
+                ImGui::PushID(folderName.c_str());
+                ImGui::Button(folderName.c_str(), ImVec2(100, 0));
+                ImGui::PopID();
+
+                // --- ドラッグ処理 ---
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+             
+                    // とりあえず見つけた .obj の名前を渡してみます。
+                    ImGui::SetDragDropPayload("MODEL_ASSET", foundObjName.c_str(), foundObjName.size() + 1);
+
+                    ImGui::Text("Assign: %s", foundObjName.c_str());
+                    ImGui::EndDragDropSource();
+                }
+
+                // レイアウト調整（前と同じ）
+                float windowVisibleX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+                float lastButtonX = ImGui::GetItemRectMax().x;
+                float nextButtonX = lastButtonX + ImGui::GetStyle().ItemSpacing.x + 100;
+                if (nextButtonX < windowVisibleX) {
+                    ImGui::SameLine();
+                }
+            }
+        }
+    } else {
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Directory not found: %s", baseDirectory.c_str());
+    }
+    ImGui::End();
 }

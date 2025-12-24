@@ -45,3 +45,4 @@ void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     ID3D12DescriptorHeap* pHeaps[] = { srvDescriptorHeap_.Get() };
     commandList->SetDescriptorHeaps(1, pHeaps);
 }
+

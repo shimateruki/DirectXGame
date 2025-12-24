@@ -72,9 +72,10 @@ OBB Object3d::GetOBB() const
 
 
 void Object3d::SetModel(const std::string& modelName) {
+    modelName_ = modelName;
     // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
-    modelName_ = modelName;
+
 }
 
 void Object3d::Update(float deltaTime) {

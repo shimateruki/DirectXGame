@@ -36,7 +36,7 @@ public:
     void Finalize();
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
     void DrawImGui();
-
+    void DrawProjectWindow();
     void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
 
 private:
