@@ -89,7 +89,7 @@ private:
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     std::unique_ptr<Text>  debugText_;
-    std::unique_ptr<GhostRecorder> ghostRecorder_;
+
 
     Player* player_ = nullptr;
 

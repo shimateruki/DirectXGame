@@ -9,6 +9,7 @@ class SceneManager;
 struct GhostFrame {
     Vector3 position;
     Vector3 rotation;
+    bool triggerAttack = false;
 };
 
 class GhostRecorder {
@@ -31,6 +32,10 @@ public:
 
     // ターゲットの切り替え（プレイヤーで録画して、敵で再生するときに使う）
     void SetTarget(Object3d* target) { target_ = target; }
+    State GetState() const { return state_; }
+
+    void Save(const std::string& fileName);
+    void Load(const std::string& fileName);
 
 private:
     // 録画開始・停止・再生
@@ -46,4 +51,7 @@ private:
     int currentFrameIndex_ = 0;      // 今何フレーム目を再生中か
 
     State state_ = State::Idle;      // 現在の状態
+    char fileNameBuffer_[64] = "motion001";
+    bool syncCamera_ = false;
+    bool wasSyncing_ = false;
 };

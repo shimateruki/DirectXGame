@@ -6,6 +6,7 @@
 #include <sstream>
 #include <cassert>
 
+
 // モデルの初期化処理
 void Model::Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename) {
     // NULLチェック
@@ -71,87 +72,168 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
 
 
 
-// OBJファイルからモデルデータを読み込む関数
+// ==========================================
+// モデルファイル読み込み (OBJ, GLTF, FBX等)
+// ==========================================
 Model::ModelData Model::LoadObjFile(const std::string& directoryPath, const std::string& filename) {
     ModelData modelData;
-    std::vector<Vector4> positions;
-    std::vector<Vector3> normals;
-    std::vector<Vector2> texcoords;
-    std::string line;
+    Assimp::Importer importer;
+    std::string filePath = directoryPath + "/" + filename;
 
-    std::ifstream file(directoryPath + "/" + filename);
-    assert(file.is_open());
+    // Assimpで読み込み
+    // aiProcess_Triangulate: 三角形化
+    // aiProcess_FlipUVs: UV座標のYを反転 (DirectX用)
+    // aiProcess_ConvertToLeftHanded: 左手系座標に変換 (DirectX用)
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate |
+        aiProcess_FlipUVs |
+        aiProcess_ConvertToLeftHanded
+    );
 
-    while (std::getline(file, line)) {
-        std::string identifier;
-        std::istringstream s(line);
-        s >> identifier;
+    // 読み込みエラーチェック
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::string error = importer.GetErrorString();
+        assert(false && "Assimp ReadFile Error");
+        return modelData;
+    }
 
-        if (identifier == "v") {
-            Vector4 position;
-            s >> position.x >> position.y >> position.z;
-            position.x *= -1.0f;
-            position.w = 1.0f;
-            positions.push_back(position);
-        } else if (identifier == "vt") {
-            Vector2 texcoord;
-            s >> texcoord.x >> texcoord.y;
-            texcoord.y = 1.0f - texcoord.y;
-            texcoords.push_back(texcoord);
-        } else if (identifier == "vn") {
-            Vector3 normal;
-            s >> normal.x >> normal.y >> normal.z;
-            normal.x *= -1.0f;
-            normals.push_back(normal);
-        } else if (identifier == "f") {
-            VertexData triangle[3];
-            for (int32_t i = 0; i < 3; ++i) {
-                std::string vertexDefinition;
-                s >> vertexDefinition;
+    // ルートノードから再帰的に階層構造を読み取る
+    modelData.rootNode = ReadNode(scene->mRootNode);
 
-                std::istringstream v(vertexDefinition);
-                uint32_t posIndex, tcIndex, nIndex;
 
-                v >> posIndex;
-                v.seekg(1, std::ios_base::cur);
-                v >> tcIndex;
-                v.seekg(1, std::ios_base::cur);
-                v >> nIndex;
+    // メッシュを走査（現在の描画システムに合わせて、頂点データは一つにまとめる）
+    for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
+        aiMesh* mesh = scene->mMeshes[i];
 
-                triangle[i].position = positions[posIndex - 1];
-                triangle[i].texcoord = texcoords[tcIndex - 1];
-                triangle[i].normal = normals[nIndex - 1];
+        // --- 1. 頂点データの取得 ---
+        for (unsigned int f = 0; f < mesh->mNumFaces; f++) {
+            aiFace face = mesh->mFaces[f];
+            for (unsigned int j = 0; j < face.mNumIndices; j++) {
+                unsigned int index = face.mIndices[j];
+                VertexData vertex;
+
+                // 座標
+                vertex.position = {
+                    mesh->mVertices[index].x,
+                    mesh->mVertices[index].y,
+                    mesh->mVertices[index].z,
+                    1.0f
+                };
+
+                // 法線
+                if (mesh->HasNormals()) {
+                    vertex.normal = {
+                        mesh->mNormals[index].x,
+                        mesh->mNormals[index].y,
+                        mesh->mNormals[index].z
+                    };
+                } else {
+                    vertex.normal = { 0.0f, 1.0f, 0.0f };
+                }
+
+                // UV座標
+                if (mesh->HasTextureCoords(0)) {
+                    vertex.texcoord = {
+                        mesh->mTextureCoords[0][index].x,
+                        mesh->mTextureCoords[0][index].y
+                    };
+                } else {
+                    vertex.texcoord = { 0.0f, 0.0f };
+                }
+
+                modelData.vertices.push_back(vertex);
             }
-            modelData.vertices.push_back(triangle[2]);
-            modelData.vertices.push_back(triangle[1]);
-            modelData.vertices.push_back(triangle[0]);
-        } else if (identifier == "mtllib") {
-            std::string materialFilename;
-            s >> materialFilename;
-            modelData.material = LoadMaterialTemplateFile(directoryPath, materialFilename);
+        }
+
+        // --- 2. マテリアル（テクスチャパス）の取得 ---
+        if (mesh->mMaterialIndex >= 0) {
+            aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+            aiString texPath;
+            if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
+                std::string fullPath = texPath.C_Str();
+                std::string texFilename = fullPath.substr(fullPath.find_last_of("/\\") + 1);
+                modelData.material.textureFilePath = directoryPath + "/" + texFilename;
+            }
         }
     }
+
+    // デフォルトテクスチャ処理
+    if (modelData.material.textureFilePath.empty()) {
+        modelData.material.textureFilePath = directoryPath + "/white1x1.png";
+    }
+
     return modelData;
 }
 
-// MTLファイルからマテリアルデータを読み込む関数
-Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
-    MaterialData materialData;
-    std::string line;
+Model::Node Model::ReadNode(aiNode* node) {
+    Node result;
 
-    std::ifstream file(directoryPath + "/" + filename);
-    assert(file.is_open());
+    // 1. ノードの変換行列を取得 (assimp -> 自作Matrix4x4)
+    aiMatrix4x4 src = node->mTransformation;
 
-    while (std::getline(file, line)) {
-        std::string identifier;
-        std::istringstream s(line);
-        s >> identifier;
+    // Assimpの行列は [行][列] でアクセスできます
+    // エンジンのMatrix4x4の定義に合わせて代入します（一般的なDirectX系として記述）
+    result.localMatrix.m[0][0] = src.a1; result.localMatrix.m[0][1] = src.a2; result.localMatrix.m[0][2] = src.a3; result.localMatrix.m[0][3] = src.a4;
+    result.localMatrix.m[1][0] = src.b1; result.localMatrix.m[1][1] = src.b2; result.localMatrix.m[1][2] = src.b3; result.localMatrix.m[1][3] = src.b4;
+    result.localMatrix.m[2][0] = src.c1; result.localMatrix.m[2][1] = src.c2; result.localMatrix.m[2][2] = src.c3; result.localMatrix.m[2][3] = src.c4;
+    result.localMatrix.m[3][0] = src.d1; result.localMatrix.m[3][1] = src.d2; result.localMatrix.m[3][2] = src.d3; result.localMatrix.m[3][3] = src.d4;
 
-        if (identifier == "map_Kd") {
-            std::string textureFilename;
-            s >> textureFilename;
-            materialData.textureFilePath = directoryPath + "/" + textureFilename;
-        }
+    // 2. ノード名の取得
+    result.name = node->mName.C_Str();
+
+    // 3. 子供の数だけ確保
+    result.children.resize(node->mNumChildren);
+
+    // 4. 再帰的に子供を読み込む
+    for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+        // 次の階層のNodeを読み込んで、children配列に格納
+        result.children[i] = ReadNode(node->mChildren[i]);
     }
-    return materialData;
+
+    return result;
 }
+// ノードの行列を更新する再帰関数
+void Model::UpdateNodeMatrix(Node& node, const Matrix4x4& parentMatrix) {
+
+    // 自分のワールド行列 = 親のワールド行列 × 自分のローカル行列
+    Matrix4x4 worldMatrix =math_.Multiply(node.localMatrix, parentMatrix);
+
+    // ここで計算した worldMatrix を、描画用定数バッファなどにセットすることになります
+
+    // 子供たちにも「今の私の場所（親の場所）」を渡して更新させる
+    for (auto& child : node.children) {
+        UpdateNodeMatrix(child, worldMatrix);
+    }
+}
+// 毎フレーム呼ぶ更新処理
+void Model::Update() {
+    // 基準となる行列（最初は単位行列）を作成
+    Matrix4x4 identity = math_.makeIdentity4x4();
+
+    // ルートノードから更新開始！
+    UpdateNodeMatrix(modelData_.rootNode, identity);
+}
+
+
+
+//// MTLファイルからマテリアルデータを読み込む関数
+//Model::MaterialData Model::LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename) {
+//    MaterialData materialData;
+//    std::string line;
+//
+//    std::ifstream file(directoryPath + "/" + filename);
+//    assert(file.is_open());
+//
+//    while (std::getline(file, line)) {
+//        std::string identifier;
+//        std::istringstream s(line);
+//        s >> identifier;
+//
+//        if (identifier == "map_Kd") {
+//            std::string textureFilename;
+//            s >> textureFilename;
+//            materialData.textureFilePath = directoryPath + "/" + textureFilename;
+//        }
+//    }
+//    return materialData;
+//}

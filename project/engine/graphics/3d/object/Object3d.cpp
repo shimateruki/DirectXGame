@@ -78,6 +78,9 @@ void Object3d::SetModel(const std::string& modelName) {
 }
 
 void Object3d::Update(float deltaTime) {
+    if (model_) {
+        model_->Update();
+    }
 }
 
 void Object3d::UpdateLocalMatrix() {

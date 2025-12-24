@@ -82,6 +82,7 @@ void GamePlayScene::Initialize() {
 	terrain->SetStatic(true);
 	objects_.emplace_back(std::move(terrain));
 
+
 	//const float blockSize = 2.0f; // ブロックの1辺のサイズ 
 	//const int fieldWidth = 30;  // X方向 (幅) の床の数
 	//const int fieldDepth = 30;  // Z方向 (奥行) の床の数

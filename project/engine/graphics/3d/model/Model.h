@@ -7,11 +7,21 @@
 #include <vector>
 #include <d3d12.h>
 #include <wrl.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 class Object3d;
 
 class Model {
 public: 
+
+    struct Node {
+        Matrix4x4 localMatrix;      // このノードのローカル変換行列
+        std::string name;           // ノード名
+        std::vector<Node> children; // 子供のノードリスト
+    };
+
 
     struct VertexData {
         Vector4 position;
@@ -27,6 +37,7 @@ public:
     struct ModelData {
         std::vector<VertexData> vertices;
         MaterialData material;
+        Node rootNode;
     };
 
     struct Material {
@@ -44,7 +55,7 @@ public: // メンバ関数
     /// 初期化
     /// </summary>
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
-
+    void Update();
     /// <summary>
     /// 描画
     /// </summary>
@@ -62,6 +73,9 @@ public: // メンバ関数
 
 private: // 静的メンバ関数
     static ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
+    static Node ReadNode(aiNode* node);
+    void UpdateNodeMatrix(Node& node, const Matrix4x4& parentMatrix);
+
     static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
 private: // メンバ変数
@@ -73,4 +87,6 @@ private: // メンバ変数
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
+
+	Math math_;
 };
