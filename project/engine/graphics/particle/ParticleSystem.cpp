@@ -123,6 +123,8 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
 }
 
 
+
+
 /// <summary>
 /// パーティクル全体の更新
 /// </summary>
@@ -140,16 +142,17 @@ void ParticleSystem::Update(float deltaTime) {
         }
     }
 
-    // パーティクルの更新
+    // --- 2. 行列などの事前計算 ---
 
-//カメラ情報
+    // カメラ情報取得
     const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     const Matrix4x4& viewMatrix = camera->GetViewMatrix();
     const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
 
+    // 定数バッファ用のVP行列更新
     matrixData_->viewProjection = viewMatrix * projectionMatrix;
 
-//ビルボート行列計算
+    // ビルボード行列計算 (カメラの回転を打ち消す行列)
     Matrix4x4 backToFrontMatrix = math.Inverse(viewMatrix);
     backToFrontMatrix.m[3][0] = 0.0f;
     backToFrontMatrix.m[3][1] = 0.0f;
@@ -158,45 +161,72 @@ void ParticleSystem::Update(float deltaTime) {
     // GPUに送るカウントをリセット
     particleCount_ = 0;
 
+    // --- 3. パーティクル個別の更新ループ ---
     for (auto it = particles_.begin(); it != particles_.end(); ) {
         Particle& p = *it;
         p.currentTime += deltaTime;
 
+        // 寿命尽きチェック
         if (p.currentTime >= p.lifeTime) {
             it = particles_.erase(it); // 寿命で削除
             continue;
         }
 
-        // 補間計算 
+        // 寿命の進行度 (0.0:生まれたて -> 1.0:死ぬ直前)
         float lifeRatio = p.currentTime / p.lifeTime;
-        Vector4 currentColor = math.Lerp(p.startColor, p.endColor, lifeRatio);
-        float currentSize = math.Lerp(p.startSize, p.endSize, lifeRatio);
+        // lifeRatioが 1.0 を超えないようにクランプ
+        if (lifeRatio > 1.0f) lifeRatio = 1.0f;
 
-        //速度を反映
+        // --- カラーの更新 (従来のLerpのまま) ---
+        Vector4 currentColor = math.Lerp(p.startColor, p.endColor, lifeRatio);
+
+        // --- ★サイズ更新 (ここが新機能: グラフ適用) ---
+        // 以前: float currentSize = math.Lerp(p.startSize, p.endSize, lifeRatio);
+
+        // 新: グラフ配列(要素数10)から値を取り出す
+        // lifeRatio (0.0~1.0) を 配列インデックス (0~9) に変換
+        int graphIndex = (int)(lifeRatio * 9.0f);
+
+        // 安全対策: 配列外アクセス防止
+        if (graphIndex < 0) graphIndex = 0;
+        if (graphIndex > 9) graphIndex = 9;
+
+        // エディタで編集したカーブの値をそのままサイズとして採用
+        float currentSize = params_.sizeCurve[graphIndex];
+
+        // ---------------------------------------------
+
+
+        // 速度による位置更新
         p.position += p.velocity * deltaTime;
 
 
+        // --- 行列計算 ---
+
         // スケール行列
         Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize, currentSize, currentSize });
+
         // トランスフォーム行列
         Matrix4x4 translateMatrix = math.MakeTranslateMatrix(p.position);
 
-        // ワールド行列の計算 (ビルボード対応)
+        // ワールド行列の計算 (スケール * ビルボード回転 * 平行移動)
         Matrix4x4 worldMatrix = scaleMatrix * backToFrontMatrix * translateMatrix;
 
-        // GPUバッファ (instancingData_) にデータをコピー
-        instancingData_[particleCount_].world = worldMatrix;
-        instancingData_[particleCount_].color = currentColor;
 
-        // カウントアップ
-        particleCount_++;
-        //
+        // --- GPUバッファへの書き込み ---
 
+        // 最大数を超えて書き込まないようにチェック (安全対策)
+        if (particleCount_ < kMaxParticles) {
+            instancingData_[particleCount_].world = worldMatrix;
+            instancingData_[particleCount_].color = currentColor;
+
+            // カウントアップ
+            particleCount_++;
+        }
 
         ++it;
     }
 }
-
 void ParticleSystem::Draw() {
     if (particleCount_ == 0) return;
 

@@ -12,7 +12,6 @@ class Object3d;
 class DirectXCommon;
 class SceneManager;
 
-// ★★★ アライメントエラー対策 ★★★
 
 struct AlignedMatrix4x4 {
     Matrix4x4 matrix;
@@ -38,6 +37,8 @@ public:
     void DrawImGui();
     void DrawProjectWindow();
     void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
+    // ビットフラグ編集用のヘルパー関数
+    void DrawAttributeSelector(const char* label, uint32_t* attribute);
 
 private:
     void InitializePrimitiveDrawing();

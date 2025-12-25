@@ -228,6 +228,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="game\component\MoveStrategy2D.cpp" />
     <ClCompile Include="game\component\MoveStrategy3D.cpp" />
     <ClCompile Include="GhostRecorder.cpp" />
+    <ClCompile Include="LevelEditor.cpp" />
     <ClCompile Include="LightEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -422,6 +423,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="game\component\MoveStrategy2D.h" />
     <ClInclude Include="game\component\MoveStrategy3D.h" />
     <ClInclude Include="GhostRecorder.h" />
+    <ClInclude Include="LevelEditor.h" />
     <ClInclude Include="LightEditor.h" />
   </ItemGroup>
   <ItemGroup>

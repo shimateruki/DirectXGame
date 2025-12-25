@@ -56,6 +56,7 @@ public:
         float endSize = 0.1f;   // 終了時のサイズ
 
         bool isEmitting = true; // 発生させるかどうか
+        float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
     void Initialize(ParticleCommon* common, const std::string& texturePath);

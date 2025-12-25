@@ -28,7 +28,7 @@ bool Character::OnCollision(Object3d* other) {
         return false;
     }
 
-    // ★ 2. 新しい関数に処理を委譲
+    // 新しい関数に処理を委譲
     ApplyPhysicsCollision(info, other->GetCollisionAttribute());
 
     return info.isColliding;
@@ -60,31 +60,30 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 }
 std::unique_ptr<Object3d> Character::Clone() const {
+    // Character として生成
     auto newObj = std::make_unique<Character>();
 
     assert(common_ != nullptr);
     newObj->Initialize(common_);
 
-    //  modelName_ (文字列) を使ってモデルをセット
+    // モデル設定
     if (!modelName_.empty()) {
         newObj->SetModel(this->modelName_);
     }
 
-    // Object3d の Transform 情報をコピー
+    // Transform 情報
     newObj->transform_ = this->transform_;
 
-    // Object3d の名前をコピー
+    // 名前
     newObj->name_ = this->name_;
 
-    // Object3d のコライダー情報をコピー
+    newObj->SetColliderConfig(this->colliderConfig_);
+
+    // 属性とマスク
     newObj->collisionAttribute_ = this->collisionAttribute_;
     newObj->collisionMask_ = this->collisionMask_;
-    newObj->colliderType_ = this->colliderType_;
 
-    // collisionSize_ (または半径) をコピー
-    newObj->collisionSize_ = this->collisionSize_;
-
-    // ---Character 独自のメンバをコピー ---
+    // --- Character 独自のメンバをコピー ---
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
     newObj->gravity_ = this->gravity_;

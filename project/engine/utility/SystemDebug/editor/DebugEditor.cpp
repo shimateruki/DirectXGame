@@ -25,6 +25,7 @@
 #include <DebugConsole.h>
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
+#include <BulletManager.h>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
@@ -164,50 +165,118 @@ void DebugEditor::InitializePrimitiveDrawing() {
 }
 
 // ========================================================================
-// コライダー描画処理
+// コライダー描画処理 (完全版)
 // ========================================================================
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     if (!drawColliders_ || sceneManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
-    if (currentScene == nullptr) return;
-    const auto& colliders = CollisionManager::GetInstance()->GetObjects();
-    if (colliders.empty()) return;
+    if (!currentScene) return;
 
+    // パイプライン設定
     commandList->SetPipelineState(primitivePipelineState_.Get());
     commandList->SetGraphicsRootSignature(primitiveRootSignature_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 
-    Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
+    int instanceCount = 0;
+    Math math; // 行列計算用
 
-    int instanceIndex = 0;
+    // =========================================================
+    // 1. シーン内のオブジェクトを描画 (Player, Bossなど)
+    // =========================================================
+    auto& objects = currentScene->GetObjects();
 
-    for (auto& obj : colliders) {
-        if (instanceIndex >= kMaxInstances) {
-            break;
-        }
+    for (const auto& obj : objects) {
+        if (!obj) continue;
+        if (instanceCount >= kMaxInstances) break;
 
         ColliderType type = obj->GetColliderType();
+        Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
+        Vector4 color = { 0.0f, 1.0f, 0.0f, 1.0f }; // デフォルト緑
+
+        // --- OBB ---
+        if (type == ColliderType::kOBB) {
+            OBB obb = obj->GetOBB();
+            Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
+            Matrix4x4 matRot = math.makeIdentity4x4();
+            matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
+            matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
+            matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
+            Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+            drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+            color = { 1.0f, 0.2f, 0.2f, 1.0f }; // 赤
+        }
+        // --- AABB ---
+        else if (type == ColliderType::kAABB) {
+            AABB aabb = obj->GetAABB();
+            Vector3 center = (aabb.min + aabb.max) * 0.5f;
+            Vector3 size = aabb.max - aabb.min;
+            Matrix4x4 matScale = math.MakeScaleMatrix(size);
+            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+            drawWorldMatrix = math.Multiply(matScale, matTrans);
+            color = { 0.0f, 1.0f, 0.0f, 1.0f }; // 緑
+        }
+        // --- Sphere ---
+        else if (type == ColliderType::kSphere) {
+            float radius = obj->GetCollisionRadius();
+            Vector3 center = obj->GetWorldPosition();
+            Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+            drawWorldMatrix = math.Multiply(matScale, matTrans);
+            color = { 0.0f, 0.5f, 1.0f, 1.0f }; // 青
+        }
+
+        DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+        instanceCount++;
+    }
+
+
+    const auto& bullets = BulletManager::GetInstance()->GetBullets();
+
+    for (const auto& bullet : bullets) {
+        if (!bullet || bullet->IsDead()) continue;
+        if (instanceCount >= kMaxInstances) break;
+
+        ColliderType type = bullet->GetColliderType();
+        Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
         Vector4 color = { 0.0f, 1.0f, 0.0f, 1.0f };
 
-        if (type == ColliderType::kAABB) {
-            AABB aabb = obj->GetAABB(); Vector3 c = (aabb.min + aabb.max) * 0.5f; Vector3 s = aabb.max - aabb.min;
-            if (s.x <= 0 || s.y <= 0 || s.z <= 0) continue;
-            Matrix4x4 world = math.Multiply(math.MakeScaleMatrix(s), math.MakeTranslateMatrix(c));
-
-            DrawWireCube(commandList, world, color, instanceIndex);
-            instanceIndex++;
-
-        } else if (type == ColliderType::kSphere) {
-            Vector3 c = obj->GetWorldPosition(); float r = obj->GetCollisionRadius();
-            if (r <= 0) continue;
-            Matrix4x4 world = math.Multiply(math.MakeScaleMatrix({ r * 2, r * 2, r * 2 }), math.MakeTranslateMatrix(c));
-
-            DrawWireCube(commandList, world, { 0.0f, 0.0f, 1.0f, 1.0f }, instanceIndex);
-            instanceIndex++;
+        // --- OBB (スピニングブレードなど) ---
+        if (type == ColliderType::kOBB) {
+            OBB obb = bullet->GetOBB();
+            Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
+            Matrix4x4 matRot = math.makeIdentity4x4();
+            matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
+            matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
+            matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
+            Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+            drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+            color = { 1.0f, 0.2f, 0.2f, 1.0f }; // 赤
         }
+        // --- AABB ---
+        else if (type == ColliderType::kAABB) {
+            AABB aabb = bullet->GetAABB();
+            Vector3 center = (aabb.min + aabb.max) * 0.5f;
+            Vector3 size = aabb.max - aabb.min;
+            Matrix4x4 matScale = math.MakeScaleMatrix(size);
+            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+            drawWorldMatrix = math.Multiply(matScale, matTrans);
+            color = { 0.0f, 1.0f, 0.0f, 1.0f }; // 緑
+        }
+        // --- Sphere (通常の弾) ---
+        else if (type == ColliderType::kSphere) {
+            float radius = bullet->GetCollisionRadius();
+            Vector3 center = bullet->GetWorldPosition();
+            Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+            drawWorldMatrix = math.Multiply(matScale, matTrans);
+            color = { 0.0f, 0.5f, 1.0f, 1.0f }; // 青
+        }
+
+        DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+        instanceCount++;
     }
 }
 
@@ -233,11 +302,12 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
 }
 
 
+
 void DebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
     using json = nlohmann::json;
 
-    // 1. プロジェクトウィンドウを表示
+    // 1. プロジェクトウィンドウを表示 (ここからドラッグ開始)
     DrawProjectWindow();
 
     if (sceneManager_ == nullptr) return;
@@ -250,9 +320,12 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
-    std::string targetSceneFile = "resouces/json/scene_layout.json";
+    // 保存先パス (必要に応じて書き換えてください)
+    std::string targetSceneFile = "resources/scene/demoScene.json";
 
-    // --- Inspector Window ---
+    // ==========================================================================================
+    // Inspector Window (選択中オブジェクトの編集)
+    // ==========================================================================================
     ImGui::Begin("Inspector");
 
     if (selectedObject_ == nullptr) {
@@ -261,34 +334,34 @@ void DebugEditor::DrawImGui() {
         ImGui::Separator();
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
     } else {
-        // --- オブジェクト情報の表示と編集 ---
+        // --- 名前編集 ---
         char nameBuffer[256];
-        strcpy_s(nameBuffer, selectedObject_->GetName().c_str());
+        std::string currentName = selectedObject_->GetName();
+        if (currentName.empty()) currentName = "NoName";
+        strcpy_s(nameBuffer, currentName.c_str());
+
         if (ImGui::InputText("Name", nameBuffer, 256)) {
             selectedObject_->SetName(std::string(nameBuffer));
         }
 
-        // --- ★ D&D受け入れエリア (Target) ---
+        // --- ★ D&D受け入れエリア (モデル差し替え) ---
         ImGui::Separator();
         ImGui::Text("Model Asset:");
-        ImGui::Button(" [ Drop Model Here ] ", ImVec2(-1, 30)); // 横幅いっぱいのボタン（見た目用）
+        ImGui::Button(" [ Drop Model Here to Switch ] ", ImVec2(-1, 30));
 
-        // ドロップを受け付ける処理
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
                 const char* modelName = (const char*)payload->Data;
-
-                // ログ出力
-                DebugConsole::GetInstance()->AddLog("Switching model to: " + std::string(modelName));
-
-                // ★ モデル切り替え実行
+                ModelManager::GetInstance()->LoadModel(modelName); // 必要ならロード
                 selectedObject_->SetModel(modelName);
+                DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
             }
             ImGui::EndDragDropTarget();
         }
         ImGui::Separator();
         // ----------------------------------
 
+        // --- Transform編集 ---
         Object3d::Transform* transform = selectedObject_->GetTransform();
         ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
 
@@ -298,10 +371,89 @@ void DebugEditor::DrawImGui() {
         }
         ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
 
+        // ==========================================================
+        // ★★★ コライダー設定 (Collision) ★★★
+        // ==========================================================
         ImGui::Separator();
 
-        // --- 保存ボタン ---
-        if (ImGui::Button("Save Scene Layout")) {
+        if (ImGui::CollapsingHeader("Collision Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+            // Object3dから現在の設定を取得
+            Object3d::ColliderConfig colConfig = selectedObject_->GetColliderConfig();
+            bool isColChanged = false;
+
+            // 1. 種類の選択
+            const char* typeNames[] = { "None", "Sphere", "AABB", "OBB" };
+            int currentTypeIndex = (int)colConfig.type;
+
+            if (ImGui::Combo("Type", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
+                colConfig.type = (ColliderType)currentTypeIndex;
+
+                // OBBにした瞬間サイズが0だと見えないので初期値を入れる親切設計
+                if (colConfig.type == ColliderType::kOBB) {
+                    if (colConfig.size.x == 0.0f && colConfig.size.y == 0.0f && colConfig.size.z == 0.0f) {
+                        colConfig.size = { 1.0f, 1.0f, 1.0f };
+                    }
+                }
+                isColChanged = true;
+            }
+
+            // 2. 詳細設定 (None以外なら表示)
+            if (colConfig.type != ColliderType::kNone) {
+                // 中心オフセット
+                if (ImGui::DragFloat3("Center", &colConfig.center.x, 0.05f)) {
+                    isColChanged = true;
+                }
+
+                // サイズ / 半径
+                if (colConfig.type == ColliderType::kSphere) {
+                    // 球の場合は X成分を半径として使う
+                    if (ImGui::DragFloat("Radius", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
+                        colConfig.size.y = colConfig.size.x;
+                        colConfig.size.z = colConfig.size.x;
+                        isColChanged = true;
+                    }
+                } else {
+                    // AABB, OBB は XYZサイズ
+                    if (ImGui::DragFloat3("Size", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
+                        isColChanged = true;
+                    }
+                }
+            }
+
+            // 変更があれば適用
+            if (isColChanged) {
+                selectedObject_->SetColliderConfig(colConfig);
+                // 即座にJSON更新（オートセーブ的な挙動）
+                UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+            }
+
+            ImGui::Separator();
+            ImGui::Text("Collision Logic");
+
+            // --- 3. 属性 (Self Attribute) ---
+            uint32_t currentAttr = selectedObject_->GetCollisionAttribute();
+            DrawAttributeSelector("Self Attribute (Category)", &currentAttr);
+            if (currentAttr != selectedObject_->GetCollisionAttribute()) {
+                selectedObject_->SetCollisionAttribute(currentAttr);
+                UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+            }
+
+            // --- 4. マスク (Collision Mask) ---
+            uint32_t currentMask = selectedObject_->GetCollisionMask();
+            DrawAttributeSelector("Collision Mask (Filter)", &currentMask);
+            if (currentMask != selectedObject_->GetCollisionMask()) {
+                selectedObject_->SetCollisionMask(currentMask);
+                UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+            }
+        }
+        // ==========================================================
+
+        ImGui::Separator();
+
+        // --- シーン保存ボタン ---
+        // (個別のオートセーブだけでなく、全体を一括保存する機能)
+        if (ImGui::Button("Save Scene Layout", ImVec2(-1, 0))) {
             json sceneData;
             sceneData["objects"] = json::array();
             std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
@@ -312,10 +464,22 @@ void DebugEditor::DrawImGui() {
                 Object3d::Transform* objTr = obj->GetTransform();
                 json d;
                 d["name"] = obj->GetName();
-                 d["modelName"] = obj->GetModelName(); 
+                d["modelName"] = obj->GetModelName();
                 d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
                 d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
                 d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
+
+                // ★ コライダー保存
+                Object3d::ColliderConfig c = obj->GetColliderConfig();
+                json cData;
+                cData["type"] = (int)c.type;
+                cData["center"] = { c.center.x, c.center.y, c.center.z };
+                cData["size"] = { c.size.x, c.size.y, c.size.z };
+                d["collider"] = cData;
+
+                // ★ 属性とマスクの保存 (ここが重要！)
+                d["collisionAttribute"] = obj->GetCollisionAttribute();
+                d["collisionMask"] = obj->GetCollisionMask();
 
                 sceneData["objects"].push_back(d);
             }
@@ -331,7 +495,7 @@ void DebugEditor::DrawImGui() {
         }
 
         // --- 単体更新ボタン ---
-        if (ImGui::Button("Update This Object")) {
+        if (ImGui::Button("Update This Object Only")) {
             UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
         }
 
@@ -344,18 +508,17 @@ void DebugEditor::DrawImGui() {
             currentScene->AddObject(std::move(newObj));
         }
         ImGui::SameLine();
-        if (ImGui::Button("Delete", ImVec2(0, 0))) { // 赤くしたいならPushStyleColor推奨
+        if (ImGui::Button("Delete", ImVec2(0, 0))) {
             currentScene->RequestRemoveObject(selectedObject_);
             selectedObject_ = nullptr;
         }
 
-        // --- Gizmo Control (選択中のみ表示) ---
+        // --- Gizmo Control ---
         ImGui::Separator();
         ImGui::Text("Gizmo Operation:");
 
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
-        static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
-        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f }; // スナップ値を少し大きくしました
+        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f };
         static float snapRotation = 45.0f;
         static float snapScale = 0.5f;
 
@@ -369,7 +532,6 @@ void DebugEditor::DrawImGui() {
         if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
         if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
 
-        // Snap設定
         ImGui::Text("Snap (Hold Ctrl):");
         ImGui::SameLine();
         if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("##SnapT", snapTranslate);
@@ -379,14 +541,44 @@ void DebugEditor::DrawImGui() {
     ImGui::End(); // End Inspector
 
 
-    // --- Object List Window ---
+    // ==========================================================================================
+    // Object List Window
+    // ==========================================================================================
     ImGui::Begin("Object List");
+
+    // ★ ドロップ誘導ボタン
+    ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 50));
+
+    // ★ ドロップ受け付け
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+
+            const char* modelName = (const char*)payload->Data;
+            ModelManager::GetInstance()->LoadModel(modelName);
+
+            Object3dCommon* common = currentScene->GetObject3dCommon();
+            if (common) {
+                auto newObj = std::make_unique<Object3d>();
+                newObj->Initialize(common);
+                newObj->SetModel(modelName);
+
+                static int spawnCount = 0;
+                newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
+                newObj->GetTransform()->translate = { 0.0f, 0.0f, 0.0f };
+
+                currentScene->AddObject(std::move(newObj));
+                DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // リスト表示
     std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
     for (auto& obj : objects) {
         const std::string& objName = obj->GetName();
         if (objName.empty()) continue;
 
-        // 選択状態のハイライト
         bool isSelected = (obj.get() == selectedObject_);
         if (ImGui::Selectable(objName.c_str(), isSelected)) {
             selectedObject_ = obj.get();
@@ -395,7 +587,9 @@ void DebugEditor::DrawImGui() {
     ImGui::End();
 
 
-    // --- Object Spawner Window ---
+    // ==========================================================================================
+    // Spawner Window
+    // ==========================================================================================
     ImGui::Begin("Spawner");
     if (ImGui::Button("Refresh Model List")) {
         modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
@@ -432,136 +626,99 @@ void DebugEditor::DrawImGui() {
 #endif
 }
 
-
 /// <summary>
 /// scene_layout.json を読み込み、特定のオブジェクトの情報だけを更新して上書き保存する
 /// </summary>
 void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
-    if (object == nullptr) {
-        DebugConsole::GetInstance()->AddLog("ERROR: No object selected to update JSON.");
-        return;
-    }
-    std::string objectName = object->GetName();
-    if (objectName.empty()) {
-        DebugConsole::GetInstance()->AddLog("ERROR: Selected object has no name. Cannot update JSON.");
-        return;
-    }
-
     using json = nlohmann::json;
-    json root;
+    std::ifstream file(filename);
+    if (!file.is_open()) return;
 
-    // --- 1. 既存のJSONファイルを読み込む ---
-    std::ifstream file_in(filename);
-    if (!file_in.is_open()) {
-        DebugConsole::GetInstance()->AddLog("ERROR: Failed to open file for reading: " + filename);
-        return;
-    }
-
+    json sceneData;
     try {
-        root = json::parse(file_in); // JSONをパース
+        sceneData = json::parse(file);
     }
-    catch (json::parse_error& e) {
-        DebugConsole::GetInstance()->AddLog("ERROR: Failed to parse JSON: " + filename);
-        DebugConsole::GetInstance()->AddLog(e.what());
-        file_in.close();
+    catch (...) {
         return;
     }
-    file_in.close(); // 読み込み終了
+    file.close();
 
-    // --- 2. "objects" 配列を探し、該当する name のデータを上書き ---
-    bool objectFound = false;
-    if (root.contains("objects") && root["objects"].is_array()) {
-        for (auto& objData : root["objects"]) { // 配列をループ
+    bool found = false;
+    if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+        for (auto& objData : sceneData["objects"]) {
+            // 名前で一致するオブジェクトを探す
+            if (objData.contains("name") && objData["name"] == object->GetName()) {
 
-            // name が一致するかチェック
-            if (objData.contains("name") && objData["name"].get<std::string>() == objectName) {
+                // --- 1. Transform (既存) ---
+                Object3d::Transform* tf = object->GetTransform();
+                objData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
+                objData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
+                objData["scale"] = { tf->scale.x, tf->scale.y, tf->scale.z };
 
-                // ★ 見つかった！ 選択中のオブジェクトの現在地で上書き
-				Object3d::Transform* transform = object->GetTransform();
-				objData["modelName"] = object->GetModelName();
-                objData["position"] = {
-                    transform->translate.x,
-                    transform->translate.y,
-                    transform->translate.z
-                };
-                objData["rotation"] = {
-                    transform->rotate.x,
-                    transform->rotate.y,
-                    transform->rotate.z
-                };
-                objData["scale"] = {
-                    transform->scale.x,
-                    transform->scale.y,
-                    transform->scale.z
-                };
+                // --- 2. ColliderConfig (Type, Center, Size) ---
+                const Object3d::ColliderConfig& config = object->GetColliderConfig();
+                objData["collider"]["type"] = static_cast<int>(config.type);
+                objData["collider"]["center"] = { config.center.x, config.center.y, config.center.z };
+                objData["collider"]["size"] = { config.size.x, config.size.y, config.size.z };
 
-                objectFound = true;
-                break; // 更新完了
+                // --- 3. Attribute & Mask (属性) ---
+                objData["collisionAttribute"] = object->GetCollisionAttribute();
+                objData["collisionMask"] = object->GetCollisionMask();
+
+                found = true;
+                break;
             }
         }
     }
 
-    if (!objectFound) {
-        // スポーンなどで新しく作られ、JSONにまだ存在しないオブジェクトの場合
-        DebugConsole::GetInstance()->AddLog("Warning: Object '" + objectName + "' not found in " + filename);
-        DebugConsole::GetInstance()->AddLog("Use 'Save Scene Layout' (全体保存) to add new objects.");
-        return;
-    }
+    // 新規追加ロジックが必要な場合はここに記述 
 
-    // --- 3. JSONファイルに上書き保存 ---
-    std::ofstream file_out(filename); // 同じファイル名で書き込み用に開く
-    if (file_out) {
-        file_out << root.dump(4); // 4スペースでインデントして書き出し
-        file_out.close();
-        DebugConsole::GetInstance()->AddLog("Updated " + objectName + " in " + filename);
-    } else {
-        DebugConsole::GetInstance()->AddLog("ERROR: Failed to open file for writing: " + filename);
+    // ファイル書き込み
+    std::ofstream outFile(filename);
+    if (outFile.is_open()) {
+        outFile << sceneData.dump(4); // インデント4で保存
+        outFile.close();
     }
 }
+
 void DebugEditor::DrawProjectWindow() {
     ImGui::Begin("Project (Assets)");
 
-    // ★ ModelManager のパス設定と一字一句合わせる
     std::string baseDirectory = "resouces/3DModel";
 
     if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
-        ImGui::Text("Drag model to Inspector!");
+        ImGui::Text("Drag model to Object List!"); // 誘導メッセージ変更
         ImGui::Separator();
 
         for (const auto& entry : fs::directory_iterator(baseDirectory)) {
             if (entry.is_directory()) {
-                // 1. まずフォルダ名を取得
                 std::string folderName = entry.path().filename().string();
-
-                // 2. ★重要: フォルダの中にある .obj ファイルを実際に探す！
                 std::string foundObjName = "";
                 for (const auto& subEntry : fs::directory_iterator(entry.path())) {
                     if (subEntry.path().extension() == ".obj") {
-                        // 拡張子(.obj)を抜いた名前を取得 
                         foundObjName = subEntry.path().stem().string();
-                        break; // 1個見つけたら終わり（1フォルダ1モデルの前提）
+                        break;
                     }
                 }
-
-                // .obj が見つからなかったら表示しない
                 if (foundObjName.empty()) continue;
 
-                // ボタン表示（フォルダ名で表示したほうが分かりやすいかも）
+                // IDプッシュ
                 ImGui::PushID(folderName.c_str());
+
+                // ボタン表示
                 ImGui::Button(folderName.c_str(), ImVec2(100, 0));
-                ImGui::PopID();
 
-                // --- ドラッグ処理 ---
+                // --- ドラッグ処理  ---
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-             
-                    // とりあえず見つけた .obj の名前を渡してみます。
                     ImGui::SetDragDropPayload("MODEL_ASSET", foundObjName.c_str(), foundObjName.size() + 1);
-
-                    ImGui::Text("Assign: %s", foundObjName.c_str());
+                    ImGui::Text("Spawn: %s", foundObjName.c_str());
                     ImGui::EndDragDropSource();
                 }
 
-                // レイアウト調整（前と同じ）
+                // IDポップ (ドラッグ処理の後に移動)
+                ImGui::PopID();
+
+                // レイアウト調整
                 float windowVisibleX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
                 float lastButtonX = ImGui::GetItemRectMax().x;
                 float nextButtonX = lastButtonX + ImGui::GetStyle().ItemSpacing.x + 100;
@@ -574,4 +731,23 @@ void DebugEditor::DrawProjectWindow() {
         ImGui::TextColored(ImVec4(1, 0, 0, 1), "Directory not found: %s", baseDirectory.c_str());
     }
     ImGui::End();
+}
+
+
+// 属性編集用ヘルパー関数
+void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) {
+    if (ImGui::TreeNode(label)) {
+        int flags = static_cast<int>(*attribute);
+
+        // 各属性のチェックボックス
+        ImGui::CheckboxFlags("Player", &flags, 1 << 0);
+        ImGui::CheckboxFlags("Enemy", &flags, 1 << 1);
+        ImGui::CheckboxFlags("Ground", &flags, 1 << 2);
+        ImGui::CheckboxFlags("Bullet", &flags, 1 << 3);
+
+        // 変更を書き戻す
+        *attribute = static_cast<uint32_t>(flags);
+
+        ImGui::TreePop();
+    }
 }

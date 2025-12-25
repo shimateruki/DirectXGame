@@ -12,4 +12,5 @@ public:
 private:
     SceneManager* sceneManager_ = nullptr;
     ParticleSystem* targetSystem_ = nullptr;
+
 };

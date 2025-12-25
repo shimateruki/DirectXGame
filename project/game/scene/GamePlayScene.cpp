@@ -588,10 +588,13 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 	try {
 		sceneData = json::parse(file);
 		if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+
 			for (const auto& objData : sceneData["objects"]) {
+				// 名前がないデータはスキップ
 				if (!objData.contains("name") || !objData["name"].is_string()) continue;
 				std::string name = objData["name"].get<std::string>();
 
+				// 1. 既存のリストから同じ名前のオブジェクトを探す
 				Object3d* targetObject = nullptr;
 				for (auto& obj : objects_) {
 					if (obj && !obj->GetName().empty() && obj->GetName() == name) {
@@ -600,30 +603,90 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 				}
 
-				if (targetObject) {
-					if (objData.contains("modelName") && objData["modelName"].is_string()) {
-						std::string modelName = objData["modelName"].get<std::string>();
-						if (targetObject->GetModelName() != modelName) {
-							targetObject->SetModel(modelName);
-						}
-					}
-					Object3d::Transform* transform = targetObject->GetTransform();
+				// 2. 見つからなかった場合、新しく生成する 
+				if (!targetObject) {
+\
+					if (object3dCommon_) {
+						auto newObj = std::make_unique<Object3d>();
+						newObj->Initialize(object3dCommon_.get());
+						newObj->SetName(name);
 
-					if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
-						transform->translate.x = objData["position"][0].get<float>();
-						transform->translate.y = objData["position"][1].get<float>();
-						transform->translate.z = objData["position"][2].get<float>();
+						// ポインタを確保してからリストに追加
+						targetObject = newObj.get();
+						objects_.push_back(std::move(newObj));
 					}
-					if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
-						transform->rotate.x = objData["rotation"][0].get<float>();
-						transform->rotate.y = objData["rotation"][1].get<float>();
-						transform->rotate.z = objData["rotation"][2].get<float>();
+				}
+
+				// それでもオブジェクトがなければスキップ
+				if (!targetObject) continue;
+
+
+				// 3. モデルの読み込みと設定
+				if (objData.contains("modelName") && objData["modelName"].is_string()) {
+					std::string modelName = objData["modelName"].get<std::string>();
+
+					// モデルが変わっている、または未設定ならロード
+					if (targetObject->GetModelName() != modelName) {
+						// モデルマネージャーでロード済みか確認し、必要ならロード
+						ModelManager::GetInstance()->LoadModel(modelName);
+						targetObject->SetModel(modelName);
 					}
-					if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
-						transform->scale.x = objData["scale"][0].get<float>();
-						transform->scale.y = objData["scale"][1].get<float>();
-						transform->scale.z = objData["scale"][2].get<float>();
+				}
+
+				// 4. Transform (位置・回転・スケール) の適用
+				Object3d::Transform* transform = targetObject->GetTransform();
+
+				if (objData.contains("position") && objData["position"].is_array()) {
+					transform->translate.x = objData["position"][0].get<float>();
+					transform->translate.y = objData["position"][1].get<float>();
+					transform->translate.z = objData["position"][2].get<float>();
+				}
+				if (objData.contains("rotation") && objData["rotation"].is_array()) {
+					transform->rotate.x = objData["rotation"][0].get<float>();
+					transform->rotate.y = objData["rotation"][1].get<float>();
+					transform->rotate.z = objData["rotation"][2].get<float>();
+				}
+				if (objData.contains("scale") && objData["scale"].is_array()) {
+					transform->scale.x = objData["scale"][0].get<float>();
+					transform->scale.y = objData["scale"][1].get<float>();
+					transform->scale.z = objData["scale"][2].get<float>();
+				}
+
+				// 5. コライダー情報の適用
+				if (objData.contains("collider")) {
+					json colData = objData["collider"];
+					// 「現在の設定」を取得して、そこから JSONにある項目だけを上書きする
+					Object3d::ColliderConfig config = targetObject->GetColliderConfig();
+
+					// Type (int -> enum)
+					if (colData.contains("type") && colData["type"].is_number_integer()) {
+						config.type = (ColliderType)colData["type"].get<int>();
 					}
+
+					// Center
+					if (colData.contains("center") && colData["center"].is_array()) {
+						config.center.x = colData["center"][0].get<float>();
+						config.center.y = colData["center"][1].get<float>();
+						config.center.z = colData["center"][2].get<float>();
+					}
+
+					// Size
+					if (colData.contains("size") && colData["size"].is_array()) {
+						config.size.x = colData["size"][0].get<float>();
+						config.size.y = colData["size"][1].get<float>();
+						config.size.z = colData["size"][2].get<float>();
+					}
+
+					// 設定をオブジェクトに反映
+					targetObject->SetColliderConfig(config);
+					// ★念のための保険: 
+					targetObject->SetColliderType(config.type);
+				}
+				if (objData.contains("collisionAttribute")) {
+					targetObject->SetCollisionAttribute(objData["collisionAttribute"].get<uint32_t>());
+				}
+				if (objData.contains("collisionMask")) {
+					targetObject->SetCollisionMask(objData["collisionMask"].get<uint32_t>());
 				}
 			}
 		}
