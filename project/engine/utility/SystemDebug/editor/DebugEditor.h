@@ -81,7 +81,6 @@ private:
 
     // ImGui のリストボックスで選択されているインデックス
     int selectedModelIndex_ = 0;
-
-    // ★ スポナーウィンドウを描画する private 関数
-    void DrawObjectSpawnerWindow();
+    char currentSceneFilename_[128] = "scene_layout.json";
+    std::vector<std::string> sceneFiles_;
 };

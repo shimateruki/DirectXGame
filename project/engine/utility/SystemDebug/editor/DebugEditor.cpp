@@ -320,14 +320,106 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
-    // 保存先パス 
-    std::string targetSceneFile = "resouces/json/scene_layout.json";
-
     // ==========================================================================================
-    // Inspector Window (選択中オブジェクトの編集)
+    // Inspector Window (シーン管理 & 選択中オブジェクトの編集)
     // ==========================================================================================
     ImGui::Begin("Inspector");
 
+    // =========================================================
+    //  1. ファイル管理エリア (File Manager)
+    // =========================================================
+    if (ImGui::CollapsingHeader("Scene File Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        // 保存先のディレクトリパス
+        std::string directoryPath = "resouces/json/";
+
+        // ディレクトリが存在しない場合は作成しておく（安全対策）
+        if (!fs::exists(directoryPath)) {
+            fs::create_directories(directoryPath);
+        }
+
+        // --- A. ファイル一覧 (Combo Box) ---
+        // 既存のファイルをクリックで選べる機能
+        if (ImGui::BeginCombo("Existing Files", currentSceneFilename_)) {
+            if (fs::exists(directoryPath)) {
+                for (const auto& entry : fs::directory_iterator(directoryPath)) {
+                    // .jsonファイルのみを表示
+                    if (entry.path().extension() == ".json") {
+                        std::string filename = entry.path().filename().string();
+
+                        bool isSelected = (std::string(currentSceneFilename_) == filename);
+                        if (ImGui::Selectable(filename.c_str(), isSelected)) {
+                            // 選んだファイル名を入力欄にコピー
+                            strcpy_s(currentSceneFilename_, filename.c_str());
+                        }
+
+                        if (isSelected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        // --- B. ファイル名入力欄 ---
+        // 新規作成や、上記で選んだ名前の確認用
+        ImGui::InputText("Filename (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
+
+        // パスの生成 (resouces/json/ + 入力名)
+        std::string fullPath = directoryPath + std::string(currentSceneFilename_);
+
+        // --- C. 保存ボタン (Save) ---
+        if (ImGui::Button("Save Scene")) {
+            json sceneData;
+            sceneData["objects"] = json::array();
+            std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
+
+            for (auto& obj : allObjects) {
+                if (obj->GetName().empty()) continue;
+
+                Object3d::Transform* objTr = obj->GetTransform();
+                json d;
+                d["name"] = obj->GetName();
+                d["modelName"] = obj->GetModelName();
+                d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
+                d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
+                d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
+
+                // コライダー保存
+                Object3d::ColliderConfig c = obj->GetColliderConfig();
+                json cData;
+                cData["type"] = (int)c.type;
+                cData["center"] = { c.center.x, c.center.y, c.center.z };
+                cData["size"] = { c.size.x, c.size.y, c.size.z };
+                d["collider"] = cData;
+
+                // 属性とマスク
+                d["collisionAttribute"] = obj->GetCollisionAttribute();
+                d["collisionMask"] = obj->GetCollisionMask();
+
+                sceneData["objects"].push_back(d);
+            }
+
+            std::ofstream f(fullPath);
+            if (f.is_open()) {
+                f << sceneData.dump(4);
+                f.close();
+                DebugConsole::GetInstance()->AddLog("Saved scene to " + fullPath);
+            } else {
+                DebugConsole::GetInstance()->AddLog("Failed to save JSON! Check folder.");
+            }
+        }
+
+        // 現在のターゲットパスを表示
+        ImGui::TextDisabled("Target Path: %s", fullPath.c_str());
+    }
+    ImGui::Separator();
+
+
+    // =========================================================
+    // 2. オブジェクト詳細 (Inspector) 
+    // =========================================================
     if (selectedObject_ == nullptr) {
         ImGui::Text("No object selected.");
         ImGui::Text("Select from Object List.");
@@ -344,7 +436,7 @@ void DebugEditor::DrawImGui() {
             selectedObject_->SetName(std::string(nameBuffer));
         }
 
-        // --- ★ D&D受け入れエリア (モデル差し替え) ---
+        // ---  D&D受け入れエリア (モデル差し替え) ---
         ImGui::Separator();
         ImGui::Text("Model Asset:");
         ImGui::Button(" [ Drop Model Here to Switch ] ", ImVec2(-1, 30));
@@ -372,7 +464,7 @@ void DebugEditor::DrawImGui() {
         ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
 
         // ==========================================================
-        // ★★★ コライダー設定 (Collision) ★★★
+        //  コライダー設定 (Collision) 
         // ==========================================================
         ImGui::Separator();
 
@@ -424,8 +516,8 @@ void DebugEditor::DrawImGui() {
             // 変更があれば適用
             if (isColChanged) {
                 selectedObject_->SetColliderConfig(colConfig);
-                // 即座にJSON更新（オートセーブ的な挙動）
-                UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+                // JSON単体更新関数（必要なら使う）
+                UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
             }
 
             ImGui::Separator();
@@ -436,7 +528,7 @@ void DebugEditor::DrawImGui() {
             DrawAttributeSelector("Self Attribute (Category)", &currentAttr);
             if (currentAttr != selectedObject_->GetCollisionAttribute()) {
                 selectedObject_->SetCollisionAttribute(currentAttr);
-                UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+                UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
             }
 
             // --- 4. マスク (Collision Mask) ---
@@ -444,59 +536,17 @@ void DebugEditor::DrawImGui() {
             DrawAttributeSelector("Collision Mask (Filter)", &currentMask);
             if (currentMask != selectedObject_->GetCollisionMask()) {
                 selectedObject_->SetCollisionMask(currentMask);
-                UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+                UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
             }
         }
         // ==========================================================
 
         ImGui::Separator();
 
-        // --- シーン保存ボタン ---
-        // (個別のオートセーブだけでなく、全体を一括保存する機能)
-        if (ImGui::Button("Save Scene Layout", ImVec2(-1, 0))) {
-            json sceneData;
-            sceneData["objects"] = json::array();
-            std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
-
-            for (auto& obj : allObjects) {
-                if (obj->GetName().empty()) continue;
-
-                Object3d::Transform* objTr = obj->GetTransform();
-                json d;
-                d["name"] = obj->GetName();
-                d["modelName"] = obj->GetModelName();
-                d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
-                d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
-                d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
-
-                // ★ コライダー保存
-                Object3d::ColliderConfig c = obj->GetColliderConfig();
-                json cData;
-                cData["type"] = (int)c.type;
-                cData["center"] = { c.center.x, c.center.y, c.center.z };
-                cData["size"] = { c.size.x, c.size.y, c.size.z };
-                d["collider"] = cData;
-
-                // ★ 属性とマスクの保存 (ここが重要！)
-                d["collisionAttribute"] = obj->GetCollisionAttribute();
-                d["collisionMask"] = obj->GetCollisionMask();
-
-                sceneData["objects"].push_back(d);
-            }
-
-            std::ofstream f(targetSceneFile);
-            if (f.is_open()) {
-                f << sceneData.dump(4);
-                f.close();
-                DebugConsole::GetInstance()->AddLog("Saved scene to " + targetSceneFile);
-            } else {
-                DebugConsole::GetInstance()->AddLog("Failed to save JSON! Check folder.");
-            }
-        }
-
         // --- 単体更新ボタン ---
-        if (ImGui::Button("Update This Object Only")) {
-            UpdateObjectInSceneJSON(selectedObject_, targetSceneFile);
+        // (オートセーブを使わず手動で単体を更新したい場合用)
+        if (ImGui::Button("Update This Object JSON")) {
+            UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
         }
 
         // --- 複製 / 削除 ---
@@ -546,10 +596,10 @@ void DebugEditor::DrawImGui() {
     // ==========================================================================================
     ImGui::Begin("Object List");
 
-    // ★ ドロップ誘導ボタン
+    // ドロップ誘導ボタン
     ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 50));
 
-    // ★ ドロップ受け付け
+    // ドロップ受け付け
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
 
