@@ -12,13 +12,15 @@
                     1.350000023841858,
                     1.0
                 ],
-                "type": 3
+                "type": 2
             },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
             "modelName": "teapot",
             "name": "Player",
             "position": [
                 -0.429043710231781,
-                2.999999761581421,
+                2.3499999046325684,
                 -1.49733304977417
             ],
             "rotation": [

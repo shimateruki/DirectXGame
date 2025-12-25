@@ -52,20 +52,15 @@ void Game::Finalize() {
     // ★ 基底クラスの終了処理を呼ぶ
     Framework::Finalize();
 }
+
 void Game::Update() {
     InputManager::GetInstance()->Update();
+
 #ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
-    if (ImGui::Begin("Game Time")) {
-        // timeScale_ を 0.0f ～ 2.0f の範囲で操作
-        ImGui::SliderFloat("Time Scale", &timeScale_, 0.0f, 2.0f);
-        if (ImGui::Button("Reset (1.0x)")) { timeScale_ = 1.0f; }
-        ImGui::SameLine();
-        if (ImGui::Button("Slow (0.2x)")) { timeScale_ = 0.2f; }
-    }
-    ImGui::End();
 #endif
+
     //フレームレート計算
     auto currentTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = currentTime - lastTime_;
@@ -95,13 +90,15 @@ void Game::Update() {
 
     // --- ImGui描画 (Master Editor) ---
     ImGui::Begin("Master Editor", nullptr, ImGuiWindowFlags_MenuBar);
-    //fpsの可視化
+
+    // fpsの可視化
     float fps = 1.0f / deltaTime;
     ImGui::Text("FPS: %.1f", fps);
-    //マウスポジションの可視化
+    // マウスポジションの可視化
     Vector2 mousePos = InputManager::GetInstance()->GetMousePosition();
     ImGui::Text("Mouse: (%.0f, %.0f)", mousePos.x, mousePos.y);
-    //object sprite数の可視化
+
+    // object sprite数の可視化
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene) {
         ImGui::Text("Objects: %d", (int)currentScene->GetObjects().size());
@@ -109,8 +106,13 @@ void Game::Update() {
     }
 
     ImGui::Separator(); // 区切り線
+
+    // ★ 2. メニューバーに項目を追加
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("View")) {
+            ImGui::MenuItem("Time Controller", NULL, &showTimeController_);
+            ImGui::MenuItem("Light Editor", NULL, &showLightEditor_);      
+            ImGui::Separator();
             ImGui::MenuItem("3D Editor", NULL, &showDebugWindows_);
             ImGui::MenuItem("Sprite Inspector", NULL, &showSpriteInspector_);
             ImGui::MenuItem("Particle Editor", NULL, &showParticleEditor_);
@@ -138,7 +140,6 @@ void Game::Update() {
         }
     }
     if (showGhostRecorder_) {
-        // CollapsingHeaderで折り畳めるようにして表示
         if (ImGui::CollapsingHeader("Ghost Recorder")) {
             if (ghostRecorder_) {
                 ghostRecorder_->DrawImGui();
@@ -150,11 +151,25 @@ void Game::Update() {
             DebugConsole::GetInstance()->DrawImGui();
         }
     }
-
-    if (showLightEditor_) {
-        lightEditor_->DrawImGui();
+    if (showLightEditor_ && lightEditor_) {
+        if (ImGui::CollapsingHeader("Light")) {
+            lightEditor_->DrawImGui();
+        }
     }
+    if (showTimeController_) {
+        if (ImGui::CollapsingHeader("Deltatimer")) {
+            // timeScale_ を 0.0f ～ 2.0f の範囲で操作
+            ImGui::SliderFloat("Time Scale", &timeScale_, 0.0f, 2.0f);
+            if (ImGui::Button("Reset (1.0x)")) { timeScale_ = 1.0f; }
+            ImGui::SameLine();
+            if (ImGui::Button("Slow (0.2x)")) { timeScale_ = 0.2f; }
+        }
+    }
+
+   
     ImGui::End();
+ 
+
 #endif
 
     // --- 交通整理 ---
@@ -167,7 +182,7 @@ void Game::Update() {
     // --- シーンの更新 ---
     if (sceneManager_) {
         float scaledDeltaTime = deltaTime * timeScale_;
-        sceneManager_->Update(scaledDeltaTime); 
+        sceneManager_->Update(scaledDeltaTime);
     }
 
     LightManager::GetInstance()->Update();
@@ -175,6 +190,7 @@ void Game::Update() {
     ImGuiManager::GetInstance()->EndFrame();
 #endif
 }
+
 
 void Game::Draw() {
     // 描画前処理

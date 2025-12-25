@@ -42,5 +42,7 @@ private:
 	bool showDebugConsole_ = true;
 	std::unique_ptr<GhostRecorder> ghostRecorder_;
 	bool showGhostRecorder_ = true; // メニューバーの切り替え用
+	bool showTimeController_ = true;   // 時間管理ウィンドウ用
+
 #endif
 };

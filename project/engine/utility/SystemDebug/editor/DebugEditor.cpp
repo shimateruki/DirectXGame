@@ -320,8 +320,8 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
-    // 保存先パス (必要に応じて書き換えてください)
-    std::string targetSceneFile = "resources/scene/demoScene.json";
+    // 保存先パス 
+    std::string targetSceneFile = "resouces/json/scene_layout.json";
 
     // ==========================================================================================
     // Inspector Window (選択中オブジェクトの編集)
