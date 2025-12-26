@@ -16,11 +16,20 @@
             },
             "collisionAttribute": 1,
             "collisionMask": 4294967294,
+            "eventID": 0,
             "modelName": "teapot",
             "name": "Player",
+            "param": {
+                "gravity": 54.0,
+                "hp": 100.0,
+                "jumpPower": 10.0,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "speed": 1.0
+            },
             "position": [
                 -0.429043710231781,
-                2.3500001430511475,
+                2.3499999046325684,
                 -1.49733304977417
             ],
             "rotation": [
@@ -50,6 +59,7 @@
             },
             "collisionAttribute": 2,
             "collisionMask": 4294967293,
+            "eventID": 0,
             "modelName": "block",
             "name": "Enemy",
             "position": [
@@ -84,6 +94,7 @@
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967291,
+            "eventID": 0,
             "modelName": "terrain",
             "name": "terrain",
             "position": [

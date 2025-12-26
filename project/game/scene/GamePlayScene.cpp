@@ -392,6 +392,14 @@ void GamePlayScene::Update(float deltaTime) {
 	//オブジェクト削除関数
 	ProcessRemovals();
 
+	//	isDeadがtrueのオブジェクトを削除
+	objects_.erase(
+		std::remove_if(objects_.begin(), objects_.end(),
+			[](const auto& obj) { return obj->isDead; }), // isDeadなら消す
+		objects_.end()
+	);
+
+
 #ifdef USE_IMGUI
 	ImGui::Begin("Debug Control");
 
@@ -687,6 +695,29 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				}
 				if (objData.contains("collisionMask")) {
 					targetObject->SetCollisionMask(objData["collisionMask"].get<uint32_t>());
+				}
+				// 6. イベントIDの読み込み
+				if (objData.contains("eventID") && objData["eventID"].is_number_integer()) {
+					targetObject->eventID = objData["eventID"].get<int>();
+				}
+
+				// 7. ステータス (EntityParameter) の読み込み
+				if (objData.contains("param") && objData["param"].is_object()) {
+
+					// param_ が nullopt なら中身を生成
+					targetObject->param_.emplace();
+
+					// 中身を取り出しやすくするために参照をとる
+					json paramData = objData["param"];
+					auto& p = targetObject->param_.value();
+
+					// 各パラメータを読み込む (存在チェック付き)
+					if (paramData.contains("hp"))           p.hp = paramData["hp"].get<float>();
+					if (paramData.contains("maxHp"))        p.maxHp = paramData["maxHp"].get<float>();
+					if (paramData.contains("speed"))        p.speed = paramData["speed"].get<float>();
+					if (paramData.contains("gravity"))      p.gravity = paramData["gravity"].get<float>();
+					if (paramData.contains("jumpPower"))    p.jumpPower = paramData["jumpPower"].get<float>();
+					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"].get<float>();
 				}
 			}
 		}

@@ -59,11 +59,13 @@ public:
     };
 
     struct EntityParameter {
-        float hp = 100.0f;        // 体力
-        float maxHp = 100.0f;     // 最大体力
-        float speed = 1.0f;       // 移動速度
-        float gravity = 0.98f;    // 重力
-        float jumpPower = 10.0f;  // ジャンプ力
+        float hp = 100.0f;
+        float maxHp = 100.0f;
+        float speed = 1.0f;
+        float gravity = 50.0f;
+        float maxFallSpeed = 60.0f;  // 落下制限もここ
+        float jumpPower = 10.0f;
+        EntityParameter() = default;
     };
 
 public:
@@ -188,6 +190,14 @@ public:
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
     bool IsStatic() const { return isStatic_; }
 
+    // ステータスデータ（
+    std::optional<EntityParameter> param_;
+
+    bool isDead = false;
+
+    // イベントID
+    int eventID = 0;
+
 protected:
     // メンバ変数
 
@@ -221,12 +231,8 @@ protected:
     uint32_t collisionAttribute_ = 0;
     uint32_t collisionMask_ = 0xFFFFFFFF;
     bool isStatic_ = false;
-    // イベントID
-    int eventID = 0;
 
-    // ステータスデータ（
-    std::optional<EntityParameter> param_;
 
-    bool isDead = false;
+
 
 };

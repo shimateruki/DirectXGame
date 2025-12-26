@@ -320,6 +320,9 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
+    // 現在のJSONファイルパスを事前に作っておく（更新用）
+    std::string currentJsonPath = "resouces/json/" + std::string(currentSceneFilename_);
+
     // ==========================================================================================
     // Inspector Window (シーン管理 & 選択中オブジェクトの編集)
     // ==========================================================================================
@@ -339,20 +342,15 @@ void DebugEditor::DrawImGui() {
         }
 
         // --- A. ファイル一覧 (Combo Box) ---
-        // 既存のファイルをクリックで選べる機能
         if (ImGui::BeginCombo("Existing Files", currentSceneFilename_)) {
             if (fs::exists(directoryPath)) {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
-                    // .jsonファイルのみを表示
                     if (entry.path().extension() == ".json") {
                         std::string filename = entry.path().filename().string();
-
                         bool isSelected = (std::string(currentSceneFilename_) == filename);
                         if (ImGui::Selectable(filename.c_str(), isSelected)) {
-                            // 選んだファイル名を入力欄にコピー
                             strcpy_s(currentSceneFilename_, filename.c_str());
                         }
-
                         if (isSelected) {
                             ImGui::SetItemDefaultFocus();
                         }
@@ -363,14 +361,11 @@ void DebugEditor::DrawImGui() {
         }
 
         // --- B. ファイル名入力欄 ---
-        // 新規作成や、上記で選んだ名前の確認用
         ImGui::InputText("Filename (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
 
-        // パスの生成 (resouces/json/ + 入力名)
-        std::string fullPath = directoryPath + std::string(currentSceneFilename_);
-
-        // --- C. 保存ボタン (Save) ---
-        if (ImGui::Button("Save Scene")) {
+        // --- C. 保存ボタン (Save Scene) ---
+        // ※ここでの保存は「シーン全体」の上書き保存です
+        if (ImGui::Button("Save Scene (All)")) {
             json sceneData;
             sceneData["objects"] = json::array();
             std::vector<std::unique_ptr<Object3d>>& allObjects = currentScene->GetObjects();
@@ -398,21 +393,34 @@ void DebugEditor::DrawImGui() {
                 d["collisionAttribute"] = obj->GetCollisionAttribute();
                 d["collisionMask"] = obj->GetCollisionMask();
 
+                // ★ EventID
+                d["eventID"] = obj->eventID;
+
+                // ★ EntityParameter (Status)
+                if (obj->param_.has_value()) {
+                    auto& p = obj->param_.value();
+                    d["param"]["hp"] = p.hp;
+                    d["param"]["maxHp"] = p.maxHp;
+                    d["param"]["speed"] = p.speed;
+                    d["param"]["gravity"] = p.gravity;
+                    d["param"]["jumpPower"] = p.jumpPower;
+                    d["param"]["maxFallSpeed"] = p.maxFallSpeed;
+                }
+
                 sceneData["objects"].push_back(d);
             }
 
-            std::ofstream f(fullPath);
+            std::ofstream f(currentJsonPath);
             if (f.is_open()) {
                 f << sceneData.dump(4);
                 f.close();
-                DebugConsole::GetInstance()->AddLog("Saved scene to " + fullPath);
+                DebugConsole::GetInstance()->AddLog("Saved scene to " + currentJsonPath);
             } else {
                 DebugConsole::GetInstance()->AddLog("Failed to save JSON! Check folder.");
             }
         }
 
-        // 現在のターゲットパスを表示
-        ImGui::TextDisabled("Target Path: %s", fullPath.c_str());
+        ImGui::TextDisabled("Target Path: %s", currentJsonPath.c_str());
     }
     ImGui::Separator();
 
@@ -426,13 +434,13 @@ void DebugEditor::DrawImGui() {
         ImGui::Separator();
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
     } else {
-        // --- 名前編集 ---
+        // --- 名前表示 ---
         char nameBuffer[256];
         std::string currentName = selectedObject_->GetName();
         if (currentName.empty()) currentName = "NoName";
         strcpy_s(nameBuffer, currentName.c_str());
-
-    
+        // 名前編集が必要ならInputTextにするが、ID管理の都合上表示のみにしておくのが無難
+        ImGui::Text("Name: %s", nameBuffer);
 
         // ---  D&D受け入れエリア (モデル差し替え) ---
         ImGui::Separator();
@@ -442,24 +450,30 @@ void DebugEditor::DrawImGui() {
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
                 const char* modelName = (const char*)payload->Data;
-                ModelManager::GetInstance()->LoadModel(modelName); // 必要ならロード
+                ModelManager::GetInstance()->LoadModel(modelName);
                 selectedObject_->SetModel(modelName);
                 DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
             }
             ImGui::EndDragDropTarget();
         }
         ImGui::Separator();
-        // ----------------------------------
 
         // --- Transform編集 ---
         Object3d::Transform* transform = selectedObject_->GetTransform();
-        ImGui::DragFloat3("Position", &transform->translate.x, 0.1f);
+        bool isTransformChanged = false;
+        if (ImGui::DragFloat3("Position", &transform->translate.x, 0.1f)) isTransformChanged = true;
 
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
         if (ImGui::DragFloat3("Rotation (Degrees)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
+            isTransformChanged = true;
         }
-        ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f);
+        if (ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f)) isTransformChanged = true;
+
+        // Transform変更時に即保存したい場合はここ有効化
+        if (isTransformChanged) {
+            UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
+        }
 
         // ==========================================================
         //  コライダー設定 (Collision) 
@@ -468,83 +482,120 @@ void DebugEditor::DrawImGui() {
 
         if (ImGui::CollapsingHeader("Collision Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-            // Object3dから現在の設定を取得
             Object3d::ColliderConfig colConfig = selectedObject_->GetColliderConfig();
             bool isColChanged = false;
 
             // 1. 種類の選択
             const char* typeNames[] = { "None", "Sphere", "AABB", "OBB" };
             int currentTypeIndex = (int)colConfig.type;
-
             if (ImGui::Combo("Type", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
-
-                // OBBにした瞬間サイズが0だと見えないので初期値を入れる親切設計
                 if (colConfig.type == ColliderType::kOBB) {
-                    if (colConfig.size.x == 0.0f && colConfig.size.y == 0.0f && colConfig.size.z == 0.0f) {
-                        colConfig.size = { 1.0f, 1.0f, 1.0f };
-                    }
+                    if (colConfig.size.x == 0.0f) colConfig.size = { 1.0f, 1.0f, 1.0f };
                 }
                 isColChanged = true;
             }
 
-            // 2. 詳細設定 (None以外なら表示)
+            // 2. 詳細設定
             if (colConfig.type != ColliderType::kNone) {
-                // 中心オフセット
-                if (ImGui::DragFloat3("Center", &colConfig.center.x, 0.05f)) {
-                    isColChanged = true;
-                }
-
-                // サイズ / 半径
+                if (ImGui::DragFloat3("Center", &colConfig.center.x, 0.05f)) isColChanged = true;
                 if (colConfig.type == ColliderType::kSphere) {
-                    // 球の場合は X成分を半径として使う
                     if (ImGui::DragFloat("Radius", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
                         colConfig.size.y = colConfig.size.x;
                         colConfig.size.z = colConfig.size.x;
                         isColChanged = true;
                     }
                 } else {
-                    // AABB, OBB は XYZサイズ
-                    if (ImGui::DragFloat3("Size", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
-                        isColChanged = true;
-                    }
+                    if (ImGui::DragFloat3("Size", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
             }
 
-            // 変更があれば適用
             if (isColChanged) {
                 selectedObject_->SetColliderConfig(colConfig);
-                // JSON単体更新関数（必要なら使う）
-                UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
+                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
 
             ImGui::Separator();
             ImGui::Text("Collision Logic");
 
-            // --- 3. 属性 (Self Attribute) ---
+            // 3. 属性 & マスク
             uint32_t currentAttr = selectedObject_->GetCollisionAttribute();
-            DrawAttributeSelector("Self Attribute (Category)", &currentAttr);
+            DrawAttributeSelector("Self Attribute", &currentAttr);
             if (currentAttr != selectedObject_->GetCollisionAttribute()) {
                 selectedObject_->SetCollisionAttribute(currentAttr);
-                UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
+                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
 
-            // --- 4. マスク (Collision Mask) ---
             uint32_t currentMask = selectedObject_->GetCollisionMask();
-            DrawAttributeSelector("Collision Mask (Filter)", &currentMask);
+            DrawAttributeSelector("Collision Mask", &currentMask);
             if (currentMask != selectedObject_->GetCollisionMask()) {
                 selectedObject_->SetCollisionMask(currentMask);
-                UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
+                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
+            }
+        }
+
+
+        ImGui::Separator();
+        if (ImGui::CollapsingHeader("Game Data (Event & Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+            // --- 1. Event ID ---
+            if (ImGui::InputInt("Event ID", &selectedObject_->eventID)) {
+                // 値が変わったらJSON更新
+                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
+            }
+            ImGui::TextDisabled("(0:None, 1:Heal, 2:Damage, etc...)");
+
+            ImGui::Spacing();
+
+            // --- 2. Entity Parameters (Stats) ---
+            if (!selectedObject_->param_.has_value()) {
+                // パラメータがない場合 -> 追加ボタン
+                if (ImGui::Button("Add Entity Stats", ImVec2(-1, 0))) {
+                    selectedObject_->param_.emplace(); // メモリ確保
+                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath); // 即保存
+                }
+            } else {
+                // パラメータがある場合 -> 編集画面
+                auto& p = selectedObject_->param_.value();
+                bool isStatsChanged = false;
+
+                ImGui::Text("Entity Status:");
+                ImGui::Indent();
+
+                if (ImGui::DragFloat("HP", &p.hp, 1.0f, 0.0f, 9999.0f)) isStatsChanged = true;
+                if (ImGui::DragFloat("Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f)) isStatsChanged = true;
+                if (ImGui::DragFloat("Speed", &p.speed, 0.1f, 0.0f, 100.0f)) isStatsChanged = true;
+                if (ImGui::DragFloat("Gravity", &p.gravity, 0.01f, -10.0f, 10.0f)) isStatsChanged = true;
+                if (ImGui::DragFloat("Jump Power", &p.jumpPower, 0.1f, 0.0f, 100.0f)) isStatsChanged = true;
+                if (ImGui::DragFloat("Max Fall", &p.maxFallSpeed, 0.1f, 0.0f, 200.0f)) isStatsChanged = true;
+
+                ImGui::Unindent();
+
+                // 変更があれば保存
+                if (isStatsChanged) {
+                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
+                }
+
+                ImGui::Spacing();
+                // 削除ボタン (赤色)
+                ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.0f, 0.7f, 0.7f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.0f, 0.8f, 0.8f));
+
+                if (ImGui::Button("Remove Stats", ImVec2(-1, 0))) {
+                    selectedObject_->param_ = std::nullopt; // 破棄
+                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath); // 保存してJSONからも消す
+                }
+                ImGui::PopStyleColor(3);
             }
         }
         // ==========================================================
 
         ImGui::Separator();
 
-        // --- 単体更新ボタン ---
-        // (オートセーブを使わず手動で単体を更新したい場合用)
-        if (ImGui::Button("Update This Object JSON")) {
-            UpdateObjectInSceneJSON(selectedObject_, "resouces/json/" + std::string(currentSceneFilename_));
+        // --- 単体更新ボタン (手動用) ---
+        if (ImGui::Button("Force Update JSON")) {
+            UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
         }
 
         // --- 複製 / 削除 ---
@@ -564,7 +615,6 @@ void DebugEditor::DrawImGui() {
         // --- Gizmo Control ---
         ImGui::Separator();
         ImGui::Text("Gizmo Operation:");
-
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
         static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f };
         static float snapRotation = 45.0f;
@@ -579,12 +629,6 @@ void DebugEditor::DrawImGui() {
         if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
         if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
         if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
-
-        ImGui::Text("Snap (Hold Ctrl):");
-        ImGui::SameLine();
-        if (currentOperation == ImGuizmo::TRANSLATE) ImGui::InputFloat3("##SnapT", snapTranslate);
-        else if (currentOperation == ImGuizmo::ROTATE) ImGui::InputFloat("##SnapR", &snapRotation);
-        else ImGui::InputFloat("##SnapS", &snapScale);
     }
     ImGui::End(); // End Inspector
 
@@ -593,27 +637,19 @@ void DebugEditor::DrawImGui() {
     // Object List Window
     // ==========================================================================================
     ImGui::Begin("Object List");
-
-    // ドロップ誘導ボタン
     ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 50));
-
-    // ドロップ受け付け
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-
             const char* modelName = (const char*)payload->Data;
             ModelManager::GetInstance()->LoadModel(modelName);
-
             Object3dCommon* common = currentScene->GetObject3dCommon();
             if (common) {
                 auto newObj = std::make_unique<Object3d>();
                 newObj->Initialize(common);
                 newObj->SetModel(modelName);
-
                 static int spawnCount = 0;
                 newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
-                newObj->GetTransform()->translate = { 0.0f, 0.0f, 0.0f };
-
+                // 最初はステータス無し、EventID 0 で生成される
                 currentScene->AddObject(std::move(newObj));
                 DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
             }
@@ -621,19 +657,16 @@ void DebugEditor::DrawImGui() {
         ImGui::EndDragDropTarget();
     }
 
-    // リスト表示
     std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
     for (auto& obj : objects) {
         const std::string& objName = obj->GetName();
         if (objName.empty()) continue;
-
         bool isSelected = (obj.get() == selectedObject_);
         if (ImGui::Selectable(objName.c_str(), isSelected)) {
             selectedObject_ = obj.get();
         }
     }
     ImGui::End();
-
 
     // ==========================================================================================
     // Spawner Window
@@ -643,14 +676,12 @@ void DebugEditor::DrawImGui() {
         modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
         selectedModelIndex_ = 0;
     }
-
     if (!modelNames_.empty()) {
         std::vector<const char*> namesCStr;
         for (const std::string& name : modelNames_) {
             namesCStr.push_back(name.c_str());
         }
         ImGui::ListBox("Loaded Models", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
-
         if (ImGui::Button("Spawn Object")) {
             if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
                 std::string modelName = modelNames_[selectedModelIndex_];
@@ -680,11 +711,19 @@ void DebugEditor::DrawImGui() {
 void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
     using json = nlohmann::json;
     std::ifstream file(filename);
+
+    // ファイルが開けない、または空の場合は処理しない
     if (!file.is_open()) return;
 
     json sceneData;
     try {
-        sceneData = json::parse(file);
+        // ファイルが空だとパースエラーになるのでチェック
+        if (file.peek() != std::ifstream::traits_type::eof()) {
+            sceneData = json::parse(file);
+        } else {
+            // 空ファイルなら初期化
+            sceneData["objects"] = json::array();
+        }
     }
     catch (...) {
         return;
@@ -713,13 +752,35 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
                 objData["collisionAttribute"] = object->GetCollisionAttribute();
                 objData["collisionMask"] = object->GetCollisionMask();
 
+                // --- 4. Event ID ---
+                objData["eventID"] = object->eventID;
+
+                // --- 5. Entity Parameter (ステータス) ---
+                if (object->param_.has_value()) {
+                    // パラメータを持っている場合、値を保存する
+                    auto& p = object->param_.value();
+                    objData["param"]["hp"] = p.hp;
+                    objData["param"]["maxHp"] = p.maxHp;
+                    objData["param"]["speed"] = p.speed;
+                    objData["param"]["gravity"] = p.gravity;
+                    objData["param"]["jumpPower"] = p.jumpPower;
+                    objData["param"]["maxFallSpeed"] = p.maxFallSpeed;
+                } else {
+                    // パラメータを持っていないなら、JSONに古いゴミが残らないように消しておく
+                    if (objData.contains("param")) {
+                        objData.erase("param");
+                    }
+                }
+
+ 
+
                 found = true;
                 break;
             }
         }
     }
 
-    // 新規追加ロジックが必要な場合はここに記述 
+
 
     // ファイル書き込み
     std::ofstream outFile(filename);

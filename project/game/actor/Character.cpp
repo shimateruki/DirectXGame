@@ -9,18 +9,31 @@
 static Math math;
 
 
-void Character::Update(float deltaTime) {
-    isGrounded_ = false;
-    // 重力「加速度」を経過時間分だけ速度に加算
-    velocity_.y -= gravity_ * deltaTime;
+// Character.cpp
 
-    if (velocity_.y < -maxFallSpeed_) {
-        velocity_.y = -maxFallSpeed_;
+// Character.cpp
+
+void Character::Update(float deltaTime) {
+
+    if (!this->param_.has_value()) {
+        return;
     }
 
-    // 速度（秒速）を経過時間分だけ座標に加算
+    float gravity = this->param_->gravity;
+    float maxFallSpeed = this->param_->maxFallSpeed;
+
+    // --- 以下、いつもの重力計算 ---
+
+    isGrounded_ = false;
+    velocity_.y -= gravity * deltaTime;
+
+    if (velocity_.y < -maxFallSpeed) {
+        velocity_.y = -maxFallSpeed;
+    }
+
     transform_.translate += velocity_ * deltaTime;
 }
+
 bool Character::OnCollision(Object3d* other) {
     // ★ 1. 衝突情報を取得
     CollisionInfo info = CheckCollision(other);
@@ -83,11 +96,16 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->collisionAttribute_ = this->collisionAttribute_;
     newObj->collisionMask_ = this->collisionMask_;
 
-    // --- Character 独自のメンバをコピー ---
+
+
+    // 1. イベントIDとステータス(param_)をコピー
+    newObj->eventID = this->eventID;
+    newObj->param_ = this->param_; 
+
+    // 2. Character 独自のメンバをコピー
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
-    newObj->gravity_ = this->gravity_;
-    newObj->maxFallSpeed_ = this->maxFallSpeed_;
+
 
     return newObj;
 }
