@@ -6,6 +6,7 @@
 #include <wrl.h>
 #include <string>
 #include <memory>
+#include <optional>
 
 class Object3d {
 public:
@@ -55,6 +56,14 @@ public:
         ColliderType type = ColliderType::kAABB; // デフォルトはAABB
         Vector3 center = { 0.0f, 0.0f, 0.0f };   // モデル中心からのズレ（オフセット）
         Vector3 size = { 1.0f, 1.0f, 1.0f };     // サイズ (AABB:半サイズ, OBB:半サイズ, Sphere:x=半径)
+    };
+
+    struct EntityParameter {
+        float hp = 100.0f;        // 体力
+        float maxHp = 100.0f;     // 最大体力
+        float speed = 1.0f;       // 移動速度
+        float gravity = 0.98f;    // 重力
+        float jumpPower = 10.0f;  // ジャンプ力
     };
 
 public:
@@ -212,6 +221,12 @@ protected:
     uint32_t collisionAttribute_ = 0;
     uint32_t collisionMask_ = 0xFFFFFFFF;
     bool isStatic_ = false;
+    // イベントID
+    int eventID = 0;
 
+    // ステータスデータ（
+    std::optional<EntityParameter> param_;
+
+    bool isDead = false;
 
 };

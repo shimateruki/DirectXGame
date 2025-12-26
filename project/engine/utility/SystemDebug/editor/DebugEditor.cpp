@@ -432,9 +432,7 @@ void DebugEditor::DrawImGui() {
         if (currentName.empty()) currentName = "NoName";
         strcpy_s(nameBuffer, currentName.c_str());
 
-        if (ImGui::InputText("Name", nameBuffer, 256)) {
-            selectedObject_->SetName(std::string(nameBuffer));
-        }
+    
 
         // ---  D&D受け入れエリア (モデル差し替え) ---
         ImGui::Separator();

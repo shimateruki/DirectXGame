@@ -8,6 +8,9 @@
 #include "SceneManager.h"  
 #include "BaseScene.h"    
 #include "InputManager.h"
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 
 void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inputManager) {
@@ -28,20 +31,13 @@ void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inp
 void SpriteDebugEditor::Finalize() {
     // (unique_ptr が自動で解放するので、特に何もしない)
 }
-
-/// <summary>
-/// ピッキング、ギズモ操作、インスペクタ描画のメイン処理
-/// </summary>
 void SpriteDebugEditor::Update() {
 #ifdef USE_IMGUI
-    if (sceneManager_ == nullptr || inputManager_ == nullptr) {
-        return;
-    }
+    if (sceneManager_ == nullptr || inputManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) {
         selectedSprite_ = nullptr;
-        lastUpdatedScene_ = nullptr;
         return;
     }
 
@@ -54,33 +50,21 @@ void SpriteDebugEditor::Update() {
 
     bool isImGuiBusy = ImGui::GetIO().WantCaptureMouse;
 
-    // --- 1. ギズモ操作 (ロジック) ---
-    if (selectedSprite_) {
-        if (!isImGuiBusy && inputManager_->IsMouseButtonTriggered(0)) {
-            if (gizmoArrowX_ && IsMouseOver(gizmoArrowX_.get())) {
-                isMovingX_ = true;
-                isMovingY_ = false;
-                dragStartMousePos_ = inputManager_->GetMousePosition();
-                dragStartSpritePos_ = selectedSprite_->GetPosition();
-            } else if (gizmoArrowY_ && IsMouseOver(gizmoArrowY_.get())) {
-                isMovingX_ = false;
-                isMovingY_ = true;
-                dragStartMousePos_ = inputManager_->GetMousePosition();
-                dragStartSpritePos_ = selectedSprite_->GetPosition();
-            }
+    // --- 1. ギズモ操作 (簡易移動) ---
+    if (selectedSprite_ && !isImGuiBusy) {
+        if (inputManager_->IsMouseButtonTriggered(0) && IsMouseOver(selectedSprite_)) {
+            isMovingX_ = true;
+            isMovingY_ = true;
+            dragStartMousePos_ = inputManager_->GetMousePosition();
+            dragStartSpritePos_ = selectedSprite_->GetPosition();
         }
 
-        Vector2 mousePos = inputManager_->GetMousePosition();
-        if (isMovingX_) {
-            float deltaX = mousePos.x - dragStartMousePos_.x;
+        if (inputManager_->IsMouseButtonPressed(0) && (isMovingX_ || isMovingY_)) {
+            Vector2 mousePos = inputManager_->GetMousePosition();
+            Vector2 delta = { mousePos.x - dragStartMousePos_.x, mousePos.y - dragStartMousePos_.y };
             Vector2 newPos = dragStartSpritePos_;
-            newPos.x = dragStartSpritePos_.x + deltaX;
-            selectedSprite_->SetPosition(newPos);
-        }
-        if (isMovingY_) {
-            float deltaY = mousePos.y - dragStartMousePos_.y;
-            Vector2 newPos = dragStartSpritePos_;
-            newPos.y = dragStartSpritePos_.y + deltaY;
+            newPos.x += delta.x;
+            newPos.y += delta.y;
             selectedSprite_->SetPosition(newPos);
         }
 
@@ -90,69 +74,179 @@ void SpriteDebugEditor::Update() {
         }
     }
 
-    // --- 2. スプライトピッキング (ロジック) ---
-    if (!isImGuiBusy && !isMovingX_ && !isMovingY_ && inputManager_->IsMouseButtonTriggered(0)) {
-        Vector2 mousePos = inputManager_->GetMousePosition();
+    // --- 2. スプライト選択 ---
+    if (!isMovingX_ && !isMovingY_ && !isImGuiBusy && inputManager_->IsMouseButtonTriggered(0)) {
+        auto& sprites = currentScene->GetSprites();
         bool hit = false;
-        std::vector<std::unique_ptr<Sprite>>& sprites = currentScene->GetSprites();
-
-        if (!sprites.empty()) {
-            for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
-                Sprite* sprite = it->get();
-                if (sprite == nullptr) continue;
-
-                if (IsMouseOver(sprite)) {
-                    selectedSprite_ = sprite;
-                    hit = true;
-                    break;
-                }
+        for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
+            Sprite* sprite = it->get();
+            if (sprite && IsMouseOver(sprite)) {
+                selectedSprite_ = sprite;
+                hit = true;
+                break;
             }
         }
-
-        if (!hit) {
-            selectedSprite_ = nullptr;
-        }
+        if (!hit) selectedSprite_ = nullptr;
     }
 #endif
 }
 
 void SpriteDebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
+    // -------------------------------------------------------------
+    // 1. スプライトリスト (名前を表示するように修正！)
+    // -------------------------------------------------------------
+    ImGui::Begin("Sprite List");
+
+    auto& sprites = currentScene->GetSprites();
+    int id = 0;
+    for (const auto& spritePtr : sprites) {
+        Sprite* sprite = spritePtr.get();
+        if (!sprite) continue;
+
+        ImGui::PushID(id++);
+
+        // ★修正点: 名前があればそれを使う
+        std::string label = "Sprite " + std::to_string(id);
+        if (!sprite->GetName().empty()) {
+            label = sprite->GetName();
+        }
+
+        bool isSelected = (selectedSprite_ == sprite);
+        if (ImGui::Selectable(label.c_str(), isSelected)) {
+            selectedSprite_ = sprite;
+        }
+        ImGui::PopID();
+    }
+    ImGui::End();
+
+
+    // -------------------------------------------------------------
+    // 2. 設定＆ファイル管理
+    // -------------------------------------------------------------
+    ImGui::Begin("Sprite Inspector");
+
+    if (ImGui::CollapsingHeader("Layout File Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
+        std::string directoryPath = "resouces/json/";
+        if (!fs::exists(directoryPath)) { fs::create_directories(directoryPath); }
+
+        if (ImGui::BeginCombo("Existing Files", currentSpriteFilename_)) {
+            if (fs::exists(directoryPath)) {
+                for (const auto& entry : fs::directory_iterator(directoryPath)) {
+                    if (entry.path().extension() == ".json") {
+                        std::string fname = entry.path().filename().string();
+                        bool isSelected = (std::string(currentSpriteFilename_) == fname);
+                        if (ImGui::Selectable(fname.c_str(), isSelected)) {
+                            strcpy_s(currentSpriteFilename_, fname.c_str());
+                        }
+                        if (isSelected) ImGui::SetItemDefaultFocus();
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::InputText("Filename", currentSpriteFilename_, sizeof(currentSpriteFilename_));
+
+        if (ImGui::Button("Save Sprite Layout")) {
+            std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
+            SaveSpriteLayout(fullPath);
+        }
+    }
+
+    ImGui::Separator();
+
+    if (selectedSprite_) {
+        ImGui::Text("Selected: %s", selectedSprite_->GetName().c_str()); // 名前確認用
+
+        Vector2 pos = selectedSprite_->GetPosition();
+        Vector2 size = selectedSprite_->GetSize();
+        Vector2 anchor = selectedSprite_->GetAnchorPoint();
+        Vector4 color = selectedSprite_->GetColor();
+
+        bool changed = false;
+        if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) { selectedSprite_->SetPosition(pos); changed = true; }
+        if (ImGui::DragFloat2("Size", &size.x, 1.0f)) { selectedSprite_->SetSize(size); changed = true; }
+        if (ImGui::DragFloat2("Anchor", &anchor.x, 0.05f)) { selectedSprite_->SetAnchorPoint(anchor); changed = true; }
+
+        ImGui::Separator();
+        if (ImGui::Button("Deselect")) selectedSprite_ = nullptr;
+    }
+    ImGui::End();
+#endif
+}
+
+void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
+    using json = nlohmann::json;
+
     if (sceneManager_ == nullptr) return;
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) return;
 
-    // (ImGui::Begin/End は Game.cpp の "Master Editor" が行う)
+    json root;
+    json spriteArray = json::array();
 
-    if (selectedSprite_ == nullptr) {
-        ImGui::Text("No sprite selected.");
-        ImGui::Text("Click on a sprite in the game view.");
-    } else {
-        ImGui::Text("Selected: %s", selectedSprite_->GetName().c_str());
-        ImGui::Separator();
+    auto& sprites = currentScene->GetSprites();
 
-        Vector2 pos = selectedSprite_->GetPosition();
-        if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) {
-            selectedSprite_->SetPosition(pos);
-        }
-        Vector2 size = selectedSprite_->GetSize();
-        if (ImGui::DragFloat2("Size", &size.x, 1.0f)) {
-            selectedSprite_->SetSize(size);
-        }
-        Vector4 color = selectedSprite_->GetColor();
-        if (ImGui::ColorEdit4("Color", &color.x)) {
-            selectedSprite_->SetColor(color);
-        }
-        Vector2 anchor = selectedSprite_->GetAnchorPoint();
-        if (ImGui::DragFloat2("Anchor", &anchor.x, 0.01f, 0.0f, 1.0f)) {
-            selectedSprite_->SetAnchorPoint(anchor);
+    for (const auto& spritePtr : sprites) {
+        Sprite* sprite = spritePtr.get();
+        if (sprite == nullptr) continue;
+
+        json spriteData;
+        if (!sprite->GetName().empty()) {
+            spriteData["name"] = sprite->GetName();
+        } else {
+     
+            spriteData["name"] = "NoName_" + std::to_string((size_t)sprite);
         }
 
-        ImGui::Separator();
-        if (ImGui::Button("Save Sprite Layout")) {
-            SaveSpriteLayout("sprite_layout.json");
-        }
+        Vector2 pos = sprite->GetPosition();
+        Vector2 size = sprite->GetSize();
+        Vector2 anchor = sprite->GetAnchorPoint();
+
+        spriteData["position"] = { pos.x, pos.y };
+        spriteData["size"] = { size.x, size.y };
+        spriteData["anchor"] = { anchor.x, anchor.y };
+
+        spriteArray.push_back(spriteData);
     }
+    root["sprites"] = spriteArray;
+
+    std::ofstream file(filename);
+    if (file.is_open()) {
+        file << root.dump(4);
+        file.close();
+    }
+}
+
+
+
+bool SpriteDebugEditor::IsMouseOver(Sprite* sprite) const {
+    if (sprite == nullptr || inputManager_ == nullptr) return false;
+
+    Vector2 mousePos = inputManager_->GetMousePosition();
+    Vector2 pos = sprite->GetPosition();
+    Vector2 size = sprite->GetSize();
+    Vector2 anchor = sprite->GetAnchorPoint();
+
+    float minX = pos.x - (anchor.x * size.x);
+    float maxX = minX + size.x;
+    float minY = pos.y - (anchor.y * size.y);
+    float maxY = minY + size.y;
+
+    return (mousePos.x >= minX && mousePos.x <= maxX &&
+            mousePos.y >= minY && mousePos.y <= maxY);
+}
+
+bool SpriteDebugEditor::IsMouseBusy() const {
+    // ImGui操作中かどうか
+#ifdef USE_IMGUI
+    return ImGui::GetIO().WantCaptureMouse;
+#else
+    return false;
 #endif
 }
 
@@ -203,69 +297,4 @@ void SpriteDebugEditor::Draw() {
     gizmoArrowX_->Draw();
     gizmoArrowY_->Draw();
 #endif
-}
-
-void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
-
-
-    using json = nlohmann::json;
-    json root;
-    json spriteArray = json::array();
-
-    if (sceneManager_ == nullptr) return;
-
-    //  カレントシーンからスプライトリストを取得 
-    BaseScene* currentScene = sceneManager_->GetCurrentScene();
-    if (currentScene == nullptr) return;
-    std::vector<std::unique_ptr<Sprite>>& sprites = currentScene->GetSprites();
-
-    if (sprites.empty()) return; // 保存対象なし
-
-    for (const auto& sprite : sprites) {
-        if (!sprite) continue;
-        json spriteData;
-        spriteData["name"] = sprite->GetName();
-        Vector2 pos = sprite->GetPosition();
-        Vector2 size = sprite->GetSize();
-        Vector2 anchor = sprite->GetAnchorPoint();
-        Vector4 color = sprite->GetColor();
-        spriteData["position"] = { pos.x, pos.y };
-        spriteData["size"] = { size.x, size.y };
-        spriteData["anchor"] = { anchor.x, anchor.y };
-        spriteData["color"] = { color.x, color.y, color.z, color.w };
-        spriteArray.push_back(spriteData);
-    }
-    root["sprites"] = spriteArray;
-
-    std::ofstream file(filename);
-    if (file.is_open()) {
-        file << root.dump(4);
-        file.close();
-        OutputDebugStringA(("Saved sprite layout to " + filename + "\n").c_str());
-    } else {
-        OutputDebugStringA(("Failed to open " + filename + " for saving.\n").c_str());
-    }
-}
-
-
-bool SpriteDebugEditor::IsMouseOver(Sprite* sprite) const {
-    if (sprite == nullptr || inputManager_ == nullptr) return false;
-
-    Vector2 mousePos = inputManager_->GetMousePosition();
-    Vector2 pos = sprite->GetPosition();
-    Vector2 size = sprite->GetSize();
-    Vector2 anchor = sprite->GetAnchorPoint();
-
-    float minX = pos.x - (anchor.x * size.x);
-    float maxX = minX + size.x;
-    float minY = pos.y - (anchor.y * size.y);
-    float maxY = minY + size.y;
-
-    return (mousePos.x >= minX && mousePos.x <= maxX &&
-        mousePos.y >= minY && mousePos.y <= maxY);
-}
-
-
-bool SpriteDebugEditor::IsMouseBusy() const {
-    return isMovingX_ || isMovingY_;
 }

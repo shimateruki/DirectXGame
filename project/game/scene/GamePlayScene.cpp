@@ -705,6 +705,7 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 	std::ifstream file(filename);
 
 	if (!file.is_open()) {
+		// 初回起動時などファイルがない場合は警告だけで抜ける
 		std::string warnMsg = "Warning: Could not open " + filename + "\n";
 		OutputDebugStringA(warnMsg.c_str());
 		return;
@@ -717,11 +718,13 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 		if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
 			for (const auto& spriteData : layoutData["sprites"]) {
 
+				// 名前がないデータはスキップ
 				if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
 					continue;
 				}
 				std::string name = spriteData["name"];
 
+				// 1. 既存のリストから同じ名前のスプライトを探す
 				Sprite* targetSprite = nullptr;
 				for (auto& sprite : sprites_) {
 					if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
@@ -730,6 +733,33 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 					}
 				}
 
+				// 2. ★追加部分★ 見つからなかった場合、新しく生成する
+				if (!targetSprite) {
+					if (spriteCommon_) { // SpriteCommonを持っている前提
+						// テクスチャ名の取得 (保存されている場合)
+						std::string textureFile = "";
+						if (spriteData.contains("texture") && spriteData["texture"].is_string()) {
+							textureFile = spriteData["texture"];
+						}
+
+						// テクスチャ読込 (ファイル名があれば読み込む、なければとりあえず0)
+						uint32_t handle = 0;
+						if (!textureFile.empty()) {
+							handle = Sprite::LoadTexture(textureFile);
+						}
+
+						// 生成と初期化
+						auto newSprite = std::make_unique<Sprite>();
+						newSprite->Initialize(spriteCommon_.get(), handle); // handleが0だと白画像などになるかも
+						newSprite->SetName(name);
+
+						// リストに追加
+						targetSprite = newSprite.get();
+						sprites_.push_back(std::move(newSprite));
+					}
+				}
+
+				// 3. パラメータの適用 (既存・新規共通)
 				if (targetSprite) {
 					if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
 						targetSprite->SetPosition({
@@ -749,19 +779,12 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 							spriteData["anchor"][1].get<float>()
 							});
 					}
-					if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
-						targetSprite->SetColor({
-							spriteData["color"][0].get<float>(),
-							spriteData["color"][1].get<float>(),
-							spriteData["color"][2].get<float>(),
-							spriteData["color"][3].get<float>()
-							});
-					}
+
+
 					targetSprite->Update();
 				}
 			}
 		}
-
 	}
 	catch (json::parse_error& e) {
 		OutputDebugStringA("Failed to parse sprite_layout.json\n");
