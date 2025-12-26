@@ -59,7 +59,7 @@
             },
             "collisionAttribute": 2,
             "collisionMask": 4294967293,
-            "eventID": 0,
+            "eventID": 1,
             "modelName": "block",
             "name": "Enemy",
             "position": [

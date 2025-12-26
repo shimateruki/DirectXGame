@@ -393,8 +393,8 @@ void DebugEditor::DrawImGui() {
                 d["collisionAttribute"] = obj->GetCollisionAttribute();
                 d["collisionMask"] = obj->GetCollisionMask();
 
-                // ★ EventID
-                d["eventID"] = obj->eventID;
+                // ★ EventID (EventTypeをintに変換して保存)
+                d["eventID"] = static_cast<int>(obj->GetEventType());
 
                 // ★ EntityParameter (Status)
                 if (obj->param_.has_value()) {
@@ -538,12 +538,26 @@ void DebugEditor::DrawImGui() {
         ImGui::Separator();
         if (ImGui::CollapsingHeader("Game Data (Event & Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-            // --- 1. Event ID ---
-            if (ImGui::InputInt("Event ID", &selectedObject_->eventID)) {
-                // 値が変わったらJSON更新
+            // --- 1. Event Type (プルダウンで選択) ---
+            // ★ int入力からコンボボックスに変更
+            EventType currentType = selectedObject_->GetEventType();
+            int currentItemIndex = static_cast<int>(currentType);
+
+            // 表示する名前リスト（Event.hのenum定義順と合わせる）
+            const char* eventNames[] = {
+                "None",
+                "Damage"
+                // "Heal", "Goal" などが増えたらここに追加
+            };
+
+            // コンボボックス表示
+            if (ImGui::Combo("Event Type", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
+                // 選択されたらキャストしてセット
+                selectedObject_->SetEventType(static_cast<EventType>(currentItemIndex));
+                // 即保存
                 UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
-            ImGui::TextDisabled("(0:None, 1:Heal, 2:Damage, etc...)");
+            ImGui::TextDisabled("Current ID: %d", currentItemIndex); // 確認用
 
             ImGui::Spacing();
 
@@ -616,9 +630,6 @@ void DebugEditor::DrawImGui() {
         ImGui::Separator();
         ImGui::Text("Gizmo Operation:");
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
-        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f };
-        static float snapRotation = 45.0f;
-        static float snapScale = 0.5f;
 
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
             if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
@@ -649,7 +660,7 @@ void DebugEditor::DrawImGui() {
                 newObj->SetModel(modelName);
                 static int spawnCount = 0;
                 newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
-                // 最初はステータス無し、EventID 0 で生成される
+                // 最初はステータス無し、EventID 0(None) で生成される
                 currentScene->AddObject(std::move(newObj));
                 DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
             }
@@ -753,7 +764,7 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
                 objData["collisionMask"] = object->GetCollisionMask();
 
                 // --- 4. Event ID ---
-                objData["eventID"] = object->eventID;
+                objData["eventID"] = static_cast<int>(object->GetEventType());
 
                 // --- 5. Entity Parameter (ステータス) ---
                 if (object->param_.has_value()) {

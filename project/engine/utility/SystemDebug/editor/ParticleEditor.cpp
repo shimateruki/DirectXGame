@@ -87,9 +87,7 @@ void ParticleEditor::DrawImGui() {
     ImGui::Separator();
     ImGui::Text("Size over Lifetime (Graph)");
 
-    // ★ここが新機能: サイズの推移をグラフで編集
-    // 配列のポインタを渡して、マウスで書き換えられるようにする
-    // 範囲は 0.0f ～ 5.0f と仮定
+   
     EditCurve("Draw Curve with Mouse", params.sizeCurve, 10, 0.0f, 5.0f);
 
     // リセットボタン（直線を引く）

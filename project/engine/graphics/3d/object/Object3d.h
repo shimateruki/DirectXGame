@@ -7,6 +7,7 @@
 #include <string>
 #include <memory>
 #include <optional>
+#include"Event.h"
 
 class Object3d {
 public:
@@ -67,6 +68,8 @@ public:
         float jumpPower = 10.0f;
         EntityParameter() = default;
     };
+
+
 
 public:
     // ========================================================================
@@ -195,8 +198,11 @@ public:
 
     bool isDead = false;
 
-    // イベントID
-    int eventID = 0;
+    EventType eventType_ = EventType::None;
+
+    // アクセッサ（あると便利）
+    void SetEventType(EventType type) { eventType_ = type; }
+    EventType GetEventType() const { return eventType_; }
 
 protected:
     // メンバ変数

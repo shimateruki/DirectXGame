@@ -155,6 +155,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="engine\utility\math\Easing.cpp" />
+    <ClCompile Include="GameRule.cpp" />
     <ClCompile Include="game\actor\Bullet.cpp" />
     <ClCompile Include="game\system\BulletManager.cpp" />
     <ClCompile Include="game\actor\Character.cpp" />
@@ -365,6 +366,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\assimp\include\assimp\XmlParser.h" />
     <ClInclude Include="externals\assimp\include\assimp\XMLTools.h" />
     <ClInclude Include="externals\assimp\include\assimp\ZipArchiveIOSystem.h" />
+    <ClInclude Include="GameRule.h" />
     <ClInclude Include="game\actor\Bullet.h" />
     <ClInclude Include="game\system\BulletManager.h" />
     <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />

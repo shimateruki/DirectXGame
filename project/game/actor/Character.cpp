@@ -9,9 +9,7 @@
 static Math math;
 
 
-// Character.cpp
 
-// Character.cpp
 
 void Character::Update(float deltaTime) {
 
@@ -22,13 +20,16 @@ void Character::Update(float deltaTime) {
     float gravity = this->param_->gravity;
     float maxFallSpeed = this->param_->maxFallSpeed;
 
-    // --- 以下、いつもの重力計算 ---
 
     isGrounded_ = false;
     velocity_.y -= gravity * deltaTime;
 
     if (velocity_.y < -maxFallSpeed) {
         velocity_.y = -maxFallSpeed;
+    }
+    if (this->param_->hp <=0)
+    {
+        isDead = true;
     }
 
     transform_.translate += velocity_ * deltaTime;
@@ -99,7 +100,7 @@ std::unique_ptr<Object3d> Character::Clone() const {
 
 
     // 1. イベントIDとステータス(param_)をコピー
-    newObj->eventID = this->eventID;
+    newObj->eventType_ = this->eventType_;
     newObj->param_ = this->param_; 
 
     // 2. Character 独自のメンバをコピー
@@ -111,5 +112,9 @@ std::unique_ptr<Object3d> Character::Clone() const {
 }
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 親の描画処理をそのまま実行する
-    Object3d::Draw(pointLightResource, spotLightResource);
+    if (!isDead)
+    {
+        Object3d::Draw(pointLightResource, spotLightResource);
+    }
+   
 }

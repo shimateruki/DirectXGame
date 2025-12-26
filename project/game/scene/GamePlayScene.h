@@ -24,6 +24,7 @@ class InputManager;
 class SceneManager;
 #include "DebugEditor.h" 
 #include <GhostRecorder.h>
+#include <GameRule.h>
 
 
 /// <summary>
@@ -89,6 +90,7 @@ private:
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     std::unique_ptr<Text>  debugText_;
+    std::unique_ptr<GameRule> gameRule_; // 管理人
 
 
     Player* player_ = nullptr;

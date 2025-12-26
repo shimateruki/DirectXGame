@@ -55,6 +55,8 @@ void GamePlayScene::Initialize() {
 	particleCommon_->Initialize(dxCommon_);
 	particleSystem_ = std::make_unique<ParticleSystem>();
 	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
+	gameRule_ = std::make_unique<GameRule>();
+	gameRule_->Initialize();
 
 	// --- オブジェクトの生成 ---
 
@@ -392,12 +394,6 @@ void GamePlayScene::Update(float deltaTime) {
 	//オブジェクト削除関数
 	ProcessRemovals();
 
-	//	isDeadがtrueのオブジェクトを削除
-	objects_.erase(
-		std::remove_if(objects_.begin(), objects_.end(),
-			[](const auto& obj) { return obj->isDead; }), // isDeadなら消す
-		objects_.end()
-	);
 
 
 #ifdef USE_IMGUI
@@ -698,9 +694,9 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				}
 				// 6. イベントIDの読み込み
 				if (objData.contains("eventID") && objData["eventID"].is_number_integer()) {
-					targetObject->eventID = objData["eventID"].get<int>();
+					int id = objData["eventID"].get<int>();
+					targetObject->SetEventType(static_cast<EventType>(id));
 				}
-
 				// 7. ステータス (EntityParameter) の読み込み
 				if (objData.contains("param") && objData["param"].is_object()) {
 
