@@ -320,7 +320,7 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
-    // 現在のJSONファイルパスを事前に作っておく（更新用）
+    // 現在のJSONファイルパス
     std::string currentJsonPath = "resouces/json/" + std::string(currentSceneFilename_);
 
     // ==========================================================================================
@@ -333,15 +333,12 @@ void DebugEditor::DrawImGui() {
     // =========================================================
     if (ImGui::CollapsingHeader("Scene File Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        // 保存先のディレクトリパス
         std::string directoryPath = "resouces/json/";
-
-        // ディレクトリが存在しない場合は作成しておく（安全対策）
         if (!fs::exists(directoryPath)) {
             fs::create_directories(directoryPath);
         }
 
-        // --- A. ファイル一覧 (Combo Box) ---
+        // --- A. ファイル一覧 ---
         if (ImGui::BeginCombo("Existing Files", currentSceneFilename_)) {
             if (fs::exists(directoryPath)) {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
@@ -351,20 +348,18 @@ void DebugEditor::DrawImGui() {
                         if (ImGui::Selectable(filename.c_str(), isSelected)) {
                             strcpy_s(currentSceneFilename_, filename.c_str());
                         }
-                        if (isSelected) {
-                            ImGui::SetItemDefaultFocus();
-                        }
+                        if (isSelected) ImGui::SetItemDefaultFocus();
                     }
                 }
             }
             ImGui::EndCombo();
         }
 
-        // --- B. ファイル名入力欄 ---
+        // --- B. ファイル名入力 ---
         ImGui::InputText("Filename (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
 
         // --- C. 保存ボタン (Save Scene) ---
-        // ※ここでの保存は「シーン全体」の上書き保存です
+        // ★ここ重要: 親子関係 (parentName) も保存するように更新！
         if (ImGui::Button("Save Scene (All)")) {
             json sceneData;
             sceneData["objects"] = json::array();
@@ -377,6 +372,14 @@ void DebugEditor::DrawImGui() {
                 json d;
                 d["name"] = obj->GetName();
                 d["modelName"] = obj->GetModelName();
+
+                // ★ 親がいるなら名前を保存
+                if (obj->GetParent()) {
+                    d["parentName"] = obj->GetParent()->GetName();
+                } else {
+                    d["parentName"] = "";
+                }
+
                 d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
                 d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
                 d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
@@ -389,14 +392,10 @@ void DebugEditor::DrawImGui() {
                 cData["size"] = { c.size.x, c.size.y, c.size.z };
                 d["collider"] = cData;
 
-                // 属性とマスク
                 d["collisionAttribute"] = obj->GetCollisionAttribute();
                 d["collisionMask"] = obj->GetCollisionMask();
-
-                // ★ EventID (EventTypeをintに変換して保存)
                 d["eventID"] = static_cast<int>(obj->GetEventType());
 
-                // ★ EntityParameter (Status)
                 if (obj->param_.has_value()) {
                     auto& p = obj->param_.value();
                     d["param"]["hp"] = p.hp;
@@ -430,7 +429,7 @@ void DebugEditor::DrawImGui() {
     // =========================================================
     if (selectedObject_ == nullptr) {
         ImGui::Text("No object selected.");
-        ImGui::Text("Select from Object List.");
+        ImGui::Text("Select from Hierarchy.");
         ImGui::Separator();
         ImGui::Checkbox("Draw Colliders", &drawColliders_);
     } else {
@@ -439,8 +438,14 @@ void DebugEditor::DrawImGui() {
         std::string currentName = selectedObject_->GetName();
         if (currentName.empty()) currentName = "NoName";
         strcpy_s(nameBuffer, currentName.c_str());
-        // 名前編集が必要ならInputTextにするが、ID管理の都合上表示のみにしておくのが無難
         ImGui::Text("Name: %s", nameBuffer);
+
+        // --- 親の名前表示 (確認用) ---
+        if (selectedObject_->GetParent()) {
+            ImGui::TextDisabled("Parent: %s", selectedObject_->GetParent()->GetName().c_str());
+        } else {
+            ImGui::TextDisabled("Parent: None");
+        }
 
         // ---  D&D受け入れエリア (モデル差し替え) ---
         ImGui::Separator();
@@ -470,39 +475,31 @@ void DebugEditor::DrawImGui() {
         }
         if (ImGui::DragFloat3("Scale", &transform->scale.x, 0.05f)) isTransformChanged = true;
 
-        // Transform変更時に即保存したい場合はここ有効化
         if (isTransformChanged) {
             UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
         }
 
-        // ==========================================================
-        //  コライダー設定 (Collision) 
-        // ==========================================================
+        // --- コライダー設定 ---
         ImGui::Separator();
-
         if (ImGui::CollapsingHeader("Collision Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-
             Object3d::ColliderConfig colConfig = selectedObject_->GetColliderConfig();
             bool isColChanged = false;
 
-            // 1. 種類の選択
             const char* typeNames[] = { "None", "Sphere", "AABB", "OBB" };
             int currentTypeIndex = (int)colConfig.type;
             if (ImGui::Combo("Type", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
-                if (colConfig.type == ColliderType::kOBB) {
-                    if (colConfig.size.x == 0.0f) colConfig.size = { 1.0f, 1.0f, 1.0f };
+                if (colConfig.type == ColliderType::kOBB && colConfig.size.x == 0.0f) {
+                    colConfig.size = { 1.0f, 1.0f, 1.0f };
                 }
                 isColChanged = true;
             }
 
-            // 2. 詳細設定
             if (colConfig.type != ColliderType::kNone) {
                 if (ImGui::DragFloat3("Center", &colConfig.center.x, 0.05f)) isColChanged = true;
                 if (colConfig.type == ColliderType::kSphere) {
                     if (ImGui::DragFloat("Radius", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
-                        colConfig.size.y = colConfig.size.x;
-                        colConfig.size.z = colConfig.size.x;
+                        colConfig.size.y = colConfig.size.z = colConfig.size.x;
                         isColChanged = true;
                     }
                 } else {
@@ -517,8 +514,6 @@ void DebugEditor::DrawImGui() {
 
             ImGui::Separator();
             ImGui::Text("Collision Logic");
-
-            // 3. 属性 & マスク
             uint32_t currentAttr = selectedObject_->GetCollisionAttribute();
             DrawAttributeSelector("Self Attribute", &currentAttr);
             if (currentAttr != selectedObject_->GetCollisionAttribute()) {
@@ -534,85 +529,55 @@ void DebugEditor::DrawImGui() {
             }
         }
 
-
+        // --- Game Data (Event & Stats) ---
         ImGui::Separator();
         if (ImGui::CollapsingHeader("Game Data (Event & Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-            // --- 1. Event Type (プルダウンで選択) ---
-            // ★ int入力からコンボボックスに変更
             EventType currentType = selectedObject_->GetEventType();
             int currentItemIndex = static_cast<int>(currentType);
+            const char* eventNames[] = { "None", "Damage" };
 
-            // 表示する名前リスト（Event.hのenum定義順と合わせる）
-            const char* eventNames[] = {
-                "None",
-                "Damage"
-                // "Heal", "Goal" などが増えたらここに追加
-            };
-
-            // コンボボックス表示
             if (ImGui::Combo("Event Type", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
-                // 選択されたらキャストしてセット
                 selectedObject_->SetEventType(static_cast<EventType>(currentItemIndex));
-                // 即保存
                 UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
-            ImGui::TextDisabled("Current ID: %d", currentItemIndex); // 確認用
 
             ImGui::Spacing();
 
-            // --- 2. Entity Parameters (Stats) ---
             if (!selectedObject_->param_.has_value()) {
-                // パラメータがない場合 -> 追加ボタン
                 if (ImGui::Button("Add Entity Stats", ImVec2(-1, 0))) {
-                    selectedObject_->param_.emplace(); // メモリ確保
-                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath); // 即保存
+                    selectedObject_->param_.emplace();
+                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
                 }
             } else {
-                // パラメータがある場合 -> 編集画面
                 auto& p = selectedObject_->param_.value();
                 bool isStatsChanged = false;
-
                 ImGui::Text("Entity Status:");
                 ImGui::Indent();
-
                 if (ImGui::DragFloat("HP", &p.hp, 1.0f, 0.0f, 9999.0f)) isStatsChanged = true;
                 if (ImGui::DragFloat("Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f)) isStatsChanged = true;
                 if (ImGui::DragFloat("Speed", &p.speed, 0.1f, 0.0f, 100.0f)) isStatsChanged = true;
                 if (ImGui::DragFloat("Gravity", &p.gravity, 0.01f, -10.0f, 10.0f)) isStatsChanged = true;
                 if (ImGui::DragFloat("Jump Power", &p.jumpPower, 0.1f, 0.0f, 100.0f)) isStatsChanged = true;
                 if (ImGui::DragFloat("Max Fall", &p.maxFallSpeed, 0.1f, 0.0f, 200.0f)) isStatsChanged = true;
-
                 ImGui::Unindent();
 
-                // 変更があれば保存
-                if (isStatsChanged) {
-                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
-                }
+                if (isStatsChanged) UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
 
                 ImGui::Spacing();
-                // 削除ボタン (赤色)
                 ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.0f, 0.7f, 0.7f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.0f, 0.8f, 0.8f));
-
                 if (ImGui::Button("Remove Stats", ImVec2(-1, 0))) {
-                    selectedObject_->param_ = std::nullopt; // 破棄
-                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath); // 保存してJSONからも消す
+                    selectedObject_->param_ = std::nullopt;
+                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
                 }
                 ImGui::PopStyleColor(3);
             }
         }
-        // ==========================================================
 
         ImGui::Separator();
+        if (ImGui::Button("Force Update JSON")) UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
 
-        // --- 単体更新ボタン (手動用) ---
-        if (ImGui::Button("Force Update JSON")) {
-            UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
-        }
-
-        // --- 複製 / 削除 ---
         ImGui::Separator();
         if (ImGui::Button("Duplicate")) {
             std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
@@ -626,17 +591,14 @@ void DebugEditor::DrawImGui() {
             selectedObject_ = nullptr;
         }
 
-        // --- Gizmo Control ---
         ImGui::Separator();
         ImGui::Text("Gizmo Operation:");
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
-
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
             if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
             if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
             if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
         }
-
         if (ImGui::RadioButton("Translate", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
         if (ImGui::RadioButton("Rotate", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
         if (ImGui::RadioButton("Scale", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
@@ -645,9 +607,11 @@ void DebugEditor::DrawImGui() {
 
 
     // ==========================================================================================
-    // Object List Window
+    // Hierarchy Window (旧 Object List)
     // ==========================================================================================
-    ImGui::Begin("Object List");
+    ImGui::Begin("Hierarchy");
+
+    // スポーン用エリア
     ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 50));
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
@@ -660,7 +624,6 @@ void DebugEditor::DrawImGui() {
                 newObj->SetModel(modelName);
                 static int spawnCount = 0;
                 newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
-                // 最初はステータス無し、EventID 0(None) で生成される
                 currentScene->AddObject(std::move(newObj));
                 DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
             }
@@ -668,16 +631,32 @@ void DebugEditor::DrawImGui() {
         ImGui::EndDragDropTarget();
     }
 
+    ImGui::Separator();
+
+    //  ツリー表示ループ
+    // 親がいないオブジェクト（ルート）だけを描画開始地点にする
     std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
     for (auto& obj : objects) {
-        const std::string& objName = obj->GetName();
-        if (objName.empty()) continue;
-        bool isSelected = (obj.get() == selectedObject_);
-        if (ImGui::Selectable(objName.c_str(), isSelected)) {
-            selectedObject_ = obj.get();
+        if (obj->GetParent() == nullptr) {
+            // ここで再帰関数を呼ぶ！
+            DrawHierarchyNode(obj.get());
         }
     }
-    ImGui::End();
+
+    // ★ 親解除エリア (空白部分にドロップで親なしにする)
+    ImGui::Dummy(ImVec2(0, 50)); // 少しスペースを空ける
+    ImGui::TextDisabled("(Drop here to unparent)");
+
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
+            Object3d* sourceObj = *(Object3d**)payload->Data;
+            sourceObj->SetParent(nullptr); // 親を解除
+            DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    ImGui::End(); // End Hierarchy
 
     // ==========================================================================================
     // Spawner Window
@@ -869,5 +848,68 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
         *attribute = static_cast<uint32_t>(flags);
 
         ImGui::TreePop();
+    }
+}
+
+
+
+void DebugEditor::DrawHierarchyNode(Object3d* obj) {
+    // ノードの設定：デフォルトで開く、選択時は色を変える
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen;
+
+    // 子供がいないなら「葉っぱ（Leaf）」として扱う
+    if (obj->GetChildren().empty()) {
+        node_flags |= ImGuiTreeNodeFlags_Leaf;
+    }
+
+    // 選択中のオブジェクトならハイライト
+    if (obj == selectedObject_) {
+        node_flags |= ImGuiTreeNodeFlags_Selected;
+    }
+
+    // ノードを描画 (IDを一意にするためにポインタを使う)
+    // 名前が空だとImGuiが困るので対策
+    std::string name = obj->GetName().empty() ? "No Name" : obj->GetName();
+
+    // ★ここがツリー表示の本体
+    bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
+
+    // クリックしたら選択状態にする
+    if (ImGui::IsItemClicked()) {
+        selectedObject_ = obj;
+    }
+
+    // ---------------------------------------------------------
+    // ドラッグ＆ドロップ (Drag) - 子供にするために持ち上げる
+    // ---------------------------------------------------------
+    if (ImGui::BeginDragDropSource()) {
+        ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(Object3d*));
+        ImGui::Text("Move %s", name.c_str());
+        ImGui::EndDragDropSource();
+    }
+
+    // ---------------------------------------------------------
+    //  ドラッグ＆ドロップ (Drop) - 誰かを受け入れて子供にする
+    // ---------------------------------------------------------
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
+            Object3d* sourceObj = *(Object3d**)payload->Data;
+
+            // 自分自身や、自分の親を子供にしないようチェック
+            if (sourceObj != obj && sourceObj->GetParent() != obj) {
+                sourceObj->SetParent(obj);
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // ---------------------------------------------------------
+    // 子供がいれば再帰的に描画 (自分の中で自分を呼ぶ！)
+    // ---------------------------------------------------------
+    if (node_open) {
+        for (auto* child : obj->GetChildren()) {
+            DrawHierarchyNode(child);
+        }
+        ImGui::TreePop(); // 階層を戻る
     }
 }

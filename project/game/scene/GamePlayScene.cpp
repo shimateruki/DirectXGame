@@ -589,6 +589,10 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 	}
 
 	json sceneData;
+
+	//  親子関係を結ぶための「保留リスト」
+	std::map<Object3d*, std::string> parentPendingList;
+
 	try {
 		sceneData = json::parse(file);
 		if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
@@ -609,7 +613,6 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 				// 2. 見つからなかった場合、新しく生成する 
 				if (!targetObject) {
-\
 					if (object3dCommon_) {
 						auto newObj = std::make_unique<Object3d>();
 						newObj->Initialize(object3dCommon_.get());
@@ -631,7 +634,6 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 					// モデルが変わっている、または未設定ならロード
 					if (targetObject->GetModelName() != modelName) {
-						// モデルマネージャーでロード済みか確認し、必要ならロード
 						ModelManager::GetInstance()->LoadModel(modelName);
 						targetObject->SetModel(modelName);
 					}
@@ -659,55 +661,46 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				// 5. コライダー情報の適用
 				if (objData.contains("collider")) {
 					json colData = objData["collider"];
-					// 「現在の設定」を取得して、そこから JSONにある項目だけを上書きする
 					Object3d::ColliderConfig config = targetObject->GetColliderConfig();
 
-					// Type (int -> enum)
 					if (colData.contains("type") && colData["type"].is_number_integer()) {
 						config.type = (ColliderType)colData["type"].get<int>();
 					}
-
-					// Center
 					if (colData.contains("center") && colData["center"].is_array()) {
 						config.center.x = colData["center"][0].get<float>();
 						config.center.y = colData["center"][1].get<float>();
 						config.center.z = colData["center"][2].get<float>();
 					}
-
-					// Size
 					if (colData.contains("size") && colData["size"].is_array()) {
 						config.size.x = colData["size"][0].get<float>();
 						config.size.y = colData["size"][1].get<float>();
 						config.size.z = colData["size"][2].get<float>();
 					}
 
-					// 設定をオブジェクトに反映
 					targetObject->SetColliderConfig(config);
-					// ★念のための保険: 
 					targetObject->SetColliderType(config.type);
 				}
+
+				// 衝突属性とマスク
 				if (objData.contains("collisionAttribute")) {
 					targetObject->SetCollisionAttribute(objData["collisionAttribute"].get<uint32_t>());
 				}
 				if (objData.contains("collisionMask")) {
 					targetObject->SetCollisionMask(objData["collisionMask"].get<uint32_t>());
 				}
+
 				// 6. イベントIDの読み込み
 				if (objData.contains("eventID") && objData["eventID"].is_number_integer()) {
 					int id = objData["eventID"].get<int>();
 					targetObject->SetEventType(static_cast<EventType>(id));
 				}
+
 				// 7. ステータス (EntityParameter) の読み込み
 				if (objData.contains("param") && objData["param"].is_object()) {
-
-					// param_ が nullopt なら中身を生成
 					targetObject->param_.emplace();
-
-					// 中身を取り出しやすくするために参照をとる
 					json paramData = objData["param"];
 					auto& p = targetObject->param_.value();
 
-					// 各パラメータを読み込む (存在チェック付き)
 					if (paramData.contains("hp"))           p.hp = paramData["hp"].get<float>();
 					if (paramData.contains("maxHp"))        p.maxHp = paramData["maxHp"].get<float>();
 					if (paramData.contains("speed"))        p.speed = paramData["speed"].get<float>();
@@ -715,8 +708,35 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					if (paramData.contains("jumpPower"))    p.jumpPower = paramData["jumpPower"].get<float>();
 					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"].get<float>();
 				}
+
+				//  親の名前があれば「保留リスト」に入れておく
+				if (objData.contains("parentName") && objData["parentName"].is_string()) {
+					std::string pName = objData["parentName"].get<std::string>();
+					if (!pName.empty()) {
+						parentPendingList[targetObject] = pName;
+					}
+				}
+
+			} // end loop (全オブジェクト生成完了)
+		}
+
+
+		for (auto const& [childObj, parentName] : parentPendingList) {
+			// 親の名前を持つオブジェクトをリストから探す
+			Object3d* parentObj = nullptr;
+			for (auto& obj : objects_) {
+				if (obj && obj->GetName() == parentName) {
+					parentObj = obj.get();
+					break;
+				}
+			}
+
+			// 親が見つかったらセットする
+			if (parentObj) {
+				childObj->SetParent(parentObj);
 			}
 		}
+
 	}
 	catch (json::parse_error& e) {
 		OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());

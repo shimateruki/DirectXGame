@@ -39,6 +39,7 @@ public:
     void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
     // ビットフラグ編集用のヘルパー関数
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
+    void DrawHierarchyNode(Object3d* obj);
 
 private:
     void InitializePrimitiveDrawing();

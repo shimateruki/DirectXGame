@@ -5,7 +5,7 @@
 #include <algorithm> // std::min, std::max
 #include <cmath>     // std::abs
 
-// ★ Math のインスタンスを作成
+//  Math のインスタンスを作成
 static Math math;
 
 
@@ -56,7 +56,7 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 
 
-    // ★ 座標を押し戻す (めり込んだ分だけ座標を補正)
+    //  座標を押し戻す (めり込んだ分だけ座標を補正)
     this->transform_.translate += (info.normal * info.penetration);
 
     //  速度を補正 (壁にめり込む速度成分を打ち消す)

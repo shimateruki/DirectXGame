@@ -143,9 +143,19 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 }
 
 void Object3d::SetParent(Object3d* parent) {
-    parent_ = parent;
-}
+    if (parent_) {
+        std::vector<Object3d*>& kids = parent_->children_;
+        // 削除イディオム (Erase-Remove idiom)
+        kids.erase(std::remove(kids.begin(), kids.end(), this), kids.end());
+    }
 
+
+    parent_ = parent;
+
+    if (parent_) {
+        parent_->children_.push_back(this);
+    }
+}
 CollisionInfo Object3d::CheckCollision(Object3d* other) {
     CollisionInfo collision;
     collision.isColliding = false; // 初期化

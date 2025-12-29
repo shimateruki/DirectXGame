@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include"Event.h"
+#include <vector>
 
 class Object3d {
 public:
@@ -203,7 +204,7 @@ public:
     // アクセッサ（あると便利）
     void SetEventType(EventType type) { eventType_ = type; }
     EventType GetEventType() const { return eventType_; }
-
+    const std::vector<Object3d*>& GetChildren() const { return children_; }
 protected:
     // メンバ変数
 
@@ -238,7 +239,7 @@ protected:
     uint32_t collisionMask_ = 0xFFFFFFFF;
     bool isStatic_ = false;
 
-
+    std::vector<Object3d*> children_;
 
 
 };
