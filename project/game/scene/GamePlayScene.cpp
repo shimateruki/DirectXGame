@@ -31,6 +31,7 @@
 #include <string>
 #include "json.hpp" 
 #include <numbers>
+#include <CameraEditor.h>
 
 
 void GamePlayScene::Initialize() {
@@ -174,15 +175,7 @@ void GamePlayScene::Initialize() {
 	//	}
 	//}
 
-	// --- カメラの設定 ---
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
-#ifndef _DEBUG 
-	camera->SetFollowTarget(player_);
-	camera->SetFollowMode(Camera::FollowMode::kAimable);//カメラのモード設定
-	camera->ConfigAimable(15.0f, 5.0f, 25.0f);//距離
-	camera->SetLockOnOffset({ 0.0f, 4.0f, -12.0f });//ロックオン時のカメラ
-#endif
+ CameraEditor::GetInstance()->Initialize();
 
 	// --- 衝突判定の設定 ---
 	CollisionManager::GetInstance()->ClearObjects();
@@ -279,24 +272,37 @@ void GamePlayScene::Update(float deltaTime) {
 
 	static Math math;
 
-#ifndef _DEBUG
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-	Camera::FollowMode currentMode = camera->GetFollowMode();
+	// ▼CameraEditorの設定を反映
+	CameraEditor::GetInstance()->Update(player_, isLockingOn_);
 
-	if (currentMode == Camera::FollowMode::kAimable) {
-		float wheelDelta = inputManager_->GetMouseWheelDelta();
-		if (wheelDelta != 0.0f) {
+	// 「エディタモード（自由カメラ）」じゃない時だけ、プレイヤーのマウス操作を受け付ける
+	if (!CameraEditor::GetInstance()->IsEditorMode()) {
+
+		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+		Camera::FollowMode currentMode = camera->GetFollowMode(); // 現在のモード取得（EditorのUpdateでセットされているはず）
+
+		// ズーム処理（マウスホイール）
+		if (currentMode == Camera::FollowMode::kAimable) {
+			float wheelDelta = inputManager_->GetMouseWheelDelta();
+			if (wheelDelta != 0.0f) {
+				// ★もしゲーム中にズームさせたいなら、ここに処理を書く
+				// 例: CameraEditorの数値を書き換えるなど
+				// float dist = CameraEditor::GetInstance()->GetDistance();
+				// CameraEditor::GetInstance()->SetDistance(dist - wheelDelta);
+			}
 		}
-	}
-	if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
-		if (inputManager_->IsMouseButtonPressed(1)) {
-			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-				camera->AddRotation(mouseDelta);
+
+		// 回転処理（右クリックしながらマウス移動）
+		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+			// ※ 右クリック(1) 押下中のみ回転
+			if (inputManager_->IsMouseButtonPressed(1)) {
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+					camera->AddRotation(mouseDelta);
+				}
 			}
 		}
 	}
-#endif
 
 
 
@@ -590,7 +596,7 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 	json sceneData;
 
-	//  親子関係を結ぶための「保留リスト」
+	// 親子関係を結ぶための「保留リスト」 <子供, 親の名前>
 	std::map<Object3d*, std::string> parentPendingList;
 
 	try {
@@ -602,7 +608,9 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				if (!objData.contains("name") || !objData["name"].is_string()) continue;
 				std::string name = objData["name"].get<std::string>();
 
+				// -------------------------------------------------
 				// 1. 既存のリストから同じ名前のオブジェクトを探す
+				// -------------------------------------------------
 				Object3d* targetObject = nullptr;
 				for (auto& obj : objects_) {
 					if (obj && !obj->GetName().empty() && obj->GetName() == name) {
@@ -611,7 +619,9 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 				}
 
+				// -------------------------------------------------
 				// 2. 見つからなかった場合、新しく生成する 
+				// -------------------------------------------------
 				if (!targetObject) {
 					if (object3dCommon_) {
 						auto newObj = std::make_unique<Object3d>();
@@ -628,18 +638,38 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				if (!targetObject) continue;
 
 
-				// 3. モデルの読み込みと設定
-				if (objData.contains("modelName") && objData["modelName"].is_string()) {
-					std::string modelName = objData["modelName"].get<std::string>();
+				// -------------------------------------------------
+				// 3. タイプ（クラス名）による分岐処理
+				// -------------------------------------------------
+				std::string type = "Model"; // デフォルト
+				if (objData.contains("type") && objData["type"].is_string()) {
+					type = objData["type"].get<std::string>();
+				}
+				targetObject->SetClassName(type); // クラス名をセット
 
-					// モデルが変わっている、または未設定ならロード
-					if (targetObject->GetModelName() != modelName) {
-						ModelManager::GetInstance()->LoadModel(modelName);
-						targetObject->SetModel(modelName);
+				if (type == "InvisibleBox") {
+					//  InvisibleBox の場合
+					targetObject->SetModel(nullptr);   // モデルなし
+					targetObject->SetIsVisible(false); // ゲーム中は見えない
+				} else {
+					//  通常モデルの場合
+					targetObject->SetIsVisible(true);  // ゲーム中は見える
+
+					// モデルの読み込みと設定
+					if (objData.contains("modelName") && objData["modelName"].is_string()) {
+						std::string modelName = objData["modelName"].get<std::string>();
+
+						// モデルが変わっている、または未設定ならロード
+						if (targetObject->GetModelName() != modelName) {
+							ModelManager::GetInstance()->LoadModel(modelName);
+							targetObject->SetModel(modelName);
+						}
 					}
 				}
 
+				// -------------------------------------------------
 				// 4. Transform (位置・回転・スケール) の適用
+				// -------------------------------------------------
 				Object3d::Transform* transform = targetObject->GetTransform();
 
 				if (objData.contains("position") && objData["position"].is_array()) {
@@ -658,7 +688,9 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					transform->scale.z = objData["scale"][2].get<float>();
 				}
 
+				// -------------------------------------------------
 				// 5. コライダー情報の適用
+				// -------------------------------------------------
 				if (objData.contains("collider")) {
 					json colData = objData["collider"];
 					Object3d::ColliderConfig config = targetObject->GetColliderConfig();
@@ -678,7 +710,7 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 
 					targetObject->SetColliderConfig(config);
-					targetObject->SetColliderType(config.type);
+	
 				}
 
 				// 衝突属性とマスク
@@ -689,15 +721,16 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					targetObject->SetCollisionMask(objData["collisionMask"].get<uint32_t>());
 				}
 
-				// 6. イベントIDの読み込み
+				// -------------------------------------------------
+				// 6. イベントID & パラメータの読み込み
+				// -------------------------------------------------
 				if (objData.contains("eventID") && objData["eventID"].is_number_integer()) {
 					int id = objData["eventID"].get<int>();
 					targetObject->SetEventType(static_cast<EventType>(id));
 				}
 
-				// 7. ステータス (EntityParameter) の読み込み
 				if (objData.contains("param") && objData["param"].is_object()) {
-					targetObject->param_.emplace();
+					targetObject->param_.emplace(); // 有効化
 					json paramData = objData["param"];
 					auto& p = targetObject->param_.value();
 
@@ -709,18 +742,23 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"].get<float>();
 				}
 
-				//  親の名前があれば「保留リスト」に入れておく
+				// -------------------------------------------------
+				// 7. 親子関係の保留登録
+				// -------------------------------------------------
 				if (objData.contains("parentName") && objData["parentName"].is_string()) {
 					std::string pName = objData["parentName"].get<std::string>();
 					if (!pName.empty()) {
+						// 後でまとめて解決するためにリストに入れる
 						parentPendingList[targetObject] = pName;
 					}
 				}
 
-			} // end loop (全オブジェクト生成完了)
+			} // end loop
 		}
 
-
+		// -------------------------------------------------
+		// 8. 親子関係の解決 (全オブジェクトロード後)
+		// -------------------------------------------------
 		for (auto const& [childObj, parentName] : parentPendingList) {
 			// 親の名前を持つオブジェクトをリストから探す
 			Object3d* parentObj = nullptr;

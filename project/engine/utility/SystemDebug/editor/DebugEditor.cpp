@@ -165,10 +165,11 @@ void DebugEditor::InitializePrimitiveDrawing() {
 }
 
 // ========================================================================
-// コライダー描画処理 (完全版)
+// コライダー描画処理 
 // ========================================================================
+
 void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
-    if (!drawColliders_ || sceneManager_ == nullptr) return;
+    if (sceneManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (!currentScene) return;
@@ -181,105 +182,135 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 
     int instanceCount = 0;
-    Math math; // 行列計算用
+    Math math;
 
     // =========================================================
-    // 1. シーン内のオブジェクトを描画 (Player, Bossなど)
+    // 1. シーン内のオブジェクトを描画 (統合版)
     // =========================================================
     auto& objects = currentScene->GetObjects();
 
     for (const auto& obj : objects) {
         if (!obj) continue;
+        // インスタンス描画の上限チェック
         if (instanceCount >= kMaxInstances) break;
 
         ColliderType type = obj->GetColliderType();
+        bool isInvisible = !obj->GetIsVisible();
+
+        // --- 描画判定 ---
+        // コライダーがなく、かつ「見える物体（モデルあり）」ならデバッグ線は不要
+        if (type == ColliderType::kNone && !isInvisible) continue;
+
+        // コライダー表示OFF設定の時、「見える物体」のコライダーは消すが、
+        if (!drawColliders_ && !isInvisible) continue;
+
+        // --- 行列計算 (サイズと位置) ---
         Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
-        Vector4 color = { 0.0f, 1.0f, 0.0f, 1.0f }; // デフォルト緑
 
-        // --- OBB ---
-        if (type == ColliderType::kOBB) {
-            OBB obb = obj->GetOBB();
-            Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
-            Matrix4x4 matRot = math.makeIdentity4x4();
-            matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
-            matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
-            matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
-            Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
-            drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
-            color = { 1.0f, 0.2f, 0.2f, 1.0f }; // 赤
-        }
-        // --- AABB ---
-        else if (type == ColliderType::kAABB) {
-            AABB aabb = obj->GetAABB();
-            Vector3 center = (aabb.min + aabb.max) * 0.5f;
-            Vector3 size = aabb.max - aabb.min;
-            Matrix4x4 matScale = math.MakeScaleMatrix(size);
-            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
-            drawWorldMatrix = math.Multiply(matScale, matTrans);
-            color = { 0.0f, 1.0f, 0.0f, 1.0f }; // 緑
-        }
-        // --- Sphere ---
-        else if (type == ColliderType::kSphere) {
-            float radius = obj->GetCollisionRadius();
-            Vector3 center = obj->GetWorldPosition();
-            Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
-            drawWorldMatrix = math.Multiply(matScale, matTrans);
-            color = { 0.0f, 0.5f, 1.0f, 1.0f }; // 青
+        // ★コライダーがある場合は、その形状データ(Size/Center)に合わせて枠を変形させる
+        if (type != ColliderType::kNone) {
+            if (type == ColliderType::kOBB) {
+                OBB obb = obj->GetOBB();
+                Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f); // Sizeは半サイズなので2倍
+                Matrix4x4 matRot = math.makeIdentity4x4();
+                matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
+                matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
+                matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+
+                // Scale * Rotation * Translation
+                drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+            } else if (type == ColliderType::kAABB) {
+                AABB aabb = obj->GetAABB();
+                Vector3 center = (aabb.min + aabb.max) * 0.5f;
+                Vector3 size = aabb.max - aabb.min;
+
+                Matrix4x4 matScale = math.MakeScaleMatrix(size);
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+
+                drawWorldMatrix = math.Multiply(matScale, matTrans);
+            } else if (type == ColliderType::kSphere) {
+                // 球体の場合もCubeワイヤーフレームで代用（あるいは別途Sphere用のメッシュがあればそちらを使う）
+                float radius = obj->GetCollisionRadius();
+                Vector3 center = obj->GetWorldPosition(); // Sphereは通常Offsetがない場合が多いが、あれば加算
+
+                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+
+                drawWorldMatrix = math.Multiply(matScale, matTrans);
+            }
+        } else {
+            // コライダー未設定の「見えない箱」の場合の救済措置
+            // Transformそのままで表示（これがないと選択すらできなくなる）
+            drawWorldMatrix = obj->GetWorldMatrix();
         }
 
+        // --- 色の決定 ---
+        Vector4 color;
+        if (isInvisible) {
+            // 見えないオブジェクトは「紫」固定
+            color = { 0.6f, 0.0f, 0.8f, 1.0f };
+        } else {
+            // 通常オブジェクトはコライダー種別ごとの色
+            switch (type) {
+            case ColliderType::kOBB:    color = { 1.0f, 0.2f, 0.2f, 1.0f }; break; // 赤
+            case ColliderType::kAABB:   color = { 0.0f, 1.0f, 0.0f, 1.0f }; break; // 緑
+            case ColliderType::kSphere: color = { 0.0f, 0.5f, 1.0f, 1.0f }; break; // 青
+            default:                    color = { 1.0f, 1.0f, 1.0f, 1.0f }; break; // 白
+            }
+        }
+
+        // 描画実行
         DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
         instanceCount++;
     }
 
+    // =========================================================
+    // 2. 弾のコライダー描画 (完全版)
+    // =========================================================
+    if (drawColliders_) {
+        const auto& bullets = BulletManager::GetInstance()->GetBullets();
 
-    const auto& bullets = BulletManager::GetInstance()->GetBullets();
+        for (const auto& bullet : bullets) {
+            if (!bullet || bullet->IsDead()) continue;
+            if (instanceCount >= kMaxInstances) break;
 
-    for (const auto& bullet : bullets) {
-        if (!bullet || bullet->IsDead()) continue;
-        if (instanceCount >= kMaxInstances) break;
+            ColliderType type = bullet->GetColliderType();
+            if (type == ColliderType::kNone) continue;
 
-        ColliderType type = bullet->GetColliderType();
-        Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
-        Vector4 color = { 0.0f, 1.0f, 0.0f, 1.0f };
+            // 弾は黄色固定
+            Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
+            Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
 
-        // --- OBB (スピニングブレードなど) ---
-        if (type == ColliderType::kOBB) {
-            OBB obb = bullet->GetOBB();
-            Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
-            Matrix4x4 matRot = math.makeIdentity4x4();
-            matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
-            matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
-            matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
-            Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
-            drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
-            color = { 1.0f, 0.2f, 0.2f, 1.0f }; // 赤
+            if (type == ColliderType::kOBB) {
+                OBB obb = bullet->GetOBB();
+                Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
+                Matrix4x4 matRot = math.makeIdentity4x4();
+                matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
+                matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
+                matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+                drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+            } else if (type == ColliderType::kAABB) {
+                AABB aabb = bullet->GetAABB();
+                Vector3 center = (aabb.min + aabb.max) * 0.5f;
+                Vector3 size = aabb.max - aabb.min;
+                Matrix4x4 matScale = math.MakeScaleMatrix(size);
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                drawWorldMatrix = math.Multiply(matScale, matTrans);
+            } else if (type == ColliderType::kSphere) {
+                float radius = bullet->GetCollisionRadius();
+                Vector3 center = bullet->GetWorldPosition();
+                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                drawWorldMatrix = math.Multiply(matScale, matTrans);
+            }
+
+            DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+            instanceCount++;
         }
-        // --- AABB ---
-        else if (type == ColliderType::kAABB) {
-            AABB aabb = bullet->GetAABB();
-            Vector3 center = (aabb.min + aabb.max) * 0.5f;
-            Vector3 size = aabb.max - aabb.min;
-            Matrix4x4 matScale = math.MakeScaleMatrix(size);
-            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
-            drawWorldMatrix = math.Multiply(matScale, matTrans);
-            color = { 0.0f, 1.0f, 0.0f, 1.0f }; // 緑
-        }
-        // --- Sphere (通常の弾) ---
-        else if (type == ColliderType::kSphere) {
-            float radius = bullet->GetCollisionRadius();
-            Vector3 center = bullet->GetWorldPosition();
-            Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-            Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
-            drawWorldMatrix = math.Multiply(matScale, matTrans);
-            color = { 0.0f, 0.5f, 1.0f, 1.0f }; // 青
-        }
-
-        DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
-        instanceCount++;
     }
 }
-
 // ========================================================================
 // ワイヤーフレームの立方体を描画する内部関数
 // ========================================================================
@@ -303,11 +334,14 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
 
 
 
+#include "DebugEditor.h"
+// その他必要なヘッダーは DebugEditor.cpp の先頭にある前提
+
 void DebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
     using json = nlohmann::json;
 
-    // 1. プロジェクトウィンドウを表示 (ここからドラッグ開始)
+    // 1. プロジェクトウィンドウ (Asset Browserなど)
     DrawProjectWindow();
 
     if (sceneManager_ == nullptr) return;
@@ -320,25 +354,25 @@ void DebugEditor::DrawImGui() {
         return;
     }
 
-    // 現在のJSONファイルパス
-    std::string currentJsonPath = "resouces/json/" + std::string(currentSceneFilename_);
+    // JSONパスの構築
+    std::string currentJsonPath = "resources/json/" + std::string(currentSceneFilename_);
 
     // ==========================================================================================
     // Inspector Window (シーン管理 & 選択中オブジェクトの編集)
     // ==========================================================================================
     ImGui::Begin("Inspector");
 
-    // =========================================================
-    //  1. ファイル管理エリア (File Manager)
-    // =========================================================
+    // ---------------------------------------------------------
+    // 1. ファイル管理エリア (File Manager)
+    // ---------------------------------------------------------
     if (ImGui::CollapsingHeader("Scene File Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        std::string directoryPath = "resouces/json/";
+        std::string directoryPath = "resources/json/";
         if (!fs::exists(directoryPath)) {
             fs::create_directories(directoryPath);
         }
 
-        // --- A. ファイル一覧 ---
+        // --- A. ファイル一覧コンボボックス ---
         if (ImGui::BeginCombo("Existing Files", currentSceneFilename_)) {
             if (fs::exists(directoryPath)) {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
@@ -359,7 +393,7 @@ void DebugEditor::DrawImGui() {
         ImGui::InputText("Filename (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
 
         // --- C. 保存ボタン (Save Scene) ---
-        // ★ここ重要: 親子関係 (parentName) も保存するように更新！
+        // ★ InvisibleBox 対応版
         if (ImGui::Button("Save Scene (All)")) {
             json sceneData;
             sceneData["objects"] = json::array();
@@ -368,23 +402,32 @@ void DebugEditor::DrawImGui() {
             for (auto& obj : allObjects) {
                 if (obj->GetName().empty()) continue;
 
-                Object3d::Transform* objTr = obj->GetTransform();
                 json d;
                 d["name"] = obj->GetName();
-                d["modelName"] = obj->GetModelName();
 
-                // ★ 親がいるなら名前を保存
+                // ★ クラス名によるタイプ保存 (ここが重要)
+                if (obj->GetClassName() == "InvisibleBox") {
+                    d["type"] = "InvisibleBox";
+                    // InvisibleBoxの場合、modelNameは保存しなくてよい
+                } else {
+                    d["type"] = "Model"; // 通常モデル
+                    d["modelName"] = obj->GetModelName();
+                }
+
+                // 親子関係
                 if (obj->GetParent()) {
                     d["parentName"] = obj->GetParent()->GetName();
                 } else {
                     d["parentName"] = "";
                 }
 
+                // Transform
+                Object3d::Transform* objTr = obj->GetTransform();
                 d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
                 d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
                 d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
 
-                // コライダー保存
+                // Collider
                 Object3d::ColliderConfig c = obj->GetColliderConfig();
                 json cData;
                 cData["type"] = (int)c.type;
@@ -396,6 +439,7 @@ void DebugEditor::DrawImGui() {
                 d["collisionMask"] = obj->GetCollisionMask();
                 d["eventID"] = static_cast<int>(obj->GetEventType());
 
+                // Stats (Param)
                 if (obj->param_.has_value()) {
                     auto& p = obj->param_.value();
                     d["param"]["hp"] = p.hp;
@@ -405,6 +449,9 @@ void DebugEditor::DrawImGui() {
                     d["param"]["jumpPower"] = p.jumpPower;
                     d["param"]["maxFallSpeed"] = p.maxFallSpeed;
                 }
+
+                // エディタ用の可視設定も保存したければここに追加
+                // d["isVisible"] = obj->GetIsVisible();
 
                 sceneData["objects"].push_back(d);
             }
@@ -418,15 +465,14 @@ void DebugEditor::DrawImGui() {
                 DebugConsole::GetInstance()->AddLog("Failed to save JSON! Check folder.");
             }
         }
-
         ImGui::TextDisabled("Target Path: %s", currentJsonPath.c_str());
     }
     ImGui::Separator();
 
 
-    // =========================================================
-    // 2. オブジェクト詳細 (Inspector) 
-    // =========================================================
+    // ---------------------------------------------------------
+    // 2. オブジェクト詳細 (Inspector)
+    // ---------------------------------------------------------
     if (selectedObject_ == nullptr) {
         ImGui::Text("No object selected.");
         ImGui::Text("Select from Hierarchy.");
@@ -438,38 +484,58 @@ void DebugEditor::DrawImGui() {
         std::string currentName = selectedObject_->GetName();
         if (currentName.empty()) currentName = "NoName";
         strcpy_s(nameBuffer, currentName.c_str());
-        ImGui::Text("Name: %s", nameBuffer);
 
-        // --- 親の名前表示 (確認用) ---
+        if (ImGui::InputText("Name", nameBuffer, sizeof(nameBuffer))) {
+            selectedObject_->SetName(std::string(nameBuffer));
+        }
+
+        // --- クラス名表示 (デバッグ用) ---
+        ImGui::TextDisabled("Class: %s", selectedObject_->GetClassName().c_str());
+
+        // --- 親の名前表示 ---
         if (selectedObject_->GetParent()) {
             ImGui::TextDisabled("Parent: %s", selectedObject_->GetParent()->GetName().c_str());
+            if (ImGui::Button("Unparent")) {
+                selectedObject_->SetParent(nullptr);
+            }
         } else {
             ImGui::TextDisabled("Parent: None");
         }
 
-        // ---  D&D受け入れエリア (モデル差し替え) ---
-        ImGui::Separator();
-        ImGui::Text("Model Asset:");
-        ImGui::Button(" [ Drop Model Here to Switch ] ", ImVec2(-1, 30));
+        // --- Model Asset (InvisibleBoxでない場合のみ表示) ---
+        if (selectedObject_->GetClassName() != "InvisibleBox") {
+            ImGui::Separator();
+            ImGui::Text("Model Asset: %s", selectedObject_->GetModelName().c_str());
+            ImGui::Button(" [ Drop Model Here to Switch ] ", ImVec2(-1, 30));
 
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-                const char* modelName = (const char*)payload->Data;
-                ModelManager::GetInstance()->LoadModel(modelName);
-                selectedObject_->SetModel(modelName);
-                DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                    const char* modelName = (const char*)payload->Data;
+                    ModelManager::GetInstance()->LoadModel(modelName);
+                    selectedObject_->SetModel(modelName);
+                    DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
+                }
+                ImGui::EndDragDropTarget();
             }
-            ImGui::EndDragDropTarget();
         }
+
+        // --- 可視性設定 (InvisibleBoxなら重要) ---
         ImGui::Separator();
+        bool isVisible = selectedObject_->GetIsVisible();
+        if (ImGui::Checkbox("Is Visible (In Game)", &isVisible)) {
+            selectedObject_->SetIsVisible(isVisible);
+        }
 
         // --- Transform編集 ---
+        ImGui::Separator();
+        ImGui::Text("Transform");
         Object3d::Transform* transform = selectedObject_->GetTransform();
         bool isTransformChanged = false;
+
         if (ImGui::DragFloat3("Position", &transform->translate.x, 0.1f)) isTransformChanged = true;
 
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
-        if (ImGui::DragFloat3("Rotation (Degrees)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
+        if (ImGui::DragFloat3("Rotation", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
             isTransformChanged = true;
         }
@@ -497,6 +563,7 @@ void DebugEditor::DrawImGui() {
 
             if (colConfig.type != ColliderType::kNone) {
                 if (ImGui::DragFloat3("Center", &colConfig.center.x, 0.05f)) isColChanged = true;
+
                 if (colConfig.type == ColliderType::kSphere) {
                     if (ImGui::DragFloat("Radius", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
                         colConfig.size.y = colConfig.size.z = colConfig.size.x;
@@ -512,85 +579,65 @@ void DebugEditor::DrawImGui() {
                 UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
 
+            // 属性設定
             ImGui::Separator();
-            ImGui::Text("Collision Logic");
             uint32_t currentAttr = selectedObject_->GetCollisionAttribute();
             DrawAttributeSelector("Self Attribute", &currentAttr);
             if (currentAttr != selectedObject_->GetCollisionAttribute()) {
                 selectedObject_->SetCollisionAttribute(currentAttr);
-                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
 
             uint32_t currentMask = selectedObject_->GetCollisionMask();
             DrawAttributeSelector("Collision Mask", &currentMask);
             if (currentMask != selectedObject_->GetCollisionMask()) {
                 selectedObject_->SetCollisionMask(currentMask);
-                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
         }
 
-        // --- Game Data (Event & Stats) ---
+        // --- Game Data (Stats) ---
         ImGui::Separator();
-        if (ImGui::CollapsingHeader("Game Data (Event & Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Game Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // Event Type
             EventType currentType = selectedObject_->GetEventType();
             int currentItemIndex = static_cast<int>(currentType);
             const char* eventNames[] = { "None", "Damage" };
-
             if (ImGui::Combo("Event Type", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
                 selectedObject_->SetEventType(static_cast<EventType>(currentItemIndex));
-                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
             }
 
             ImGui::Spacing();
 
+            // Stats Parameters
             if (!selectedObject_->param_.has_value()) {
                 if (ImGui::Button("Add Entity Stats", ImVec2(-1, 0))) {
                     selectedObject_->param_.emplace();
-                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
                 }
             } else {
                 auto& p = selectedObject_->param_.value();
-                bool isStatsChanged = false;
                 ImGui::Text("Entity Status:");
                 ImGui::Indent();
-                if (ImGui::DragFloat("HP", &p.hp, 1.0f, 0.0f, 9999.0f)) isStatsChanged = true;
-                if (ImGui::DragFloat("Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f)) isStatsChanged = true;
-                if (ImGui::DragFloat("Speed", &p.speed, 0.1f, 0.0f, 100.0f)) isStatsChanged = true;
-                if (ImGui::DragFloat("Gravity", &p.gravity, 0.01f, -10.0f, 10.0f)) isStatsChanged = true;
-                if (ImGui::DragFloat("Jump Power", &p.jumpPower, 0.1f, 0.0f, 100.0f)) isStatsChanged = true;
-                if (ImGui::DragFloat("Max Fall", &p.maxFallSpeed, 0.1f, 0.0f, 200.0f)) isStatsChanged = true;
+                ImGui::DragFloat("HP", &p.hp, 1.0f, 0.0f, 9999.0f);
+                ImGui::DragFloat("Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
+                ImGui::DragFloat("Speed", &p.speed, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("Gravity", &p.gravity, 0.01f, -10.0f, 10.0f);
+                ImGui::DragFloat("Jump Power", &p.jumpPower, 0.1f, 0.0f, 100.0f);
                 ImGui::Unindent();
 
-                if (isStatsChanged) UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
-
-                ImGui::Spacing();
                 ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.0f, 0.7f, 0.7f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.0f, 0.8f, 0.8f));
                 if (ImGui::Button("Remove Stats", ImVec2(-1, 0))) {
                     selectedObject_->param_ = std::nullopt;
-                    UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
                 }
-                ImGui::PopStyleColor(3);
+                ImGui::PopStyleColor();
             }
         }
 
         ImGui::Separator();
-        if (ImGui::Button("Force Update JSON")) UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
-
-        ImGui::Separator();
-        if (ImGui::Button("Duplicate")) {
-            std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
-            static int duplicateCount = 0;
-            newObj->SetName(selectedObject_->GetName() + "_copy" + std::to_string(duplicateCount++));
-            currentScene->AddObject(std::move(newObj));
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Delete", ImVec2(0, 0))) {
+        if (ImGui::Button("Delete Object", ImVec2(-1, 0))) {
             currentScene->RequestRemoveObject(selectedObject_);
             selectedObject_ = nullptr;
         }
 
+        // --- Gizmo 操作切替 ---
         ImGui::Separator();
         ImGui::Text("Gizmo Operation:");
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
@@ -607,21 +654,24 @@ void DebugEditor::DrawImGui() {
 
 
     // ==========================================================================================
-    // Hierarchy Window (旧 Object List)
+    // Hierarchy Window (階層構造)
     // ==========================================================================================
     ImGui::Begin("Hierarchy");
 
-    // スポーン用エリア
-    ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 50));
+    // スポーン用ドロップエリア
+    ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 30));
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
             const char* modelName = (const char*)payload->Data;
             ModelManager::GetInstance()->LoadModel(modelName);
+
             Object3dCommon* common = currentScene->GetObject3dCommon();
             if (common) {
                 auto newObj = std::make_unique<Object3d>();
                 newObj->Initialize(common);
                 newObj->SetModel(modelName);
+                newObj->SetClassName("Model"); // 通常モデル
+
                 static int spawnCount = 0;
                 newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
                 currentScene->AddObject(std::move(newObj));
@@ -633,46 +683,86 @@ void DebugEditor::DrawImGui() {
 
     ImGui::Separator();
 
-    //  ツリー表示ループ
-    // 親がいないオブジェクト（ルート）だけを描画開始地点にする
+    // ツリー表示 (再帰処理)
     std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
     for (auto& obj : objects) {
+        // ルートオブジェクト(親がいないやつ)のみ描画開始
         if (obj->GetParent() == nullptr) {
-            // ここで再帰関数を呼ぶ！
             DrawHierarchyNode(obj.get());
         }
     }
 
-    // ★ 親解除エリア (空白部分にドロップで親なしにする)
-    ImGui::Dummy(ImVec2(0, 50)); // 少しスペースを空ける
+    // 親解除用エリア
+    ImGui::Dummy(ImVec2(0, 50));
     ImGui::TextDisabled("(Drop here to unparent)");
-
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
-            sourceObj->SetParent(nullptr); // 親を解除
+            sourceObj->SetParent(nullptr); // 親解除
             DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
         }
         ImGui::EndDragDropTarget();
     }
-
     ImGui::End(); // End Hierarchy
 
+
     // ==========================================================================================
-    // Spawner Window
+    // Spawner Window (生成メニュー)
     // ==========================================================================================
     ImGui::Begin("Spawner");
+
+    // ★ Invisible Box 生成ボタン
+    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.8f, 0.6f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.8f, 0.7f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.8f, 0.8f, 0.8f));
+
+    if (ImGui::Button("Spawn Invisible Box (Trigger)", ImVec2(-1, 40))) {
+        Object3dCommon* common = currentScene->GetObject3dCommon();
+        if (common) {
+            auto newObj = std::make_unique<Object3d>();
+            newObj->Initialize(common);
+
+            // Invisible Box 設定
+            newObj->SetModel(nullptr);
+            newObj->SetIsVisible(false); // ゲーム中は見えない
+            newObj->SetClassName("InvisibleBox");
+            newObj->SetName("Trigger_Box");
+
+            // コライダー自動付与
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kAABB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            newObj->SetColliderConfig(colConfig);
+            newObj->SetCollisionAttribute(CollisionAttribute::kTrigger); // すり抜け
+
+            // カメラの前などに配置
+            newObj->SetTranslate({ 0, 2.0f, 0 });
+
+            // 選択状態にする
+            selectedObject_ = newObj.get();
+            currentScene->AddObject(std::move(newObj));
+            DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
+        }
+    }
+    ImGui::PopStyleColor(3);
+
+    ImGui::Separator();
+    ImGui::Text("Standard Models:");
+
+    // 通常モデル生成
     if (ImGui::Button("Refresh Model List")) {
         modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
         selectedModelIndex_ = 0;
     }
+
     if (!modelNames_.empty()) {
         std::vector<const char*> namesCStr;
         for (const std::string& name : modelNames_) {
             namesCStr.push_back(name.c_str());
         }
-        ImGui::ListBox("Loaded Models", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
-        if (ImGui::Button("Spawn Object")) {
+        ImGui::ListBox("##ModelList", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
+
+        if (ImGui::Button("Spawn Selected Model", ImVec2(-1, 0))) {
             if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
                 std::string modelName = modelNames_[selectedModelIndex_];
                 Object3dCommon* common = currentScene->GetObject3dCommon();
@@ -680,8 +770,11 @@ void DebugEditor::DrawImGui() {
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common);
                     newObj->SetModel(modelName);
+                    newObj->SetClassName("Model");
+
                     static int spawnCount = 0;
                     newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
+
                     currentScene->AddObject(std::move(newObj));
                     DebugConsole::GetInstance()->AddLog("Spawned: " + newObj->GetName());
                 }
@@ -695,6 +788,76 @@ void DebugEditor::DrawImGui() {
 #endif
 }
 
+// ---------------------------------------------------------------------
+//  階層構造を再帰的に描画するヘルパー関数
+// 
+// ---------------------------------------------------------------------
+void DebugEditor::DrawHierarchyNode(Object3d* obj) {
+#ifdef USE_IMGUI
+    if (!obj) return;
+
+    // ノードのフラグ設定
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+    if (selectedObject_ == obj) {
+        node_flags |= ImGuiTreeNodeFlags_Selected;
+    }
+
+    // 子供がいないならリーフノード（葉っぱ）として扱う
+
+    bool hasChildren = false;
+
+
+    // オブジェクト名の取得
+    std::string name = obj->GetName();
+    if (name.empty()) name = "NoName";
+    if (obj->GetClassName() == "InvisibleBox") {
+        name = "[Trigger] " + name; // わかりやすく装飾
+    }
+
+    // ツリーノード描画
+    bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
+
+    // クリック処理
+    if (ImGui::IsItemClicked()) {
+        selectedObject_ = obj;
+    }
+
+    // --- Drag: 子供にするために持ち上げる ---
+    if (ImGui::BeginDragDropSource()) {
+        ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(Object3d*));
+        ImGui::Text("Move %s", name.c_str());
+        ImGui::EndDragDropSource();
+    }
+
+    // --- Drop: 誰かを受け入れて子供にする ---
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
+            Object3d* sourceObj = *(Object3d**)payload->Data;
+            // 自分自身や、自分の親を子供にしないようチェック
+            if (sourceObj != obj && sourceObj->GetParent() != obj) {
+                sourceObj->SetParent(obj);
+                DebugConsole::GetInstance()->AddLog(sourceObj->GetName() + " is now child of " + obj->GetName());
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // 子供がいれば再帰描画
+    if (node_open) {
+        // 現在のシーンから、このobjを親に持つオブジェクトを探して描画
+        if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+            auto& allObjs = sceneManager_->GetCurrentScene()->GetObjects();
+            for (auto& child : allObjs) {
+                if (child->GetParent() == obj) {
+                    DrawHierarchyNode(child.get());
+                }
+            }
+        }
+        ImGui::TreePop();
+    }
+#endif
+}
+
 /// <summary>
 /// scene_layout.json を読み込み、特定のオブジェクトの情報だけを更新して上書き保存する
 /// </summary>
@@ -702,81 +865,118 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     using json = nlohmann::json;
     std::ifstream file(filename);
 
-    // ファイルが開けない、または空の場合は処理しない
-    if (!file.is_open()) return;
-
     json sceneData;
-    try {
-        // ファイルが空だとパースエラーになるのでチェック
-        if (file.peek() != std::ifstream::traits_type::eof()) {
-            sceneData = json::parse(file);
-        } else {
-            // 空ファイルなら初期化
-            sceneData["objects"] = json::array();
-        }
-    }
-    catch (...) {
-        return;
-    }
-    file.close();
 
-    bool found = false;
-    if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
-        for (auto& objData : sceneData["objects"]) {
-            // 名前で一致するオブジェクトを探す
-            if (objData.contains("name") && objData["name"] == object->GetName()) {
-
-                // --- 1. Transform (既存) ---
-                Object3d::Transform* tf = object->GetTransform();
-                objData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
-                objData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
-                objData["scale"] = { tf->scale.x, tf->scale.y, tf->scale.z };
-
-                // --- 2. ColliderConfig (Type, Center, Size) ---
-                const Object3d::ColliderConfig& config = object->GetColliderConfig();
-                objData["collider"]["type"] = static_cast<int>(config.type);
-                objData["collider"]["center"] = { config.center.x, config.center.y, config.center.z };
-                objData["collider"]["size"] = { config.size.x, config.size.y, config.size.z };
-
-                // --- 3. Attribute & Mask (属性) ---
-                objData["collisionAttribute"] = object->GetCollisionAttribute();
-                objData["collisionMask"] = object->GetCollisionMask();
-
-                // --- 4. Event ID ---
-                objData["eventID"] = static_cast<int>(object->GetEventType());
-
-                // --- 5. Entity Parameter (ステータス) ---
-                if (object->param_.has_value()) {
-                    // パラメータを持っている場合、値を保存する
-                    auto& p = object->param_.value();
-                    objData["param"]["hp"] = p.hp;
-                    objData["param"]["maxHp"] = p.maxHp;
-                    objData["param"]["speed"] = p.speed;
-                    objData["param"]["gravity"] = p.gravity;
-                    objData["param"]["jumpPower"] = p.jumpPower;
-                    objData["param"]["maxFallSpeed"] = p.maxFallSpeed;
-                } else {
-                    // パラメータを持っていないなら、JSONに古いゴミが残らないように消しておく
-                    if (objData.contains("param")) {
-                        objData.erase("param");
-                    }
-                }
-
- 
-
-                found = true;
-                break;
+    // 1. 既存のJSONファイルを読み込む
+    if (file.is_open()) {
+        try {
+            if (file.peek() != std::ifstream::traits_type::eof()) {
+                sceneData = json::parse(file);
+            } else {
+                sceneData["objects"] = json::array();
             }
         }
+        catch (...) {
+            // パースエラー時は空で初期化
+            sceneData["objects"] = json::array();
+        }
+        file.close();
+    } else {
+        // ファイルがない場合は新規作成として扱う
+        sceneData["objects"] = json::array();
     }
 
+    // =========================================================
+    // 2. 保存するデータを構築 (オブジェクトの現在の状態)
+    // =========================================================
+    json currentData;
 
+    // --- 基本情報 ---
+    currentData["name"] = object->GetName();
 
-    // ファイル書き込み
+    // タイプ判定 (InvisibleBox か Model か)
+    if (object->GetClassName() == "InvisibleBox") {
+        currentData["type"] = "InvisibleBox";
+        // モデル名は不要なので保存しない (あるいは空文字)
+    } else {
+        currentData["type"] = "Model";
+        currentData["modelName"] = object->GetModelName();
+    }
+
+    //  親子関係
+    if (object->GetParent()) {
+        currentData["parentName"] = object->GetParent()->GetName();
+    } else {
+        currentData["parentName"] = "";
+    }
+
+    // --- Transform ---
+    Object3d::Transform* tf = object->GetTransform();
+    currentData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
+    currentData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
+    currentData["scale"] = { tf->scale.x, tf->scale.y, tf->scale.z };
+
+    // --- Collider Config ---
+    const Object3d::ColliderConfig& config = object->GetColliderConfig();
+    currentData["collider"]["type"] = static_cast<int>(config.type);
+    currentData["collider"]["center"] = { config.center.x, config.center.y, config.center.z };
+    currentData["collider"]["size"] = { config.size.x, config.size.y, config.size.z };
+
+    // --- Attributes ---
+    currentData["collisionAttribute"] = object->GetCollisionAttribute();
+    currentData["collisionMask"] = object->GetCollisionMask();
+
+    // --- Event ID ---
+    currentData["eventID"] = static_cast<int>(object->GetEventType());
+
+    // --- Entity Parameters (Stats) ---
+    if (object->param_.has_value()) {
+        auto& p = object->param_.value();
+        currentData["param"]["hp"] = p.hp;
+        currentData["param"]["maxHp"] = p.maxHp;
+        currentData["param"]["speed"] = p.speed;
+        currentData["param"]["gravity"] = p.gravity;
+        currentData["param"]["jumpPower"] = p.jumpPower;
+        currentData["param"]["maxFallSpeed"] = p.maxFallSpeed;
+    }
+
+    // =========================================================
+    // 3. JSON配列内を探して更新 or 追加
+    // =========================================================
+    bool found = false;
+
+    // "objects" 配列がない場合は作成
+    if (!sceneData.contains("objects") || !sceneData["objects"].is_array()) {
+        sceneData["objects"] = json::array();
+    }
+
+    for (auto& objData : sceneData["objects"]) {
+        // 名前で一致するオブジェクトを探す
+        if (objData.contains("name") && objData["name"] == object->GetName()) {
+            // 見つかったらデータを丸ごと上書き更新
+            objData = currentData;
+            found = true;
+            break;
+        }
+    }
+
+    // ★ 見つからなかった場合（新規スポーンなど）は、配列の末尾に追加
+    if (!found) {
+        sceneData["objects"].push_back(currentData);
+        DebugConsole::GetInstance()->AddLog("Added new object to JSON: " + object->GetName());
+    } else {
+        DebugConsole::GetInstance()->AddLog("Updated object in JSON: " + object->GetName());
+    }
+
+    // =========================================================
+    // 4. ファイル書き込み
+    // =========================================================
     std::ofstream outFile(filename);
     if (outFile.is_open()) {
-        outFile << sceneData.dump(4); // インデント4で保存
+        outFile << sceneData.dump(4); // インデント4で整形保存
         outFile.close();
+    } else {
+        DebugConsole::GetInstance()->AddLog("Failed to write JSON file: " + filename);
     }
 }
 
@@ -843,6 +1043,8 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
         ImGui::CheckboxFlags("Enemy", &flags, 1 << 1);
         ImGui::CheckboxFlags("Ground", &flags, 1 << 2);
         ImGui::CheckboxFlags("Bullet", &flags, 1 << 3);
+        ImGui::CheckboxFlags("Trigger", &flags, 1 << 4);
+
 
         // 変更を書き戻す
         *attribute = static_cast<uint32_t>(flags);
@@ -853,63 +1055,3 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
 
 
 
-void DebugEditor::DrawHierarchyNode(Object3d* obj) {
-    // ノードの設定：デフォルトで開く、選択時は色を変える
-    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_DefaultOpen;
-
-    // 子供がいないなら「葉っぱ（Leaf）」として扱う
-    if (obj->GetChildren().empty()) {
-        node_flags |= ImGuiTreeNodeFlags_Leaf;
-    }
-
-    // 選択中のオブジェクトならハイライト
-    if (obj == selectedObject_) {
-        node_flags |= ImGuiTreeNodeFlags_Selected;
-    }
-
-    // ノードを描画 (IDを一意にするためにポインタを使う)
-    // 名前が空だとImGuiが困るので対策
-    std::string name = obj->GetName().empty() ? "No Name" : obj->GetName();
-
-    // ★ここがツリー表示の本体
-    bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
-
-    // クリックしたら選択状態にする
-    if (ImGui::IsItemClicked()) {
-        selectedObject_ = obj;
-    }
-
-    // ---------------------------------------------------------
-    // ドラッグ＆ドロップ (Drag) - 子供にするために持ち上げる
-    // ---------------------------------------------------------
-    if (ImGui::BeginDragDropSource()) {
-        ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(Object3d*));
-        ImGui::Text("Move %s", name.c_str());
-        ImGui::EndDragDropSource();
-    }
-
-    // ---------------------------------------------------------
-    //  ドラッグ＆ドロップ (Drop) - 誰かを受け入れて子供にする
-    // ---------------------------------------------------------
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
-            Object3d* sourceObj = *(Object3d**)payload->Data;
-
-            // 自分自身や、自分の親を子供にしないようチェック
-            if (sourceObj != obj && sourceObj->GetParent() != obj) {
-                sourceObj->SetParent(obj);
-            }
-        }
-        ImGui::EndDragDropTarget();
-    }
-
-    // ---------------------------------------------------------
-    // 子供がいれば再帰的に描画 (自分の中で自分を呼ぶ！)
-    // ---------------------------------------------------------
-    if (node_open) {
-        for (auto* child : obj->GetChildren()) {
-            DrawHierarchyNode(child);
-        }
-        ImGui::TreePop(); // 階層を戻る
-    }
-}

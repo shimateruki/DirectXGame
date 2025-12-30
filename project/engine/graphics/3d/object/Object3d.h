@@ -205,6 +205,15 @@ public:
     void SetEventType(EventType type) { eventType_ = type; }
     EventType GetEventType() const { return eventType_; }
     const std::vector<Object3d*>& GetChildren() const { return children_; }
+
+    // クラス名（種類）のセット・ゲット
+    void SetClassName(const std::string& name) { className_ = name; }
+    std::string GetClassName() const { return className_; }
+
+    // 可視フラグのセット・ゲット
+    void SetIsVisible(bool visible) { isVisible_ = visible; }
+    bool GetIsVisible() const { return isVisible_; }
+
 protected:
     // メンバ変数
 
@@ -240,6 +249,7 @@ protected:
     bool isStatic_ = false;
 
     std::vector<Object3d*> children_;
-
+    std::string className_ = "Model";
+    bool isVisible_ = true;
 
 };

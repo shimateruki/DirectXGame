@@ -33,7 +33,7 @@ void Game::Initialize() {
     DebugConsole::GetInstance()->Initialize();
 
 #endif
- 
+    CameraEditor::GetInstance()->Initialize();
 }
 
 void Game::Finalize() {
@@ -165,7 +165,7 @@ void Game::Update() {
             if (ImGui::Button("Slow (0.2x)")) { timeScale_ = 0.2f; }
         }
     }
-
+    CameraEditor::GetInstance()->DrawImGui();
    
     ImGui::End();
  

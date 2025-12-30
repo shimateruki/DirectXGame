@@ -8,6 +8,7 @@ enum CollisionAttribute : uint32_t {
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
     kAttributePlayerBullet = 1 << 3,
+	kTrigger = 1 << 4, // トリガー (当たり判定はあるが押し出し処理はしない)
 };
 
 // 地形属性をまとめたマスク 

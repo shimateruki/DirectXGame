@@ -12,6 +12,7 @@
 
 #include"LightEditor.h"
 #include <GhostRecorder.h>
+#include "CameraEditor.h"
 
 
 class Game : public Framework {

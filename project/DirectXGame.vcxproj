@@ -154,6 +154,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CameraEditor.cpp" />
     <ClCompile Include="engine\utility\math\Easing.cpp" />
     <ClCompile Include="GameRule.cpp" />
     <ClCompile Include="game\actor\Bullet.cpp" />
@@ -282,6 +283,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CameraEditor.h" />
     <ClInclude Include="engine\utility\math\Easing.h" />
     <ClInclude Include="externals\assimp\include\assimp\aabb.h" />
     <ClInclude Include="externals\assimp\include\assimp\ai_assert.h" />

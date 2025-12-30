@@ -127,11 +127,10 @@ void Object3d::UpdateWorldMatrix() {
 
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (model_ == nullptr) {
+
+    if (!isVisible_) {
         return;
     }
-
-
     common_->SetPipelineState(blendMode_);
 
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
