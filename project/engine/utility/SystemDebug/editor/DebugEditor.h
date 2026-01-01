@@ -46,12 +46,15 @@ public:
     void DuplicateSelected();     // 複製 (Ctrl + C)
     void DeleteSelected();        // 削除 (Delete)
 
+
+
 private:
     void InitializePrimitiveDrawing();
     // instanceIndex を引数に追加
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 
-    
+    void DrawHierarchyPanel(); // 左側：リストなど
+    void DrawInspectorPanel(); // 右側：詳細設定
 private:
     SceneManager* sceneManager_ = nullptr;
     Object3d* selectedObject_ = nullptr;

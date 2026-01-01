@@ -112,6 +112,47 @@
                 1.0,
                 1.0
             ]
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    0.800000011920929,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "eventID": 0,
+            "isAnimLoop": true,
+            "modelName": "sample",
+            "myEventID": -1,
+            "name": "sample_1",
+            "parentName": "",
+            "position": [
+                -4.236293315887451,
+                2.6758081912994385,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
         }
     ]
 }

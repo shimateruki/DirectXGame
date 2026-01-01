@@ -804,24 +804,11 @@ void DebugEditor::DrawImGui() {
         }
     }
 
-    // 親解除用エリア
-    ImGui::Dummy(ImVec2(0, 50));
-    ImGui::TextDisabled("(Drop here to unparent)");
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
-            Object3d* sourceObj = *(Object3d**)payload->Data;
-            sourceObj->SetParent(nullptr);
-            DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
-        }
-        ImGui::EndDragDropTarget();
-    }
-    ImGui::End(); // End Hierarchy
-
 
     // ==========================================================================================
-    // Spawner Window (生成メニュー)
-    // ==========================================================================================
-    ImGui::Begin("Spawner");
+   // Spawner Window (生成メニュー)
+   // ==========================================================================================
+  
 
     // ★ Invisible Box 生成ボタン
     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.8f, 0.6f, 0.6f));
@@ -854,43 +841,21 @@ void DebugEditor::DrawImGui() {
     }
     ImGui::PopStyleColor(3);
 
-    ImGui::Separator();
-    ImGui::Text("Standard Models:");
-
-    if (ImGui::Button("Refresh Model List")) {
-        modelNames_ = ModelManager::GetInstance()->GetLoadedModelNames();
-        selectedModelIndex_ = 0;
+    // 親解除用エリア
+    ImGui::Dummy(ImVec2(0, 50));
+    ImGui::TextDisabled("(Drop here to unparent)");
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
+            Object3d* sourceObj = *(Object3d**)payload->Data;
+            sourceObj->SetParent(nullptr);
+            DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
+        }
+        ImGui::EndDragDropTarget();
     }
 
-    if (!modelNames_.empty()) {
-        std::vector<const char*> namesCStr;
-        for (const std::string& name : modelNames_) {
-            namesCStr.push_back(name.c_str());
-        }
-        ImGui::ListBox("##ModelList", &selectedModelIndex_, namesCStr.data(), (int)namesCStr.size(), 5);
 
-        if (ImGui::Button("Spawn Selected Model", ImVec2(-1, 0))) {
-            if (selectedModelIndex_ >= 0 && selectedModelIndex_ < modelNames_.size()) {
-                std::string modelName = modelNames_[selectedModelIndex_];
-                Object3dCommon* common = currentScene->GetObject3dCommon();
-                if (common) {
-                    auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common);
-                    newObj->SetModel(modelName);
-                    newObj->SetClassName("Model");
 
-                    static int spawnCount = 0;
-                    newObj->SetName(modelName + "_" + std::to_string(spawnCount++));
-
-                    currentScene->AddObject(std::move(newObj));
-                    DebugConsole::GetInstance()->AddLog("Spawned: " + newObj->GetName());
-                }
-            }
-        }
-    } else {
-        ImGui::Text("No models loaded.");
-    }
-    ImGui::End();
+    ImGui::End(); // End Hierarchy
 
 #endif
 }
