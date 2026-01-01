@@ -4,6 +4,7 @@
 #include "Math.h"
 #include <algorithm> // std::min, std::max
 #include <cmath>     // std::abs
+#include "GhostRecorder.h"
 
 //  Math のインスタンスを作成
 static Math math;
@@ -97,15 +98,29 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->collisionAttribute_ = this->collisionAttribute_;
     newObj->collisionMask_ = this->collisionMask_;
 
-
-
     // 1. イベントIDとステータス(param_)をコピー
     newObj->eventType_ = this->eventType_;
-    newObj->param_ = this->param_; 
+    newObj->param_ = this->param_;
 
     // 2. Character 独自のメンバをコピー
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
+
+    // ▼▼▼ 追加：アニメーション設定のコピーと再生 ▼▼▼
+    newObj->animName_ = this->animName_;
+    newObj->isAnimLoop_ = this->isAnimLoop_;
+    newObj->isAnimRelative_ = this->isAnimRelative_;
+
+    // ：レコーダーを初期化して、設定があれば即再生！
+    newObj->InitializeRecorder(nullptr);
+
+    if (!newObj->animName_.empty()) {
+        newObj->recorder_->Play(
+            newObj->animName_,
+            newObj->isAnimLoop_,
+            newObj->isAnimRelative_
+        );
+    }
 
 
     return newObj;

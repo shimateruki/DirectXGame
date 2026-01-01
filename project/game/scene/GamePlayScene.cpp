@@ -57,7 +57,7 @@ void GamePlayScene::Initialize() {
 	particleSystem_ = std::make_unique<ParticleSystem>();
 	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
 	gameRule_ = std::make_unique<GameRule>();
-	gameRule_->Initialize();
+	gameRule_->Initialize(this);
 
 	// --- オブジェクトの生成 ---
 
@@ -710,7 +710,6 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 
 					targetObject->SetColliderConfig(config);
-	
 				}
 
 				// 衝突属性とマスク
@@ -728,7 +727,12 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					int id = objData["eventID"].get<int>();
 					targetObject->SetEventType(static_cast<EventType>(id));
 				}
-
+				if (objData.contains("targetID") && objData["targetID"].is_number_integer()) {
+					targetObject->SetTargetID(objData["targetID"].get<int>());
+				}
+				if (objData.contains("myEventID") && objData["myEventID"].is_number_integer()) {
+					targetObject->SetEventID(objData["myEventID"].get<int>());
+				}
 				if (objData.contains("param") && objData["param"].is_object()) {
 					targetObject->param_.emplace(); // 有効化
 					json paramData = objData["param"];
@@ -743,24 +747,47 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				}
 
 				// -------------------------------------------------
-				// 7. 親子関係の保留登録
+				// 7. アニメーション設定の読み込みと再生
+				// -------------------------------------------------
+				if (objData.contains("animName") && objData["animName"].is_string()) {
+					targetObject->animName_ = objData["animName"].get<std::string>();
+				}
+				if (objData.contains("isAnimLoop") && objData["isAnimLoop"].is_boolean()) {
+					targetObject->isAnimLoop_ = objData["isAnimLoop"].get<bool>();
+				}
+				if (objData.contains("isAnimRelative") && objData["isAnimRelative"].is_boolean()) {
+					targetObject->isAnimRelative_ = objData["isAnimRelative"].get<bool>();
+				}
+
+				// レコーダーの準備と再生開始
+				targetObject->InitializeRecorder(sceneManager_);
+
+				// アニメ名が設定されていれば再生
+				if (!targetObject->animName_.empty()) {
+					targetObject->recorder_->Play(
+						targetObject->animName_,
+						targetObject->isAnimLoop_,
+						targetObject->isAnimRelative_
+					);
+				}
+
+				// -------------------------------------------------
+				// 8. 親子関係の保留登録
 				// -------------------------------------------------
 				if (objData.contains("parentName") && objData["parentName"].is_string()) {
 					std::string pName = objData["parentName"].get<std::string>();
 					if (!pName.empty()) {
-						// 後でまとめて解決するためにリストに入れる
 						parentPendingList[targetObject] = pName;
 					}
 				}
 
-			} // end loop
+			} 
 		}
 
 		// -------------------------------------------------
-		// 8. 親子関係の解決 (全オブジェクトロード後)
+		// 9. 親子関係の解決 (全オブジェクトロード後)
 		// -------------------------------------------------
 		for (auto const& [childObj, parentName] : parentPendingList) {
-			// 親の名前を持つオブジェクトをリストから探す
 			Object3d* parentObj = nullptr;
 			for (auto& obj : objects_) {
 				if (obj && obj->GetName() == parentName) {
@@ -768,8 +795,6 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					break;
 				}
 			}
-
-			// 親が見つかったらセットする
 			if (parentObj) {
 				childObj->SetParent(parentObj);
 			}
@@ -784,6 +809,9 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 	file.close();
 }
+
+
+
 
 void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 	using json = nlohmann::json;

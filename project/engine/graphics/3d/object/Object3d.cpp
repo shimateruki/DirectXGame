@@ -4,7 +4,17 @@
 #include "ModelManager.h"
 #include "SRVManager.h"
 #include "CameraManager.h"
+#include "SceneManager.h"
+#include "GhostRecorder.h"
 #include <cassert>
+
+
+Object3d::~Object3d() {
+    if (recorder_) {
+        delete recorder_;
+        recorder_ = nullptr;
+    }
+}
 
 void Object3d::Initialize(Object3dCommon* common) {
     assert(common);
@@ -26,6 +36,8 @@ void Object3d::Initialize(Object3dCommon* common) {
     cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
+
+    InitializeRecorder(nullptr);
 
 
 }
@@ -80,6 +92,9 @@ void Object3d::SetModel(const std::string& modelName) {
 void Object3d::Update(float deltaTime) {
     if (model_) {
         model_->Update();
+    }
+    if (recorder_) {
+        recorder_->Update();
     }
 }
 
@@ -235,28 +250,54 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
 
 
 
-
 std::unique_ptr<Object3d> Object3d::Clone() const {
     auto newObj = std::make_unique<Object3d>();
 
     assert(common_ != nullptr);
     newObj->Initialize(common_);
 
-    // モデル設定のコピー
+    // --- 基本情報のコピー ---
     if (!modelName_.empty()) {
         newObj->SetModel(this->modelName_);
     }
+    newObj->name_ = this->name_;
 
-    // Transform 情報のコピー
+    // Transform
     newObj->transform_ = this->transform_;
 
-    // 名前のコピー
-    newObj->name_ = this->name_;
+    // --- コライダー & 物理 ---
     newObj->SetColliderConfig(this->colliderConfig_);
-
-    // 属性とマスクのコピー 
     newObj->collisionAttribute_ = this->collisionAttribute_;
     newObj->collisionMask_ = this->collisionMask_;
+
+    // 1. クラス名 (InvisibleBox か Model かの識別に必須)
+    newObj->className_ = this->className_;
+
+    // 2. 可視性 (透明ブロックの設定を引き継ぐために必須)
+    newObj->isVisible_ = this->isVisible_;
+
+    // 3. イベントタイプ (ダメージ床などの設定)
+    newObj->eventType_ = this->eventType_;
+
+    // 4. パラメータ (HP, Speedなどのゲームデータ)
+    newObj->param_ = this->param_;
+
+    // アニメーション設定のコピー
+    newObj->animName_ = this->animName_;
+    newObj->isAnimLoop_ = this->isAnimLoop_;
+    newObj->isAnimRelative_ = this->isAnimRelative_;
+
+    // 複製したオブジェクトもレコーダーを初期化して再生開始！
+    newObj->InitializeRecorder(nullptr); 
+
+    // 設定が入っていれば、即座に再生を開始させる
+    if (!newObj->animName_.empty()) {
+        newObj->recorder_->Play(
+            newObj->animName_,
+            newObj->isAnimLoop_,
+            newObj->isAnimRelative_
+        );
+    }
 
     return newObj;
 }
@@ -271,4 +312,19 @@ void Object3d::SetIntensity(float intensity) {
         directionalLightData_->intensity = intensity;
     }
 }
+void Object3d::InitializeRecorder(SceneManager* sceneManager) {
+    // すでに持っていたら作り直さない（安全策）
+    if (recorder_) {
+        delete recorder_;
+    }
+
+    // 1. 実体を作る (new)
+    recorder_ = new GhostRecorder();
+
+    // 2. 初期化する
+    recorder_->Initialize(sceneManager);
+
+    recorder_->SetTarget(this);
+}
+
 

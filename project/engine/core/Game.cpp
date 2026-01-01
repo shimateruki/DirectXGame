@@ -107,7 +107,7 @@ void Game::Update() {
 
     ImGui::Separator(); // 区切り線
 
-    // ★ 2. メニューバーに項目を追加
+    //  2. メニューバーに項目を追加
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Time Controller", NULL, &showTimeController_);
@@ -117,6 +117,7 @@ void Game::Update() {
             ImGui::MenuItem("Sprite Inspector", NULL, &showSpriteInspector_);
             ImGui::MenuItem("Particle Editor", NULL, &showParticleEditor_);
             ImGui::MenuItem("Ghost Recorder", NULL, &showGhostRecorder_);
+            ImGui::MenuItem("CameraEdior", NULL, &showCameraEditor);
             ImGui::MenuItem("Debug Console", NULL, &showDebugConsole_);
             ImGui::EndMenu();
         }
@@ -156,6 +157,11 @@ void Game::Update() {
             lightEditor_->DrawImGui();
         }
     }
+    if (showCameraEditor) {
+        if (ImGui::CollapsingHeader("CameraEditor")) {
+            CameraEditor::GetInstance()->DrawImGui();
+        }
+    }
     if (showTimeController_) {
         if (ImGui::CollapsingHeader("Deltatimer")) {
             // timeScale_ を 0.0f ～ 2.0f の範囲で操作
@@ -165,7 +171,7 @@ void Game::Update() {
             if (ImGui::Button("Slow (0.2x)")) { timeScale_ = 0.2f; }
         }
     }
-    CameraEditor::GetInstance()->DrawImGui();
+
    
     ImGui::End();
  

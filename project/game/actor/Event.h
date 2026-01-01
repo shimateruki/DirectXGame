@@ -18,4 +18,5 @@ struct BulletHitEvent {
 enum class EventType {
     None = 0,       // 何もなし
     Damage,         // 触れるとダメージ
+    Warp,
 };

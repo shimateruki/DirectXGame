@@ -10,6 +10,9 @@
 #include"Event.h"
 #include <vector>
 
+class GhostRecorder;
+class SceneManager;
+
 class Object3d {
 public:
     // ========================================================================
@@ -73,6 +76,7 @@ public:
 
 
 public:
+    virtual ~Object3d();
     // ========================================================================
     // ライフサイクル (初期化・更新・描画)
     // ========================================================================
@@ -214,8 +218,33 @@ public:
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
 
+    // 受信ID (自分自身のID) の設定・取得
+    void SetEventID(int id) { eventID_ = id; }
+    int GetEventID() const { return eventID_; }
+
+    // 送信ID (ターゲットのID) の設定・取得
+    void SetTargetID(int id) { targetID_ = id; }
+    int GetTargetID() const { return targetID_; }
+
+    // ギミック発動時に呼ばれる関数
+    virtual void OnTrigger() {
+        isVisible_ = false;
+    }
+    // 初期化時にレコーダーも準備する
+    void InitializeRecorder(SceneManager* sceneManager);
+
+    // 更新処理でレコーダーも回す
+    void UpdateRecorder();
+
+    // アニメーション関連
+    std::string animName_ = "";      // 再生するファイル名 (例: "door_open")
+    bool isAnimLoop_ = true;        // ループするか？
+    bool isAnimRelative_ = false;     // 相対座標か？ 
+    GhostRecorder* recorder_ = nullptr;
+
 protected:
     // メンバ変数
+
 
     // 基盤
     Object3dCommon* common_ = nullptr;
@@ -251,5 +280,6 @@ protected:
     std::vector<Object3d*> children_;
     std::string className_ = "Model";
     bool isVisible_ = true;
-
+    int eventID_ = -1;  // 受信ID（私は誰か）
+    int targetID_ = -1; // 送信ID（誰を動かすか）
 };
