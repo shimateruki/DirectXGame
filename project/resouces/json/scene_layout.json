@@ -79,6 +79,7 @@
             ]
         },
         {
+            "animName": "",
             "collider": {
                 "center": [
                     0.0,
@@ -86,17 +87,20 @@
                     0.0
                 ],
                 "size": [
-                    20.0,
+                    8.600000381469727,
                     1.0,
-                    20.0
+                    9.949999809265137
                 ],
                 "type": 2
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967291,
             "eventID": 0,
+            "isAnimLoop": true,
             "modelName": "terrain",
+            "myEventID": -1,
             "name": "terrain",
+            "parentName": "",
             "position": [
                 2.0,
                 0.0,
@@ -111,7 +115,9 @@
                 1.0,
                 1.0,
                 1.0
-            ]
+            ],
+            "targetID": -1,
+            "type": "Model"
         },
         {
             "animName": "",

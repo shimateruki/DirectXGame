@@ -769,40 +769,88 @@ void DebugEditor::DrawImGui() {
     // ==========================================================================================
     // Hierarchy Window (階層構造)
     // ==========================================================================================
-    ImGui::Begin("Hierarchy");
+        ImGui::Begin("Hierarchy");
 
-    // スポーン用ドロップエリア
-    ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 30));
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-            const char* modelName = (const char*)payload->Data;
-            ModelManager::GetInstance()->LoadModel(modelName);
+        // 1. 検索バー
+        ImGui::Text("Search:");
+        ImGui::SameLine();
+        ImGui::InputText("##Search", searchFilter_, sizeof(searchFilter_));
 
-            Object3dCommon* common = currentScene->GetObject3dCommon();
-            if (common) {
-                auto newObj = std::make_unique<Object3d>();
-                newObj->Initialize(common);
-                newObj->SetModel(modelName);
-                newObj->SetClassName("Model");
+        ImGui::Separator();
 
-                static int spawnCount = 0;
-                newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
-                currentScene->AddObject(std::move(newObj));
-                DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
+        // 検索文字を小文字に変換（大文字・小文字を区別しないため）
+        std::string filterStr = searchFilter_;
+        std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
+
+
+        if (!filterStr.empty()) {
+            // =========================================================
+            // A. 検索モード (文字入力がある時だけ表示)
+            // =========================================================
+            ImGui::TextColored(ImVec4(0, 1, 1, 1), "Search Results:");
+
+            auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+            for (auto& obj : objects) {
+                // 名前チェック
+                std::string name = obj->GetName();
+                if (name.empty()) continue; // 名前なしはスキップ
+
+                // 検索ヒット判定 (小文字にして比較)
+                std::string nameLower = name;
+                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+
+                // ヒットした場合のみ表示
+                if (nameLower.find(filterStr) != std::string::npos) {
+                    // 検索結果はフラットなリストとして表示 (Selectableを使用)
+                    bool isSelected = (selectedObject_ == obj.get());
+
+                    // ユニークなIDが必要なのでポインタをID代わりにプッシュ
+                    ImGui::PushID(obj.get());
+                    if (ImGui::Selectable(name.c_str(), isSelected)) {
+                        selectedObject_ = obj.get();
+                    }
+                    ImGui::PopID();
+                }
+            }
+        } else {
+            // =========================================================
+            // B. 通常モード (検索していない時はツリー表示)
+            // =========================================================
+
+            // スポーン用ドロップエリア (通常時のみ表示)
+            ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 30));
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                    const char* modelName = (const char*)payload->Data;
+                    ModelManager::GetInstance()->LoadModel(modelName);
+
+                    Object3dCommon* common = currentScene->GetObject3dCommon();
+                    if (common) {
+                        auto newObj = std::make_unique<Object3d>();
+                        newObj->Initialize(common);
+                        newObj->SetModel(modelName);
+                        newObj->SetClassName("Model");
+
+                        static int spawnCount = 0;
+                        newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
+                        currentScene->AddObject(std::move(newObj));
+                        DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::Separator();
+
+            // ツリー表示 (再帰処理)
+            auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+            for (auto& obj : objects) {
+                // 親がいない(ルート)オブジェクトだけを描画開始
+                if (obj->GetParent() == nullptr) {
+                    DrawHierarchyNode(obj.get());
+                }
             }
         }
-        ImGui::EndDragDropTarget();
-    }
-
-    ImGui::Separator();
-
-    // ツリー表示 (再帰処理)
-    std::vector<std::unique_ptr<Object3d>>& objects = currentScene->GetObjects();
-    for (auto& obj : objects) {
-        if (obj->GetParent() == nullptr) {
-            DrawHierarchyNode(obj.get());
-        }
-    }
 
 
     // ==========================================================================================

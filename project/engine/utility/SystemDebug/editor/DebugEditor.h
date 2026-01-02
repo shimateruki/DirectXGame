@@ -6,7 +6,7 @@
 #include "engine/utility/math/Math.h"
 #include <string> 
 #include"BaseScene.h"
-
+#include <deque>
 
 class Object3d;
 class DirectXCommon;
@@ -76,20 +76,33 @@ private:
     D3D12_VERTEX_BUFFER_VIEW cubeVertexBufferView_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> cubeIndexBuffer_;
     D3D12_INDEX_BUFFER_VIEW cubeIndexBufferView_{};
-
     Microsoft::WRL::ComPtr<ID3D12Resource> primitiveWVPBuffer_;
-    // ★ 修正: アライメント済み構造体のポインタに変更
     AlignedMatrix4x4* primitiveWVPData_ = nullptr;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> primitiveColorBuffer_;
-    // ★ 修正: アライメント済み構造体のポインタに変更
     AlignedVector4* primitiveColorData_ = nullptr;
-
     // モデル名一覧
     std::vector<std::string> modelNames_;
-
     // ImGui のリストボックスで選択されているインデックス
     int selectedModelIndex_ = 0;
     char currentSceneFilename_[128] = "scene_layout.json";
     std::vector<std::string> sceneFiles_;
+
+    char searchFilter_[128] = ""; // 検索文字用バッファ
+
+    //  Undoシステム用構造体 
+    struct TransformCommand {
+        Object3d* target;        // 操作したオブジェクト
+        Object3d::Transform oldTf; // 変更前の状態
+        Object3d::Transform newTf; // 変更後の状態
+    };
+
+    // 履歴スタック (最大50件くらい保存)
+    std::deque<TransformCommand> undoStack_;
+
+    // 編集中の一時保存用 (ドラッグ開始時の状態)
+    Object3d::Transform tempTransformStart_;
+    bool isDraggingTransform_ = false;
+
+    // Undo実行関数
+    void PerformUndo();
 };
