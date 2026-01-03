@@ -1111,44 +1111,75 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
 void DebugEditor::DrawProjectWindow() {
     ImGui::Begin("Project (Assets)");
 
+    // ディレクトリパス 
     std::string baseDirectory = "resouces/3DModel";
 
     if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
-        ImGui::Text("Drag model to Object List!"); // 誘導メッセージ変更
+        ImGui::Text("Drag model to Object List!");
         ImGui::Separator();
 
+        // ウィンドウの右端座標を取得（折り返し判定用）
+        float windowVisibleX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
+
         for (const auto& entry : fs::directory_iterator(baseDirectory)) {
-            if (entry.is_directory()) {
-                std::string folderName = entry.path().filename().string();
-                std::string foundObjName = "";
-                for (const auto& subEntry : fs::directory_iterator(entry.path())) {
-                    if (subEntry.path().extension() == ".obj") {
-                        foundObjName = subEntry.path().stem().string();
-                        break;
+            std::string displayModelName = ""; // ボタンに表示する名前
+            std::string payloadName = "";      // ModelManagerに渡す名前
+
+            // ====================================================== =
+                // パターンA: フォルダの場合 
+                // =======================================================
+                if (entry.is_directory()) {
+                    std::string folderName = entry.path().filename().string();
+
+                    // フォルダの中にあるモデルファイルを探す
+                    for (const auto& subEntry : fs::directory_iterator(entry.path())) {
+                        std::string subExt = subEntry.path().extension().string();
+                        // 念のため小文字変換
+                        std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
+
+                        // 1. OBJの場合 
+                        if (subExt == ".obj") {
+                            displayModelName = folderName; 
+                            payloadName = folderName;    
+                            break; // 1つ見つけたら終了
+                        }
+                        // 2. glTF / GLB の場合 
+                        else if (subExt == ".gltf" || subExt == ".glb") {
+                            displayModelName = subEntry.path().filename().string();
+                            payloadName = subEntry.path().filename().string();      
+                            break; // 1つ見つけたら終了
+                        }
                     }
                 }
-                if (foundObjName.empty()) continue;
 
-                // IDプッシュ
-                ImGui::PushID(folderName.c_str());
+            // =======================================================
+            // モデルが見つかった場合のみボタンを描画
+            // =======================================================
+            if (!displayModelName.empty()) {
+                // ID重複防止
+                ImGui::PushID(displayModelName.c_str());
 
-                // ボタン表示
-                ImGui::Button(folderName.c_str(), ImVec2(100, 0));
+                // ボタン描画
+                ImGui::Button(displayModelName.c_str(), ImVec2(100, 0));
 
-                // --- ドラッグ処理  ---
+                // --- ドラッグ&ドロップ処理 ---
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-                    ImGui::SetDragDropPayload("MODEL_ASSET", foundObjName.c_str(), foundObjName.size() + 1);
-                    ImGui::Text("Spawn: %s", foundObjName.c_str());
+                    // ペイロードとして名前を渡す
+                    // フォルダ名なら "Player", ファイルなら "Enemy.glb" が渡される
+                    ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
+
+                    ImGui::Text("Spawn: %s", displayModelName.c_str());
                     ImGui::EndDragDropSource();
                 }
 
-                // IDポップ (ドラッグ処理の後に移動)
                 ImGui::PopID();
 
-                // レイアウト調整
-                float windowVisibleX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+                // --- レイアウト調整 (横並べ) ---
                 float lastButtonX = ImGui::GetItemRectMax().x;
-                float nextButtonX = lastButtonX + ImGui::GetStyle().ItemSpacing.x + 100;
+                float nextButtonX = lastButtonX + itemSpacing + 100.0f; // 次のボタンの右端予測
+
+                // 次のボタンがウィンドウ内に収まるなら改行しない (SameLine)
                 if (nextButtonX < windowVisibleX) {
                     ImGui::SameLine();
                 }

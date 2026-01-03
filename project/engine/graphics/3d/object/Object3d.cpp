@@ -149,13 +149,11 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
     common_->SetPipelineState(blendMode_);
 
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
-    if (model_) {
 
+    if (model_) {
         model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource);
     }
 }
-
 void Object3d::SetParent(Object3d* parent) {
     if (parent_) {
         std::vector<Object3d*>& kids = parent_->children_;

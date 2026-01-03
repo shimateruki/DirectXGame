@@ -44,6 +44,8 @@ void GamePlayScene::Initialize() {
 
 	ModelManager::GetInstance()->LoadModel("player");
 	ModelManager::GetInstance()->LoadModel("teapot");
+	ModelManager::GetInstance()->LoadModel("multiMaterial");
+	ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 	CameraManager::GetInstance()->Initialize();
@@ -630,7 +632,7 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 						// ポインタを確保してからリストに追加
 						targetObject = newObj.get();
-						objects_.push_back(std::move(newObj));
+						AddObject(std::move(newObj));
 					}
 				}
 
@@ -687,7 +689,7 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					transform->scale.y = objData["scale"][1].get<float>();
 					transform->scale.z = objData["scale"][2].get<float>();
 				}
-
+		
 				// -------------------------------------------------
 				// 5. コライダー情報の適用
 				// -------------------------------------------------
@@ -781,6 +783,7 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 				}
 
+
 			} 
 		}
 
@@ -799,6 +802,8 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				childObj->SetParent(parentObj);
 			}
 		}
+
+		
 
 	}
 	catch (json::parse_error& e) {

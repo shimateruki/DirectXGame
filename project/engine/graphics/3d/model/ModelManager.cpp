@@ -1,6 +1,7 @@
 #include "ModelManager.h"
 #include "ModelCommon.h"
 #include <cassert>
+#include <filesystem> 
 
 // 静的メンバ変数の実体定義
 ModelManager* ModelManager::instance = nullptr;
@@ -28,27 +29,42 @@ void ModelManager::Finalize() {
 }
 
 
+
 Model* ModelManager::LoadModel(const std::string& modelName) {
-    // 1. 過去に読み込み済みのモデルか検索
-    auto it = models_.find(modelName);
-    if (it != models_.end()) {
-        return it->second.get();
+    // 1. 既に読み込んでいるかチェック
+    if (models_.contains(modelName)) {
+        return models_[modelName].get();
     }
 
-    // 2. 新しく読み込む
-    const std::string filePath = kDefaultBaseDirectory + modelName + "/" + modelName + kDefaultModelExtension;
+    std::string directoryPath;
+    std::string fileName;
 
-    // ファイルパスからディレクトリとファイル名を分割
-    std::string directoryPath = kDefaultBaseDirectory + modelName;
-    std::string fileName = modelName + kDefaultModelExtension;
+    // 2. 拡張子があるかチェック (.obj, .gltf, .glb)
+    if (modelName.find(".obj") != std::string::npos ||
+        modelName.find(".gltf") != std::string::npos ||
+        modelName.find(".glb") != std::string::npos) {
 
+
+        // 拡張子抜きの名前（フォルダ名）を取得
+        std::string folderName = std::filesystem::path(modelName).stem().string();
+
+        // ディレクトリパス: "resources/" + "sampleBlock" + "/"
+        directoryPath = kDefaultBaseDirectory + folderName + "/";
+        fileName = modelName;
+    } else {
+        // Bパターン: 拡張子がない場合 (既存のOBJ互換用)
+        // 例: "Player" -> "resources/Player/Player.obj"
+        directoryPath = kDefaultBaseDirectory + modelName + "/";
+        fileName = modelName + ".obj";
+    }
+
+    // 3. 読み込み実行
     auto newModel = std::make_unique<Model>();
-    // 注意: Model::Initializeにはディレクトリパスとファイル名を渡す
     newModel->Initialize(modelCommon_.get(), directoryPath, fileName);
 
-    // 3. 読み込んだモデルを登録して返す
-    auto result = models_.emplace(modelName, std::move(newModel));
-    return result.first->second.get();
+    // 4. 登録
+    models_[modelName] = std::move(newModel);
+    return models_[modelName].get();
 }
 
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {
