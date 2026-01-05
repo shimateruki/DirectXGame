@@ -246,60 +246,6 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
     return collision;
 }
 
-
-
-std::unique_ptr<Object3d> Object3d::Clone() const {
-    auto newObj = std::make_unique<Object3d>();
-
-    assert(common_ != nullptr);
-    newObj->Initialize(common_);
-
-    // --- 基本情報のコピー ---
-    if (!modelName_.empty()) {
-        newObj->SetModel(this->modelName_);
-    }
-    newObj->name_ = this->name_;
-
-    // Transform
-    newObj->transform_ = this->transform_;
-
-    // --- コライダー & 物理 ---
-    newObj->SetColliderConfig(this->colliderConfig_);
-    newObj->collisionAttribute_ = this->collisionAttribute_;
-    newObj->collisionMask_ = this->collisionMask_;
-
-    // 1. クラス名 (InvisibleBox か Model かの識別に必須)
-    newObj->className_ = this->className_;
-
-    // 2. 可視性 (透明ブロックの設定を引き継ぐために必須)
-    newObj->isVisible_ = this->isVisible_;
-
-    // 3. イベントタイプ (ダメージ床などの設定)
-    newObj->eventType_ = this->eventType_;
-
-    // 4. パラメータ (HP, Speedなどのゲームデータ)
-    newObj->param_ = this->param_;
-
-    // アニメーション設定のコピー
-    newObj->animName_ = this->animName_;
-    newObj->isAnimLoop_ = this->isAnimLoop_;
-    newObj->isAnimRelative_ = this->isAnimRelative_;
-
-    // 複製したオブジェクトもレコーダーを初期化して再生開始！
-    newObj->InitializeRecorder(nullptr); 
-
-    // 設定が入っていれば、即座に再生を開始させる
-    if (!newObj->animName_.empty()) {
-        newObj->recorder_->Play(
-            newObj->animName_,
-            newObj->isAnimLoop_,
-            newObj->isAnimRelative_
-        );
-    }
-
-    return newObj;
-}
-
 void Object3d::SetColor(const Vector4& color) {
     if (directionalLightData_) {
         directionalLightData_->color = color;
@@ -326,3 +272,61 @@ void Object3d::InitializeRecorder(SceneManager* sceneManager) {
 }
 
 
+void Object3d::CopyFrom(const Object3d* other) {
+    if (!other) return;
+
+    // --- 基本情報のコピー ---
+    if (!other->modelName_.empty()) {
+        this->SetModel(other->modelName_);
+    }
+    this->name_ = other->name_;
+
+    // Transform
+    this->transform_ = other->transform_;
+
+    // --- コライダー & 物理 ---
+    this->SetColliderConfig(other->colliderConfig_);
+    this->collisionAttribute_ = other->collisionAttribute_;
+    this->collisionMask_ = other->collisionMask_;
+
+    // 1. クラス名
+    this->className_ = other->className_;
+
+    // 2. 可視性
+    this->isVisible_ = other->isVisible_;
+
+    // 3. イベントタイプ
+    this->eventType_ = other->eventType_;
+
+    // 4. パラメータ
+    this->param_ = other->param_;
+
+    // アニメーション設定のコピー
+    this->animName_ = other->animName_;
+    this->isAnimLoop_ = other->isAnimLoop_;
+    this->isAnimRelative_ = other->isAnimRelative_;
+
+    // レコーダー初期化
+    this->InitializeRecorder(nullptr);
+
+    // 設定が入っていれば、即座に再生を開始させる
+    if (!this->animName_.empty() && this->recorder_) {
+        this->recorder_->Play(
+            this->animName_,
+            this->isAnimLoop_,
+            this->isAnimRelative_
+        );
+    }
+}
+
+// Cloneはシンプルに
+std::unique_ptr<Object3d> Object3d::Clone() const {
+    auto newObj = std::make_unique<Object3d>();
+
+    // 初期化
+    assert(common_ != nullptr);
+    newObj->Initialize(common_);
+    // 中身をコピー 
+    newObj->CopyFrom(this);
+    return newObj;
+}

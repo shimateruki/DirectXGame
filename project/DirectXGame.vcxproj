@@ -154,9 +154,12 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CameraEditor.cpp" />
+    <ClCompile Include="BaseEnemy.cpp" />
+    <ClCompile Include="EnemyFactory.cpp" />
+    <ClCompile Include="EnemySlime.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\CameraEditor.cpp" />
     <ClCompile Include="engine\utility\math\Easing.cpp" />
-    <ClCompile Include="GameRule.cpp" />
+    <ClCompile Include="game\system\GameRule.cpp" />
     <ClCompile Include="game\actor\Bullet.cpp" />
     <ClCompile Include="game\system\BulletManager.cpp" />
     <ClCompile Include="game\actor\Character.cpp" />
@@ -229,9 +232,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="game\scene\TitleScene.cpp" />
     <ClCompile Include="game\component\MoveStrategy2D.cpp" />
     <ClCompile Include="game\component\MoveStrategy3D.cpp" />
-    <ClCompile Include="GhostRecorder.cpp" />
-    <ClCompile Include="LevelEditor.cpp" />
-    <ClCompile Include="LightEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\GhostRecorder.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\LightEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
@@ -283,7 +285,10 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CameraEditor.h" />
+    <ClInclude Include="BaseEnemy.h" />
+    <ClInclude Include="EnemyFactory.h" />
+    <ClInclude Include="EnemySlime.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\CameraEditor.h" />
     <ClInclude Include="engine\utility\math\Easing.h" />
     <ClInclude Include="externals\assimp\include\assimp\aabb.h" />
     <ClInclude Include="externals\assimp\include\assimp\ai_assert.h" />
@@ -368,7 +373,7 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\assimp\include\assimp\XmlParser.h" />
     <ClInclude Include="externals\assimp\include\assimp\XMLTools.h" />
     <ClInclude Include="externals\assimp\include\assimp\ZipArchiveIOSystem.h" />
-    <ClInclude Include="GameRule.h" />
+    <ClInclude Include="game\system\GameRule.h" />
     <ClInclude Include="game\actor\Bullet.h" />
     <ClInclude Include="game\system\BulletManager.h" />
     <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />
@@ -426,9 +431,8 @@ copy "$(windowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="game\component\IMoveStrategy.h" />
     <ClInclude Include="game\component\MoveStrategy2D.h" />
     <ClInclude Include="game\component\MoveStrategy3D.h" />
-    <ClInclude Include="GhostRecorder.h" />
-    <ClInclude Include="LevelEditor.h" />
-    <ClInclude Include="LightEditor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\GhostRecorder.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\LightEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

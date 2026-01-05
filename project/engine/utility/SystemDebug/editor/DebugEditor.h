@@ -45,6 +45,8 @@ public:
     void SaveSingleObject();      // 単体保存 (Ctrl + Shift + S)
     void DuplicateSelected();     // 複製 (Ctrl + C)
     void DeleteSelected();        // 削除 (Delete)
+    void PerformUndo();
+    void PerformRedo();
 
 
 
@@ -53,8 +55,7 @@ private:
     // instanceIndex を引数に追加
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 
-    void DrawHierarchyPanel(); // 左側：リストなど
-    void DrawInspectorPanel(); // 右側：詳細設定
+
 private:
     SceneManager* sceneManager_ = nullptr;
     Object3d* selectedObject_ = nullptr;
@@ -103,6 +104,11 @@ private:
     Object3d::Transform tempTransformStart_;
     bool isDraggingTransform_ = false;
 
-    // Undo実行関数
-    void PerformUndo();
+    bool isGridSnapEnabled_ = false; // スナップするかどうか
+    float snapValue_ = 1.0f;         // スナップする単位 (1mごと)
+
+    // Undo/Redo用スタック
+    std::deque<TransformCommand> redoStack_; // 進む履歴
+
+
 };

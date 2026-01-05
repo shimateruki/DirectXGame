@@ -58,57 +58,44 @@ void DebugEditor::Update() {
         return;
     }
 
-    // シーンが変わったら選択解除
     if (lastUpdatedScene_ != currentScene) {
         selectedObject_ = nullptr;
         lastUpdatedScene_ = currentScene;
     }
 
-    // =========================================================
+    // ---------------------------------------------------------
     // 1. ショートカットキー処理
-    // =========================================================
-
-    // 文字入力中（名前変更など）はショートカットを無効化する
+    // ---------------------------------------------------------
     if (!ImGui::GetIO().WantCaptureKeyboard) {
         InputManager* input = InputManager::GetInstance();
-
         bool isCtrl = input->IsKeyPressed(DIK_LCONTROL) || input->IsKeyPressed(DIK_RCONTROL);
         bool isShift = input->IsKeyPressed(DIK_LSHIFT) || input->IsKeyPressed(DIK_RSHIFT);
 
-        // --- 保存 (Ctrl + S) ---
         if (isCtrl && input->IsKeyTriggered(DIK_S)) {
-            if (isShift) {
-                SaveSingleObject(); // Shiftあり: 単体保存
-            } else {
-                SaveScene();        // Shiftなし: 全体保存
-            }
+            if (isShift) SaveSingleObject();
+            else SaveScene();
         }
+        if (isCtrl && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
+        if (input->IsKeyTriggered(DIK_DELETE)) DeleteSelected();
 
-        // --- 複製 (Ctrl + C) ---
-        if (isCtrl && input->IsKeyTriggered(DIK_C)) {
-            DuplicateSelected();
-        }
-
-        // --- 削除 (Delete) ---
-        if (input->IsKeyTriggered(DIK_DELETE)) {
-            DeleteSelected();
-        }
+        // Undo / Redo
+        if (isCtrl && input->IsKeyTriggered(DIK_Z)) PerformUndo();
+        if (isCtrl && input->IsKeyTriggered(DIK_Y)) PerformRedo();
     }
 
-    // =========================================================
-    // 2. ギズモ操作 (ImGuizmo)
-    // =========================================================
+    // ---------------------------------------------------------
+    // 2. ギズモ操作
+    // ---------------------------------------------------------
     if (selectedObject_) {
-        // ギズモの状態保持用 (static)
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
         static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
 
-        // スナップ設定
-        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f }; // 移動は0.5単位
-        static float snapRotation = 15.0f;                    // 回転は15度単位
-        static float snapScale = 0.1f;                        // 拡大は0.1単位
+        // スナップ設定用
+        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f };
+        static float snapRotation = 15.0f;
+        static float snapScale = 0.1f;
 
-        // --- ギズモ操作モード切替 (T, R, S) ---
+        // キー切り替え
         if (!ImGui::GetIO().WantCaptureKeyboard) {
             InputManager* input = InputManager::GetInstance();
             if (input->IsKeyTriggered(DIK_T)) currentOperation = ImGuizmo::TRANSLATE;
@@ -116,56 +103,93 @@ void DebugEditor::Update() {
             if (input->IsKeyTriggered(DIK_S)) currentOperation = ImGuizmo::SCALE;
         }
 
-        // カメラ情報の取得
         const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (!camera) return;
 
         const Matrix4x4& view = camera->GetViewMatrix();
         const Matrix4x4& proj = camera->GetProjectionMatrix();
 
-        // オブジェクトの行列作成
         Object3d::Transform* tr = selectedObject_->GetTransform();
         Math math;
         Matrix4x4 world = math.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
 
-        // ImGuizmoのセットアップ
         ImGuiIO& io = ImGui::GetIO();
         ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
-        // スナップ値の決定
+        // スナップ計算
         float snapVals[3];
         if (currentOperation == ImGuizmo::ROTATE) {
             snapVals[0] = snapVals[1] = snapVals[2] = snapRotation;
         } else if (currentOperation == ImGuizmo::SCALE) {
             snapVals[0] = snapVals[1] = snapVals[2] = snapScale;
         } else {
-            snapVals[0] = snapTranslate[0];
+            snapVals[0] = snapTranslate[0]; // 単純化のためXYZ同じ値か、メンバー変数を使う
             snapVals[1] = snapTranslate[1];
             snapVals[2] = snapTranslate[2];
         }
 
-        // Ctrlキーを押している間だけスナップ有効
-        InputManager* input = InputManager::GetInstance();
-        bool isCtrl = input->IsKeyPressed(DIK_LCONTROL) || input->IsKeyPressed(DIK_RCONTROL);
-        float* snap = isCtrl ? snapVals : nullptr;
+        // メンバー変数 isGridSnapEnabled_ を使用
+        float* snapPtr = isGridSnapEnabled_ ? snapVals : nullptr;
 
-        // ギズモ描画と操作
-        ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], currentOperation, currentMode, &world.m[0][0], nullptr, snap);
+        //  ギズモ表示
+        ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], currentOperation, currentMode, &world.m[0][0], nullptr, snapPtr);
 
-        // 操作結果を反映
+
+        // A. 操作開始 (isDraggingTransform_ を使用)
+        if (ImGuizmo::IsUsing() && !isDraggingTransform_) {
+            isDraggingTransform_ = true;
+
+            // ★ tempTransformStart_ に今の状態を保存 (ヘッダーにある変数)
+            tempTransformStart_ = *tr;
+
+            redoStack_.clear();
+        }
+
+        // B. 操作中
         if (ImGuizmo::IsUsing()) {
             Vector3 s, rDeg, t;
-            // 行列から成分分解 (回転は度数法で返ってくる)
             ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &t.x, &rDeg.x, &s.x);
 
             tr->translate = t;
-            tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) }; // ラジアンに戻す
+            tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
             tr->scale = s;
+
+            selectedObject_->UpdateWorldMatrix();
+        }
+
+        // C. 操作終了
+        if (!ImGuizmo::IsUsing() && isDraggingTransform_) {
+            isDraggingTransform_ = false;
+
+            // ここでローカルにコマンドを作成して保存
+            TransformCommand cmd;
+            cmd.target = selectedObject_;
+            cmd.oldTf = tempTransformStart_; // 開始時の状態
+            cmd.newTf = *tr;                 // 終了時の状態
+
+            // 変更があったかチェック
+            bool isChanged = false;
+            // 座標
+            if (cmd.oldTf.translate.x != cmd.newTf.translate.x ||
+                cmd.oldTf.translate.y != cmd.newTf.translate.y ||
+                cmd.oldTf.translate.z != cmd.newTf.translate.z) isChanged = true;
+            // 回転
+            else if (cmd.oldTf.rotate.x != cmd.newTf.rotate.x ||
+                cmd.oldTf.rotate.y != cmd.newTf.rotate.y ||
+                cmd.oldTf.rotate.z != cmd.newTf.rotate.z) isChanged = true;
+            // スケール
+            else if (cmd.oldTf.scale.x != cmd.newTf.scale.x ||
+                cmd.oldTf.scale.y != cmd.newTf.scale.y ||
+                cmd.oldTf.scale.z != cmd.newTf.scale.z) isChanged = true;
+
+            if (isChanged) {
+                undoStack_.push_back(cmd);
+                DebugConsole::GetInstance()->AddLog("Action Recorded");
+            }
         }
     }
 #endif
 }
-
 // ========================================================================
 // 終了処理
 // ========================================================================
@@ -1342,4 +1366,48 @@ void DebugEditor::DeleteSelected() {
     selectedObject_ = nullptr;
 
     DebugConsole::GetInstance()->AddLog("Deleted Object: " + name);
+}
+
+// ==========================================
+//  Undo処理 
+// ==========================================
+void DebugEditor::PerformUndo() {
+    if (undoStack_.empty()) return;
+
+    // 1. 履歴を取り出す
+    TransformCommand cmd = undoStack_.back();
+    undoStack_.pop_back();
+
+    // 2. Redo用に退避
+    redoStack_.push_back(cmd);
+
+    // 3. 値を「変更前 (oldTf)」に戻す
+    if (cmd.target) {
+        // Transform構造体を丸ごとコピーできるので楽です！
+        *cmd.target->GetTransform() = cmd.oldTf;
+
+        // 行列更新
+        cmd.target->UpdateWorldMatrix();
+    }
+    DebugConsole::GetInstance()->AddLog("Undo Performed");
+}
+
+// ==========================================
+//  Redo処理
+// ==========================================
+void DebugEditor::PerformRedo() {
+    if (redoStack_.empty()) return;
+
+    TransformCommand cmd = redoStack_.back();
+    redoStack_.pop_back();
+
+    undoStack_.push_back(cmd);
+
+    // 4. 値を「変更後 (newTf)」に進める
+    if (cmd.target) {
+        *cmd.target->GetTransform() = cmd.newTf;
+
+        cmd.target->UpdateWorldMatrix();
+    }
+    DebugConsole::GetInstance()->AddLog("Redo Performed");
 }

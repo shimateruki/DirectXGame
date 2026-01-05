@@ -10,7 +10,7 @@
                 ],
                 "size": [
                     1.0,
-                    1.350000023841858,
+                    1.649999976158142,
                     1.0
                 ],
                 "type": 2
@@ -25,7 +25,7 @@
             "name": "Player",
             "param": {
                 "gravity": 54.0,
-                "hp": 804.0,
+                "hp": 74.0,
                 "jumpPower": 10.0,
                 "maxFallSpeed": 60.0,
                 "maxHp": 48.0,
@@ -33,13 +33,13 @@
             },
             "parentName": "",
             "position": [
-                1.37380051612854,
-                2.3500001430511475,
-                -4.714857578277588
+                18.339447021484375,
+                2.6499998569488525,
+                -3.008443832397461
             ],
             "rotation": [
                 0.0,
-                1.4599989652633667,
+                2.8715932369232178,
                 0.0
             ],
             "scale": [
@@ -101,9 +101,9 @@
                     0.0
                 ],
                 "size": [
-                    8.600000381469727,
+                    63.75,
                     1.0,
-                    9.949999809265137
+                    95.0
                 ],
                 "type": 2
             },
@@ -130,6 +130,56 @@
                 1.0,
                 1.0,
                 1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 13,
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "cube",
+            "myEventID": -1,
+            "name": "Object",
+            "param": {
+                "gravity": 50.0,
+                "hp": 100.0,
+                "jumpPower": 10.0,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                13.154011726379395,
+                2.0,
+                12.877062797546387
+            ],
+            "rotation": [
+                -3.1415908336639404,
+                2.8260719776153564,
+                -3.1415908336639404
+            ],
+            "scale": [
+                0.9999995231628418,
+                1.0,
+                0.9999995231628418
             ],
             "targetID": -1,
             "type": "Model"
@@ -175,212 +225,6 @@
             ],
             "targetID": -1,
             "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    -1.649999976158142
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    2.75
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "sampleBlock.gltf",
-            "myEventID": -1,
-            "name": "sampleBlock.gltf_0",
-            "parentName": "",
-            "position": [
-                0.0,
-                2.7668752670288086,
-                7.144669055938721
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 16,
-            "collisionMask": 4294967295,
-            "eventID": 2,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "myEventID": -1,
-            "name": "Trigger_Box",
-            "parentName": "",
-            "position": [
-                8.675556182861328,
-                2.0,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": 1,
-            "type": "InvisibleBox"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 16,
-            "collisionMask": 4294967295,
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "myEventID": 1,
-            "name": "Trigger_Box_Copy0",
-            "parentName": "",
-            "position": [
-                9.511215209960938,
-                3.958685874938965,
-                6.339169502258301
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "InvisibleBox"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 16,
-            "collisionMask": 4294967295,
-            "eventID": 2,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "myEventID": -1,
-            "name": "Trigger_Box1",
-            "parentName": "",
-            "position": [
-                0.0,
-                2.0,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": 2,
-            "type": "InvisibleBox"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 16,
-            "collisionMask": 4294967295,
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "myEventID": 2,
-            "name": "Trigger_Box2wwwwwwwddw",
-            "parentName": "",
-            "position": [
-                0.0,
-                2.0,
-                -3.669300079345703
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                6.226821422576904
-            ],
-            "targetID": -1,
-            "type": "InvisibleBox"
         }
     ]
 }

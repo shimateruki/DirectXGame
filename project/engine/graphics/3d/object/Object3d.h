@@ -233,14 +233,16 @@ public:
     // 初期化時にレコーダーも準備する
     void InitializeRecorder(SceneManager* sceneManager);
 
-    // 更新処理でレコーダーも回す
-    void UpdateRecorder();
+    void CopyFrom(const Object3d* other);
 
     // アニメーション関連
     std::string animName_ = "";      // 再生するファイル名 (例: "door_open")
     bool isAnimLoop_ = true;        // ループするか？
     bool isAnimRelative_ = false;     // 相対座標か？ 
     GhostRecorder* recorder_ = nullptr;
+
+
+
 
 protected:
     // メンバ変数

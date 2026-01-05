@@ -32,6 +32,8 @@
 #include "json.hpp" 
 #include <numbers>
 #include <CameraEditor.h>
+#include <BaseEnemy.h>
+#include <EnemyFactory.h>
 
 
 void GamePlayScene::Initialize() {
@@ -62,7 +64,6 @@ void GamePlayScene::Initialize() {
 	gameRule_->Initialize(this);
 
 	// --- オブジェクトの生成 ---
-
 	auto playerObj = std::make_unique<Player>();
 	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
 	playerObj->SetModel("sample");
@@ -71,6 +72,7 @@ void GamePlayScene::Initialize() {
 	playerObj->SetStatic(false);
 	player_ = playerObj.get();
 	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
+	CollisionManager::GetInstance()->AddObject(playerObj.get());
 	objects_.emplace_back(std::move(playerObj));
 
 	auto enemy = std::make_unique<Object3d>();
@@ -79,6 +81,7 @@ void GamePlayScene::Initialize() {
 	enemy->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	enemy->SetName("Enemy");
 	enemy->SetStatic(true);
+	CollisionManager::GetInstance()->AddObject(enemy.get());
 	objects_.emplace_back(std::move(enemy));
 
 	auto terrain = std::make_unique<Object3d>();
@@ -87,7 +90,20 @@ void GamePlayScene::Initialize() {
 	terrain->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	terrain->SetName("terrain");
 	terrain->SetStatic(true);
+	CollisionManager::GetInstance()->AddObject(terrain.get());
 	objects_.emplace_back(std::move(terrain));
+
+	// Factoryで作った敵（unique_ptr<BaseEnemy>）を受け取る
+	std::unique_ptr<BaseEnemy> newEnemy =
+		EnemyFactory::GetInstance()->CreateEnemy("Slime", object3dCommon_.get());
+
+	if (newEnemy) {
+		newEnemy->SetTranslate({ 10.0f, 0.0f, 10.0f });
+		newEnemy->SetTarget(player_);
+		CollisionManager::GetInstance()->AddObject(newEnemy.get());
+		objects_.push_back(std::move(newEnemy));
+	}
+
 
 
 	//const float blockSize = 2.0f; // ブロックの1辺のサイズ 
@@ -179,33 +195,9 @@ void GamePlayScene::Initialize() {
 
  CameraEditor::GetInstance()->Initialize();
 
-	// --- 衝突判定の設定 ---
-	CollisionManager::GetInstance()->ClearObjects();
-	objects_[0]->SetCollisionAttribute(kPlayer);
-	objects_[0]->SetCollisionMask(~kPlayer);
-	CollisionManager::GetInstance()->AddObject(objects_[0].get());
-
-	objects_[1]->SetCollisionAttribute(kEnemy);
-	objects_[1]->SetCollisionMask(~kEnemy);
-	objects_[1]->SetColliderType(ColliderType::kAABB);
-	objects_[1]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-	CollisionManager::GetInstance()->AddObject(objects_[1].get());
-
-	objects_[2]->SetCollisionAttribute(kGround);
-	objects_[2]->SetCollisionMask(~kGround);
-	objects_[2]->SetColliderType(ColliderType::kAABB);
-	objects_[2]->SetCollisionSize({ 20.0f, 1.0f, 20.0f });
-	CollisionManager::GetInstance()->AddObject(objects_[2].get());
 
 
 
-	for (size_t i = 3; i < objects_.size(); ++i) {
-		objects_[i]->SetCollisionAttribute(kGround);
-		objects_[i]->SetCollisionMask(~kGround);
-		objects_[i]->SetColliderType(ColliderType::kAABB);
-		objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-		CollisionManager::GetInstance()->AddObject(objects_[i].get());
-	}
 
 
 
