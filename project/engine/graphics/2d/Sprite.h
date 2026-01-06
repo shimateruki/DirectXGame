@@ -21,6 +21,8 @@ public: // 内部構造体の定義
 		Vector2 texcoord;
 		Vector3 normal;
 	};
+
+
 	struct Material
 	{
 		Vector4 color;

@@ -4,23 +4,38 @@
 #include "Math.h"
 #include <algorithm> // std::min, std::max
 #include <cmath>     // std::abs
+#include "GhostRecorder.h"
 
-// ★ Math のインスタンスを作成
+//  Math のインスタンスを作成
 static Math math;
 
 
-void Character::Update(float deltaTime) {
-    isGrounded_ = false;
-    // 重力「加速度」を経過時間分だけ速度に加算
-    velocity_.y -= gravity_ * deltaTime;
 
-    if (velocity_.y < -maxFallSpeed_) {
-        velocity_.y = -maxFallSpeed_;
+
+void Character::Update(float deltaTime) {
+
+    if (!this->param_.has_value()) {
+        return;
     }
 
-    // 速度（秒速）を経過時間分だけ座標に加算
+    float gravity = this->param_->gravity;
+    float maxFallSpeed = this->param_->maxFallSpeed;
+
+
+    isGrounded_ = false;
+    velocity_.y -= gravity * deltaTime;
+
+    if (velocity_.y < -maxFallSpeed) {
+        velocity_.y = -maxFallSpeed;
+    }
+    if (this->param_->hp <=0)
+    {
+        isDead = true;
+    }
+
     transform_.translate += velocity_ * deltaTime;
 }
+
 bool Character::OnCollision(Object3d* other) {
     // ★ 1. 衝突情報を取得
     CollisionInfo info = CheckCollision(other);
@@ -28,7 +43,7 @@ bool Character::OnCollision(Object3d* other) {
         return false;
     }
 
-    // ★ 2. 新しい関数に処理を委譲
+    // 新しい関数に処理を委譲
     ApplyPhysicsCollision(info, other->GetCollisionAttribute());
 
     return info.isColliding;
@@ -42,7 +57,7 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 
 
-    // ★ 座標を押し戻す (めり込んだ分だけ座標を補正)
+    //  座標を押し戻す (めり込んだ分だけ座標を補正)
     this->transform_.translate += (info.normal * info.penetration);
 
     //  速度を補正 (壁にめり込む速度成分を打ち消す)
@@ -60,39 +75,61 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 }
 std::unique_ptr<Object3d> Character::Clone() const {
+    // Character として生成
     auto newObj = std::make_unique<Character>();
 
     assert(common_ != nullptr);
     newObj->Initialize(common_);
 
-    //  modelName_ (文字列) を使ってモデルをセット
+    // モデル設定
     if (!modelName_.empty()) {
         newObj->SetModel(this->modelName_);
     }
 
-    // Object3d の Transform 情報をコピー
+    // Transform 情報
     newObj->transform_ = this->transform_;
 
-    // Object3d の名前をコピー
+    // 名前
     newObj->name_ = this->name_;
 
-    // Object3d のコライダー情報をコピー
+    newObj->SetColliderConfig(this->colliderConfig_);
+
+    // 属性とマスク
     newObj->collisionAttribute_ = this->collisionAttribute_;
     newObj->collisionMask_ = this->collisionMask_;
-    newObj->colliderType_ = this->colliderType_;
 
-    // collisionSize_ (または半径) をコピー
-    newObj->collisionSize_ = this->collisionSize_;
+    // 1. イベントIDとステータス(param_)をコピー
+    newObj->eventType_ = this->eventType_;
+    newObj->param_ = this->param_;
 
-    // ---Character 独自のメンバをコピー ---
+    // 2. Character 独自のメンバをコピー
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
-    newObj->gravity_ = this->gravity_;
-    newObj->maxFallSpeed_ = this->maxFallSpeed_;
+
+    // ▼▼▼ 追加：アニメーション設定のコピーと再生 ▼▼▼
+    newObj->animName_ = this->animName_;
+    newObj->isAnimLoop_ = this->isAnimLoop_;
+    newObj->isAnimRelative_ = this->isAnimRelative_;
+
+    // ：レコーダーを初期化して、設定があれば即再生！
+    newObj->InitializeRecorder(nullptr);
+
+    if (!newObj->animName_.empty()) {
+        newObj->recorder_->Play(
+            newObj->animName_,
+            newObj->isAnimLoop_,
+            newObj->isAnimRelative_
+        );
+    }
+
 
     return newObj;
 }
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     // 親の描画処理をそのまま実行する
-    Object3d::Draw(pointLightResource, spotLightResource);
+    if (!isDead)
+    {
+        Object3d::Draw(pointLightResource, spotLightResource);
+    }
+   
 }

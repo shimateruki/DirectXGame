@@ -11,6 +11,8 @@
 #endif
 
 #include"LightEditor.h"
+#include <GhostRecorder.h>
+#include "CameraEditor.h"
 
 
 class Game : public Framework {
@@ -39,5 +41,10 @@ private:
 	bool showDebugWindows_ = true;  // 3Dエディタ用
 	bool showSpriteInspector_ = true; // 2Dエディタ用
 	bool showDebugConsole_ = true;
+	bool showCameraEditor = true;
+	std::unique_ptr<GhostRecorder> ghostRecorder_;
+	bool showGhostRecorder_ = true; // メニューバーの切り替え用
+	bool showTimeController_ = true;   // 時間管理ウィンドウ用
+
 #endif
 };

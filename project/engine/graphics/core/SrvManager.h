@@ -7,18 +7,27 @@ class DirectXCommon;
 
 class SRVManager {
 public:
-    static const size_t kMaxSRVCount = 256;
+    // ImGuiがIndex 1を使うので、十分な数を用意する
+    static const size_t kMaxSRVCount = 2018;
 
 public:
     static SRVManager* GetInstance();
+
+    // 初期化
     void Initialize(DirectXCommon* dxCommon);
+
+    // SRV生成（空いている場所を使ってViewを作る）
     uint32_t CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+
+    // ヒープ取得（変数を一本化したので安全）
     ID3D12DescriptorHeap* GetDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
+
+    // ルートパラメータにヒープの場所をセットする
     void SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
-    /// <summary>
-    /// SRVヒープをコマンドリストに設定する
-    /// </summary>
+
+    // コマンドリストにヒープを登録する
     void SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList);
+
 private:
     SRVManager() = default;
     ~SRVManager() = default;
@@ -27,9 +36,12 @@ private:
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
+
+    // ★修正：変数をこれ1つに統一！（descriptorHeap_ は削除済み）
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap_;
+
     uint32_t descriptorSize_ = 0;
-    // 0番はImGuiが使用するため、1からインデックスを割り当てる
-    uint32_t nextIndex_ = 1;
+
+    // ★修正：ImGuiが 0, 1 を使うので、ゲーム用は「2」から配る
+    uint32_t nextIndex_ = 2;
 };

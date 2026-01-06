@@ -7,11 +7,22 @@
 #include <vector>
 #include <d3d12.h>
 #include <wrl.h>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 class Object3d;
 
 class Model {
-public: // サブクラス
+public: 
+
+    struct Node {
+        Matrix4x4 localMatrix;      // このノードのローカル変換行列
+        std::string name;           // ノード名
+        std::vector<Node> children; // 子供のノードリスト
+    };
+
+
     struct VertexData {
         Vector4 position;
         Vector2 texcoord;
@@ -23,9 +34,20 @@ public: // サブクラス
         uint32_t textureHandle = 0;
     };
 
+    struct Mesh {
+        std::vector<VertexData> vertices; // このパーツの頂点たち
+        uint32_t materialIndex;           // どのマテリアルを使うか？
+
+        // バッファリソースはメッシュごとに持つ
+        Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource;
+        D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+    };
+
     struct ModelData {
-        std::vector<VertexData> vertices;
-        MaterialData material;
+        std::vector<Mesh> meshes;            // メッシュのリスト 
+        std::vector<MaterialData> materials; // マテリアルのリスト 
+        Node rootNode;
+        std::vector<Node> nodes;             // 当たり判定用の全ノードリスト
     };
 
     struct Material {
@@ -43,7 +65,7 @@ public: // メンバ関数
     /// 初期化
     /// </summary>
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
-
+    void Update();
     /// <summary>
     /// 描画
     /// </summary>
@@ -57,19 +79,26 @@ public: // メンバ関数
     /// <summary>
     /// テクスチャハンドルを取得
     /// </summary>
-    uint32_t GetTextureHandle() const { return modelData_.material.textureHandle; }
+    uint32_t GetTextureHandle() const {
+        if (modelData_.materials.empty()) return 0;
+        return modelData_.materials[0].textureHandle;
+    }
+    const ModelData& GetModelData() const { return modelData_; }
 
 private: // 静的メンバ関数
-    static ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename);
+    static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
+    static Node ReadNode(aiNode* node, std::vector<Node>& nodes);
+    void UpdateNodeMatrix(Node& node, const Matrix4x4& parentMatrix);
+
     static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
 private: // メンバ変数
     ModelCommon* common_ = nullptr;
     ModelData modelData_{};
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
+
+	Math math_;
 };

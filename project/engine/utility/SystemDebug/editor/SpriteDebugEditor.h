@@ -63,4 +63,5 @@ private:
 	bool isMovingY_ = false; // Y軸をドラッグ中か
 	Vector2 dragStartMousePos_; // ドラッグ開始時のマウス座標
 	Vector2 dragStartSpritePos_; // ドラッグ開始時のスプライト座標
+	char currentSpriteFilename_[128] = "sprite_layout.json";
 };

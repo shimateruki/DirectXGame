@@ -8,6 +8,7 @@ enum CollisionAttribute : uint32_t {
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
     kAttributePlayerBullet = 1 << 3,
+	kTrigger = 1 << 4, // トリガー (当たり判定はあるが押し出し処理はしない)
 };
 
 // 地形属性をまとめたマスク 
@@ -72,3 +73,7 @@ CollisionInfo CheckSphereCollision(const Vector3& posA, float rA, const Vector3&
 CollisionInfo CheckSphereAABBCollision(const Vector3& spherePos, float sphereRadius, const AABB& aabb);
 CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadius, const OBB& obb);
 CollisionInfo CheckOBBCollision(const OBB& obb1, const OBB& obb2);
+/// <summary>
+/// AABBとOBBの衝突判定 (AABBをOBBに変換して判定)
+/// </summary>
+CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b);

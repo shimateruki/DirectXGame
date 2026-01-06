@@ -29,10 +29,10 @@ void Camera::Initialize() {
     // アスペクト比をウィンドウサイズから計算
     aspectRatio_ = (float)WinApp::kClientWidth / WinApp::kClientHeight;
 
-    // ★ デフォルトのカメラモードを kAimable に設定
+    //  デフォルトのカメラモードを kAimable に設定
     followMode_ = FollowMode::kAimable;
 
-    // ★ kAimable のデフォルト距離を設定
+    //  kAimable のデフォルト距離を設定
     distance_ = 10.0f;
 
     isInputEnabled_ = true;
@@ -42,153 +42,125 @@ void Camera::Initialize() {
 void Camera::Update() {
     static Math math;
 
-    // (1) 追従対象 (Player) が設定されているか？
+    // -----------------------------------------------------------------
+    //  ゲーム内カメラ挙動
+    // -----------------------------------------------------------------
     if (followObject_) {
-        // --- ゲーム内カメラ (Player 追従) ---
         Vector3 playerPos = followObject_->GetWorldPosition();
 
-        // (A) 注視点 (Target) を先に計算
-        Vector3 targetPos = playerPos; // kAimable のデフォルト
+        // (A) 注視点 (Target) の計算
+        // 全モード共通： プレイヤーの足元 + 高さ(Height)
+        Vector3 targetPos = playerPos;
+        targetPos.y += aimHeight_; // ★ Heightスライダーを全モードで有効化
+
+        // ロックオン時は敵を見る
         if (followMode_ == FollowMode::kLockOn && targetObject_) {
             targetPos = targetObject_->GetWorldPosition();
-        } else if (followMode_ == FollowMode::kFirstPerson) {
-            // 1人称の注視点は desiredEye の計算後に決まるので、ここでは playerPos を使う
+        }
+        // 一人称は目の高さ調整として Height を使う
+        else if (followMode_ == FollowMode::kFirstPerson) {
+            // 一人称用の特別オフセット(必要ならここも aimHeight_ にしてもOK)
             targetPos = playerPos + firstPersonOffset_;
         }
 
-        // (B) 目標のカメラ位置 (desiredEye) を計算
+        target_ = targetPos; // Target決定！
+
+        // (B) カメラ位置 (Eye) の計算
         Vector3 desiredEye = eye_;
+
+        // 角度計算用（度数法 -> ラジアン）
+        float angleRad = aimAngle_ * (3.1415f / 180.0f);
+
         switch (followMode_) {
         case FollowMode::kLockOn:
+            // ... (ロックオン処理はそのまま) ...
             if (targetObject_) {
                 Matrix4x4 rotateMat = math.MakeRotateYMatrix(followObject_->GetRotation().y);
                 Vector3 rotatedOffset = math.TransformNormal(lockOnOffset_, rotateMat);
                 desiredEye = playerPos + rotatedOffset;
-                target_ = targetPos; // 注視点を敵に更新
             } else {
                 followMode_ = FollowMode::kAimable;
             }
-            break; // kLockOn (fallthrough しない場合)
+            break;
 
         case FollowMode::kAimable:
-            target_ = targetPos; // 注視点をプレイヤーに更新
+            // --- 3人称自由視点 ---
+            // マウス操作(rotation_) を優先するが、初期距離などはスライダーを使う
+        {
+            // マウスの回転を使用
             Matrix4x4 rotateMat = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
-            Vector3 offset = math.TransformNormal({ 0, 0, -distance_ }, rotateMat);
-            desiredEye = playerPos + offset;
-            break;
-
-        case FollowMode::kFirstPerson:
-            desiredEye = targetPos; // Eye == TargetPos
-            Matrix4x4 rotateMatFP = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
-            Vector3 forward = math.TransformNormal({ 0, 0, 1 }, rotateMatFP);
-            target_ = desiredEye + forward; // 注視点を前方に更新
-            break;
+            Vector3 offset = { 0.0f, 0.0f, -aimDistance_ }; // ★ Distance有効
+            offset = math.TransformNormal(offset, rotateMat);
+            desiredEye = target_ + offset;
+        }
+        break;
 
         case FollowMode::kFixed:
-        default:
-            desiredEye = playerPos + fixedOffset_;
-            target_ = targetPos; // 注視点をプレイヤーに更新
+        
+        {
+            //  プレイヤーの rotation.y ではなく、現在のカメラの rotation_.y を使う
+            float currentY = rotation_.y;
+
+            // X軸回転: ImGuiのAngleを使う
+            float pitch = angleRad;
+
+            // 回転行列作成 (現在のカメラの向き + 指定した見下ろし角度)
+            Matrix4x4 rotateMat = math.MakeRotateXMatrix(pitch) * math.MakeRotateYMatrix(currentY);
+
+            // 後ろへ下がるオフセット
+            Vector3 offset = { 0.0f, 0.0f, -aimDistance_ }; // Distance有効
+            offset = math.TransformNormal(offset, rotateMat);
+
+            // 配置
+            desiredEye = target_ + offset;
+
+            // カメラの回転情報を更新
+            rotation_.x = pitch; // X軸(上下)はImGuiに従う
+            // rotation_.y = currentY; // Y軸(左右)は勝手に変えない！
+        }
+        break;
+
+        case FollowMode::kFirstPerson:
+            desiredEye = targetPos;
+            {
+                Matrix4x4 rotateMatFP = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
+                Vector3 forward = math.TransformNormal({ 0, 0, 1 }, rotateMatFP);
+                // 一人称は Targetの方を動かす
+                target_ = desiredEye + forward;
+            }
             break;
         }
 
-        // --- (C) レイキャストによるカメラめり込み防止処理 ---
+        // -----------------------------------------------------------------
+        // (C) 壁めり込み防止 (Raycast)
+        // -----------------------------------------------------------------
+        if (followMode_ != FollowMode::kFirstPerson) {
+            Vector3 toEye = desiredEye - target_;
+            float dist = math.Length(toEye);
+            Vector3 direction = (dist > 0.001f) ? math.Normalize(toEye) : Vector3{ 0,0,1 };
 
-        // 注視点(Target)からカメラ(Eye)へのベクトル
-        Vector3 toEye = desiredEye - target_;
-        float maxDistance = math.Length(toEye);
-        Vector3 direction = { 0, 0, 1 };
-
-        if (maxDistance > 0.001f) {
-            direction = math.Normalize(toEye);
-        }
-
-        if (maxDistance > 0.1f) {
-            // (注視点からカメラに向かって、壁(kGround)がないかレイを飛ばす)
-            RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                target_,        // 開始点
-                direction,      // 方向
-                maxDistance,    // 最大距離
-                kGround         // 対象：地面・壁
-            );
-
-            if (hit.isHit) {
-                // ヒットしたら、カメラ(eye_)を壁の衝突点の手前に置く
-                const float kEpsilon = 0.1f; // 壁から少し離す距離
-                eye_ = hit.hitPoint - (direction * kEpsilon);
+            // 0.1以上離れているならレイを飛ばす
+            if (dist > 0.1f) {
+                RaycastHit hit = CollisionManager::GetInstance()->Raycast(
+                    target_, direction, dist, kGround
+                );
+                if (hit.isHit) {
+                    const float kEpsilon = 0.2f;
+                    eye_ = hit.hitPoint - (direction * kEpsilon);
+                } else {
+                    eye_ = desiredEye;
+                }
             } else {
-                // ヒットしなかったら、目標の位置にそのまま置く
                 eye_ = desiredEye;
             }
         } else {
-            // (1人称視点など、距離が近すぎる場合はレイを飛ばさない)
             eye_ = desiredEye;
         }
-
     } else {
-        // --- デバッグカメラ (追従対象がいない) ---
-
-#ifdef _DEBUG
-
-        if (inputManager_) {
-
-            // ImGuiの入力キャプチャをチェック
-            ImGuiIO& io = ImGui::GetIO();
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard || !isInputEnabled_) {
-                // ImGuiがマウスかキーボードを使っている
-            } else {
-                // ↓↓↓ ImGuiが入力を使っていない時だけ、以下の操作を行う ↓↓↓
-
-                // 左クリック + マウス移動での回転
-                if (inputManager_->IsMouseButtonPressed(0)) {
-                    Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-                    const float rotateSpeed = 0.001f;
-                    rotation_.x += mouseDelta.y * rotateSpeed;
-                    rotation_.y += mouseDelta.x * rotateSpeed;
-
-                    // ピッチ制限 (カメラの上下反転防止)
-                    const float pitchLimit = PI / 2.0f - 0.01f;
-                    rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
-                }
-
-                // A/D/Q/E/W/S/Wheel での移動
-                Vector3 move = { 0, 0, 0 };
-                const float moveSpeed = 0.3f;
-
-                // (-= エラー回避)
-                if (inputManager_->IsKeyPressed(DIK_LEFT)) {
-                    move.x += (moveSpeed * -1.0f);
-                }
-                if (inputManager_->IsKeyPressed(DIK_RIGHT)) {
-                    move.x += moveSpeed;
-                }
-                if (inputManager_->IsKeyPressed(DIK_UP)) {
-                    move.y += moveSpeed;
-                }
-                if (inputManager_->IsKeyPressed(DIK_DOWN)) {
-                    move.y += (moveSpeed * -1.0f);
-                }
-
-                float wheelDelta = inputManager_->GetMouseWheelDelta();
-                const float wheelSpeed = 0.005f;
-
-                move.z += wheelDelta * wheelSpeed;
-
-                Matrix4x4 rotateMatrix = math.Multiply(math.MakeRotateXMatrix(rotation_.x), math.MakeRotateYMatrix(rotation_.y));
-                move = math.TransformNormal(move, rotateMatrix);
-                eye_ = eye_ + move;
-
-                // 注視点も一緒に動かす
-                Vector3 targetForward = { 0.0f, 0.0f, 1.0f };
-                targetForward = math.TransformNormal(targetForward, rotateMatrix);
-                target_ = eye_ + targetForward;
-            }
-        }
-
-#endif // _DEBUG
-
+       
     }
 
-    // (2) 最終的なビュー・プロジェクション行列の計算 (共通)
+    // 行列更新
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
 }
@@ -204,10 +176,10 @@ void Camera::ConfigFixed(const Vector3& offset) {
     fixedOffset_ = offset;
 }
 
-void Camera::ConfigAimable(float distance, float minDistance, float maxDistance) {
-    distance_ = distance;
-    minDistance_ = minDistance;
-    maxDistance_ = maxDistance;
+void Camera::ConfigAimable(float distance, float height, float angle) {
+    aimDistance_ = distance;
+    aimHeight_ = height;
+    aimAngle_ = angle;
 }
 
 void Camera::ConfigFirstPerson(const Vector3& eyeOffset) {

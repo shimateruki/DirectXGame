@@ -298,3 +298,21 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     info.normal = minAxis; // 既に a->b 方向に合わせている
     return info;
 }
+
+// ========================================================================
+// AABB vs OBB 衝突判定
+// ========================================================================
+CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
+    OBB obbA;
+    // AABBの中心とサイズを算出
+    obbA.center = (a.min + a.max) * 0.5f;
+    obbA.size = (a.max - a.min) * 0.5f;
+
+    // AABBなので回転は単位行列（XYZ軸そのまま）
+    obbA.orientations[0] = { 1.0f, 0.0f, 0.0f };
+    obbA.orientations[1] = { 0.0f, 1.0f, 0.0f };
+    obbA.orientations[2] = { 0.0f, 0.0f, 1.0f };
+
+    // OBB同士として判定
+    return CheckOBBCollision(obbA, b);
+}

@@ -31,6 +31,9 @@
 #include <string>
 #include "json.hpp" 
 #include <numbers>
+#include <CameraEditor.h>
+#include <BaseEnemy.h>
+#include <EnemyFactory.h>
 
 
 void GamePlayScene::Initialize() {
@@ -41,10 +44,10 @@ void GamePlayScene::Initialize() {
 	inputManager_ = InputManager::GetInstance();
 	audioPlayer_ = AudioPlayer::GetInstance();
 
-
-
-	
-
+	ModelManager::GetInstance()->LoadModel("player");
+	ModelManager::GetInstance()->LoadModel("teapot");
+	ModelManager::GetInstance()->LoadModel("multiMaterial");
+	ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 	CameraManager::GetInstance()->Initialize();
@@ -57,9 +60,10 @@ void GamePlayScene::Initialize() {
 	particleCommon_->Initialize(dxCommon_);
 	particleSystem_ = std::make_unique<ParticleSystem>();
 	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
+	gameRule_ = std::make_unique<GameRule>();
+	gameRule_->Initialize(this);
 
 	// --- オブジェクトの生成 ---
-
 	auto playerObj = std::make_unique<Player>();
 	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
 	playerObj->SetModel("sample");
@@ -68,6 +72,7 @@ void GamePlayScene::Initialize() {
 	playerObj->SetStatic(false);
 	player_ = playerObj.get();
 	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
+	CollisionManager::GetInstance()->AddObject(playerObj.get());
 	objects_.emplace_back(std::move(playerObj));
 
 	auto enemy = std::make_unique<Object3d>();
@@ -76,6 +81,7 @@ void GamePlayScene::Initialize() {
 	enemy->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	enemy->SetName("Enemy");
 	enemy->SetStatic(true);
+	CollisionManager::GetInstance()->AddObject(enemy.get());
 	objects_.emplace_back(std::move(enemy));
 
 	auto terrain = std::make_unique<Object3d>();
@@ -84,7 +90,21 @@ void GamePlayScene::Initialize() {
 	terrain->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	terrain->SetName("terrain");
 	terrain->SetStatic(true);
+	CollisionManager::GetInstance()->AddObject(terrain.get());
 	objects_.emplace_back(std::move(terrain));
+
+	// Factoryで作った敵（unique_ptr<BaseEnemy>）を受け取る
+	std::unique_ptr<BaseEnemy> newEnemy =
+		EnemyFactory::GetInstance()->CreateEnemy("Slime", object3dCommon_.get());
+
+	if (newEnemy) {
+		newEnemy->SetTranslate({ 10.0f, 0.0f, 10.0f });
+		newEnemy->SetTarget(player_);
+		CollisionManager::GetInstance()->AddObject(newEnemy.get());
+		objects_.push_back(std::move(newEnemy));
+	}
+
+
 
 	//const float blockSize = 2.0f; // ブロックの1辺のサイズ 
 	//const int fieldWidth = 30;  // X方向 (幅) の床の数
@@ -173,43 +193,13 @@ void GamePlayScene::Initialize() {
 	//	}
 	//}
 
-	// --- カメラの設定 ---
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
-#ifndef _DEBUG 
-	camera->SetFollowTarget(player_);
-	camera->SetFollowMode(Camera::FollowMode::kAimable);//カメラのモード設定
-	camera->ConfigAimable(15.0f, 5.0f, 25.0f);//距離
-	camera->SetLockOnOffset({ 0.0f, 4.0f, -12.0f });//ロックオン時のカメラ
-#endif
-
-	// --- 衝突判定の設定 ---
-	CollisionManager::GetInstance()->ClearObjects();
-	objects_[0]->SetCollisionAttribute(kPlayer);
-	objects_[0]->SetCollisionMask(~kPlayer);
-	CollisionManager::GetInstance()->AddObject(objects_[0].get());
-
-	objects_[1]->SetCollisionAttribute(kEnemy);
-	objects_[1]->SetCollisionMask(~kEnemy);
-	objects_[1]->SetColliderType(ColliderType::kAABB);
-	objects_[1]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-	CollisionManager::GetInstance()->AddObject(objects_[1].get());
-
-	objects_[2]->SetCollisionAttribute(kGround);
-	objects_[2]->SetCollisionMask(~kGround);
-	objects_[2]->SetColliderType(ColliderType::kAABB);
-	objects_[2]->SetCollisionSize({ 20.0f, 1.0f, 20.0f });
-	CollisionManager::GetInstance()->AddObject(objects_[2].get());
+ CameraEditor::GetInstance()->Initialize();
 
 
 
-	for (size_t i = 3; i < objects_.size(); ++i) {
-		objects_[i]->SetCollisionAttribute(kGround);
-		objects_[i]->SetCollisionMask(~kGround);
-		objects_[i]->SetColliderType(ColliderType::kAABB);
-		objects_[i]->SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-		CollisionManager::GetInstance()->AddObject(objects_[i].get());
-	}
+
+
+
 
 	// --- スプライトの生成 ---
 	uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
@@ -235,8 +225,9 @@ void GamePlayScene::Initialize() {
 	);
 
 	// --- レイアウト読み込み ---
-	LoadObjectLayout("scene_layout.json");
-	LoadSpriteLayout("sprite_layout.json");
+	LoadObjectLayout("resouces/json/scene_layout.json");
+	LoadSpriteLayout("resouces/json/sprite_layout.json");
+	LightManager::GetInstance()->LoadState("resouces/json/light_layout.json");
 
 
 
@@ -275,24 +266,37 @@ void GamePlayScene::Update(float deltaTime) {
 
 	static Math math;
 
-#ifndef _DEBUG
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-	Camera::FollowMode currentMode = camera->GetFollowMode();
+	// ▼CameraEditorの設定を反映
+	CameraEditor::GetInstance()->Update(player_, isLockingOn_);
 
-	if (currentMode == Camera::FollowMode::kAimable) {
-		float wheelDelta = inputManager_->GetMouseWheelDelta();
-		if (wheelDelta != 0.0f) {
+	// 「エディタモード（自由カメラ）」じゃない時だけ、プレイヤーのマウス操作を受け付ける
+	if (!CameraEditor::GetInstance()->IsEditorMode()) {
+
+		Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+		Camera::FollowMode currentMode = camera->GetFollowMode(); // 現在のモード取得（EditorのUpdateでセットされているはず）
+
+		// ズーム処理（マウスホイール）
+		if (currentMode == Camera::FollowMode::kAimable) {
+			float wheelDelta = inputManager_->GetMouseWheelDelta();
+			if (wheelDelta != 0.0f) {
+				// ★もしゲーム中にズームさせたいなら、ここに処理を書く
+				// 例: CameraEditorの数値を書き換えるなど
+				// float dist = CameraEditor::GetInstance()->GetDistance();
+				// CameraEditor::GetInstance()->SetDistance(dist - wheelDelta);
+			}
 		}
-	}
-	if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
-		if (inputManager_->IsMouseButtonPressed(1)) {
-			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-				camera->AddRotation(mouseDelta);
+
+		// 回転処理（右クリックしながらマウス移動）
+		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+			// ※ 右クリック(1) 押下中のみ回転
+			if (inputManager_->IsMouseButtonPressed(1)) {
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+					camera->AddRotation(mouseDelta);
+				}
 			}
 		}
 	}
-#endif
 
 
 
@@ -389,6 +393,8 @@ void GamePlayScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 	//オブジェクト削除関数
 	ProcessRemovals();
+
+
 
 #ifdef USE_IMGUI
 	ImGui::Begin("Debug Control");
@@ -583,13 +589,22 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 	}
 
 	json sceneData;
+
+	// 親子関係を結ぶための「保留リスト」 <子供, 親の名前>
+	std::map<Object3d*, std::string> parentPendingList;
+
 	try {
 		sceneData = json::parse(file);
 		if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+
 			for (const auto& objData : sceneData["objects"]) {
+				// 名前がないデータはスキップ
 				if (!objData.contains("name") || !objData["name"].is_string()) continue;
 				std::string name = objData["name"].get<std::string>();
 
+				// -------------------------------------------------
+				// 1. 既存のリストから同じ名前のオブジェクトを探す
+				// -------------------------------------------------
 				Object3d* targetObject = nullptr;
 				for (auto& obj : objects_) {
 					if (obj && !obj->GetName().empty() && obj->GetName() == name) {
@@ -598,27 +613,190 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 				}
 
-				if (targetObject) {
-					Object3d::Transform* transform = targetObject->GetTransform();
+				// -------------------------------------------------
+				// 2. 見つからなかった場合、新しく生成する 
+				// -------------------------------------------------
+				if (!targetObject) {
+					if (object3dCommon_) {
+						auto newObj = std::make_unique<Object3d>();
+						newObj->Initialize(object3dCommon_.get());
+						newObj->SetName(name);
 
-					if (objData.contains("position") && objData["position"].is_array() && objData["position"].size() == 3) {
-						transform->translate.x = objData["position"][0].get<float>();
-						transform->translate.y = objData["position"][1].get<float>();
-						transform->translate.z = objData["position"][2].get<float>();
-					}
-					if (objData.contains("rotation") && objData["rotation"].is_array() && objData["rotation"].size() == 3) {
-						transform->rotate.x = objData["rotation"][0].get<float>();
-						transform->rotate.y = objData["rotation"][1].get<float>();
-						transform->rotate.z = objData["rotation"][2].get<float>();
-					}
-					if (objData.contains("scale") && objData["scale"].is_array() && objData["scale"].size() == 3) {
-						transform->scale.x = objData["scale"][0].get<float>();
-						transform->scale.y = objData["scale"][1].get<float>();
-						transform->scale.z = objData["scale"][2].get<float>();
+						// ポインタを確保してからリストに追加
+						targetObject = newObj.get();
+						AddObject(std::move(newObj));
 					}
 				}
+
+				// それでもオブジェクトがなければスキップ
+				if (!targetObject) continue;
+
+
+				// -------------------------------------------------
+				// 3. タイプ（クラス名）による分岐処理
+				// -------------------------------------------------
+				std::string type = "Model"; // デフォルト
+				if (objData.contains("type") && objData["type"].is_string()) {
+					type = objData["type"].get<std::string>();
+				}
+				targetObject->SetClassName(type); // クラス名をセット
+
+				if (type == "InvisibleBox") {
+					//  InvisibleBox の場合
+					targetObject->SetModel(nullptr);   // モデルなし
+					targetObject->SetIsVisible(false); // ゲーム中は見えない
+				} else {
+					//  通常モデルの場合
+					targetObject->SetIsVisible(true);  // ゲーム中は見える
+
+					// モデルの読み込みと設定
+					if (objData.contains("modelName") && objData["modelName"].is_string()) {
+						std::string modelName = objData["modelName"].get<std::string>();
+
+						// モデルが変わっている、または未設定ならロード
+						if (targetObject->GetModelName() != modelName) {
+							ModelManager::GetInstance()->LoadModel(modelName);
+							targetObject->SetModel(modelName);
+						}
+					}
+				}
+
+				// -------------------------------------------------
+				// 4. Transform (位置・回転・スケール) の適用
+				// -------------------------------------------------
+				Object3d::Transform* transform = targetObject->GetTransform();
+
+				if (objData.contains("position") && objData["position"].is_array()) {
+					transform->translate.x = objData["position"][0].get<float>();
+					transform->translate.y = objData["position"][1].get<float>();
+					transform->translate.z = objData["position"][2].get<float>();
+				}
+				if (objData.contains("rotation") && objData["rotation"].is_array()) {
+					transform->rotate.x = objData["rotation"][0].get<float>();
+					transform->rotate.y = objData["rotation"][1].get<float>();
+					transform->rotate.z = objData["rotation"][2].get<float>();
+				}
+				if (objData.contains("scale") && objData["scale"].is_array()) {
+					transform->scale.x = objData["scale"][0].get<float>();
+					transform->scale.y = objData["scale"][1].get<float>();
+					transform->scale.z = objData["scale"][2].get<float>();
+				}
+		
+				// -------------------------------------------------
+				// 5. コライダー情報の適用
+				// -------------------------------------------------
+				if (objData.contains("collider")) {
+					json colData = objData["collider"];
+					Object3d::ColliderConfig config = targetObject->GetColliderConfig();
+
+					if (colData.contains("type") && colData["type"].is_number_integer()) {
+						config.type = (ColliderType)colData["type"].get<int>();
+					}
+					if (colData.contains("center") && colData["center"].is_array()) {
+						config.center.x = colData["center"][0].get<float>();
+						config.center.y = colData["center"][1].get<float>();
+						config.center.z = colData["center"][2].get<float>();
+					}
+					if (colData.contains("size") && colData["size"].is_array()) {
+						config.size.x = colData["size"][0].get<float>();
+						config.size.y = colData["size"][1].get<float>();
+						config.size.z = colData["size"][2].get<float>();
+					}
+
+					targetObject->SetColliderConfig(config);
+				}
+
+				// 衝突属性とマスク
+				if (objData.contains("collisionAttribute")) {
+					targetObject->SetCollisionAttribute(objData["collisionAttribute"].get<uint32_t>());
+				}
+				if (objData.contains("collisionMask")) {
+					targetObject->SetCollisionMask(objData["collisionMask"].get<uint32_t>());
+				}
+
+				// -------------------------------------------------
+				// 6. イベントID & パラメータの読み込み
+				// -------------------------------------------------
+				if (objData.contains("eventID") && objData["eventID"].is_number_integer()) {
+					int id = objData["eventID"].get<int>();
+					targetObject->SetEventType(static_cast<EventType>(id));
+				}
+				if (objData.contains("targetID") && objData["targetID"].is_number_integer()) {
+					targetObject->SetTargetID(objData["targetID"].get<int>());
+				}
+				if (objData.contains("myEventID") && objData["myEventID"].is_number_integer()) {
+					targetObject->SetEventID(objData["myEventID"].get<int>());
+				}
+				if (objData.contains("param") && objData["param"].is_object()) {
+					targetObject->param_.emplace(); // 有効化
+					json paramData = objData["param"];
+					auto& p = targetObject->param_.value();
+
+					if (paramData.contains("hp"))           p.hp = paramData["hp"].get<float>();
+					if (paramData.contains("maxHp"))        p.maxHp = paramData["maxHp"].get<float>();
+					if (paramData.contains("speed"))        p.speed = paramData["speed"].get<float>();
+					if (paramData.contains("gravity"))      p.gravity = paramData["gravity"].get<float>();
+					if (paramData.contains("jumpPower"))    p.jumpPower = paramData["jumpPower"].get<float>();
+					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"].get<float>();
+				}
+
+				// -------------------------------------------------
+				// 7. アニメーション設定の読み込みと再生
+				// -------------------------------------------------
+				if (objData.contains("animName") && objData["animName"].is_string()) {
+					targetObject->animName_ = objData["animName"].get<std::string>();
+				}
+				if (objData.contains("isAnimLoop") && objData["isAnimLoop"].is_boolean()) {
+					targetObject->isAnimLoop_ = objData["isAnimLoop"].get<bool>();
+				}
+				if (objData.contains("isAnimRelative") && objData["isAnimRelative"].is_boolean()) {
+					targetObject->isAnimRelative_ = objData["isAnimRelative"].get<bool>();
+				}
+
+				// レコーダーの準備と再生開始
+				targetObject->InitializeRecorder(sceneManager_);
+
+				// アニメ名が設定されていれば再生
+				if (!targetObject->animName_.empty()) {
+					targetObject->recorder_->Play(
+						targetObject->animName_,
+						targetObject->isAnimLoop_,
+						targetObject->isAnimRelative_
+					);
+				}
+
+				// -------------------------------------------------
+				// 8. 親子関係の保留登録
+				// -------------------------------------------------
+				if (objData.contains("parentName") && objData["parentName"].is_string()) {
+					std::string pName = objData["parentName"].get<std::string>();
+					if (!pName.empty()) {
+						parentPendingList[targetObject] = pName;
+					}
+				}
+
+
+			} 
+		}
+
+		// -------------------------------------------------
+		// 9. 親子関係の解決 (全オブジェクトロード後)
+		// -------------------------------------------------
+		for (auto const& [childObj, parentName] : parentPendingList) {
+			Object3d* parentObj = nullptr;
+			for (auto& obj : objects_) {
+				if (obj && obj->GetName() == parentName) {
+					parentObj = obj.get();
+					break;
+				}
+			}
+			if (parentObj) {
+				childObj->SetParent(parentObj);
 			}
 		}
+
+		
+
 	}
 	catch (json::parse_error& e) {
 		OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
@@ -629,11 +807,15 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 	file.close();
 }
 
+
+
+
 void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 	using json = nlohmann::json;
 	std::ifstream file(filename);
 
 	if (!file.is_open()) {
+		// 初回起動時などファイルがない場合は警告だけで抜ける
 		std::string warnMsg = "Warning: Could not open " + filename + "\n";
 		OutputDebugStringA(warnMsg.c_str());
 		return;
@@ -646,11 +828,13 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 		if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
 			for (const auto& spriteData : layoutData["sprites"]) {
 
+				// 名前がないデータはスキップ
 				if (!spriteData.contains("name") || !spriteData["name"].is_string()) {
 					continue;
 				}
 				std::string name = spriteData["name"];
 
+				// 1. 既存のリストから同じ名前のスプライトを探す
 				Sprite* targetSprite = nullptr;
 				for (auto& sprite : sprites_) {
 					if (sprite && !sprite->GetName().empty() && sprite->GetName() == name) {
@@ -659,6 +843,33 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 					}
 				}
 
+				// 2. ★追加部分★ 見つからなかった場合、新しく生成する
+				if (!targetSprite) {
+					if (spriteCommon_) { // SpriteCommonを持っている前提
+						// テクスチャ名の取得 (保存されている場合)
+						std::string textureFile = "";
+						if (spriteData.contains("texture") && spriteData["texture"].is_string()) {
+							textureFile = spriteData["texture"];
+						}
+
+						// テクスチャ読込 (ファイル名があれば読み込む、なければとりあえず0)
+						uint32_t handle = 0;
+						if (!textureFile.empty()) {
+							handle = Sprite::LoadTexture(textureFile);
+						}
+
+						// 生成と初期化
+						auto newSprite = std::make_unique<Sprite>();
+						newSprite->Initialize(spriteCommon_.get(), handle); // handleが0だと白画像などになるかも
+						newSprite->SetName(name);
+
+						// リストに追加
+						targetSprite = newSprite.get();
+						sprites_.push_back(std::move(newSprite));
+					}
+				}
+
+				// 3. パラメータの適用 (既存・新規共通)
 				if (targetSprite) {
 					if (spriteData.contains("position") && spriteData["position"].is_array() && spriteData["position"].size() == 2) {
 						targetSprite->SetPosition({
@@ -678,19 +889,12 @@ void GamePlayScene::LoadSpriteLayout(const std::string& filename) {
 							spriteData["anchor"][1].get<float>()
 							});
 					}
-					if (spriteData.contains("color") && spriteData["color"].is_array() && spriteData["color"].size() == 4) {
-						targetSprite->SetColor({
-							spriteData["color"][0].get<float>(),
-							spriteData["color"][1].get<float>(),
-							spriteData["color"][2].get<float>(),
-							spriteData["color"][3].get<float>()
-							});
-					}
+
+
 					targetSprite->Update();
 				}
 			}
 		}
-
 	}
 	catch (json::parse_error& e) {
 		OutputDebugStringA("Failed to parse sprite_layout.json\n");

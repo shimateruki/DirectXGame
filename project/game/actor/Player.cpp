@@ -9,8 +9,8 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     Object3d::Initialize(common);
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
-    SetColliderType(ColliderType::kAABB);
-    SetCollisionSize({ 1.0f, 1.0f, 1.0f });
+    SetColliderType(ColliderType::kOBB);
+    SetCollisionSize({ 2.0f, 2.0f, 2.0f });
 }
 
 void Player::Update(float deltaTime) {
@@ -100,29 +100,41 @@ void Player::Update(float deltaTime) {
     Character::Update(deltaTime);
 }
 
+
 bool Player::OnCollision(Object3d* other) {
+    // 1. 相手の属性などを取得
     uint32_t attribute = other->GetCollisionAttribute();
 
-    // ★ 1. まず Player 側で CollisionInfo を取得
+    // 2. 衝突判定 (CollisionInfoを取得)
     CollisionInfo info = CheckCollision(other);
+
+    // 当たっていなければここで終了
     if (!info.isColliding) {
-        return false; // 当たってないなら即終了
+        return false;
     }
 
-    // --- 2. 物理処理 (地面) ---
+    // =================================================================
+    //  3. イベント発行 
+    // =================================================================
+
+    PlayerHitEvent event;
+    event.me = this;         //「ぶつかったのは私(Player)です」と伝える
+    event.hitObject = other; // ぶつかった相手
+    event.normal = info.normal; //  ぶつかった角度
+
+    // 全体通知！ -> GameRule がこれを受け取って処理してくれる
+    EventManager::GetInstance()->Dispatch(event);
+
+    // =================================================================
+    // 4. 物理挙動 (押し戻し処理)
+    // =================================================================
+    // 地面や壁など「固いもの」なら、めり込みを直す物理処理を行う
     if (attribute & kAllSolid) {
-        // ★ 親の物理処理関数を呼ぶ (押し戻し・接地判定)
+        // 親クラス(Character)などが持つ物理処理関数へ委譲
         ApplyPhysicsCollision(info, attribute);
     }
 
-    // --- 3. イベント発行 ---
-    if (attribute & (kEnemy)) { 
-
-        // ★ イベントに法線(info.normal)を詰めて発行する
-        EventManager::GetInstance()->Dispatch(PlayerHitEvent{ other, info.normal });
-    }
-
-    return true; // (当たった)
+    return true; // 衝突処理完了
 }
 
 /// <summary>

@@ -99,6 +99,13 @@ public:
     /// </summary>
     void SyncRotationToCurrentView();
 
+    // --- 自由カメラ用セッター ---
+    void SetEye(const Vector3& eye) { eye_ = eye; }
+    void SetTarget(const Vector3& target) { target_ = target; }
+    void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
+
+
+
 private:
     // --- カメラの三要素 ---
     Vector3 eye_ = { 0.0f, 0.0f, -10.0f };
@@ -151,5 +158,9 @@ private:
 
     // (kLockOn 用) プレイヤーのY回転基準のオフセット
     Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f }; 
+
+    float aimDistance_ = 15.0f;
+    float aimHeight_ = 5.0f;
+    float aimAngle_ = 0.0f;
 
 };

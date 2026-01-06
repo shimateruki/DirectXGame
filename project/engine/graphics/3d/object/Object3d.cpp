@@ -4,7 +4,17 @@
 #include "ModelManager.h"
 #include "SRVManager.h"
 #include "CameraManager.h"
+#include "SceneManager.h"
+#include "GhostRecorder.h"
 #include <cassert>
+
+
+Object3d::~Object3d() {
+    if (recorder_) {
+        delete recorder_;
+        recorder_ = nullptr;
+    }
+}
 
 void Object3d::Initialize(Object3dCommon* common) {
     assert(common);
@@ -27,57 +37,65 @@ void Object3d::Initialize(Object3dCommon* common) {
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
 
+    InitializeRecorder(nullptr);
+
 
 }
 
 OBB Object3d::GetOBB() const
 {
     OBB obb;
+    Math math;
 
-    // ワールド行列から情報を抽出
+    // ワールド行列を取得
     const Matrix4x4& worldMat = GetWorldMatrix();
 
-    // 1. 中心座標 (Translate)
-    obb.center = { worldMat.m[3][0], worldMat.m[3][1], worldMat.m[3][2] };
-
-    // 2. 回転軸 (Axis)
-    // ※スケールが含まれていると長さが変わるので正規化する
-    Math math;
+    // 1. 回転軸 (Axis) と ワールドスケール (Scale) の抽出
     Vector3 xAxis = { worldMat.m[0][0], worldMat.m[0][1], worldMat.m[0][2] };
     Vector3 yAxis = { worldMat.m[1][0], worldMat.m[1][1], worldMat.m[1][2] };
     Vector3 zAxis = { worldMat.m[2][0], worldMat.m[2][1], worldMat.m[2][2] };
 
-    // 各軸の長さ（ワールドスケール）を取得
+    // 各軸の長さ（ワールドスケール）を算出
     float lenX = math.Length(xAxis);
     float lenY = math.Length(yAxis);
     float lenZ = math.Length(zAxis);
 
-    // 向きベクトルは正規化
+    // 軸を正規化 (向きベクトルにする)
     obb.orientations[0] = (lenX > 0.0f) ? (xAxis / lenX) : Vector3{ 1.0f, 0.0f, 0.0f };
     obb.orientations[1] = (lenY > 0.0f) ? (yAxis / lenY) : Vector3{ 0.0f, 1.0f, 0.0f };
     obb.orientations[2] = (lenZ > 0.0f) ? (zAxis / lenZ) : Vector3{ 0.0f, 0.0f, 1.0f };
 
-    // 3. サイズ (半サイズ)
-    // collisionSize_ は「全サイズ」で保持されている前提
-    Vector3 fullSize = collisionSize_;
+    // 2. 中心座標 (Center)
+    // オブジェクトの原点 (ワールド座標)
+    Vector3 worldPos = { worldMat.m[3][0], worldMat.m[3][1], worldMat.m[3][2] };
 
-    // ワールドスケールを掛けて半サイズを算出（親のスケールも worldMat に反映される）
-    Vector3 worldScale = { lenX, lenY, lenZ };
-    obb.size.x = (fullSize.x * worldScale.x) * 0.5f;
-    obb.size.y = (fullSize.y * worldScale.y) * 0.5f;
-    obb.size.z = (fullSize.z * worldScale.z) * 0.5f;
+    // コライダーの中心オフセット (colliderConfig_.center) を適用
+    Vector3 offset = colliderConfig_.center;
+    obb.center = worldPos + (xAxis * offset.x) + (yAxis * offset.y) + (zAxis * offset.z);
+
+    // 3. サイズ (半サイズ)
+    obb.size.x = colliderConfig_.size.x * lenX;
+    obb.size.y = colliderConfig_.size.y * lenY;
+    obb.size.z = colliderConfig_.size.z * lenZ;
 
     return obb;
 }
 
 
 void Object3d::SetModel(const std::string& modelName) {
+    modelName_ = modelName;
     // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
-    modelName_ = modelName;
+
 }
 
 void Object3d::Update(float deltaTime) {
+    if (model_) {
+        model_->Update();
+    }
+    if (recorder_) {
+        recorder_->Update();
+    }
 }
 
 void Object3d::UpdateLocalMatrix() {
@@ -124,91 +142,110 @@ void Object3d::UpdateWorldMatrix() {
 
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (model_ == nullptr) {
+
+    if (!isVisible_) {
         return;
     }
-
-
     common_->SetPipelineState(blendMode_);
 
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, model_->GetTextureHandle());
-    if (model_) {
 
+    if (model_) {
         model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource);
     }
 }
-
 void Object3d::SetParent(Object3d* parent) {
+    if (parent_) {
+        std::vector<Object3d*>& kids = parent_->children_;
+        // 削除イディオム (Erase-Remove idiom)
+        kids.erase(std::remove(kids.begin(), kids.end(), this), kids.end());
+    }
+
+
     parent_ = parent;
+
+    if (parent_) {
+        parent_->children_.push_back(this);
+    }
 }
-
 CollisionInfo Object3d::CheckCollision(Object3d* other) {
-
-    ColliderType myType = this->GetColliderType();
-    ColliderType otherType = other->GetColliderType();
     CollisionInfo collision;
     collision.isColliding = false; // 初期化
 
-    //タイプを指定して
+    // 自分のタイプと相手のタイプを取得
+    ColliderType myType = this->GetColliderType();
+    ColliderType otherType = other->GetColliderType();
+
+    // ====================================================================
+    // 1. 同じ形状同士の判定
+    // ====================================================================
+
+    // AABB vs AABB
     if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
         collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
+    }
+    // Sphere vs Sphere
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
         collision = CheckSphereCollision(
             this->GetWorldPosition(), this->GetCollisionRadius(),
             other->GetWorldPosition(), other->GetCollisionRadius());
-    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
-        collision = CheckSphereAABBCollision(
-            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetAABB());
-        collision.normal = collision.normal * -1.0f; // 法線を反転
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
-        collision = CheckSphereAABBCollision(
-            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
     }
-    if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
-        collision = CheckSphereOBBCollision(this->GetWorldPosition(), this->GetCollisionRadius(), other->GetOBB());
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
-        // 引数の順序を入れ替えて呼び出し、法線を反転
-        collision = CheckSphereOBBCollision(other->GetWorldPosition(), other->GetCollisionRadius(), this->GetOBB());
-        collision.normal = collision.normal * -1.0f;
-    }
-    // 2. OBB vs OBB
+    // OBB vs OBB
     else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
         collision = CheckOBBCollision(this->GetOBB(), other->GetOBB());
     }
-    // 3. AABB vs OBB 
-    else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
+
+    // ====================================================================
+    // 2. 異なる形状同士の判定
+    // ====================================================================
+
+    // Sphere vs AABB
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
+        collision = CheckSphereAABBCollision(
+            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
     }
+    // AABB vs Sphere (引数を入れ替えるため、法線を反転)
+    else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
+        collision = CheckSphereAABBCollision(
+            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetAABB());
+        collision.normal = collision.normal * -1.0f;
+    }
+
+    // Sphere vs OBB
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
+        collision = CheckSphereOBBCollision(
+            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetOBB());
+    }
+    // OBB vs Sphere (引数を入れ替えるため、法線を反転)
+    else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
+        collision = CheckSphereOBBCollision(
+            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetOBB());
+        collision.normal = collision.normal * -1.0f;
+    }
+
+    // ====================================================================
+    // 3. AABB vs OBB の判定 
+    // ====================================================================
+
+    // AABB(自分) vs OBB(相手)
+    else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
+        // 関数は「AABBからOBBを押し出すベクトル」を返す
+        collision = CheckAABBOBBCollision(this->GetAABB(), other->GetOBB());
+
+        collision.normal = collision.normal * -1.0f;
+    }
+    // OBB(自分) vs AABB(相手)
+    else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
+        // CheckAABBOBBCollision(A, B) を呼ぶ
+        // A=相手(地面/AABB), B=自分(プレイヤー/OBB)
+        collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
+
+     
+    }
+
     return collision;
 }
 
-
-std::unique_ptr<Object3d> Object3d::Clone() const {
-    auto newObj = std::make_unique<Object3d>();
-
-    assert(common_ != nullptr);
-    newObj->Initialize(common_);
-
-    //  modelName_ (文字列) を使ってモデルをセット
-    if (!modelName_.empty()) {
-        newObj->SetModel(this->modelName_);
-    }
-
-    // 4. Transform 情報をコピー
-    newObj->transform_ = this->transform_;
-
-    // 5. 名前をコピー
-    newObj->name_ = this->name_;
-
-    // ★ 2コライダー情報をコピー
-    newObj->collisionAttribute_ = this->collisionAttribute_;
-    newObj->collisionMask_ = this->collisionMask_;
-    newObj->colliderType_ = this->colliderType_;
-    newObj->collisionSize_ = this->collisionSize_;
-
-
-    return newObj;
-}
 void Object3d::SetColor(const Vector4& color) {
     if (directionalLightData_) {
         directionalLightData_->color = color;
@@ -218,4 +255,78 @@ void Object3d::SetIntensity(float intensity) {
     if (directionalLightData_) {
         directionalLightData_->intensity = intensity;
     }
+}
+void Object3d::InitializeRecorder(SceneManager* sceneManager) {
+    // すでに持っていたら作り直さない（安全策）
+    if (recorder_) {
+        delete recorder_;
+    }
+
+    // 1. 実体を作る (new)
+    recorder_ = new GhostRecorder();
+
+    // 2. 初期化する
+    recorder_->Initialize(sceneManager);
+
+    recorder_->SetTarget(this);
+}
+
+
+void Object3d::CopyFrom(const Object3d* other) {
+    if (!other) return;
+
+    // --- 基本情報のコピー ---
+    if (!other->modelName_.empty()) {
+        this->SetModel(other->modelName_);
+    }
+    this->name_ = other->name_;
+
+    // Transform
+    this->transform_ = other->transform_;
+
+    // --- コライダー & 物理 ---
+    this->SetColliderConfig(other->colliderConfig_);
+    this->collisionAttribute_ = other->collisionAttribute_;
+    this->collisionMask_ = other->collisionMask_;
+
+    // 1. クラス名
+    this->className_ = other->className_;
+
+    // 2. 可視性
+    this->isVisible_ = other->isVisible_;
+
+    // 3. イベントタイプ
+    this->eventType_ = other->eventType_;
+
+    // 4. パラメータ
+    this->param_ = other->param_;
+
+    // アニメーション設定のコピー
+    this->animName_ = other->animName_;
+    this->isAnimLoop_ = other->isAnimLoop_;
+    this->isAnimRelative_ = other->isAnimRelative_;
+
+    // レコーダー初期化
+    this->InitializeRecorder(nullptr);
+
+    // 設定が入っていれば、即座に再生を開始させる
+    if (!this->animName_.empty() && this->recorder_) {
+        this->recorder_->Play(
+            this->animName_,
+            this->isAnimLoop_,
+            this->isAnimRelative_
+        );
+    }
+}
+
+// Cloneはシンプルに
+std::unique_ptr<Object3d> Object3d::Clone() const {
+    auto newObj = std::make_unique<Object3d>();
+
+    // 初期化
+    assert(common_ != nullptr);
+    newObj->Initialize(common_);
+    // 中身をコピー 
+    newObj->CopyFrom(this);
+    return newObj;
 }

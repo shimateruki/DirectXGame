@@ -69,6 +69,9 @@ public:
       /// オブジェクトの削除を予約する (純粋仮想)
       /// </summary>
     virtual void RequestRemoveObject(Object3d* object) = 0;
+
+    void TriggerEvent(int targetID);
+    virtual Object3d* FindObjectByEventID(int eventID);
 protected:
     SceneManager* sceneManager_ = nullptr;
 };

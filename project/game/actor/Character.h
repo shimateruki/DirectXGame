@@ -21,22 +21,35 @@ public:
 
     bool IsGrounded() const { return isGrounded_; }
     /// <summary>
-    /// このキャラクターに適用される重力を設定する
-    /// </summary>
-    void SetGravity(float gravity) { gravity_ = gravity; }
+     /// このキャラクターに適用される重力を設定する
+     /// </summary>
+    void SetGravity(float gravity) {
+        //  安全策：もしパラメータがまだ無ければ作る
+        if (!this->param_.has_value()) {
+            this->param_.emplace();
+        }
+        this->param_->gravity = gravity;
+    }
 
     /// <summary>
     /// このキャラクターの最大落下速度を設定する
     /// </summary>
-    void SetMaxFallSpeed(float maxFallSpeed) { maxFallSpeed_ = maxFallSpeed; }
+    void SetMaxFallSpeed(float maxFallSpeed) {
+        // 安全策
+        if (!this->param_.has_value()) {
+            this->param_.emplace();
+        }
+        this->param_->maxFallSpeed = maxFallSpeed;
+    }
+
+
 
     void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
     std::unique_ptr<Object3d> Clone() const override;
 protected:
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度
-    float gravity_ = 54.0f;
-    float maxFallSpeed_ = 60.0f;
+
     bool isGrounded_ = false;
 
 };
