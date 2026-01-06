@@ -16,7 +16,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     }
 #endif
 
-    // ↓ 元の処理はそのまま残す
     switch (msg) {
     case WM_DESTROY:
         PostQuitMessage(0);

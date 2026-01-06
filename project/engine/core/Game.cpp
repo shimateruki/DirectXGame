@@ -192,9 +192,7 @@ void Game::Update() {
     }
 
     LightManager::GetInstance()->Update();
-#ifdef USE_IMGUI
-    ImGuiManager::GetInstance()->EndFrame();
-#endif
+
 }
 
 
@@ -218,8 +216,13 @@ void Game::Draw() {
         spriteDebugEditor_->Draw();
     }
     //ImGui の描画
+  // 1. ここで ImGui::Render() が呼ばれる
     ImGuiManager::GetInstance()->Draw();
+
+    // 2. Render() が終わった直後の「ここ」で EndFrame を呼ぶ！
+    ImGuiManager::GetInstance()->EndFrame();
 #endif
+
     // 描画後処理
     dxCommon_->PostDraw();
 }
