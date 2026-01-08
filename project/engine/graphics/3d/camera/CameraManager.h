@@ -29,6 +29,7 @@ public:
 
     // --- ゲッター ---
     Camera* GetMainCamera() { return mainCamera_.get(); }
+    Camera* GetActiveCamera() { return mainCamera_.get(); }
 
 private:
     CameraManager() = default;

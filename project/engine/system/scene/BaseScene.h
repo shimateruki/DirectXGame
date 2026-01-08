@@ -8,6 +8,7 @@ class SceneManager;
 class Object3dCommon;
 class SpriteCommon;
 class ParticleSystem;
+class DebugEditor;
 /// <summary>
 /// シーンの基底クラス
 /// </summary>
@@ -72,6 +73,11 @@ public:
 
     void TriggerEvent(int targetID);
     virtual Object3d* FindObjectByEventID(int eventID);
+
+    void SetDebugEditor(DebugEditor* editor) {
+        debugEditor_ = editor;
+    }
 protected:
     SceneManager* sceneManager_ = nullptr;
+    DebugEditor* debugEditor_ = nullptr;
 };

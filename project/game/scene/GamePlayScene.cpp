@@ -63,6 +63,7 @@ void GamePlayScene::Initialize() {
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);
 
+
 	// --- オブジェクトの生成 ---
 	auto playerObj = std::make_unique<Player>();
 	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
@@ -491,6 +492,9 @@ void GamePlayScene::Draw() {
 	}
 
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+
+	debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
+
 
 	// --- スプライト描画 ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());

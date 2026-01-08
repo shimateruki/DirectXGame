@@ -22,6 +22,7 @@
 class DirectXCommon;
 class InputManager;
 class SceneManager;
+
 #include "DebugEditor.h" 
 #include <GhostRecorder.h>
 #include <GameRule.h>

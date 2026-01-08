@@ -49,142 +49,260 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 // ========================================================================
 void DebugEditor::Update() {
 #ifdef USE_IMGUI
-    if (sceneManager_ == nullptr) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
-    if (currentScene == nullptr) {
-        selectedObject_ = nullptr;
-        lastUpdatedScene_ = nullptr;
-        return;
-    }
+    InputManager* input = InputManager::GetInstance();
+    Math math; // 計算用
 
+    // シーンが変わったら選択解除
     if (lastUpdatedScene_ != currentScene) {
         selectedObject_ = nullptr;
+        previewObject_ = nullptr; // プレビューもキャンセル
         lastUpdatedScene_ = currentScene;
     }
 
-    // ---------------------------------------------------------
-    // 1. ショートカットキー処理
-    // ---------------------------------------------------------
-    if (!ImGui::GetIO().WantCaptureKeyboard) {
-        InputManager* input = InputManager::GetInstance();
-        bool isCtrl = input->IsKeyPressed(DIK_LCONTROL) || input->IsKeyPressed(DIK_RCONTROL);
-        bool isShift = input->IsKeyPressed(DIK_LSHIFT) || input->IsKeyPressed(DIK_RSHIFT);
+    // =========================================================
+    //  モードA: 設置モード (プレビューオブジェクトを持っている時)
+    // =========================================================
+    if (previewObject_) {
 
-        if (isCtrl && input->IsKeyTriggered(DIK_S)) {
-            if (isShift) SaveSingleObject();
-            else SaveScene();
+        // ギズモやImGui操作中でなければ処理する
+        if (!ImGui::GetIO().WantCaptureMouse) {
+
+            // 1. マウス位置からレイを作成
+            Vector2 mousePos = input->GetMousePosition();
+            // 元々動作していた ScreenPointToRay を使用
+            Ray ray = ScreenPointToRay(mousePos);
+
+            Vector3 finalPos = { 0, 0, 0 };
+            bool foundPosition = false;
+
+            // -------------------------------------------------
+            // A-1. 既存のオブジェクトとの当たり判定 (上に積む)
+            // -------------------------------------------------
+            auto& objects = currentScene->GetObjects();
+            RayResult bestHit;
+            bestHit.isHit = false;
+            bestHit.distance = 100000.0f;
+
+            for (auto& obj : objects) {
+                // 自分自身やギズモ用の線などは無視
+                if (obj.get() == previewObject_.get()) continue;
+                if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
+
+                Object3d::Transform* tf = obj->GetTransform();
+                // AABB (簡易衝突判定ボックス) 作成
+                Vector3 minBox = { tf->translate.x - tf->scale.x, tf->translate.y - tf->scale.y, tf->translate.z - tf->scale.z };
+                Vector3 maxBox = { tf->translate.x + tf->scale.x, tf->translate.y + tf->scale.y, tf->translate.z + tf->scale.z };
+
+                RayResult tempHit;
+                if (math.IntersectRayAABB(ray, minBox, maxBox, &tempHit)) {
+                    if (tempHit.distance < bestHit.distance) {
+                        bestHit = tempHit;
+                    }
+                }
+            }
+
+            // 何かに当たったらその上に配置
+            if (bestHit.isHit) {
+                finalPos = bestHit.point;
+                // ※とりあえず上に1.0ずらす（本来は法線方向にずらすのがベスト）
+                finalPos.y += 1.0f;
+                foundPosition = true;
+            }
+
+            // -------------------------------------------------
+            // A-2. 地面判定 & セーフティネット
+            // -------------------------------------------------
+            if (!foundPosition) {
+                Vector3 groundPos;
+                // 地面(Y=0)との交差判定
+                if (IntersectRayPlane(ray, groundPos)) {
+                    finalPos = groundPos;
+                    finalPos.y = 0.5f; // 地面に埋まらないように高さ調整（サイズ次第）
+                    foundPosition = true;
+                }
+                // ★追加：地面に当たらなくても、カメラの目の前に出す！(これで絶対消えない)
+                else {
+                    Vector3 rayDir = math.Normalize(ray.diff);
+                    // 視線の先に10.0f進んだ位置
+                    finalPos = {
+                        ray.origin.x + rayDir.x * 10.0f,
+                        ray.origin.y + rayDir.y * 10.0f,
+                        ray.origin.z + rayDir.z * 10.0f
+                    };
+                    foundPosition = true;
+                }
+            }
+
+            // -------------------------------------------------
+            // A-3. グリッドスナップ & 座標反映
+            // -------------------------------------------------
+            if (foundPosition) {
+                // グリッドスナップ有効なら丸める
+                if (isGridSnapEnabled_) {
+                    float gridSize = 1.0f;
+                    finalPos.x = std::round(finalPos.x / gridSize) * gridSize;
+                    finalPos.z = std::round(finalPos.z / gridSize) * gridSize;
+                }
+
+                // プレビューの位置を更新
+                previewObject_->GetTransform()->translate = finalPos;
+				previewObject_->SetColor({ 1.0f, 1.8f, 1.0f, 0.5f }); // 半透明に見せる
+                previewObject_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+                // ★ここが重要：必ず行列を更新して描画に反映させる
+				previewObject_->UpdateLocalMatrix();
+                previewObject_->UpdateWorldMatrix();
+            }
+
+            // -------------------------------------------------
+            // A-4. クリックで確定 (Spawn)
+            // -------------------------------------------------
+            // 左クリックを離した瞬間
+            if (input->IsMouseButtonReleased(0)) {
+                Object3dCommon* common = currentScene->GetObject3dCommon();
+                if (common) {
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common);
+
+
+                    newObj->CopyFrom(previewObject_.get());
+                    static int spawnCount = 0;
+                    newObj->SetName("Obj_" + std::to_string(spawnCount++));
+                    newObj->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    currentScene->AddObject(std::move(newObj));
+
+                    DebugConsole::GetInstance()->AddLog("Spawned Object via CopyFrom!");
+                }
+            }
+
+            // 右クリックでキャンセル
+            if (input->IsKeyPressed(DIK_E)) {
+                previewObject_ = nullptr;
+                DebugConsole::GetInstance()->AddLog("Canceled Placement");
+            }
         }
-        if (isCtrl && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
-        if (input->IsKeyTriggered(DIK_DELETE)) DeleteSelected();
-
-        // Undo / Redo
-        if (isCtrl && input->IsKeyTriggered(DIK_Z)) PerformUndo();
-        if (isCtrl && input->IsKeyTriggered(DIK_Y)) PerformRedo();
     }
+    // =========================================================
+    //  モードB: 通常選択モード (プレビューが無い時)
+    // =========================================================
+    else {
 
-    // ---------------------------------------------------------
-    // 2. ギズモ操作
-    // ---------------------------------------------------------
-    if (selectedObject_) {
-        static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
-        static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
-
-        // スナップ設定用
-        static float snapTranslate[3] = { 0.5f, 0.5f, 0.5f };
-        static float snapRotation = 15.0f;
-        static float snapScale = 0.1f;
-
-        // キー切り替え
+        // --- 1. ショートカットキー処理 ---
         if (!ImGui::GetIO().WantCaptureKeyboard) {
-            InputManager* input = InputManager::GetInstance();
-            if (input->IsKeyTriggered(DIK_T)) currentOperation = ImGuizmo::TRANSLATE;
-            if (input->IsKeyTriggered(DIK_R)) currentOperation = ImGuizmo::ROTATE;
-            if (input->IsKeyTriggered(DIK_S)) currentOperation = ImGuizmo::SCALE;
+            bool isCtrl = input->IsKeyPressed(DIK_LCONTROL) || input->IsKeyPressed(DIK_RCONTROL);
+
+            // 削除
+            if (input->IsKeyTriggered(DIK_DELETE)) DeleteSelected();
+            // 複製
+            if (isCtrl && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
+            // Undo/Redo
+            if (isCtrl && input->IsKeyTriggered(DIK_Z)) PerformUndo();
+            if (isCtrl && input->IsKeyTriggered(DIK_Y)) PerformRedo();
+            // 保存
+            if (isCtrl && input->IsKeyTriggered(DIK_S)) SaveScene();
         }
 
-        const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-        if (!camera) return;
+        // --- 2. マウス選択処理 ---
+        if (!ImGui::GetIO().WantCaptureMouse && !ImGuizmo::IsOver()) {
 
-        const Matrix4x4& view = camera->GetViewMatrix();
-        const Matrix4x4& proj = camera->GetProjectionMatrix();
+            if (input->IsMouseButtonReleased(0)) {
+                Vector2 mousePos = input->GetMousePosition();
+                Ray ray = ScreenPointToRay(mousePos);
 
-        Object3d::Transform* tr = selectedObject_->GetTransform();
-        Math math;
-        Matrix4x4 world = math.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
+                auto& objects = currentScene->GetObjects();
+                RayResult bestHit;
+                bestHit.isHit = false;
+                bestHit.distance = 100000.0f;
+                Object3d* hitObj = nullptr;
 
-        ImGuiIO& io = ImGui::GetIO();
-        ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+                for (auto& obj : objects) {
+                    if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
 
-        // スナップ計算
-        float snapVals[3];
-        if (currentOperation == ImGuizmo::ROTATE) {
-            snapVals[0] = snapVals[1] = snapVals[2] = snapRotation;
-        } else if (currentOperation == ImGuizmo::SCALE) {
-            snapVals[0] = snapVals[1] = snapVals[2] = snapScale;
-        } else {
-            snapVals[0] = snapTranslate[0]; // 単純化のためXYZ同じ値か、メンバー変数を使う
-            snapVals[1] = snapTranslate[1];
-            snapVals[2] = snapTranslate[2];
+                    Object3d::Transform* tf = obj->GetTransform();
+                    Vector3 minBox = { tf->translate.x - tf->scale.x, tf->translate.y - tf->scale.y, tf->translate.z - tf->scale.z };
+                    Vector3 maxBox = { tf->translate.x + tf->scale.x, tf->translate.y + tf->scale.y, tf->translate.z + tf->scale.z };
+
+                    RayResult tempHit;
+                    if (math.IntersectRayAABB(ray, minBox, maxBox, &tempHit)) {
+                        if (tempHit.distance < bestHit.distance) {
+                            bestHit = tempHit;
+                            hitObj = obj.get();
+                        }
+                    }
+                }
+
+                if (bestHit.isHit) {
+                    selectedObject_ = hitObj;
+                } else {
+                    selectedObject_ = nullptr;
+                }
+            }
         }
 
-        // メンバー変数 isGridSnapEnabled_ を使用
-        float* snapPtr = isGridSnapEnabled_ ? snapVals : nullptr;
+        // --- 3. ギズモ表示 (選択中のみ) ---
+        if (selectedObject_) {
+            static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
+            static ImGuizmo::MODE currentMode = ImGuizmo::WORLD;
 
-        //  ギズモ表示
-        ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], currentOperation, currentMode, &world.m[0][0], nullptr, snapPtr);
+            // ギズモ切り替えキー
+            if (!ImGui::GetIO().WantCaptureKeyboard) {
+                if (input->IsKeyTriggered(DIK_T)) currentOperation = ImGuizmo::TRANSLATE;
+                if (input->IsKeyTriggered(DIK_R)) currentOperation = ImGuizmo::ROTATE;
+                if (input->IsKeyTriggered(DIK_S)) currentOperation = ImGuizmo::SCALE;
+            }
 
+            Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+            if (camera) {
+                const Matrix4x4& view = camera->GetViewMatrix();
+                const Matrix4x4& proj = camera->GetProjectionMatrix();
+                Object3d::Transform* tr = selectedObject_->GetTransform();
 
-        // A. 操作開始 (isDraggingTransform_ を使用)
-        if (ImGuizmo::IsUsing() && !isDraggingTransform_) {
-            isDraggingTransform_ = true;
+                Matrix4x4 world = math.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
 
-            // ★ tempTransformStart_ に今の状態を保存 (ヘッダーにある変数)
-            tempTransformStart_ = *tr;
+                ImGuiIO& io = ImGui::GetIO();
+                ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
-            redoStack_.clear();
-        }
+                // スナップ設定
+                float snapVal = 0.0f;
+                if (isGridSnapEnabled_) {
+                    if (currentOperation == ImGuizmo::ROTATE) snapVal = 15.0f;
+                    else if (currentOperation == ImGuizmo::SCALE) snapVal = 0.1f;
+                    else snapVal = 1.0f;
+                }
+                float snapArray[3] = { snapVal, snapVal, snapVal };
+                float* snapPtr = isGridSnapEnabled_ ? snapArray : nullptr;
 
-        // B. 操作中
-        if (ImGuizmo::IsUsing()) {
-            Vector3 s, rDeg, t;
-            ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &t.x, &rDeg.x, &s.x);
+                // ギズモ操作
+                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], currentOperation, currentMode, &world.m[0][0], nullptr, snapPtr);
 
-            tr->translate = t;
-            tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
-            tr->scale = s;
+                // 操作開始 (Undo記録)
+                if (ImGuizmo::IsUsing() && !isDraggingTransform_) {
+                    isDraggingTransform_ = true;
+                    tempTransformStart_ = *tr;
+                    redoStack_.clear();
+                }
 
-            selectedObject_->UpdateWorldMatrix();
-        }
+                // 操作中 (値の反映)
+                if (ImGuizmo::IsUsing()) {
+                    Vector3 s, rDeg, t;
+                    ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &t.x, &rDeg.x, &s.x);
+                    tr->translate = t;
+                    tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+                    tr->scale = s;
+                    selectedObject_->UpdateWorldMatrix();
+                }
 
-        // C. 操作終了
-        if (!ImGuizmo::IsUsing() && isDraggingTransform_) {
-            isDraggingTransform_ = false;
-
-            // ここでローカルにコマンドを作成して保存
-            TransformCommand cmd;
-            cmd.target = selectedObject_;
-            cmd.oldTf = tempTransformStart_; // 開始時の状態
-            cmd.newTf = *tr;                 // 終了時の状態
-
-            // 変更があったかチェック
-            bool isChanged = false;
-            // 座標
-            if (cmd.oldTf.translate.x != cmd.newTf.translate.x ||
-                cmd.oldTf.translate.y != cmd.newTf.translate.y ||
-                cmd.oldTf.translate.z != cmd.newTf.translate.z) isChanged = true;
-            // 回転
-            else if (cmd.oldTf.rotate.x != cmd.newTf.rotate.x ||
-                cmd.oldTf.rotate.y != cmd.newTf.rotate.y ||
-                cmd.oldTf.rotate.z != cmd.newTf.rotate.z) isChanged = true;
-            // スケール
-            else if (cmd.oldTf.scale.x != cmd.newTf.scale.x ||
-                cmd.oldTf.scale.y != cmd.newTf.scale.y ||
-                cmd.oldTf.scale.z != cmd.newTf.scale.z) isChanged = true;
-
-            if (isChanged) {
-                undoStack_.push_back(cmd);
-                DebugConsole::GetInstance()->AddLog("Action Recorded");
+                // 操作終了 (Undo確定)
+                if (!ImGuizmo::IsUsing() && isDraggingTransform_) {
+                    isDraggingTransform_ = false;
+                    TransformCommand cmd;
+                    cmd.target = selectedObject_;
+                    cmd.oldTf = tempTransformStart_;
+                    cmd.newTf = *tr;
+                    undoStack_.push_back(cmd);
+                }
             }
         }
     }
@@ -399,6 +517,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             instanceCount++;
         }
     }
+   
 }
 // ========================================================================
 // ワイヤーフレームの立方体を描画する内部関数
@@ -673,7 +792,7 @@ void DebugEditor::DrawImGui() {
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                             selectedObject_->animName_ = fileName;
 
-                          
+
                             if (selectedObject_->recorder_) {
                                 selectedObject_->recorder_->Play(
                                     selectedObject_->animName_,
@@ -681,7 +800,7 @@ void DebugEditor::DrawImGui() {
                                     selectedObject_->isAnimRelative_
                                 );
                             }
-                   
+
                         }
 
                         // フォーカス設定
@@ -793,76 +912,79 @@ void DebugEditor::DrawImGui() {
     // ==========================================================================================
     // Hierarchy Window (階層構造)
     // ==========================================================================================
-        ImGui::Begin("Hierarchy");
+    ImGui::Begin("Hierarchy");
 
-        // 1. 検索バー
-        ImGui::Text("Search:");
-        ImGui::SameLine();
-        ImGui::InputText("##Search", searchFilter_, sizeof(searchFilter_));
+    // 1. 検索バー
+    ImGui::Text("Search:");
+    ImGui::SameLine();
+    ImGui::InputText("##Search", searchFilter_, sizeof(searchFilter_));
 
-        ImGui::Separator();
+    ImGui::Separator();
 
-        // 検索文字を小文字に変換（大文字・小文字を区別しないため）
-        std::string filterStr = searchFilter_;
-        std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
+    // 検索文字を小文字に変換（大文字・小文字を区別しないため）
+    std::string filterStr = searchFilter_;
+    std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
 
 
-        if (!filterStr.empty()) {
-            // =========================================================
-            // A. 検索モード (文字入力がある時だけ表示)
-            // =========================================================
-            ImGui::TextColored(ImVec4(0, 1, 1, 1), "Search Results:");
+    if (!filterStr.empty()) {
+        // =========================================================
+        // A. 検索モード (文字入力がある時だけ表示)
+        // =========================================================
+        ImGui::TextColored(ImVec4(0, 1, 1, 1), "Search Results:");
 
-            auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-            for (auto& obj : objects) {
-                // 名前チェック
-                std::string name = obj->GetName();
-                if (name.empty()) continue; // 名前なしはスキップ
+        auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+        for (auto& obj : objects) {
+            // 名前チェック
+            std::string name = obj->GetName();
+            if (name.empty()) continue; // 名前なしはスキップ
 
-                // 検索ヒット判定 (小文字にして比較)
-                std::string nameLower = name;
-                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+            // 検索ヒット判定 (小文字にして比較)
+            std::string nameLower = name;
+            std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
 
-                // ヒットした場合のみ表示
-                if (nameLower.find(filterStr) != std::string::npos) {
-                    // 検索結果はフラットなリストとして表示 (Selectableを使用)
-                    bool isSelected = (selectedObject_ == obj.get());
+            // ヒットした場合のみ表示
+            if (nameLower.find(filterStr) != std::string::npos) {
+                // 検索結果はフラットなリストとして表示 (Selectableを使用)
+                bool isSelected = (selectedObject_ == obj.get());
 
-                    // ユニークなIDが必要なのでポインタをID代わりにプッシュ
-                    ImGui::PushID(obj.get());
-                    if (ImGui::Selectable(name.c_str(), isSelected)) {
-                        selectedObject_ = obj.get();
-                    }
-                    ImGui::PopID();
+                // ユニークなIDが必要なのでポインタをID代わりにプッシュ
+                ImGui::PushID(obj.get());
+                if (ImGui::Selectable(name.c_str(), isSelected)) {
+                    selectedObject_ = obj.get();
                 }
+                ImGui::PopID();
             }
-        } else {
-            // =========================================================
-            // B. 通常モード (検索していない時はツリー表示)
-            // =========================================================
+        }
+    } else {
+        // =========================================================
+        // B. 通常モード (検索していない時はツリー表示)
+        // =========================================================
 
-            // スポーン用ドロップエリア (通常時のみ表示)
-            ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 30));
-            if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-                    const char* modelName = (const char*)payload->Data;
-                    ModelManager::GetInstance()->LoadModel(modelName);
+        // スポーン用ドロップエリア (通常時のみ表示)
+        ImGui::Button("[ DROP MODEL HERE TO SPAWN ]", ImVec2(-1, 30));
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+            const char* modelName = (const char*)payload->Data;
+            ModelManager::GetInstance()->LoadModel(modelName);
 
-                    Object3dCommon* common = currentScene->GetObject3dCommon();
-                    if (common) {
-                        auto newObj = std::make_unique<Object3d>();
-                        newObj->Initialize(common);
-                        newObj->SetModel(modelName);
-                        newObj->SetClassName("Model");
+            Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
+            if (common) {
+                // 1. オブジェクトを作成
+                auto newObj = std::make_unique<Object3d>();
+                newObj->Initialize(common); // 初期化
+                newObj->SetModel(modelName);
+                newObj->SetClassName("Model");
+                newObj->SetName("Preview_" + std::string(modelName));
+                newObj->UpdateLocalMatrix();
+                newObj->UpdateWorldMatrix();
+                previewObject_ = std::move(newObj);
 
-                        static int spawnCount = 0;
-                        newObj->SetName(std::string(modelName) + "_" + std::to_string(spawnCount++));
-                        currentScene->AddObject(std::move(newObj));
-                        DebugConsole::GetInstance()->AddLog("Spawned: " + std::string(modelName));
-                    }
-                }
-                ImGui::EndDragDropTarget();
+                // ログ
+                DebugConsole::GetInstance()->AddLog("Placement Mode: " + std::string(modelName));
             }
+        }
+        ImGui::EndDragDropTarget();
+    
+
 
             ImGui::Separator();
 
@@ -1410,4 +1532,102 @@ void DebugEditor::PerformRedo() {
         cmd.target->UpdateWorldMatrix();
     }
     DebugConsole::GetInstance()->AddLog("Redo Performed");
+}
+
+// マウス位置からワールド空間へのレイを作成
+Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
+    // 1. カメラ情報の取得
+    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera(); 
+    if (!camera) return Ray{}; // カメラがない場合は空を返す
+
+    // ビュー行列とプロジェクション行列
+    Matrix4x4 matView = camera->GetViewMatrix();
+    Matrix4x4 matProj = camera->GetProjectionMatrix();
+    Matrix4x4 matViewProj = math_.Multiply(matView, matProj);
+
+    // 逆行列（スクリーン→ワールドに戻すため）
+    Matrix4x4 matInverseVP = math_.Inverse(matViewProj);
+
+    // 2. スクリーン座標をNDC（-1.0 ~ 1.0）に変換
+    float screenW = (float)WinApp::kClientWidth;
+    float screenH = (float)WinApp::kClientHeight;
+
+    // NDC座標計算 (Y軸は反転させるのが一般的)
+    Vector3 nearPos, farPos;
+    nearPos.x = (2.0f * mousePos.x) / screenW - 1.0f;
+    nearPos.y = 1.0f - (2.0f * mousePos.y) / screenH;
+    nearPos.z = 0.0f; // ニアクリップ平面 (手前)
+
+    farPos = nearPos;
+    farPos.z = 1.0f;  // ファークリップ平面 (奥)
+
+    // 3. ワールド座標に変換
+    Vector3 worldNear = math_.Transform(nearPos, matInverseVP);
+    Vector3 worldFar = math_.Transform(farPos, matInverseVP);
+
+    // 4. レイの作成
+    Ray ray;
+    ray.origin = worldNear; // 発射地点
+    ray.diff = worldFar - worldNear; // 方向ベクトル (長さ含む)
+
+    return ray;
+}
+
+
+// ---------------------------------------------------------
+// レイと平面(Y=0)の交点を計算する関数
+// 戻り値: 交差したら true, その座標を intersectOut に入れる
+// ---------------------------------------------------------
+bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
+    // 計算用のMathクラス
+    Math math;
+
+    // 平面の定義（上向きの法線, 高さ0）
+    Vector3 planeNormal = { 0.0f, 1.0f, 0.0f };
+    float planeHeight = 0.0f;
+
+    // 平行かどうかチェック (内積が0に近い＝平行)
+    // レイの方向ベクトルと平面の法線の内積をとる
+    float denominator = math.Dot(ray.diff, planeNormal);
+
+    // レイが水平に近いなら判定しない (0除算防止)
+    if (std::abs(denominator) < 0.0001f) {
+        return false;
+    }
+
+    // 交点までの距離 t を求める公式
+    // t = (PlaneHeight - Dot(RayOrigin, PlaneNormal)) / Dot(RayDir, PlaneNormal)
+
+    // まずレイの方向を正規化する
+    Vector3 rayDir = math.Normalize(ray.diff);
+    float dotDir = math.Dot(rayDir, planeNormal);
+
+    // 念のため再チェック
+    if (std::abs(dotDir) < 0.0001f) return false;
+
+    // 距離tの計算
+    float t = (planeHeight - math.Dot(ray.origin, planeNormal)) / dotDir;
+
+    // tがマイナス＝カメラの後ろ側にあるので無視
+    if (t < 0.0f) {
+        return false;
+    }
+
+    // 交点座標 = 原点 + 方向 * 距離
+    // intersectOut = ray.origin + (rayDir * t)
+    Vector3 travel = { rayDir.x * t, rayDir.y * t, rayDir.z * t };
+    intersectOut = { ray.origin.x + travel.x, ray.origin.y + travel.y, ray.origin.z + travel.z };
+
+    return true;
+}
+
+
+
+
+
+void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (previewObject_) {
+ 
+        previewObject_->Draw(pointLightResource, spotLightResource);
+    }
 }

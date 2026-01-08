@@ -26,6 +26,7 @@ void Game::Initialize() {
     ghostRecorder_->Initialize(sceneManager_.get());
     debugEditor_ = std::make_unique<DebugEditor>();
     debugEditor_->Initialize(sceneManager_.get(), dxCommon_);
+    sceneManager_->SetDebugEditor(debugEditor_.get());
     particleEditor_ = std::make_unique<ParticleEditor>();
     particleEditor_->Initialize(sceneManager_.get());
     lightEditor_ = std::make_unique<LightEditor>();
@@ -206,7 +207,6 @@ void Game::Draw() {
     }
 #endif
 
-    //SceneManager の描画処理を呼び出す
     if (sceneManager_) {
         sceneManager_->Draw();
     }
