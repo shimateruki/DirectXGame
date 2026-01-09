@@ -87,6 +87,7 @@ void Object3d::SetModel(const std::string& modelName) {
     // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
 
+
 }
 
 void Object3d::Update(float deltaTime) {

@@ -127,15 +127,14 @@ void GhostRecorder::Update() {
 void GhostRecorder::DrawImGui() {
     ImGui::Begin("Ghost Recorder");
 
-
     if (sceneManager_) {
         BaseScene* scene = sceneManager_->GetCurrentScene();
         if (scene) {
             // 現在のターゲット名を表示
-            std::string currentTargetName = target_ ? target_->GetName() : "(None)";
+            std::string currentTargetName = target_ ? target_->GetName() : "(なし)";
 
             // コンボボックス（プルダウン）で選択
-            if (ImGui::BeginCombo("Target Object", currentTargetName.c_str())) {
+            if (ImGui::BeginCombo("ターゲット (Target)", currentTargetName.c_str())) {
 
                 // シーン内の全オブジェクトを取得してリスト化
                 auto& objects = scene->GetObjects();
@@ -156,24 +155,30 @@ void GhostRecorder::DrawImGui() {
         }
     }
 
-
-    ImGui::Text("State: %d", (int)state_);
+    // ステート表示（デバッグ用に見やすく）
+    const char* stateStr = "待機中 (Idle)";
+    if (state_ == State::Recording) stateStr = "録画中 (Recording...)";
+    if (state_ == State::Playing) stateStr = "再生中 (Playing)";
+    ImGui::Text("状態: %s", stateStr);
 
     // --- 録画エリア ---
     if (state_ == State::Idle) {
         // ターゲットがいないと押せないようにグレーアウトする
         if (!target_) ImGui::BeginDisabled();
 
-        if (ImGui::Button("Start Recording")) {
+        // 緑色っぽくして「開始」感を出す
+        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.3f, 0.6f, 0.6f));
+        if (ImGui::Button("録画開始 (Start Rec)", ImVec2(-1, 0))) {
             StartRecording();
         }
+        ImGui::PopStyleColor();
 
         if (!target_) ImGui::EndDisabled();
 
     } else if (state_ == State::Recording) {
-        // 録画中は赤色にするなど目立たせると便利
+        // 録画中は赤色にする（重要）
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-        if (ImGui::Button("Stop Recording")) {
+        if (ImGui::Button("録画停止 (Stop Rec)", ImVec2(-1, 0))) {
             StopRecording();
         }
         ImGui::PopStyleColor();
@@ -183,36 +188,37 @@ void GhostRecorder::DrawImGui() {
 
     // --- 保存・読み込みエリア ---
     static char fileNameBuf[64] = "anim_test";
-    ImGui::InputText("File Name", fileNameBuf, 64);
+    ImGui::InputText("ファイル名", fileNameBuf, 64);
 
-    if (ImGui::Button("Save JSON")) {
+    if (ImGui::Button("保存 (Save JSON)")) {
         Save(fileNameBuf);
     }
     ImGui::SameLine();
-    if (ImGui::Button("Load JSON")) {
+    if (ImGui::Button("読み込み (Load JSON)")) {
         Load(fileNameBuf);
     }
 
     ImGui::Separator();
 
     // --- 再生設定エリア ---
-    ImGui::Text("Playback Settings");
+    ImGui::Text("再生設定 (Playback)");
 
     static bool loopCheck = false;
     static bool relativeCheck = true;
 
-    ImGui::Checkbox("Loop Play", &loopCheck);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Repeat animation correctly");
+    ImGui::Checkbox("ループ再生 (Loop)", &loopCheck);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("アニメーションを繰り返します");
 
-    ImGui::Checkbox("Relative Mode", &relativeCheck);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Play from CURRENT position");
+    ImGui::Checkbox("相対座標モード (Relative)", &relativeCheck);
+    // ここは重要な概念なので、ツールチップで補足
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("ON: 現在の座標を基準に動きます\nOFF: 録画時の絶対座標にワープして動きます");
 
     // 再生ボタン
     if (state_ != State::Recording) {
         // ターゲットがいないと再生も危険なので無効化
         if (!target_) ImGui::BeginDisabled();
 
-        if (ImGui::Button("Play Loaded Anim")) {
+        if (ImGui::Button("再生開始 (Play)", ImVec2(120, 0))) {
             isLoop_ = loopCheck;
             isRelative_ = relativeCheck;
             StartPlayingInternal();
@@ -221,7 +227,8 @@ void GhostRecorder::DrawImGui() {
         if (!target_) ImGui::EndDisabled();
     }
 
-    if (ImGui::Button("Stop Play")) {
+    ImGui::SameLine();
+    if (ImGui::Button("停止 (Stop)", ImVec2(120, 0))) {
         Stop();
     }
 
@@ -239,7 +246,7 @@ void GhostRecorder::Save(const std::string& fileName) {
         frameJson["rot"] = { frame.rotation.x, frame.rotation.y, frame.rotation.z };
         root["frames"].push_back(frameJson);
     }
-    std::string path = "resouces/json/" + fileName + ".json"; // パス修正(typo修正)
+    std::string path = "resouces/json/animation/" + fileName + ".json"; // パス修正
     std::ofstream file(path);
     if (file.is_open()) {
         file << root.dump(4);
@@ -247,9 +254,9 @@ void GhostRecorder::Save(const std::string& fileName) {
     }
 }
 
-// Load関数（変更なし）
+// Load関数
 void GhostRecorder::Load(const std::string& fileName) {
-    std::string path = "resouces/json/" + fileName + ".json"; // パス修正
+    std::string path = "resouces/json/animation/" + fileName + ".json"; 
     std::ifstream file(path);
     if (!file.is_open()) return;
     json root;

@@ -22,7 +22,12 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
 
     // ImGuiのスタイルを設定
     ImGui::StyleColorsDark();
-
+    io.Fonts->AddFontFromFileTTF(
+        "resouces/sprite/meiryo.ttc",   // フォントファイルのパス
+        18.0f,                                // フォントサイズ
+        nullptr,
+        io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）
+    );
     // プラットフォームとレンダラーのバックエンドを初期化
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 

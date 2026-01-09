@@ -93,28 +93,36 @@ void SpriteDebugEditor::Update() {
 
 void SpriteDebugEditor::DrawImGui() {
 #ifdef USE_IMGUI
-    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (!sceneManager_) return;
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (!currentScene) return;
 
     // -------------------------------------------------------------
-    // 1. スプライトリスト (名前を表示するように修正！)
+    // 1. スプライトリスト
+    //   
     // -------------------------------------------------------------
-    ImGui::Begin("Sprite List");
+    ImGui::Begin("スプライト一覧 (Sprite List)");
 
     auto& sprites = currentScene->GetSprites();
     int id = 0;
+
+    if (sprites.empty()) {
+        ImGui::TextDisabled("スプライトがありません");
+    }
+
     for (const auto& spritePtr : sprites) {
         Sprite* sprite = spritePtr.get();
         if (!sprite) continue;
 
         ImGui::PushID(id++);
 
-        // ★修正点: 名前があればそれを使う
+        // 名前があればそれを使う、なければ番号
         std::string label = "Sprite " + std::to_string(id);
         if (!sprite->GetName().empty()) {
             label = sprite->GetName();
         }
 
+        // 選択状態の管理
         bool isSelected = (selectedSprite_ == sprite);
         if (ImGui::Selectable(label.c_str(), isSelected)) {
             selectedSprite_ = sprite;
@@ -125,21 +133,26 @@ void SpriteDebugEditor::DrawImGui() {
 
 
     // -------------------------------------------------------------
-    // 2. 設定＆ファイル管理
+    // 2. 詳細設定＆ファイル管理
     // -------------------------------------------------------------
-    ImGui::Begin("Sprite Inspector");
+    ImGui::Begin("スプライト詳細 (Sprite Inspector)");
 
-    if (ImGui::CollapsingHeader("Layout File Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
+    // --- ファイル管理セクション ---
+    if (ImGui::CollapsingHeader("ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // ディレクトリ作成 (typo修正: resouces -> resources の方が一般的ですが、既存に合わせます)
         std::string directoryPath = "resouces/json/";
         if (!fs::exists(directoryPath)) { fs::create_directories(directoryPath); }
 
-        if (ImGui::BeginCombo("Existing Files", currentSpriteFilename_)) {
+        // コンボボックス: 既存ファイルを選択して名前欄に入力する
+        if (ImGui::BeginCombo("既存ファイル", currentSpriteFilename_)) {
             if (fs::exists(directoryPath)) {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
                     if (entry.path().extension() == ".json") {
                         std::string fname = entry.path().filename().string();
+
                         bool isSelected = (std::string(currentSpriteFilename_) == fname);
                         if (ImGui::Selectable(fname.c_str(), isSelected)) {
+                            // 選択したらバッファにコピー
                             strcpy_s(currentSpriteFilename_, fname.c_str());
                         }
                         if (isSelected) ImGui::SetItemDefaultFocus();
@@ -149,32 +162,68 @@ void SpriteDebugEditor::DrawImGui() {
             ImGui::EndCombo();
         }
 
-        ImGui::InputText("Filename", currentSpriteFilename_, sizeof(currentSpriteFilename_));
+        ImGui::InputText("保存名 (.json)", currentSpriteFilename_, sizeof(currentSpriteFilename_));
 
-        if (ImGui::Button("Save Sprite Layout")) {
+        // 保存ボタン
+        if (ImGui::Button("レイアウト保存 (Save)")) {
             std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
+            // 拡張子がなければ足すなどの処理を入れても良い
             SaveSpriteLayout(fullPath);
+        }
+
+        // ※読み込みボタンもあると便利なのでレイアウトだけ作っておきます
+        ImGui::SameLine();
+        if (ImGui::Button("読み込み (Load)")) {
+            std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
+            // LoadSpriteLayout(fullPath); // 実装済みならコメントアウト解除
         }
     }
 
     ImGui::Separator();
 
+    // --- パラメータ編集セクション ---
     if (selectedSprite_) {
-        ImGui::Text("Selected: %s", selectedSprite_->GetName().c_str()); // 名前確認用
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "選択中: %s", selectedSprite_->GetName().c_str());
 
+        // 各種パラメータ取得
         Vector2 pos = selectedSprite_->GetPosition();
         Vector2 size = selectedSprite_->GetSize();
         Vector2 anchor = selectedSprite_->GetAnchorPoint();
-        Vector4 color = selectedSprite_->GetColor();
+        Vector4 color = selectedSprite_->GetColor(); // 元コードで取得していたので活用します
 
         bool changed = false;
-        if (ImGui::DragFloat2("Position", &pos.x, 1.0f)) { selectedSprite_->SetPosition(pos); changed = true; }
-        if (ImGui::DragFloat2("Size", &size.x, 1.0f)) { selectedSprite_->SetSize(size); changed = true; }
-        if (ImGui::DragFloat2("Anchor", &anchor.x, 0.05f)) { selectedSprite_->SetAnchorPoint(anchor); changed = true; }
+
+        // 座標
+        if (ImGui::DragFloat2("座標 (Pos)", &pos.x, 1.0f)) {
+            selectedSprite_->SetPosition(pos);
+        }
+
+        // サイズ
+        if (ImGui::DragFloat2("サイズ (Size)", &size.x, 1.0f)) {
+            selectedSprite_->SetSize(size);
+        }
+
+        // アンカーポイント (0.0~1.0の範囲が多いので、感度(speed)を0.01fに落として微調整しやすく)
+        if (ImGui::DragFloat2("アンカー (Anchor)", &anchor.x, 0.01f)) {
+            selectedSprite_->SetAnchorPoint(anchor);
+        }
+
+        // 色 (ColorEdit4を追加)
+        if (ImGui::ColorEdit4("色 (Color)", &color.x)) {
+            selectedSprite_->SetColor(color);
+        }
 
         ImGui::Separator();
-        if (ImGui::Button("Deselect")) selectedSprite_ = nullptr;
+
+        // 選択解除ボタン（少し離して配置）
+        ImGui::Dummy(ImVec2(0.0f, 10.0f));
+        if (ImGui::Button("選択解除 (Deselect)", ImVec2(-1, 0))) { // 幅いっぱいにボタン
+            selectedSprite_ = nullptr;
+        }
+    } else {
+        ImGui::TextDisabled("リストからスプライトを選択してください");
     }
+
     ImGui::End();
 #endif
 }

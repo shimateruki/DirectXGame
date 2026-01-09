@@ -1,4 +1,4 @@
-
+#define NOMINMAX
 #include <fstream>
 #include "Model.h"
 #include "DirectXCommon.h"

@@ -15,51 +15,51 @@ void LightEditor::DrawImGui() {
 #ifdef USE_IMGUI
     if (!lightManager_) return;
 
-    if (ImGui::Begin("Light Editor")) {
+    if (ImGui::Begin("ライト編集")) {
 
         // ==========================================================
         // 1. ファイル保存・読み込みエリア
         // ==========================================================
-        ImGui::Text("File Settings");
+        ImGui::Text("ファイル設定");
 
         // ファイル名入力 
-        ImGui::InputText("Filename (.json)", currentFileName_, sizeof(currentFileName_));
+        ImGui::InputText("ファイル名 (.json)", currentFileName_, sizeof(currentFileName_));
 
         // フルパスを作成
-        std::string fullPath = "resouces/json/" + std::string(currentFileName_);
+        std::string fullPath = "resouces/json/light" + std::string(currentFileName_);
 
         // 保存・読み込みボタン (Managerに委譲)
-        if (ImGui::Button("Save")) {
+        if (ImGui::Button("セーブ")) {
             lightManager_->SaveState(fullPath);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Load")) {
+        if (ImGui::Button("ロード")) {
             lightManager_->LoadState(fullPath);
         }
 
         // 現在のパスを表示（確認用）
-        ImGui::TextDisabled("Target Path: %s", fullPath.c_str());
+        ImGui::TextDisabled("ターゲットパス: %s", fullPath.c_str());
 
         ImGui::Separator();
 
         // ==========================================================
         // 2. 点光源 (Point Lights) リスト
         // ==========================================================
-        if (ImGui::CollapsingHeader("Point Lights")) {
-            if (ImGui::Button("Add PointLight")) {
+        if (ImGui::CollapsingHeader("点光源")) {
+            if (ImGui::Button("点光源追加")) {
                 lightManager_->AddPointLight();
             }
             ImGui::SameLine();
-            if (ImGui::Button("Clear PointLights")) {
+            if (ImGui::Button("点光源削除")) {
                 lightManager_->GetPointLights().clear();
             }
 
             auto& pointLights = lightManager_->GetPointLights();
             for (int i = 0; i < pointLights.size(); ++i) {
                 ImGui::PushID(i); // ID被り防止
-                if (ImGui::TreeNode("PointLight", "PointLight %d", i)) {
+                if (ImGui::TreeNode("点光源", "点光源 %d", i)) {
                     // 削除ボタン
-                    if (ImGui::Button("Remove")) {
+                    if (ImGui::Button("削除")) {
                         pointLights.erase(pointLights.begin() + i);
                         ImGui::TreePop();
                         ImGui::PopID();
@@ -67,11 +67,11 @@ void LightEditor::DrawImGui() {
                     }
 
                     // パラメータ調整
-                    ImGui::DragFloat3("Position", &pointLights[i].position.x, 0.1f);
-                    ImGui::ColorEdit4("Color", &pointLights[i].color.x);
-                    ImGui::DragFloat("Intensity", &pointLights[i].intensity, 0.01f, 0.0f, 10.0f);
-                    ImGui::DragFloat("Radius", &pointLights[i].radius, 0.1f, 0.0f, 100.0f);
-                    ImGui::DragFloat("Decay", &pointLights[i].decay, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat3("位置", &pointLights[i].position.x, 0.1f);
+                    ImGui::ColorEdit4("色", &pointLights[i].color.x);
+                    ImGui::DragFloat("明るさ", &pointLights[i].intensity, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("半径", &pointLights[i].radius, 0.1f, 0.0f, 100.0f);
+                    ImGui::DragFloat("減衰", &pointLights[i].decay, 0.01f, 0.0f, 10.0f);
 
                     ImGui::TreePop();
                 }
@@ -82,8 +82,8 @@ void LightEditor::DrawImGui() {
         // ==========================================================
         // 3. スポットライト (Spot Lights) リスト
         // ==========================================================
-        if (ImGui::CollapsingHeader("Spot Lights")) {
-            if (ImGui::Button("Add SpotLight")) {
+        if (ImGui::CollapsingHeader("スポットライト")) {
+            if (ImGui::Button("スポットライト追加")) {
                 auto l = lightManager_->AddSpotLight();
                 // 追加時のデフォルト角度設定
                 if (l) {
@@ -92,16 +92,16 @@ void LightEditor::DrawImGui() {
                 }
             }
             ImGui::SameLine();
-            if (ImGui::Button("Clear SpotLights")) {
+            if (ImGui::Button("スポットライト削除")) {
                 lightManager_->GetSpotLights().clear();
             }
 
             auto& spotLights = lightManager_->GetSpotLights();
             for (int i = 0; i < spotLights.size(); ++i) {
                 ImGui::PushID(i + 1000); // PointLightとIDが被らないようにオフセット
-                if (ImGui::TreeNode("SpotLight", "SpotLight %d", i)) {
+                if (ImGui::TreeNode("スポットライト", "スポットライト %d", i)) {
                     // 削除ボタン
-                    if (ImGui::Button("Remove")) {
+                    if (ImGui::Button("削除")) {
                         spotLights.erase(spotLights.begin() + i);
                         ImGui::TreePop();
                         ImGui::PopID();
@@ -109,20 +109,20 @@ void LightEditor::DrawImGui() {
                     }
 
                     // パラメータ調整
-                    ImGui::DragFloat3("Position", &spotLights[i].position.x, 0.1f);
-                    ImGui::DragFloat3("Direction", &spotLights[i].direction.x, 0.01f, -1.0f, 1.0f);
-                    ImGui::ColorEdit4("Color", &spotLights[i].color.x);
-                    ImGui::DragFloat("Intensity", &spotLights[i].intensity, 0.01f, 0.0f, 10.0f);
-                    ImGui::DragFloat("Distance", &spotLights[i].distance, 0.1f, 0.0f, 100.0f);
-                    ImGui::DragFloat("Decay", &spotLights[i].decay, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat3("位置", &spotLights[i].position.x, 0.1f);
+                    ImGui::DragFloat3("向き", &spotLights[i].direction.x, 0.01f, -1.0f, 1.0f);
+                    ImGui::ColorEdit4("色", &spotLights[i].color.x);
+                    ImGui::DragFloat("強度", &spotLights[i].intensity, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("距離", &spotLights[i].distance, 0.1f, 0.0f, 100.0f);
+                    ImGui::DragFloat("減衰", &spotLights[i].decay, 0.01f, 0.0f, 10.0f);
 
                     // 角度操作 (Radian/Cos <-> Degree 変換)
                     float currentAngleDeg = std::acos(spotLights[i].cosAngle) * 180.0f / 3.141592f;
                     float currentFalloffDeg = std::acos(spotLights[i].cosFalloffStart) * 180.0f / 3.141592f;
 
                     bool changed = false;
-                    if (ImGui::DragFloat("Angle (Deg)", &currentAngleDeg, 1.0f, 0.1f, 179.0f)) changed = true;
-                    if (ImGui::DragFloat("Falloff (Deg)", &currentFalloffDeg, 1.0f, 0.1f, 179.0f)) changed = true;
+                    if (ImGui::DragFloat("角度", &currentAngleDeg, 1.0f, 0.1f, 179.0f)) changed = true;
+                    if (ImGui::DragFloat("減衰角", &currentFalloffDeg, 1.0f, 0.1f, 179.0f)) changed = true;
 
                     if (changed) {
                         // FalloffがAngleより大きくならないように補正
