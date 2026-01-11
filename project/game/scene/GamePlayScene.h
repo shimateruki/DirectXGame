@@ -74,6 +74,7 @@ private:
     void OnPlayerHit(const PlayerHitEvent& event);
 
     void OnBulletHit(const BulletHitEvent& event);
+    void SwitchActivePlayer(Player* newMainPlayer);
 
 private:
 

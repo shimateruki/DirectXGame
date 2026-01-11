@@ -280,10 +280,7 @@ void GamePlayScene::Update(float deltaTime) {
 		if (currentMode == Camera::FollowMode::kAimable) {
 			float wheelDelta = inputManager_->GetMouseWheelDelta();
 			if (wheelDelta != 0.0f) {
-				// ★もしゲーム中にズームさせたいなら、ここに処理を書く
-				// 例: CameraEditorの数値を書き換えるなど
-				// float dist = CameraEditor::GetInstance()->GetDistance();
-				// CameraEditor::GetInstance()->SetDistance(dist - wheelDelta);
+		
 			}
 		}
 
@@ -298,6 +295,42 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 		}
 	}
+
+	if (inputManager_->IsKeyTriggered(DIK_UPARROW) || inputManager_->IsKeyTriggered(DIK_DOWNARROW)) {
+
+		// 1. 今いるプレイヤーを全員リストアップする
+		std::vector<Player*> playerList;
+		for (auto& obj : objects_) {
+			// dynamic_cast で Player クラスだけを抽出
+			if (auto p = dynamic_cast<Player*>(obj.get())) {
+				playerList.push_back(p);
+			}
+		}
+
+		if (!playerList.empty()) {
+			// 2. 現在の主役がリストの何番目にいるか探す
+			int currentIndex = 0;
+			for (int i = 0; i < playerList.size(); ++i) {
+				if (playerList[i] == player_) {
+					currentIndex = i;
+					break;
+				}
+			}
+
+			// 3. 次の番号を計算 (UPなら+1, DOWNなら-1)
+			int nextIndex = currentIndex;
+			if (inputManager_->IsKeyTriggered(DIK_UPARROW)) {
+				nextIndex = (currentIndex + 1) % playerList.size(); // 末尾まで行ったら0に戻る
+			} else {
+				// マイナスの余り計算は少し特殊なのでこう書くと安全
+				nextIndex = (currentIndex - 1 + playerList.size()) % playerList.size();
+			}
+
+			// 4. 交代！
+			SwitchActivePlayer(playerList[nextIndex]);
+		}
+	}
+
 
 
 
@@ -593,8 +626,6 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 	}
 
 	json sceneData;
-
-	// 親子関係を結ぶための「保留リスト」 <子供のポインタ, 親の名前>
 	std::map<Object3d*, std::string> parentPendingList;
 
 	try {
@@ -602,16 +633,11 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 		if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
 
-			// ★リロード時はリストをクリアしておくと安全ですが、
-			// シーン遷移なしで追加ロードする場合はこのままでOK
-
 			for (const auto& objData : sceneData["objects"]) {
 				if (!objData.contains("name") || !objData["name"].is_string()) continue;
 				std::string name = objData["name"].get<std::string>();
 
-				// -------------------------------------------------
 				// 1. 既存チェック
-				// -------------------------------------------------
 				Object3d* targetObject = nullptr;
 				for (auto& obj : objects_) {
 					if (obj && !obj->GetName().empty() && obj->GetName() == name) {
@@ -620,9 +646,7 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 				}
 
-				// -------------------------------------------------
 				// 2. 新規生成 
-				// -------------------------------------------------
 				if (!targetObject) {
 					if (object3dCommon_) {
 						std::unique_ptr<Object3d> newObj = nullptr;
@@ -645,15 +669,16 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 						if (!enemyType.empty()) {
 							auto enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon_.get());
 							enemy->SetEnemyType(enemyType);
-							enemy->SetTarget(player_);
+							// ここでの SetTarget は削除してOK（最後にまとめてやるため）
 							newObj = std::move(enemy);
 						}
 						// パターンB: プレイヤー
 						else if (type == "Player" || name == "Player") {
 							auto player = std::make_unique<Player>();
-
 							player->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
 							player->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
+
+							// 一旦ポインタ保持（あとでSwitchActivePlayerに使う）
 							player_ = player.get();
 							newObj = std::move(player);
 						}
@@ -665,7 +690,12 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 						if (newObj) {
 							newObj->SetName(name);
-							newObj->SetClassName(type);
+							std::string currentClass = newObj->GetClassName();
+							if (currentClass != "Enemy" && currentClass != "Player") {
+								newObj->SetClassName(type);
+							}
+							
+
 							targetObject = newObj.get();
 							AddObject(std::move(newObj));
 						}
@@ -674,10 +704,8 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 
 				if (!targetObject) continue;
 
-				// -------------------------------------------------
 				// 3. モデル・表示設定
-				// -------------------------------------------------
-				std::string type = targetObject->GetClassName();
+				std::string type = targetObject->GetClassName(); // 最新のクラス名を取得
 
 				if (type == "InvisibleBox") {
 					targetObject->SetModel(nullptr);
@@ -693,72 +721,64 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 					}
 				}
 
-				// -------------------------------------------------
 				// 4. Transform
-				// -------------------------------------------------
 				Object3d::Transform* transform = targetObject->GetTransform();
 				if (objData.contains("position") && objData["position"].is_array()) {
-					transform->translate.x = objData["position"][0].get<float>();
-					transform->translate.y = objData["position"][1].get<float>();
-					transform->translate.z = objData["position"][2].get<float>();
+					transform->translate.x = objData["position"][0];
+					transform->translate.y = objData["position"][1];
+					transform->translate.z = objData["position"][2];
 				}
 				if (objData.contains("rotation") && objData["rotation"].is_array()) {
-					transform->rotate.x = objData["rotation"][0].get<float>();
-					transform->rotate.y = objData["rotation"][1].get<float>();
-					transform->rotate.z = objData["rotation"][2].get<float>();
+					transform->rotate.x = objData["rotation"][0];
+					transform->rotate.y = objData["rotation"][1];
+					transform->rotate.z = objData["rotation"][2];
 				}
 				if (objData.contains("scale") && objData["scale"].is_array()) {
-					transform->scale.x = objData["scale"][0].get<float>();
-					transform->scale.y = objData["scale"][1].get<float>();
-					transform->scale.z = objData["scale"][2].get<float>();
+					transform->scale.x = objData["scale"][0];
+					transform->scale.y = objData["scale"][1];
+					transform->scale.z = objData["scale"][2];
 				}
 
-				// -------------------------------------------------
 				// 5. Collider
-				// -------------------------------------------------
 				if (objData.contains("collider")) {
 					json colData = objData["collider"];
 					Object3d::ColliderConfig config = targetObject->GetColliderConfig();
 
 					if (colData.contains("type")) config.type = (ColliderType)colData["type"].get<int>();
 					if (colData.contains("center")) {
-						config.center.x = colData["center"][0].get<float>();
-						config.center.y = colData["center"][1].get<float>();
-						config.center.z = colData["center"][2].get<float>();
+						config.center.x = colData["center"][0];
+						config.center.y = colData["center"][1];
+						config.center.z = colData["center"][2];
 					}
 					if (colData.contains("size")) {
-						config.size.x = colData["size"][0].get<float>();
-						config.size.y = colData["size"][1].get<float>();
-						config.size.z = colData["size"][2].get<float>();
+						config.size.x = colData["size"][0];
+						config.size.y = colData["size"][1];
+						config.size.z = colData["size"][2];
 					}
 					targetObject->SetColliderConfig(config);
 				}
 
-				if (objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"].get<uint32_t>());
-				if (objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"].get<uint32_t>());
+				if (objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"]);
+				if (objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"]);
 
-				// -------------------------------------------------
 				// 6. Events & Params
-				// -------------------------------------------------
-				if (objData.contains("eventID")) targetObject->SetEventType(static_cast<EventType>(objData["eventID"].get<int>()));
-				if (objData.contains("targetID")) targetObject->SetTargetID(objData["targetID"].get<int>());
-				if (objData.contains("myEventID")) targetObject->SetEventID(objData["myEventID"].get<int>());
+				if (objData.contains("eventID")) targetObject->SetEventType(static_cast<EventType>(objData["eventID"]));
+				if (objData.contains("targetID")) targetObject->SetTargetID(objData["targetID"]);
+				if (objData.contains("myEventID")) targetObject->SetEventID(objData["myEventID"]);
 
 				if (objData.contains("param") && objData["param"].is_object()) {
 					targetObject->param_.emplace();
 					json paramData = objData["param"];
 					auto& p = targetObject->param_.value();
-					if (paramData.contains("hp")) p.hp = paramData["hp"].get<float>();
-					if (paramData.contains("maxHp")) p.maxHp = paramData["maxHp"].get<float>();
-					if (paramData.contains("speed")) p.speed = paramData["speed"].get<float>();
-					if (paramData.contains("gravity")) p.gravity = paramData["gravity"].get<float>();
-					if (paramData.contains("jumpPower")) p.jumpPower = paramData["jumpPower"].get<float>();
-					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"].get<float>();
+					if (paramData.contains("hp")) p.hp = paramData["hp"];
+					if (paramData.contains("maxHp")) p.maxHp = paramData["maxHp"];
+					if (paramData.contains("speed")) p.speed = paramData["speed"];
+					if (paramData.contains("gravity")) p.gravity = paramData["gravity"];
+					if (paramData.contains("jumpPower")) p.jumpPower = paramData["jumpPower"];
+					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"];
 				}
 
-				// -------------------------------------------------
 				// 7. Animation
-				// -------------------------------------------------
 				if (objData.contains("animName")) targetObject->animName_ = objData["animName"].get<std::string>();
 				if (objData.contains("isAnimLoop")) targetObject->isAnimLoop_ = objData["isAnimLoop"].get<bool>();
 				if (objData.contains("isAnimRelative")) targetObject->isAnimRelative_ = objData["isAnimRelative"].get<bool>();
@@ -786,6 +806,9 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				}
 			}
 			if (parentObj) childObj->SetParent(parentObj);
+		}
+		if (player_) {
+			SwitchActivePlayer(player_);
 		}
 
 	}
@@ -1088,3 +1111,26 @@ std::unique_ptr<Object3d> GamePlayScene::CreateStaticBlock(
 	return block;
 }
 #pragma endregion
+
+
+void GamePlayScene::SwitchActivePlayer(Player* newMainPlayer) {
+	if (!newMainPlayer) return;
+
+	// シーンが持つ「現在の主役」変数を書き換える
+	this->player_ = newMainPlayer;
+
+	// 2. 全オブジェクトの設定更新
+	for (auto& obj : objects_) {
+		// --- 操作権限の更新 ---
+		if (auto p = dynamic_cast<Player*>(obj.get())) {
+			// 指定された人だけ true (操作可能) にする
+			bool isActive = (p == newMainPlayer);
+			p->SetIsControlActive(isActive);
+		}
+
+		// --- 敵のターゲット更新 ---
+		if (auto enemy = dynamic_cast<BaseEnemy*>(obj.get())) {
+			enemy->SetTarget(newMainPlayer);
+		}
+	}
+}
