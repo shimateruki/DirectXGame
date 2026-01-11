@@ -8,19 +8,24 @@ EnemyFactory* EnemyFactory::GetInstance() {
 }
 
 std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, Object3dCommon* common) {
-
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
 
-    // 名前を見て、生成するクラスを変える
     if (enemyName == "Slime") {
         auto slime = std::make_unique<EnemySlime>();
-        // 初期化
-        slime->Initialize(common, "cube");
+        slime->Initialize(common, "cube"); 
         newEnemy = std::move(slime);
+    }
+    // 将来ここに追加していく
+    // else if (enemyName == "Robot") { ... }
+
+    //:作った敵に「名札」をつける
+    if (newEnemy) {
+        newEnemy->SetEnemyType(enemyName);
     } else {
-        // 知らない名前ならデフォルトの敵 (ただの置物)
+        // デフォルト（ただの置物）の場合
         newEnemy = std::make_unique<BaseEnemy>();
-        newEnemy->Initialize(common, "cube"); // とりあえず箱モデルなどを指定
+        newEnemy->Initialize(common, "cube");
+        newEnemy->SetEnemyType(""); // 特になし
     }
 
     return newEnemy;

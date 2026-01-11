@@ -47,6 +47,7 @@ public:
     void DeleteSelected();        // 削除 (Delete)
     void PerformUndo();
     void PerformRedo();
+    void DrawEnemyTypeSelector();
 
 
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
@@ -120,4 +121,5 @@ private:
 
 
     std::string currentPreviewModelName_ = "";
+    char presetNameBuffer_[64] = "";
 };

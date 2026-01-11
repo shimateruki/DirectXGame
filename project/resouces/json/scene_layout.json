@@ -17,6 +17,7 @@
             },
             "collisionAttribute": 1,
             "collisionMask": 4294967294,
+            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
@@ -33,22 +34,22 @@
             },
             "parentName": "",
             "position": [
-                18.339447021484375,
+                56.32905960083008,
                 2.6499998569488525,
-                -3.008443832397461
+                -2.0676281452178955
             ],
             "rotation": [
-                0.0,
-                2.8715932369232178,
-                0.0
+                6.278290811678744e-07,
+                0.0400000736117363,
+                6.278298201323196e-07
             ],
             "scale": [
-                1.0,
+                0.8180209398269653,
                 1.0,
                 1.0
             ],
             "targetID": -1,
-            "type": "Model"
+            "type": "Player"
         },
         {
             "animName": "",
@@ -67,6 +68,7 @@
             },
             "collisionAttribute": 2,
             "collisionMask": 4294967293,
+            "enemyType": "",
             "eventID": 1,
             "isAnimLoop": true,
             "isAnimRelative": false,
@@ -76,12 +78,12 @@
             "parentName": "",
             "position": [
                 3.5,
-                0.0,
+                2.7829251289367676,
                 0.0
             ],
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "scale": [
@@ -109,6 +111,7 @@
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967291,
+            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
@@ -151,6 +154,7 @@
             },
             "collisionAttribute": 2,
             "collisionMask": 13,
+            "enemyType": "Slime",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
@@ -167,22 +171,22 @@
             },
             "parentName": "",
             "position": [
-                13.154011726379395,
-                2.0,
-                12.877062797546387
+                56.385887145996094,
+                1.9999998807907104,
+                -1.1133742332458496
             ],
             "rotation": [
-                -3.1415908336639404,
-                2.8260719776153564,
-                -3.1415908336639404
+                1.8199212945546606e-06,
+                -3.0821125507354736,
+                1.8199241367256036e-06
             ],
             "scale": [
-                0.9999995231628418,
-                1.0,
-                0.9999995231628418
+                0.9999985098838806,
+                1.0067775249481201,
+                0.9999985098838806
             ],
             "targetID": -1,
-            "type": "Model"
+            "type": "Enemy"
         },
         {
             "animName": "",
@@ -201,6 +205,7 @@
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
+            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
@@ -225,6 +230,151 @@
             ],
             "targetID": -1,
             "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 4294967293,
+            "enemyType": "",
+            "eventID": 1,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Enemy_Copy0",
+            "parentName": "",
+            "position": [
+                5.5,
+                2.7829251289367676,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.649999976158142,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "teapot",
+            "myEventID": -1,
+            "name": "Player_Copy0",
+            "param": {
+                "gravity": 54.0,
+                "hp": 74.0,
+                "jumpPower": 10.0,
+                "maxFallSpeed": 60.0,
+                "maxHp": 48.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                58.32905960083008,
+                2.6499998569488525,
+                -2.0676281452178955
+            ],
+            "rotation": [
+                6.278290811678744e-07,
+                0.0400000736117363,
+                6.278298201323196e-07
+            ],
+            "scale": [
+                0.8180209398269653,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Player"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 13,
+            "enemyType": "Slime",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "cube",
+            "myEventID": -1,
+            "name": "Object_Copy0",
+            "param": {
+                "gravity": 50.0,
+                "hp": 100.0,
+                "jumpPower": 10.0,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                57.18869400024414,
+                1.9999998807907104,
+                -1.668804407119751
+            ],
+            "rotation": [
+                1.8199212945546606e-06,
+                -2.0051872730255127,
+                1.8199241367256036e-06
+            ],
+            "scale": [
+                0.9999985098838806,
+                1.0067775249481201,
+                0.9999985098838806
+            ],
+            "targetID": -1,
+            "type": "Enemy"
         }
     ]
 }

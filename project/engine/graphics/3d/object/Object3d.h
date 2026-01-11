@@ -10,6 +10,9 @@
 #include"Event.h"
 #include <vector>
 
+#include "json.hpp"
+using json = nlohmann::json;
+
 class GhostRecorder;
 class SceneManager;
 
@@ -226,6 +229,11 @@ public:
     void SetTargetID(int id) { targetID_ = id; }
     int GetTargetID() const { return targetID_; }
 
+    json ExportToJson();
+
+    // ★追加: JSONオブジェクトから設定を読み込む
+    void ImportFromJson(const json& j);
+
     // ギミック発動時に呼ばれる関数
     virtual void OnTrigger() {
         isVisible_ = false;
@@ -234,6 +242,8 @@ public:
     void InitializeRecorder(SceneManager* sceneManager);
 
     void CopyFrom(const Object3d* other);
+    void SetEnemyType(const std::string& type) { enemyType_ = type; }
+    std::string GetEnemyType() const { return enemyType_; }
 
     // アニメーション関連
     std::string animName_ = "";      // 再生するファイル名 (例: "door_open")
@@ -284,4 +294,5 @@ protected:
     bool isVisible_ = true;
     int eventID_ = -1;  // 受信ID（私は誰か）
     int targetID_ = -1; // 送信ID（誰を動かすか）
+    std::string enemyType_ = "";
 };

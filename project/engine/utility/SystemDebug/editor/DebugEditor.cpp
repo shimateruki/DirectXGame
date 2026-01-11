@@ -27,6 +27,7 @@
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
+#include <PresetManager.h>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
@@ -42,6 +43,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     selectedObject_ = nullptr;
     lastUpdatedScene_ = nullptr;
     InitializePrimitiveDrawing();
+    PresetManager::GetInstance()->LoadPresets();
 }
 
 // ========================================================================
@@ -853,7 +855,11 @@ void DebugEditor::DrawImGui() {
             }
 
             ImGui::Spacing();
-
+            if (selectedObject_->GetClassName() == "Enemy") {
+                ImGui::Indent();
+                DrawEnemyTypeSelector();
+                ImGui::Unindent();
+            }
             // Stats Parameters
             if (!selectedObject_->param_.has_value()) {
                 if (ImGui::Button("ステータスを追加", ImVec2(-1, 0))) {
@@ -961,6 +967,49 @@ void DebugEditor::DrawImGui() {
                 DebugConsole::GetInstance()->AddLog("Placement Mode: " + std::string(modelName));
             }
         }
+        // ========================================================
+    // パターンB: プリセットがドロップされた場合 
+    // ========================================================
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+            // 1. プリセット名を受け取る
+            const char* presetName = (const char*)payload->Data;
+
+            // 2. PresetManagerからJSONデータを取得
+            const auto& presets = PresetManager::GetInstance()->GetPresets();
+            if (presets.count(presetName) > 0) {
+                const json& data = presets.at(presetName);
+
+                // 3. モデルのロード (JSON内の "modelName" を確認)
+                std::string modelName = "cube.obj"; // デフォルト
+                if (data.contains("modelName")) {
+                    modelName = data["modelName"];
+                    ModelManager::GetInstance()->LoadModel(modelName);
+                }
+
+                // 4. プレビューオブジェクトを作成
+                Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
+                if (common) {
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common);
+
+                    // ここでJSONデータを流し込む
+                    newObj->ImportFromJson(data);
+                    newObj->SetModel(modelName);
+                    // 名前をプリセット名にしておく（わかりやすいように）
+                    newObj->SetName("Preview_" + std::string(presetName));
+
+                    // 行列更新
+                    newObj->UpdateLocalMatrix();
+                    newObj->UpdateWorldMatrix();
+
+                    // プレビューとしてセット
+                    previewObject_ = std::move(newObj);
+
+                    DebugConsole::GetInstance()->AddLog("Placement Mode (Preset): " + std::string(presetName));
+                }
+            }
+        }
+
         ImGui::EndDragDropTarget();
 
 
@@ -1229,92 +1278,180 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     }
 }
 
+
+
 void DebugEditor::DrawProjectWindow() {
-    // ウィンドウ名は英語のままにしておきます (imgui.iniの保存IDとして使われるため)
+    // ---------------------------------------------------------
+    // ウィンドウ開始
+    // ---------------------------------------------------------
     ImGui::Begin("Project (Assets)");
 
-    // ディレクトリパス 
-    // ※ typo注意: "resources" が正しいスペルですが、元のコードに合わせて "resouces" にしています
-    std::string baseDirectory = "resouces/3DModel";
+    // レイアウト計算用の変数（共通）
+    float windowVisibleX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
 
-    if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
-        // 説明文を日本語化
-        ImGui::Text("モデルをHierarchyへドラッグして配置");
-        ImGui::Separator();
+    // =================================================================================
+    // 1. モデルファイル一覧 (Raw Models)
+    //    resouces/3DModel フォルダ内の obj/gltf/glb をスキャンして表示
+    // =================================================================================
+    if (ImGui::CollapsingHeader("Models (Source)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        // ウィンドウの右端座標を取得（折り返し判定用）
-        float windowVisibleX = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
+        std::string baseDirectory = "resouces/3DModel";
 
-        for (const auto& entry : fs::directory_iterator(baseDirectory)) {
-            std::string displayModelName = ""; // ボタンに表示する名前
-            std::string payloadName = "";      // ModelManagerに渡す名前
+        if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
 
-            // =======================================================
-            // パターンA: フォルダの場合 (OBJなどテクスチャを含む場合)
-            // =======================================================
-            if (entry.is_directory()) {
-                std::string folderName = entry.path().filename().string();
+            // ガイドテキスト
+            ImGui::TextDisabled("Drag & Drop to Scene to Place");
+            ImGui::Separator();
 
-                // フォルダの中にあるモデルファイルを探す
-                for (const auto& subEntry : fs::directory_iterator(entry.path())) {
-                    std::string subExt = subEntry.path().extension().string();
-                    // 念のため小文字変換
-                    std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
+            for (const auto& entry : fs::directory_iterator(baseDirectory)) {
+                std::string displayModelName = ""; // ボタン表示名
+                std::string payloadName = "";      // ロード用パス/名前
 
-                    // 1. OBJの場合 
-                    if (subExt == ".obj") {
-                        displayModelName = folderName;
-                        payloadName = folderName;
-                        break; // 1つ見つけたら終了
+                // ---------------------------------------------------
+                // ディレクトリの場合 (objファイルが入っているフォルダ等を想定)
+                // ---------------------------------------------------
+                if (entry.is_directory()) {
+                    std::string folderName = entry.path().filename().string();
+
+                    // フォルダ内を検索してモデルファイルを探す
+                    for (const auto& subEntry : fs::directory_iterator(entry.path())) {
+                        std::string subExt = subEntry.path().extension().string();
+                        // 小文字変換して比較
+                        std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
+
+                        if (subExt == ".obj") {
+                            displayModelName = folderName;
+                            payloadName = folderName;
+                            break;
+                        } else if (subExt == ".gltf" || subExt == ".glb") {
+                            displayModelName = subEntry.path().filename().string();
+                            payloadName = subEntry.path().filename().string();
+                            break;
+                        }
                     }
-                    // 2. glTF / GLB の場合 
-                    else if (subExt == ".gltf" || subExt == ".glb") {
-                        displayModelName = subEntry.path().filename().string();
-                        payloadName = subEntry.path().filename().string();
-                        break; // 1つ見つけたら終了
+                }
+
+                // ---------------------------------------------------
+                // ボタンの描画とドラッグ処理
+                // ---------------------------------------------------
+                if (!displayModelName.empty()) {
+                    ImGui::PushID(displayModelName.c_str());
+
+                    // ボタン描画 (幅100, 高さ0=自動)
+                    ImGui::Button(displayModelName.c_str(), ImVec2(100, 0));
+
+                    // --- ドラッグ&ドロップ処理 (Source) ---
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                        // タグ: MODEL_ASSET
+                        ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
+
+                        // ドラッグ中のプレビュー
+                        ImGui::Text("Model: %s", displayModelName.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+
+                    ImGui::PopID();
+
+                    // --- グリッドレイアウト調整 (横並び) ---
+                    float lastButtonX = ImGui::GetItemRectMax().x;
+                    float nextButtonX = lastButtonX + itemSpacing + 100.0f;
+                    // 次のボタンがウィンドウ端を超えないなら横に並べる
+                    if (nextButtonX < windowVisibleX) {
+                        ImGui::SameLine();
                     }
                 }
             }
+        } else {
+            // ディレクトリが見つからない場合のエラー表示
+            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Directory Not Found: %s", baseDirectory.c_str());
+        }
+    }
 
-            // =======================================================
-            // モデルが見つかった場合のみボタンを描画
-            // =======================================================
-            if (!displayModelName.empty()) {
-                // ID重複防止
-                ImGui::PushID(displayModelName.c_str());
+    // =================================================================================
+    // 2. プリセット一覧 (Presets)
+    //    JSONに保存された設定済みオブジェクト。ここから新規保存も可能にする。
+    // =================================================================================
+    if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-                // ボタン描画 (幅100指定)
-                // 色を変えて「アセット感」を出しても良いかもしれません
-                ImGui::Button(displayModelName.c_str(), ImVec2(100, 0));
+        // -------------------------------------------------------
+        // ★ 新規プリセット作成エリア (選択中のオブジェクトを保存)
+        // -------------------------------------------------------
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "▼ Create New Preset");
 
-                // --- ドラッグ&ドロップ処理 ---
+        if (selectedObject_) {
+            // 名前入力欄
+            static char presetNameBuf[64] = "NewPreset";
+            ImGui::PushItemWidth(150); // 入力欄の幅を少し制限
+            ImGui::InputText("##PresetName", presetNameBuf, 64);
+            ImGui::PopItemWidth();
+
+            ImGui::SameLine();
+
+            // 保存ボタン
+            if (ImGui::Button("Save Selection")) {
+                if (strlen(presetNameBuf) > 0) {
+                    // PresetManagerを使って保存
+                    PresetManager::GetInstance()->AddPresetFromObject(presetNameBuf, selectedObject_);
+                    DebugConsole::GetInstance()->AddLog("Saved Preset: " + std::string(presetNameBuf));
+                }
+            }
+
+            // マウスオーバー時のヘルプ
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Save the currently selected object's settings as a new preset.");
+            }
+        } else {
+            // オブジェクト未選択時のメッセージ
+            ImGui::TextDisabled("(Select an object in Scene to save)");
+        }
+
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // -------------------------------------------------------
+        // ★ プリセット一覧表示
+        // -------------------------------------------------------
+        const auto& presets = PresetManager::GetInstance()->GetPresets();
+
+        if (presets.empty()) {
+            ImGui::TextDisabled("(No Presets Saved)");
+        } else {
+            for (const auto& [name, data] : presets) {
+                ImGui::PushID(name.c_str());
+
+                // プリセットを目立たせるために色を変更 (緑色系)
+                ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.3f, 0.6f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.3f, 0.7f, 0.7f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.3f, 0.8f, 0.8f));
+
+                // ボタン描画
+                ImGui::Button(name.c_str(), ImVec2(100, 0));
+
+                ImGui::PopStyleColor(3); // 色設定を戻す
+
+                // --- ドラッグ&ドロップ処理 (Source) ---
                 if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-                    // ペイロードとして名前を渡す
-                    // フォルダ名なら "Player", ファイルなら "Enemy.glb" が渡される
-                    ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
+                    // タグ: PRESET_ASSET (Modelとは区別する)
+                    ImGui::SetDragDropPayload("PRESET_ASSET", name.c_str(), name.size() + 1);
 
-                    // ドラッグ中のプレビュー表示
-                    ImGui::Text("生成: %s", displayModelName.c_str());
+                    ImGui::Text("Preset: %s", name.c_str());
                     ImGui::EndDragDropSource();
                 }
 
                 ImGui::PopID();
 
-                // --- レイアウト調整 (横並べ) ---
+                // --- グリッドレイアウト調整 (横並び) ---
                 float lastButtonX = ImGui::GetItemRectMax().x;
-                float nextButtonX = lastButtonX + itemSpacing + 100.0f; // 次のボタンの右端予測
-
-                // 次のボタンがウィンドウ内に収まるなら改行しない (SameLine)
+                float nextButtonX = lastButtonX + itemSpacing + 100.0f;
                 if (nextButtonX < windowVisibleX) {
                     ImGui::SameLine();
                 }
             }
         }
-    } else {
-        // エラー表示
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "ディレクトリが見つかりません: %s", baseDirectory.c_str());
     }
+
     ImGui::End();
 }
 
@@ -1350,25 +1487,44 @@ void DebugEditor::SaveScene() {
     // パスの構築
     std::string path = "resouces/json/" + std::string(currentSceneFilename_);
 
-    // 今まで DrawImGui に書いていた JSON 保存ロジック
     using json = nlohmann::json;
     json sceneData;
     sceneData["objects"] = json::array();
 
     auto& allObjects = sceneManager_->GetCurrentScene()->GetObjects();
+
     for (auto& obj : allObjects) {
+        // 名前がないオブジェクトは保存しない
         if (obj->GetName().empty()) continue;
 
         json d;
         d["name"] = obj->GetName();
 
-        // クラス名によるタイプ保存
-        if (obj->GetClassName() == "InvisibleBox") {
-            d["type"] = "InvisibleBox";
-        } else {
-            d["type"] = "Model";
+        // ---------------------------------------------------------
+        // クラス名と敵タイプを正しく保存する
+        // ---------------------------------------------------------
+
+        // 1. クラス名の取得と保存
+        // "Player", "InvisibleBox", "Model" などが入る
+        std::string className = obj->GetClassName();
+        if (className.empty()) {
+            className = "Model"; // デフォルト
+        }
+        d["type"] = className;
+
+        // 2. 敵の種類 ("Slime", "Robot" など) を保存
+        // これがないとロード時に EnemyFactory が動かない
+        d["enemyType"] = obj->GetEnemyType();
+
+        // 3. モデル名の保存
+        // InvisibleBox 以外であればモデル名を保存する
+        if (className != "InvisibleBox") {
             d["modelName"] = obj->GetModelName();
         }
+
+        // ---------------------------------------------------------
+        // 以下、既存のパラメータ保存
+        // ---------------------------------------------------------
 
         // 親子関係
         if (obj->GetParent()) {
@@ -1391,13 +1547,16 @@ void DebugEditor::SaveScene() {
         cData["size"] = { c.size.x, c.size.y, c.size.z };
         d["collider"] = cData;
 
+        // 衝突属性
         d["collisionAttribute"] = obj->GetCollisionAttribute();
         d["collisionMask"] = obj->GetCollisionMask();
+
+        // イベント関連
         d["eventID"] = static_cast<int>(obj->GetEventType());
         d["targetID"] = obj->GetTargetID(); // 送信ID
-        d["myEventID"] = obj->GetEventID(); // 受信ID
+        d["myEventID"] = obj->GetEventID();  // 受信ID
 
-        // Stats (Param)
+        // Stats (Param) - ゲームパラメータ
         if (obj->param_.has_value()) {
             auto& p = obj->param_.value();
             d["param"]["hp"] = p.hp;
@@ -1407,23 +1566,26 @@ void DebugEditor::SaveScene() {
             d["param"]["jumpPower"] = p.jumpPower;
             d["param"]["maxFallSpeed"] = p.maxFallSpeed;
         }
-        //アニメション設定
+
+        // アニメーション設定
         d["animName"] = obj->animName_;
         d["isAnimLoop"] = obj->isAnimLoop_;
         d["isAnimRelative"] = obj->isAnimRelative_;
+
+        // 配列に追加
         sceneData["objects"].push_back(d);
     }
 
+    // ファイル書き込み
     std::ofstream f(path);
     if (f.is_open()) {
-        f << sceneData.dump(4);
+        f << sceneData.dump(4); // インデント4で整形して保存
         f.close();
         DebugConsole::GetInstance()->AddLog("Saved SCENE to " + path);
     } else {
-        DebugConsole::GetInstance()->AddLog("Failed to save JSON!");
+        DebugConsole::GetInstance()->AddLog("Failed to save JSON to " + path);
     }
 }
-
 // 単体保存
 void DebugEditor::SaveSingleObject() {
     if (!selectedObject_) return;
@@ -1512,6 +1674,8 @@ void DebugEditor::PerformRedo() {
     }
     DebugConsole::GetInstance()->AddLog("Redo Performed");
 }
+
+
 
 // マウス位置からワールド空間へのレイを作成
 Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
@@ -1608,5 +1772,57 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
     if (previewObject_) {
  
         previewObject_->Draw(pointLightResource, spotLightResource);
+    }
+}
+
+
+
+
+void DebugEditor::DrawEnemyTypeSelector() {
+    if (!selectedObject_) return;
+
+    // ★ 登録したい敵の名前リスト 
+    const char* enemyTypes[] = {
+        "Slime",
+        "Robot",
+        "Boss"
+    };
+
+    // 現在の設定値を取得
+    std::string currentType = selectedObject_->GetEnemyType();
+
+    // コンボボックスで現在どれが選ばれているか判定
+    int currentIndex = -1;
+    for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
+        if (currentType == enemyTypes[i]) {
+            currentIndex = i;
+            break;
+        }
+    }
+
+    // --- UI描画 ---
+    const char* previewValue = (currentIndex >= 0) ? enemyTypes[currentIndex] : "(未設定)";
+
+    if (ImGui::BeginCombo("敵の種族 (Enemy Type)", previewValue)) {
+        for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
+            bool isSelected = (currentIndex == i);
+
+            if (ImGui::Selectable(enemyTypes[i], isSelected)) {
+                // 選ばれたらセットする
+                selectedObject_->SetEnemyType(enemyTypes[i]);
+                 selectedObject_->SetName("Enemy_" + std::string(enemyTypes[i]));
+            }
+
+            // 初期選択位置を合わせる
+            if (isSelected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    // 補足ヘルプ
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
     }
 }

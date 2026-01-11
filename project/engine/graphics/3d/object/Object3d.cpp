@@ -298,6 +298,7 @@ void Object3d::CopyFrom(const Object3d* other) {
 
     // 3. イベントタイプ
     this->eventType_ = other->eventType_;
+    this->enemyType_ = other->enemyType_;
 
     // 4. パラメータ
     this->param_ = other->param_;
@@ -330,4 +331,97 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
     // 中身をコピー 
     newObj->CopyFrom(this);
     return newObj;
+}
+
+// ---------------------------------------------------------
+// 自身の情報をJSONデータとして出力（プリセット保存用）
+// ---------------------------------------------------------
+json Object3d::ExportToJson() {
+    json j;
+
+    // 1. 基本情報
+    j["name"] = name_;
+    j["modelName"] = modelName_;
+
+    // 2. Transform (位置は配置時に決めるので保存しないが、スケールと回転は必須)
+    j["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
+    j["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
+
+    // 3. コライダー設定 (CollisionConfig)
+    // ここが大事！サイズだけでなく、位置ズレ(center)や種類も保存する
+    j["collider"] = {
+        {"type", static_cast<int>(colliderConfig_.type)},
+        {"size", { colliderConfig_.size.x, colliderConfig_.size.y, colliderConfig_.size.z }},
+        {"center", { colliderConfig_.center.x, colliderConfig_.center.y, colliderConfig_.center.z }}
+    };
+
+    // 4. アニメーション設定
+    // これを保存しないと、配置した瞬間に棒立ちになったり、ループしなかったりする
+    j["animation"] = {
+        {"animName", animName_},
+        {"isAnimLoop", isAnimLoop_},
+        {"isAnimRelative", isAnimRelative_}
+    };
+
+    // 5. ゲームロジック用パラメータ
+    j["eventType"] = static_cast<int>(eventType_);
+    j["enemyType"] = enemyType_;
+
+    return j;
+}
+
+// ---------------------------------------------------------
+// JSONデータから設定を読み込んで反映（プリセット適用用）
+// ---------------------------------------------------------
+void Object3d::ImportFromJson(const json& j) {
+    // 1. 基本情報
+    if (j.contains("modelName")) {
+        modelName_ = j["modelName"];
+        // モデルが変わるなら再ロードが必要かもしれない（設計による）
+        // ModelManager::Load(modelName_); 
+    }
+    // 名前は上書きしない（配置時にユニークな名前をつけることが多いため）
+    // if (j.contains("name")) name_ = j["name"]; 
+
+    // 2. Transform
+    if (j.contains("scale")) {
+        transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
+    }
+    if (j.contains("rotate")) {
+        transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+    }
+
+    // 3. コライダー設定
+    if (j.contains("collider")) {
+        const auto& col = j["collider"];
+        if (col.contains("type")) colliderConfig_.type = static_cast<ColliderType>(col["type"]);
+
+        if (col.contains("size")) {
+            colliderConfig_.size = { col["size"][0], col["size"][1], col["size"][2] };
+        }
+        if (col.contains("center")) {
+            colliderConfig_.center = { col["center"][0], col["center"][1], col["center"][2] };
+        }
+    }
+
+    // 4. アニメーション設定
+    if (j.contains("animation")) {
+        const auto& anim = j["animation"];
+        if (anim.contains("animName")) animName_ = anim["animName"];
+        if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
+        if (anim.contains("isAnimRelative")) isAnimRelative_ = anim["isAnimRelative"];
+
+        //  アニメーション設定を読み込んだら、Recorder側にも反映・再生開始が必要
+        if (recorder_ && !animName_.empty()) {
+            recorder_->Play(animName_, isAnimLoop_, isAnimRelative_);
+        }
+    }
+
+    // 5. ゲームロジック用パラメータ
+    if (j.contains("eventType")) {
+        eventType_ = static_cast<EventType>(j["eventType"]);
+    }
+    if (j.contains("enemyType")) {
+        enemyType_ = j["enemyType"];
+	}
 }

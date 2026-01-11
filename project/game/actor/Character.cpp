@@ -89,31 +89,31 @@ std::unique_ptr<Object3d> Character::Clone() const {
     // Transform 情報
     newObj->transform_ = this->transform_;
 
-    // 名前
-    newObj->name_ = this->name_;
+    // 名前 
+    newObj->SetName(this->name_);
 
     newObj->SetColliderConfig(this->colliderConfig_);
 
     // 属性とマスク
-    newObj->collisionAttribute_ = this->collisionAttribute_;
-    newObj->collisionMask_ = this->collisionMask_;
+    newObj->SetCollisionAttribute(this->collisionAttribute_);
+    newObj->SetCollisionMask(this->collisionMask_);
 
     // 1. イベントIDとステータス(param_)をコピー
-    newObj->eventType_ = this->eventType_;
-    newObj->param_ = this->param_;
+    newObj->SetEventType(this->eventType_);
+    if (this->param_.has_value()) {
+        newObj->param_ = this->param_.value();
+    }
 
     // 2. Character 独自のメンバをコピー
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
 
-    // ▼▼▼ 追加：アニメーション設定のコピーと再生 ▼▼▼
+    // 3. アニメーション設定のコピーと再生
     newObj->animName_ = this->animName_;
     newObj->isAnimLoop_ = this->isAnimLoop_;
     newObj->isAnimRelative_ = this->isAnimRelative_;
 
-    // ：レコーダーを初期化して、設定があれば即再生！
-    newObj->InitializeRecorder(nullptr);
-
+    newObj->InitializeRecorder(nullptr); // レコーダー初期化
     if (!newObj->animName_.empty()) {
         newObj->recorder_->Play(
             newObj->animName_,
@@ -122,6 +122,13 @@ std::unique_ptr<Object3d> Character::Clone() const {
         );
     }
 
+    // "Player" や "Model" などのクラス名を引き継ぐ
+    newObj->SetClassName(this->GetClassName());
+
+    // "Slime" などの敵タイプ名を引き継ぐ
+    newObj->SetEnemyType(this->GetEnemyType());
+
+    // ---------------------------------------------------
 
     return newObj;
 }

@@ -9,6 +9,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     Object3d::Initialize(common);
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
+    SetClassName("Player");
     SetColliderType(ColliderType::kOBB);
     SetCollisionSize({ 2.0f, 2.0f, 2.0f });
 }
