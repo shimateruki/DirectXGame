@@ -34,6 +34,7 @@
 #include <CameraEditor.h>
 #include <BaseEnemy.h>
 #include <EnemyFactory.h>
+#include <EnemySpawner.h>
 
 
 void GamePlayScene::Initialize() {
@@ -76,14 +77,7 @@ void GamePlayScene::Initialize() {
 	CollisionManager::GetInstance()->AddObject(playerObj.get());
 	objects_.emplace_back(std::move(playerObj));
 
-	auto enemy = std::make_unique<Object3d>();
-	enemy->Initialize(object3dCommon_.get());
-	enemy->SetModel("block");
-	enemy->SetTranslate({ 2.0f, 0.0f, 0.0f });
-	enemy->SetName("Enemy");
-	enemy->SetStatic(true);
-	CollisionManager::GetInstance()->AddObject(enemy.get());
-	objects_.emplace_back(std::move(enemy));
+
 
 	auto terrain = std::make_unique<Object3d>();
 	terrain->Initialize(object3dCommon_.get());
@@ -107,100 +101,8 @@ void GamePlayScene::Initialize() {
 
 
 
-	//const float blockSize = 2.0f; // ブロックの1辺のサイズ 
-	//const int fieldWidth = 30;  // X方向 (幅) の床の数
-	//const int fieldDepth = 30;  // Z方向 (奥行) の床の数
-	//const int wallHeight = 5;   // Y方向 (高さ) の壁の数
-
-	//// フィールドの中心が (0, 0, 0) 付近になるようオフセットを計算
-	//const float offsetX = (fieldWidth * blockSize) / 2.0f;
-	//const float offsetZ = (fieldDepth * blockSize) / 2.0f;
-
-	//// 衝突判定用のハーフサイズ
-	//const Vector3 blockHalfSize = { blockSize / 2.0f, blockSize / 2.0f, blockSize / 2.0f };
-
-
-	//// --- 1. 床 (Floor) の生成---
-	//const float floorY = -blockSize;
-	//for (int z = 0; z < fieldDepth; ++z) {
-	//	for (int x = 0; x < fieldWidth; ++x) {
-	//		auto block = std::make_unique<Object3d>();
-	//		block->Initialize(object3dCommon_.get());
-	//		block->SetModel("block");
-
-	//		float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
-	//		float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
-	//		block->SetTranslate({ posX, floorY, posZ });
-
-	//		block->SetName("Floor_" + std::to_string(x) + "_" + std::to_string(z));
-	//		block->SetStatic(true);
-
-
-	//		// ★ ブロック生成と同時に衝突判定も設定
-	//		block->SetCollisionAttribute(kGround);
-	//		block->SetCollisionMask(~kGround);
-	//		block->SetColliderType(ColliderType::kAABB);
-	//		block->SetCollisionSize(blockHalfSize);
-	//		CollisionManager::GetInstance()->AddObject(block.get());
-
-	//		objects_.emplace_back(std::move(block));
-	//	}
-	//}
-
-	//// --- 2. 壁 (Walls) の生成 (Y= 0 ～ wallHeight) ---
-	//for (int y = 0; y < wallHeight; ++y) {
-	//	float posY = y * blockSize; // 0.0, 2.0, 4.0 ...
-
-	//	// (A) X軸に沿った壁 (奥: Z+ と 手前: Z-)
-	//	for (int x = 0; x < fieldWidth; ++x) {
-	//		float posX = (x * blockSize) - offsetX + (blockSize / 2.0f);
-
-	//		// 奥の壁 (Z+)
-	//		float posZ_Back = (fieldDepth * blockSize) - offsetZ - (blockSize / 2.0f);
-	//		objects_.push_back(CreateStaticBlock(
-	//			{ posX, posY, posZ_Back },
-	//			"Wall_Back_" + std::to_string(x) + "_" + std::to_string(y),
-	//			blockHalfSize
-	//		));
-
-	//		// 手前の壁 (Z-)
-	//		float posZ_Front = -offsetZ + (blockSize / 2.0f);
-	//		objects_.push_back(CreateStaticBlock(
-	//			{ posX, posY, posZ_Front },
-	//			"Wall_Front_" + std::to_string(x) + "_" + std::to_string(y),
-	//			blockHalfSize
-	//		));
-	//	}
-
-	//	// (B) Z軸に沿った壁 
-	//	for (int z = 1; z < fieldDepth - 1; ++z) {
-	//		float posZ = (z * blockSize) - offsetZ + (blockSize / 2.0f);
-
-	//		// 右の壁 (X+)
-	//		float posX_Right = (fieldWidth * blockSize) - offsetX - (blockSize / 2.0f);
-	//		objects_.push_back(CreateStaticBlock(
-	//			{ posX_Right, posY, posZ },
-	//			"Wall_Right_" + std::to_string(z) + "_" + std::to_string(y),
-	//			blockHalfSize
-	//		));
-
-	//		// 左の壁 (X-)
-	//		float posX_Left = -offsetX + (blockSize / 2.0f);
-	//		objects_.push_back(CreateStaticBlock(
-	//			{ posX_Left, posY, posZ },
-	//			"Wall_Left_" + std::to_string(z) + "_" + std::to_string(y),
-	//			blockHalfSize
-	//		));
-	//	}
-	//}
 
  CameraEditor::GetInstance()->Initialize();
-
-
-
-
-
-
 
 	// --- スプライトの生成 ---
 	uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
@@ -425,6 +327,14 @@ void GamePlayScene::Update(float deltaTime) {
 
 	// --- 2. 物理 (衝突判定) 更新 ---
 	CollisionManager::GetInstance()->Update();
+
+	if (!pendingObjects_.empty()) {
+		for (auto& pendingObj : pendingObjects_) {
+			objects_.push_back(std::move(pendingObj));
+		}
+		pendingObjects_.clear(); // 空にする
+	}
+
 	//オブジェクト削除関数
 	ProcessRemovals();
 
@@ -668,9 +578,15 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 						// パターンA: 敵 (Factory)
 						if (!enemyType.empty()) {
 							auto enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon_.get());
-							enemy->SetEnemyType(enemyType);
-							// ここでの SetTarget は削除してOK（最後にまとめてやるため）
-							newObj = std::move(enemy);
+							// 敵にも種類情報をセットしておく（保存時に使うため）
+							if (enemy) {
+								enemy->SetEnemyType(enemyType);
+								// dynamic_castでBaseEnemyか確認し、プレイヤーをセット
+								if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
+									base->SetTarget(player_);
+								}
+								newObj = std::move(enemy);
+							}
 						}
 						// パターンB: プレイヤー
 						else if (type == "Player" || name == "Player") {
@@ -682,7 +598,63 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 							player_ = player.get();
 							newObj = std::move(player);
 						}
-						// パターンC: 通常オブジェクト
+						// パターンC: スポーナー (今回の主役)
+						else if (type == "Spawner") {
+							auto spawner = std::make_unique<EnemySpawner>();
+
+							// 1. デフォルト設定
+							std::string spawnEnemyType = "Goblin";
+							float interval = 3.0f;
+							int maxCount = 5;
+
+							// 2. JSONの "param" ブロックから設定を読み込む
+							if (objData.contains("param") && objData["param"].is_object()) {
+								auto& p = objData["param"];
+
+								if (p.contains("enemyType") && p["enemyType"].is_string()) {
+									spawnEnemyType = p["enemyType"].get<std::string>();
+								}
+								if (p.contains("interval") && p["interval"].is_number()) {
+									interval = p["interval"].get<float>();
+								}
+								if (p.contains("maxCount") && p["maxCount"].is_number()) {
+									maxCount = p["maxCount"].get<int>();
+								}
+							}
+
+							// 3. 初期化
+							spawner->Initialize(object3dCommon_.get(), spawnEnemyType, interval, maxCount);
+
+							// 4. クラス名と透明設定 (ここで確実に設定！)
+							spawner->SetClassName("Spawner");
+							spawner->SetModel(nullptr);
+							spawner->SetIsVisible(false);
+
+							// 5. コールバック設定：ここが「白い箱」にならないための重要ポイント
+							// ※ EnemySpawner側が spawnPos (Vector3) を渡してくれる前提です
+							spawner->SetOnSpawnCallback([this, spawnEnemyType](const Vector3& spawnPos) {
+
+								// Factoryを使って本物の敵クラス(Goblin等)を作る
+								auto newEnemy = EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, object3dCommon_.get());
+
+								if (newEnemy) {
+									// 座標をセット
+									newEnemy->SetTranslate(spawnPos);
+									newEnemy->SetEnemyType(spawnEnemyType);
+
+									// ★重要: プレイヤー情報を渡してAIを動かす
+									if (auto base = dynamic_cast<BaseEnemy*>(newEnemy.get())) {
+										base->SetTarget(player_);
+									}
+
+									// シーンに追加 (AddObject内で pendingObjects_ に入るので安全)
+									this->AddObject(std::move(newEnemy));
+								}
+								});
+
+							newObj = std::move(spawner);
+						}
+						// パターンD: 通常オブジェクト
 						else {
 							newObj = std::make_unique<Object3d>();
 							newObj->Initialize(object3dCommon_.get());
@@ -691,10 +663,10 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 						if (newObj) {
 							newObj->SetName(name);
 							std::string currentClass = newObj->GetClassName();
-							if (currentClass != "Enemy" && currentClass != "Player") {
+							// EnemyやPlayer以外の汎用オブジェクトならクラス名をセット
+							if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner") {
 								newObj->SetClassName(type);
 							}
-							
 
 							targetObject = newObj.get();
 							AddObject(std::move(newObj));
@@ -707,13 +679,16 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				// 3. モデル・表示設定
 				std::string type = targetObject->GetClassName(); // 最新のクラス名を取得
 
-				if (type == "InvisibleBox") {
+				// ★修正: SpawnerもInvisibleBoxと同じく「モデルなし」にする
+				// これによりJSONに "modelName": "cube" と書いてあっても無視して透明にする
+				if (type == "InvisibleBox" || type == "Spawner") {
 					targetObject->SetModel(nullptr);
 					targetObject->SetIsVisible(false);
 				} else {
 					targetObject->SetIsVisible(true);
 					if (objData.contains("modelName") && objData["modelName"].is_string()) {
 						std::string modelName = objData["modelName"].get<std::string>();
+						// モデルが変わる場合のみロード
 						if (targetObject->GetModelName() != modelName) {
 							ModelManager::GetInstance()->LoadModel(modelName);
 							targetObject->SetModel(modelName);
@@ -766,16 +741,27 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 				if (objData.contains("targetID")) targetObject->SetTargetID(objData["targetID"]);
 				if (objData.contains("myEventID")) targetObject->SetEventID(objData["myEventID"]);
 
+				// paramの読み込み (Spawner設定などもここで読む)
 				if (objData.contains("param") && objData["param"].is_object()) {
-					targetObject->param_.emplace();
+					// まだ作られてなければ作成
+					if (!targetObject->param_.has_value()) {
+						targetObject->param_.emplace();
+					}
 					json paramData = objData["param"];
 					auto& p = targetObject->param_.value();
+
+					// 物理・ステータス系
 					if (paramData.contains("hp")) p.hp = paramData["hp"];
 					if (paramData.contains("maxHp")) p.maxHp = paramData["maxHp"];
 					if (paramData.contains("speed")) p.speed = paramData["speed"];
 					if (paramData.contains("gravity")) p.gravity = paramData["gravity"];
 					if (paramData.contains("jumpPower")) p.jumpPower = paramData["jumpPower"];
 					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"];
+
+					// Spawner系 (保存した値を書き戻す)
+					if (paramData.contains("enemyType")) p.enemyType = paramData["enemyType"];
+					if (paramData.contains("interval")) p.interval = paramData["interval"];
+					if (paramData.contains("maxCount")) p.maxCount = paramData["maxCount"];
 				}
 
 				// 7. Animation
@@ -920,7 +906,7 @@ void GamePlayScene::AddObject(std::unique_ptr<Object3d> object) {
 		return;
 	}
 	CollisionManager::GetInstance()->AddObject(object.get());
-	objects_.emplace_back(std::move(object));
+	pendingObjects_.push_back(std::move(object));
 }
 
 
@@ -1113,24 +1099,37 @@ std::unique_ptr<Object3d> GamePlayScene::CreateStaticBlock(
 #pragma endregion
 
 
+
+
 void GamePlayScene::SwitchActivePlayer(Player* newMainPlayer) {
 	if (!newMainPlayer) return;
 
 	// シーンが持つ「現在の主役」変数を書き換える
 	this->player_ = newMainPlayer;
 
-	// 2. 全オブジェクトの設定更新
-	for (auto& obj : objects_) {
+	// 共通の更新処理を行うラムダ関数
+	auto updateObjectSettings = [&](Object3d* obj) {
+		if (!obj) return;
+
 		// --- 操作権限の更新 ---
-		if (auto p = dynamic_cast<Player*>(obj.get())) {
+		if (auto p = dynamic_cast<Player*>(obj)) {
 			// 指定された人だけ true (操作可能) にする
 			bool isActive = (p == newMainPlayer);
 			p->SetIsControlActive(isActive);
 		}
 
 		// --- 敵のターゲット更新 ---
-		if (auto enemy = dynamic_cast<BaseEnemy*>(obj.get())) {
+		if (auto enemy = dynamic_cast<BaseEnemy*>(obj)) {
 			enemy->SetTarget(newMainPlayer);
 		}
+		};
+
+	// 1. メインリストの更新
+	for (auto& obj : objects_) {
+		updateObjectSettings(obj.get());
+	}
+
+	for (auto& obj : pendingObjects_) {
+		updateObjectSettings(obj.get());
 	}
 }

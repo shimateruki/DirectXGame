@@ -49,6 +49,8 @@ public:
     void PerformRedo();
     void DrawEnemyTypeSelector();
 
+    void DrawSpawnerSettings();
+
 
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 

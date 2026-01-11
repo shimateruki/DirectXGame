@@ -154,6 +154,7 @@
     <ClCompile Include="BaseEnemy.cpp" />
     <ClCompile Include="EnemyFactory.cpp" />
     <ClCompile Include="EnemySlime.cpp" />
+    <ClCompile Include="EnemySpawner.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\CameraEditor.cpp" />
     <ClCompile Include="engine\utility\math\Easing.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp" />
@@ -272,6 +273,7 @@
     <ClInclude Include="BaseEnemy.h" />
     <ClInclude Include="EnemyFactory.h" />
     <ClInclude Include="EnemySlime.h" />
+    <ClInclude Include="EnemySpawner.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\CameraEditor.h" />
     <ClInclude Include="engine\utility\math\Easing.h" />
     <ClInclude Include="externals\assimp\include\assimp\aabb.h" />

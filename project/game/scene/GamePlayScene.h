@@ -94,7 +94,7 @@ private:
     std::unique_ptr<Text>  debugText_;
     std::unique_ptr<GameRule> gameRule_; // 管理人
 
-
+    std::vector<std::unique_ptr<Object3d>> pendingObjects_;
     Player* player_ = nullptr;
 
     // --- BGM・SE ---

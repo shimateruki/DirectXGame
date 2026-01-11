@@ -73,6 +73,9 @@ public:
         float gravity = 50.0f;
         float maxFallSpeed = 60.0f;  // 落下制限もここ
         float jumpPower = 10.0f;
+        std::string enemyType = "Goblin"; // 生成する敵の名前
+        float interval = 3.0f;            // 生成間隔
+        int maxCount = 5;                 // 生成最大数;
         EntityParameter() = default;
     };
 

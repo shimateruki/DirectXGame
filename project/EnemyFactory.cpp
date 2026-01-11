@@ -9,10 +9,25 @@ EnemyFactory* EnemyFactory::GetInstance() {
 
 std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, Object3dCommon* common) {
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
-
-    if (enemyName == "Slime") {
+    if (enemyName == "Slime") { // ← 例: ゴブリンやスライム
         auto slime = std::make_unique<EnemySlime>();
-        slime->Initialize(common, "cube"); 
+
+        // 1. 初期化 (モデル読み込み)
+        slime->Initialize(common, "block");
+
+        // 2. ★ここで「デフォルトの強さ」を注入する！
+        // param_ がまだ無ければ作る
+        if (!slime->param_.has_value()) {
+            slime->param_.emplace();
+        }
+
+        // ステータス設定
+        auto& p = slime->param_.value();
+        p.hp = 50.0f;          // 体力
+        p.maxHp = 50.0f;       // 最大体力
+        p.speed = 0.1f;        // 移動速度
+        p.gravity = 60.0f;     // 重力 
+
         newEnemy = std::move(slime);
     }
     // 将来ここに追加していく

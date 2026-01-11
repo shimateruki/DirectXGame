@@ -854,6 +854,59 @@ void DebugEditor::DrawImGui() {
                 selectedObject_->SetEventType(static_cast<EventType>(currentItemIndex));
             }
 
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "--- Object Type Settings ---");
+
+            // ==========================================================
+            // 1. クラス名 (ClassName) の変更リスト
+            // ==========================================================
+            const char* classItems[] = {
+                "Model",        // 通常
+                "Spawner",      // ★敵生成
+                "Player",       // プレイヤー
+                "Enemy",        // 敵 (直接配置)
+                "InvisibleBox", // 透明壁・トリガー
+                "Block"         // 特殊ブロック
+            };
+
+            // 現在のクラス名がリストの何番目かを探す
+            std::string currentClass = selectedObject_->GetClassName();
+            int currentClassIndex = 0; // デフォルト0番目
+
+            for (int i = 0; i < IM_ARRAYSIZE(classItems); i++) {
+                if (currentClass == classItems[i]) {
+                    currentClassIndex = i;
+                    break;
+                }
+            }
+
+            // コンボボックス表示
+            if (ImGui::Combo("Class Type", &currentClassIndex, classItems, IM_ARRAYSIZE(classItems))) {
+                // 変更を適用
+                selectedObject_->SetClassName(classItems[currentClassIndex]);
+
+                // Spawnerに変更された場合の親切設計
+                if (std::string(classItems[currentClassIndex]) == "Spawner") {
+                    // 名前が汎用的なら分かりやすく変える
+                    if (selectedObject_->GetName().find("Object") != std::string::npos) {
+                        selectedObject_->SetName("Spawner_New");
+                    }
+                    // パラメータ領域確保
+                    if (!selectedObject_->param_.has_value()) {
+                        selectedObject_->param_.emplace();
+                    }
+                }
+            }
+
+            // ==========================================================
+            // 2. クラス別の設定関数を呼ぶ
+            // ==========================================================
+            if (selectedObject_->GetClassName() == "Spawner") {
+                DrawSpawnerSettings(); 
+            }
+
+
+
             ImGui::Spacing();
             if (selectedObject_->GetClassName() == "Enemy") {
                 ImGui::Indent();
@@ -1565,6 +1618,9 @@ void DebugEditor::SaveScene() {
             d["param"]["gravity"] = p.gravity;
             d["param"]["jumpPower"] = p.jumpPower;
             d["param"]["maxFallSpeed"] = p.maxFallSpeed;
+            d["param"]["enemyType"] = p.enemyType; // 文字列
+            d["param"]["interval"] = p.interval;   // float
+            d["param"]["maxCount"] = p.maxCount;   // int
         }
 
         // アニメーション設定
@@ -1784,8 +1840,7 @@ void DebugEditor::DrawEnemyTypeSelector() {
     // ★ 登録したい敵の名前リスト 
     const char* enemyTypes[] = {
         "Slime",
-        "Robot",
-        "Boss"
+      
     };
 
     // 現在の設定値を取得
@@ -1825,4 +1880,55 @@ void DebugEditor::DrawEnemyTypeSelector() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
     }
+}
+
+
+
+void DebugEditor::DrawSpawnerSettings() {
+    if (!selectedObject_) return;
+
+    ImGui::Separator();
+    ImGui::Indent(); // 少し右にずらすと見やすい
+    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "[ Spawner Config ]");
+
+    // パラメータ領域がない場合は作成
+    if (!selectedObject_->param_.has_value()) {
+        selectedObject_->param_.emplace();
+    }
+    auto& p = selectedObject_->param_.value();
+
+    // ----------------------------------------------------
+    // A. 敵の種類 (EnemyType)
+    // ----------------------------------------------------
+    // 簡易入力欄 (手打ち)
+    // ※もしstring型の変数が直接編集しにくい場合はバッファを使います
+    static char typeBuf[64] = "";
+    if (typeBuf[0] == '\0') {
+        // 初回コピー
+        strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
+    }
+
+    // プリセットから選ばせるコンボボックスも便利
+    const char* enemyTypes[] = { "Slime", };
+    int currentTypeIndex = -1;
+    for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
+        if (p.enemyType == enemyTypes[i]) currentTypeIndex = i;
+    }
+
+    if (ImGui::Combo("Spawn Type", &currentTypeIndex, enemyTypes, IM_ARRAYSIZE(enemyTypes))) {
+        p.enemyType = enemyTypes[currentTypeIndex];
+        strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
+    }
+
+    // ----------------------------------------------------
+    // B. 出現間隔 (Interval)
+    // ----------------------------------------------------
+    ImGui::DragFloat("Interval (sec)", &p.interval, 0.1f, 0.1f, 60.0f, "%.1f s");
+
+    // ----------------------------------------------------
+    // C. 最大数 (MaxCount)
+    // ----------------------------------------------------
+    ImGui::InputInt("Max Count", &p.maxCount);
+
+    ImGui::Unindent(); // インデント戻す
 }
