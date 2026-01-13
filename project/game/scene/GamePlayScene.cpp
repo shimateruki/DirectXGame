@@ -49,6 +49,8 @@ void GamePlayScene::Initialize() {
 	ModelManager::GetInstance()->LoadModel("teapot");
 	ModelManager::GetInstance()->LoadModel("multiMaterial");
 	ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
+	ModelManager::GetInstance()->LoadModel("saka");
+
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
 	CameraManager::GetInstance()->Initialize();

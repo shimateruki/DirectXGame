@@ -10,7 +10,7 @@
                 ],
                 "size": [
                     1.0,
-                    1.649999976158142,
+                    1.0,
                     1.0
                 ],
                 "type": 2
@@ -19,7 +19,6 @@
             "collisionMask": 4294967294,
             "eventID": 0,
             "isAnimLoop": true,
-            "isAnimRelative": false,
             "modelName": "teapot",
             "myEventID": -1,
             "name": "Player",
@@ -33,17 +32,17 @@
             },
             "parentName": "",
             "position": [
-                18.339447021484375,
-                2.6499998569488525,
-                -3.008443832397461
+                25.714561462402344,
+                11.0,
+                35.85069274902344
             ],
             "rotation": [
-                0.0,
-                2.8715932369232178,
-                0.0
+                6.278290811678744e-07,
+                -0.4884108603000641,
+                6.278298201323196e-07
             ],
             "scale": [
-                1.0,
+                0.8180209398269653,
                 1.0,
                 1.0
             ],
@@ -217,6 +216,128 @@
                 0.0,
                 -0.0,
                 0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 20,
+            "collisionMask": 4294967295,
+            "eventID": 0,
+            "isAnimLoop": true,
+            "myEventID": -1,
+            "name": "Trigger_Box",
+            "parentName": "",
+            "position": [
+                29.07279396057129,
+                2.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.7853981852531433
+            ],
+            "scale": [
+                0.9999995231628418,
+                0.9999995231628418,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "InvisibleBox"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "eventID": 0,
+            "isAnimLoop": true,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_0",
+            "parentName": "",
+            "position": [
+                23.999975204467773,
+                2.308804988861084,
+                30.803421020507813
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.8028514385223389
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "eventID": 0,
+            "isAnimLoop": true,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_1",
+            "parentName": "",
+            "position": [
+                57.40741729736328,
+                4.244136333465576,
+                16.5929012298584
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.7853981852531433
             ],
             "scale": [
                 1.0,

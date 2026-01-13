@@ -10,7 +10,7 @@
                 ],
                 "size": [
                     1.0,
-                    1.649999976158142,
+                    1.0,
                     1.0
                 ],
                 "type": 2
@@ -25,22 +25,25 @@
             "myEventID": -1,
             "name": "Player",
             "param": {
+                "enemyType": "Goblin",
                 "gravity": 54.0,
                 "hp": 74.0,
+                "interval": 3.0,
                 "jumpPower": 10.0,
+                "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 48.0,
                 "speed": 1.0
             },
             "parentName": "",
             "position": [
-                25.714561462402344,
-                2.6500000953674316,
-                35.85069274902344
+                25.98180389404297,
+                2.8897321224212646,
+                33.53342819213867
             ],
             "rotation": [
                 6.278290811678744e-07,
-                -0.4884108603000641,
+                -0.19920112192630768,
                 6.278298201323196e-07
             ],
             "scale": [
@@ -50,49 +53,6 @@
             ],
             "targetID": -1,
             "type": "Player"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 4294967293,
-            "enemyType": "",
-            "eventID": 1,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy",
-            "parentName": "",
-            "position": [
-                3.5,
-                2.7829251289367676,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
         },
         {
             "animName": "",
@@ -162,9 +122,12 @@
             "myEventID": -1,
             "name": "Object",
             "param": {
+                "enemyType": "Goblin",
                 "gravity": 50.0,
                 "hp": 100.0,
+                "interval": 3.0,
                 "jumpPower": 10.0,
+                "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
                 "speed": 1.0
@@ -187,6 +150,49 @@
             ],
             "targetID": -1,
             "type": "Enemy"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 4294967293,
+            "enemyType": "",
+            "eventID": 1,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Enemy",
+            "parentName": "",
+            "position": [
+                3.5,
+                2.7829251289367676,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
         },
         {
             "animName": "",
@@ -299,9 +305,12 @@
             "myEventID": -1,
             "name": "Player_Copy0",
             "param": {
+                "enemyType": "Goblin",
                 "gravity": 54.0,
                 "hp": 74.0,
+                "interval": 3.0,
                 "jumpPower": 10.0,
+                "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 48.0,
                 "speed": 1.0
@@ -350,9 +359,12 @@
             "myEventID": -1,
             "name": "Object_Copy0",
             "param": {
+                "enemyType": "Goblin",
                 "gravity": 50.0,
                 "hp": 100.0,
+                "interval": 3.0,
                 "jumpPower": 10.0,
+                "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
                 "speed": 1.0
@@ -401,9 +413,12 @@
             "myEventID": -1,
             "name": "Player_Copy0_Copy0",
             "param": {
+                "enemyType": "Goblin",
                 "gravity": 54.0,
                 "hp": 74.0,
+                "interval": 3.0,
                 "jumpPower": 10.0,
+                "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 48.0,
                 "speed": 1.0
@@ -426,6 +441,178 @@
             ],
             "targetID": -1,
             "type": "Player"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_0",
+            "parentName": "",
+            "position": [
+                23.999975204467773,
+                1.2899279594421387,
+                30.803421020507813
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.802851140499115
+            ],
+            "scale": [
+                0.9999998807907104,
+                0.9999998807907104,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_0_Copy0",
+            "parentName": "",
+            "position": [
+                24.13983726501465,
+                1.2899279594421387,
+                33.35047912597656
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.802851140499115
+            ],
+            "scale": [
+                0.9999998807907104,
+                0.9999998807907104,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_0_Copy0_Copy1",
+            "parentName": "",
+            "position": [
+                22.706071853637695,
+                2.7527616024017334,
+                33.35047912597656
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.802851140499115
+            ],
+            "scale": [
+                0.9999998807907104,
+                0.9999998807907104,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_0_Copy0_Copy2",
+            "parentName": "",
+            "position": [
+                26.13983726501465,
+                0.47573116421699524,
+                33.35047912597656
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.802851140499115
+            ],
+            "scale": [
+                0.9999998807907104,
+                0.9999998807907104,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
         }
     ]
 }

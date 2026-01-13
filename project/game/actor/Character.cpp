@@ -51,29 +51,54 @@ bool Character::OnCollision(Object3d* other) {
 
 
 void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute) {
-    // 地面属性以外は物理処理しない
+    // 1. 地面・壁属性以外（敵の攻撃判定など）は物理押し出ししない
+    // ※ kAllSolid は「kGround | kWall」などのビットマスクと想定
     if (!(attribute & kAllSolid)) {
         return;
     }
 
+    // ★重要: 法線ベクトルの向きの確認
+    // この関数では info.normal を「プレイヤーを押し出す方向（壁からプレイヤーへの矢印）」として扱います。
+    // もし当たり判定の計算で「プレイヤーから壁への矢印」が入っている場合は、
+    // ここで -1.0f を掛けて反転させる必要があります。
+    // (現状のコードが += で動いているなら、そのままでOKなはずです)
+    Vector3 pushNormal = info.normal;
 
-    //  座標を押し戻す (めり込んだ分だけ座標を補正)
-    this->transform_.translate += (info.normal * info.penetration);
 
-    //  速度を補正 (壁にめり込む速度成分を打ち消す)
-    float dot = math.Dot(velocity_, info.normal);
+    // 2. 座標を押し戻す (めり込み解消)
+    // 坂道の場合、斜め上に押し出されることで登れるようになります。
+    this->transform_.translate += (pushNormal * info.penetration);
 
-    // 速度が法線と逆向き (dot < 0) ＝ めり込もうとしている場合のみ
-    if (dot < 0) {
-        // 法線方向の速度成分（dot）を、速度ベクトルから差し引く
-        velocity_ = velocity_ - (info.normal * dot);
+
+    // 3. 速度の補正 (壁ずり・床滑り防止)
+    // 壁や床に向かって進んでいる場合のみ、その方向の速度成分を消します。
+    float dot = math.Dot(velocity_, pushNormal);
+
+    // dot < 0.0f ＝ 壁に向かって進んでいる（めり込もうとしている）
+    if (dot < 0.0f) {
+        // 壁・坂の表面に沿って滑るベクトル（Slide Vector）を作る
+        // Velocity = Velocity - (Normal * dot)
+        velocity_ = velocity_ - (pushNormal * dot);
     }
 
-    //接地判定
-    if (info.normal.y > 0.9f) {
+
+    // 4. 接地判定 (坂道対応)
+    // 法線のY成分が上を向いていれば「地面」または「坂」とみなします。
+    // 1.0f = 平地(0度), 0.7f = 約45度, 0.0f = 垂直な壁
+    const float kSlopeThreshold = 0.7f;
+
+    if (pushNormal.y > kSlopeThreshold) {
         isGrounded_ = true;
+
+        // 【最重要】坂道での重力リセット
+        // これがないと、坂を登っても重力で下に引っ張られ、ずり落ちてしまいます。
+        if (velocity_.y < 0.0f) {
+            velocity_.y = 0.0f;
+        }
     }
 }
+
+
 std::unique_ptr<Object3d> Character::Clone() const {
     // Character として生成
     auto newObj = std::make_unique<Character>();
