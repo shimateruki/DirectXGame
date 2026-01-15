@@ -206,30 +206,37 @@ void GamePlayScene::Update(float deltaTime) {
 
 		// 1. 今いるプレイヤーを全員リストアップする
 		std::vector<Player*> playerList;
-		for (auto& obj : objects_) {
+		for (const auto& obj : objects_) {
 			// dynamic_cast で Player クラスだけを抽出
 			if (auto p = dynamic_cast<Player*>(obj.get())) {
 				playerList.push_back(p);
 			}
 		}
 
+		// リストが空でない場合のみ処理 (0除算クラッシュ防止)
 		if (!playerList.empty()) {
-			// 2. 現在の主役がリストの何番目にいるか探す
+
+			// ★重要: サイズを int に変換しておく (警告回避のため)
+			int listSize = static_cast<int>(playerList.size());
 			int currentIndex = 0;
-			for (int i = 0; i < playerList.size(); ++i) {
+
+			// 2. 現在の主役がリストの何番目にいるか探す
+			for (int i = 0; i < listSize; ++i) {
 				if (playerList[i] == player_) {
 					currentIndex = i;
 					break;
 				}
 			}
 
-			// 3. 次の番号を計算 (UPなら+1, DOWNなら-1)
+			// 3. 次の番号を計算
 			int nextIndex = currentIndex;
+
 			if (inputManager_->IsKeyTriggered(DIK_UPARROW)) {
-				nextIndex = (currentIndex + 1) % playerList.size(); // 末尾まで行ったら0に戻る
+				// 次へ: 末尾まで行ったら0に戻る
+				nextIndex = (currentIndex + 1) % listSize;
 			} else {
-				// マイナスの余り計算は少し特殊なのでこう書くと安全
-				nextIndex = (currentIndex - 1 + playerList.size()) % playerList.size();
+				// 前へ: (現在 - 1 + 全体数) % 全体数 でループさせる
+				nextIndex = (currentIndex - 1 + listSize) % listSize;
 			}
 
 			// 4. 交代！
@@ -805,8 +812,10 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 		}
 
 	}
-	catch (json::parse_error& e) {
-		OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
+	catch (const json::parse_error& e) { // const をつけておくと丁寧
+		// e.what() を追加して、エラーの詳細も表示する
+		std::string message = "Failed to parse " + filename + " : " + e.what() + "\n";
+		OutputDebugStringA(message.c_str());
 	}
 	file.close();
 }
