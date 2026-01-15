@@ -139,8 +139,7 @@ void SpriteDebugEditor::DrawImGui() {
 
     // --- ファイル管理セクション ---
     if (ImGui::CollapsingHeader("ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // ディレクトリ作成 (typo修正: resouces -> resources の方が一般的ですが、既存に合わせます)
-        std::string directoryPath = "resouces/json/";
+        std::string directoryPath = "Resources/json/sprite/";
         if (!fs::exists(directoryPath)) { fs::create_directories(directoryPath); }
 
         // コンボボックス: 既存ファイルを選択して名前欄に入力する

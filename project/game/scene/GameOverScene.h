@@ -28,7 +28,7 @@ class DirectXCommon;
 class InputManager;
 class SceneManager;
 
-class TitleScene : public BaseScene
+class GameOverScene : public BaseScene
 {
 public:
 
@@ -65,6 +65,12 @@ private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
     void LoadSpriteLayout(const std::string& filename);
+
+
+
+
+
+
 private:
 
     // --- エンジンシステムへのポインタ ---

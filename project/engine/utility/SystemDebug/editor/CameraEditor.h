@@ -75,7 +75,7 @@ private:
     char fileNameBuffer_[64] = "camera_settings.json";
 
     // 保存先ディレクトリパス
-    const std::string kDirectoryPath_ = "resouces/json/";
+    const std::string kDirectoryPath_ = "Resources/json/camera/";
     std::vector<std::string> fileList_;
 
 };

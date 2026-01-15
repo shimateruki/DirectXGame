@@ -13,7 +13,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 1
             },
             "collisionAttribute": 1,
             "collisionMask": 4294967294,
@@ -37,8 +37,8 @@
             },
             "parentName": "",
             "position": [
-                25.98180389404297,
-                2.8897321224212646,
+                26.02372169494629,
+                1.981117606163025,
                 33.53342819213867
             ],
             "rotation": [
@@ -134,19 +134,19 @@
             },
             "parentName": "",
             "position": [
-                50.781707763671875,
+                13.154011726379395,
                 2.0,
-                -22.98427391052246
+                12.877062797546387
             ],
             "rotation": [
-                1.8199212945546606e-06,
-                -2.7909553050994873,
-                1.8199241367256036e-06
+                -3.1415908336639404,
+                2.8260719776153564,
+                -3.1415908336639404
             ],
             "scale": [
-                0.9999985098838806,
-                1.0067775249481201,
-                0.9999985098838806
+                0.9999995231628418,
+                1.0,
+                0.9999995231628418
             ],
             "targetID": -1,
             "type": "Enemy"
@@ -178,12 +178,12 @@
             "parentName": "",
             "position": [
                 3.5,
-                2.7829251289367676,
+                0.0,
                 0.0
             ],
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "scale": [
@@ -245,27 +245,29 @@
                     0.0,
                     0.0
                 ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.7853981852531433
+                ],
                 "size": [
                     1.0,
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 2,
-            "collisionMask": 4294967293,
-            "enemyType": "",
-            "eventID": 1,
+            "collisionAttribute": 20,
+            "collisionMask": 4294967295,
+            "eventID": 0,
             "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "block",
             "myEventID": -1,
-            "name": "Enemy_Copy0",
+            "name": "Trigger_Box",
             "parentName": "",
             "position": [
-                5.5,
-                2.7829251289367676,
-                0.0
+                29.07279396057129,
+                2.0,
+                16.899999618530273
             ],
             "rotation": [
                 0.0,
@@ -273,174 +275,12 @@
                 0.0
             ],
             "scale": [
-                1.0,
-                1.0,
-                1.0
+                5.050000190734863,
+                10.0,
+                10.0
             ],
             "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.649999976158142,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 1,
-            "collisionMask": 4294967294,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "teapot",
-            "myEventID": -1,
-            "name": "Player_Copy0",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 54.0,
-                "hp": 74.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 48.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                47.8830680847168,
-                2.6500000953674316,
-                14.583005905151367
-            ],
-            "rotation": [
-                6.278290811678744e-07,
-                -1.6142064332962036,
-                6.278298201323196e-07
-            ],
-            "scale": [
-                0.8180209398269653,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Player"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 13,
-            "enemyType": "Slime",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "cube",
-            "myEventID": -1,
-            "name": "Object_Copy0",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 50.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                50.77906036376953,
-                2.0,
-                -22.991506576538086
-            ],
-            "rotation": [
-                1.8199212945546606e-06,
-                -2.790954828262329,
-                1.8199241367256036e-06
-            ],
-            "scale": [
-                0.9999985098838806,
-                1.0067775249481201,
-                0.9999985098838806
-            ],
-            "targetID": -1,
-            "type": "Enemy"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.649999976158142,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 1,
-            "collisionMask": 4294967294,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "teapot",
-            "myEventID": -1,
-            "name": "Player_Copy0_Copy0",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 54.0,
-                "hp": 74.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 48.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                52.400020599365234,
-                2.6500000953674316,
-                14.583005905151367
-            ],
-            "rotation": [
-                -3.1415908336639404,
-                -1.5273853540420532,
-                -3.1415908336639404
-            ],
-            "scale": [
-                0.8180209398269653,
-                1.0,
-                0.9999998211860657
-            ],
-            "targetID": -1,
-            "type": "Player"
+            "type": "InvisibleBox"
         },
         {
             "animName": "",
@@ -469,17 +309,17 @@
             "parentName": "",
             "position": [
                 23.999975204467773,
-                1.2899279594421387,
+                2.308804988861084,
                 30.803421020507813
             ],
             "rotation": [
                 0.0,
-                -0.0,
-                0.802851140499115
+                0.0,
+                0.8028514385223389
             ],
             "scale": [
-                0.9999998807907104,
-                0.9999998807907104,
+                1.0,
+                1.0,
                 1.0
             ],
             "targetID": -1,
@@ -500,115 +340,129 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
+            "modelName": "saka",
+            "myEventID": -1,
+            "name": "Obj_1",
+            "parentName": "",
+            "position": [
+                57.40741729736328,
+                4.244136333465576,
+                16.5929012298584
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.7853981852531433
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.649999976158142,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "teapot",
+            "myEventID": -1,
+            "name": "Player_Copy0_Copy0",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 54.0,
+                "hp": 44.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 48.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                -15.76685619354248,
+                2.6500000953674316,
+                -17.440275192260742
+            ],
+            "rotation": [
+                -3.1415908336639404,
+                -2.351597309112549,
+                -3.1415908336639404
+            ],
+            "scale": [
+                0.8180209398269653,
+                1.0,
+                0.9999998211860657
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.7853981852531433
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "eventID": 0,
+            "isAnimLoop": true,
             "modelName": "saka",
             "myEventID": -1,
             "name": "Obj_0_Copy0",
             "parentName": "",
             "position": [
-                24.13983726501465,
-                1.2899279594421387,
-                33.35047912597656
+                31.970691680908203,
+                2.308804988861084,
+                30.803421020507813
             ],
             "rotation": [
                 0.0,
                 -0.0,
-                0.802851140499115
+                0.0
             ],
             "scale": [
-                0.9999998807907104,
-                0.9999998807907104,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "saka",
-            "myEventID": -1,
-            "name": "Obj_0_Copy0_Copy1",
-            "parentName": "",
-            "position": [
-                22.706071853637695,
-                2.7527616024017334,
-                33.35047912597656
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.802851140499115
-            ],
-            "scale": [
-                0.9999998807907104,
-                0.9999998807907104,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "saka",
-            "myEventID": -1,
-            "name": "Obj_0_Copy0_Copy2",
-            "parentName": "",
-            "position": [
-                26.13983726501465,
-                0.47573116421699524,
-                33.35047912597656
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.802851140499115
-            ],
-            "scale": [
-                0.9999998807907104,
-                0.9999998807907104,
+                1.0,
+                1.0,
                 1.0
             ],
             "targetID": -1,

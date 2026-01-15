@@ -338,8 +338,8 @@ void DebugEditor::InitializePrimitiveDrawing() {
     D3D12_INPUT_LAYOUT_DESC inputLayout = { inputElems, _countof(inputElems) };
     D3D12_RASTERIZER_DESC rasterDesc{}; rasterDesc.CullMode = D3D12_CULL_MODE_NONE; rasterDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
 
-    Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = dxCommon_->CompileShader(L"resouces/shader/DebugPrimitive.VS.hlsl", L"vs_6_0");
-    Microsoft::WRL::ComPtr<IDxcBlob> psBlob = dxCommon_->CompileShader(L"resouces/shader/DebugPrimitive.PS.hlsl", L"ps_6_0");
+    Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = dxCommon_->CompileShader(L"Resources/shader/DebugPrimitive.VS.hlsl", L"vs_6_0");
+    Microsoft::WRL::ComPtr<IDxcBlob> psBlob = dxCommon_->CompileShader(L"Resources/shader/DebugPrimitive.PS.hlsl", L"ps_6_0");
     assert(vsBlob && psBlob);
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = primitiveRootSignature_.Get(); psoDesc.InputLayout = inputLayout;
@@ -411,43 +411,73 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         if (type == ColliderType::kNone && !isInvisible) continue;
 
         // コライダー表示OFF設定の時、「見える物体」のコライダーは消すが、
+        // 「見えない物体(透明な壁など)」は編集用に表示したままにする
         if (!drawColliders_ && !isInvisible) continue;
+
 
         // --- 行列計算 (サイズと位置) ---
         Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
 
-        // ★コライダーがある場合は、その形状データ(Size/Center)に合わせて枠を変形させる
+        // ★コライダーがある場合は、その形状データ(Size/Center/Rotation)に合わせて枠を変形させる
         if (type != ColliderType::kNone) {
+
+            // コライダー設定を直接取得 (ImGuiでの変更を即座に反映させるため)
+            Object3d::ColliderConfig config = obj->GetColliderConfig();
+
             if (type == ColliderType::kOBB) {
-                OBB obb = obj->GetOBB();
-                Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f); // Sizeは半サイズなので2倍
-                Matrix4x4 matRot = math.makeIdentity4x4();
-                matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
-                matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
-                matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
+                // -------------------------------------------------
+                // OBB (回転ありボックス) の計算
+                // -------------------------------------------------
 
-                // Scale * Rotation * Translation
-                drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                // 1. スケール行列 (Sizeは半サイズなので2倍)
+                Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+
+                // 2. 回転行列 (config.rotation を使用)
+                // ※回転順序はエンジンの仕様によりますが、一般的に Z*X*Y や Y*X*Z など
+                Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                // ここでは Z -> X -> Y の順で合成する例
+                Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+
+                // 3. 平行移動行列 (Centerオフセット)
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+
+                // 4. コライダーのローカル行列合成 (Scale * Rotate * Translate)
+                Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+
+                // 5. オブジェクトのワールド行列と合成
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+
             } else if (type == ColliderType::kAABB) {
-                AABB aabb = obj->GetAABB();
-                Vector3 center = (aabb.min + aabb.max) * 0.5f;
-                Vector3 size = aabb.max - aabb.min;
+                // -------------------------------------------------
+                // AABB (軸平行ボックス) の計算
+                // -------------------------------------------------
+                // AABBは回転しないため、サイズとオフセットのみ
+                // (GetAABB()を使うとワールド座標計算済みが返るため、ここではローカル設定から計算してワールドと掛ける手法で統一)
 
-                Matrix4x4 matScale = math.MakeScaleMatrix(size);
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
 
-                drawWorldMatrix = math.Multiply(matScale, matTrans);
+                // AABBの場合、親の「回転」の影響を受けるとOBBになってしまうため、
+                // 本来は親の座標だけを取り出して再計算するが、簡易表示として親行列を使う
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+
             } else if (type == ColliderType::kSphere) {
-                // 球体の場合もCubeワイヤーフレームで代用（あるいは別途Sphere用のメッシュがあればそちらを使う）
-                float radius = obj->GetCollisionRadius();
-                Vector3 center = obj->GetWorldPosition(); // Sphereは通常Offsetがない場合が多いが、あれば加算
+                // -------------------------------------------------
+                // Sphere (球) の計算
+                // -------------------------------------------------
+                // 球体を表すCubeワイヤーフレーム
+                float radius = config.size.x; // Sphereはxを半径とする
 
                 Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
-                Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
 
-                drawWorldMatrix = math.Multiply(matScale, matTrans);
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
             }
+
         } else {
             // コライダー未設定の「見えない箱」の場合の救済措置
             // Transformそのままで表示（これがないと選択すらできなくなる）
@@ -475,7 +505,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     }
 
     // =========================================================
-    // 2. 弾のコライダー描画 (完全版)
+    // 2. 弾のコライダー描画
     // =========================================================
     if (drawColliders_) {
         const auto& bullets = BulletManager::GetInstance()->GetBullets();
@@ -491,15 +521,20 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
             Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
 
+            // 弾の場合は物理挙動の結果(GetOBB)をそのまま信じて描画する
             if (type == ColliderType::kOBB) {
                 OBB obb = bullet->GetOBB();
                 Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
+
+                // OBBの軸から回転行列を復元
                 Matrix4x4 matRot = math.makeIdentity4x4();
                 matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
                 matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
                 matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
+
                 Matrix4x4 matTrans = math.MakeTranslateMatrix(obb.center);
                 drawWorldMatrix = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+
             } else if (type == ColliderType::kAABB) {
                 AABB aabb = bullet->GetAABB();
                 Vector3 center = (aabb.min + aabb.max) * 0.5f;
@@ -507,6 +542,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 Matrix4x4 matScale = math.MakeScaleMatrix(size);
                 Matrix4x4 matTrans = math.MakeTranslateMatrix(center);
                 drawWorldMatrix = math.Multiply(matScale, matTrans);
+
             } else if (type == ColliderType::kSphere) {
                 float radius = bullet->GetCollisionRadius();
                 Vector3 center = bullet->GetWorldPosition();
@@ -519,8 +555,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             instanceCount++;
         }
     }
-   
 }
+
 // ========================================================================
 // ワイヤーフレームの立方体を描画する内部関数
 // ========================================================================
@@ -561,7 +597,7 @@ void DebugEditor::DrawImGui() {
     }
 
     // JSONパスの構築 (UI表示用)
-    std::string currentJsonPath = "resouces/json/3Dobject/" + std::string(currentSceneFilename_);
+    std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
 
     // ==========================================================================================
     // Inspector Window (シーン管理 & 選択中オブジェクトの編集)
@@ -573,7 +609,7 @@ void DebugEditor::DrawImGui() {
     // ---------------------------------------------------------
     if (ImGui::CollapsingHeader("シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        std::string directoryPath = "resouces/json/3Dobject/";
+        std::string directoryPath = "Resources/json/3Dobject/";
         if (!fs::exists(directoryPath)) {
             fs::create_directories(directoryPath);
         }
@@ -722,6 +758,16 @@ void DebugEditor::DrawImGui() {
                 } else {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
+                if (colConfig.type == ColliderType::kOBB) {
+                    // Radian -> Degree に変換して表示
+                    Vector3 rotDeg = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
+
+                    if (ImGui::DragFloat3("回転 (Rotation)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
+                        // Degree -> Radian に戻して保存
+                        colConfig.rotation = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
+                        isColChanged = true;
+                    }
+                }
             }
 
             if (isColChanged) {
@@ -779,7 +825,7 @@ void DebugEditor::DrawImGui() {
             if (isNoneSelected) ImGui::SetItemDefaultFocus();
 
             // 2. ディレクトリを走査してリストアップ
-            std::string dirPath = "resouces/json/animation/";
+            std::string dirPath = "Resources/json/animation/";
 
             if (fs::exists(dirPath) && fs::is_directory(dirPath)) {
                 for (const auto& entry : fs::directory_iterator(dirPath)) {
@@ -1264,6 +1310,7 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     currentData["collider"]["type"] = static_cast<int>(config.type);
     currentData["collider"]["center"] = { config.center.x, config.center.y, config.center.z };
     currentData["collider"]["size"] = { config.size.x, config.size.y, config.size.z };
+    currentData["collider"]["rotation"] = { config.rotation.x, config.rotation.y, config.rotation.z };
 
     // --- Attributes ---
     currentData["collisionAttribute"] = object->GetCollisionAttribute();
@@ -1345,11 +1392,11 @@ void DebugEditor::DrawProjectWindow() {
 
     // =================================================================================
     // 1. モデルファイル一覧 (Raw Models)
-    //    resouces/3DModel フォルダ内の obj/gltf/glb をスキャンして表示
+    //    Resources/3DModel フォルダ内の obj/gltf/glb をスキャンして表示
     // =================================================================================
     if (ImGui::CollapsingHeader("Models (Source)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        std::string baseDirectory = "resouces/3DModel";
+        std::string baseDirectory = "Resources/3DModel";
 
         if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
 
@@ -1538,7 +1585,7 @@ void DebugEditor::SaveScene() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     // パスの構築
-    std::string path = "resouces/json/" + std::string(currentSceneFilename_);
+    std::string path = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
 
     using json = nlohmann::json;
     json sceneData;
@@ -1598,6 +1645,7 @@ void DebugEditor::SaveScene() {
         cData["type"] = (int)c.type;
         cData["center"] = { c.center.x, c.center.y, c.center.z };
         cData["size"] = { c.size.x, c.size.y, c.size.z };
+        cData["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
         d["collider"] = cData;
 
         // 衝突属性
@@ -1645,7 +1693,7 @@ void DebugEditor::SaveScene() {
 // 単体保存
 void DebugEditor::SaveSingleObject() {
     if (!selectedObject_) return;
-    std::string path = "resouces/json/" + std::string(currentSceneFilename_);
+    std::string path = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
     UpdateObjectInSceneJSON(selectedObject_, path);
     DebugConsole::GetInstance()->AddLog("Saved SINGLE Object");
 }

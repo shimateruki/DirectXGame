@@ -1,6 +1,6 @@
 
 #define NOMINMAX
-#include"TitleScene.h"
+#include "GameClearScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -39,7 +39,7 @@
 #include <LightEditor.h>
 
 
-void TitleScene::Initialize() {
+void GameClearScene::Initialize() {
 	using json = nlohmann::json;
 
 	// --- 基盤クラスのポインタを保持 ---
@@ -68,6 +68,8 @@ void TitleScene::Initialize() {
 	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
 
+
+
 	CameraEditor::GetInstance()->Initialize();
 
 	// --- スプライトの生成 ---
@@ -94,16 +96,17 @@ void TitleScene::Initialize() {
 	);
 
 	// --- レイアウト読み込み ---
-	LoadObjectLayout("Resources/json/3Dobject/titleScene.json");
-	LoadSpriteLayout("Resources/json/sprite/titleScene.json");
-	LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
+	LoadObjectLayout("Resources/json/3Dobject/gameClearScene.json");
+	LoadSpriteLayout("Resources/json/sprite/gameClearScene.json");
+	LightManager::GetInstance()->LoadState("Resources/json/light/gameClearScene.json");
+
 
 
 	//コマンドリストが安全に閉じるためのやつないとバグる
 	dxCommon_->FlushCommandQueue(false);
 }
 
-void TitleScene::Finalize() {
+void GameClearScene::Finalize() {
 
 
 	CollisionManager::GetInstance()->ClearObjects();
@@ -117,18 +120,16 @@ void TitleScene::Finalize() {
 }
 
 
-void TitleScene::Update(float deltaTime) {
+void GameClearScene::Update(float deltaTime) {
 
 	static Math math;
 	LightEditor::GetInstance()->Update();
-
+	
 
 	// --- 常に実行される更新 ---
 	CameraManager::GetInstance()->Update();
-	CameraEditor::GetInstance()->Update(nullptr, false);
 
 	particleSystem_->Update(deltaTime);
-
 
 
 
@@ -172,7 +173,7 @@ void TitleScene::Update(float deltaTime) {
 
 }
 
-void TitleScene::Draw() {
+void GameClearScene::Draw() {
 
 	// --- Releaseビルド時の一人称視点判定 ---
 	bool isFirstPerson = false;
@@ -201,9 +202,7 @@ void TitleScene::Draw() {
 
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 
-	if (debugEditor_) { // 安全のためifチェックも入れると良い
-		debugEditor_->DrawPreview(pointLightRes, spotLightRes);
-	}
+	debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
 
 	// --- スプライト描画 ---
@@ -219,7 +218,7 @@ void TitleScene::Draw() {
 
 
 #pragma region Editor Functions
-void TitleScene::LoadObjectLayout(const std::string& filename) {
+void GameClearScene::LoadObjectLayout(const std::string& filename) {
 	using json = nlohmann::json;
 	std::ifstream file(filename);
 
@@ -373,7 +372,7 @@ void TitleScene::LoadObjectLayout(const std::string& filename) {
 				// 3. モデル・表示設定
 				std::string type = targetObject->GetClassName(); // 最新のクラス名を取得
 
-				// ★修正: SpawnerもInvisibleBoxと同じく「モデルなし」にする
+				//  SpawnerもInvisibleBoxと同じく「モデルなし」にする
 				// これによりJSONに "modelName": "cube" と書いてあっても無視して透明にする
 				if (type == "InvisibleBox" || type == "Spawner") {
 					targetObject->SetModel(nullptr);
@@ -423,11 +422,6 @@ void TitleScene::LoadObjectLayout(const std::string& filename) {
 						config.size.x = colData["size"][0];
 						config.size.y = colData["size"][1];
 						config.size.z = colData["size"][2];
-					}
-					if (colData.contains("rotation")) {
-						config.rotation.x = colData["rotation"][0];
-						config.rotation.y = colData["rotation"][1];
-						config.rotation.z = colData["rotation"][2];
 					}
 					targetObject->SetColliderConfig(config);
 				}
@@ -492,7 +486,7 @@ void TitleScene::LoadObjectLayout(const std::string& filename) {
 			}
 			if (parentObj) childObj->SetParent(parentObj);
 		}
-
+	
 
 	}
 	catch (json::parse_error& e) {
@@ -502,7 +496,7 @@ void TitleScene::LoadObjectLayout(const std::string& filename) {
 }
 
 
-void TitleScene::LoadSpriteLayout(const std::string& filename) {
+void GameClearScene::LoadSpriteLayout(const std::string& filename) {
 	using json = nlohmann::json;
 	std::ifstream file(filename);
 
@@ -598,7 +592,7 @@ void TitleScene::LoadSpriteLayout(const std::string& filename) {
 }
 
 
-void TitleScene::AddObject(std::unique_ptr<Object3d> object) {
+void GameClearScene::AddObject(std::unique_ptr<Object3d> object) {
 	if (object == nullptr) {
 		return;
 	}
@@ -608,13 +602,13 @@ void TitleScene::AddObject(std::unique_ptr<Object3d> object) {
 
 
 
-void TitleScene::RequestRemoveObject(Object3d* object) {
+void GameClearScene::RequestRemoveObject(Object3d* object) {
 	if (object) {
 		removalList_.push_back(object);
 	}
 }
 
-void TitleScene::ProcessRemovals() {
+void GameClearScene::ProcessRemovals() {
 	if (removalList_.empty()) {
 		return;
 	}
@@ -648,7 +642,7 @@ void TitleScene::ProcessRemovals() {
 /// <summary>
 /// シーン内の敵リストを取得する
 /// </summary>
-std::vector<Object3d*> TitleScene::FindEnemies() {
+std::vector<Object3d*> GameClearScene::FindEnemies() {
 	std::vector<Object3d*> enemies;
 	for (const auto& obj : objects_) {
 		// kEnemy 属性 を持ち、プレイヤー自身 ではないオブジェクトを検索
@@ -662,7 +656,7 @@ std::vector<Object3d*> TitleScene::FindEnemies() {
 /// <summary>
 /// ロックオン対象として最適な敵を探す
 /// </summary>
-Object3d* TitleScene::FindBestLockOnTarget(Camera* camera) {
+Object3d* GameClearScene::FindBestLockOnTarget(Camera* camera) {
 	static Math math;
 	std::vector<Object3d*> enemies = FindEnemies();
 	if (enemies.empty() || !player_) { return nullptr; }
@@ -717,7 +711,7 @@ Object3d* TitleScene::FindBestLockOnTarget(Camera* camera) {
 /// <summary>
 /// 静的な壁/床ブロックを生成し、衝突判定に登録するヘルパー関数
 /// </summary>
-std::unique_ptr<Object3d> TitleScene::CreateStaticBlock(
+std::unique_ptr<Object3d> GameClearScene::CreateStaticBlock(
 	const Vector3& position,
 	const std::string& name,
 	const Vector3& collisionHalfSize)

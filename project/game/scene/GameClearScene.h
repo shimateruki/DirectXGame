@@ -28,7 +28,7 @@ class DirectXCommon;
 class InputManager;
 class SceneManager;
 
-class TitleScene : public BaseScene
+class GameClearScene : public BaseScene
 {
 public:
 
@@ -65,6 +65,8 @@ private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
     void LoadSpriteLayout(const std::string& filename);
+
+
 private:
 
     // --- エンジンシステムへのポインタ ---
@@ -114,6 +116,7 @@ private:
 
     Object3d* lockOnTarget_ = nullptr; // 現在ロックオンしている敵
     bool isLockingOn_ = false;           // ロックオン中フラグ
+
 
 
     std::unique_ptr<Object3d> CreateStaticBlock(const Vector3& position, const std::string& name, const Vector3& collisionHalfSize);

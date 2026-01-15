@@ -11,10 +11,10 @@ public:
     static PresetManager* GetInstance();
 
     // ファイルから全プリセットを読み込む
-    void LoadPresets(const std::string& filename = "resouces/json/presets.json");
+    void LoadPresets(const std::string& filename = "Resources/json/preset/presets.json");
 
     // 全プリセットをファイルに保存する
-    void SavePresets(const std::string& filename = "resouces/json/presets.json");
+    void SavePresets(const std::string& filename = "Resources/json/preset/presets.json");
 
     // 指定したオブジェクトの設定を、新しいプリセットとして登録
     void AddPresetFromObject(const std::string& presetName, Object3d* obj);

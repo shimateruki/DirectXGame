@@ -1,6 +1,6 @@
 
 #define NOMINMAX
-#include"TitleScene.h"
+#include "GameOverScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -39,7 +39,7 @@
 #include <LightEditor.h>
 
 
-void TitleScene::Initialize() {
+void GameOverScene::Initialize() {
 	using json = nlohmann::json;
 
 	// --- 基盤クラスのポインタを保持 ---
@@ -68,6 +68,8 @@ void TitleScene::Initialize() {
 	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
 
+
+
 	CameraEditor::GetInstance()->Initialize();
 
 	// --- スプライトの生成 ---
@@ -94,16 +96,16 @@ void TitleScene::Initialize() {
 	);
 
 	// --- レイアウト読み込み ---
-	LoadObjectLayout("Resources/json/3Dobject/titleScene.json");
-	LoadSpriteLayout("Resources/json/sprite/titleScene.json");
-	LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
+	LoadObjectLayout("Resources/json/3Dobject/gameOverScene.json");
+	LoadSpriteLayout("Resources/json/sprite/gameOverScene.json");
+	LightManager::GetInstance()->LoadState("Resources/json/light/gameOverScene.json");
 
 
 	//コマンドリストが安全に閉じるためのやつないとバグる
 	dxCommon_->FlushCommandQueue(false);
 }
 
-void TitleScene::Finalize() {
+void GameOverScene::Finalize() {
 
 
 	CollisionManager::GetInstance()->ClearObjects();
@@ -117,7 +119,7 @@ void TitleScene::Finalize() {
 }
 
 
-void TitleScene::Update(float deltaTime) {
+void GameOverScene::Update(float deltaTime) {
 
 	static Math math;
 	LightEditor::GetInstance()->Update();
@@ -125,7 +127,7 @@ void TitleScene::Update(float deltaTime) {
 
 	// --- 常に実行される更新 ---
 	CameraManager::GetInstance()->Update();
-	CameraEditor::GetInstance()->Update(nullptr, false);
+	CameraEditor::GetInstance()->Update(nullptr,false );
 
 	particleSystem_->Update(deltaTime);
 
@@ -172,7 +174,7 @@ void TitleScene::Update(float deltaTime) {
 
 }
 
-void TitleScene::Draw() {
+void GameOverScene::Draw() {
 
 	// --- Releaseビルド時の一人称視点判定 ---
 	bool isFirstPerson = false;
@@ -201,9 +203,7 @@ void TitleScene::Draw() {
 
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 
-	if (debugEditor_) { // 安全のためifチェックも入れると良い
-		debugEditor_->DrawPreview(pointLightRes, spotLightRes);
-	}
+	debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
 
 	// --- スプライト描画 ---
@@ -219,7 +219,7 @@ void TitleScene::Draw() {
 
 
 #pragma region Editor Functions
-void TitleScene::LoadObjectLayout(const std::string& filename) {
+void GameOverScene::LoadObjectLayout(const std::string& filename) {
 	using json = nlohmann::json;
 	std::ifstream file(filename);
 
@@ -502,7 +502,7 @@ void TitleScene::LoadObjectLayout(const std::string& filename) {
 }
 
 
-void TitleScene::LoadSpriteLayout(const std::string& filename) {
+void GameOverScene::LoadSpriteLayout(const std::string& filename) {
 	using json = nlohmann::json;
 	std::ifstream file(filename);
 
@@ -598,7 +598,7 @@ void TitleScene::LoadSpriteLayout(const std::string& filename) {
 }
 
 
-void TitleScene::AddObject(std::unique_ptr<Object3d> object) {
+void GameOverScene::AddObject(std::unique_ptr<Object3d> object) {
 	if (object == nullptr) {
 		return;
 	}
@@ -608,13 +608,13 @@ void TitleScene::AddObject(std::unique_ptr<Object3d> object) {
 
 
 
-void TitleScene::RequestRemoveObject(Object3d* object) {
+void GameOverScene::RequestRemoveObject(Object3d* object) {
 	if (object) {
 		removalList_.push_back(object);
 	}
 }
 
-void TitleScene::ProcessRemovals() {
+void GameOverScene::ProcessRemovals() {
 	if (removalList_.empty()) {
 		return;
 	}
@@ -648,7 +648,7 @@ void TitleScene::ProcessRemovals() {
 /// <summary>
 /// シーン内の敵リストを取得する
 /// </summary>
-std::vector<Object3d*> TitleScene::FindEnemies() {
+std::vector<Object3d*> GameOverScene::FindEnemies() {
 	std::vector<Object3d*> enemies;
 	for (const auto& obj : objects_) {
 		// kEnemy 属性 を持ち、プレイヤー自身 ではないオブジェクトを検索
@@ -662,7 +662,7 @@ std::vector<Object3d*> TitleScene::FindEnemies() {
 /// <summary>
 /// ロックオン対象として最適な敵を探す
 /// </summary>
-Object3d* TitleScene::FindBestLockOnTarget(Camera* camera) {
+Object3d* GameOverScene::FindBestLockOnTarget(Camera* camera) {
 	static Math math;
 	std::vector<Object3d*> enemies = FindEnemies();
 	if (enemies.empty() || !player_) { return nullptr; }
@@ -717,7 +717,7 @@ Object3d* TitleScene::FindBestLockOnTarget(Camera* camera) {
 /// <summary>
 /// 静的な壁/床ブロックを生成し、衝突判定に登録するヘルパー関数
 /// </summary>
-std::unique_ptr<Object3d> TitleScene::CreateStaticBlock(
+std::unique_ptr<Object3d> GameOverScene::CreateStaticBlock(
 	const Vector3& position,
 	const std::string& name,
 	const Vector3& collisionHalfSize)

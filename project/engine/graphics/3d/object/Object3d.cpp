@@ -42,45 +42,57 @@ void Object3d::Initialize(Object3dCommon* common) {
 
 }
 
-OBB Object3d::GetOBB() const
-{
+OBB Object3d::GetOBB() const {
     OBB obb;
     Math math;
 
-    // ワールド行列を取得
-    const Matrix4x4& worldMat = GetWorldMatrix();
+    // =========================================================
+    // 1. コライダー自身の「ローカル行列」を作る
+    // =========================================================
+    // ここで colliderConfig_.rotation を使って回転行列を作ります
 
-    // 1. 回転軸 (Axis) と ワールドスケール (Scale) の抽出
-    Vector3 xAxis = { worldMat.m[0][0], worldMat.m[0][1], worldMat.m[0][2] };
-    Vector3 yAxis = { worldMat.m[1][0], worldMat.m[1][1], worldMat.m[1][2] };
-    Vector3 zAxis = { worldMat.m[2][0], worldMat.m[2][1], worldMat.m[2][2] };
+    // 回転 (Z * X * Y 順など、エンジンの仕様に合わせますが基本はこれ)
+    Matrix4x4 matRotX = math.MakeRotateXMatrix(colliderConfig_.rotation.x);
+    Matrix4x4 matRotY = math.MakeRotateYMatrix(colliderConfig_.rotation.y);
+    Matrix4x4 matRotZ = math.MakeRotateZMatrix(colliderConfig_.rotation.z);
+    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
 
-    // 各軸の長さ（ワールドスケール）を算出
-    float lenX = math.Length(xAxis);
-    float lenY = math.Length(yAxis);
-    float lenZ = math.Length(zAxis);
+    // 中心ズレ (Center)
+    Matrix4x4 matTrans = math.MakeTranslateMatrix(colliderConfig_.center);
 
-    // 軸を正規化 (向きベクトルにする)
-    obb.orientations[0] = (lenX > 0.0f) ? (xAxis / lenX) : Vector3{ 1.0f, 0.0f, 0.0f };
-    obb.orientations[1] = (lenY > 0.0f) ? (yAxis / lenY) : Vector3{ 0.0f, 1.0f, 0.0f };
-    obb.orientations[2] = (lenZ > 0.0f) ? (zAxis / lenZ) : Vector3{ 0.0f, 0.0f, 1.0f };
+    // コライダー単体の行列 (回転させてから、ズラス)
+    Matrix4x4 matColliderLocal = math.Multiply(matRot, matTrans);
 
-    // 2. 中心座標 (Center)
-    // オブジェクトの原点 (ワールド座標)
-    Vector3 worldPos = { worldMat.m[3][0], worldMat.m[3][1], worldMat.m[3][2] };
 
-    // コライダーの中心オフセット (colliderConfig_.center) を適用
-    Vector3 offset = colliderConfig_.center;
-    obb.center = worldPos + (xAxis * offset.x) + (yAxis * offset.y) + (zAxis * offset.z);
+    // =========================================================
+    // 2. オブジェクトの「ワールド行列」と合成する
+    // =========================================================
+    // これで [親の回転] + [子の回転] が合わさった最終的な行列になります
+    Matrix4x4 matFinal = math.Multiply(matColliderLocal, worldMatrix_);
 
-    // 3. サイズ (半サイズ)
-    obb.size.x = colliderConfig_.size.x * lenX;
-    obb.size.y = colliderConfig_.size.y * lenY;
-    obb.size.z = colliderConfig_.size.z * lenZ;
+
+    // =========================================================
+    // 3. 行列から OBB の情報を抜き出す
+    // =========================================================
+
+    // A. 中心座標 (行列の平行移動成分 [3][0]~[3][2])
+    obb.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
+
+    // B. 3つの軸 (行列の回転成分 X, Y, Z軸)
+    obb.orientations[0] = math.Normalize({ matFinal.m[0][0], matFinal.m[0][1], matFinal.m[0][2] }); // X軸
+    obb.orientations[1] = math.Normalize({ matFinal.m[1][0], matFinal.m[1][1], matFinal.m[1][2] }); // Y軸
+    obb.orientations[2] = math.Normalize({ matFinal.m[2][0], matFinal.m[2][1], matFinal.m[2][2] }); // Z軸
+
+    // C. サイズ (半サイズ)
+    // コライダーの元サイズ * オブジェクトのスケール
+    obb.size = {
+        colliderConfig_.size.x * transform_.scale.x,
+        colliderConfig_.size.y * transform_.scale.y,
+        colliderConfig_.size.z * transform_.scale.z
+    };
 
     return obb;
 }
-
 
 void Object3d::SetModel(const std::string& modelName) {
     modelName_ = modelName;
@@ -97,6 +109,7 @@ void Object3d::Update(float deltaTime) {
     if (recorder_) {
         recorder_->Update();
     }
+
 }
 
 void Object3d::UpdateLocalMatrix() {
@@ -352,7 +365,8 @@ json Object3d::ExportToJson() {
     j["collider"] = {
         {"type", static_cast<int>(colliderConfig_.type)},
         {"size", { colliderConfig_.size.x, colliderConfig_.size.y, colliderConfig_.size.z }},
-        {"center", { colliderConfig_.center.x, colliderConfig_.center.y, colliderConfig_.center.z }}
+        {"center", { colliderConfig_.center.x, colliderConfig_.center.y, colliderConfig_.center.z }},
+        { "rotation", { colliderConfig_.rotation.x, colliderConfig_.rotation.y, colliderConfig_.rotation.z } }
     };
 
     // 4. アニメーション設定
@@ -401,6 +415,9 @@ void Object3d::ImportFromJson(const json& j) {
         }
         if (col.contains("center")) {
             colliderConfig_.center = { col["center"][0], col["center"][1], col["center"][2] };
+        }
+        if (col.contains("rotation")) {
+            colliderConfig_.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
         }
     }
 

@@ -35,6 +35,7 @@
 #include <BaseEnemy.h>
 #include <EnemyFactory.h>
 #include <EnemySpawner.h>
+#include <LightEditor.h>
 
 
 void GamePlayScene::Initialize() {
@@ -52,7 +53,7 @@ void GamePlayScene::Initialize() {
 	ModelManager::GetInstance()->LoadModel("saka");
 	LOG("Game Initialized!");
 	// --- 各種初期化 ---
-	bgmHandle_ = audioPlayer_->LoadSoundFile("resouces/bgm/Alarm02.mp3");
+	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 	CameraManager::GetInstance()->Initialize();
 	CameraManager::GetInstance()->SetInputManager(inputManager_);
 	spriteCommon_ = std::make_unique<SpriteCommon>();
@@ -62,9 +63,10 @@ void GamePlayScene::Initialize() {
 	particleCommon_ = std::make_unique<ParticleCommon>();
 	particleCommon_->Initialize(dxCommon_);
 	particleSystem_ = std::make_unique<ParticleSystem>();
-	particleSystem_->Initialize(particleCommon_.get(), "resouces/sprite/white.png");
+	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);
+	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
 
 	// --- オブジェクトの生成 ---
@@ -130,9 +132,9 @@ void GamePlayScene::Initialize() {
 	);
 
 	// --- レイアウト読み込み ---
-	LoadObjectLayout("resouces/json/scene_layout.json");
-	LoadSpriteLayout("resouces/json/sprite_layout.json");
-	LightManager::GetInstance()->LoadState("resouces/json/light_layout.json");
+	LoadObjectLayout("Resources/json/3Dobject/scene_layout.json");
+	LoadSpriteLayout("Resources/json/sprite/sprite_layout.json");
+	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
 
 
 
@@ -170,7 +172,7 @@ void GamePlayScene::Finalize() {
 void GamePlayScene::Update(float deltaTime) {
 
 	static Math math;
-
+	LightEditor::GetInstance()->Update();
 	// ▼CameraEditorの設定を反映
 	CameraEditor::GetInstance()->Update(player_, isLockingOn_);
 
@@ -253,9 +255,6 @@ void GamePlayScene::Update(float deltaTime) {
 		obj->Update(deltaTime);
 	}
 
-	if (player_) {
-		player_->UpdateLocalMatrix();
-	}
 	for (const auto& object : objects_) {
 		object->UpdateLocalMatrix();
 	}
@@ -420,6 +419,7 @@ void GamePlayScene::Draw() {
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
+
 #endif
 
 	// ライトのリソースを取得
@@ -439,7 +439,7 @@ void GamePlayScene::Draw() {
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 
 	debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
-
+	LightEditor::GetInstance()->Draw3D();
 
 	// --- スプライト描画 ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
@@ -731,6 +731,11 @@ void GamePlayScene::LoadObjectLayout(const std::string& filename) {
 						config.size.x = colData["size"][0];
 						config.size.y = colData["size"][1];
 						config.size.z = colData["size"][2];
+					}
+					if (colData.contains("rotation")) {
+						config.rotation.x = colData["rotation"][0];
+						config.rotation.y = colData["rotation"][1];
+						config.rotation.z = colData["rotation"][2];
 					}
 					targetObject->SetColliderConfig(config);
 				}

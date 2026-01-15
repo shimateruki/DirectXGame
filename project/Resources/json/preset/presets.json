@@ -1,0 +1,36 @@
+{
+    "player": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true,
+            "isAnimRelative": false
+        },
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 1
+        },
+        "enemyType": "",
+        "eventType": 0,
+        "modelName": "teapot",
+        "name": "Player",
+        "rotate": [
+            6.278290811678744e-07,
+            -2.7157962322235107,
+            6.278298201323196e-07
+        ],
+        "scale": [
+            0.8180209398269653,
+            1.0,
+            1.0
+        ]
+    }
+}

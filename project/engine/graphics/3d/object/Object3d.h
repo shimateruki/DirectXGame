@@ -64,6 +64,7 @@ public:
         ColliderType type = ColliderType::kAABB; // デフォルトはAABB
         Vector3 center = { 0.0f, 0.0f, 0.0f };   // モデル中心からのズレ（オフセット）
         Vector3 size = { 1.0f, 1.0f, 1.0f };     // サイズ (AABB:半サイズ, OBB:半サイズ, Sphere:x=半径)
+        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
     };
 
     struct EntityParameter {

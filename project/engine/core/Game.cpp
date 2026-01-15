@@ -17,6 +17,7 @@ void Game::Initialize() {
     sceneManager_ = std::make_unique<SceneManager>();
     sceneManager_->Initialize(sceneFactory_.get(), "TITLE");
 
+
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();
 #ifdef USE_IMGUI
@@ -29,8 +30,7 @@ void Game::Initialize() {
     sceneManager_->SetDebugEditor(debugEditor_.get());
     particleEditor_ = std::make_unique<ParticleEditor>();
     particleEditor_->Initialize(sceneManager_.get());
-    lightEditor_ = std::make_unique<LightEditor>();
-    lightEditor_->Initialize();
+    LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
 
 #endif
@@ -177,9 +177,9 @@ void Game::Update() {
         }
     }
 
-    if (showLightEditor_ && lightEditor_) {
+    if (showLightEditor_) {
         if (ImGui::CollapsingHeader("ライト環境 (Lighting)")) {
-            lightEditor_->DrawImGui();
+            LightEditor::GetInstance()->DrawImGui();
         }
     }
 
@@ -194,6 +194,27 @@ void Game::Update() {
             DebugConsole::GetInstance()->DrawImGui();
         }
     }
+
+    if (ImGui::CollapsingHeader("シーン切り替え (Scene Select)")) {
+        // 登録されているシーン名のリスト
+        const char* sceneNames[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
+
+        // ボタンを横並びにするためのループ
+        for (int i = 0; i < _countof(sceneNames); i++) {
+            // 2個目以降は横に並べる (改行しない)
+            if (i > 0) ImGui::SameLine();
+
+            // ボタンを表示し、押されたらシーン変更
+            if (ImGui::Button(sceneNames[i])) {
+                // シーンマネージャーに遷移を依頼
+                sceneManager_->ChangeScene(sceneNames[i]);
+            }
+        }
+
+        // 現在のシーン名を表示しておくと便利
+        ImGui::TextDisabled("Current Scene Info: %s", typeid(*sceneManager_->GetCurrentScene()).name());
+    }
+
 
     // --- 時間操作パネル  ---
     if (showTimeController_) {

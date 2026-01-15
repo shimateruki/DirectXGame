@@ -246,7 +246,7 @@ void GhostRecorder::Save(const std::string& fileName) {
         frameJson["rot"] = { frame.rotation.x, frame.rotation.y, frame.rotation.z };
         root["frames"].push_back(frameJson);
     }
-    std::string path = "resouces/json/animation/" + fileName + ".json"; // パス修正
+    std::string path = "Resources/json/animation/" + fileName + ".json"; // パス修正
     std::ofstream file(path);
     if (file.is_open()) {
         file << root.dump(4);
@@ -256,7 +256,7 @@ void GhostRecorder::Save(const std::string& fileName) {
 
 // Load関数
 void GhostRecorder::Load(const std::string& fileName) {
-    std::string path = "resouces/json/animation/" + fileName + ".json"; 
+    std::string path = "Resources/json/animation/" + fileName + ".json"; 
     std::ifstream file(path);
     if (!file.is_open()) return;
     json root;
