@@ -5,7 +5,7 @@
 
 // 静的メンバ変数の実体定義
 ModelManager* ModelManager::instance = nullptr;
-const std::string ModelManager::kDefaultBaseDirectory = "resouces/3DModel/";
+const std::string ModelManager::kDefaultBaseDirectory = "Resources/3DModel/";
 const std::string ModelManager::kDefaultModelExtension = ".obj";
 
 ModelManager* ModelManager::GetInstance() {

@@ -51,29 +51,54 @@ bool Character::OnCollision(Object3d* other) {
 
 
 void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute) {
-    // 地面属性以外は物理処理しない
+    // 1. 地面・壁属性以外（敵の攻撃判定など）は物理押し出ししない
+    // ※ kAllSolid は「kGround | kWall」などのビットマスクと想定
     if (!(attribute & kAllSolid)) {
         return;
     }
 
+    // ★重要: 法線ベクトルの向きの確認
+    // この関数では info.normal を「プレイヤーを押し出す方向（壁からプレイヤーへの矢印）」として扱います。
+    // もし当たり判定の計算で「プレイヤーから壁への矢印」が入っている場合は、
+    // ここで -1.0f を掛けて反転させる必要があります。
+    // (現状のコードが += で動いているなら、そのままでOKなはずです)
+    Vector3 pushNormal = info.normal;
 
-    //  座標を押し戻す (めり込んだ分だけ座標を補正)
-    this->transform_.translate += (info.normal * info.penetration);
 
-    //  速度を補正 (壁にめり込む速度成分を打ち消す)
-    float dot = math.Dot(velocity_, info.normal);
+    // 2. 座標を押し戻す (めり込み解消)
+    // 坂道の場合、斜め上に押し出されることで登れるようになります。
+    this->transform_.translate += (pushNormal * info.penetration);
 
-    // 速度が法線と逆向き (dot < 0) ＝ めり込もうとしている場合のみ
-    if (dot < 0) {
-        // 法線方向の速度成分（dot）を、速度ベクトルから差し引く
-        velocity_ = velocity_ - (info.normal * dot);
+
+    // 3. 速度の補正 (壁ずり・床滑り防止)
+    // 壁や床に向かって進んでいる場合のみ、その方向の速度成分を消します。
+    float dot = math.Dot(velocity_, pushNormal);
+
+    // dot < 0.0f ＝ 壁に向かって進んでいる（めり込もうとしている）
+    if (dot < 0.0f) {
+        // 壁・坂の表面に沿って滑るベクトル（Slide Vector）を作る
+        // Velocity = Velocity - (Normal * dot)
+        velocity_ = velocity_ - (pushNormal * dot);
     }
 
-    //接地判定
-    if (info.normal.y > 0.9f) {
+
+    // 4. 接地判定 (坂道対応)
+    // 法線のY成分が上を向いていれば「地面」または「坂」とみなします。
+    // 1.0f = 平地(0度), 0.7f = 約45度, 0.0f = 垂直な壁
+    const float kSlopeThreshold = 0.7f;
+
+    if (pushNormal.y > kSlopeThreshold) {
         isGrounded_ = true;
+
+        // 【最重要】坂道での重力リセット
+        // これがないと、坂を登っても重力で下に引っ張られ、ずり落ちてしまいます。
+        if (velocity_.y < 0.0f) {
+            velocity_.y = 0.0f;
+        }
     }
 }
+
+
 std::unique_ptr<Object3d> Character::Clone() const {
     // Character として生成
     auto newObj = std::make_unique<Character>();
@@ -89,31 +114,31 @@ std::unique_ptr<Object3d> Character::Clone() const {
     // Transform 情報
     newObj->transform_ = this->transform_;
 
-    // 名前
-    newObj->name_ = this->name_;
+    // 名前 
+    newObj->SetName(this->name_);
 
     newObj->SetColliderConfig(this->colliderConfig_);
 
     // 属性とマスク
-    newObj->collisionAttribute_ = this->collisionAttribute_;
-    newObj->collisionMask_ = this->collisionMask_;
+    newObj->SetCollisionAttribute(this->collisionAttribute_);
+    newObj->SetCollisionMask(this->collisionMask_);
 
     // 1. イベントIDとステータス(param_)をコピー
-    newObj->eventType_ = this->eventType_;
-    newObj->param_ = this->param_;
+    newObj->SetEventType(this->eventType_);
+    if (this->param_.has_value()) {
+        newObj->param_ = this->param_.value();
+    }
 
     // 2. Character 独自のメンバをコピー
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
 
-    // ▼▼▼ 追加：アニメーション設定のコピーと再生 ▼▼▼
+    // 3. アニメーション設定のコピーと再生
     newObj->animName_ = this->animName_;
     newObj->isAnimLoop_ = this->isAnimLoop_;
     newObj->isAnimRelative_ = this->isAnimRelative_;
 
-    // ：レコーダーを初期化して、設定があれば即再生！
-    newObj->InitializeRecorder(nullptr);
-
+    newObj->InitializeRecorder(nullptr); // レコーダー初期化
     if (!newObj->animName_.empty()) {
         newObj->recorder_->Play(
             newObj->animName_,
@@ -122,6 +147,13 @@ std::unique_ptr<Object3d> Character::Clone() const {
         );
     }
 
+    // "Player" や "Model" などのクラス名を引き継ぐ
+    newObj->SetClassName(this->GetClassName());
+
+    // "Slime" などの敵タイプ名を引き継ぐ
+    newObj->SetEnemyType(this->GetEnemyType());
+
+    // ---------------------------------------------------
 
     return newObj;
 }

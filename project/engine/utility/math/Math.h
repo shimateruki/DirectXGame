@@ -43,6 +43,18 @@ struct Matrix4x4
 {
 	float m[4][4];
 };
+
+// レイ（光線）
+struct Ray {
+	Vector3 origin; // 発射地点
+	Vector3 diff;   // 方向ベクトル
+};
+struct RayResult {
+	bool isHit;       // 当たったか？
+	float distance;   // 距離
+	Vector3 point;    // 当たった正確な座標
+	Vector3 normal;   // 法線
+};
 Vector3 operator-(const Vector3& v1, const Vector3& v2);
 Vector3 operator*(const Vector3& v, float scalar);
 Vector3 operator+(const Vector3& v1, const Vector3& v2);
@@ -91,4 +103,12 @@ public:
 	/// 線形補間 (Vector4)
 	/// </summary>
 	Vector4 Lerp(const Vector4& v1, const Vector4& v2, float t);
+
+	// ベクトルと行列の掛け算（w除算あり）
+	// スクリーン座標をワールド座標に戻すために必須です
+	Vector3 Transform(const Vector3& v, const Matrix4x4& m);
+
+	// minBox: 箱の最小座標 (center - scale)
+	// maxBox: 箱の最大座標 (center + scale)
+	bool IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit);
 };

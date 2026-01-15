@@ -3,6 +3,9 @@
 #include "BaseScene.h"
 #include "AbstractSceneFactory.h"
 
+
+class DebugEditor;
+
 /// <summary>
 /// シーンを管理するクラス
 /// </summary>
@@ -48,9 +51,14 @@ public:
     /// 現在のシーンのポインタを取得する (Editor用)
     /// </summary>
     BaseScene* GetCurrentScene() const;
+    void SetDebugEditor(DebugEditor* editor) {
+        debugEditor_ = editor;
+    }
 
 private:
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
     std::unique_ptr<BaseScene> nextScene_ = nullptr;
     AbstractSceneFactory* sceneFactory_ = nullptr; // ファクトリーのポインタ
+    DebugEditor* debugEditor_ = nullptr;
+
 };

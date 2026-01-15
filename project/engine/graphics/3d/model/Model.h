@@ -84,6 +84,8 @@ public: // メンバ関数
         return modelData_.materials[0].textureHandle;
     }
     const ModelData& GetModelData() const { return modelData_; }
+    Vector3 GetSize() const { return size_; }
+    Vector3 GetCenter() const { return center_; }
 
 private: // 静的メンバ関数
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
@@ -101,4 +103,6 @@ private: // メンバ変数
     Material* materialData_ = nullptr;
 
 	Math math_;
+    Vector3 size_ = { 1.0f, 1.0f, 1.0f };   // デフォルトは1x1x1
+    Vector3 center_ = { 0.0f, 0.0f, 0.0f }; // デフォルトは原点
 };

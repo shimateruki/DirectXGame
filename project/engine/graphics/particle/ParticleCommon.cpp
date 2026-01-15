@@ -104,8 +104,8 @@ void ParticleCommon::CreatePipeline() {
     depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
     // シェーダーのコンパイル 
-    auto vsBlob = dxCommon_->CompileShader(L"resouces/shader/Particle.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"resouces/shader/Particle.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Particle.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Particle.PS.hlsl", L"ps_6_0");
 
     // パイプラインステートの設定
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};

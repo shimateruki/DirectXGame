@@ -10,6 +10,9 @@
 #include"Event.h"
 #include <vector>
 
+#include "json.hpp"
+using json = nlohmann::json;
+
 class GhostRecorder;
 class SceneManager;
 
@@ -61,6 +64,7 @@ public:
         ColliderType type = ColliderType::kAABB; // デフォルトはAABB
         Vector3 center = { 0.0f, 0.0f, 0.0f };   // モデル中心からのズレ（オフセット）
         Vector3 size = { 1.0f, 1.0f, 1.0f };     // サイズ (AABB:半サイズ, OBB:半サイズ, Sphere:x=半径)
+        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
     };
 
     struct EntityParameter {
@@ -70,6 +74,9 @@ public:
         float gravity = 50.0f;
         float maxFallSpeed = 60.0f;  // 落下制限もここ
         float jumpPower = 10.0f;
+        std::string enemyType = "Goblin"; // 生成する敵の名前
+        float interval = 3.0f;            // 生成間隔
+        int maxCount = 5;                 // 生成最大数;
         EntityParameter() = default;
     };
 
@@ -226,6 +233,11 @@ public:
     void SetTargetID(int id) { targetID_ = id; }
     int GetTargetID() const { return targetID_; }
 
+    json ExportToJson();
+
+    // ★追加: JSONオブジェクトから設定を読み込む
+    void ImportFromJson(const json& j);
+
     // ギミック発動時に呼ばれる関数
     virtual void OnTrigger() {
         isVisible_ = false;
@@ -234,6 +246,8 @@ public:
     void InitializeRecorder(SceneManager* sceneManager);
 
     void CopyFrom(const Object3d* other);
+    void SetEnemyType(const std::string& type) { enemyType_ = type; }
+    std::string GetEnemyType() const { return enemyType_; }
 
     // アニメーション関連
     std::string animName_ = "";      // 再生するファイル名 (例: "door_open")
@@ -284,4 +298,5 @@ protected:
     bool isVisible_ = true;
     int eventID_ = -1;  // 受信ID（私は誰か）
     int targetID_ = -1; // 送信ID（誰を動かすか）
+    std::string enemyType_ = "";
 };

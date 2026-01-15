@@ -179,16 +179,16 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 }
 
 void CameraEditor::DrawImGui() {
-    ImGui::Begin("Camera Editor");
+    ImGui::Begin("カメラ");
 
     // ==========================================================
-    // ▼▼▼ ファイル管理セクション (リスト機能付き完全版) ▼▼▼
+    //  ファイル管理セクション 
     // ==========================================================
-    if (ImGui::CollapsingHeader("File Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("ファイルマネージャー", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         // 1. ファイルリスト (コンボボックス)
         static int currentItem = -1;
-        if (ImGui::BeginCombo("Select File", "Choose from list...")) {
+        if (ImGui::BeginCombo("ファイル選択", "Choose from list...")) {
             for (int i = 0; i < fileList_.size(); i++) {
                 bool isSelected = (currentItem == i);
 
@@ -208,19 +208,19 @@ void CameraEditor::DrawImGui() {
         }
 
         // 2. ファイル名入力欄 (新規作成や名前変更用)
-        ImGui::Text("File Name (.json)");
-        ImGui::InputText("##FileName", fileNameBuffer_, sizeof(fileNameBuffer_));
+        ImGui::Text("ファイル名(.json)");
+        ImGui::InputText("##ファイル名", fileNameBuffer_, sizeof(fileNameBuffer_));
 
         // 3. 操作ボタン
-        if (ImGui::Button("Load")) {
+        if (ImGui::Button("ロード")) {
             LoadSettings();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Save")) {
+        if (ImGui::Button("セーブ")) {
             SaveSettings();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Refresh List")) {
+        if (ImGui::Button("セーブファイルリスト")) {
             RefreshFileList();
         }
     }
@@ -229,9 +229,9 @@ void CameraEditor::DrawImGui() {
 
 
     // --- モード選択 ---
-    const char* modeNames[] = { "Game (Player Follow)", "Editor (Free Fly)" };
+    const char* modeNames[] = { "ゲームカメラ", "自由に動けるカメラ" };
     int currentModeInt = static_cast<int>(settings_.currentMode);
-    if (ImGui::Combo("Main Mode", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
+    if (ImGui::Combo("メインモード", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
         settings_.currentMode = static_cast<Mode>(currentModeInt);
     }
 
@@ -239,9 +239,9 @@ void CameraEditor::DrawImGui() {
 
     if (settings_.currentMode == Mode::Game) {
         // --- Game Mode 設定 ---
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Game Mode Settings");
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "カメラモード設定");
 
-        const char* followModeNames[] = { "Fixed", "Aimable (3rd)", "First Person", "LockOn" };
+        const char* followModeNames[] = { "デフォルト", "3人称", "1人称" };
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
         if (ImGui::Combo("View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
             settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
@@ -251,24 +251,21 @@ void CameraEditor::DrawImGui() {
         if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
             settings_.gameFollowMode == Camera::FollowMode::kFixed) {
 
-            ImGui::DragFloat("Distance", &settings_.distance, 0.1f, 1.0f, 100.0f);
-            ImGui::DragFloat("Height", &settings_.height, 0.1f, 0.0f, 50.0f);
-            ImGui::DragFloat("Angle", &settings_.angle, 0.1f, -90.0f, 90.0f);
+            ImGui::DragFloat("距離", &settings_.distance, 0.1f, 1.0f, 100.0f);
+            ImGui::DragFloat("高さ", &settings_.height, 0.1f, 0.0f, 50.0f);
+            ImGui::DragFloat("角度", &settings_.angle, 0.1f, -90.0f, 90.0f);
         }
 
-        ImGui::Dummy(ImVec2(0, 5));
-        ImGui::Text("LockOn Offset");
-        ImGui::DragFloat3("Offset", &settings_.lockOnOffset.x, 0.1f);
     } else {
         // --- Editor Mode 設定 ---
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Free Camera Active");
-        ImGui::TextWrapped("Hold Right Click + WASD to Move. Q/E to Up/Down. Shift to Boost.");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "自由に動けるカメラ");
+        ImGui::TextWrapped("右クリックを押しながら WASD で移動。Q/E で上下移動。Shift でブースト");
 
         ImGui::Dummy(ImVec2(0, 5));
-        ImGui::Text("Sensitivity");
-        ImGui::SliderFloat("Move Speed", &settings_.moveSpeed, 0.1f, 5.0f);
-        ImGui::SliderFloat("Boost Speed", &settings_.boostSpeed, 1.0f, 10.0f);
-        ImGui::SliderFloat("Mouse Sens", &settings_.mouseSensitivity, 0.001f, 0.05f);
+        ImGui::Text("設定");
+        ImGui::SliderFloat("移動速度", &settings_.moveSpeed, 0.1f, 5.0f);
+        ImGui::SliderFloat("加速速度", &settings_.boostSpeed, 1.0f, 10.0f);
+        ImGui::SliderFloat("マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
 
         // 現在座標の表示
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();

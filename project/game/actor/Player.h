@@ -31,9 +31,15 @@ public:
     bool IsLockingOn() const { return isLockingOn_; }
     InputManager* GetInputManager() { return inputManager_; }
 
+    //  操作権限のON/OFF切り替え
+    void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
+
+    //  今操作中か確認したい場合用
+    bool IsControlActive() const { return isControlActive_; }
 private:
     InputManager* inputManager_ = nullptr;
     std::unique_ptr<IMoveStrategy> moveStrategy_ = nullptr;
     bool isLockingOn_ = false;
     ParticleSystem* particleSystem_ = nullptr;
+    bool isControlActive_ = true;
 };

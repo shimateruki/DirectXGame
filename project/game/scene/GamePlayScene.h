@@ -22,6 +22,7 @@
 class DirectXCommon;
 class InputManager;
 class SceneManager;
+
 #include "DebugEditor.h" 
 #include <GhostRecorder.h>
 #include <GameRule.h>
@@ -73,6 +74,7 @@ private:
     void OnPlayerHit(const PlayerHitEvent& event);
 
     void OnBulletHit(const BulletHitEvent& event);
+    void SwitchActivePlayer(Player* newMainPlayer);
 
 private:
 
@@ -92,7 +94,7 @@ private:
     std::unique_ptr<Text>  debugText_;
     std::unique_ptr<GameRule> gameRule_; // 管理人
 
-
+    std::vector<std::unique_ptr<Object3d>> pendingObjects_;
     Player* player_ = nullptr;
 
     // --- BGM・SE ---
