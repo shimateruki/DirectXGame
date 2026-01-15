@@ -118,8 +118,8 @@ void SpriteCommon::CreatePipeline() {
     depthStencilDesc.DepthEnable = false;
 
     // シェーダーのコンパイル
-    auto vsBlob = dxCommon_->CompileShader(L"resouces/shader/Sprite.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"resouces/shader/Sprite.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Sprite.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Sprite.PS.hlsl", L"ps_6_0");
 
     // PSOのデスクリプション
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};

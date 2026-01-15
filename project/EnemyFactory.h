@@ -12,6 +12,7 @@ public:
     // 名前から敵を作成する関数
     std::unique_ptr<BaseEnemy> CreateEnemy(const std::string& enemyName, Object3dCommon* common);
 
+
 private:
     EnemyFactory() = default;
     ~EnemyFactory() = default;

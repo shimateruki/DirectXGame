@@ -23,6 +23,9 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
 
     // SceneManagerのポインタを渡す
     currentScene_->SetSceneManager(this);
+    if (debugEditor_) {
+        currentScene_->SetDebugEditor(debugEditor_);
+    }
 
     // シーンの初期化を呼び出す
     currentScene_->Initialize();
@@ -105,7 +108,9 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
 
     // ファクトリーを使ってシーンを生成
     std::unique_ptr<BaseScene> newScene = sceneFactory_->CreateScene(sceneName);
-
+    if (debugEditor_) {
+        newScene->SetDebugEditor(debugEditor_);
+    }
     // SetNextScene に渡して、次のフレームで遷移させる
     if (newScene) {
         SetNextScene(std::move(newScene));

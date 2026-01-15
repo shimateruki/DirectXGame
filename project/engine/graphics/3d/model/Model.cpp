@@ -1,4 +1,4 @@
-
+#define NOMINMAX
 #include <fstream>
 #include "Model.h"
 #include "DirectXCommon.h"
@@ -131,7 +131,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
             modelData.materials[i].textureFilePath = directoryPath + sep + texFilename;
         } else {
             // テクスチャがない、または見つからない場合は白画像 (パスはユーザー環境に合わせる)
-            modelData.materials[i].textureFilePath = "resouces/sprite/white.png";
+            modelData.materials[i].textureFilePath = "Resources/sprite/white.png";
         }
     }
 

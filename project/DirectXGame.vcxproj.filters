@@ -246,25 +246,37 @@
     <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="PresetManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="EnemySpawner.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\GameClearScene.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\GameOverScene.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="resouces\shader\Object3d.hlsli">
+    <None Include="Resources\shader\Object3d.hlsli">
       <Filter>シェーダーファイル</Filter>
     </None>
-    <None Include="resouces\shader\Sprite.PS.hlsl">
+    <None Include="Resources\shader\Sprite.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
-    <None Include="resouces\shader\Sprite.VS.hlsl">
+    <None Include="Resources\shader\Sprite.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
-    <None Include="resouces\shader\Particle.VS.hlsl">
+    <None Include="Resources\shader\Particle.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
     <None Include="DUMPS\2025-0422-1117.dmp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </None>
-    <None Include="resouces\shader\DebugPrimitive.hlsli" />
-    <None Include="resouces\shader\DebugPrimitive.VS.hlsl" />
+    <None Include="Resources\shader\DebugPrimitive.hlsli" />
+    <None Include="Resources\shader\DebugPrimitive.VS.hlsl" />
     <None Include="externals\assimp\include\assimp\color4.inl">
       <Filter>ヘッダー ファイル</Filter>
     </None>
@@ -291,16 +303,16 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="resouces\shader\Object3d.VS.hlsl">
+    <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
-    <FxCompile Include="resouces\shader\Object3d.PS.hlsl">
+    <FxCompile Include="Resources\shader\Object3d.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
-    <FxCompile Include="resouces\shader\Particle.PS.hlsl">
+    <FxCompile Include="Resources\shader\Particle.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
-    <FxCompile Include="resouces\shader\DebugPrimitive.PS.hlsl" />
+    <FxCompile Include="Resources\shader\DebugPrimitive.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\system\audio\AudioPlayer.h">
@@ -745,6 +757,18 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="PresetManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemySpawner.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\GameClearScene.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\GameOverScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

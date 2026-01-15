@@ -47,13 +47,19 @@ public:
     void DeleteSelected();        // 削除 (Delete)
     void PerformUndo();
     void PerformRedo();
+    void DrawEnemyTypeSelector();
+
+    void DrawSpawnerSettings();
 
 
+    void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
 private:
     void InitializePrimitiveDrawing();
-    // instanceIndex を引数に追加
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
+    bool IntersectRayPlane(const Ray& ray, Vector3& intersectOut);
+
+
 
 
 private:
@@ -110,5 +116,12 @@ private:
     // Undo/Redo用スタック
     std::deque<TransformCommand> redoStack_; // 進む履歴
 
+    Math math_;
+    std::unique_ptr<Object3d> previewObject_ = nullptr;
+    //  スクリーン座標(マウス位置)からレイを作成する関数
+    Ray ScreenPointToRay(const Vector2& mousePos);
 
+
+    std::string currentPreviewModelName_ = "";
+    char presetNameBuffer_[64] = "";
 };

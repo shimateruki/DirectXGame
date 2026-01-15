@@ -163,7 +163,7 @@ void Sprite::AdjustTextureSize() {
 /// テクスチャ読み込みの静的ラッパー関数 (ファイルパス省略版)
 /// </summary>
 uint32_t Sprite::LoadTexture(const std::string& fileName) {
-	const std::string baseDirectory = "resouces/sprite/";
+	const std::string baseDirectory = "Resources/sprite/";
 	const std::string fullPath = baseDirectory + fileName;
 	return TextureManager::GetInstance()->Load(fullPath);
 }

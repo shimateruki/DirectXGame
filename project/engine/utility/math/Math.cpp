@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <string>
 #include <cmath> // C++ の数学ライブラリ
+// レイとAABBの交差判定
+#include <algorithm> // std::max, std::min用
 
 
 Vector3 operator-(const Vector3& v1, const Vector3& v2)
@@ -358,4 +360,97 @@ Matrix4x4 Math::Transpose(const Matrix4x4& m)
 		}
 	}
 	return result;
+}
+
+Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
+	Vector3 result;
+	// x, y, z に加えて w 成分も計算
+	result.x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
+	result.y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
+	result.z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
+	float w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
+
+	// wで割って正規化する（これが重要！）
+	if (w != 0.0f) {
+		result.x /= w;
+		result.y /= w;
+		result.z /= w;
+	}
+	return result;
+}
+
+
+bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit) {
+	float tMin = 0.0f;
+	float tMax = 100000.0f; // 十分大きな値
+
+	// --- X軸の判定 ---
+	// レイのX方向がほぼ0（垂直）の場合
+	if (std::abs(ray.diff.x) < 1e-6f) {
+		// レイの始点が箱の外にあったら、絶対に当たらない
+		if (ray.origin.x < minBox.x || ray.origin.x > maxBox.x) return false;
+	} else {
+		// スラブ法による判定
+		float invD = 1.0f / ray.diff.x;
+		float t1 = (minBox.x - ray.origin.x) * invD;
+		float t2 = (maxBox.x - ray.origin.x) * invD;
+		if (t1 > t2) std::swap(t1, t2);
+		tMin = std::max(tMin, t1);
+		tMax = std::min(tMax, t2);
+		if (tMin > tMax) return false;
+	}
+
+	// --- Y軸の判定 ---
+	if (std::abs(ray.diff.y) < 1e-6f) {
+		if (ray.origin.y < minBox.y || ray.origin.y > maxBox.y) return false;
+	} else {
+		float invD = 1.0f / ray.diff.y;
+		float t1 = (minBox.y - ray.origin.y) * invD;
+		float t2 = (maxBox.y - ray.origin.y) * invD;
+		if (t1 > t2) std::swap(t1, t2);
+		tMin = std::max(tMin, t1);
+		tMax = std::min(tMax, t2);
+		if (tMin > tMax) return false;
+	}
+
+	// --- Z軸の判定 ---
+	if (std::abs(ray.diff.z) < 1e-6f) {
+		if (ray.origin.z < minBox.z || ray.origin.z > maxBox.z) return false;
+	} else {
+		float invD = 1.0f / ray.diff.z;
+		float t1 = (minBox.z - ray.origin.z) * invD;
+		float t2 = (maxBox.z - ray.origin.z) * invD;
+		if (t1 > t2) std::swap(t1, t2);
+		tMin = std::max(tMin, t1);
+		tMax = std::min(tMax, t2);
+		if (tMin > tMax) return false;
+	}
+
+	// 衝突確定
+	if (hit) {
+		hit->isHit = true;
+		hit->distance = tMin;
+
+		// 衝突点 = origin + diff * tMin
+		hit->point.x = ray.origin.x + ray.diff.x * tMin;
+		hit->point.y = ray.origin.y + ray.diff.y * tMin;
+		hit->point.z = ray.origin.z + ray.diff.z * tMin;
+
+		// 法線計算 (簡易版: 衝突点が箱のどの面に近いかで判定)
+		Vector3 center = { (minBox.x + maxBox.x) * 0.5f, (minBox.y + maxBox.y) * 0.5f, (minBox.z + maxBox.z) * 0.5f };
+		Vector3 size = { (maxBox.x - minBox.x) * 0.5f, (maxBox.y - minBox.y) * 0.5f, (maxBox.z - minBox.z) * 0.5f };
+		Vector3 p = { hit->point.x - center.x, hit->point.y - center.y, hit->point.z - center.z };
+
+		// 正規化して比較 (どの軸の端に近いか)
+		float bias = 1.001f; // 誤差対策
+		hit->normal = { 0, 0, 0 };
+		if (p.x >= size.x / bias) hit->normal = { 1, 0, 0 };
+		else if (p.x <= -size.x / bias) hit->normal = { -1, 0, 0 };
+		else if (p.y >= size.y / bias) hit->normal = { 0, 1, 0 };
+		else if (p.y <= -size.y / bias) hit->normal = { 0, -1, 0 };
+		else if (p.z >= size.z / bias) hit->normal = { 0, 0, 1 };
+		else if (p.z <= -size.z / bias) hit->normal = { 0, 0, -1 };
+	}
+
+	return true;
 }

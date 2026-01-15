@@ -1,0 +1,1 @@
+TitleScene.cpp(55): [INFO] Game Initialized!

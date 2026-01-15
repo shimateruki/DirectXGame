@@ -8,19 +8,39 @@ EnemyFactory* EnemyFactory::GetInstance() {
 }
 
 std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, Object3dCommon* common) {
-
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
-
-    // 名前を見て、生成するクラスを変える
-    if (enemyName == "Slime") {
+    if (enemyName == "Slime") { // ← 例: ゴブリンやスライム
         auto slime = std::make_unique<EnemySlime>();
-        // 初期化
-        slime->Initialize(common, "cube");
+
+        // 1. 初期化 (モデル読み込み)
+        slime->Initialize(common, "block");
+
+        // 2. ★ここで「デフォルトの強さ」を注入する！
+        // param_ がまだ無ければ作る
+        if (!slime->param_.has_value()) {
+            slime->param_.emplace();
+        }
+
+        // ステータス設定
+        auto& p = slime->param_.value();
+        p.hp = 50.0f;          // 体力
+        p.maxHp = 50.0f;       // 最大体力
+        p.speed = 0.1f;        // 移動速度
+        p.gravity = 60.0f;     // 重力 
+
         newEnemy = std::move(slime);
+    }
+    // 将来ここに追加していく
+    // else if (enemyName == "Robot") { ... }
+
+    //:作った敵に「名札」をつける
+    if (newEnemy) {
+        newEnemy->SetEnemyType(enemyName);
     } else {
-        // 知らない名前ならデフォルトの敵 (ただの置物)
+        // デフォルト（ただの置物）の場合
         newEnemy = std::make_unique<BaseEnemy>();
-        newEnemy->Initialize(common, "cube"); // とりあえず箱モデルなどを指定
+        newEnemy->Initialize(common, "cube");
+        newEnemy->SetEnemyType(""); // 特になし
     }
 
     return newEnemy;

@@ -31,7 +31,7 @@ private:
 	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
 	float timeScale_ = 1.0f;
 
-	std::unique_ptr<LightEditor> lightEditor_;
+
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
