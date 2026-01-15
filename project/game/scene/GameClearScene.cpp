@@ -489,8 +489,10 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 	
 
 	}
-	catch (json::parse_error& e) {
-		OutputDebugStringA(("Failed to parse " + filename + "\n").c_str());
+	catch (const json::parse_error& e) { // const をつけておくと丁寧
+		// e.what() を追加して、エラーの詳細も表示する
+		std::string message = "Failed to parse " + filename + " : " + e.what() + "\n";
+		OutputDebugStringA(message.c_str());
 	}
 	file.close();
 }
