@@ -51,6 +51,7 @@ void GamePlayScene::Initialize() {
 	ModelManager::GetInstance()->LoadModel("multiMaterial");
 	ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
 	ModelManager::GetInstance()->LoadModel("saka");
+	ModelManager::GetInstance()->LoadModel("zimen.gltf");
 	LOG("Game Initialized!");
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
@@ -135,7 +136,7 @@ void GamePlayScene::Initialize() {
 	LoadObjectLayout("Resources/json/3Dobject/scene_layout.json");
 	LoadSpriteLayout("Resources/json/sprite/sprite_layout.json");
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
-
+	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
 
 	// --- イベント購読 ---

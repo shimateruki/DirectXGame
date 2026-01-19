@@ -99,6 +99,7 @@ void GameOverScene::Initialize() {
 	LoadObjectLayout("Resources/json/3Dobject/gameOverScene.json");
 	LoadSpriteLayout("Resources/json/sprite/gameOverScene.json");
 	LightManager::GetInstance()->LoadState("Resources/json/light/gameOverScene.json");
+	CameraEditor::GetInstance()->LoadFile("gameOver_camera.json");
 
 
 	//コマンドリストが安全に閉じるためのやつないとバグる

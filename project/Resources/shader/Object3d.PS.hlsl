@@ -181,6 +181,54 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             // Final Composition
             output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
             output.color.a = gMaterial.color.a * textureColor.a;
+        // 1. 視線ベクトルと法線の角度を見る
+    // N (法線) と toEye (カメラへの方向) の内積をとる
+    // 正面ほど 1.0、輪郭(90度)ほど 0.0 になる
+    float rimFactor = 1.0f - saturate(dot(N, toEye));
+
+    // 2. 範囲を調整する (powで絞る)
+    // 3.0f という数字を大きくすると、もっと細い線になります
+    rimFactor = pow(rimFactor, 3.0f);
+
+    // 3. 光の色を決める (とりあえず白)
+    float3 rimColor = float3(1.0f, 1.0f, 1.0f);
+
+    // 4. 強さを決める (0.5くらいが丁度いいかも)
+    float rimIntensity = 0.5f;
+
+    // 最終カラーに足し算する！
+    output.color.rgb += rimColor * rimFactor * rimIntensity;
+        // ホラーゲームならここを 0.02f (2%) くらいにする
+    // 普通のゲームなら 0.1f (10%) ～ 0.2f (20%) くらい
+            float3 ambientColor = float3(0.02f, 0.02f, 0.02f);
+
+    // 元の色(テクスチャなど)に対して、最低限の明るさを保証する
+    output.color.rgb += ambientColor * gMaterial.color.rgb * textureColor.rgb;
+        
+        // -----------------------------------------------------------
+    // ★距離フォグ (Distance Fog) の追加
+    // -----------------------------------------------------------
+
+    // 1. 背景色（フォグの色）
+    // ※ 本来は C++ から送るべきですが、今は背景クリア色(画面の背景色)と同じにします
+    float3 fogColor = float3(0.1f, 0.1f, 0.1f); 
+
+    // 2. カメラとピクセルの距離を測る
+    // input.worldPosition : ピクセルの場所
+    // gCamera.worldPosition : カメラの場所 (RimLightで使ったはず！)
+    float distance = length(input.worldPosition - gCamera.worldPosition);
+
+    // 3. フォグのかかり具合を計算
+    // 10.0f から霧がかかり始め、50.0f で真っ白(完全に霧)になる設定
+    float fogStart = 10.0f;
+    float fogEnd = 50.0f;
+
+    // 線形補間 (0.0=霧なし ～ 1.0=完全に霧)
+    float fogFactor = saturate((distance - fogStart) / (fogEnd - fogStart));
+
+    // 4. 元の色とフォグの色を混ぜる
+    // fogFactor が増えるほど fogColor に近づく
+    output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
             break;
     }
 

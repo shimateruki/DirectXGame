@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cassert> 
 #include "GhostRecorder.h" 
+#include "CameraEditor.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -51,6 +52,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 // ========================================================================
 void DebugEditor::Update() {
 #ifdef USE_IMGUI
+    // シーンが無ければ何もしない
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
@@ -65,6 +67,47 @@ void DebugEditor::Update() {
     }
 
     // =========================================================
+    // ★追加: 配置モード切り替え時のカメラ自動制御ロジック
+    // =========================================================
+    bool isPreviewActive = (previewObject_ != nullptr);
+
+    // ■ 配置モードが「始まった」瞬間 (プレビューが入ったフレーム)
+    if (isPreviewActive && !wasPreviewActive_) {
+        CameraEditor* camEditor = CameraEditor::GetInstance();
+
+        // 1. 現在のモードを保存（後で戻せるように）
+        previousCameraMode_ = (int)camEditor->GetMode();
+
+        // 2. エディタモード(自由移動)に切り替え
+        camEditor->SetMode(CameraEditor::Mode::Editor);
+
+        // 3. 視点を俯瞰(ふかん)に設定
+        Camera* cam = CameraManager::GetInstance()->GetActiveCamera(); // メインカメラを取得
+        Vector3 currentPos = cam ? cam->GetEye() : Vector3{ 0, 10, -10 };
+
+        // 現在地の上空 + 少し後ろ に移動
+        // 高さ20.0f、Z軸に-5.0f くらい引いた位置
+        Vector3 newPos = { currentPos.x, currentPos.y + 20.0f, currentPos.z - 5.0f };
+
+        // X軸を60度傾けて見下ろす (90度にすれば真上)
+        Vector3 newRot = { ToRadians(60.0f), 0.0f, 0.0f };
+
+        camEditor->SetEditorCameraTransform(newPos, newRot);
+
+        DebugConsole::GetInstance()->AddLog("Placement Mode: Enabled Overhead View");
+    }
+    // ■ 配置モードが「終わった」瞬間（配置確定 or キャンセル）
+    else if (!isPreviewActive && wasPreviewActive_) {
+        // 元のカメラモードに戻す
+        CameraEditor::GetInstance()->SetMode((CameraEditor::Mode)previousCameraMode_);
+        DebugConsole::GetInstance()->AddLog("Placement Mode: Restored Camera");
+    }
+
+    // フラグ更新
+    wasPreviewActive_ = isPreviewActive;
+
+
+    // =========================================================
     //  モードA: 設置モード (プレビューオブジェクトを持っている時)
     // =========================================================
     if (previewObject_) {
@@ -74,7 +117,6 @@ void DebugEditor::Update() {
 
             // 1. マウス位置からレイを作成
             Vector2 mousePos = input->GetMousePosition();
-            // 元々動作していた ScreenPointToRay を使用
             Ray ray = ScreenPointToRay(mousePos);
 
             Vector3 finalPos = { 0, 0, 0 };
@@ -151,10 +193,11 @@ void DebugEditor::Update() {
 
                 // プレビューの位置を更新
                 previewObject_->GetTransform()->translate = finalPos;
-				previewObject_->SetColor({ 1.0f, 1.8f, 1.0f, 0.5f }); // 半透明に見せる
+                previewObject_->SetColor({ 1.0f, 1.8f, 1.0f, 0.5f }); // 半透明に見せる
                 previewObject_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+
                 // ★ここが重要：必ず行列を更新して描画に反映させる
-				previewObject_->UpdateLocalMatrix();
+                previewObject_->UpdateLocalMatrix();
                 previewObject_->UpdateWorldMatrix();
             }
 
@@ -167,7 +210,6 @@ void DebugEditor::Update() {
                 if (common) {
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common);
-
 
                     newObj->CopyFrom(previewObject_.get());
                     static int spawnCount = 0;
@@ -283,7 +325,7 @@ void DebugEditor::Update() {
                 if (ImGuizmo::IsUsing() && !isDraggingTransform_) {
                     isDraggingTransform_ = true;
                     tempTransformStart_ = *tr;
-                    redoStack_.clear();
+                    // redoStack_.clear(); // 必要であれば
                 }
 
                 // 操作中 (値の反映)
@@ -1043,85 +1085,109 @@ void DebugEditor::DrawImGui() {
             }
         }
     } else {
+
         // --- 通常モード ---
-
-        // スポーン用ドロップエリア
-        ImGui::Button("[ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-            const char* modelName = (const char*)payload->Data;
-            ModelManager::GetInstance()->LoadModel(modelName);
-
-            Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-            if (common) {
-                // プレビューオブジェクト作成処理...
-                auto newObj = std::make_unique<Object3d>();
-                newObj->Initialize(common);
-                newObj->SetModel(modelName);
-                newObj->SetClassName("Model");
-                newObj->SetName("Preview_" + std::string(modelName));
-                newObj->UpdateLocalMatrix();
-                newObj->UpdateWorldMatrix();
-                previewObject_ = std::move(newObj);
-
-                DebugConsole::GetInstance()->AddLog("Placement Mode: " + std::string(modelName));
-            }
-        }
         // ========================================================
-    // パターンB: プリセットがドロップされた場合 
-    // ========================================================
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
-            // 1. プリセット名を受け取る
-            const char* presetName = (const char*)payload->Data;
+        // 1. ドロップを受け付ける UIパーツ (ボタン) を描画
+        // ========================================================
+        ImGui::Button("[ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
 
-            // 2. PresetManagerからJSONデータを取得
-            const auto& presets = PresetManager::GetInstance()->GetPresets();
-            if (presets.count(presetName) > 0) {
-                const json& data = presets.at(presetName);
+        if (ImGui::BeginDragDropTarget()) {
 
-                // 3. モデルのロード (JSON内の "modelName" を確認)
-                std::string modelName = "cube.obj"; // デフォルト
-                if (data.contains("modelName")) {
-                    modelName = data["modelName"];
-                    ModelManager::GetInstance()->LoadModel(modelName);
-                }
+            // ----------------------------------------------------
+            // パターンA: モデルアセット ("MODEL_ASSET")
+            // ----------------------------------------------------
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                const char* modelName = (const char*)payload->Data;
 
-                // 4. プレビューオブジェクトを作成
+                // モデル読み込み
+                ModelManager::GetInstance()->LoadModel(modelName);
+
+                // シーンから共通リソース取得
                 Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
                 if (common) {
+                    // プレビューオブジェクト作成
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common);
-
-                    // ここでJSONデータを流し込む
-                    newObj->ImportFromJson(data);
                     newObj->SetModel(modelName);
-                    // 名前をプリセット名にしておく（わかりやすいように）
-                    newObj->SetName("Preview_" + std::string(presetName));
+                    newObj->SetClassName("Model");
+                    newObj->SetName("Preview_" + std::string(modelName));
 
                     // 行列更新
                     newObj->UpdateLocalMatrix();
                     newObj->UpdateWorldMatrix();
 
-                    // プレビューとしてセット
+                    // プレビューとして保持
                     previewObject_ = std::move(newObj);
 
-                    DebugConsole::GetInstance()->AddLog("Placement Mode (Preset): " + std::string(presetName));
+                    DebugConsole::GetInstance()->AddLog("Placement Mode: " + std::string(modelName));
                 }
             }
+
+            // ----------------------------------------------------
+            // パターンB: プリセットアセット ("PRESET_ASSET")
+            // ----------------------------------------------------
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+                // 1. プリセット名を受け取る
+                const char* presetName = (const char*)payload->Data;
+
+                // 2. PresetManagerからJSONデータを取得
+                const auto& presets = PresetManager::GetInstance()->GetPresets();
+                if (presets.count(presetName) > 0) {
+                    const json& data = presets.at(presetName);
+
+                    // 3. モデルのロード (JSON内の "modelName" を確認)
+                    std::string modelName = "cube.obj"; // デフォルト
+                    if (data.contains("modelName")) {
+                        modelName = data["modelName"];
+                        ModelManager::GetInstance()->LoadModel(modelName);
+                    }
+
+                    // 4. プレビューオブジェクトを作成
+                    Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
+                    if (common) {
+                        auto newObj = std::make_unique<Object3d>();
+                        newObj->Initialize(common);
+
+                        // ここでJSONデータを流し込む
+                        newObj->ImportFromJson(data);
+
+                        // モデルと名前の再設定
+                        newObj->SetModel(modelName);
+                        newObj->SetName("Preview_" + std::string(presetName));
+
+                        // 行列更新
+                        newObj->UpdateLocalMatrix();
+                        newObj->UpdateWorldMatrix();
+
+                        // プレビューとしてセット
+                        previewObject_ = std::move(newObj);
+
+                        DebugConsole::GetInstance()->AddLog("Placement Mode (Preset): " + std::string(presetName));
+                    }
+                }
+            }
+
+            // ========================================================
+            // 3. ドロップ受け付け終了 
+            // ========================================================
+            ImGui::EndDragDropTarget();
         }
-
-        ImGui::EndDragDropTarget();
-
 
         ImGui::Separator();
 
-        // ツリー表示
+        // ========================================================
+        // ツリー表示 (階層構造)
+        // ========================================================
         auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
         for (auto& obj : objects) {
+            // 親がいないルートオブジェクトだけを描画開始点にする
             if (obj->GetParent() == nullptr) {
                 DrawHierarchyNode(obj.get());
             }
         }
     }
+
 
 
     // ==========================================================================================
@@ -1150,6 +1216,30 @@ void DebugEditor::DrawImGui() {
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig);
             newObj->SetCollisionAttribute(CollisionAttribute::kTrigger);
+
+            newObj->SetTranslate({ 0, 2.0f, 0 });
+
+            selectedObject_ = newObj.get();
+            currentScene->AddObject(std::move(newObj));
+            DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
+        }
+    }
+    if (ImGui::Button("透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
+        Object3dCommon* common = currentScene->GetObject3dCommon();
+        if (common) {
+            auto newObj = std::make_unique<Object3d>();
+            newObj->Initialize(common);
+
+            newObj->SetModel(nullptr);
+            newObj->SetIsVisible(false);
+            newObj->SetClassName("InvisibleBox");
+            newObj->SetName("collision_Box");
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kAABB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            newObj->SetColliderConfig(colConfig);
+            newObj->SetCollisionAttribute(CollisionAttribute::kGround);
 
             newObj->SetTranslate({ 0, 2.0f, 0 });
 

@@ -120,6 +120,8 @@ private:
     std::unique_ptr<Object3d> previewObject_ = nullptr;
     //  スクリーン座標(マウス位置)からレイを作成する関数
     Ray ScreenPointToRay(const Vector2& mousePos);
+    bool wasPreviewActive_ = false;    // 配置モード切り替え検知用
+    int previousCameraMode_ = 0;       // カメラモード保存用
 
 
     std::string currentPreviewModelName_ = "";

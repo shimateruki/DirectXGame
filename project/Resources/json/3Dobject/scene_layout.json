@@ -8,6 +8,11 @@
                     0.0,
                     0.0
                 ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
                 "size": [
                     1.0,
                     1.0,
@@ -21,7 +26,7 @@
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
-            "modelName": "teapot",
+            "modelName": "sample",
             "myEventID": -1,
             "name": "Player",
             "param": {
@@ -37,17 +42,17 @@
             },
             "parentName": "",
             "position": [
-                26.02372169494629,
-                1.981117606163025,
-                33.53342819213867
+                2.9859914779663086,
+                1.9839712381362915,
+                2.268892526626587
             ],
             "rotation": [
                 6.278290811678744e-07,
-                -0.19920112192630768,
-                6.278298201323196e-07
+                0.0,
+                6.27829649602063e-07
             ],
             "scale": [
-                0.8180209398269653,
+                1.0,
                 1.0,
                 1.0
             ],
@@ -58,6 +63,11 @@
             "animName": "",
             "collider": {
                 "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
                     0.0,
                     0.0,
                     0.0
@@ -105,6 +115,11 @@
                     0.0,
                     0.0
                 ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
                 "size": [
                     1.0,
                     1.0,
@@ -134,19 +149,19 @@
             },
             "parentName": "",
             "position": [
-                13.154011726379395,
-                2.0,
-                12.877062797546387
+                92.49800872802734,
+                -23006.58203125,
+                13.020607948303223
             ],
             "rotation": [
                 -3.1415908336639404,
-                2.8260719776153564,
+                -1.546931505203247,
                 -3.1415908336639404
             ],
             "scale": [
-                0.9999995231628418,
+                0.9999993443489075,
                 1.0,
-                0.9999995231628418
+                0.9999993443489075
             ],
             "targetID": -1,
             "type": "Enemy"
@@ -155,6 +170,11 @@
             "animName": "",
             "collider": {
                 "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
                     0.0,
                     0.0,
                     0.0
@@ -179,11 +199,11 @@
             "position": [
                 3.5,
                 0.0,
-                0.0
+                5.276453018188477
             ],
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "scale": [
@@ -198,6 +218,11 @@
             "animName": "",
             "collider": {
                 "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
                     0.0,
                     0.0,
                     0.0
@@ -259,8 +284,10 @@
             },
             "collisionAttribute": 20,
             "collisionMask": 4294967295,
+            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
+            "isAnimRelative": false,
             "myEventID": -1,
             "name": "Trigger_Box",
             "parentName": "",
@@ -286,6 +313,11 @@
             "animName": "",
             "collider": {
                 "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
                     0.0,
                     0.0,
                     0.0
@@ -333,6 +365,11 @@
                     0.0,
                     0.0
                 ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
                 "size": [
                     1.0,
                     1.0,
@@ -372,6 +409,11 @@
             "animName": "",
             "collider": {
                 "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
                     0.0,
                     0.0,
                     0.0
@@ -444,8 +486,10 @@
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
+            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
+            "isAnimRelative": false,
             "modelName": "saka",
             "myEventID": -1,
             "name": "Obj_0_Copy0",
@@ -454,6 +498,54 @@
                 31.970691680908203,
                 2.308804988861084,
                 30.803421020507813
+            ],
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animName": "",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "garasu.gltf",
+            "myEventID": -1,
+            "name": "Obj_0",
+            "parentName": "",
+            "position": [
+                1.4936792850494385,
+                2.2843704223632813,
+                -0.834693431854248
             ],
             "rotation": [
                 0.0,

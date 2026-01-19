@@ -97,6 +97,7 @@ void TitleScene::Initialize() {
 	LoadObjectLayout("Resources/json/3Dobject/titleScene.json");
 	LoadSpriteLayout("Resources/json/sprite/titleScene.json");
 	LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
+	CameraEditor::GetInstance()->LoadFile("title_camera.json");
 
 
 	//コマンドリストが安全に閉じるためのやつないとバグる
