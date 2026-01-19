@@ -134,7 +134,7 @@ void LightEditor::DrawImGui() {
         ImGui::InputText("ファイル名 (.json)", currentFileName_, sizeof(currentFileName_));
 
         // フルパスを作成
-        std::string fullPath = "Resources/json/light" + std::string(currentFileName_);
+        std::string fullPath = "Resources/json/light/" + std::string(currentFileName_);
 
         // 保存・読み込みボタン (Managerに委譲)
         if (ImGui::Button("セーブ")) {

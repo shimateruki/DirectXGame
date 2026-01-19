@@ -246,7 +246,7 @@
     <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PresetManager.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\PresetManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="EnemySpawner.cpp">
@@ -759,7 +759,7 @@
     <ClInclude Include="externals\imgui\imgui_impl_dx12.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="PresetManager.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="EnemySpawner.h">

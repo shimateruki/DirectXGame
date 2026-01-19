@@ -99,7 +99,7 @@ void GameClearScene::Initialize() {
 	LoadObjectLayout("Resources/json/3Dobject/gameClearScene.json");
 	LoadSpriteLayout("Resources/json/sprite/gameClearScene.json");
 	LightManager::GetInstance()->LoadState("Resources/json/light/gameClearScene.json");
-
+	CameraEditor::GetInstance()->LoadFile("gameClear_camera.json");
 
 
 	//コマンドリストが安全に閉じるためのやつないとバグる

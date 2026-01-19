@@ -61,6 +61,15 @@ public:
     // ゲッター
     bool IsEditorMode() const { return settings_.currentMode == Mode::Editor; }
 
+    // モードを強制設定
+    void SetMode(Mode mode);
+
+    // 現在のモードを取得（元に戻すときに使う）
+    Mode GetMode() const { return settings_.currentMode; }
+
+    // エディタカメラの位置と回転を強制設定
+    void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
+
 private:
     // 内部ヘルパー: 自由カメラの移動処理
     void UpdateFreeCamera(Camera* camera);

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cmath>
 #include <filesystem> 
+#include <DebugConsole.h>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem; // 短縮用
@@ -336,11 +337,43 @@ void CameraEditor::LoadSettings() {
     }
 }
 
-void CameraEditor::LoadFile(const std::string& fileName) {
+// CameraEditor.cpp
 
-    // 1. 内部のファイル名バッファを上書きする
+void CameraEditor::LoadFile(const std::string& fileName) {
+    // 1. ファイル名バッファを更新
     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), fileName.c_str());
 
-    // 2. その名前でロードを実行
+    // 2. パスを作成
+    std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
+
+    // 3. ファイルが存在するかチェック
+    if (!fs::exists(filePath)) {
+        // A. 存在しない場合 -> デフォルト値をセットして保存（新規作成）
+        // (これをしないと、前のシーンの設定が残ってしまう)
+        settings_ = Settings(); // デフォルトコンストラクタで初期化
+        settings_.currentMode = Mode::Game; // 基本はゲームモード
+
+        // ログ出し (任意)
+        DebugConsole::GetInstance()->AddLog("New Camera Setting Created: " + fileName);
+
+        // 新規保存
+        SaveSettings();
+    }
+
+    // 4. 改めて読み込み
     LoadSettings();
+}
+
+void CameraEditor::SetMode(Mode mode) {
+    settings_.currentMode = mode;
+}
+
+void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vector3& rotation) {
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        camera->SetEye(position);
+        camera->SetRotation(rotation);
+        // ターゲット追従を切らないと動かない場合があるので念のため
+        camera->SetFollowTarget(nullptr);
+    }
 }
