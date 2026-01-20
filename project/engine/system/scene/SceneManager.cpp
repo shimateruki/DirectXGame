@@ -4,6 +4,9 @@
 #include "DirectXCommon.h"
 #include <cassert>
 #include <utility>
+#include <fstream>   
+#include "json.hpp"  
+using json = nlohmann::json; 
 
 /// <summary>
 /// デストラクタ
@@ -114,5 +117,39 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
     // SetNextScene に渡して、次のフレームで遷移させる
     if (newScene) {
         SetNextScene(std::move(newScene));
+#ifdef USE_IMGUI
+        SaveLastSceneName(sceneName);
+#endif
     }
+}
+
+void SceneManager::SaveLastSceneName(const std::string& sceneName) {
+    json root;
+    root["lastScene"] = sceneName;
+
+    std::ofstream file(kUserConfigPath);
+    if (file.is_open()) {
+        file << root.dump(4);
+        file.close();
+    }
+}
+
+// ★追加: 読み込みの実装
+std::string SceneManager::LoadLastSceneName() {
+    std::ifstream file(kUserConfigPath);
+    if (!file.is_open()) {
+        return ""; // ファイルが存在しない（初回起動など）
+    }
+
+    try {
+        json root;
+        file >> root;
+        if (root.contains("lastScene")) {
+            return root["lastScene"];
+        }
+    }
+    catch (...) {
+        // エラー時は無視
+    }
+    return "";
 }

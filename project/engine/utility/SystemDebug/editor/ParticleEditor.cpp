@@ -14,6 +14,7 @@ void ParticleEditor::Update() {
 }
 
 void EditCurve(const char* label, float* values, int count, float minVal, float maxVal) {
+#ifdef USE_IMGUI
     ImGui::Text("%s", label);
 
     // グラフの描画サイズ
@@ -46,6 +47,7 @@ void EditCurve(const char* label, float* values, int count, float minVal, float 
             values[index] = std::clamp(newValue, minVal, maxVal);
         }
     }
+#endif
 }
 
 void ParticleEditor::DrawImGui() {

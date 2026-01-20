@@ -77,7 +77,7 @@ public:
 	Matrix4x4 MakeRotateYMatrix(float theta);
 	Matrix4x4 MakeRotateZMatrix(float theta);
 	Matrix4x4 MakeTranslateMatrix(const Vector3& translate);
-	Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2);
+	static Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2);
 	Matrix4x4 Inverse(const Matrix4x4& m);
 	//透視投影行列
 	Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip);
