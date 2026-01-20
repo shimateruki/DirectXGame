@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#ifdef USE_IMGUI
 #include "imgui.h"
-
-// LogLevelを使うためにインクルード (Log.hがない場合はここでenum定義してください)
+#endif
 #include "Log.h" 
 
 class DebugConsole {
@@ -18,7 +18,6 @@ public:
     // 終了処理
     void Finalize();
 
-    // --- ログ追加 ---
 
     // 1. 既存互換用 (文字列のみ受け取る) -> デフォルトで Info 扱い、または文字列内のタグで色判定
     void AddLog(const std::string& log);
@@ -48,5 +47,7 @@ private:
     // UI制御用フラグ
     bool scrollToBottom_ = true;
     bool autoScroll_ = true;
+#ifdef USE_IMGUI
     ImGuiTextFilter filter_;     // 検索フィルタ
+#endif
 };

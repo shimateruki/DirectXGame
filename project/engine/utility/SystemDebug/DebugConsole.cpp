@@ -8,20 +8,25 @@ DebugConsole* DebugConsole::GetInstance() {
 }
 
 void DebugConsole::Initialize() {
+#ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
     logs_.clear();
     scrollToBottom_ = true;
+#endif
 
 }
 
 
 void DebugConsole::Finalize() {
+#ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
     logs_.clear();
+#endif
 }
 
 // 既存互換: 文字列だけの追加
 void DebugConsole::AddLog(const std::string& log) {
+#ifdef USE_IMGUI
     // 文字列の中に "[ERROR]" 等が含まれていれば色を変える簡易判定を入れると便利
     LogLevel level = LogLevel::Info;
     if (log.find("[ERROR]") != std::string::npos) level = LogLevel::Error;
@@ -29,10 +34,12 @@ void DebugConsole::AddLog(const std::string& log) {
 
     // オーバーロードへ委譲
     AddLog(level, log);
+#endif
 }
 
 // 高機能版: レベル指定での追加
 void DebugConsole::AddLog(LogLevel level, const std::string& log) {
+#ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
 
     // ログ最大数制限 (200)
@@ -53,6 +60,7 @@ void DebugConsole::AddLog(LogLevel level, const std::string& log) {
     std::string outStr = log;
     if (outStr.empty() || outStr.back() != '\n') outStr += "\n";
     OutputDebugStringA(outStr.c_str());
+#endif
 }
 
 void DebugConsole::DrawImGui() {

@@ -180,6 +180,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 }
 
 void CameraEditor::DrawImGui() {
+#ifdef USE_IMGUI
     ImGui::Begin("カメラ");
 
     // ==========================================================
@@ -277,6 +278,7 @@ void CameraEditor::DrawImGui() {
     }
 
     ImGui::End();
+#endif
 }
 
 void CameraEditor::SaveSettings() {
@@ -377,3 +379,4 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
         camera->SetFollowTarget(nullptr);
     }
 }
+

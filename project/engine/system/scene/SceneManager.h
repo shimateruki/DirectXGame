@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 #include "BaseScene.h"
 #include "AbstractSceneFactory.h"
 
@@ -47,6 +48,9 @@ public:
     /// </summary>
     void ChangeScene(const std::string& sceneName);
 
+    std::string LoadLastSceneName();
+    void SaveLastSceneName(const std::string& sceneName);
+
     // <summary>
     /// 現在のシーンのポインタを取得する (Editor用)
     /// </summary>
@@ -60,5 +64,5 @@ private:
     std::unique_ptr<BaseScene> nextScene_ = nullptr;
     AbstractSceneFactory* sceneFactory_ = nullptr; // ファクトリーのポインタ
     DebugEditor* debugEditor_ = nullptr;
-
+    const std::string kUserConfigPath = "Resources/json/user_config.json";
 };

@@ -67,7 +67,7 @@ void DebugEditor::Update() {
     }
 
     // =========================================================
-    // ★追加: 配置モード切り替え時のカメラ自動制御ロジック
+    //  配置モード切り替え時のカメラ自動制御ロジック
     // =========================================================
     bool isPreviewActive = (previewObject_ != nullptr);
 
@@ -246,6 +246,7 @@ void DebugEditor::Update() {
             if (isCtrl && input->IsKeyTriggered(DIK_Y)) PerformRedo();
             // 保存
             if (isCtrl && input->IsKeyTriggered(DIK_S)) SaveScene();
+
         }
 
         // --- 2. マウス選択処理 ---
@@ -1471,6 +1472,7 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
 
 
 void DebugEditor::DrawProjectWindow() {
+#ifdef USE_IMGUI
     // ---------------------------------------------------------
     // ウィンドウ開始
     // ---------------------------------------------------------
@@ -1643,11 +1645,13 @@ void DebugEditor::DrawProjectWindow() {
     }
 
     ImGui::End();
+#endif
 }
 
 
 // 属性編集用ヘルパー関数
 void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) {
+#ifdef USE_IMGUI
     if (ImGui::TreeNode(label)) {
         int flags = static_cast<int>(*attribute);
 
@@ -1662,6 +1666,7 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
 
         ImGui::TreePop();
     }
+#endif
 }
 
 
@@ -1973,6 +1978,7 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
 
 
 void DebugEditor::DrawEnemyTypeSelector() {
+#ifdef USE_IMGUI
     if (!selectedObject_) return;
 
     // ★ 登録したい敵の名前リスト 
@@ -2018,11 +2024,13 @@ void DebugEditor::DrawEnemyTypeSelector() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
     }
+#endif
 }
 
 
 
 void DebugEditor::DrawSpawnerSettings() {
+#ifdef USE_IMGUI
     if (!selectedObject_) return;
 
     ImGui::Separator();
@@ -2069,4 +2077,5 @@ void DebugEditor::DrawSpawnerSettings() {
     ImGui::InputInt("Max Count", &p.maxCount);
 
     ImGui::Unindent(); // インデント戻す
+#endif
 }

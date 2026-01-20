@@ -42,13 +42,13 @@
             },
             "parentName": "",
             "position": [
-                2.9859914779663086,
-                1.9839712381362915,
-                2.268892526626587
+                0.9768620133399963,
+                1.98299241065979,
+                18.464021682739258
             ],
             "rotation": [
                 6.278290811678744e-07,
-                0.0,
+                0.003185012610629201,
                 6.27829649602063e-07
             ],
             "scale": [
@@ -150,7 +150,7 @@
             "parentName": "",
             "position": [
                 92.49800872802734,
-                -23006.58203125,
+                -26544.94921875,
                 13.020607948303223
             ],
             "rotation": [
@@ -186,55 +186,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
-            "collisionMask": 4294967293,
-            "enemyType": "",
-            "eventID": 1,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy",
-            "parentName": "",
-            "position": [
-                3.5,
-                0.0,
-                5.276453018188477
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    0.800000011920929,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "enemyType": "",
             "eventID": 0,
@@ -242,310 +194,12 @@
             "isAnimRelative": false,
             "modelName": "sample",
             "myEventID": -1,
-            "name": "sample_1",
-            "parentName": "",
-            "position": [
-                -4.236293315887451,
-                2.6758081912994385,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.7853981852531433
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 20,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "myEventID": -1,
-            "name": "Trigger_Box",
-            "parentName": "",
-            "position": [
-                29.07279396057129,
-                2.0,
-                16.899999618530273
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                5.050000190734863,
-                10.0,
-                10.0
-            ],
-            "targetID": -1,
-            "type": "InvisibleBox"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "saka",
-            "myEventID": -1,
             "name": "Obj_0",
             "parentName": "",
             "position": [
-                23.999975204467773,
-                2.308804988861084,
-                30.803421020507813
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.8028514385223389
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "saka",
-            "myEventID": -1,
-            "name": "Obj_1",
-            "parentName": "",
-            "position": [
-                57.40741729736328,
-                4.244136333465576,
-                16.5929012298584
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.7853981852531433
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.649999976158142,
-                    1.0
-                ],
-                "type": 1
-            },
-            "collisionAttribute": 1,
-            "collisionMask": 4294967294,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "teapot",
-            "myEventID": -1,
-            "name": "Player_Copy0_Copy0",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 54.0,
-                "hp": 44.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 48.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                -15.76685619354248,
-                2.6500000953674316,
-                -17.440275192260742
-            ],
-            "rotation": [
-                -3.1415908336639404,
-                -2.351597309112549,
-                -3.1415908336639404
-            ],
-            "scale": [
-                0.8180209398269653,
-                1.0,
-                0.9999998211860657
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.7853981852531433
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "saka",
-            "myEventID": -1,
-            "name": "Obj_0_Copy0",
-            "parentName": "",
-            "position": [
-                31.970691680908203,
-                2.308804988861084,
-                30.803421020507813
-            ],
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "garasu.gltf",
-            "myEventID": -1,
-            "name": "Obj_0",
-            "parentName": "",
-            "position": [
-                1.4936792850494385,
-                2.2843704223632813,
-                -0.834693431854248
+                -5.939096927642822,
+                2.5222079753875732,
+                29.371660232543945
             ],
             "rotation": [
                 0.0,

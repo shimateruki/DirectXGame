@@ -13,9 +13,24 @@ void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
     sceneFactory_ = std::make_unique<SceneFactory>();
-    // ★ SceneManager を作成して初期化
+    //  SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
-    sceneManager_->Initialize(sceneFactory_.get(), "TITLE");
+    // =========================================================
+    //  ローカル設定を見て開始シーンを決める
+    // =========================================================
+    std::string startScene = "TITLE"; // デフォルト
+
+#ifdef USE_IMGUI
+    std::string lastScene = sceneManager_->LoadLastSceneName();
+    if (!lastScene.empty()) {
+        startScene = lastScene;
+    }
+#endif
+
+    // 初期化 
+    sceneManager_->Initialize(sceneFactory_.get(), startScene);
+    //  lastTime_ を「起動時」の時間で初期化
+    lastTime_ = std::chrono::high_resolution_clock::now();
 
 
     //  lastTime_ を「起動時」の時間で初期化
@@ -32,6 +47,9 @@ void Game::Initialize() {
     particleEditor_->Initialize(sceneManager_.get());
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
+    if (auto currentScene = sceneManager_->GetCurrentScene()) {
+        currentScene->SetDebugEditor(debugEditor_.get());
+    }
 
 #endif
     CameraEditor::GetInstance()->Initialize();
@@ -269,6 +287,18 @@ void Game::Draw() {
 #ifdef USE_IMGUI
     if (debugEditor_) {
         debugEditor_->DrawDebug(dxCommon_->GetCommandList());
+    }
+    if (ghostRecorder_) {
+        // カメラを取得して ViewProjection行列 を計算
+        Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+        if (camera) {
+            Matrix4x4 view = camera->GetViewMatrix();
+            Matrix4x4 proj = camera->GetProjectionMatrix();
+            Matrix4x4 viewProj = Math::Multiply(view, proj); 
+
+            // プレビュー描画実行
+            ghostRecorder_->DrawPreview(viewProj);
+        }
     }
 #endif
 

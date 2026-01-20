@@ -69,6 +69,7 @@ public:
 
     // エディタカメラの位置と回転を強制設定
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
+    void FocusOn(const Vector3& targetPos, float distance = 10.0f);
 
 private:
     // 内部ヘルパー: 自由カメラの移動処理
@@ -86,5 +87,6 @@ private:
     // 保存先ディレクトリパス
     const std::string kDirectoryPath_ = "Resources/json/camera/";
     std::vector<std::string> fileList_;
+
 
 };
