@@ -52,6 +52,7 @@ void GamePlayScene::Initialize() {
 	ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
 	ModelManager::GetInstance()->LoadModel("saka");
 	ModelManager::GetInstance()->LoadModel("zimen.gltf");
+	ModelManager::GetInstance()->LoadModel("a.gltf");
 	LOG("Game Initialized!");
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
@@ -92,6 +93,19 @@ void GamePlayScene::Initialize() {
 	terrain->SetStatic(true);
 	CollisionManager::GetInstance()->AddObject(terrain.get());
 	objects_.emplace_back(std::move(terrain));
+
+
+	auto a = std::make_unique<Object3d>();
+	a->Initialize(object3dCommon_.get());
+	a->SetModel("a.gltf");
+	a->SetTranslate({ 2.0f, 0.0f, 0.0f });
+	a->SetName("a");
+	a->SetStatic(true);
+	a->animName_ = "Armature|mixamo.com|Layer0";
+	a->isAnimLoop_ = true; // ループ再生する
+	CollisionManager::GetInstance()->AddObject(a.get());
+	objects_.emplace_back(std::move(a));
+
 
 	// Factoryで作った敵（unique_ptr<BaseEnemy>）を受け取る
 	std::unique_ptr<BaseEnemy> newEnemy =

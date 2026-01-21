@@ -454,3 +454,72 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 
 	return true;
 }
+
+// Vector3のLerp
+Vector3 Math::Lerp(const Vector3& v1, const Vector3& v2, float t) {
+	return {
+		v1.x + (v2.x - v1.x) * t,
+		v1.y + (v2.y - v1.y) * t,
+		v1.z + (v2.z - v1.z) * t
+	};
+}
+
+// クォータニオンのSlerp
+Quaternion Math::Slerp(const Quaternion& q0, const Quaternion& q1, float t) {
+	float dot = q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w;
+
+	// 内積が負＝反対側なら反転して最短経路を取る
+	Quaternion trueQ1 = q1;
+	if (dot < 0.0f) {
+		trueQ1 = { -q1.x, -q1.y, -q1.z, -q1.w };
+		dot = -dot;
+	}
+
+	// ほぼ同じ向きなら線形補間でOK (ゼロ除算防止)
+	if (dot >= 1.0f - 0.0005f) {
+		return {
+			q0.x + (trueQ1.x - q0.x) * t,
+			q0.y + (trueQ1.y - q0.y) * t,
+			q0.z + (trueQ1.z - q0.z) * t,
+			q0.w + (trueQ1.w - q0.w) * t
+		};
+	}
+
+	float theta = std::acos(dot);
+	float sinTheta = std::sin(theta);
+
+	float scale0 = std::sin((1.0f - t) * theta) / sinTheta;
+	float scale1 = std::sin(t * theta) / sinTheta;
+
+	return {
+		q0.x * scale0 + trueQ1.x * scale1,
+		q0.y * scale0 + trueQ1.y * scale1,
+		q0.z * scale0 + trueQ1.z * scale1,
+		q0.w * scale0 + trueQ1.w * scale1
+	};
+}
+
+// クォータニオン -> 行列 変換
+Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
+	Matrix4x4 m;
+	float x = q.x, y = q.y, z = q.z, w = q.w;
+
+	m.m[0][0] = 1 - 2 * y * y - 2 * z * z;
+	m.m[0][1] = 2 * x * y + 2 * w * z;
+	m.m[0][2] = 2 * x * z - 2 * w * y;
+	m.m[0][3] = 0;
+
+	m.m[1][0] = 2 * x * y - 2 * w * z;
+	m.m[1][1] = 1 - 2 * x * x - 2 * z * z;
+	m.m[1][2] = 2 * y * z + 2 * w * x;
+	m.m[1][3] = 0;
+
+	m.m[2][0] = 2 * x * z + 2 * w * y;
+	m.m[2][1] = 2 * y * z - 2 * w * x;
+	m.m[2][2] = 1 - 2 * x * x - 2 * y * y;
+	m.m[2][3] = 0;
+
+	m.m[3][0] = 0; m.m[3][1] = 0; m.m[3][2] = 0; m.m[3][3] = 1;
+
+	return m;
+}

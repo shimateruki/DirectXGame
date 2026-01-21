@@ -313,4 +313,5 @@ protected:
 	// マテリアル関連
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
+    float animationTime_ = 0.0f;
 };

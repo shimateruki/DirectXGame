@@ -118,12 +118,33 @@ void Object3d::SetModel(const std::string& modelName) {
 
 void Object3d::Update(float deltaTime) {
     if (model_) {
+        // 1. アニメーションが指定されていれば適用する
+        if (!animName_.empty()) {
+            const Model::Animation* anim = model_->GetAnimation(animName_);
+            if (anim) {
+                // 時間を進める
+                animationTime_ += deltaTime;
+
+                // ループ処理
+                float time = animationTime_;
+                if (isAnimLoop_ && anim->duration > 0.0f) {
+                    time = std::fmod(time, anim->duration); // 最後の時間を過ぎたら0に戻る
+                } else {
+                    // ループしない場合は最後の時間で止める
+                    time = std::min(time, anim->duration);
+                }
+
+                // モデルにポーズを適用 (LocalMatrixを書き換える)
+                model_->ApplyAnimation(*anim, time);
+            }
+        }
+
         model_->Update();
     }
+
     if (recorder_) {
         recorder_->Update();
     }
-
 }
 
 void Object3d::UpdateLocalMatrix() {

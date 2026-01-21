@@ -27,7 +27,9 @@ public:
 
     // コマンドリストにヒープを登録する
     void SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList);
-
+    //  確保済みのインデックスを指定してSRVを作る
+    void CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
+    uint32_t Allocate();
 private:
     SRVManager() = default;
     ~SRVManager() = default;

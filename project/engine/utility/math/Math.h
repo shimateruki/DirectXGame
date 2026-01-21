@@ -33,6 +33,21 @@ struct Vector4
 	float w;
 };
 
+struct Quaternion {
+	float x;
+	float y;
+	float z;
+	float w;
+	// クォータニオン同士の掛け算 (回転の合成用)
+	Quaternion operator*(const Quaternion& other) const {
+		return {
+			w * other.x + x * other.w + y * other.z - z * other.y,
+			w * other.y - x * other.z + y * other.w + z * other.x,
+			w * other.z + x * other.y - y * other.x + z * other.w,
+			w * other.w - x * other.x - y * other.y - z * other.z
+		};
+	}
+};
 struct Matrix3x3
 {
 	float m[3][3];
@@ -111,4 +126,12 @@ public:
 	// minBox: 箱の最小座標 (center - scale)
 	// maxBox: 箱の最大座標 (center + scale)
 	bool IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit);
+	// Vector3 の線形補間 (座標の移動用)
+	static Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t);
+
+	// クォータニオンの球面線形補間 (回転のアニメーション用)
+	static Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
+
+	// クォータニオンから回転行列を作成
+	static Matrix4x4 MakeRotateQuaternionMatrix(const Quaternion& q);
 };
