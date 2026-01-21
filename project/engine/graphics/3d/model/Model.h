@@ -15,7 +15,16 @@ class Object3d;
 
 class Model {
 public: 
-
+    struct Material {
+        Vector4 color;
+        int32_t enableLighting;
+        float padding1[3];
+        Matrix4x4 uvTransform;
+        int32_t selectedLighting;
+        float shininess;
+        int32_t materialType; // 0:通常, 1:ガラス
+        float padding2;       // パディング調整
+    };
     struct Node {
         Matrix4x4 localMatrix;      // このノードのローカル変換行列
         std::string name;           // ノード名
@@ -32,6 +41,8 @@ public:
     struct MaterialData {
         std::string textureFilePath;
         uint32_t textureHandle = 0;
+        Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
+        Material* materialData = nullptr; // マップ用
     };
 
     struct Mesh {
@@ -50,15 +61,7 @@ public:
         std::vector<Node> nodes;             // 当たり判定用の全ノードリスト
     };
 
-    struct Material {
-        Vector4 color;
-        int32_t enableLighting;
-        float padding1[3];
-        Matrix4x4 uvTransform;
-        int32_t selectedLighting;
-        float shininess;  
-        float padding2[2]; 
-    };
+
 
 public: // メンバ関数
     /// <summary>
@@ -69,7 +72,12 @@ public: // メンバ関数
     /// <summary>
     /// 描画
     /// </summary>
-    void Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    void Draw(ID3D12Resource* wvpResource,
+        ID3D12Resource* directionalLightResource,
+        ID3D12Resource* cameraResource,
+        ID3D12Resource* pointLightResource,
+        ID3D12Resource* spotLightResource,
+        ID3D12Resource* overrideMaterialResource = nullptr);
 
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)

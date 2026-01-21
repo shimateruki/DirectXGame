@@ -37,6 +37,20 @@ void Object3d::Initialize(Object3dCommon* common) {
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
 
+    // ====================================================
+    //  マテリアル用バッファの作成
+    // ====================================================
+    materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
+    materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+
+    // デフォルト値を設定 
+    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f }; // 白
+    materialData_->enableLighting = 1;                 // ライティング有効
+    materialData_->uvTransform = Math::makeIdentity4x4();
+    materialData_->selectedLighting = 2;               // Blinn-Phong
+    materialData_->shininess = 20.0f;                  // 適度な光沢
+	materialData_->materialType = 0;// 通常マテリアル
+
     InitializeRecorder(nullptr);
 
 
@@ -165,7 +179,7 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     if (model_) {
-        model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource);
+        model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource, materialResource_.Get());
     }
 }
 void Object3d::SetParent(Object3d* parent) {
@@ -260,11 +274,7 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
     return collision;
 }
 
-void Object3d::SetColor(const Vector4& color) {
-    if (directionalLightData_) {
-        directionalLightData_->color = color;
-    }
-}
+
 void Object3d::SetIntensity(float intensity) {
     if (directionalLightData_) {
         directionalLightData_->intensity = intensity;
@@ -441,4 +451,22 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("enemyType")) {
         enemyType_ = j["enemyType"];
 	}
+}
+
+void Object3d::SetMaterialType(int32_t type) {
+    if (materialData_) {
+        materialData_->materialType = type;
+    }
+}
+
+void Object3d::SetColor(const Vector4& color) {
+    if (materialData_) {
+        materialData_->color = color;
+    }
+}
+
+void Object3d::SetShininess(float shininess) {
+    if (materialData_) {
+        materialData_->shininess = shininess;
+    }
 }

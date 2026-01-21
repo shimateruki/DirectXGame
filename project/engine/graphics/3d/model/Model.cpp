@@ -49,39 +49,55 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->enableLighting = true;
     materialData_->selectedLighting = 2;
     materialData_->shininess = 50;
+	materialData_->materialType = 0; // 通常
     Math math;
     materialData_->uvTransform = math.makeIdentity4x4();
 }
 
 // モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
-    // 共通の定数バッファをセット
-    commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
-    commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-    commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+    // =============================================================
+    // 1. マテリアル (定数バッファ b0) の設定 
+    // =============================================================
+    // 上書き指定(Object3d側のマテリアル)がある場合はそれを使う
+    if (overrideMaterialResource) {
+        commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
+    }
+    // 指定がない場合は、モデルが持っているデフォルトのマテリアルを使う
+    else if (materialResource_) {
+        commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
+    }
+
+    // =============================================================
+    // 2. その他の共通定数バッファをセット
+    // =============================================================
+    if (wvpResource) commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+    // ※ ルートパラメータ2番はテクスチャ(SRV)なのでループ内で設定
+    if (directionalLightResource) commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
     if (cameraResource) commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
     if (pointLightResource) commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
     if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
 
-    //  メッシュごとの描画ループ
+    // =============================================================
+    // 3. メッシュごとの描画ループ (テクスチャ設定と描画)
+    // =============================================================
     for (const auto& mesh : modelData_.meshes) {
-        // 1. このメッシュの頂点バッファをセット
+        // A. このメッシュの頂点バッファをセット
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
 
-        // 2. このメッシュのマテリアルに対応するテクスチャをセット
+        // B. このメッシュのマテリアルに対応するテクスチャをセット
         if (mesh.materialIndex < modelData_.materials.size()) {
             uint32_t handle = modelData_.materials[mesh.materialIndex].textureHandle;
-            // ルートパラメータ 2番 にテクスチャをセット (Object3dでやっていたことをここでやる！)
+            // ルートパラメータ 2番 にテクスチャをセット
             SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
         }
 
-        // 3. 描画
+        // C. 描画
         commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
     }
 }
-
 
 // ==========================================
 // 読み込み: Assimpのメッシュごとにデータを分ける

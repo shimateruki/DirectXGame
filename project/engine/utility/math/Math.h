@@ -71,7 +71,7 @@ class Math
 
 public:
 
-	Matrix4x4 makeIdentity4x4();
+	static Matrix4x4 makeIdentity4x4();
 	Matrix4x4 MakeScaleMatrix(const Vector3& scale);
 	Matrix4x4 MakeRotateXMatrix(float theta);
 	Matrix4x4 MakeRotateYMatrix(float theta);

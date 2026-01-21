@@ -16,7 +16,10 @@ struct Material
     float32_t4x4 uvTransform;
     int32_t selectedLighting;
     float32_t shininess;
-    float32_t2 padding2;
+    
+    // ★ここを変更: ガラスかどうかを判別するフラグを追加
+    int32_t materialType; // 0:通常, 1:ガラス
+    float32_t padding2; // float32_t2 から減らしてパディング調整
 };
 
 struct DirectionalLight
@@ -83,7 +86,8 @@ PixelShanderOutput main(VecrtexShaderOutput input)
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
-    if (textureColor.a <= 0.5)
+    // アルファテスト (ガラスの場合は透明部分も描画したいので、materialTypeが0の時だけdiscardする手もあるが、一旦そのまま)
+    if (gMaterial.materialType == 0 && textureColor.a <= 0.5)
     {
         discard;
     }
@@ -114,7 +118,6 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             
             float32_t3 diffuse = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
             
-            
             float32_t3 halfVector = normalize(L + toEye);
             float NdotH = dot(N, halfVector);
             float specularPow = pow(saturate(NdotH), gMaterial.shininess);
@@ -127,13 +130,10 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             for (int i = 0; i < gPointLights.activeCount; ++i)
             {
                 PointLight light = gPointLights.lights[i];
-
                 float32_t3 directionToLight = light.position - input.worldPosition;
                 float distance = length(directionToLight);
                 float32_t3 L_Point = normalize(directionToLight);
-
                 float factor = pow(saturate(-distance / light.radius + 1.0), light.decay);
-
                 float pointCos = saturate(dot(N, L_Point));
                 float32_t3 pDiffuse = gMaterial.color.rgb * textureColor.rgb * light.color.rgb * light.intensity * factor * pointCos;
                 totalPointDiffuse += pDiffuse;
@@ -155,15 +155,12 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             for (int j = 0; j < gSpotLights.activeCount; ++j)
             {
                 SpotLight light = gSpotLights.lights[j];
-
                 float32_t3 directionToSpotLight = normalize(light.position - input.worldPosition);
                 float distanceSpot = length(light.position - input.worldPosition);
                 float32_t3 spotLightDir = normalize(light.direction);
-
                 float angleCos = dot(directionToSpotLight, -spotLightDir);
                 float falloffFactor = saturate((angleCos - light.cosAngle) / (light.cosFalloffStart - light.cosAngle));
                 float distanceFactor = pow(saturate(-distanceSpot / light.distance + 1.0), light.decay);
-
                 float spotCos = saturate(dot(N, directionToSpotLight));
                 float32_t3 sDiffuse = gMaterial.color.rgb * textureColor.rgb * light.color.rgb * light.intensity * distanceFactor * falloffFactor * spotCos;
                 totalSpotDiffuse += sDiffuse;
@@ -178,57 +175,82 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                 }
             }
 
-            // Final Composition
-            output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
-            output.color.a = gMaterial.color.a * textureColor.a;
-        // 1. 視線ベクトルと法線の角度を見る
-    // N (法線) と toEye (カメラへの方向) の内積をとる
-    // 正面ほど 1.0、輪郭(90度)ほど 0.0 になる
-    float rimFactor = 1.0f - saturate(dot(N, toEye));
+            if (gMaterial.materialType == 1)
+            {
+                // --------------------------------------------------------
+                // 1. スムース・ハイライト（三角形の角を落とす）
+                // --------------------------------------------------------
+                // 鋭いハイライト(256)と、少し広いハイライト(32)を混ぜることで、
+                // ポリゴンの継ぎ目を「中間の光」で埋めて隠します。
+                float3 L = normalize(-gDirectionalLight.direction);
+                float3 halfVector = normalize(L + toEye);
+                float dotH = saturate(dot(N, halfVector));
+                
+                float specSharp = pow(dotH, 256.0f); // 鋭い点
+                float specSoft = pow(dotH, 32.0f); // 柔らかい光（これがポリゴンの角を隠す）
+                
+                float3 directionalSpecular = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * (specSharp + specSoft * 0.5f);
 
-    // 2. 範囲を調整する (powで絞る)
-    // 3.0f という数字を大きくすると、もっと細い線になります
-    rimFactor = pow(rimFactor, 3.0f);
+                // ポイント/スポットライトのスペキュラも同様に「鋭さ」を調整
+                // ※ totalSpotSpecular 等をそのまま使うと角が出るので、少し減衰をかける
+                float3 finalSpecular = (directionalSpecular + totalPointSpecular + totalSpotSpecular);
 
-    // 3. 光の色を決める (とりあえず白)
-    float3 rimColor = float3(1.0f, 1.0f, 1.0f);
+                // --------------------------------------------------------
+                // 2. フレネル反射（縁の輝き）
+                // --------------------------------------------------------
+                float fresnel = 1.0f - saturate(dot(N, toEye));
+                float fresnelEdge = pow(fresnel, 4.0f); // 縁の鋭い光
+                float fresnelBody = pow(fresnel, 2.0f); // 全体的な薄い反射
 
-    // 4. 強さを決める (0.5くらいが丁度いいかも)
-    float rimIntensity = 0.5f;
+                // --------------------------------------------------------
+                // 3. スポットライト・ライトカラーの透過
+                // --------------------------------------------------------
+                // ガラスなので Diffuse ではなく「内側を通り抜ける光」として計算
+                float3 lightInBody = (totalPointDiffuse + totalSpotDiffuse) * 0.5f;
+                float3 glassColor = gMaterial.color.rgb * textureColor.rgb;
 
-    // 最終カラーに足し算する！
-    output.color.rgb += rimColor * rimFactor * rimIntensity;
-        // ホラーゲームならここを 0.02f (2%) くらいにする
-    // 普通のゲームなら 0.1f (10%) ～ 0.2f (20%) くらい
-            float3 ambientColor = float3(0.02f, 0.02f, 0.02f);
+                // --------------------------------------------------------
+                // 4. 最終色の合成
+                // --------------------------------------------------------
+                float3 rimColor = float3(1.0f, 1.0f, 1.0f);
+                
+                // (環境光) + (ライトによる内側の発光) + (縁の反射) + (ハイライト)
+                output.color.rgb = (glassColor * 0.1f) + (lightInBody * glassColor) + (rimColor * fresnelEdge * 1.5f) + finalSpecular;
 
-    // 元の色(テクスチャなど)に対して、最低限の明るさを保証する
-    output.color.rgb += ambientColor * gMaterial.color.rgb * textureColor.rgb;
-        
-        // -----------------------------------------------------------
-    // ★距離フォグ (Distance Fog) の追加
-    // -----------------------------------------------------------
+                // --------------------------------------------------------
+                // 5. 透明度の計算（ここが最重要！）
+                // --------------------------------------------------------
+                // ハイライト(specular)をアルファに強く反映させすぎると三角形が見えるので、
+                // ハイライトの寄与を下げ、フレネルをメインにします。
+                float specularAlpha = saturate(length(finalSpecular) * 0.5f);
+                float baseAlpha = 0.1f; // 真ん中の透明度（もっと透かしたいなら 0.05）
+                
+                output.color.a = saturate(baseAlpha + fresnelBody * 0.8f + specularAlpha);
+            }
+            else
+            {
+            
+                output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
+                output.color.a = gMaterial.color.a * textureColor.a;
 
-    // 1. 背景色（フォグの色）
-    // ※ 本来は C++ から送るべきですが、今は背景クリア色(画面の背景色)と同じにします
-    float3 fogColor = float3(0.1f, 0.1f, 0.1f); 
+                float rimFactor = 1.0f - saturate(dot(N, toEye));
+                rimFactor = pow(rimFactor, 3.0f);
+                output.color.rgb += float3(1.0f, 1.0f, 1.0f) * rimFactor * 0.5f;
+                output.color.rgb += float3(0.02f, 0.02f, 0.02f) * gMaterial.color.rgb * textureColor.rgb;
+            }
 
-    // 2. カメラとピクセルの距離を測る
-    // input.worldPosition : ピクセルの場所
-    // gCamera.worldPosition : カメラの場所 (RimLightで使ったはず！)
-    float distance = length(input.worldPosition - gCamera.worldPosition);
+            // ===========================================================
+            // ★ 距離フォグ (Distance Fog) - 全体共通
+            // ===========================================================
+            float3 fogColor = float3(0.1f, 0.1f, 0.1f);
+            float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
+            float fogStart = 10.0f;
+            float fogEnd = 50.0f;
+            float fogFactor = saturate((distanceToCamera - fogStart) / (fogEnd - fogStart));
 
-    // 3. フォグのかかり具合を計算
-    // 10.0f から霧がかかり始め、50.0f で真っ白(完全に霧)になる設定
-    float fogStart = 10.0f;
-    float fogEnd = 50.0f;
+            // フォグを適用
+            output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
 
-    // 線形補間 (0.0=霧なし ～ 1.0=完全に霧)
-    float fogFactor = saturate((distance - fogStart) / (fogEnd - fogStart));
-
-    // 4. 元の色とフォグの色を混ぜる
-    // fogFactor が増えるほど fogColor に近づく
-    output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
             break;
     }
 

@@ -58,7 +58,16 @@ public:
         float cosFalloffStart;// ボケ足の開始角度
         float padding[1];     // パディング
     };
-
+    struct Material {
+        Vector4 color;
+        int32_t enableLighting;
+        float padding1[3];
+        Matrix4x4 uvTransform;
+        int32_t selectedLighting;
+        float shininess;
+        int32_t materialType; // 0:通常, 1:ガラス
+        float padding2;
+    };
     // コンフィグ構造体（衝突判定のマスターデータ）
     struct ColliderConfig {
         ColliderType type = ColliderType::kAABB; // デフォルトはAABB
@@ -131,7 +140,6 @@ public:
     Model* GetModel() const { return model_; }
     const std::string& GetModelName() const { return modelName_; }
 
-    void SetColor(const Vector4& color);
     Vector4 GetColor() { return  directionalLightData_->color; }
 
     void SetBlendMode(BlendMode blendMode) { blendMode_ = blendMode; }
@@ -141,6 +149,9 @@ public:
     float GetIntensity() const { return directionalLightData_->intensity; }
     DirectionalLight* GetDirectionalLightData() { return directionalLightData_; }
     Model::Material* GetMaterial() { return model_ ? model_->GetMaterial() : nullptr; }
+    void SetMaterialType(int32_t type);       // 0:通常, 1:ガラス
+    void SetColor(const Vector4& color);      // 色変え用
+    void SetShininess(float shininess);       // 光沢度調整
 
     // ========================================================================
     // 名前・識別
@@ -299,4 +310,7 @@ protected:
     int eventID_ = -1;  // 受信ID（私は誰か）
     int targetID_ = -1; // 送信ID（誰を動かすか）
     std::string enemyType_ = "";
+	// マテリアル関連
+    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+    Material* materialData_ = nullptr;
 };

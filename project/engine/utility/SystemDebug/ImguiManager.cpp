@@ -18,7 +18,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
 
     // ドッキング機能を有効にする
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // ドッキング有効
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   
 
     // ImGuiのスタイルを設定
     ImGui::StyleColorsDark();
@@ -28,6 +28,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
         nullptr,
         io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）
     );
+
     // プラットフォームとレンダラーのバックエンドを初期化
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 
@@ -65,10 +66,6 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     // 初期化
     ImGui_ImplDX12_Init(&initInfo);
 
-
-
-
-
 #endif
 
     
@@ -95,7 +92,7 @@ void ImGuiManager::BeginFrame() {
 
 void ImGuiManager::Draw() {
 #ifdef USE_IMGUI
-    // 1. まず「描画内容」を確定させる（これで FrameCountEnded が更新されます）
+    // 1. まず「描画内容」を確定させる
     ImGui::Render();
 
     // 2. DX12のコマンドリストに記録
