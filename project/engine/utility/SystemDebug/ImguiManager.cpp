@@ -18,7 +18,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
 
     // ドッキング機能を有効にする
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   
+    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   
 
     // ImGuiのスタイルを設定
     ImGui::StyleColorsDark();

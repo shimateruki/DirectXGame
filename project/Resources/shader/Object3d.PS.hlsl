@@ -174,58 +174,90 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     totalSpotSpecular += sSpecular;
                 }
             }
-
+          // ===========================================================
+            // ガラスシェーダー (Crystal Glass Shader)
+            // ===========================================================
             if (gMaterial.materialType == 1)
             {
-                // --------------------------------------------------------
-                // 1. スムース・ハイライト（三角形の角を落とす）
-                // --------------------------------------------------------
-                // 鋭いハイライト(256)と、少し広いハイライト(32)を混ぜることで、
-                // ポリゴンの継ぎ目を「中間の光」で埋めて隠します。
-                float3 L = normalize(-gDirectionalLight.direction);
-                float3 halfVector = normalize(L + toEye);
-                float dotH = saturate(dot(N, halfVector));
+                // --- 1. 共通定数とベクトル ---
+                float3 N = normalize(input.smoothNormal);
+                float3 V = normalize(toEye);
+                float NdotV = saturate(dot(N, V));
+                float PI = 3.14159265f;
+
+                // --- 2. フレネル反射 (輪郭の透明度変化) ---
+                float F0 = 0.02f;
+                float fresnel = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
+
+                // --- 3. スペキュラ (太陽光の鋭い反射) ---
+                float3 L_Dir = normalize(-gDirectionalLight.direction);
+                float3 H = normalize(L_Dir + V);
+                float NdotH = saturate(dot(N, H));
+                float specPower = 2048.0f;
+                float3 specular = float3(1.0f, 1.0f, 1.0f) * pow(NdotH, specPower) * 2.0f;
+
+                // --- 4. 集光現象 (影側の発光) ---
+                float internalFocus = dot(N, -L_Dir);
+                float caustic = smoothstep(0.8f, 1.0f, internalFocus) * 0.8f;
+                float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic;
+
+                // --- 5. 環境反射 (球面マッピング + 二重反射) ---
+                float3 R = reflect(-V, N);
                 
-                float specSharp = pow(dotH, 256.0f); // 鋭い点
-                float specSoft = pow(dotH, 32.0f); // 柔らかい光（これがポリゴンの角を隠す）
+                // 表面UV
+                float2 uvFront;
+                uvFront.x = atan2(R.x, R.z) / (2.0f * PI) + 0.5f;
+                uvFront.y = acos(clamp(R.y, -1.0f, 1.0f)) / PI;
+
+                // 裏面UV (厚みを持たせるためのズレ)
+                float2 uvBack = uvFront + float2(0.06f, 0.06f);
+
+                // 背景グラデーション
+                float3 topColor = float3(1.0f, 1.0f, 1.0f);
+                float3 bottomColor = float3(0.05f, 0.05f, 0.1f);
+                float3 envColor = lerp(topColor, bottomColor, uvFront.y);
+
+                // スタジオ照明の計算 (表面)
+                float w1_f = smoothstep(0.02f, 0.05f, abs(uvFront.x - 0.2f));
+                float h1_f = smoothstep(0.05f, 0.1f, abs(uvFront.y - 0.4f));
+                float box1_f = (1.0f - w1_f) * (1.0f - h1_f);
+                float w2_f = smoothstep(0.01f, 0.03f, abs(uvFront.x - 0.7f));
+                float h2_f = smoothstep(0.1f, 0.15f, abs(uvFront.y - 0.6f));
+                float box2_f = (1.0f - w2_f) * (1.0f - h2_f);
+                float lightsFront = box1_f + box2_f;
                 
-                float3 directionalSpecular = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * (specSharp + specSoft * 0.5f);
+                // スタジオ照明の計算 (裏面)
+                float w1_b = smoothstep(0.02f, 0.05f, abs(uvBack.x - 0.2f));
+                float h1_b = smoothstep(0.05f, 0.1f, abs(uvBack.y - 0.4f));
+                float box1_b = (1.0f - w1_b) * (1.0f - h1_b);
+                float w2_b = smoothstep(0.01f, 0.03f, abs(uvBack.x - 0.7f));
+                float h2_b = smoothstep(0.1f, 0.15f, abs(uvBack.y - 0.6f));
+                float box2_b = (1.0f - w2_b) * (1.0f - h2_b);
+                float lightsBack = (box1_b + box2_b) * 0.8f;
 
-                // ポイント/スポットライトのスペキュラも同様に「鋭さ」を調整
-                // ※ totalSpotSpecular 等をそのまま使うと角が出るので、少し減衰をかける
-                float3 finalSpecular = (directionalSpecular + totalPointSpecular + totalSpotSpecular);
+                float lightsTotal = lightsFront + lightsBack;
+                float3 fakeLights = float3(1.0f, 1.0f, 1.0f) * lightsTotal;
 
-                // --------------------------------------------------------
-                // 2. フレネル反射（縁の輝き）
-                // --------------------------------------------------------
-                float fresnel = 1.0f - saturate(dot(N, toEye));
-                float fresnelEdge = pow(fresnel, 4.0f); // 縁の鋭い光
-                float fresnelBody = pow(fresnel, 2.0f); // 全体的な薄い反射
+                // --- 6. 虹色リムライト (プリズム効果) ---
+                float rim = pow(1.0f - NdotV, 3.0f);
+                float3 rainbowRim;
+                rainbowRim.r = rim * 0.8f;
+                rainbowRim.g = rim * 0.6f;
+                rainbowRim.b = rim * 1.5f;
 
-                // --------------------------------------------------------
-                // 3. スポットライト・ライトカラーの透過
-                // --------------------------------------------------------
-                // ガラスなので Diffuse ではなく「内側を通り抜ける光」として計算
-                float3 lightInBody = (totalPointDiffuse + totalSpotDiffuse) * 0.5f;
-                float3 glassColor = gMaterial.color.rgb * textureColor.rgb;
-
-                // --------------------------------------------------------
-                // 4. 最終色の合成
-                // --------------------------------------------------------
-                float3 rimColor = float3(1.0f, 1.0f, 1.0f);
+                // --- 7. 最終合成 ---
+                float3 transmissionColor = float3(0.0f, 0.0f, 0.0f);
                 
-                // (環境光) + (ライトによる内側の発光) + (縁の反射) + (ハイライト)
-                output.color.rgb = (glassColor * 0.1f) + (lightInBody * glassColor) + (rimColor * fresnelEdge * 1.5f) + finalSpecular;
+                output.color.rgb = transmissionColor
+                                 + (envColor * fresnel)
+                                 + fakeLights
+                                 + specular
+                                 + rainbowRim
+                                 + fakeCaustics;
 
-                // --------------------------------------------------------
-                // 5. 透明度の計算（ここが最重要！）
-                // --------------------------------------------------------
-                // ハイライト(specular)をアルファに強く反映させすぎると三角形が見えるので、
-                // ハイライトの寄与を下げ、フレネルをメインにします。
-                float specularAlpha = saturate(length(finalSpecular) * 0.5f);
-                float baseAlpha = 0.1f; // 真ん中の透明度（もっと透かしたいなら 0.05）
-                
-                output.color.a = saturate(baseAlpha + fresnelBody * 0.8f + specularAlpha);
+                // --- 8. アルファブレンド ---
+                float lightAlpha = saturate(lightsTotal * 0.7f);
+                output.color.a = saturate(0.05f + fresnel + lightAlpha + caustic * 0.5f);
             }
             else
             {
@@ -244,8 +276,8 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             // ===========================================================
             float3 fogColor = float3(0.1f, 0.1f, 0.1f);
             float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
-            float fogStart = 10.0f;
-            float fogEnd = 50.0f;
+            float fogStart = 1000.0f;
+            float fogEnd = 5000.0f;
             float fogFactor = saturate((distanceToCamera - fogStart) / (fogEnd - fogStart));
 
             // フォグを適用

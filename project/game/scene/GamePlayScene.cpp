@@ -53,6 +53,8 @@ void GamePlayScene::Initialize() {
 	ModelManager::GetInstance()->LoadModel("saka");
 	ModelManager::GetInstance()->LoadModel("zimen.gltf");
 	ModelManager::GetInstance()->LoadModel("a.gltf");
+	ModelManager::GetInstance()->LoadModel("sphere.gltf");
+	ModelManager::GetInstance()->LoadModel("skydome");
 	LOG("Game Initialized!");
 	// --- 各種初期化 ---
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
@@ -78,6 +80,8 @@ void GamePlayScene::Initialize() {
 	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	playerObj->SetName("Player");
 	playerObj->SetStatic(false);
+	playerObj->SetBlendMode(BlendMode::kNormal);
+	playerObj->SetMaterialType(1);
 	player_ = playerObj.get();
 	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 	CollisionManager::GetInstance()->AddObject(playerObj.get());
@@ -132,14 +136,6 @@ void GamePlayScene::Initialize() {
 	monsterBallSprite->SetName("MonsterBall");
 	sprites_.push_back(std::move(monsterBallSprite));
 
-	uint32_t flameHandle = Sprite::LoadTexture("sample.png");
-	auto flameSprite = std::make_unique<Sprite>();
-	flameSprite->Initialize(spriteCommon_.get(), flameHandle);
-	flameSprite->SetAnimation(4, 0.15f, true);
-	flameSprite->Play();
-	flameSprite->SetPosition({ 640.0f, 360.0f });
-	flameSprite->SetSize({ 64.0f,64.0f });
-	sprites_.push_back(std::move(flameSprite));
 	//弾の初期化
 	BulletManager::GetInstance()->Initialize(
 		object3dCommon_.get(),
@@ -441,34 +437,64 @@ void GamePlayScene::Draw() {
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
-
 #endif
 
 	// ライトのリソースを取得
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
 
-	// --- 3Dオブジェクト描画 ---
+	// コマンドリストの設定（3D描画開始）
 	object3dCommon_->SetGraphicsCommand();
+
+	// =================================================================
+	// 【Step 1】 不透明なオブジェクト (地形・キャラなど) を「先」に描画
+	// =================================================================
 	for (size_t i = 0; i < objects_.size(); ++i) {
-		// (i == 1 がプレイヤー という前提)
+		// 一人称視点のプレイヤー非表示処理
 		if (isFirstPerson && i == 1) {
-			continue; 
+			continue;
 		}
+
+		// ★重要: ガラス(Type 1) はここでは描画しません！スキップ！
+		// (Object3dクラスに GetMaterialType() がある前提です。
+		//  もし無い場合は、マテリアル設定用の変数を確認してください)
+		if (objects_[i]->GetMaterialType() == 1) {
+			continue;
+		}
+
+		// 不透明なものを描画
 		objects_[i]->Draw(pointLightRes, spotLightRes);
 	}
 
+	// 弾やデバッグ表示なども「不透明」扱いとして、ガラスより先に描いておきます
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
-
 	debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
 
-	// --- スプライト描画 ---
+
+	// =================================================================
+	// 【Step 2】 透明なオブジェクト (ガラス) を「最後」に描画
+	// =================================================================
+	// 地形などが描かれた後に上書きすることで、背景透過を防ぎます
+	for (size_t i = 0; i < objects_.size(); ++i) {
+		// 一人称視点のプレイヤー非表示処理 (念のためここでもチェック)
+		if (isFirstPerson && i == 1) {
+			continue;
+		}
+
+		// ★重要: ガラス(Type 1) だけをここで描画します！
+		if (objects_[i]->GetMaterialType() == 1) {
+			// ガラスを描画 (内部でBlendMode::kNormalやDepthWriteMask=ALLが使われる想定)
+			objects_[i]->Draw(pointLightRes, spotLightRes);
+		}
+	}
+
+
+	// --- スプライト描画 (UIなどは最前面なので最後でOK) ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) {
 		sprite->Draw();
 	}
-
 
 	particleSystem_->Draw();
 }

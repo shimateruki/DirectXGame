@@ -43,7 +43,7 @@
             "parentName": "",
             "position": [
                 0.9768620133399963,
-                1.98299241065979,
+                1.9828366041183472,
                 18.464021682739258
             ],
             "rotation": [
@@ -108,6 +108,54 @@
             "type": "Model"
         },
         {
+            "animName": "Armature|mixamo.com|Layer0",
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "enemyType": "",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "modelName": "a.gltf",
+            "myEventID": -1,
+            "name": "a",
+            "parentName": "",
+            "position": [
+                2.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
             "animName": "",
             "collider": {
                 "center": [
@@ -150,7 +198,7 @@
             "parentName": "",
             "position": [
                 92.49800872802734,
-                -26544.94921875,
+                -29410.6640625,
                 13.020607948303223
             ],
             "rotation": [
@@ -180,26 +228,24 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0,
-                    1.0
+                    0.0,
+                    0.0,
+                    0.0
                 ],
                 "type": 2
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
-            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
-            "isAnimRelative": false,
-            "modelName": "sample",
+            "modelName": "sampleBlock.gltf",
             "myEventID": -1,
             "name": "Obj_0",
             "parentName": "",
             "position": [
-                -5.939096927642822,
-                2.5222079753875732,
-                29.371660232543945
+                10.609573364257813,
+                2.470632314682007,
+                17.305397033691406
             ],
             "rotation": [
                 0.0,

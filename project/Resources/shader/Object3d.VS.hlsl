@@ -11,6 +11,7 @@ ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
 // スキニング用の行列パレット (StructuredBuffer, register t1)
 StructuredBuffer<float32_t4x4> gMatrixPalette : register(t1);
 
+// ※構造体名は元のまま維持しています
 struct VertexShanderInput
 {
     float32_t4 position : POSITION0;
@@ -20,6 +21,7 @@ struct VertexShanderInput
     float32_t4 index : INDEX0;
 };
 
+// ※戻り値の型名も元のまま維持しています
 VecrtexShaderOutput main(VertexShanderInput input)
 {
     VecrtexShaderOutput output;
@@ -47,6 +49,12 @@ VecrtexShaderOutput main(VertexShanderInput input)
     // 法線も回転させる (平行移動成分は不要なので3x3キャスト)
     float32_t3 skinnedNormal = mul(input.normal, (float32_t3x3) skinningMatrix);
 
+    // ★追加: 強制スムース法線の計算 (Sphere Cheat)
+    // 球体専用: ローカル座標自体を法線とみなすことで、ポリゴンの角を無視して滑らかにする
+    float32_t3 localSmoothNormal = normalize(input.position.xyz);
+    // スムース法線にもスキニングを適用
+    float32_t3 skinnedSmoothNormal = mul(localSmoothNormal, (float32_t3x3) skinningMatrix);
+
 
     // =========================================================
     // 通常の座標変換 (変形後の頂点に対して行う)
@@ -62,6 +70,10 @@ VecrtexShaderOutput main(VertexShanderInput input)
     // input.normal ではなく skinnedNormal を使う！
     output.normal = normalize(mul(skinnedNormal, (float32_t3x3) gTransformationMatrix.WorldInverseTranspose));
     
+    //  スムース法線の出力
+    // ガラス描画用 (hlsliに smoothNormal を追加している前提)
+    output.smoothNormal = normalize(mul(skinnedSmoothNormal, (float32_t3x3) gTransformationMatrix.World));
+
     // ワールド座標 (PixelShader用)
     // input.position ではなく skinnedPosition を使う！
     output.worldPosition = mul(skinnedPosition, gTransformationMatrix.World).xyz;

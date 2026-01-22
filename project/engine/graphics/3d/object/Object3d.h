@@ -152,6 +152,7 @@ public:
     void SetMaterialType(int32_t type);       // 0:通常, 1:ガラス
     void SetColor(const Vector4& color);      // 色変え用
     void SetShininess(float shininess);       // 光沢度調整
+    int32_t GetMaterialType() const { return materialData_->materialType; }
 
     // ========================================================================
     // 名前・識別
@@ -294,7 +295,7 @@ protected:
     Object3d* parent_ = nullptr;
 
     // グラフィックス設定
-    BlendMode blendMode_ = BlendMode::kNormal;
+    BlendMode blendMode_ = BlendMode::kNone;
 
     //  衝突判定データ
     ColliderConfig colliderConfig_;
