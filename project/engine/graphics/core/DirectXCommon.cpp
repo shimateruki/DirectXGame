@@ -235,7 +235,8 @@ void DirectXCommon::Finalize() {
 
 
 void DirectXCommon::PostDraw() {
-    ImGuiManager::GetInstance()->Draw();
+
+
     // リソースバリアを再度設定します。
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -249,17 +250,15 @@ void DirectXCommon::PostDraw() {
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
 
-    // FPS固定のための更新処理（
-    UpdateFixFPS();
-
     // コマンドリストの配列を作成します
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
+
     // コマンドキューにコマンドリストを投入し、GPUに実行を指示します。
     commandQueue_->ExecuteCommandLists(1, commandLists);
-
     swapChain_->Present(1, 0);
 
-    // --- ここから次のフレームのためのCPUとGPUの同期処理 ---
+
+
 
     // フェンスの目標値をインクリメントします。
     fenceValue_++;

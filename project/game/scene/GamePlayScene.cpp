@@ -80,8 +80,7 @@ void GamePlayScene::Initialize() {
 	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	playerObj->SetName("Player");
 	playerObj->SetStatic(false);
-	playerObj->SetBlendMode(BlendMode::kNormal);
-	playerObj->SetMaterialType(1);
+	playerObj->SetBlendMode(BlendMode::kNone);
 	player_ = playerObj.get();
 	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 	CollisionManager::GetInstance()->AddObject(playerObj.get());

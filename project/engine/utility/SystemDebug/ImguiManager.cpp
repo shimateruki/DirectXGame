@@ -15,60 +15,57 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     // 1. ImGuiのコンテキストを生成
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-
-    // ドッキング機能を有効にする
     ImGuiIO& io = ImGui::GetIO();
-    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // ドッキング有効化 (ウィンドウ同士をくっつける)
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // マルチビューポート有効化 (ウィンドウ外に出す)
 
     // ImGuiのスタイルを設定
     ImGui::StyleColorsDark();
+
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;              // ウィンドウの角丸をなくす
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f; // 背景を完全に不透明にする
+    }
+
+    // フォント読み込み（パスは環境に合わせて確認してください）
     io.Fonts->AddFontFromFileTTF(
-        "Resources/sprite/meiryo.ttc",   // フォントファイルのパス
-        18.0f,                                // フォントサイズ
+        "Resources/sprite/meiryo.ttc",
+        18.0f,
         nullptr,
-        io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）
+        io.Fonts->GetGlyphRangesJapanese()
     );
 
     // プラットフォームとレンダラーのバックエンドを初期化
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 
-    // SRVManagerからSRV用のデスクリプタヒープを取得
+    // --- (以下、SRV周りの設定は元のまま変更なしでOK) ---
     ID3D12DescriptorHeap* srvDescriptorHeap = SRVManager::GetInstance()->GetDescriptorHeap();
-
-    // デスクリプタ1個分のサイズ（メモリ上の階段1段分の高さ）を取得
     UINT incrementSize = dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-    // 先頭ハンドルを取得
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
-
-
-    // ポインタを「1個分」ずらす（SRVの1番目を使う場合）
     cpuHandle.ptr += incrementSize;
     gpuHandle.ptr += incrementSize;
 
     ImGui_ImplDX12_InitInfo initInfo = {};
     initInfo.Device = dxCommon_->GetDevice();
     initInfo.CommandQueue = dxCommon_->GetCommandQueue();
-    initInfo.NumFramesInFlight = 3;
-    initInfo.RTVFormat = dxCommon_->GetRTVFormat();
+    initInfo.NumFramesInFlight = 2;
+    initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;   
     initInfo.SrvDescriptorHeap = srvDescriptorHeap;
-
     initInfo.LegacySingleSrvCpuDescriptor = cpuHandle;
     initInfo.LegacySingleSrvGpuDescriptor = gpuHandle;
     initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     initInfo.UserData = dxCommon_->GetDevice();
-
     initInfo.SrvDescriptorAllocFn = nullptr;
     initInfo.SrvDescriptorFreeFn = nullptr;
 
-    // 初期化
     ImGui_ImplDX12_Init(&initInfo);
 
 #endif
-
-    
 }
 
 void ImGuiManager::Finalize() {

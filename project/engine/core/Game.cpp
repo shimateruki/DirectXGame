@@ -310,14 +310,19 @@ void Game::Draw() {
     if (spriteDebugEditor_) {
         spriteDebugEditor_->Draw();
     }
-    //ImGui の描画
-  // 1. ここで ImGui::Render() が呼ばれる
-    ImGuiManager::GetInstance()->Draw();
 
-    // 2. Render() が終わった直後の「ここ」で EndFrame を呼ぶ！
+    // 1. ImGuiの描画コマンドを積む
+    ImGuiManager::GetInstance()->Draw();
+#endif
+
+
+    dxCommon_->PostDraw();
+
+#ifdef USE_IMGUI
+ 
     ImGuiManager::GetInstance()->EndFrame();
 #endif
 
-    // 描画後処理
-    dxCommon_->PostDraw();
+    dxCommon_->UpdateFixFPS();
+
 }
