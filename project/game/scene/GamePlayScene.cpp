@@ -365,47 +365,58 @@ void GamePlayScene::Update(float deltaTime) {
 	// 1. プレイヤー設定 (Transform & Material)
 	// ==========================================================
 	if (ImGui::CollapsingHeader("Player Settings")) {
-		if (player_) {
-			// Transform (位置・回転・スケール)
-			if (ImGui::TreeNode("Transform")) {
-				// 位置 (表示のみ)
-				Vector3 pos = player_->GetWorldPosition();
-				ImGui::DragFloat3("Position", &pos.x);
+		if (player_) { // プレイヤーが存在する場合のみ表示
 
-				// スケール (変更可能)
+			// --- Transform (位置・回転・スケール) ---
+			if (ImGui::TreeNode("Transform")) {
+				Vector3 pos = player_->GetWorldPosition();
+				ImGui::DragFloat3("Position", &pos.x); // 表示のみ(必要ならSetTranslate)
+
 				Vector3 scale = player_->GetScale();
 				if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.1f, 10.0f)) {
 					player_->SetScale(scale);
 				}
+
+				Vector3 rotate = player_->GetRotation();
+				if (ImGui::DragFloat3("Rotation", &rotate.x, 0.01f)) {
+					player_->SetRotation(rotate);
+				}
 				ImGui::TreePop();
 			}
 
-			// Material (色・反射設定)
-			Model* model = player_->GetModel();
-			if (model) {
-				Model::Material* material = model->GetMaterial();
-				if (material) {
-					if (ImGui::TreeNode("Material")) {
-						// ライティング種類の選択
-						const char* lightingTypes[] = { "None", "Lambert", "Phong" };
-						int currentType = material->selectedLighting;
-						if (ImGui::Combo("Lighting Type", &currentType, lightingTypes, IM_ARRAYSIZE(lightingTypes))) {
-							material->selectedLighting = currentType;
-						}
+			// --- Material (Object3dが保持するマテリアル設定) ---
+			if (ImGui::TreeNode("Material")) {
 
-						// Phongの時だけ光沢度を調整
-						if (material->selectedLighting == 2) {
-							ImGui::DragFloat("Shininess", &material->shininess, 1.0f, 1.0f, 256.0f);
-						}
-
-						// 色
-						ImGui::ColorEdit4("Base Color", &material->color.x);
-						ImGui::TreePop();
-					}
+				// 1. Lighting Type (Lambert / Phong 等)
+				const char* lightingTypes[] = { "None", "Lambert", "Phong" };
+				int currentLightType = player_->GetLightingType();
+				if (ImGui::Combo("Lighting Type", &currentLightType, lightingTypes, IM_ARRAYSIZE(lightingTypes))) {
+					player_->SetLightingType(currentLightType);
 				}
+
+				// 2. Material Type (通常 / ガラス)
+				const char* materialTypes[] = { "Normal", "Glass" };
+				int currentMatType = player_->GetMaterialType();
+				if (ImGui::Combo("Material Type", &currentMatType, materialTypes, IM_ARRAYSIZE(materialTypes))) {
+					player_->SetMaterialType(currentMatType);
+				}
+
+				// 3. Shininess (Phongの時などの光沢度)
+				float currentShininess = player_->GetShininess();
+				if (ImGui::DragFloat("Shininess", &currentShininess, 1.0f, 1.0f, 256.0f)) {
+					player_->SetShininess(currentShininess);
+				}
+
+				// 4. Base Color
+				Vector4 currentColor = player_->GetColor();
+				if (ImGui::ColorEdit4("Base Color", &currentColor.x)) {
+					player_->SetColor(currentColor);
+				}
+
+				ImGui::TreePop();
 			}
 
-			// 平行光源 (Directional Light) ※プレイヤーが持っている平行光源設定
+			// --- Directional Light (ローカルライト) ---
 			Object3d::DirectionalLight* dirLight = player_->GetDirectionalLightData();
 			if (dirLight) {
 				if (ImGui::TreeNode("Directional Light (Local)")) {
@@ -417,8 +428,6 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 		}
 	}
-
-	
 
 	ImGui::End();
 #endif

@@ -153,6 +153,17 @@ public:
     void SetColor(const Vector4& color);      // 色変え用
     void SetShininess(float shininess);       // 光沢度調整
     int32_t GetMaterialType() const { return materialData_->materialType; }
+    // ライティングタイプの取得・設定
+    int32_t GetLightingType() const { return materialData_ ? materialData_->selectedLighting : 0; }
+    void SetLightingType(int32_t type) {
+        if (materialData_) materialData_->selectedLighting = type;
+    }
+
+    // 光沢度(Shininess)の取得・設定
+    float GetShininess() const { return materialData_ ? materialData_->shininess : 1.0f; }
+ 
+
+
 
     // ========================================================================
     // 名前・識別
