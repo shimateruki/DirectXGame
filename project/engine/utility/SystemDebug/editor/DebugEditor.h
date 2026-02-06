@@ -29,7 +29,7 @@ struct AlignedVector4 {
 
 class DebugEditor {
 public:
-    void Initialize( SceneManager* sceneManager, DirectXCommon* dxCommon
+    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     );
     void Update();
     void Finalize();

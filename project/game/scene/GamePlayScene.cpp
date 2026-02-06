@@ -80,7 +80,8 @@ void GamePlayScene::Initialize() {
 	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
 	playerObj->SetName("Player");
 	playerObj->SetStatic(false);
-	playerObj->SetBlendMode(BlendMode::kNone);
+	playerObj->SetBlendMode(BlendMode::kNormal);
+	playerObj->SetMaterialType(1);
 	player_ = playerObj.get();
 	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 	CollisionManager::GetInstance()->AddObject(playerObj.get());
@@ -127,13 +128,13 @@ void GamePlayScene::Initialize() {
  CameraEditor::GetInstance()->Initialize();
 
 	// --- スプライトの生成 ---
-	uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
-	auto monsterBallSprite = std::make_unique<Sprite>();
-	monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
-	monsterBallSprite->SetPosition({ 200.0f, 360.0f });
-	monsterBallSprite->SetSize({ 100.0f, 100.0f });
-	monsterBallSprite->SetName("MonsterBall");
-	sprites_.push_back(std::move(monsterBallSprite));
+	//uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
+	//auto monsterBallSprite = std::make_unique<Sprite>();
+	//monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
+	//monsterBallSprite->SetPosition({ 200.0f, 360.0f });
+	//monsterBallSprite->SetSize({ 100.0f, 100.0f });
+	//monsterBallSprite->SetName("MonsterBall");
+	//sprites_.push_back(std::move(monsterBallSprite));
 
 	//弾の初期化
 	BulletManager::GetInstance()->Initialize(

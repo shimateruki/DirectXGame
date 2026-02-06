@@ -67,7 +67,7 @@ void DebugEditor::Update() {
     }
 
     // =========================================================
-    //  配置モード切り替え時のカメラ自動制御ロジック
+    // ★追加: 配置モード切り替え時のカメラ自動制御ロジック
     // =========================================================
     bool isPreviewActive = (previewObject_ != nullptr);
 
@@ -246,7 +246,6 @@ void DebugEditor::Update() {
             if (isCtrl && input->IsKeyTriggered(DIK_Y)) PerformRedo();
             // 保存
             if (isCtrl && input->IsKeyTriggered(DIK_S)) SaveScene();
-
         }
 
         // --- 2. マウス選択処理 ---
@@ -812,7 +811,39 @@ void DebugEditor::DrawImGui() {
                     }
                 }
             }
+            ImGui::Separator();
+            if (ImGui::CollapsingHeader("グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                bool isGraphicsChanged = false;
 
+                // 1. マテリアルタイプ (通常 / ガラス)
+                const char* matTypes[] = { "通常 (Standard)", "ガラス (Glass)" };
+                int currentMatType = selectedObject_->GetMaterialType();
+
+                // 安全のため範囲チェック
+                if (currentMatType < 0) currentMatType = 0;
+                if (currentMatType > 1) currentMatType = 0;
+
+                if (ImGui::Combo("質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
+                    selectedObject_->SetMaterialType(currentMatType);
+                    isGraphicsChanged = true;
+                }
+
+                // 2. ブレンドモード
+                const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
+                int currentBlend = static_cast<int>(selectedObject_->GetBlendMode());
+
+                if (ImGui::Combo("合成 (Blend Mode)", &currentBlend, blendModes, IM_ARRAYSIZE(blendModes))) {
+                    selectedObject_->SetBlendMode(static_cast<BlendMode>(currentBlend));
+                    isGraphicsChanged = true;
+                }
+
+                // 3. 色 (Color)
+                Vector4 color = selectedObject_->GetColor();
+                if (ImGui::ColorEdit4("色 (Color)", &color.x)) {
+                    selectedObject_->SetColor(color);
+                    isGraphicsChanged = true;
+                }
+            }
             if (isColChanged) {
                 selectedObject_->SetColliderConfig(colConfig);
                 UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
@@ -938,7 +969,7 @@ void DebugEditor::DrawImGui() {
             // Event Type
             EventType currentType = selectedObject_->GetEventType();
             int currentItemIndex = static_cast<int>(currentType);
-            const char* eventNames[] = { "なし", "ダメージ", "ワープ" };
+            const char* eventNames[] = { "なし", "ダメージ", "ワープ","中間ポイント","ゴール","ステージセレクト" };
             if (ImGui::Combo("イベント種類", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
                 selectedObject_->SetEventType(static_cast<EventType>(currentItemIndex));
             }
@@ -991,7 +1022,7 @@ void DebugEditor::DrawImGui() {
             // 2. クラス別の設定関数を呼ぶ
             // ==========================================================
             if (selectedObject_->GetClassName() == "Spawner") {
-                DrawSpawnerSettings(); 
+                DrawSpawnerSettings();
             }
 
 
@@ -1422,12 +1453,14 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
         currentData["param"]["jumpPower"] = p.jumpPower;
         currentData["param"]["maxFallSpeed"] = p.maxFallSpeed;
     }
-
+    Vector4 color = object->GetColor();
+    currentData["color"] = { color.x, color.y, color.z, color.w };
     // アニメーション設定の保存
     currentData["animName"] = object->animName_;
     currentData["isAnimLoop"] = object->isAnimLoop_;
 
-
+    currentData["blendMode"] = static_cast<int>(object->GetBlendMode());
+    currentData["materialType"] = object->GetMaterialType();
 
     // =========================================================
     // 3. JSON配列内を探して更新 or 追加
@@ -1472,7 +1505,6 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
 
 
 void DebugEditor::DrawProjectWindow() {
-#ifdef USE_IMGUI
     // ---------------------------------------------------------
     // ウィンドウ開始
     // ---------------------------------------------------------
@@ -1645,13 +1677,11 @@ void DebugEditor::DrawProjectWindow() {
     }
 
     ImGui::End();
-#endif
 }
 
 
 // 属性編集用ヘルパー関数
 void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) {
-#ifdef USE_IMGUI
     if (ImGui::TreeNode(label)) {
         int flags = static_cast<int>(*attribute);
 
@@ -1666,7 +1696,6 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
 
         ImGui::TreePop();
     }
-#endif
 }
 
 
@@ -1765,11 +1794,16 @@ void DebugEditor::SaveScene() {
             d["param"]["interval"] = p.interval;   // float
             d["param"]["maxCount"] = p.maxCount;   // int
         }
-
+        Vector4 color = obj->GetColor();
+        // [R, G, B, A] の配列としてJSONに保存
+        d["color"] = { color.x, color.y, color.z, color.w };
         // アニメーション設定
         d["animName"] = obj->animName_;
         d["isAnimLoop"] = obj->isAnimLoop_;
         d["isAnimRelative"] = obj->isAnimRelative_;
+        d["blendMode"] = static_cast<int>(obj->GetBlendMode());
+        d["materialType"] = obj->GetMaterialType();
+
 
         // 配列に追加
         sceneData["objects"].push_back(d);
@@ -1879,7 +1913,7 @@ void DebugEditor::PerformRedo() {
 // マウス位置からワールド空間へのレイを作成
 Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
     // 1. カメラ情報の取得
-    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera(); 
+    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera) return Ray{}; // カメラがない場合は空を返す
 
     // ビュー行列とプロジェクション行列
@@ -1969,7 +2003,7 @@ bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
 
 void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (previewObject_) {
- 
+
         previewObject_->Draw(pointLightResource, spotLightResource);
     }
 }
@@ -1978,13 +2012,12 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
 
 
 void DebugEditor::DrawEnemyTypeSelector() {
-#ifdef USE_IMGUI
     if (!selectedObject_) return;
 
     // ★ 登録したい敵の名前リスト 
     const char* enemyTypes[] = {
         "Slime",
-      
+
     };
 
     // 現在の設定値を取得
@@ -2009,7 +2042,7 @@ void DebugEditor::DrawEnemyTypeSelector() {
             if (ImGui::Selectable(enemyTypes[i], isSelected)) {
                 // 選ばれたらセットする
                 selectedObject_->SetEnemyType(enemyTypes[i]);
-                 selectedObject_->SetName("Enemy_" + std::string(enemyTypes[i]));
+                selectedObject_->SetName("Enemy_" + std::string(enemyTypes[i]));
             }
 
             // 初期選択位置を合わせる
@@ -2024,13 +2057,11 @@ void DebugEditor::DrawEnemyTypeSelector() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
     }
-#endif
 }
 
 
 
 void DebugEditor::DrawSpawnerSettings() {
-#ifdef USE_IMGUI
     if (!selectedObject_) return;
 
     ImGui::Separator();
@@ -2077,5 +2108,4 @@ void DebugEditor::DrawSpawnerSettings() {
     ImGui::InputInt("Max Count", &p.maxCount);
 
     ImGui::Unindent(); // インデント戻す
-#endif
 }

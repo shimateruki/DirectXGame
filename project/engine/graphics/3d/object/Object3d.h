@@ -140,7 +140,12 @@ public:
     Model* GetModel() const { return model_; }
     const std::string& GetModelName() const { return modelName_; }
 
-    Vector4 GetColor() { return  directionalLightData_->color; }
+    Vector4 GetColor() const {
+        if (materialData_) {
+            return materialData_->color;
+        }
+        return { 1.0f, 1.0f, 1.0f, 1.0f };
+    }
 
     void SetBlendMode(BlendMode blendMode) { blendMode_ = blendMode; }
     BlendMode GetBlendMode() const { return blendMode_; }
@@ -152,7 +157,10 @@ public:
     void SetMaterialType(int32_t type);       // 0:通常, 1:ガラス
     void SetColor(const Vector4& color);      // 色変え用
     void SetShininess(float shininess);       // 光沢度調整
+
     int32_t GetMaterialType() const { return materialData_->materialType; }
+    void SetMData(Material* materialData) { materialData_->selectedLighting; }
+    void SetSelectedLighting(int32_t type) { materialData_->selectedLighting = type; }
 
     // ========================================================================
     // 名前・識別
@@ -180,8 +188,16 @@ public:
 
     // 半径設定 (球用: size.x を半径として扱うルール)
     void SetCollisionRadius(float radius) { colliderConfig_.size = { radius, radius, radius }; }
-    float GetCollisionRadius() const { return colliderConfig_.size.x; }
+    float GetCollisionRadius() const {
 
+        float maxScale = (std::max)({
+            std::abs(transform_.scale.x),
+            std::abs(transform_.scale.y),
+            std::abs(transform_.scale.z)
+            });
+
+        return colliderConfig_.size.x * maxScale;
+    }
     // --- 属性・マスク ---
     void SetCollisionAttribute(uint32_t attribute) { collisionAttribute_ = attribute; }
     uint32_t GetCollisionAttribute() const { return collisionAttribute_; }
@@ -191,15 +207,8 @@ public:
 
     // --- 形状取得 ---
 
-    // AABB取得 (ConfigのCenterオフセットを加味)
-    AABB GetAABB() const {
-        Vector3 centerPos = transform_.translate + colliderConfig_.center;
-        Vector3 size = colliderConfig_.size;
-        return {
-            {centerPos.x - size.x, centerPos.y - size.y, centerPos.z - size.z},
-            {centerPos.x + size.x, centerPos.y + size.y, centerPos.z + size.z}
-        };
-    }
+// AABB取得 (ConfigのCenterオフセットを加味)
+    AABB GetAABB() const;
 
     // OBB取得 (実装はcppにある想定)
     OBB GetOBB() const;
@@ -311,7 +320,7 @@ protected:
     int eventID_ = -1;  // 受信ID（私は誰か）
     int targetID_ = -1; // 送信ID（誰を動かすか）
     std::string enemyType_ = "";
-	// マテリアル関連
+    // マテリアル関連
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
     float animationTime_ = 0.0f;

@@ -16,10 +16,8 @@ struct Material
     float32_t4x4 uvTransform;
     int32_t selectedLighting;
     float32_t shininess;
-    
-    // ★ここを変更: ガラスかどうかを判別するフラグを追加
-    int32_t materialType; // 0:通常, 1:ガラス
-    float32_t padding2; // float32_t2 から減らしてパディング調整
+    int32_t materialType; 
+    float32_t padding2;
 };
 
 struct DirectionalLight
@@ -179,85 +177,106 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             // ===========================================================
             if (gMaterial.materialType == 1)
             {
-                // --- 1. 共通定数とベクトル ---
                 float3 N = normalize(input.smoothNormal);
                 float3 V = normalize(toEye);
                 float NdotV = saturate(dot(N, V));
                 float PI = 3.14159265f;
 
-                // --- 2. フレネル反射 (輪郭の透明度変化) ---
-                float F0 = 0.02f;
-                float fresnel = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
+            // 環境色の設定
+                float3 skyColor = float3(0.3f, 0.6f, 0.9f);
+                float3 groundColor = float3(0.4f, 0.4f, 0.4f);
+                float3 horizonColor = float3(1.0f, 1.0f, 1.0f);
 
-                // --- 3. スペキュラ (太陽光の鋭い反射) ---
+            // ===========================================================
+            // 1. プリズム屈折 (RGBを別々に曲げる！)
+            // ===========================================================
+            // 屈折率を色ごとに少しずらす (ガラスの分散特性)
+                float iorRatio = 1.0f / 1.52f;
+                float3 IOR_RGB = float3(iorRatio * 0.99f, iorRatio, iorRatio * 1.01f); // 赤、緑、青
+
+            // 3回屈折計算を行う
+                float3 RefractR = refract(-V, N, IOR_RGB.r);
+                float3 RefractG = refract(-V, N, IOR_RGB.g);
+                float3 RefractB = refract(-V, N, IOR_RGB.b);
+
+            // --- 関数化できないので、3回サンプリング処理を展開します ---
+            
+            // [Rチャンネル]
+                float2 uvR;
+                uvR.x = atan2(RefractR.x, RefractR.z) / (2.0f * PI) + 0.5f;
+                uvR.y = acos(clamp(RefractR.y, -1.0f, 1.0f)) / PI;
+                float horizonR = pow(saturate(1.0f - abs(uvR.y - 0.5f) * 2.0f), 20.0f);
+                float3 envR = (uvR.y > 0.5f) ? skyColor : groundColor;
+                float colorR = lerp(envR.r, horizonColor.r, horizonR);
+
+            // [Gチャンネル]
+                float2 uvG;
+                uvG.x = atan2(RefractG.x, RefractG.z) / (2.0f * PI) + 0.5f;
+                uvG.y = acos(clamp(RefractG.y, -1.0f, 1.0f)) / PI;
+                float horizonG = pow(saturate(1.0f - abs(uvG.y - 0.5f) * 2.0f), 20.0f);
+                float3 envG = (uvG.y > 0.5f) ? skyColor : groundColor;
+                float colorG = lerp(envG.g, horizonColor.g, horizonG);
+
+            // [Bチャンネル]
+                float2 uvB;
+                uvB.x = atan2(RefractB.x, RefractB.z) / (2.0f * PI) + 0.5f;
+                uvB.y = acos(clamp(RefractB.y, -1.0f, 1.0f)) / PI;
+                float horizonB = pow(saturate(1.0f - abs(uvB.y - 0.5f) * 2.0f), 20.0f);
+                float3 envB = (uvB.y > 0.5f) ? skyColor : groundColor;
+                float colorB = lerp(envB.b, horizonColor.b, horizonB);
+
+            // RGBを合成
+                float3 refractionColor = float3(colorR, colorG, colorB);
+
+
+            // ===========================================================
+            // 2. フレネル & ダークリム
+            // ===========================================================
+                float F0 = 0.04f;
+                float fresnel = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
+                float darkRim = smoothstep(0.6f, 1.0f, 1.0f - pow(NdotV, 0.5f));
+
+            // 表面反射 (反射は色ズレしないので1回でOK)
+                float3 ReflectVec = reflect(-V, N);
+                float2 uvReflect;
+                uvReflect.y = acos(clamp(ReflectVec.y, -1.0f, 1.0f)) / PI;
+                float3 reflectionColor = (uvReflect.y < 0.5f) ? skyColor : groundColor;
+
+            // ===========================================================
+            // 3. ダブル・スペキュラ
+            // ===========================================================
                 float3 L_Dir = normalize(-gDirectionalLight.direction);
                 float3 H = normalize(L_Dir + V);
                 float NdotH = saturate(dot(N, H));
-                float specPower = 2048.0f;
-                float3 specular = float3(1.0f, 1.0f, 1.0f) * pow(NdotH, specPower) * 2.0f;
+            
+                float specPowerPrimary = 8192.0f;
+                float3 specPrimary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH, specPowerPrimary) * 5.0f;
 
-                // --- 4. 集光現象 (影側の発光) ---
+                float3 N_Back = normalize(N + V * 0.2f);
+                float NdotH_Back = saturate(dot(N_Back, H));
+                float specPowerSecondary = 512.0f;
+                float3 specSecondary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH_Back, specPowerSecondary) * 1.0f;
+
+                float3 totalSpecular = specPrimary + specSecondary;
+
+            // ===========================================================
+            // 4. 集光 (Caustics)
+            // ===========================================================
                 float internalFocus = dot(N, -L_Dir);
-                float caustic = smoothstep(0.8f, 1.0f, internalFocus) * 0.8f;
-                float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic;
+                float caustic = smoothstep(0.9f, 1.0f, internalFocus);
+                float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic * 2.0f;
 
-                // --- 5. 環境反射 (球面マッピング + 二重反射) ---
-                float3 R = reflect(-V, N);
-                
-                // 表面UV
-                float2 uvFront;
-                uvFront.x = atan2(R.x, R.z) / (2.0f * PI) + 0.5f;
-                uvFront.y = acos(clamp(R.y, -1.0f, 1.0f)) / PI;
+            // ===========================================================
+            // 5. 最終合成
+            // ===========================================================
+            // 虹色屈折 + 表面反射
+                float3 bodyColor = lerp(refractionColor * (1.0f - darkRim * 0.8f), reflectionColor, fresnel);
+            
+                output.color.rgb = bodyColor + totalSpecular + fakeCaustics;
 
-                // 裏面UV (厚みを持たせるためのズレ)
-                float2 uvBack = uvFront + float2(0.06f, 0.06f);
-
-                // 背景グラデーション
-                float3 topColor = float3(1.0f, 1.0f, 1.0f);
-                float3 bottomColor = float3(0.05f, 0.05f, 0.1f);
-                float3 envColor = lerp(topColor, bottomColor, uvFront.y);
-
-                // スタジオ照明の計算 (表面)
-                float w1_f = smoothstep(0.02f, 0.05f, abs(uvFront.x - 0.2f));
-                float h1_f = smoothstep(0.05f, 0.1f, abs(uvFront.y - 0.4f));
-                float box1_f = (1.0f - w1_f) * (1.0f - h1_f);
-                float w2_f = smoothstep(0.01f, 0.03f, abs(uvFront.x - 0.7f));
-                float h2_f = smoothstep(0.1f, 0.15f, abs(uvFront.y - 0.6f));
-                float box2_f = (1.0f - w2_f) * (1.0f - h2_f);
-                float lightsFront = box1_f + box2_f;
-                
-                // スタジオ照明の計算 (裏面)
-                float w1_b = smoothstep(0.02f, 0.05f, abs(uvBack.x - 0.2f));
-                float h1_b = smoothstep(0.05f, 0.1f, abs(uvBack.y - 0.4f));
-                float box1_b = (1.0f - w1_b) * (1.0f - h1_b);
-                float w2_b = smoothstep(0.01f, 0.03f, abs(uvBack.x - 0.7f));
-                float h2_b = smoothstep(0.1f, 0.15f, abs(uvBack.y - 0.6f));
-                float box2_b = (1.0f - w2_b) * (1.0f - h2_b);
-                float lightsBack = (box1_b + box2_b) * 0.8f;
-
-                float lightsTotal = lightsFront + lightsBack;
-                float3 fakeLights = float3(1.0f, 1.0f, 1.0f) * lightsTotal;
-
-                // --- 6. 虹色リムライト (プリズム効果) ---
-                float rim = pow(1.0f - NdotV, 3.0f);
-                float3 rainbowRim;
-                rainbowRim.r = rim * 0.8f;
-                rainbowRim.g = rim * 0.6f;
-                rainbowRim.b = rim * 1.5f;
-
-                // --- 7. 最終合成 ---
-                float3 transmissionColor = float3(0.0f, 0.0f, 0.0f);
-                
-                output.color.rgb = transmissionColor
-                                 + (envColor * fresnel)
-                                 + fakeLights
-                                 + specular
-                                 + rainbowRim
-                                 + fakeCaustics;
-
-                // --- 8. アルファブレンド ---
-                float lightAlpha = saturate(lightsTotal * 0.7f);
-                output.color.a = saturate(0.05f + fresnel + lightAlpha + caustic * 0.5f);
+            // 透明度 (以前と同じ設定)
+                float alphaBase = 0.02f;
+                output.color.a = saturate(alphaBase + fresnel + caustic * 0.5f + (totalSpecular.r * 0.5f));
             }
             else
             {
@@ -272,7 +291,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             }
 
             // ===========================================================
-            // ★ 距離フォグ (Distance Fog) - 全体共通
+            //  距離フォグ (Distance Fog) - 全体共通
             // ===========================================================
             float3 fogColor = float3(0.1f, 0.1f, 0.1f);
             float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);

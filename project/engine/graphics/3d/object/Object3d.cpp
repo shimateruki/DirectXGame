@@ -31,11 +31,11 @@ void Object3d::Initialize(Object3dCommon* common) {
     directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
     directionalLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     directionalLightData_->direction = { 0.0f, -1.0f, 0.0f };
-    directionalLightData_->intensity = 0.0f;
+    directionalLightData_->intensity = 1.0f;
 
     cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
-    cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
+    cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
 
     // ====================================================
     //  マテリアル用バッファの作成
@@ -49,7 +49,7 @@ void Object3d::Initialize(Object3dCommon* common) {
     materialData_->uvTransform = Math::makeIdentity4x4();
     materialData_->selectedLighting = 2;               // Blinn-Phong
     materialData_->shininess = 20.0f;                  // 適度な光沢
-	materialData_->materialType = 0;// 通常マテリアル
+    materialData_->materialType = 0;// 通常マテリアル
 
     InitializeRecorder(nullptr);
 
@@ -289,7 +289,7 @@ CollisionInfo Object3d::CheckCollision(Object3d* other) {
         // A=相手(地面/AABB), B=自分(プレイヤー/OBB)
         collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
 
-     
+
     }
 
     return collision;
@@ -352,6 +352,10 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->isAnimLoop_ = other->isAnimLoop_;
     this->isAnimRelative_ = other->isAnimRelative_;
 
+    this->blendMode_ = other->blendMode_;
+    this->SetMaterialType(other->GetMaterialType());
+    this->SetColor(const_cast<Object3d*>(other)->GetColor()); // 色もコピーすると便利
+
     // レコーダー初期化
     this->InitializeRecorder(nullptr);
 
@@ -411,7 +415,8 @@ json Object3d::ExportToJson() {
     // 5. ゲームロジック用パラメータ
     j["eventType"] = static_cast<int>(eventType_);
     j["enemyType"] = enemyType_;
-
+    j["blendMode"] = static_cast<int>(blendMode_);
+    j["materialType"] = materialData_->materialType; // 0:通常, 1:ガラス
     return j;
 }
 
@@ -471,7 +476,15 @@ void Object3d::ImportFromJson(const json& j) {
     }
     if (j.contains("enemyType")) {
         enemyType_ = j["enemyType"];
-	}
+    }
+
+    if (j.contains("blendMode")) {
+        blendMode_ = static_cast<BlendMode>(j["blendMode"]);
+    }
+    if (j.contains("materialType")) {
+        SetMaterialType(j["materialType"]);
+    }
+
 }
 
 void Object3d::SetMaterialType(int32_t type) {
@@ -490,4 +503,42 @@ void Object3d::SetShininess(float shininess) {
     if (materialData_) {
         materialData_->shininess = shininess;
     }
+}
+
+AABB Object3d::GetAABB() const {
+    // 1. OBB（回転済みの形状情報）を取得
+    OBB obb = GetOBB();
+
+    // 2. OBBの各軸ベクトル（半サイズ分）を計算
+    Vector3 axisX = obb.orientations[0] * obb.size.x;
+    Vector3 axisY = obb.orientations[1] * obb.size.y;
+    Vector3 axisZ = obb.orientations[2] * obb.size.z;
+
+    // 3. OBBの8つの頂点座標をすべて計算
+    Vector3 corners[8] = {
+        obb.center - axisX - axisY - axisZ,
+        obb.center + axisX - axisY - axisZ,
+        obb.center - axisX + axisY - axisZ,
+        obb.center + axisX + axisY - axisZ,
+        obb.center - axisX - axisY + axisZ,
+        obb.center + axisX - axisY + axisZ,
+        obb.center - axisX + axisY + axisZ,
+        obb.center + axisX + axisY + axisZ
+    };
+
+    // 4. 全頂点を囲む最小・最大の四角形(AABB)を作る
+    Vector3 minPos = corners[0];
+    Vector3 maxPos = corners[0];
+
+    for (int i = 1; i < 8; ++i) {
+        minPos.x = std::min(minPos.x, corners[i].x);
+        minPos.y = std::min(minPos.y, corners[i].y);
+        minPos.z = std::min(minPos.z, corners[i].z);
+
+        maxPos.x = std::max(maxPos.x, corners[i].x);
+        maxPos.y = std::max(maxPos.y, corners[i].y);
+        maxPos.z = std::max(maxPos.z, corners[i].z);
+    }
+
+    return { minPos, maxPos };
 }
