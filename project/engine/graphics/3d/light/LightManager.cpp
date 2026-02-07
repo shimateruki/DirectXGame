@@ -53,13 +53,13 @@ void LightManager::Update() {
     }
 }
 
-Object3d::PointLight* LightManager::AddPointLight() {
+
+MeshRenderer::PointLight* LightManager::AddPointLight() {
     if (pointLights_.size() >= kMaxPointLights) {
         return nullptr; // 満杯
     }
 
-    // デフォルト値で作成
-    Object3d::PointLight light;
+    MeshRenderer::PointLight light;
     light.color = { 1.0f, 1.0f, 1.0f, 1.0f };
     light.position = { 0.0f, 2.0f, 0.0f };
     light.intensity = 1.0f;
@@ -70,19 +70,20 @@ Object3d::PointLight* LightManager::AddPointLight() {
     return &pointLights_.back();
 }
 
-Object3d::SpotLight* LightManager::AddSpotLight() {
+// ★修正: 返り値の型を MeshRenderer::SpotLight* に変更
+MeshRenderer::SpotLight* LightManager::AddSpotLight() {
     if (spotLights_.size() >= kMaxSpotLights) {
         return nullptr;
     }
 
-    Object3d::SpotLight light;
+    MeshRenderer::SpotLight light;
     light.color = { 1.0f, 1.0f, 1.0f, 1.0f };
     light.position = { 0.0f, 5.0f, 0.0f };
     light.direction = { 0.0f, -1.0f, 0.0f }; // 真下
     light.intensity = 2.0f;
     light.distance = 20.0f;
     light.decay = 1.0f;
-    light.cosAngle = 0.9f;       // 約25度
+    light.cosAngle = 0.9f;        // 約25度
     light.cosFalloffStart = 0.95f; // 少し内側
 
     spotLights_.push_back(light);
@@ -133,7 +134,6 @@ void LightManager::SaveState(const std::string& filename) {
         file << root.dump(4);
         file.close();
     }
-  
 }
 
 //  読み込み機能

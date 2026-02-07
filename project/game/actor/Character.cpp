@@ -107,21 +107,18 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->Initialize(common_);
 
     // モデル設定
-    if (!modelName_.empty()) {
-        newObj->SetModel(this->modelName_);
+    if (!GetModelName().empty()) {
+        newObj->SetModel(this->GetModelName());
     }
-
     // Transform 情報
+    // (Transform構造体はコピー可能なのでそのまま代入OK)
     newObj->transform_ = this->transform_;
 
     // 名前 
     newObj->SetName(this->name_);
-
-    newObj->SetColliderConfig(this->colliderConfig_);
-
-    // 属性とマスク
-    newObj->SetCollisionAttribute(this->collisionAttribute_);
-    newObj->SetCollisionMask(this->collisionMask_);
+    newObj->SetColliderConfig(this->GetColliderConfig());
+    newObj->SetCollisionAttribute(this->GetCollisionAttribute());
+    newObj->SetCollisionMask(this->GetCollisionMask());
 
     // 1. イベントIDとステータス(param_)をコピー
     newObj->SetEventType(this->eventType_);

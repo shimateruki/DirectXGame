@@ -7,16 +7,16 @@
 #include "AudioPlayer.h"
 #include "ParticleSystem.h" 
 #include "ParticleCommon.h" 
-#include"SpriteDebugEditor.h"
-#include"Player.h"
-#include"Text.h"
+#include "SpriteDebugEditor.h"
+#include "Player.h"
+#include "Text.h"
 #include "Event.h"
 #include "BulletManager.h"
-#include"Camera.h"
+#include "Camera.h"
+#include "MeshRenderer.h"
 
 #include <memory>
 #include <vector>
-
 
 // --- 前方宣言 (ポインタで持つものだけ) ---
 class DirectXCommon;
@@ -67,7 +67,7 @@ private:
     // --- オブジェクトレイアウト読み込み関数 ---
     void LoadObjectLayout(const std::string& filename);
     void LoadSpriteLayout(const std::string& filename);
- 
+
     /// <summary>
     /// PlayerHitEvent を受け取ったときに呼ばれるコールバック関数
     /// </summary>
@@ -107,11 +107,11 @@ private:
 
     //全体ライト(太陽の光)
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
-    Object3d::PointLight* pointLightData_ = nullptr;
-   
+    MeshRenderer::PointLight* pointLightData_ = nullptr;
+
     // スポットライト
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
-    Object3d::SpotLight* spotLightData_ = nullptr;
+    MeshRenderer::SpotLight* spotLightData_ = nullptr;
 
     /// <summary>
     /// 削除予約されたオブジェクトのリスト

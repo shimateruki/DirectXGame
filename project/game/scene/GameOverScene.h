@@ -66,10 +66,13 @@ private:
     void LoadObjectLayout(const std::string& filename);
     void LoadSpriteLayout(const std::string& filename);
 
+    /// <summary>
+    /// PlayerHitEvent を受け取ったときに呼ばれるコールバック関数
+    /// </summary>
+    void OnPlayerHit(const PlayerHitEvent& event);
 
-
-
-
+    void OnBulletHit(const BulletHitEvent& event);
+    void SwitchActivePlayer(Player* newMainPlayer);
 
 private:
 
@@ -102,11 +105,11 @@ private:
 
     //全体ライト(太陽の光)
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
-    Object3d::PointLight* pointLightData_ = nullptr;
+    MeshRenderer::PointLight* pointLightData_ = nullptr;
 
     // スポットライト
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
-    Object3d::SpotLight* spotLightData_ = nullptr;
+    MeshRenderer::SpotLight* spotLightData_ = nullptr;
 
     /// <summary>
     /// 削除予約されたオブジェクトのリスト
@@ -121,6 +124,10 @@ private:
     Object3d* lockOnTarget_ = nullptr; // 現在ロックオンしている敵
     bool isLockingOn_ = false;           // ロックオン中フラグ
 
+    /// <summary>
+    /// ロックオン処理（入力、対象検索、状態更新）
+    /// </summary>
+    void UpdateLockOn();
 
     std::unique_ptr<Object3d> CreateStaticBlock(const Vector3& position, const std::string& name, const Vector3& collisionHalfSize);
 
@@ -135,5 +142,7 @@ private:
     std::vector<Object3d*> FindEnemies();
 
     Math* math_;
+
+
 };
 
