@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <string>
 #include <cmath> // C++ の数学ライブラリ
-// レイとAABBの交差判定
 #include <algorithm> // std::max, std::min用
 
 
@@ -62,7 +61,7 @@ Vector3& operator+=(Vector3& v1, const Vector3& v2) {
 	return v1;
 }
 
-Matrix4x4 Math::makeIdentity4x4()
+Matrix4x4 Math::MakeIdentity4x4()
 {
 
 	Matrix4x4 result = {};
@@ -241,6 +240,33 @@ Matrix4x4 Math::MakeOrthographicMatrix(float left, float top, float right, float
 	return result;
 }
 
+// ★追加: ビューポート行列
+Matrix4x4 Math::MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth)
+{
+	Matrix4x4 result = {};
+	result.m[0][0] = width / 2.0f;
+	result.m[0][1] = 0.0f;
+	result.m[0][2] = 0.0f;
+	result.m[0][3] = 0.0f;
+
+	result.m[1][0] = 0.0f;
+	result.m[1][1] = -height / 2.0f; // Y軸反転（スクリーン座標系へ）
+	result.m[1][2] = 0.0f;
+	result.m[1][3] = 0.0f;
+
+	result.m[2][0] = 0.0f;
+	result.m[2][1] = 0.0f;
+	result.m[2][2] = maxDepth - minDepth;
+	result.m[2][3] = 0.0f;
+
+	result.m[3][0] = left + width / 2.0f;
+	result.m[3][1] = top + height / 2.0f;
+	result.m[3][2] = minDepth;
+	result.m[3][3] = 1.0f;
+
+	return result;
+}
+
 Matrix4x4 Math::MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate)
 {
 	Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
@@ -308,7 +334,7 @@ Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, cons
 	Vector3 xaxis = Normalize(Cross(up, zaxis));
 	Vector3 yaxis = Cross(zaxis, xaxis);
 
-	Matrix4x4 result = makeIdentity4x4();
+	Matrix4x4 result = MakeIdentity4x4();
 	result.m[0][0] = xaxis.x;
 	result.m[0][1] = yaxis.x;
 	result.m[0][2] = zaxis.x;

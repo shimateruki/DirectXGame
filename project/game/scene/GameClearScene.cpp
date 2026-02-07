@@ -271,10 +271,8 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 						// パターンA: 敵 (Factory)
 						if (!enemyType.empty()) {
 							auto enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon_.get());
-							// 敵にも種類情報をセットしておく（保存時に使うため）
 							if (enemy) {
 								enemy->SetEnemyType(enemyType);
-								// dynamic_castでBaseEnemyか確認し、プレイヤーをセット
 								if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
 									base->SetTarget(player_);
 								}
@@ -286,24 +284,18 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 							auto player = std::make_unique<Player>();
 							player->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
 							player->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
-
-							// 一旦ポインタ保持（あとでSwitchActivePlayerに使う）
 							player_ = player.get();
 							newObj = std::move(player);
 						}
-						// パターンC: スポーナー (今回の主役)
+						// パターンC: スポーナー
 						else if (type == "Spawner") {
 							auto spawner = std::make_unique<EnemySpawner>();
-
-							// 1. デフォルト設定
 							std::string spawnEnemyType = "Goblin";
 							float interval = 3.0f;
 							int maxCount = 5;
 
-							// 2. JSONの "param" ブロックから設定を読み込む
 							if (objData.contains("param") && objData["param"].is_object()) {
 								auto& p = objData["param"];
-
 								if (p.contains("enemyType") && p["enemyType"].is_string()) {
 									spawnEnemyType = p["enemyType"].get<std::string>();
 								}
@@ -315,32 +307,24 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 								}
 							}
 
-							// 3. 初期化
 							spawner->Initialize(object3dCommon_.get(), spawnEnemyType, interval, maxCount);
-
-							// 4. クラス名と透明設定 (ここで確実に設定！)
 							spawner->SetClassName("Spawner");
 							spawner->SetModel(nullptr);
 							spawner->SetIsVisible(false);
 
-							// 5. コールバック設定：ここが「白い箱」にならないための重要ポイント
-							// ※ EnemySpawner側が spawnPos (Vector3) を渡してくれる前提です
 							spawner->SetOnSpawnCallback([this, spawnEnemyType](const Vector3& spawnPos) {
-
-								// Factoryを使って本物の敵クラス(Goblin等)を作る
 								auto newEnemy = EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, object3dCommon_.get());
-
 								if (newEnemy) {
-									// 座標をセット
-									newEnemy->SetTranslate(spawnPos);
-									newEnemy->SetEnemyType(spawnEnemyType);
+									// ★修正: Transform経由で座標セット (SetTranslateでも良いが統一)
+									newEnemy->GetTransform()->translate = spawnPos;
+									// 配置直後に行列更新しておく
+									newEnemy->UpdateLocalMatrix();
+									newEnemy->UpdateWorldMatrix();
 
-									// ★重要: プレイヤー情報を渡してAIを動かす
+									newEnemy->SetEnemyType(spawnEnemyType);
 									if (auto base = dynamic_cast<BaseEnemy*>(newEnemy.get())) {
 										base->SetTarget(player_);
 									}
-
-									// シーンに追加 (AddObject内で pendingObjects_ に入るので安全)
 									this->AddObject(std::move(newEnemy));
 								}
 								});
@@ -356,11 +340,9 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 						if (newObj) {
 							newObj->SetName(name);
 							std::string currentClass = newObj->GetClassName();
-							// EnemyやPlayer以外の汎用オブジェクトならクラス名をセット
 							if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner") {
 								newObj->SetClassName(type);
 							}
-
 							targetObject = newObj.get();
 							AddObject(std::move(newObj));
 						}
@@ -370,10 +352,7 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 				if (!targetObject) continue;
 
 				// 3. モデル・表示設定
-				std::string type = targetObject->GetClassName(); // 最新のクラス名を取得
-
-				//  SpawnerもInvisibleBoxと同じく「モデルなし」にする
-				// これによりJSONに "modelName": "cube" と書いてあっても無視して透明にする
+				std::string type = targetObject->GetClassName();
 				if (type == "InvisibleBox" || type == "Spawner") {
 					targetObject->SetModel(nullptr);
 					targetObject->SetIsVisible(false);
@@ -381,7 +360,6 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 					targetObject->SetIsVisible(true);
 					if (objData.contains("modelName") && objData["modelName"].is_string()) {
 						std::string modelName = objData["modelName"].get<std::string>();
-						// モデルが変わる場合のみロード
 						if (targetObject->GetModelName() != modelName) {
 							ModelManager::GetInstance()->LoadModel(modelName);
 							targetObject->SetModel(modelName);
@@ -390,7 +368,8 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 				}
 
 				// 4. Transform
-				Object3d::Transform* transform = targetObject->GetTransform();
+				// ★修正: Object3d::Transform -> Transform
+				Transform* transform = targetObject->GetTransform();
 				if (objData.contains("position") && objData["position"].is_array()) {
 					transform->translate.x = objData["position"][0];
 					transform->translate.y = objData["position"][1];
@@ -406,6 +385,10 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 					transform->scale.y = objData["scale"][1];
 					transform->scale.z = objData["scale"][2];
 				}
+
+				// ロード直後に行列を更新
+				targetObject->UpdateLocalMatrix();
+				targetObject->UpdateWorldMatrix();
 
 				// 5. Collider
 				if (objData.contains("collider")) {
@@ -423,6 +406,11 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 						config.size.y = colData["size"][1];
 						config.size.z = colData["size"][2];
 					}
+					if (colData.contains("rotation")) {
+						config.rotation.x = colData["rotation"][0];
+						config.rotation.y = colData["rotation"][1];
+						config.rotation.z = colData["rotation"][2];
+					}
 					targetObject->SetColliderConfig(config);
 				}
 
@@ -434,16 +422,13 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 				if (objData.contains("targetID")) targetObject->SetTargetID(objData["targetID"]);
 				if (objData.contains("myEventID")) targetObject->SetEventID(objData["myEventID"]);
 
-				// paramの読み込み (Spawner設定などもここで読む)
 				if (objData.contains("param") && objData["param"].is_object()) {
-					// まだ作られてなければ作成
 					if (!targetObject->param_.has_value()) {
 						targetObject->param_.emplace();
 					}
 					json paramData = objData["param"];
 					auto& p = targetObject->param_.value();
 
-					// 物理・ステータス系
 					if (paramData.contains("hp")) p.hp = paramData["hp"];
 					if (paramData.contains("maxHp")) p.maxHp = paramData["maxHp"];
 					if (paramData.contains("speed")) p.speed = paramData["speed"];
@@ -451,7 +436,6 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 					if (paramData.contains("jumpPower")) p.jumpPower = paramData["jumpPower"];
 					if (paramData.contains("maxFallSpeed")) p.maxFallSpeed = paramData["maxFallSpeed"];
 
-					// Spawner系 (保存した値を書き戻す)
 					if (paramData.contains("enemyType")) p.enemyType = paramData["enemyType"];
 					if (paramData.contains("interval")) p.interval = paramData["interval"];
 					if (paramData.contains("maxCount")) p.maxCount = paramData["maxCount"];
@@ -486,11 +470,9 @@ void GameClearScene::LoadObjectLayout(const std::string& filename) {
 			}
 			if (parentObj) childObj->SetParent(parentObj);
 		}
-	
 
 	}
-	catch (const json::parse_error& e) { // const をつけておくと丁寧
-		// e.what() を追加して、エラーの詳細も表示する
+	catch (const json::parse_error& e) {
 		std::string message = "Failed to parse " + filename + " : " + e.what() + "\n";
 		OutputDebugStringA(message.c_str());
 	}

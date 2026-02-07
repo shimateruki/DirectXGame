@@ -52,7 +52,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->shininess = 50;
     materialData_->materialType = 0; // 通常
     Math math;
-    materialData_->uvTransform = math.makeIdentity4x4();
+    materialData_->uvTransform = math.MakeIdentity4x4();
 
     // 5. ボーン用バッファの作成 (★追加)
     CreateBoneBuffer();
@@ -78,7 +78,7 @@ void Model::CreateBoneBuffer() {
     // これをしないと、アニメーション更新が走る前の1フレーム目にモデルが消えます
     Math math;
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-        boneMappedData_[i].finalMatrix = math.makeIdentity4x4();
+        boneMappedData_[i].finalMatrix = math.MakeIdentity4x4();
     }
 
     // 3. SRVを作成 (StructuredBuffer)
@@ -111,7 +111,7 @@ void Model::UpdateBoneBuffer() {
                 math_.Multiply(modelData_.bones[i].inverseBindPoseMatrix, node->globalMatrix);
         } else {
             // ノードが見つからない(ダミーボーンなど)場合は単位行列を入れる
-            boneMappedData_[i].finalMatrix = math_.makeIdentity4x4();
+            boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
         }
     }
 }
@@ -272,7 +272,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         Bone dummyBone;
         dummyBone.name = "DummyBone";
         Math math;
-        dummyBone.inverseBindPoseMatrix = math.makeIdentity4x4();
+        dummyBone.inverseBindPoseMatrix = math.MakeIdentity4x4();
         modelData.bones.push_back(dummyBone);
 
         // 2. すべての頂点にダミーボーンの影響(100%)を与える
@@ -378,7 +378,7 @@ void Model::UpdateNodeMatrix(Node& node, const Matrix4x4& parentMatrix) {
 
 // 毎フレーム呼ぶ更新処理
 void Model::Update() {
-    Matrix4x4 identity = math_.makeIdentity4x4();
+    Matrix4x4 identity = math_.MakeIdentity4x4();
     UpdateNodeMatrix(modelData_.rootNode, identity);
 
     //  ボーン情報の更新

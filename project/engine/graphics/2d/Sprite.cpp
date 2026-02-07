@@ -40,8 +40,8 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 	wvpResource_ = dxCommon_->CreateBufferResource(sizeof(TransformationMatrix));
 	wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
 	Math math;
-	wvpData_->WVP = math.makeIdentity4x4();
-	wvpData_->World = math.makeIdentity4x4();
+	wvpData_->WVP = math.MakeIdentity4x4();
+	wvpData_->World = math.MakeIdentity4x4();
 
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
@@ -125,14 +125,14 @@ void Sprite::Update() {
 
 	Math math;
 	Matrix4x4 worldMatrix = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-	Matrix4x4 viewMatrix = math.makeIdentity4x4();
+	Matrix4x4 viewMatrix = math.MakeIdentity4x4();
 	Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 100.0f);
 	Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
 
 	wvpData_->WVP = worldViewProjectionMatrix;
 	wvpData_->World = worldMatrix;
 	materialData_->enableLighting = false;
-	materialData_->uvTransform = math.makeIdentity4x4();
+	materialData_->uvTransform = math.MakeIdentity4x4();
 }
 /// <summary>
 /// 描画

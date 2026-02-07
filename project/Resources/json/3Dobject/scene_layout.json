@@ -2,6 +2,7 @@
     "objects": [
         {
             "animName": "",
+            "blendMode": 1,
             "collider": {
                 "center": [
                     0.0,
@@ -22,10 +23,17 @@
             },
             "collisionAttribute": 1,
             "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
             "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
+            "materialType": 1,
             "modelName": "sample",
             "myEventID": -1,
             "name": "Player",
@@ -42,13 +50,13 @@
             },
             "parentName": "",
             "position": [
-                0.9768620133399963,
-                1.9828366041183472,
-                18.464021682739258
+                -0.6932533383369446,
+                1.9988157749176025,
+                0.4169354736804962
             ],
             "rotation": [
                 6.278290811678744e-07,
-                0.003185012610629201,
+                1.5431795120239258,
                 6.27829649602063e-07
             ],
             "scale": [
@@ -61,6 +69,7 @@
         },
         {
             "animName": "",
+            "blendMode": 0,
             "collider": {
                 "center": [
                     0.0,
@@ -81,10 +90,17 @@
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967291,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
             "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
+            "materialType": 0,
             "modelName": "terrain",
             "myEventID": -1,
             "name": "terrain",
@@ -109,6 +125,7 @@
         },
         {
             "animName": "Armature|mixamo.com|Layer0",
+            "blendMode": 0,
             "collider": {
                 "center": [
                     0.0,
@@ -129,10 +146,17 @@
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
             "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
+            "materialType": 0,
             "modelName": "a.gltf",
             "myEventID": -1,
             "name": "a",
@@ -157,6 +181,7 @@
         },
         {
             "animName": "",
+            "blendMode": 0,
             "collider": {
                 "center": [
                     0.0,
@@ -177,10 +202,17 @@
             },
             "collisionAttribute": 2,
             "collisionMask": 13,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
             "enemyType": "Slime",
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
+            "materialType": 0,
             "modelName": "cube",
             "myEventID": -1,
             "name": "Object",
@@ -198,7 +230,7 @@
             "parentName": "",
             "position": [
                 92.49800872802734,
-                -29410.6640625,
+                -30193.04296875,
                 13.020607948303223
             ],
             "rotation": [
@@ -216,6 +248,7 @@
         },
         {
             "animName": "",
+            "blendMode": 0,
             "collider": {
                 "center": [
                     0.0,
@@ -236,8 +269,17 @@
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "",
             "eventID": 0,
             "isAnimLoop": true,
+            "isAnimRelative": false,
+            "materialType": 0,
             "modelName": "sampleBlock.gltf",
             "myEventID": -1,
             "name": "Obj_0",

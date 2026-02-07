@@ -15,11 +15,12 @@
 #include "DirectXCommon.h"
 #include "CollisionConfig.h"
 #include "ModelManager.h"      
-#include "InputManager.h"   
+#include "InputManager.h"    
 #include <cmath>
 #include <cassert> 
 #include "GhostRecorder.h" 
 #include "CameraEditor.h"
+#include "Transform.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -135,7 +136,8 @@ void DebugEditor::Update() {
                 if (obj.get() == previewObject_.get()) continue;
                 if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
 
-                Object3d::Transform* tf = obj->GetTransform();
+                // ★修正: Object3d::Transform -> Transform
+                Transform* tf = obj->GetTransform();
                 // AABB (簡易衝突判定ボックス) 作成
                 Vector3 minBox = { tf->translate.x - tf->scale.x, tf->translate.y - tf->scale.y, tf->translate.z - tf->scale.z };
                 Vector3 maxBox = { tf->translate.x + tf->scale.x, tf->translate.y + tf->scale.y, tf->translate.z + tf->scale.z };
@@ -192,11 +194,13 @@ void DebugEditor::Update() {
                 }
 
                 // プレビューの位置を更新
+                // GetTransform() は Transform* を返すのでアロー演算子でアクセス
                 previewObject_->GetTransform()->translate = finalPos;
                 previewObject_->SetColor({ 1.0f, 1.8f, 1.0f, 0.5f }); // 半透明に見せる
                 previewObject_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
 
                 // ★ここが重要：必ず行列を更新して描画に反映させる
+                // (Object3d::UpdateLocalMatrix/UpdateWorldMatrixを呼ぶ)
                 previewObject_->UpdateLocalMatrix();
                 previewObject_->UpdateWorldMatrix();
             }
@@ -264,7 +268,8 @@ void DebugEditor::Update() {
                 for (auto& obj : objects) {
                     if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
 
-                    Object3d::Transform* tf = obj->GetTransform();
+                    // ★修正: Object3d::Transform -> Transform
+                    Transform* tf = obj->GetTransform();
                     Vector3 minBox = { tf->translate.x - tf->scale.x, tf->translate.y - tf->scale.y, tf->translate.z - tf->scale.z };
                     Vector3 maxBox = { tf->translate.x + tf->scale.x, tf->translate.y + tf->scale.y, tf->translate.z + tf->scale.z };
 
@@ -301,7 +306,8 @@ void DebugEditor::Update() {
             if (camera) {
                 const Matrix4x4& view = camera->GetViewMatrix();
                 const Matrix4x4& proj = camera->GetProjectionMatrix();
-                Object3d::Transform* tr = selectedObject_->GetTransform();
+                // ★修正: Object3d::Transform -> Transform
+                Transform* tr = selectedObject_->GetTransform();
 
                 Matrix4x4 world = math.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
 
@@ -335,6 +341,11 @@ void DebugEditor::Update() {
                     tr->translate = t;
                     tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
                     tr->scale = s;
+
+                    // ★行列更新 (Object3d::UpdateLocalMatrix などを呼ぶならここでも呼ぶべきですが、
+                    // UpdateWorldMatrix が呼ばれるのは selectedObject_->Update() のタイミングなので、
+                    // ここではデータ更新だけでOKです。必要なら selectedObject_->UpdateLocalMatrix() を呼びます)
+                    selectedObject_->UpdateLocalMatrix(); // 即反映させたいなら呼ぶ
                     selectedObject_->UpdateWorldMatrix();
                 }
 
@@ -458,7 +469,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
 
         // --- 行列計算 (サイズと位置) ---
-        Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
+        Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
 
         // ★コライダーがある場合は、その形状データ(Size/Center/Rotation)に合わせて枠を変形させる
         if (type != ColliderType::kNone) {
@@ -561,7 +572,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
             // 弾は黄色固定
             Vector4 color = { 1.0f, 1.0f, 0.0f, 1.0f };
-            Matrix4x4 drawWorldMatrix = math.makeIdentity4x4();
+            Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
 
             // 弾の場合は物理挙動の結果(GetOBB)をそのまま信じて描画する
             if (type == ColliderType::kOBB) {
@@ -569,7 +580,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 Matrix4x4 matScale = math.MakeScaleMatrix(obb.size * 2.0f);
 
                 // OBBの軸から回転行列を復元
-                Matrix4x4 matRot = math.makeIdentity4x4();
+                Matrix4x4 matRot = math.MakeIdentity4x4();
                 matRot.m[0][0] = obb.orientations[0].x; matRot.m[0][1] = obb.orientations[0].y; matRot.m[0][2] = obb.orientations[0].z;
                 matRot.m[1][0] = obb.orientations[1].x; matRot.m[1][1] = obb.orientations[1].y; matRot.m[1][2] = obb.orientations[1].z;
                 matRot.m[2][0] = obb.orientations[2].x; matRot.m[2][1] = obb.orientations[2].y; matRot.m[2][2] = obb.orientations[2].z;
@@ -757,7 +768,8 @@ void DebugEditor::DrawImGui() {
         // --- Transform編集 (日本語だと直感的) ---
         ImGui::Separator();
         ImGui::Text("トランスフォーム (Transform)");
-        Object3d::Transform* transform = selectedObject_->GetTransform();
+        // ★修正: Object3d::Transform -> Transform
+        Transform* transform = selectedObject_->GetTransform();
         bool isTransformChanged = false;
 
         if (ImGui::DragFloat3("座標 (Pos)", &transform->translate.x, 0.1f)) isTransformChanged = true;
@@ -1422,7 +1434,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     }
 
     // --- Transform ---
-    Object3d::Transform* tf = object->GetTransform();
+    // ★修正: Object3d::Transform -> Transform
+    Transform* tf = object->GetTransform();
     currentData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
     currentData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
     currentData["scale"] = { tf->scale.x, tf->scale.y, tf->scale.z };
@@ -1758,7 +1771,8 @@ void DebugEditor::SaveScene() {
         }
 
         // Transform
-        Object3d::Transform* objTr = obj->GetTransform();
+        // ★修正: Object3d::Transform -> Transform
+        Transform* objTr = obj->GetTransform();
         d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
         d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
         d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
@@ -1839,7 +1853,11 @@ void DebugEditor::DuplicateSelected() {
     newObj->SetName(selectedObject_->GetName() + "_Copy" + std::to_string(duplicateCount++));
 
     // 3. 位置ずらし
+    // ★修正: GetTransform() -> translate
     newObj->GetTransform()->translate.x += 2.0f;
+
+    // 行列更新
+    newObj->UpdateWorldMatrix();
 
     // 4. 追加
     Object3d* ptr = newObj.get();
@@ -1879,7 +1897,7 @@ void DebugEditor::PerformUndo() {
 
     // 3. 値を「変更前 (oldTf)」に戻す
     if (cmd.target) {
-        // Transform構造体を丸ごとコピーできるので楽です！
+        // ★修正: 構造体ごとコピー
         *cmd.target->GetTransform() = cmd.oldTf;
 
         // 行列更新

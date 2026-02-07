@@ -1,12 +1,12 @@
-
 #pragma once
 #include <d3d12.h> 
 #include <wrl.h>   
 #include <vector>  
 #include "engine/utility/math/Math.h"
 #include <string> 
-#include"BaseScene.h"
+#include "BaseScene.h"
 #include <deque>
+#include "Transform.h"
 
 class Object3d;
 class DirectXCommon;
@@ -29,8 +29,7 @@ struct AlignedVector4 {
 
 class DebugEditor {
 public:
-    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
-    );
+    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void Finalize();
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
@@ -99,15 +98,16 @@ private:
     //  Undoシステム用構造体 
     struct TransformCommand {
         Object3d* target;        // 操作したオブジェクト
-        Object3d::Transform oldTf; // 変更前の状態
-        Object3d::Transform newTf; // 変更後の状態
+        Transform oldTf; // 変更前の状態
+        Transform newTf; // 変更後の状態
     };
 
     // 履歴スタック (最大50件くらい保存)
     std::deque<TransformCommand> undoStack_;
 
     // 編集中の一時保存用 (ドラッグ開始時の状態)
-    Object3d::Transform tempTransformStart_;
+    // ★修正: Object3d::Transform -> Transform
+    Transform tempTransformStart_;
     bool isDraggingTransform_ = false;
 
     bool isGridSnapEnabled_ = false; // スナップするかどうか

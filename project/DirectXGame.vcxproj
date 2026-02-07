@@ -531,6 +531,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\GhostRecorder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\LightEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h" />
+    <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

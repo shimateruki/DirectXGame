@@ -7,7 +7,7 @@
 #include "SceneManager.h"
 #include "GhostRecorder.h"
 #include <cassert>
-
+#include <algorithm> // min, max
 
 Object3d::~Object3d() {
     if (recorder_) {
@@ -21,39 +21,47 @@ void Object3d::Initialize(Object3dCommon* common) {
     common_ = common;
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
+    // WVP用バッファ
     wvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
     wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
     Math math;
-    wvpData_->WVP = math.makeIdentity4x4();
-    wvpData_->world = math.makeIdentity4x4();
+    wvpData_->WVP = math.MakeIdentity4x4();
+    wvpData_->world = math.MakeIdentity4x4();
 
+    // ライト用バッファ
     directionalLightResource_ = dxCommon->CreateBufferResource(sizeof(DirectionalLight));
     directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
     directionalLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     directionalLightData_->direction = { 0.0f, -1.0f, 0.0f };
     directionalLightData_->intensity = 1.0f;
 
+    // カメラ座標バッファ
     cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
 
-    // ====================================================
-    //  マテリアル用バッファの作成
-    // ====================================================
+    // マテリアルバッファ
     materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
     materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 
-    // デフォルト値を設定 
+    // マテリアル初期値
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f }; // 白
     materialData_->enableLighting = 1;                 // ライティング有効
-    materialData_->uvTransform = Math::makeIdentity4x4();
+    materialData_->uvTransform = Math::MakeIdentity4x4();
     materialData_->selectedLighting = 2;               // Blinn-Phong
     materialData_->shininess = 20.0f;                  // 適度な光沢
-    materialData_->materialType = 0;// 通常マテリアル
+    materialData_->materialType = 0;                   // 通常マテリアル
+
+    // Transformの初期化
+    transform_.scale = { 1.0f, 1.0f, 1.0f };
+    transform_.rotate = { 0.0f, 0.0f, 0.0f };
+    transform_.translate = { 0.0f, 0.0f, 0.0f };
+
+    // 行列の初期計算
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
 
     InitializeRecorder(nullptr);
-
-
 }
 
 OBB Object3d::GetOBB() const {
@@ -63,9 +71,7 @@ OBB Object3d::GetOBB() const {
     // =========================================================
     // 1. コライダー自身の「ローカル行列」を作る
     // =========================================================
-    // ここで colliderConfig_.rotation を使って回転行列を作ります
-
-    // 回転 (Z * X * Y 順など、エンジンの仕様に合わせますが基本はこれ)
+    // 回転
     Matrix4x4 matRotX = math.MakeRotateXMatrix(colliderConfig_.rotation.x);
     Matrix4x4 matRotY = math.MakeRotateYMatrix(colliderConfig_.rotation.y);
     Matrix4x4 matRotZ = math.MakeRotateZMatrix(colliderConfig_.rotation.z);
@@ -74,31 +80,27 @@ OBB Object3d::GetOBB() const {
     // 中心ズレ (Center)
     Matrix4x4 matTrans = math.MakeTranslateMatrix(colliderConfig_.center);
 
-    // コライダー単体の行列 (回転させてから、ズラス)
+    // コライダー単体の行列
     Matrix4x4 matColliderLocal = math.Multiply(matRot, matTrans);
-
 
     // =========================================================
     // 2. オブジェクトの「ワールド行列」と合成する
     // =========================================================
-    // これで [親の回転] + [子の回転] が合わさった最終的な行列になります
-    Matrix4x4 matFinal = math.Multiply(matColliderLocal, worldMatrix_);
-
+    // transform_.matWorld を使用する形に変更
+    Matrix4x4 matFinal = math.Multiply(matColliderLocal, transform_.matWorld);
 
     // =========================================================
     // 3. 行列から OBB の情報を抜き出す
     // =========================================================
-
-    // A. 中心座標 (行列の平行移動成分 [3][0]~[3][2])
+    // A. 中心座標
     obb.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
 
-    // B. 3つの軸 (行列の回転成分 X, Y, Z軸)
+    // B. 3つの軸
     obb.orientations[0] = math.Normalize({ matFinal.m[0][0], matFinal.m[0][1], matFinal.m[0][2] }); // X軸
     obb.orientations[1] = math.Normalize({ matFinal.m[1][0], matFinal.m[1][1], matFinal.m[1][2] }); // Y軸
     obb.orientations[2] = math.Normalize({ matFinal.m[2][0], matFinal.m[2][1], matFinal.m[2][2] }); // Z軸
 
     // C. サイズ (半サイズ)
-    // コライダーの元サイズ * オブジェクトのスケール
     obb.size = {
         colliderConfig_.size.x * transform_.scale.x,
         colliderConfig_.size.y * transform_.scale.y,
@@ -110,15 +112,12 @@ OBB Object3d::GetOBB() const {
 
 void Object3d::SetModel(const std::string& modelName) {
     modelName_ = modelName;
-    // 探して、なければ読み込んでくれる
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
-
-
 }
 
 void Object3d::Update(float deltaTime) {
     if (model_) {
-        // 1. アニメーションが指定されていれば適用する
+        // アニメーション更新
         if (!animName_.empty()) {
             const Model::Animation* anim = model_->GetAnimation(animName_);
             if (anim) {
@@ -128,17 +127,15 @@ void Object3d::Update(float deltaTime) {
                 // ループ処理
                 float time = animationTime_;
                 if (isAnimLoop_ && anim->duration > 0.0f) {
-                    time = std::fmod(time, anim->duration); // 最後の時間を過ぎたら0に戻る
+                    time = std::fmod(time, anim->duration);
                 } else {
-                    // ループしない場合は最後の時間で止める
                     time = std::min(time, anim->duration);
                 }
 
-                // モデルにポーズを適用 (LocalMatrixを書き換える)
+                // モデルにポーズを適用
                 model_->ApplyAnimation(*anim, time);
             }
         }
-
         model_->Update();
     }
 
@@ -147,180 +144,152 @@ void Object3d::Update(float deltaTime) {
     }
 }
 
+// -------------------------------------------------------------
+// 行列更新処理 (Transformへの委譲)
+// -------------------------------------------------------------
+
 void Object3d::UpdateLocalMatrix() {
-    Math math;
-
-    // ★ localMatrix_ を計算する
-    localMatrix_ = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-
-    // ★ 親がいない場合、ローカル行列 = ワールド行列とする
-    if (parent_ == nullptr) {
-        worldMatrix_ = localMatrix_;
-    }
-
+    // Transform側で行列計算を行う
+    transform_.UpdateMatrix();
 }
-
 
 void Object3d::UpdateWorldMatrix() {
-    Math math;
+    // 1. Transform側で行列計算
+    transform_.UpdateMatrix();
 
-    // --- 親子関係の処理 ---
-    if (parent_ != nullptr) {
-        worldMatrix_ = math.Multiply(localMatrix_, parent_->GetWorldMatrix());
+    // 2. GPUへのデータ転送 (WVP計算)
+    //    計算結果は transform_.matWorld に格納されている
+    if (wvpData_) {
+        Math math;
+        const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
+        if (camera) {
+            const Matrix4x4& view = camera->GetViewMatrix();
+            const Matrix4x4& proj = camera->GetProjectionMatrix();
+
+            // ビュープロジェクション行列
+            Matrix4x4 viewProj = math.Multiply(view, proj);
+
+            // WVP = World * View * Proj
+            wvpData_->WVP = math.Multiply(transform_.matWorld, viewProj);
+
+            // World行列そのもの
+            wvpData_->world = transform_.matWorld;
+
+            // 法線変換用の逆転置行列
+            wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(transform_.matWorld));
+
+            // カメラ座標
+            cameraData_->worldPosition = camera->GetEye();
+        } else {
+            // カメラがない場合の安全策 (単位行列)
+            wvpData_->WVP = math.MakeIdentity4x4();
+            wvpData_->world = math.MakeIdentity4x4();
+        }
+
+        // 平行光源の更新
+        if (directionalLightData_) {
+            directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
+        }
     }
-
-    // --- 既存の WVP とライティングの処理 ---
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
-    // カメラがあれば計算する
-    if (camera) {
-        const Matrix4x4& viewMatrix = camera->GetViewMatrix();
-        const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
-
-        Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix_, math.Multiply(viewMatrix, projectionMatrix));
-
-        wvpData_->WVP = worldViewProjectionMatrix;
-        wvpData_->world = worldMatrix_;
-        wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix_));
-        directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
-        cameraData_->worldPosition = camera->GetEye();
-    }
-
 }
 
-
+// -------------------------------------------------------------
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-
     if (!isVisible_) {
         return;
     }
     common_->SetPipelineState(blendMode_);
 
-    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-
     if (model_) {
         model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource, materialResource_.Get());
     }
 }
+
 void Object3d::SetParent(Object3d* parent) {
+    // 古い親から削除
     if (parent_) {
         std::vector<Object3d*>& kids = parent_->children_;
-        // 削除イディオム (Erase-Remove idiom)
         kids.erase(std::remove(kids.begin(), kids.end(), this), kids.end());
     }
 
-
     parent_ = parent;
 
+    // 新しい親に登録
     if (parent_) {
         parent_->children_.push_back(this);
+        // Transform側にも親を伝える (ポインタ渡し)
+        transform_.parent = parent_->GetTransform();
+    } else {
+        // 親なし
+        transform_.parent = nullptr;
     }
+
+    // 親が変わったので行列再計算
+    UpdateWorldMatrix();
 }
+
 CollisionInfo Object3d::CheckCollision(Object3d* other) {
     CollisionInfo collision;
-    collision.isColliding = false; // 初期化
+    collision.isColliding = false;
 
-    // 自分のタイプと相手のタイプを取得
     ColliderType myType = this->GetColliderType();
     ColliderType otherType = other->GetColliderType();
 
-    // ====================================================================
-    // 1. 同じ形状同士の判定
-    // ====================================================================
-
-    // AABB vs AABB
+    // 同じ形状同士
     if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
         collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
-    }
-    // Sphere vs Sphere
-    else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
+    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
         collision = CheckSphereCollision(
             this->GetWorldPosition(), this->GetCollisionRadius(),
             other->GetWorldPosition(), other->GetCollisionRadius());
-    }
-    // OBB vs OBB
-    else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
+    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
         collision = CheckOBBCollision(this->GetOBB(), other->GetOBB());
     }
-
-    // ====================================================================
-    // 2. 異なる形状同士の判定
-    // ====================================================================
-
-    // Sphere vs AABB
+    // 異なる形状同士
     else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
         collision = CheckSphereAABBCollision(
             this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
-    }
-    // AABB vs Sphere (引数を入れ替えるため、法線を反転)
-    else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
+    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
         collision = CheckSphereAABBCollision(
             other->GetWorldPosition(), other->GetCollisionRadius(), this->GetAABB());
         collision.normal = collision.normal * -1.0f;
-    }
-
-    // Sphere vs OBB
-    else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
+    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
         collision = CheckSphereOBBCollision(
             this->GetWorldPosition(), this->GetCollisionRadius(), other->GetOBB());
-    }
-    // OBB vs Sphere (引数を入れ替えるため、法線を反転)
-    else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
+    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
         collision = CheckSphereOBBCollision(
             other->GetWorldPosition(), other->GetCollisionRadius(), this->GetOBB());
         collision.normal = collision.normal * -1.0f;
-    }
-
-    // ====================================================================
-    // 3. AABB vs OBB の判定 
-    // ====================================================================
-
-    // AABB(自分) vs OBB(相手)
-    else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
-        // 関数は「AABBからOBBを押し出すベクトル」を返す
+    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
         collision = CheckAABBOBBCollision(this->GetAABB(), other->GetOBB());
-
         collision.normal = collision.normal * -1.0f;
-    }
-    // OBB(自分) vs AABB(相手)
-    else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
-        // CheckAABBOBBCollision(A, B) を呼ぶ
-        // A=相手(地面/AABB), B=自分(プレイヤー/OBB)
+    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
         collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
-
-
     }
 
     return collision;
 }
-
 
 void Object3d::SetIntensity(float intensity) {
     if (directionalLightData_) {
         directionalLightData_->intensity = intensity;
     }
 }
+
 void Object3d::InitializeRecorder(SceneManager* sceneManager) {
-    // すでに持っていたら作り直さない（安全策）
     if (recorder_) {
         delete recorder_;
     }
-
-    // 1. 実体を作る (new)
     recorder_ = new GhostRecorder();
-
-    // 2. 初期化する
     recorder_->Initialize(sceneManager);
-
     recorder_->SetTarget(this);
 }
-
 
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
 
-    // --- 基本情報のコピー ---
     if (!other->modelName_.empty()) {
         this->SetModel(other->modelName_);
     }
@@ -329,37 +298,26 @@ void Object3d::CopyFrom(const Object3d* other) {
     // Transform
     this->transform_ = other->transform_;
 
-    // --- コライダー & 物理 ---
     this->SetColliderConfig(other->colliderConfig_);
     this->collisionAttribute_ = other->collisionAttribute_;
     this->collisionMask_ = other->collisionMask_;
 
-    // 1. クラス名
     this->className_ = other->className_;
-
-    // 2. 可視性
     this->isVisible_ = other->isVisible_;
-
-    // 3. イベントタイプ
     this->eventType_ = other->eventType_;
     this->enemyType_ = other->enemyType_;
-
-    // 4. パラメータ
     this->param_ = other->param_;
 
-    // アニメーション設定のコピー
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
     this->isAnimRelative_ = other->isAnimRelative_;
 
     this->blendMode_ = other->blendMode_;
     this->SetMaterialType(other->GetMaterialType());
-    this->SetColor(const_cast<Object3d*>(other)->GetColor()); // 色もコピーすると便利
+    this->SetColor(const_cast<Object3d*>(other)->GetColor());
 
-    // レコーダー初期化
     this->InitializeRecorder(nullptr);
 
-    // 設定が入っていれば、即座に再生を開始させる
     if (!this->animName_.empty() && this->recorder_) {
         this->recorder_->Play(
             this->animName_,
@@ -369,34 +327,25 @@ void Object3d::CopyFrom(const Object3d* other) {
     }
 }
 
-// Cloneはシンプルに
 std::unique_ptr<Object3d> Object3d::Clone() const {
     auto newObj = std::make_unique<Object3d>();
-
-    // 初期化
     assert(common_ != nullptr);
     newObj->Initialize(common_);
-    // 中身をコピー 
     newObj->CopyFrom(this);
     return newObj;
 }
 
 // ---------------------------------------------------------
-// 自身の情報をJSONデータとして出力（プリセット保存用）
+// JSON Export
 // ---------------------------------------------------------
 json Object3d::ExportToJson() {
     json j;
-
-    // 1. 基本情報
     j["name"] = name_;
     j["modelName"] = modelName_;
 
-    // 2. Transform (位置は配置時に決めるので保存しないが、スケールと回転は必須)
     j["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
     j["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
 
-    // 3. コライダー設定 (CollisionConfig)
-    // ここが大事！サイズだけでなく、位置ズレ(center)や種類も保存する
     j["collider"] = {
         {"type", static_cast<int>(colliderConfig_.type)},
         {"size", { colliderConfig_.size.x, colliderConfig_.size.y, colliderConfig_.size.z }},
@@ -404,36 +353,28 @@ json Object3d::ExportToJson() {
         { "rotation", { colliderConfig_.rotation.x, colliderConfig_.rotation.y, colliderConfig_.rotation.z } }
     };
 
-    // 4. アニメーション設定
-    // これを保存しないと、配置した瞬間に棒立ちになったり、ループしなかったりする
     j["animation"] = {
         {"animName", animName_},
         {"isAnimLoop", isAnimLoop_},
         {"isAnimRelative", isAnimRelative_}
     };
 
-    // 5. ゲームロジック用パラメータ
     j["eventType"] = static_cast<int>(eventType_);
     j["enemyType"] = enemyType_;
     j["blendMode"] = static_cast<int>(blendMode_);
-    j["materialType"] = materialData_->materialType; // 0:通常, 1:ガラス
+    j["materialType"] = materialData_->materialType;
     return j;
 }
 
 // ---------------------------------------------------------
-// JSONデータから設定を読み込んで反映（プリセット適用用）
+// JSON Import
 // ---------------------------------------------------------
 void Object3d::ImportFromJson(const json& j) {
-    // 1. 基本情報
     if (j.contains("modelName")) {
         modelName_ = j["modelName"];
-        // モデルが変わるなら再ロードが必要かもしれない（設計による）
         // ModelManager::Load(modelName_); 
     }
-    // 名前は上書きしない（配置時にユニークな名前をつけることが多いため）
-    // if (j.contains("name")) name_ = j["name"]; 
 
-    // 2. Transform
     if (j.contains("scale")) {
         transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
     }
@@ -441,11 +382,12 @@ void Object3d::ImportFromJson(const json& j) {
         transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
     }
 
-    // 3. コライダー設定
+    // インポート直後に行列を更新しておく
+    transform_.UpdateMatrix();
+
     if (j.contains("collider")) {
         const auto& col = j["collider"];
         if (col.contains("type")) colliderConfig_.type = static_cast<ColliderType>(col["type"]);
-
         if (col.contains("size")) {
             colliderConfig_.size = { col["size"][0], col["size"][1], col["size"][2] };
         }
@@ -457,34 +399,29 @@ void Object3d::ImportFromJson(const json& j) {
         }
     }
 
-    // 4. アニメーション設定
     if (j.contains("animation")) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
         if (anim.contains("isAnimRelative")) isAnimRelative_ = anim["isAnimRelative"];
 
-        //  アニメーション設定を読み込んだら、Recorder側にも反映・再生開始が必要
         if (recorder_ && !animName_.empty()) {
             recorder_->Play(animName_, isAnimLoop_, isAnimRelative_);
         }
     }
 
-    // 5. ゲームロジック用パラメータ
     if (j.contains("eventType")) {
         eventType_ = static_cast<EventType>(j["eventType"]);
     }
     if (j.contains("enemyType")) {
         enemyType_ = j["enemyType"];
     }
-
     if (j.contains("blendMode")) {
         blendMode_ = static_cast<BlendMode>(j["blendMode"]);
     }
     if (j.contains("materialType")) {
         SetMaterialType(j["materialType"]);
     }
-
 }
 
 void Object3d::SetMaterialType(int32_t type) {
@@ -506,15 +443,11 @@ void Object3d::SetShininess(float shininess) {
 }
 
 AABB Object3d::GetAABB() const {
-    // 1. OBB（回転済みの形状情報）を取得
     OBB obb = GetOBB();
-
-    // 2. OBBの各軸ベクトル（半サイズ分）を計算
     Vector3 axisX = obb.orientations[0] * obb.size.x;
     Vector3 axisY = obb.orientations[1] * obb.size.y;
     Vector3 axisZ = obb.orientations[2] * obb.size.z;
 
-    // 3. OBBの8つの頂点座標をすべて計算
     Vector3 corners[8] = {
         obb.center - axisX - axisY - axisZ,
         obb.center + axisX - axisY - axisZ,
@@ -526,7 +459,6 @@ AABB Object3d::GetAABB() const {
         obb.center + axisX + axisY + axisZ
     };
 
-    // 4. 全頂点を囲む最小・最大の四角形(AABB)を作る
     Vector3 minPos = corners[0];
     Vector3 maxPos = corners[0];
 
