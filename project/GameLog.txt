@@ -1,1 +1,1 @@
-GamePlayScene.cpp(58): [INFO] Game Initialized!
+GamePlayScene.cpp(54): [INFO] Game Initialized!
