@@ -5,7 +5,7 @@
 
 Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
     Vector3 move = { 0.0f, 0.0f, 0.0f };
-    const float moveSpeed = 6.0f; // 秒速
+    float moveSpeed = player->GetMoveSpeed(); 
 
     InputManager* inputManager = player->GetInputManager();
     if (!inputManager) { return move; }

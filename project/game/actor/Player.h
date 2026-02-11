@@ -1,45 +1,65 @@
 #pragma once
-#include "Character.h" 
-#include "InputManager.h"  
-#include "IMoveStrategy.h" 
+#include "Character.h"
+#include "InputManager.h"
 #include "ParticleSystem.h"
-#include <memory>          
+#include "PlayerMover.h"
+#include "IAnimationState.h" 
+#include <memory>
+#include <string>
+
+// 前方宣言
+class IMoveStrategy;
 
 class Player : public Character {
 public:
     void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem);
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
-    
 
-    /// <summary>
-    /// 衝突時に呼び出される関数 
-    /// </summary>
     bool OnCollision(Object3d* other) override;
-    /// <summary>
-    /// このプレイヤーの移動戦略（アルゴリズム）を設定する
-    /// </summary>
-    void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy) {
-        moveStrategy_ = std::move(strategy);
-    }
 
- 
-    /// <summary>
-    /// ロックオン状態を設定する 
-    /// </summary>
+    // --- State Machine (アニメーション制御) ---
+    void ChangeState(std::unique_ptr<IAnimationState> newState);
+    void PlayAnimation(const std::string& animName, bool loop = true);
+
+    // --- Mover (移動制御) ---
+    void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy);
+
+    // --- Getters / Setters ---
+    Vector3 GetVelocity() const { return velocity_; }
+    void SetVelocity(const Vector3& v) { velocity_ = v; }
+
+    Vector3 GetRotation() const { return transform_.rotate; }
+    void SetRotation(const Vector3& r) { transform_.rotate = r; }
+    void SetRotationY(float y) { transform_.rotate.y = y; }
+
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
-    InputManager* GetInputManager() { return inputManager_; }
 
-    //  操作権限のON/OFF切り替え
     void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
 
-    //  今操作中か確認したい場合用
-    bool IsControlActive() const { return isControlActive_; }
+    InputManager* GetInputManager() { return inputManager_; }
+
+    float GetJumpPower() const {
+        if (param_.has_value()) return param_->jumpPower;
+        return 10.0f;
+    }
+
+    float GetMoveSpeed() const {
+        if (param_.has_value()) return param_->speed;
+        return 0.5f;
+    }
+
 private:
+    // コンポーネント
+    std::unique_ptr<PlayerMover> mover_ = nullptr;
+    std::unique_ptr<IAnimationState> state_ = nullptr; // 現在のアニメーション状態
+
+    // 依存オブジェクト
     InputManager* inputManager_ = nullptr;
-    std::unique_ptr<IMoveStrategy> moveStrategy_ = nullptr;
-    bool isLockingOn_ = false;
     ParticleSystem* particleSystem_ = nullptr;
+
+    // フラグ
+    bool isLockingOn_ = false;
     bool isControlActive_ = true;
 };

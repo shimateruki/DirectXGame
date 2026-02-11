@@ -65,6 +65,7 @@ void GamePlayScene::Initialize() {
 	ModelManager::GetInstance()->LoadModel("skydome");
 	ModelManager::GetInstance()->LoadModel("sample");
 	ModelManager::GetInstance()->LoadModel("terrain");
+	ModelManager::GetInstance()->LoadModel("sampleRun.gltf");
 
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
@@ -97,39 +98,7 @@ void GamePlayScene::Initialize() {
 
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-	// --- 4. オブジェクト生成 (手動) ---
-	// Player
-	auto playerObj = std::make_unique<Player>();
-	playerObj->Initialize(object3dCommon_.get(), inputManager_, particleSystem_.get());
-	playerObj->SetModel("sample");
-	playerObj->SetTranslate({ 2.0f, 0.0f, 0.0f });
-	playerObj->SetName("Player");
-	playerObj->SetStatic(false);
-	playerObj->SetBlendMode(BlendMode::kNormal);
-	playerObj->SetMaterialType(1);
-	playerObj->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
-	player_ = playerObj.get();
-	objectManager_->AddObject(std::move(playerObj));
 
-	// Terrain
-	auto terrain = std::make_unique<Object3d>();
-	terrain->Initialize(object3dCommon_.get());
-	terrain->SetModel("terrain");
-	terrain->SetTranslate({ 2.0f, 0.0f, 0.0f });
-	terrain->SetName("terrain");
-	terrain->SetStatic(true);
-	objectManager_->AddObject(std::move(terrain));
-
-	// Animation Model
-	auto a = std::make_unique<Object3d>();
-	a->Initialize(object3dCommon_.get());
-	a->SetModel("a.gltf");
-	a->SetTranslate({ 2.0f, 0.0f, 0.0f });
-	a->SetName("a");
-	a->SetStatic(true);
-	a->animName_ = "Armature|mixamo.com|Layer0";
-	a->isAnimLoop_ = true;
-	objectManager_->AddObject(std::move(a));
 
 	// Enemy
 	std::unique_ptr<BaseEnemy> newEnemy = EnemyFactory::GetInstance()->CreateEnemy("Slime", object3dCommon_.get());

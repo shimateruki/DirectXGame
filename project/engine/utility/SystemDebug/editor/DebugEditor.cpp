@@ -343,8 +343,6 @@ void DebugEditor::Update() {
                     tr->scale = s;
 
                     // ★行列更新 (Object3d::UpdateLocalMatrix などを呼ぶならここでも呼ぶべきですが、
-                    // UpdateWorldMatrix が呼ばれるのは selectedObject_->Update() のタイミングなので、
-                    // ここではデータ更新だけでOKです。必要なら selectedObject_->UpdateLocalMatrix() を呼びます)
                     selectedObject_->UpdateLocalMatrix(); // 即反映させたいなら呼ぶ
                     selectedObject_->UpdateWorldMatrix();
                 }

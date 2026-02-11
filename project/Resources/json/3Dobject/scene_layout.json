@@ -1,8 +1,8 @@
 {
     "objects": [
         {
-            "animName": "",
-            "blendMode": 1,
+            "animName": "Idle",
+            "blendMode": 0,
             "collider": {
                 "center": [
                     0.0,
@@ -33,8 +33,8 @@
             "eventID": 0,
             "isAnimLoop": true,
             "isAnimRelative": false,
-            "materialType": 1,
-            "modelName": "sample",
+            "materialType": 0,
+            "modelName": "a.gltf",
             "myEventID": -1,
             "name": "Player",
             "param": {
@@ -42,21 +42,21 @@
                 "gravity": 54.0,
                 "hp": 74.0,
                 "interval": 3.0,
-                "jumpPower": 10.0,
+                "jumpPower": 30.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 48.0,
-                "speed": 1.0
+                "speed": 7.099999904632568
             },
             "parentName": "",
             "position": [
-                -26.89205551147461,
-                1.982483983039856,
-                62.916648864746094
+                -6.262862682342529,
+                1.9774467945098877,
+                27.03957748413086
             ],
             "rotation": [
                 6.278290811678744e-07,
-                1.1281845569610596,
+                2.4681856632232666,
                 6.27829649602063e-07
             ],
             "scale": [
@@ -213,35 +213,35 @@
             "isAnimLoop": true,
             "isAnimRelative": false,
             "materialType": 0,
-            "modelName": "cube",
+            "modelName": "block",
             "myEventID": -1,
             "name": "Object",
             "param": {
                 "enemyType": "Goblin",
-                "gravity": 50.0,
-                "hp": 100.0,
+                "gravity": 60.0,
+                "hp": 50.0,
                 "interval": 3.0,
                 "jumpPower": 10.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
+                "maxHp": 50.0,
+                "speed": 0.10000000149011612
             },
             "parentName": "",
             "position": [
-                92.49800872802734,
-                -33013.09375,
-                13.020607948303223
+                10.0,
+                -3449.600341796875,
+                10.0
             ],
             "rotation": [
-                -3.1415908336639404,
-                -1.546931505203247,
-                -3.1415908336639404
+                0.0,
+                0.0,
+                0.0
             ],
             "scale": [
-                0.9999993443489075,
                 1.0,
-                0.9999993443489075
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "type": "Enemy"
@@ -301,6 +301,73 @@
             ],
             "targetID": -1,
             "type": "Model"
+        },
+        {
+            "animName": "",
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 13,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "Slime",
+            "eventID": 0,
+            "isAnimLoop": true,
+            "isAnimRelative": false,
+            "materialType": 0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Object",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 60.0,
+                "hp": 50.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 50.0,
+                "speed": 0.10000000149011612
+            },
+            "parentName": "",
+            "position": [
+                10.0,
+                -1409.4505615234375,
+                10.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Enemy"
         }
     ]
 }
