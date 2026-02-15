@@ -113,6 +113,10 @@ public:
         orbitSpeed_ = speed;
     }
     void ConfigFixedPoint(const Vector3& position);
+    Matrix4x4 GetViewProjectionMatrix() const {
+        static Math math; 
+        return math.Multiply(viewMatrix_, projectionMatrix_);
+    }
 private:
     // --- カメラの三要素 ---
     Vector3 eye_ = { 0.0f, 0.0f, -10.0f };

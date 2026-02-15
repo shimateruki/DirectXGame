@@ -21,6 +21,7 @@
 #include "GhostRecorder.h" 
 #include "CameraEditor.h"
 #include "Transform.h"
+#include "ParticleManager.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -199,8 +200,7 @@ void DebugEditor::Update() {
                 previewObject_->SetColor({ 1.0f, 1.8f, 1.0f, 0.5f }); // 半透明に見せる
                 previewObject_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
 
-                // ★ここが重要：必ず行列を更新して描画に反映させる
-                // (Object3d::UpdateLocalMatrix/UpdateWorldMatrixを呼ぶ)
+    
                 previewObject_->UpdateLocalMatrix();
                 previewObject_->UpdateWorldMatrix();
             }
@@ -306,14 +306,19 @@ void DebugEditor::Update() {
             if (camera) {
                 const Matrix4x4& view = camera->GetViewMatrix();
                 const Matrix4x4& proj = camera->GetProjectionMatrix();
-                // ★修正: Object3d::Transform -> Transform
                 Transform* tr = selectedObject_->GetTransform();
 
                 Matrix4x4 world = math.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
 
                 ImGuiIO& io = ImGui::GetIO();
-                ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-
+                if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+                    // ビューポート有効時: メインウィンドウの「モニター上の絶対座標」を基準にする
+                    ImGuiViewport* viewport = ImGui::GetMainViewport();
+                    ImGuizmo::SetRect(viewport->Pos.x, viewport->Pos.y, viewport->Size.x, viewport->Size.y);
+                } else {
+                    // ビューポート無効時: これまで通り (0,0) からでOK
+                    ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+                }
                 // スナップ設定
                 float snapVal = 0.0f;
                 if (isGridSnapEnabled_) {
@@ -341,9 +346,6 @@ void DebugEditor::Update() {
                     tr->translate = t;
                     tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
                     tr->scale = s;
-
-                    // ★行列更新 (Object3d::UpdateLocalMatrix などを呼ぶならここでも呼ぶべきですが、
-                    selectedObject_->UpdateLocalMatrix(); // 即反映させたいなら呼ぶ
                     selectedObject_->UpdateWorldMatrix();
                 }
 
@@ -854,6 +856,53 @@ void DebugEditor::DrawImGui() {
                     isGraphicsChanged = true;
                 }
             }
+            ImGui::Separator();
+            if (ImGui::CollapsingHeader("パーティクル")) {
+
+                // マネージャーから全パーティクル情報を取得
+                const auto& paramsMap = ParticleManager::GetInstance()->GetParamsMap();
+
+                // リスト作成用の一時配列
+                std::vector<const char*> itemNames;
+                int currentItemIndex = 0;
+                int index = 0;
+
+                // "None" (なし) を選択肢の最初に追加
+                itemNames.push_back("None");
+
+                // 現在設定されている名前を取得
+                std::string currentParticleName = selectedObject_->GetParticleName();
+                if (currentParticleName.empty()) {
+                    currentItemIndex = 0; // Noneが選択されている
+                }
+
+                // Mapから名前を取り出してリストに追加
+                for (const auto& [name, param] : paramsMap) {
+                    itemNames.push_back(name.c_str());
+
+                    // 今の名前と一致したらインデックスを記録
+                    if (name == currentParticleName) {
+                        currentItemIndex = index + 1; // +1はNoneの分
+                    }
+                    index++;
+                }
+
+                // ★コンボボックス（リスト）表示
+                if (ImGui::Combo("Effect Name", &currentItemIndex, itemNames.data(), (int)itemNames.size())) {
+                    if (currentItemIndex == 0) {
+                        selectedObject_->SetParticleName(""); // Noneを選択
+                    } else {
+                        // 選択された名前をセット
+                        selectedObject_->SetParticleName(itemNames[currentItemIndex]);
+                    }
+                }
+
+                // 補足情報: 保存されているか確認
+                if (!currentParticleName.empty() && paramsMap.find(currentParticleName) == paramsMap.end()) {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Warning: JSON not found!");
+                }
+            }
+        
             if (isColChanged) {
                 selectedObject_->SetColliderConfig(colConfig);
                 UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
@@ -922,10 +971,14 @@ void DebugEditor::DrawImGui() {
                             selectedObject_->animName_ = fileName;
 
                             if (selectedObject_->recorder_) {
+                                // 選択中のオブジェクトが演出用カメラ(CinematicCamera)なら true にする
+                                bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
+
                                 selectedObject_->recorder_->Play(
                                     selectedObject_->animName_,
                                     selectedObject_->isAnimLoop_,
-                                    selectedObject_->isAnimRelative_
+                                    selectedObject_->isAnimRelative_,
+                                    isCinematic 
                                 );
                             }
                         }
@@ -943,20 +996,27 @@ void DebugEditor::DrawImGui() {
         // ##Anim をつけることでID重複を防ぎつつラベルを表示
         if (ImGui::Checkbox("ループ再生##Anim", &selectedObject_->isAnimLoop_)) {
             if (selectedObject_->recorder_ && !selectedObject_->animName_.empty()) {
+                // クラス名が "CinematicCamera" なら演出モード（カメラ乗っ取り）を有効にする
+                bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
+
                 selectedObject_->recorder_->Play(
                     selectedObject_->animName_,
                     selectedObject_->isAnimLoop_,
-                    selectedObject_->isAnimRelative_
+                    selectedObject_->isAnimRelative_,
+                    isCinematic 
                 );
             }
         }
-
         if (ImGui::Checkbox("相対座標モード##Anim", &selectedObject_->isAnimRelative_)) {
             if (selectedObject_->recorder_ && !selectedObject_->animName_.empty()) {
+                // クラス名が "CinematicCamera" なら演出モードフラグを立てる
+                bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
+
                 selectedObject_->recorder_->Play(
                     selectedObject_->animName_,
                     selectedObject_->isAnimLoop_,
-                    selectedObject_->isAnimRelative_
+                    selectedObject_->isAnimRelative_,
+                    isCinematic 
                 );
             }
         }
@@ -965,10 +1025,14 @@ void DebugEditor::DrawImGui() {
         // テスト再生ボタン
         if (ImGui::Button("テスト再生##Anim")) {
             if (selectedObject_->recorder_) {
+                // クラス名が "CinematicCamera" なら演出モード（カメラ乗っ取り）を有効にする
+                bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
+
                 selectedObject_->recorder_->Play(
                     selectedObject_->animName_,
                     selectedObject_->isAnimLoop_,
-                    selectedObject_->isAnimRelative_
+                    selectedObject_->isAnimRelative_,
+                    isCinematic 
                 );
             }
         }
@@ -1210,6 +1274,42 @@ void DebugEditor::DrawImGui() {
                 }
             }
 
+            // ----------------------------------------------------
+        // パターンC: 演出用カメラ ("CINEMATIC_CAMERA_ASSET")
+        // ----------------------------------------------------
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CINEMATIC_CAMERA_ASSET")) {
+                // シーンのCommonを取得
+                BaseScene* currentScene = sceneManager_->GetCurrentScene();
+                Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
+
+                if (common) {
+                    // 1. ダミーオブジェクト(Object3d)を作成
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common);
+
+                    // 2. モデルを設定
+                    newObj->SetModel("block"); 
+
+                    // 3. 名前をつける 
+                    newObj->SetName("Camera_Cinematic");
+
+                    // 4. クラス名を設定 (タグのようなもの)
+                    newObj->SetClassName("CinematicCamera");
+
+           
+
+                    // 位置を少し手前に
+                    newObj->SetTranslate({ 0.0f, 5.0f, -10.0f });
+                    newObj->UpdateLocalMatrix();
+                    newObj->UpdateWorldMatrix();
+
+                    // シーンに追加
+                    currentScene->AddObject(std::move(newObj));
+
+                    DebugConsole::GetInstance()->AddLog("Cinematic Camera Added to Scene.");
+                }
+            }
+
             // ========================================================
             // 3. ドロップ受け付け終了 
             // ========================================================
@@ -1290,6 +1390,40 @@ void DebugEditor::DrawImGui() {
             DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
         }
     }
+    // ... (透明ボックス生成ボタンの続き) ...
+
+    // ★追加: 演出用カメラ生成ボタン
+    if (ImGui::Button("演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
+        Object3dCommon* common = currentScene->GetObject3dCommon();
+        if (common) {
+            auto newObj = std::make_unique<Object3d>();
+            newObj->Initialize(common);
+
+            newObj->SetModel("block");
+
+            // 色を変えられるならカメラっぽい色に (例: 紫)
+             newObj->SetColor({0.8f, 0.2f, 0.8f, 1.0f}); 
+
+            newObj->SetIsVisible(true); // エディタでは見えていてほしい
+            newObj->SetClassName("CinematicCamera");
+            newObj->SetName("Cinematic_Camera_01"); // わかりやすい名前
+
+            // 選択しやすいようにコライダーもつけておく
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kAABB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            newObj->SetColliderConfig(colConfig);
+
+            // ちょっと高い位置にスポーン
+            newObj->SetTranslate({ 0, 5.0f, -10.0f });
+            newObj->UpdateWorldMatrix();
+
+            selectedObject_ = newObj.get(); // 生成したらすぐ選択状態にする
+            currentScene->AddObject(std::move(newObj));
+            DebugConsole::GetInstance()->AddLog("Spawned Cinematic Camera Dummy");
+        }
+    }
+
     ImGui::PopStyleColor(3);
 
     // 親解除用エリア

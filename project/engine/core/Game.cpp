@@ -8,6 +8,7 @@
 #include"imgui.h"
 #include "ImGuizmo.h" 
 #include <chrono>
+#include <ParticleManager.h>
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -26,7 +27,7 @@ void Game::Initialize() {
         startScene = lastScene;
     }
 #endif
-
+    currentSceneName_ = startScene;
     // 初期化 
     sceneManager_->Initialize(sceneFactory_.get(), startScene);
     //  lastTime_ を「起動時」の時間で初期化
@@ -52,7 +53,13 @@ void Game::Initialize() {
     }
 
 #endif
+#ifdef  USE_IMGUI
+    isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
+#else
+    isPlaying_ = true;  // リリース時は最初から再生
+#endif
     CameraEditor::GetInstance()->Initialize();
+
 }
 
 void Game::Finalize() {
@@ -78,6 +85,52 @@ void Game::Update() {
 #ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
+    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
+    // --- メインメニューバー ---
+    if (ImGui::BeginMainMenuBar()) {
+        ImGui::Separator();
+
+        // 再生・停止の状態変化をチェック
+        static bool prevIsPlaying = isPlaying_;
+        if (isPlaying_) {
+            if (ImGui::Button("■ 停止")) isPlaying_ = false;
+        } else {
+            if (ImGui::Button("▶ 再生")) isPlaying_ = true;
+        }
+
+// 停止した瞬間に「最後にロード/選択したシーン」でリロードする
+        if (prevIsPlaying != isPlaying_ && !isPlaying_) {
+            sceneManager_->ChangeScene(currentSceneName_); // ここで currentSceneName_ を使用
+            CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
+            prevIsPlaying = isPlaying_;
+        } else {
+            prevIsPlaying = isPlaying_;
+        }
+
+        ImGui::Text(isPlaying_ ? " | 実行中" : " | 編集モード");
+
+        if (ImGui::BeginMenu("表示")) {
+            ImGui::MenuItem("3Dオブジェクト / ヒエラルキー", NULL, &showDebugWindows_);
+            ImGui::MenuItem("スプライトインスペクター", NULL, &showSpriteInspector_);
+            ImGui::MenuItem("パーティクルエディタ", NULL, &showParticleEditor_);
+            ImGui::MenuItem("録画 (Ghost Recorder)", NULL, &showGhostRecorder_);
+            ImGui::MenuItem("カメラ設定", NULL, &showCameraEditor);
+            ImGui::Separator();
+            ImGui::MenuItem("ライティング", NULL, &showLightEditor_);
+            ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
+            ImGui::MenuItem("時間操作", NULL, &showTimeController_);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("シーン切り替え")) {
+            const char* sceneNames[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
+            for (int i = 0; i < _countof(sceneNames); i++) {
+                if (ImGui::MenuItem(sceneNames[i])) sceneManager_->ChangeScene(sceneNames[i]);
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
 #endif
 
     // --- フレームレート計算 ---
@@ -86,196 +139,76 @@ void Game::Update() {
     float deltaTime = duration.count();
     lastTime_ = currentTime;
 
-    // 極端なラグ（ブレークポイントでの停止など）が発生した場合、dtを固定値にして物理崩壊を防ぐ
     if (deltaTime > 0.1f) { deltaTime = 1.0f / 60.0f; }
 
-    // ゲーム内時間の進行速度を適用
-    float finalDeltaTime = deltaTime * timeScale_;
+    // 停止中なら時間は進めない
+    float finalDeltaTime = isPlaying_ ? (deltaTime * timeScale_) : 0.0f;
 
-    // エディタ操作中フラグ
     bool isSpriteEditorBusy = false;
     bool is3DGizmoBusy = false;
 
 #ifdef USE_IMGUI
-    // =================================================================
-    //  エディタの更新処理 (Update Logic)
-    // =================================================================
-    if (spriteDebugEditor_) {
-        spriteDebugEditor_->Update();
-        isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy();
-    }
-    if (debugEditor_) {
-        debugEditor_->Update();
-        // ImGuizmoを使っているか（ギズモ操作中はカメラを動かさないため）
-        is3DGizmoBusy = ImGuizmo::IsUsing();
-    }
-    if (particleEditor_) {
-        particleEditor_->Update();
-    }
-    if (ghostRecorder_) {
-        ghostRecorder_->Update();
-    }
-
-    // =================================================================
-    //  Master Editor (メイン管理ウィンドウ)
-    // =================================================================
-    // ImGuiWindowFlags_MenuBar を入れてメニューバーを使えるようにする
-    ImGui::Begin("デバッグメニュー (Master Editor)", nullptr, ImGuiWindowFlags_MenuBar);
-
-    // --- ステータス表示 ---
-    // FPSによって色を変えると負荷に気づきやすくなります
-    float fps = 1.0f / deltaTime;
-    ImVec4 fpsColor = (fps >= 55.0f) ? ImVec4(0, 1, 0, 1) : ((fps >= 30.0f) ? ImVec4(1, 1, 0, 1) : ImVec4(1, 0, 0, 1));
-    ImGui::TextColored(fpsColor, "FPS: %.1f", fps);
-
-    ImGui::SameLine();
-    ImGui::Text("|");
-    ImGui::SameLine();
-
-    // マウスポジション
-    Vector2 mousePos = InputManager::GetInstance()->GetMousePosition();
-    ImGui::Text("Mouse: (%.0f, %.0f)", mousePos.x, mousePos.y);
-
-    // オブジェクト数表示
-    BaseScene* currentScene = sceneManager_->GetCurrentScene();
-    if (currentScene) {
-        ImGui::TextDisabled("Objects: %d | Sprites: %d",
-            (int)currentScene->GetObjects().size(),
-            (int)currentScene->GetSprites().size());
-    }
-
-    ImGui::Separator();
-
-    // --- メニューバー (ウィンドウの表示切り替え) ---
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("表示 (View)")) {
-            // 各エディタの表示トグル
-            ImGui::MenuItem("時間操作 (Time)", NULL, &showTimeController_);
-            ImGui::MenuItem("ライト設定 (Light)", NULL, &showLightEditor_);
-            ImGui::Separator();
-            ImGui::MenuItem("3Dエディタ", NULL, &showDebugWindows_);
-            ImGui::MenuItem("スプライト", NULL, &showSpriteInspector_);
-            ImGui::MenuItem("パーティクル", NULL, &showParticleEditor_);
-            ImGui::MenuItem("アニメ録画 (Ghost)", NULL, &showGhostRecorder_);
-            ImGui::MenuItem("カメラ設定", NULL, &showCameraEditor);
-            ImGui::Separator();
-            ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
-
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-
-    // 
-
-    // --- 各サブウィンドウの描画 ---
     if (showDebugWindows_) {
-        if (ImGui::CollapsingHeader("3Dオブジェクト (Object Editor)")) {
-            debugEditor_->DrawImGui();
-        }
+        ImGui::Begin("ヒエラルキー", &showDebugWindows_);
+        debugEditor_->Update();
+        debugEditor_->DrawImGui();
+        is3DGizmoBusy = ImGuizmo::IsUsing();
+        ImGui::End();
     }
-
     if (showSpriteInspector_) {
-        if (ImGui::CollapsingHeader("スプライト (Sprite Inspector)")) {
-            spriteDebugEditor_->DrawImGui();
-        }
+        ImGui::Begin("スプライト", &showSpriteInspector_);
+        spriteDebugEditor_->Update();
+        spriteDebugEditor_->DrawImGui();
+        isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy();
+        ImGui::End();
     }
-
     if (showParticleEditor_) {
-        if (ImGui::CollapsingHeader("パーティクル (Particle Editor)")) {
-            particleEditor_->DrawImGui();
-        }
+        ImGui::Begin("パーティクル", &showParticleEditor_);
+        particleEditor_->Update();
+        particleEditor_->DrawImGui();
+        ImGui::End();
     }
-
     if (showGhostRecorder_) {
-        if (ImGui::CollapsingHeader("録画 (Ghost Recorder)")) {
-            if (ghostRecorder_) {
-                ghostRecorder_->DrawImGui();
-            }
-        }
+        ImGui::Begin("録画", &showGhostRecorder_);
+        ghostRecorder_->Update();
+        ghostRecorder_->DrawImGui();
+        ImGui::End();
     }
-
     if (showLightEditor_) {
-        if (ImGui::CollapsingHeader("ライト環境 (Lighting)")) {
-            LightEditor::GetInstance()->DrawImGui();
-        }
+        ImGui::Begin("ライト", &showLightEditor_);
+        LightEditor::GetInstance()->DrawImGui();
+        ImGui::End();
     }
-
     if (showCameraEditor) {
-        if (ImGui::CollapsingHeader("カメラ (Camera)")) {
-            CameraEditor::GetInstance()->DrawImGui();
-        }
+        ImGui::Begin("カメラ", &showCameraEditor);
+        CameraEditor::GetInstance()->DrawImGui();
+        ImGui::End();
     }
+    if (showDebugConsole_) DebugConsole::GetInstance()->DrawImGui();
 
-    if (showDebugConsole_) {
-        if (ImGui::CollapsingHeader("ログ (Console)")) {
-            DebugConsole::GetInstance()->DrawImGui();
-        }
-    }
-
-    if (ImGui::CollapsingHeader("シーン切り替え (Scene Select)")) {
-        // 登録されているシーン名のリスト
-        const char* sceneNames[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
-
-        // ボタンを横並びにするためのループ
-        for (int i = 0; i < _countof(sceneNames); i++) {
-            // 2個目以降は横に並べる (改行しない)
-            if (i > 0) ImGui::SameLine();
-
-            // ボタンを表示し、押されたらシーン変更
-            if (ImGui::Button(sceneNames[i])) {
-                // シーンマネージャーに遷移を依頼
-                sceneManager_->ChangeScene(sceneNames[i]);
-            }
-        }
-
-        // 現在のシーン名を表示しておくと便利
-        ImGui::TextDisabled("Current Scene Info: %s", typeid(*sceneManager_->GetCurrentScene()).name());
-    }
-
-
-    // --- 時間操作パネル  ---
     if (showTimeController_) {
+        ImGui::Begin("ステータス", &showTimeController_);
+        float fps = 1.0f / deltaTime;
+        ImVec4 fpsColor = (fps >= 55.0f) ? ImVec4(0, 1, 0, 1) : ((fps >= 30.0f) ? ImVec4(1, 1, 0, 1) : ImVec4(1, 0, 0, 1));
+        ImGui::TextColored(fpsColor, "FPS: %.1f", fps);
         ImGui::Separator();
-        ImGui::Text("時間制御 (Time Scale)");
-
-        // スライダー
-        ImGui::SliderFloat("##TimeScale", &timeScale_, 0.0f, 2.0f, "速度: %.2fx");
-
-        // プリセットボタン
-        if (ImGui::Button("一時停止 (0.0)")) timeScale_ = 0.0f;
-        ImGui::SameLine();
-        if (ImGui::Button("スロー (0.1)"))   timeScale_ = 0.1f;
-        ImGui::SameLine();
-        if (ImGui::Button("標準 (1.0)"))     timeScale_ = 1.0f;
-        ImGui::SameLine();
-        if (ImGui::Button("高速 (2.0)"))     timeScale_ = 2.0f;
+        ImGui::SliderFloat("時間倍率", &timeScale_, 0.0f, 2.0f, "速度: %.2fx");
+        if (ImGui::Button("一時停止")) timeScale_ = 0.0f; ImGui::SameLine();
+        if (ImGui::Button("標準")) timeScale_ = 1.0f;
+        ImGui::End();
     }
-
-    ImGui::End(); // Master Editor End
-
 #endif
 
-    // =================================================================
-    //  交通整理 (Input Blocking)
-    // =================================================================
-    // エディタ（Gizmoやスプライト調整）を操作している間は、
-    // ゲーム内カメラが勝手に回らないように入力を遮断する
+    // 入力遮断管理
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
-        bool isEditorBusy = isSpriteEditorBusy || is3DGizmoBusy;
-        // エディタが忙しくない(true)なら、カメラ入力を有効(true)にする
-        camera->SetInputEnabled(!isEditorBusy);
+        camera->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy));
     }
 
-    // =================================================================
-    //  シーン更新
-    // =================================================================
+    // シーン・マネージャ更新
     if (sceneManager_) {
-        // 時間操作の影響を受けた delta time を渡す
         sceneManager_->Update(finalDeltaTime);
     }
-
     LightManager::GetInstance()->Update();
 }
 

@@ -40,6 +40,7 @@
 #include <EnemyFactory.h>
 #include <EnemySpawner.h>
 #include <LightEditor.h>
+#include <ParticleManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -84,6 +85,8 @@ void GamePlayScene::Initialize() {
 
 	particleSystem_ = std::make_unique<ParticleSystem>();
 	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
+
+	ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);

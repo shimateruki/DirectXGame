@@ -243,6 +243,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="LockOnSystem.cpp" />
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="ObjectManager.cpp" />
+    <ClCompile Include="ParticleManager.cpp" />
     <ClCompile Include="PlayerMover.cpp" />
     <ClCompile Include="PlayerState.cpp" />
   </ItemGroup>
@@ -545,6 +546,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="LockOnSystem.h" />
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="ObjectManager.h" />
+    <ClInclude Include="ParticleManager.h" />
     <ClInclude Include="PlayerMover.h" />
     <ClInclude Include="PlayerState.h" />
     <ClInclude Include="Transform.h" />

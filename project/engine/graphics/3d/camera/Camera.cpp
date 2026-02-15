@@ -12,6 +12,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// 修正: 明示的に float にキャスト
 const float PI = (float)M_PI;
 static Math math;
 

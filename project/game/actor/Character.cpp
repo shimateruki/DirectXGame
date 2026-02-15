@@ -137,10 +137,12 @@ std::unique_ptr<Object3d> Character::Clone() const {
 
     newObj->InitializeRecorder(nullptr); // レコーダー初期化
     if (!newObj->animName_.empty()) {
+        bool isCinematic = (newObj->GetClassName() == "CinematicCamera");
         newObj->recorder_->Play(
             newObj->animName_,
             newObj->isAnimLoop_,
-            newObj->isAnimRelative_
+            newObj->isAnimRelative_,
+            isCinematic
         );
     }
 

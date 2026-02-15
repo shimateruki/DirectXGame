@@ -8,6 +8,7 @@
 #include "GhostRecorder.h"
 #include <cassert>
 #include <algorithm> // min, max
+#include <ParticleManager.h>
 
 Object3d::~Object3d() {
     if (recorder_) {
@@ -78,11 +79,27 @@ void Object3d::Update(float deltaTime) {
     if (recorder_) {
         recorder_->Update();
     }
+    
+    UpdateParticle();
+}
+
+void Object3d::UpdateParticle() {
+    // 名前が設定されていれば、マネージャー経由で発生させる
+    if (!particleName_.empty()) {
+
+        Vector3 pos = GetWorldPosition();
+
+        ParticleManager::GetInstance()->Emit(particleName_, pos, particleTimer_);
+    }
 }
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!isVisible_) return;
-
+#ifdef NDEBUG // "Release" ビルドの時だけ有効になるマクロ
+    if (className_ == "CinematicCamera") {
+        return; // 何も描画せずに帰る（門前払い）
+    }
+#endif
     if (meshRenderer_) {
         meshRenderer_->Draw(pointLightResource, spotLightResource);
     }
@@ -316,7 +333,8 @@ void Object3d::CopyFrom(const Object3d* other) {
 
     this->InitializeRecorder(nullptr);
     if (!this->animName_.empty() && this->recorder_) {
-        this->recorder_->Play(this->animName_, this->isAnimLoop_, this->isAnimRelative_);
+        bool isCinematic = (this->className_ == "CinematicCamera");
+        this->recorder_->Play(this->animName_, this->isAnimLoop_, this->isAnimRelative_, isCinematic);
     }
 }
 
@@ -389,9 +407,16 @@ void Object3d::ImportFromJson(const json& j) {
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
         if (anim.contains("isAnimRelative")) isAnimRelative_ = anim["isAnimRelative"];
-
         if (recorder_ && !animName_.empty()) {
-            recorder_->Play(animName_, isAnimLoop_, isAnimRelative_);
+            // 自身が演出用カメラ(CinematicCamera)なら第4引数を true にする
+            bool isCinematic = (this->GetClassName() == "CinematicCamera");
+
+            recorder_->Play(
+                animName_,
+                isAnimLoop_,
+                isAnimRelative_,
+                isCinematic 
+            );
         }
     }
 

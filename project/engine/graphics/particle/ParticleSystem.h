@@ -8,6 +8,11 @@
 #include <random>
 #include <string>
 
+enum class EmitterType {
+    Box,    // 従来の四角形
+    Sphere, // 球体（全方向爆発）
+    Cone,   // 円錐（ジェット噴射）
+};
 /// <summary>
 /// パーティクルシステム (GPUインスタンシング対応)
 /// </summary>
@@ -25,6 +30,10 @@ private:
         Vector4 endColor;
         float startSize;
         float endSize;
+        float rotation;       // 今の角度 (ラジアン)
+        float rotationSpeed;  // 回転スピード (ラジアン/秒)
+        Vector3 acceleration;
+
     };
 
     struct ParticleForGPU {
@@ -45,7 +54,7 @@ public:
         Vector3 spawnArea = { 1.0f, 1.0f, 1.0f };          // 発生範囲 (ランダム幅)
         Vector3 initialVelocity = { 0.0f, 1.0f, 0.0f };    // 初速
         Vector3 velocityRandomness = { 0.5f, 0.5f, 0.5f }; // 初速のランダム幅
-
+        Vector3 acceleration = { 0.0f, 0.0f, 0.0f };
         float particlesPerSecond = 10.0f; // 毎秒の発生数
         float particleLifetime = 2.0f;    // パーティクルの生存期間
 
@@ -57,6 +66,15 @@ public:
 
         bool isEmitting = true; // 発生させるかどうか
         float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+        ParticleBlendMode blendMode = ParticleBlendMode::kAlpha;
+        float initialRotationSpeed = 0.0f;      // 基本の回転スピード
+        float rotationSpeedRandomness = 0.0f;   // 回転スピードのバラつき
+        EmitterType emitterType = EmitterType::Box;
+
+        // Sphere / Cone用
+        float spawnRadius = 1.0f; // 半径
+        float coneAngle = 30.0f;  // 円錐の広がり角度 (度数法)
+        std::string textureName = "Resources/sprite/particle.png";
     };
 
     void Initialize(ParticleCommon* common, const std::string& texturePath);
@@ -81,7 +99,9 @@ public:
     void Clear();
 
     EmitterParams params_;
+    void EmitOneShot(const EmitterParams& params, const Vector3& position);
 
+    void SetTexture(const std::string& texturePath);
 private:
     void CreateResources();
 

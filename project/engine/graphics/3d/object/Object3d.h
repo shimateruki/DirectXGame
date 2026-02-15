@@ -47,6 +47,7 @@ public:
 
     virtual void Initialize(Object3dCommon* common);
     virtual void Update(float deltaTime);
+    void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     virtual std::unique_ptr<Object3d> Clone() const;
 
@@ -146,6 +147,9 @@ public:
     void SetTargetID(int id) { targetID_ = id; }
     int GetTargetID() const { return targetID_; }
 
+    void SetParticleName(const std::string& name) { particleName_ = name; }
+    const std::string& GetParticleName() const { return particleName_; }
+
     json ExportToJson();
     void ImportFromJson(const json& j);
 
@@ -180,4 +184,7 @@ protected:
     int eventID_ = -1;
     int targetID_ = -1;
     std::string enemyType_ = "";
+
+    std::string particleName_ = ""; // JSONファイル名
+    float particleTimer_ = 0.0f;    // 発射タイミング管理用
 };

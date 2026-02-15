@@ -16,7 +16,7 @@ struct Material
     float32_t4x4 uvTransform;
     int32_t selectedLighting;
     float32_t shininess;
-    int32_t materialType; 
+    int32_t materialType;
     float32_t padding2;
 };
 
@@ -25,6 +25,10 @@ struct DirectionalLight
     float32_t4 color;
     float32_t3 direction;
     float intenssity;
+    float32_t3 ambientColor;
+    float fogStart;
+    float fogEnd;
+    float32_t3 fogColor;
 };
 
 struct Camera
@@ -287,17 +291,23 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                 float rimFactor = 1.0f - saturate(dot(N, toEye));
                 rimFactor = pow(rimFactor, 3.0f);
                 output.color.rgb += float3(1.0f, 1.0f, 1.0f) * rimFactor * 0.5f;
-                output.color.rgb += float3(0.02f, 0.02f, 0.02f) * gMaterial.color.rgb * textureColor.rgb;
+                output.color.rgb += gDirectionalLight.ambientColor * gMaterial.color.rgb * textureColor.rgb;
             }
 
+  
             // ===========================================================
             //  距離フォグ (Distance Fog) - 全体共通
             // ===========================================================
-            float3 fogColor = float3(0.1f, 0.1f, 0.1f);
+            // ハードコードをやめて、定数バッファの値を使う
+            float3 fogColor = gDirectionalLight.fogColor;
+            float fogStart = gDirectionalLight.fogStart;
+            float fogEnd = gDirectionalLight.fogEnd;
+
             float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
-            float fogStart = 1000.0f;
-            float fogEnd = 5000.0f;
-            float fogFactor = saturate((distanceToCamera - fogStart) / (fogEnd - fogStart));
+      
+            float fogRange = max(fogEnd - fogStart, 0.01f);
+            
+            float fogFactor = saturate((distanceToCamera - fogStart) / fogRange);
 
             // フォグを適用
             output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);

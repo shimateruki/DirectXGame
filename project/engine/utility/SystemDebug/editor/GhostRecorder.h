@@ -5,7 +5,7 @@
 #include "engine/utility/math/Math.h" 
 
 class SceneManager;
-
+class CameraManager;
 // 1フレーム分の動きデータ
 struct GhostFrame {
     Vector3 position;
@@ -28,9 +28,12 @@ public:
         Vector3 startRot = { 0,0,0 };
         Vector3 endPos = { 0,0,0 };
         Vector3 endRot = { 0,0,0 };
-
+        struct Waypoint {
+            Vector3 pos;
+            Vector3 rot;
+        };
         // 中継点のリスト (可変長)
-        std::vector<Vector3> waypoints;
+        std::vector<Waypoint> waypoints;
 
         float duration = 3.0f;        // 移動にかかる時間
         bool useEasing = false;       // イージング(加減速)を使うか
@@ -45,6 +48,8 @@ public:
     // 毎フレーム呼ぶ処理
     void Update();
 
+
+
     // ImGui描画 (操作パネル)
     void DrawImGui();
 
@@ -56,12 +61,14 @@ public:
     State GetState() const { return state_; }
 
     // 再生・停止
-    void Play(const std::string& fileName, bool loop, bool isRelative = true);
+    void Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic);
     void Stop();
 
     // 保存・読み込み
     void Save(const std::string& fileName);
     void Load(const std::string& fileName);
+
+    void SetCameraManager(CameraManager* cameraManager) { cameraManager_ = cameraManager; }
 
 private:
     void StartRecording();
@@ -70,7 +77,7 @@ private:
     // 内部用の再生開始（ImGuiボタン用）
     void StartPlayingInternal();
 
-   
+
     // 線形補間
     Vector3 Lerp(const Vector3& start, const Vector3& end, float t);
 
@@ -103,6 +110,11 @@ private:
     // 自動生成用パラメータ
     GenerationParams genParams_;
 
-    // ★追加: プレビュー表示フラグ
+    //  プレビュー表示フラグ
     bool isShowPreview_ = true;
+
+    CameraManager* cameraManager_ = nullptr; 
+
+    // カメラ乗っ取りフラグ (UIで切り替えられるようにする)
+    bool isOverrideCamera_ = false;
 };

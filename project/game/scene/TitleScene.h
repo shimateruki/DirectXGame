@@ -7,30 +7,30 @@
 #include "AudioPlayer.h"
 #include "ParticleSystem.h" 
 #include "ParticleCommon.h" 
-#include"SpriteDebugEditor.h"
-#include"Player.h"
-#include"Text.h"
-#include "Event.h"
+#include "Player.h"
+#include "Text.h"
 #include "BulletManager.h"
-#include"Camera.h"
+#include "Camera.h"
+
+#include "ObjectManager.h"
+#include "LevelLoader.h"
+#include <GhostRecorder.h>
+#include <GameRule.h>
 
 #include <memory>
 #include <vector>
 
-
-#include "DebugEditor.h" 
-#include <GhostRecorder.h>
-#include <GameRule.h>
-
-
-// --- 前方宣言 (ポインタで持つものだけ) ---
+// --- 前方宣言 ---
 class DirectXCommon;
 class InputManager;
-class SceneManager;
 
-class TitleScene : public BaseScene
-{
+/// <summary>
+/// タイトルシーン
+/// </summary>
+class TitleScene : public BaseScene {
 public:
+    TitleScene() = default;
+    ~TitleScene() override = default;
 
     /// <summary>
     /// 初期化
@@ -52,97 +52,43 @@ public:
     /// </summary>
     void Draw() override;
 
-    //Edotor用
-    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objects_; }
+    // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
+    std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
+    void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
+    void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
+
     std::vector<std::unique_ptr<Sprite>>& GetSprites() override { return sprites_; }
-    void AddObject(std::unique_ptr<Object3d> object) override;
     Object3dCommon* GetObject3dCommon() override { return object3dCommon_.get(); }
     SpriteCommon* GetSpriteCommon() override { return spriteCommon_.get(); }
     ParticleSystem* GetParticleSystem() override { return particleSystem_.get(); }
-    void RequestRemoveObject(Object3d* object) override;
+
+    Player* GetPlayer() const override { return player_; }
+    void SetPlayer(Player* player) override { player_ = player; }
 
 private:
-    // --- オブジェクトレイアウト読み込み関数 ---
-    void LoadObjectLayout(const std::string& filename);
-    void LoadSpriteLayout(const std::string& filename);
-
-    /// <summary>
-    /// PlayerHitEvent を受け取ったときに呼ばれるコールバック関数
-    /// </summary>
-    void OnPlayerHit(const PlayerHitEvent& event);
-
-    void OnBulletHit(const BulletHitEvent& event);
-    void SwitchActivePlayer(Player* newMainPlayer);
-
-private:
-
-    // --- エンジンシステムへのポインタ ---
+    // --- システムポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;
 
+    // --- サブシステム (管理クラス) ---
+    std::unique_ptr<ObjectManager> objectManager_ = nullptr;
+    std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
+    std::unique_ptr<GameRule> gameRule_ = nullptr;
 
-    // --- ゲームオブジェクト ---
+    // --- 共通基盤クラス ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
     std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
     std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
-    std::vector<std::unique_ptr<Object3d>> objects_;
+
+    // --- リソース ---
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
-    std::unique_ptr<Text>  debugText_;
-    std::unique_ptr<GameRule> gameRule_; // 管理人
-
-    std::vector<std::unique_ptr<Object3d>> pendingObjects_;
     Player* player_ = nullptr;
 
-    // --- BGM・SE ---
     uint32_t bgmHandle_ = 0;
-    bool isBGMPlaying_ = false;
-    uint32_t particleSEHandle_ = 0;
 
-    // --- ImGui用フラグ ---
-    bool isDrawParticles_ = false;
-
-    //全体ライト(太陽の光)
+    // --- ライトリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
-    MeshRenderer::PointLight* pointLightData_ = nullptr;
-
-    // スポットライト
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
-    MeshRenderer::SpotLight* spotLightData_ = nullptr;
-
-    /// <summary>
-    /// 削除予約されたオブジェクトのリスト
-    /// </summary>
-    std::vector<Object3d*> removalList_;
-
-    /// <summary>
-    /// 予約されたオブジェクトを安全に削除する
-    /// </summary>
-    void ProcessRemovals();
-
-    Object3d* lockOnTarget_ = nullptr; // 現在ロックオンしている敵
-    bool isLockingOn_ = false;           // ロックオン中フラグ
-
-    /// <summary>
-    /// ロックオン処理（入力、対象検索、状態更新）
-    /// </summary>
-    void UpdateLockOn();
-
-    std::unique_ptr<Object3d> CreateStaticBlock(const Vector3& position, const std::string& name, const Vector3& collisionHalfSize);
-
-    /// <summary>
-    /// ロックオン対象として最適な敵を探す
-    /// </summary>
-    Object3d* FindBestLockOnTarget(Camera* camera);
-
-    /// <summary>
-    /// シーン内の敵リストを取得する
-    /// </summary>
-    std::vector<Object3d*> FindEnemies();
-
-    Math* math_;
-
-
 };
-

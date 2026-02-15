@@ -6,9 +6,15 @@
 /// 平行光源
 /// </summary>
 struct DirectionalLight {
-    Vector4 color;      // ライトの色
-    Vector3 direction;  // ライトの向き
-    float intensity;    // 輝度
+    Vector4 color;         // 16 byte
+    Vector3 direction;     // 12 byte
+    float intensity;       // 4 byte
+
+    Vector3 ambientColor;  // 12 byte
+    float fogStart;        // 4 byte (パディングの代わりに入れる)
+
+    float fogEnd;          // 4 byte
+    Vector3 fogColor;      // 12 byte
 };
 
 /// <summary>
@@ -26,7 +32,7 @@ struct PointLight {
 
 // シェーダーに渡すライトの定数バッファ (CBV)
 // (ポイントライトの最大数を定義)
-const int kMaxPointLights = 4;
+const int kMaxPointLights = 50;
 
 struct LightGroup {
     DirectionalLight directionalLight;

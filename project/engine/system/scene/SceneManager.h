@@ -12,6 +12,12 @@ class DebugEditor;
 /// </summary>
 class SceneManager {
 public:
+
+    static SceneManager* GetInstance();
+
+    SceneManager();
+
+
     /// <summary>
     /// デストラクタ
     /// </summary>
@@ -60,6 +66,7 @@ public:
     }
 
 private:
+    static SceneManager* instance_;
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
     std::unique_ptr<BaseScene> nextScene_ = nullptr;
     AbstractSceneFactory* sceneFactory_ = nullptr; // ファクトリーのポインタ

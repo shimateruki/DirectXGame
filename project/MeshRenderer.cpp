@@ -2,6 +2,7 @@
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "CameraManager.h"
+#include "LightManager.h"
 #include <cassert>
 
 MeshRenderer::MeshRenderer(Transform* transform) {
@@ -20,12 +21,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     wvpData_->WVP = Math::MakeIdentity4x4();
     wvpData_->world = Math::MakeIdentity4x4();
 
-    // 2. Lightバッファ
-    directionalLightResource_ = dxCommon->CreateBufferResource(sizeof(DirectionalLight));
-    directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
-    directionalLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    directionalLightData_->direction = { 0.0f, -1.0f, 0.0f };
-    directionalLightData_->intensity = 0.0f;
+
 
     // 3. Cameraバッファ
     cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
@@ -81,7 +77,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     // ModelのDrawを呼ぶ
     model_->Draw(
         wvpResource_.Get(),
-        directionalLightResource_.Get(),
+        LightManager::GetInstance()->GetDirectionalLightResource(),
         cameraResource_.Get(),
         pointLightResource,
         spotLightResource,

@@ -216,9 +216,14 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 if (objData.contains("isAnimRelative")) targetObject->isAnimRelative_ = objData["isAnimRelative"];
 
                 targetObject->InitializeRecorder(nullptr);
-                if (!targetObject->animName_.empty()) {
-                    targetObject->recorder_->Play(targetObject->animName_, targetObject->isAnimLoop_, targetObject->isAnimRelative_);
-                }
+                bool isCinematic = (targetObject->GetClassName() == "CinematicCamera");
+
+                targetObject->recorder_->Play(
+                    targetObject->animName_,
+                    targetObject->isAnimLoop_,
+                    targetObject->isAnimRelative_,
+                    isCinematic 
+                );
 
                 // 8. 親子関係保留
                 if (objData.contains("parentName") && objData["parentName"].is_string()) {
