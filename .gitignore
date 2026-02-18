@@ -364,3 +364,4 @@ FodyWeavers.xsd
 /project/imgui.ini
 Resources/json/user_config.json
 /project/Resources/json/user_config.json
+!project/externals/SDL2/lib/**
