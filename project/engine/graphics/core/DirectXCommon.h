@@ -118,6 +118,18 @@ public:
 	uint64_t GetFenceValue() const { return fenceValue_; }
 	HANDLE GetFenceEvent() const { return fenceEvent_; }
 
+	//  レンダーテクスチャの初期化
+	void CreateRenderTexture();
+
+	//  描画先を「レンダーテクスチャ」に切り替える (GameView描画開始)
+	void PreDrawRenderTexture();
+
+	//  描画先を「画面(バックバッファ)」に戻す (GameView描画終了)
+	void PostDrawRenderTexture();
+
+	//  ImGuiで表示するための SRVハンドルを取得
+	uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
+	void PreDrawBackBuffer(); // 描画先をバックバッファに戻す（リセットなし）
 
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
@@ -179,4 +191,15 @@ private:
 	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_ = nullptr;
+	//  レンダーテクスチャのリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> renderTexture_;
+
+	//  レンダーテクスチャ専用のRTVヒープ (ここに描画するためのハンドル)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtRtvHeap_;
+
+	//  SRVManager上のインデックス番号
+	uint32_t renderTextureSrvHandle_ = 0;
+
+	//  GameViewのクリアカラー (動作確認用に「緑」にしておきます)
+	float clearColor_[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 };

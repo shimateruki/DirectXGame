@@ -8,11 +8,14 @@
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
 #include "ParticleEditor.h"
+#include "imgui_internal.h"
+#include <imgui.h>
 #endif
 
 #include"LightEditor.h"
 #include <GhostRecorder.h>
 #include "CameraEditor.h"
+
 
 
 class Game : public Framework {
@@ -25,26 +28,26 @@ protected:
 	void Draw() override;
 
 private:
-	// ★ gameScene_ と debugEditor_ の代わりに SceneManager を持つ
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
 	std::chrono::high_resolution_clock::time_point lastTime_;
 	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
 	float timeScale_ = 1.0f;
-
-
+	bool isPlaying_ = false;
+	std::string currentSceneName_;
+	
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
 	std::unique_ptr<ParticleEditor> particleEditor_;
-	bool showLightEditor_ = true; 
-	bool showParticleEditor_ = true;
-	bool showDebugWindows_ = true;  // 3Dエディタ用
-	bool showSpriteInspector_ = true; // 2Dエディタ用
-	bool showDebugConsole_ = true;
-	bool showCameraEditor = true;
 	std::unique_ptr<GhostRecorder> ghostRecorder_;
-	bool showGhostRecorder_ = true; // メニューバーの切り替え用
-	bool showTimeController_ = true;   // 時間管理ウィンドウ用
-
+	bool showLightEditor_ = false;
+	bool showParticleEditor_ = false;
+	bool showDebugWindows_ = false;
+	bool showSpriteInspector_ = false;
+	bool showDebugConsole_ = false;
+	bool showCameraEditor = false;
+	bool showGhostRecorder_ = false;
+	bool showTimeController_ = false;
+	ImVec2 lastGameViewSize_ = { 0, 0 };
 #endif
 };

@@ -59,3 +59,40 @@ void SRVManager::SetDescriptorHeaps(ID3D12GraphicsCommandList* commandList) {
     ID3D12DescriptorHeap* pHeaps[] = { srvDescriptorHeap_.Get() };
     commandList->SetDescriptorHeaps(1, pHeaps);
 }
+
+uint32_t SRVManager::Allocate() {
+    // 上限チェック
+    assert(nextIndex_ < kMaxSRVCount);
+
+    // 現在のインデックスを確保して返す
+    uint32_t index = nextIndex_;
+    nextIndex_++;
+    return index;
+}
+
+//  CreateSRVforResource
+void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc) {
+    // ヒープの先頭ハンドルを取得
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    // 指定された index の場所までアドレスをずらす
+    cpuHandle.ptr += (static_cast<unsigned long long>(descriptorSize_) * index);
+
+    // そこで SRV を作成する
+    device_->CreateShaderResourceView(pResource, &srvDesc, cpuHandle);
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
+    // 範囲外チェック (任意ですがあると安全)
+    if (index >= kMaxSRVCount) {
+        assert(false && "SRV Index out of range!");
+    }
+
+    // 先頭ハンドルを取得
+    D3D12_GPU_DESCRIPTOR_HANDLE handle = srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart();
+
+    // インデックス分だけアドレスをずらす
+    handle.ptr += (static_cast<UINT64>(descriptorSize_) * index);
+
+    return handle;
+}

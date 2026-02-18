@@ -1,5 +1,5 @@
 #include "BaseScene.h"
-
+#include "Object3d.h"
 void BaseScene::TriggerEvent(int targetID) {
     // IDが -1 (設定なし) なら何もしない
     if (targetID == -1) return;

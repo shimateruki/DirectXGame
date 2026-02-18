@@ -7,438 +7,423 @@
 #include "SceneManager.h"
 #include "GhostRecorder.h"
 #include <cassert>
-
+#include <algorithm> // min, max
+#include <ParticleManager.h>
 
 Object3d::~Object3d() {
     if (recorder_) {
         delete recorder_;
         recorder_ = nullptr;
     }
+    // unique_ptr (collider_, meshRenderer_) は自動解放
 }
 
+// ========================================================================
+// 初期化
+// ========================================================================
 void Object3d::Initialize(Object3dCommon* common) {
     assert(common);
     common_ = common;
-    DirectXCommon* dxCommon = common_->GetDxCommon();
 
-    wvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
-    wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
-    Math math;
-    wvpData_->WVP = math.makeIdentity4x4();
-    wvpData_->world = math.makeIdentity4x4();
+    // Transform初期化
+    transform_.scale = { 1.0f, 1.0f, 1.0f };
+    transform_.rotate = { 0.0f, 0.0f, 0.0f };
+    transform_.translate = { 0.0f, 0.0f, 0.0f };
+    transform_.parent = nullptr;
 
-    directionalLightResource_ = dxCommon->CreateBufferResource(sizeof(DirectionalLight));
-    directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
-    directionalLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    directionalLightData_->direction = { 0.0f, -1.0f, 0.0f };
-    directionalLightData_->intensity = 0.0f;
+    // ★コンポーネント生成
+    // 1. コライダー (Transformと同期)
+    collider_ = std::make_unique<Collider>(&transform_);
 
-    cameraResource_ = dxCommon->CreateBufferResource(sizeof(CameraForGPU));
-    cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
-    cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f }; 
+    // 2. メッシュレンダラー (Transformと同期)
+    meshRenderer_ = std::make_unique<MeshRenderer>(&transform_);
+    meshRenderer_->Initialize(common_);
 
+    // 行列計算
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
+
+    // レコーダー
     InitializeRecorder(nullptr);
-
-
 }
 
-OBB Object3d::GetOBB() const {
-    OBB obb;
-    Math math;
-
-    // =========================================================
-    // 1. コライダー自身の「ローカル行列」を作る
-    // =========================================================
-    // ここで colliderConfig_.rotation を使って回転行列を作ります
-
-    // 回転 (Z * X * Y 順など、エンジンの仕様に合わせますが基本はこれ)
-    Matrix4x4 matRotX = math.MakeRotateXMatrix(colliderConfig_.rotation.x);
-    Matrix4x4 matRotY = math.MakeRotateYMatrix(colliderConfig_.rotation.y);
-    Matrix4x4 matRotZ = math.MakeRotateZMatrix(colliderConfig_.rotation.z);
-    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
-
-    // 中心ズレ (Center)
-    Matrix4x4 matTrans = math.MakeTranslateMatrix(colliderConfig_.center);
-
-    // コライダー単体の行列 (回転させてから、ズラス)
-    Matrix4x4 matColliderLocal = math.Multiply(matRot, matTrans);
-
-
-    // =========================================================
-    // 2. オブジェクトの「ワールド行列」と合成する
-    // =========================================================
-    // これで [親の回転] + [子の回転] が合わさった最終的な行列になります
-    Matrix4x4 matFinal = math.Multiply(matColliderLocal, worldMatrix_);
-
-
-    // =========================================================
-    // 3. 行列から OBB の情報を抜き出す
-    // =========================================================
-
-    // A. 中心座標 (行列の平行移動成分 [3][0]~[3][2])
-    obb.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
-
-    // B. 3つの軸 (行列の回転成分 X, Y, Z軸)
-    obb.orientations[0] = math.Normalize({ matFinal.m[0][0], matFinal.m[0][1], matFinal.m[0][2] }); // X軸
-    obb.orientations[1] = math.Normalize({ matFinal.m[1][0], matFinal.m[1][1], matFinal.m[1][2] }); // Y軸
-    obb.orientations[2] = math.Normalize({ matFinal.m[2][0], matFinal.m[2][1], matFinal.m[2][2] }); // Z軸
-
-    // C. サイズ (半サイズ)
-    // コライダーの元サイズ * オブジェクトのスケール
-    obb.size = {
-        colliderConfig_.size.x * transform_.scale.x,
-        colliderConfig_.size.y * transform_.scale.y,
-        colliderConfig_.size.z * transform_.scale.z
-    };
-
-    return obb;
-}
-
-void Object3d::SetModel(const std::string& modelName) {
-    modelName_ = modelName;
-    // 探して、なければ読み込んでくれる
-    model_ = ModelManager::GetInstance()->LoadModel(modelName);
-
-
-}
+// ========================================================================
+// 更新・描画
+// ========================================================================
 
 void Object3d::Update(float deltaTime) {
-    if (model_) {
-        model_->Update();
+    if (meshRenderer_ && meshRenderer_->GetModel()) {
+        // アニメーション更新
+        if (!animName_.empty()) {
+            Model* model = meshRenderer_->GetModel();
+            const Model::Animation* anim = model->GetAnimation(animName_);
+            if (anim) {
+                animationTime_ += deltaTime;
+                float time = animationTime_;
+                if (isAnimLoop_ && anim->duration > 0.0f) {
+                    time = std::fmod(time, anim->duration);
+                } else {
+                    time = std::min(time, anim->duration);
+                }
+                model->ApplyAnimation(*anim, time);
+            }
+        }
+        meshRenderer_->GetModel()->Update();
     }
+
+    // ★レンダラー更新 (WVP行列転送など)
+    if (meshRenderer_) {
+        meshRenderer_->Update();
+    }
+
     if (recorder_) {
         recorder_->Update();
     }
-
+    
+    UpdateParticle();
 }
 
-void Object3d::UpdateLocalMatrix() {
-    Math math;
+void Object3d::UpdateParticle() {
+    // 名前が設定されていれば、マネージャー経由で発生させる
+    if (!particleName_.empty()) {
 
-    // ★ localMatrix_ を計算する
-    localMatrix_ = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+        Vector3 pos = GetWorldPosition();
 
-    // ★ 親がいない場合、ローカル行列 = ワールド行列とする
-    if (parent_ == nullptr) {
-        worldMatrix_ = localMatrix_;
+        ParticleManager::GetInstance()->Emit(particleName_, pos, particleTimer_);
     }
-
 }
-
-
-void Object3d::UpdateWorldMatrix() {
-    Math math;
-
-    // --- 親子関係の処理 ---
-    if (parent_ != nullptr) {
-        worldMatrix_ = math.Multiply(localMatrix_, parent_->GetWorldMatrix());
-    }
-
-    // --- 既存の WVP とライティングの処理 ---
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
-    // カメラがあれば計算する
-    if (camera) {
-        const Matrix4x4& viewMatrix = camera->GetViewMatrix();
-        const Matrix4x4& projectionMatrix = camera->GetProjectionMatrix();
-
-        Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix_, math.Multiply(viewMatrix, projectionMatrix));
-
-        wvpData_->WVP = worldViewProjectionMatrix;
-        wvpData_->world = worldMatrix_;
-        wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix_));
-        directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
-        cameraData_->worldPosition = camera->GetEye();
-    }
-
-}
-
-
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-
-    if (!isVisible_) {
-        return;
+    if (!isVisible_) return;
+#ifdef NDEBUG // "Release" ビルドの時だけ有効になるマクロ
+    if (className_ == "CinematicCamera") {
+        return; // 何も描画せずに帰る（門前払い）
     }
-    common_->SetPipelineState(blendMode_);
-
-    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-
-    if (model_) {
-        model_->Draw(wvpResource_.Get(), directionalLightResource_.Get(), cameraResource_.Get(), pointLightResource, spotLightResource);
+#endif
+    if (meshRenderer_) {
+        meshRenderer_->Draw(pointLightResource, spotLightResource);
     }
 }
+
+// ========================================================================
+// トランスフォーム操作 (Transformへの委譲)
+// ========================================================================
+
+void Object3d::UpdateLocalMatrix() {
+    transform_.UpdateMatrix();
+}
+
+void Object3d::UpdateWorldMatrix() {
+    transform_.UpdateMatrix();
+
+    if (meshRenderer_) {
+        meshRenderer_->Update();
+    }
+}
+
 void Object3d::SetParent(Object3d* parent) {
     if (parent_) {
         std::vector<Object3d*>& kids = parent_->children_;
-        // 削除イディオム (Erase-Remove idiom)
         kids.erase(std::remove(kids.begin(), kids.end(), this), kids.end());
     }
-
 
     parent_ = parent;
 
     if (parent_) {
         parent_->children_.push_back(this);
+        transform_.parent = parent_->GetTransform();
+    } else {
+        transform_.parent = nullptr;
+    }
+
+    UpdateWorldMatrix();
+}
+
+// ========================================================================
+// グラフィックス設定 (MeshRendererへの委譲)
+// ========================================================================
+
+void Object3d::SetModel(Model* model) {
+    if (meshRenderer_) meshRenderer_->SetModel(model);
+}
+
+void Object3d::SetModel(const std::string& modelName) {
+    if (meshRenderer_) {
+        meshRenderer_->SetModel(modelName);
     }
 }
-CollisionInfo Object3d::CheckCollision(Object3d* other) {
-    CollisionInfo collision;
-    collision.isColliding = false; // 初期化
 
-    // 自分のタイプと相手のタイプを取得
-    ColliderType myType = this->GetColliderType();
-    ColliderType otherType = other->GetColliderType();
+Model* Object3d::GetModel() const {
+    return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
+}
 
-    // ====================================================================
-    // 1. 同じ形状同士の判定
-    // ====================================================================
+std::string Object3d::GetModelName() const {
+    return meshRenderer_ ? meshRenderer_->GetModelName() : "";
+}
 
-    // AABB vs AABB
-    if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
-        collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
-    }
-    // Sphere vs Sphere
-    else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
-        collision = CheckSphereCollision(
-            this->GetWorldPosition(), this->GetCollisionRadius(),
-            other->GetWorldPosition(), other->GetCollisionRadius());
-    }
-    // OBB vs OBB
-    else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
-        collision = CheckOBBCollision(this->GetOBB(), other->GetOBB());
-    }
-
-    // ====================================================================
-    // 2. 異なる形状同士の判定
-    // ====================================================================
-
-    // Sphere vs AABB
-    else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
-        collision = CheckSphereAABBCollision(
-            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetAABB());
-    }
-    // AABB vs Sphere (引数を入れ替えるため、法線を反転)
-    else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
-        collision = CheckSphereAABBCollision(
-            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetAABB());
-        collision.normal = collision.normal * -1.0f;
-    }
-
-    // Sphere vs OBB
-    else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
-        collision = CheckSphereOBBCollision(
-            this->GetWorldPosition(), this->GetCollisionRadius(), other->GetOBB());
-    }
-    // OBB vs Sphere (引数を入れ替えるため、法線を反転)
-    else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
-        collision = CheckSphereOBBCollision(
-            other->GetWorldPosition(), other->GetCollisionRadius(), this->GetOBB());
-        collision.normal = collision.normal * -1.0f;
-    }
-
-    // ====================================================================
-    // 3. AABB vs OBB の判定 
-    // ====================================================================
-
-    // AABB(自分) vs OBB(相手)
-    else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
-        // 関数は「AABBからOBBを押し出すベクトル」を返す
-        collision = CheckAABBOBBCollision(this->GetAABB(), other->GetOBB());
-
-        collision.normal = collision.normal * -1.0f;
-    }
-    // OBB(自分) vs AABB(相手)
-    else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
-        // CheckAABBOBBCollision(A, B) を呼ぶ
-        // A=相手(地面/AABB), B=自分(プレイヤー/OBB)
-        collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
-
-     
-    }
-
-    return collision;
+Vector4 Object3d::GetColor() const {
+    return meshRenderer_ ? meshRenderer_->GetColor() : Vector4{ 1,1,1,1 };
 }
 
 void Object3d::SetColor(const Vector4& color) {
-    if (directionalLightData_) {
-        directionalLightData_->color = color;
-    }
+    if (meshRenderer_) meshRenderer_->SetColor(color);
 }
+
+void Object3d::SetBlendMode(BlendMode blendMode) {
+    if (meshRenderer_) meshRenderer_->SetBlendMode(blendMode);
+}
+
+BlendMode Object3d::GetBlendMode() const {
+    return meshRenderer_ ? meshRenderer_->GetBlendMode() : BlendMode::kNone;
+}
+
 void Object3d::SetIntensity(float intensity) {
-    if (directionalLightData_) {
-        directionalLightData_->intensity = intensity;
+    if (meshRenderer_) meshRenderer_->SetIntensity(intensity);
+}
+
+float Object3d::GetIntensity() const {
+    if (meshRenderer_ && meshRenderer_->GetLightData()) {
+        return meshRenderer_->GetLightData()->intensity;
+    }
+    return 1.0f;
+}
+
+// 古いアクセッサの互換性維持
+Object3d::DirectionalLight* Object3d::GetDirectionalLightData() {
+    return meshRenderer_ ? meshRenderer_->GetLightData() : nullptr;
+}
+
+Object3d::Material* Object3d::GetMaterialData() {
+    return meshRenderer_ ? meshRenderer_->GetMaterialData() : nullptr;
+}
+
+void Object3d::SetMaterialType(int32_t type) {
+    if (meshRenderer_) meshRenderer_->SetMaterialType(type);
+}
+
+void Object3d::SetShininess(float shininess) {
+    if (meshRenderer_ && meshRenderer_->GetMaterialData()) {
+        meshRenderer_->GetMaterialData()->shininess = shininess;
     }
 }
+
+int32_t Object3d::GetMaterialType() const {
+    return meshRenderer_ ? meshRenderer_->GetMaterialType() : 0;
+}
+
+void Object3d::SetSelectedLighting(int32_t type) {
+    if (meshRenderer_ && meshRenderer_->GetMaterialData()) {
+        meshRenderer_->GetMaterialData()->selectedLighting = type;
+    }
+}
+
+// ========================================================================
+// 衝突判定 (Colliderへの委譲)
+// ========================================================================
+
+void Object3d::SetColliderConfig(const ColliderConfig& config) {
+    if (collider_) collider_->SetConfig(config);
+}
+const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
+    return collider_->GetConfig();
+}
+
+void Object3d::SetColliderType(ColliderType type) {
+    if (!collider_) return;
+    ColliderConfig config = collider_->GetConfig();
+    config.type = type;
+    collider_->SetConfig(config);
+}
+ColliderType Object3d::GetColliderType() const {
+    return collider_ ? collider_->GetType() : ColliderType::kNone;
+}
+
+void Object3d::SetCollisionSize(const Vector3& size) {
+    if (!collider_) return;
+    ColliderConfig config = collider_->GetConfig();
+    config.size = size;
+    collider_->SetConfig(config);
+}
+Vector3 Object3d::GetCollisionSize() const {
+    return collider_ ? collider_->GetSize() : Vector3{ 0,0,0 };
+}
+
+void Object3d::SetCollisionRadius(float radius) {
+    SetCollisionSize({ radius, radius, radius });
+}
+float Object3d::GetCollisionRadius() const {
+    return collider_ ? collider_->GetRadius() : 0.0f;
+}
+
+void Object3d::SetCollisionAttribute(uint32_t attribute) {
+    if (collider_) collider_->SetAttribute(attribute);
+}
+uint32_t Object3d::GetCollisionAttribute() const {
+    return collider_ ? collider_->GetAttribute() : 0;
+}
+
+void Object3d::SetCollisionMask(uint32_t mask) {
+    if (collider_) collider_->SetMask(mask);
+}
+uint32_t Object3d::GetCollisionMask() const {
+    return collider_ ? collider_->GetMask() : 0;
+}
+
+AABB Object3d::GetAABB() const {
+    return collider_ ? collider_->GetAABB() : AABB{};
+}
+OBB Object3d::GetOBB() const {
+    return collider_ ? collider_->GetOBB() : OBB{};
+}
+
+CollisionInfo Object3d::CheckCollision(Object3d* other) {
+    if (!collider_ || !other || !other->GetCollider()) {
+        CollisionInfo info;
+        info.isColliding = false;
+        return info;
+    }
+    return collider_->CheckCollision(other->GetCollider());
+}
+
+// ========================================================================
+// その他 (コピー、保存、レコーダー等)
+// ========================================================================
+
 void Object3d::InitializeRecorder(SceneManager* sceneManager) {
-    // すでに持っていたら作り直さない（安全策）
     if (recorder_) {
         delete recorder_;
     }
-
-    // 1. 実体を作る (new)
     recorder_ = new GhostRecorder();
-
-    // 2. 初期化する
     recorder_->Initialize(sceneManager);
-
     recorder_->SetTarget(this);
 }
-
 
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
 
-    // --- 基本情報のコピー ---
-    if (!other->modelName_.empty()) {
-        this->SetModel(other->modelName_);
+    if (!other->GetModelName().empty()) {
+        this->SetModel(other->GetModelName());
     }
     this->name_ = other->name_;
-
-    // Transform
     this->transform_ = other->transform_;
 
-    // --- コライダー & 物理 ---
-    this->SetColliderConfig(other->colliderConfig_);
-    this->collisionAttribute_ = other->collisionAttribute_;
-    this->collisionMask_ = other->collisionMask_;
+    // Colliderコピー
+    if (collider_ && other->collider_) {
+        this->SetColliderConfig(other->GetColliderConfig());
+        this->SetCollisionAttribute(other->GetCollisionAttribute());
+        this->SetCollisionMask(other->GetCollisionMask());
+    }
 
-    // 1. クラス名
+    // MeshRenderer設定コピー
+    if (meshRenderer_ && other->meshRenderer_) {
+        this->SetBlendMode(other->GetBlendMode());
+        this->SetMaterialType(other->GetMaterialType());
+        this->SetColor(other->GetColor());
+    }
+
     this->className_ = other->className_;
-
-    // 2. 可視性
     this->isVisible_ = other->isVisible_;
-
-    // 3. イベントタイプ
     this->eventType_ = other->eventType_;
     this->enemyType_ = other->enemyType_;
-
-    // 4. パラメータ
     this->param_ = other->param_;
 
-    // アニメーション設定のコピー
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
     this->isAnimRelative_ = other->isAnimRelative_;
 
-    // レコーダー初期化
     this->InitializeRecorder(nullptr);
-
-    // 設定が入っていれば、即座に再生を開始させる
     if (!this->animName_.empty() && this->recorder_) {
-        this->recorder_->Play(
-            this->animName_,
-            this->isAnimLoop_,
-            this->isAnimRelative_
-        );
+        bool isCinematic = (this->className_ == "CinematicCamera");
+        this->recorder_->Play(this->animName_, this->isAnimLoop_, this->isAnimRelative_, isCinematic);
     }
 }
 
-// Cloneはシンプルに
 std::unique_ptr<Object3d> Object3d::Clone() const {
     auto newObj = std::make_unique<Object3d>();
-
-    // 初期化
     assert(common_ != nullptr);
     newObj->Initialize(common_);
-    // 中身をコピー 
     newObj->CopyFrom(this);
     return newObj;
 }
 
-// ---------------------------------------------------------
-// 自身の情報をJSONデータとして出力（プリセット保存用）
-// ---------------------------------------------------------
 json Object3d::ExportToJson() {
     json j;
-
-    // 1. 基本情報
     j["name"] = name_;
-    j["modelName"] = modelName_;
+    j["modelName"] = GetModelName();
 
-    // 2. Transform (位置は配置時に決めるので保存しないが、スケールと回転は必須)
     j["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
     j["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
 
-    // 3. コライダー設定 (CollisionConfig)
-    // ここが大事！サイズだけでなく、位置ズレ(center)や種類も保存する
-    j["collider"] = {
-        {"type", static_cast<int>(colliderConfig_.type)},
-        {"size", { colliderConfig_.size.x, colliderConfig_.size.y, colliderConfig_.size.z }},
-        {"center", { colliderConfig_.center.x, colliderConfig_.center.y, colliderConfig_.center.z }},
-        { "rotation", { colliderConfig_.rotation.x, colliderConfig_.rotation.y, colliderConfig_.rotation.z } }
-    };
+    // Collider設定
+    if (collider_) {
+        const auto& config = collider_->GetConfig();
+        j["collider"] = {
+            {"type", static_cast<int>(config.type)},
+            {"size", { config.size.x, config.size.y, config.size.z }},
+            {"center", { config.center.x, config.center.y, config.center.z }},
+            { "rotation", { config.rotation.x, config.rotation.y, config.rotation.z } }
+        };
+    }
 
-    // 4. アニメーション設定
-    // これを保存しないと、配置した瞬間に棒立ちになったり、ループしなかったりする
     j["animation"] = {
         {"animName", animName_},
         {"isAnimLoop", isAnimLoop_},
         {"isAnimRelative", isAnimRelative_}
     };
-
-    // 5. ゲームロジック用パラメータ
     j["eventType"] = static_cast<int>(eventType_);
     j["enemyType"] = enemyType_;
+
+    // MeshRenderer設定
+    j["blendMode"] = static_cast<int>(GetBlendMode());
+    j["materialType"] = GetMaterialType();
 
     return j;
 }
 
-// ---------------------------------------------------------
-// JSONデータから設定を読み込んで反映（プリセット適用用）
-// ---------------------------------------------------------
 void Object3d::ImportFromJson(const json& j) {
-    // 1. 基本情報
     if (j.contains("modelName")) {
-        modelName_ = j["modelName"];
-        // モデルが変わるなら再ロードが必要かもしれない（設計による）
-        // ModelManager::Load(modelName_); 
-    }
-    // 名前は上書きしない（配置時にユニークな名前をつけることが多いため）
-    // if (j.contains("name")) name_ = j["name"]; 
-
-    // 2. Transform
-    if (j.contains("scale")) {
-        transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
-    }
-    if (j.contains("rotate")) {
-        transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+        SetModel(j["modelName"].get<std::string>());
     }
 
-    // 3. コライダー設定
-    if (j.contains("collider")) {
+    if (j.contains("scale")) transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
+    if (j.contains("rotate")) transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+
+    transform_.UpdateMatrix();
+
+    if (j.contains("collider") && collider_) {
         const auto& col = j["collider"];
-        if (col.contains("type")) colliderConfig_.type = static_cast<ColliderType>(col["type"]);
+        ColliderConfig config = collider_->GetConfig();
 
-        if (col.contains("size")) {
-            colliderConfig_.size = { col["size"][0], col["size"][1], col["size"][2] };
-        }
-        if (col.contains("center")) {
-            colliderConfig_.center = { col["center"][0], col["center"][1], col["center"][2] };
-        }
-        if (col.contains("rotation")) {
-            colliderConfig_.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
-        }
+        if (col.contains("type")) config.type = static_cast<ColliderType>(col["type"]);
+        if (col.contains("size")) config.size = { col["size"][0], col["size"][1], col["size"][2] };
+        if (col.contains("center")) config.center = { col["center"][0], col["center"][1], col["center"][2] };
+        if (col.contains("rotation")) config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
+
+        collider_->SetConfig(config);
     }
 
-    // 4. アニメーション設定
     if (j.contains("animation")) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
         if (anim.contains("isAnimRelative")) isAnimRelative_ = anim["isAnimRelative"];
-
-        //  アニメーション設定を読み込んだら、Recorder側にも反映・再生開始が必要
         if (recorder_ && !animName_.empty()) {
-            recorder_->Play(animName_, isAnimLoop_, isAnimRelative_);
+            // 自身が演出用カメラ(CinematicCamera)なら第4引数を true にする
+            bool isCinematic = (this->GetClassName() == "CinematicCamera");
+
+            recorder_->Play(
+                animName_,
+                isAnimLoop_,
+                isAnimRelative_,
+                isCinematic 
+            );
         }
     }
 
-    // 5. ゲームロジック用パラメータ
-    if (j.contains("eventType")) {
-        eventType_ = static_cast<EventType>(j["eventType"]);
-    }
-    if (j.contains("enemyType")) {
-        enemyType_ = j["enemyType"];
-	}
+    if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
+    if (j.contains("enemyType")) enemyType_ = j["enemyType"];
+
+    // MeshRenderer設定
+    if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
+    if (j.contains("materialType")) SetMaterialType(j["materialType"]);
 }

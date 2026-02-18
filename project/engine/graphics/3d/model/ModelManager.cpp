@@ -53,7 +53,6 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         fileName = modelName;
     } else {
         // Bパターン: 拡張子がない場合 (既存のOBJ互換用)
-        // 例: "Player" -> "resources/Player/Player.obj"
         directoryPath = kDefaultBaseDirectory + modelName + "/";
         fileName = modelName + ".obj";
     }

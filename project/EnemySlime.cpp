@@ -36,7 +36,7 @@ void EnemySlime::Update(float deltaTime) {
 std::unique_ptr<Object3d> EnemySlime::Clone() const {
     auto newSlime = std::make_unique<EnemySlime>();
     // 初期化
-    newSlime->Initialize(common_, modelName_);
+    newSlime->Initialize(common_, this->GetModelName());
     // 2. 親クラス(Object3d)の機能を使って、座標やモデル設定をコピーしてもらう
     newSlime->CopyFrom(this);
     newSlime->SetTarget(this->target_);

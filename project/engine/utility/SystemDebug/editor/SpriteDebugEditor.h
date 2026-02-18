@@ -25,7 +25,7 @@ public:
 	/// <summary>
 	/// ImGui を使った毎フレーム更新
 	/// </summary>
-	void Update();
+	void Update(const Vector2& localMousePos, bool isHovered);
 
 	/// <summary>
 	/// (任意) デバッグ描画 (選択中のスプライト枠など)
@@ -34,7 +34,7 @@ public:
 
 	void DrawImGui();
 
-	bool IsMouseOver(Sprite* sprite) const;
+	bool IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const;
 	/// <summary>
 	/// スプライトエディタがマウスを（ギズモ操作で）使用中か
 	/// </summary>

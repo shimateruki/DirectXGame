@@ -26,13 +26,18 @@ public:
         // --- Gameモード用パラメータ ---
         float distance = 15.0f;
         float height = 5.0f;
-        float angle = 25.0f;
+        Vector3 angle = { 25.0f, 0.0f, 0.0f };
         Vector3 lockOnOffset = { 0.0f, 4.0f, -12.0f };
+
+        float orbitRadius = 15.0f;   // 半径
+        float orbitHeight = 5.0f;    // 高さ
+        float orbitSpeed = 0.005f;  // 回転速度
 
         // --- Editorモード用パラメータ ---
         float moveSpeed = 0.5f;       // 通常移動速度
         float boostSpeed = 2.0f;      // Shift押下時の速度
         float mouseSensitivity = 0.003f; // マウス感度
+        Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
     };
 
 public:
@@ -69,7 +74,6 @@ public:
 
     // エディタカメラの位置と回転を強制設定
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
-    void FocusOn(const Vector3& targetPos, float distance = 10.0f);
 
 private:
     // 内部ヘルパー: 自由カメラの移動処理
@@ -87,6 +91,7 @@ private:
     // 保存先ディレクトリパス
     const std::string kDirectoryPath_ = "Resources/json/camera/";
     std::vector<std::string> fileList_;
+
 
 
 };

@@ -53,37 +53,66 @@ void CameraEditor::RefreshFileList() {
     }
 }
 
+
 void CameraEditor::Update(Object3d* player, bool isLockingOn) {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return;
 
-    // --- ロックオン中の特例処理 ---
-    // ゲームモードかつロックオン中なら、エディタ設定を無視してゲームロジックに任せる
     if (settings_.currentMode == Mode::Game && isLockingOn) {
         return;
     }
 
     if (settings_.currentMode == Mode::Game) {
-        // ==========================================
-        // GAME MODE (プレイヤー追従)
-        // ==========================================
         if (player) {
             camera->SetFollowTarget(player);
             camera->SetFollowMode(settings_.gameFollowMode);
+            InputManager* input = InputManager::GetInstance();
 
-            // 追従パラメータの反映 (kAimable / kFixed などの時のみ有効)
-            camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
+            // ★追加: ジャイロ入力があるかチェック
+            Vector3 gyro = input->GetGyroscope();
+            // 感度は 0.05f くらいでOK
+            bool isGyroActive = (std::abs(gyro.x) > 0.05f || std::abs(gyro.y) > 0.05f || std::abs(gyro.z) > 0.05f);
+
+            // 操作中判定 (ジャイロも含める！)
+            bool isControllingCamera = input->IsMouseButtonPressed(1) ||
+                (std::abs(input->GetRightStick().x) > 0.1f) ||
+                (std::abs(input->GetRightStick().y) > 0.1f) ||
+                isGyroActive;
+
+
+            if (isControllingCamera) {
+                // A. 操作中： カメラの値を Editor に逆反映 (Read)
+                // カメラには書き込まない！
+                if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
+                    settings_.gameFollowMode == Camera::FollowMode::kFirstPerson) {
+
+                    Vector3 currentRot = camera->GetRotation();
+                    float toDeg = 180.0f / 3.14159265f;
+
+                    settings_.angle.x = currentRot.x * toDeg;
+                    settings_.angle.y = currentRot.y * toDeg;
+                    settings_.angle.z = currentRot.z * toDeg;
+                }
+
+            } else {
+
+                camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
+            }
+
+            // これらは操作中でも反映してOK
             camera->SetLockOnOffset(settings_.lockOnOffset);
+            camera->ConfigFixedPoint(settings_.fixedPointPos);
         }
+
+        if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+            camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
+        }
+
     } else {
-        // ==========================================
-        // EDITOR MODE (自由移動)
-        // ==========================================
-        camera->SetFollowTarget(nullptr); // 追従解除
-        UpdateFreeCamera(camera);         // 自由移動ロジック実行
+        camera->SetFollowTarget(nullptr);
+        UpdateFreeCamera(camera);
     }
 }
-
 void CameraEditor::UpdateFreeCamera(Camera* camera) {
     InputManager* input = InputManager::GetInstance();
 
@@ -187,21 +216,16 @@ void CameraEditor::DrawImGui() {
     //  ファイル管理セクション 
     // ==========================================================
     if (ImGui::CollapsingHeader("ファイルマネージャー", ImGuiTreeNodeFlags_DefaultOpen)) {
-
         // 1. ファイルリスト (コンボボックス)
         static int currentItem = -1;
         if (ImGui::BeginCombo("ファイル選択", "Choose from list...")) {
             for (int i = 0; i < fileList_.size(); i++) {
                 bool isSelected = (currentItem == i);
-
-                // リスト項目を描画
                 if (ImGui::Selectable(fileList_[i].c_str(), isSelected)) {
                     currentItem = i;
-                    // 選んだファイル名をバッファにコピー (手入力の手間を省略)
                     std::string selectedName = fileList_[i];
                     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), selectedName.c_str());
                 }
-
                 if (isSelected) {
                     ImGui::SetItemDefaultFocus();
                 }
@@ -209,26 +233,18 @@ void CameraEditor::DrawImGui() {
             ImGui::EndCombo();
         }
 
-        // 2. ファイル名入力欄 (新規作成や名前変更用)
+        // 2. ファイル名入力欄
         ImGui::Text("ファイル名(.json)");
         ImGui::InputText("##ファイル名", fileNameBuffer_, sizeof(fileNameBuffer_));
 
         // 3. 操作ボタン
-        if (ImGui::Button("ロード")) {
-            LoadSettings();
-        }
+        if (ImGui::Button("ロード")) { LoadSettings(); }
         ImGui::SameLine();
-        if (ImGui::Button("セーブ")) {
-            SaveSettings();
-        }
+        if (ImGui::Button("セーブ")) { SaveSettings(); }
         ImGui::SameLine();
-        if (ImGui::Button("セーブファイルリスト")) {
-            RefreshFileList();
-        }
+        if (ImGui::Button("セーブファイルリスト")) { RefreshFileList(); }
     }
     ImGui::Separator();
-    // ==========================================================
-
 
     // --- モード選択 ---
     const char* modeNames[] = { "ゲームカメラ", "自由に動けるカメラ" };
@@ -243,7 +259,14 @@ void CameraEditor::DrawImGui() {
         // --- Game Mode 設定 ---
         ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "カメラモード設定");
 
-        const char* followModeNames[] = { "デフォルト", "3人称", "1人称" };
+        const char* followModeNames[] = {
+                    "固定(Fixed)",
+                    "3人称(Aimable)",
+                    "1人称(FPS)",
+                    "ロックオン",
+                    "周回(Orbit)" ,
+                    "定点注視(FixedPoint)"
+        };
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
         if (ImGui::Combo("View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
             settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
@@ -255,9 +278,26 @@ void CameraEditor::DrawImGui() {
 
             ImGui::DragFloat("距離", &settings_.distance, 0.1f, 1.0f, 100.0f);
             ImGui::DragFloat("高さ", &settings_.height, 0.1f, 0.0f, 50.0f);
-            ImGui::DragFloat("角度", &settings_.angle, 0.1f, -90.0f, 90.0f);
+
+            ImGui::DragFloat3("角度(X/Y/Z)", &settings_.angle.x, 0.1f, -180.0f, 180.0f);
+        }
+        if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
+            ImGui::Separator();
+            ImGui::Text("周回設定");
+            ImGui::DragFloat("半径 (Radius)", &settings_.orbitRadius, 0.1f, 1.0f, 100.0f);
+            ImGui::DragFloat("高さ (Height)", &settings_.orbitHeight, 0.1f, -10.0f, 50.0f);
+            ImGui::DragFloat("回転速度", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
         }
 
+        if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
+            ImGui::Separator();
+            ImGui::Text("定点カメラ設定");
+            ImGui::DragFloat3("カメラ座標", &settings_.fixedPointPos.x, 0.1f);
+            if (ImGui::Button("現在のカメラ位置をセット")) {
+                Camera* cam = CameraManager::GetInstance()->GetMainCamera();
+                if (cam) settings_.fixedPointPos = cam->GetEye();
+            }
+        }
     } else {
         // --- Editor Mode 設定 ---
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "自由に動けるカメラ");
@@ -269,18 +309,15 @@ void CameraEditor::DrawImGui() {
         ImGui::SliderFloat("加速速度", &settings_.boostSpeed, 1.0f, 10.0f);
         ImGui::SliderFloat("マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
 
-        // 現在座標の表示
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (camera) {
             Vector3 pos = camera->GetEye();
             ImGui::Text("Pos: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
         }
     }
-
     ImGui::End();
 #endif
 }
-
 void CameraEditor::SaveSettings() {
     // ディレクトリパス + 入力されたファイル名 を結合
     std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
@@ -290,23 +327,26 @@ void CameraEditor::SaveSettings() {
     j["gameFollowMode"] = static_cast<int>(settings_.gameFollowMode);
     j["distance"] = settings_.distance;
     j["height"] = settings_.height;
-    j["angle"] = settings_.angle;
+    j["angle"] = { settings_.angle.x, settings_.angle.y, settings_.angle.z };
     j["lockOnOffset"] = { settings_.lockOnOffset.x, settings_.lockOnOffset.y, settings_.lockOnOffset.z };
+
+    //  周回(Orbit)モード用パラメータの保存
+    j["orbitRadius"] = settings_.orbitRadius;
+    j["orbitHeight"] = settings_.orbitHeight;
+    j["orbitSpeed"] = settings_.orbitSpeed;
 
     // エディタ設定
     j["moveSpeed"] = settings_.moveSpeed;
     j["boostSpeed"] = settings_.boostSpeed;
     j["mouseSensitivity"] = settings_.mouseSensitivity;
-
+    j["fixedPointPos"] = { settings_.fixedPointPos.x, settings_.fixedPointPos.y, settings_.fixedPointPos.z };
     std::ofstream file(filePath);
     if (file.is_open()) {
         file << j.dump(4);
     }
 
-    // ★保存したら新しいファイルが増えたかもしれないのでリストを更新
     RefreshFileList();
 }
-
 void CameraEditor::LoadSettings() {
     // ディレクトリパス + 入力されたファイル名 を結合
     std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
@@ -322,24 +362,43 @@ void CameraEditor::LoadSettings() {
 
         if (j.contains("distance")) settings_.distance = j["distance"];
         if (j.contains("height")) settings_.height = j["height"];
-        if (j.contains("angle")) settings_.angle = j["angle"];
-
+        if (j.contains("angle")) {
+            if (j["angle"].is_array()) {
+                settings_.angle.x = j["angle"][0];
+                settings_.angle.y = j["angle"][1];
+                settings_.angle.z = j["angle"][2];
+            } else {
+                // 古いデータ(float)の場合はX(Pitch)にだけ入れる
+                settings_.angle.x = j["angle"];
+                settings_.angle.y = 0.0f;
+                settings_.angle.z = 0.0f;
+            }
+        }
         if (j.contains("lockOnOffset") && j["lockOnOffset"].is_array()) {
             settings_.lockOnOffset.x = j["lockOnOffset"][0];
             settings_.lockOnOffset.y = j["lockOnOffset"][1];
             settings_.lockOnOffset.z = j["lockOnOffset"][2];
         }
 
+        //  周回(Orbit)モード用パラメータの読み込み
+        if (j.contains("orbitRadius")) settings_.orbitRadius = j["orbitRadius"];
+        if (j.contains("orbitHeight")) settings_.orbitHeight = j["orbitHeight"];
+        if (j.contains("orbitSpeed"))  settings_.orbitSpeed = j["orbitSpeed"];
+
         if (j.contains("moveSpeed")) settings_.moveSpeed = j["moveSpeed"];
         if (j.contains("boostSpeed")) settings_.boostSpeed = j["boostSpeed"];
         if (j.contains("mouseSensitivity")) settings_.mouseSensitivity = j["mouseSensitivity"];
+        if (j.contains("fixedPointPos") && j["fixedPointPos"].is_array()) {
+            settings_.fixedPointPos.x = j["fixedPointPos"][0];
+            settings_.fixedPointPos.y = j["fixedPointPos"][1];
+            settings_.fixedPointPos.z = j["fixedPointPos"][2];
+        }
     }
     catch (...) {
         // エラーハンドリング
     }
 }
 
-// CameraEditor.cpp
 
 void CameraEditor::LoadFile(const std::string& fileName) {
     // 1. ファイル名バッファを更新
@@ -350,8 +409,6 @@ void CameraEditor::LoadFile(const std::string& fileName) {
 
     // 3. ファイルが存在するかチェック
     if (!fs::exists(filePath)) {
-        // A. 存在しない場合 -> デフォルト値をセットして保存（新規作成）
-        // (これをしないと、前のシーンの設定が残ってしまう)
         settings_ = Settings(); // デフォルトコンストラクタで初期化
         settings_.currentMode = Mode::Game; // 基本はゲームモード
 
@@ -379,4 +436,3 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
         camera->SetFollowTarget(nullptr);
     }
 }
-

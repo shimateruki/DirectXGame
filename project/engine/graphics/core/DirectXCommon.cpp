@@ -235,7 +235,8 @@ void DirectXCommon::Finalize() {
 
 
 void DirectXCommon::PostDraw() {
-    ImGuiManager::GetInstance()->Draw();
+
+
     // リソースバリアを再度設定します。
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -249,17 +250,15 @@ void DirectXCommon::PostDraw() {
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
 
-    // FPS固定のための更新処理（
-    UpdateFixFPS();
-
     // コマンドリストの配列を作成します
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
+
     // コマンドキューにコマンドリストを投入し、GPUに実行を指示します。
     commandQueue_->ExecuteCommandLists(1, commandLists);
-
     swapChain_->Present(1, 0);
 
-    // --- ここから次のフレームのためのCPUとGPUの同期処理 ---
+
+
 
     // フェンスの目標値をインクリメントします。
     fenceValue_++;
@@ -631,3 +630,144 @@ void DirectXCommon::WaitForGPUAndReset() {
     hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
     assert(SUCCEEDED(hr));
 }
+
+
+// DirectXCommon.cpp
+
+void DirectXCommon::CreateRenderTexture() {
+    // 1. リソース設定 (UNORM)
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Width = WinApp::kClientWidth;
+    resDesc.Height = WinApp::kClientHeight;
+    resDesc.MipLevels = 1;
+    resDesc.DepthOrArraySize = 1;
+    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★全部 UNORM！
+    resDesc.SampleDesc.Count = 1;
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    // 2. クリアカラー
+    clearColor_[0] = 0.1f;
+    clearColor_[1] = 0.25f;
+    clearColor_[2] = 0.5f;
+    clearColor_[3] = 1.0f;
+
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★UNORM
+    clearValue.Color[0] = clearColor_[0];
+    clearValue.Color[1] = clearColor_[1];
+    clearValue.Color[2] = clearColor_[2];
+    clearValue.Color[3] = clearColor_[3];
+
+    // 3. 生成
+    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
+    HRESULT hr = device_->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
+        IID_PPV_ARGS(&renderTexture_)
+    );
+    assert(SUCCEEDED(hr));
+
+    // 4. RTV (UNORM)
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+    rtvHeapDesc.NumDescriptors = 1;
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    hr = device_->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtRtvHeap_));
+    assert(SUCCEEDED(hr));
+
+    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+    rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★UNORM
+    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    device_->CreateRenderTargetView(renderTexture_.Get(), &rtvDesc, rtRtvHeap_->GetCPUDescriptorHandleForHeapStart());
+
+    // 5. SRV (UNORM)
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★UNORM
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+    renderTextureSrvHandle_ = SRVManager::GetInstance()->CreateSRV(renderTexture_.Get(), srvDesc);
+}
+
+void DirectXCommon::PreDrawRenderTexture() {
+    // ★追加: コマンドアロケータとリストをリセット (これがないと書き込めない！)
+    HRESULT hr = commandAllocator_->Reset();
+    assert(SUCCEEDED(hr));
+    hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
+    assert(SUCCEEDED(hr));
+
+    // --- 以下、既存のコード ---
+    // 1. バリア：読むモード -> 描くモード
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = renderTexture_.Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    commandList_->ResourceBarrier(1, &barrier);
+
+    // 2. 描画先を「レンダーテクスチャ」に切り替える
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+    // 3. クリア
+    commandList_->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
+    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+    // 4. ビューポート設定
+    commandList_->RSSetViewports(1, &viewport_);
+    commandList_->RSSetScissorRects(1, &scissorRect_);
+
+    // 5. ヒープ設定
+    ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+    commandList_->SetDescriptorHeaps(1, descriptorHeaps);
+}
+// 描画終了：ImGuiが読めるように戻します
+void DirectXCommon::PostDrawRenderTexture() {
+    // バリア：描くモード -> 読むモード
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = renderTexture_.Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    commandList_->ResourceBarrier(1, &barrier);
+}
+void DirectXCommon::PreDrawBackBuffer() {
+    //  バックバッファのインデックスを取得 (これが必要)
+    backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
+
+    // ★追加: リソースバリア (表示モード -> 書き込みモードへ変更)
+    // これがないとGPUはバックバッファへの描画を無視します
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = swapChainResources_[backBufferIndex_].Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    commandList_->ResourceBarrier(1, &barrier);
+
+    // 1. バックバッファのハンドルを取得
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+    rtvHandle.ptr = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart().ptr +
+        (backBufferIndex_ * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    // 2. 描画先をセット
+    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+    // ★追加: 画面クリア (ImGuiの背景や隙間用)
+    float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f }; // 青色など
+    commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    // ImGuiが深度を使う場合はクリアが必要
+    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+    // 3. ビューポートなども画面サイズに戻す
+    commandList_->RSSetViewports(1, &viewport_);
+    commandList_->RSSetScissorRects(1, &scissorRect_);
+
+    // 4. ImGui用にヒープをセットし直す
+    ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
+    commandList_->SetDescriptorHeaps(1, descriptorHeaps);
+};

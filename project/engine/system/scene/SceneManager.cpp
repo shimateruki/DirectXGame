@@ -8,6 +8,21 @@
 #include "json.hpp"  
 using json = nlohmann::json; 
 
+
+// 静的メンバ変数の実体化
+SceneManager* SceneManager::instance_ = nullptr;
+
+//  GetInstanceの実装
+SceneManager* SceneManager::GetInstance() {
+    return instance_;
+}
+
+//  コンストラクタで自分自身を登録
+SceneManager::SceneManager() {
+    instance_ = this;
+}
+
+
 /// <summary>
 /// デストラクタ
 /// </summary>

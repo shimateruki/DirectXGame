@@ -1,12 +1,12 @@
-
 #pragma once
 #include <d3d12.h> 
 #include <wrl.h>   
 #include <vector>  
 #include "engine/utility/math/Math.h"
 #include <string> 
-#include"BaseScene.h"
+#include "BaseScene.h"
 #include <deque>
+#include "Transform.h"
 
 class Object3d;
 class DirectXCommon;
@@ -29,8 +29,7 @@ struct AlignedVector4 {
 
 class DebugEditor {
 public:
-    void Initialize( SceneManager* sceneManager, DirectXCommon* dxCommon
-    );
+    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void Finalize();
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
@@ -53,7 +52,13 @@ public:
 
 
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    void SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+        gameViewOffset_ = offset;
+        gameViewSize_ = size;
+    }
 
+    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
+    void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
 private:
     void InitializePrimitiveDrawing();
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
@@ -99,15 +104,16 @@ private:
     //  Undoシステム用構造体 
     struct TransformCommand {
         Object3d* target;        // 操作したオブジェクト
-        Object3d::Transform oldTf; // 変更前の状態
-        Object3d::Transform newTf; // 変更後の状態
+        Transform oldTf; // 変更前の状態
+        Transform newTf; // 変更後の状態
     };
 
     // 履歴スタック (最大50件くらい保存)
     std::deque<TransformCommand> undoStack_;
 
     // 編集中の一時保存用 (ドラッグ開始時の状態)
-    Object3d::Transform tempTransformStart_;
+    // ★修正: Object3d::Transform -> Transform
+    Transform tempTransformStart_;
     bool isDraggingTransform_ = false;
 
     bool isGridSnapEnabled_ = false; // スナップするかどうか
@@ -126,4 +132,9 @@ private:
 
     std::string currentPreviewModelName_ = "";
     char presetNameBuffer_[64] = "";
+
+    Vector2 gameViewMousePos_ = { 0, 0 }; // ローカルマウス座標
+    Vector2 gameViewSize_ = { 1266, 530 }; // GameViewのサイズ
+    Vector2 gameViewOffset_ = { 0, 0 };   // GameViewの絶対座標
+    bool isGameViewHovered_ = false;
 };

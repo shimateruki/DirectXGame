@@ -15,6 +15,8 @@ public:
         kAimable,       // プレイヤーの後ろからマウスで視点操作・ズーム可能
         kFirstPerson,   // 一人称視点
         kLockOn,        // ロックオンモード
+        kOrbit,         // 周回
+        kFixedPoint,
 
     };
 
@@ -49,7 +51,7 @@ public:
     ///  カメラモードを設定する
     /// </summary>
     void SetFollowMode(FollowMode mode);
-    
+
 
     /// <summary>
     /// 現在のカメラモードを取得する 
@@ -65,7 +67,7 @@ public:
 
     // --- モード別設定  ---
     void ConfigFixed(const Vector3& offset);
-    void ConfigAimable(float distance, float minDistance, float maxDistance);
+    void ConfigAimable(float distance, float height, const Vector3& angle);
     void ConfigFirstPerson(const Vector3& eyeOffset);
 
     // --- 操作---
@@ -103,9 +105,23 @@ public:
     void SetEye(const Vector3& eye) { eye_ = eye; }
     void SetTarget(const Vector3& target) { target_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
+    void SetFreezeEye(bool freeze) { isEyeFrozen_ = freeze; }
 
+    void SetOrbitParams(float radius, float height, float speed) {
+        orbitRadius_ = radius;
+        orbitHeight_ = height;
+        orbitSpeed_ = speed;
+    }
+    void ConfigFixedPoint(const Vector3& position);
+    Matrix4x4 GetViewProjectionMatrix() const {
+        static Math math; 
+        return math.Multiply(viewMatrix_, projectionMatrix_);
+    }
+    // ★追加: アスペクト比を外部から変更するためのセッター
+    void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
 
-
+    // ★追加: プロジェクション行列だけを即座に更新する関数
+    void UpdateProjectionMatrix();
 private:
     // --- カメラの三要素 ---
     Vector3 eye_ = { 0.0f, 0.0f, -10.0f };
@@ -133,7 +149,7 @@ private:
     // 注視対象のオブジェクト (Enemy)
     Object3d* targetObject_ = nullptr;
 
-  
+
 
 
     // --- モード/状態 ---
@@ -157,10 +173,17 @@ private:
     Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };
 
     // (kLockOn 用) プレイヤーのY回転基準のオフセット
-    Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f }; 
+    Vector3 lockOnOffset_ = { 0.0f, 3.0f, -8.0f };
 
     float aimDistance_ = 15.0f;
     float aimHeight_ = 5.0f;
-    float aimAngle_ = 0.0f;
+    Vector3 aimAngle_ = { 0.0f, 0.0f, 0.0f };
+    bool isEyeFrozen_ = false;
+
+    float orbitRadius_ = 15.0f;
+    float orbitHeight_ = 5.0f;
+    float orbitSpeed_ = 0.005f;
+    float orbitAngle_ = 0.0f;
+    Vector3 fixedPointPos_ = { 0.0f, 5.0f, -10.0f };
 
 };

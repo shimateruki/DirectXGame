@@ -2,11 +2,15 @@
 #include <dinput.h>   
 #include <windows.h>  
 #include "engine/utility/math/Math.h"
-#include <Xinput.h> 
+#include <Xinput.h>
+
+#define SDL_MAIN_HANDLED // SDLにメイン関数を任せない宣言
+#include <SDL.h>
 
 #pragma comment(lib, "dinput8.lib") 
 #pragma comment(lib, "xinput.lib")  
 #pragma comment(lib, "dxguid.lib")  
+
 
 /// <summary>
 /// キーボード、マウス、ゲームパッドからの入力を管理するクラス
@@ -82,13 +86,29 @@ public:
     /// <summary>
     /// マウスカーソルの「絶対座標」（ウィンドウ内）を取得する
     /// </summary>
-    Vector2 GetMousePosition() const; 
+    Vector2 GetMousePosition() const;
 
     /// <summary>
     /// 指定されたマウスボタンがこのフレームで離された瞬間か (リリース)
     /// </summary>
     bool IsMouseButtonReleased(int button) const;
+    Vector2 GetRightStick() const;
 
+    // SDLの終了処理用
+    void Finalize();
+
+    // 加速度（傾き）とジャイロを取得する関数
+    Vector3 GetAccelerometer() const { return accelData_; }
+    Vector3 GetGyroscope() const { return gyroData_; }
+    // 現在の加速度を「0点」として記録する
+    void Calibrate() { baseAccel_ = accelData_; }
+
+    // 基準値を取得するゲッター
+    Vector3 GetBaseAccelerometer() const { return baseAccel_; }
+
+    bool IsGamepadButtonTriggered(WORD button) const;
+    bool IsGamepadMode() const { return isGamepadMode_; }
+    Vector2 GetLeftStick() const;
 private:
     InputManager() = default;
     ~InputManager() = default;
@@ -110,4 +130,14 @@ private:
     // --- ゲームパッドの状態 ---
     XINPUT_STATE gamepadState{}; // 現在のフレームのゲームパッド状態
     HWND hwnd_ = nullptr;
+
+    // --- SDL2関連 ---
+    SDL_GameController* sdlController_ = nullptr;
+    Vector3 accelData_ = { 0, 0, 0 }; // 加速度 (重力の向き)
+    Vector3 gyroData_ = { 0, 0, 0 };  // ジャイロ (回転速度)
+    Vector3 baseAccel_ = { 0.0f, 0.0f, 0.0f }; // 基準となる重力ベクトル
+    bool isCalibrated_;
+    XINPUT_STATE prevGamepadState{};
+
+    bool isGamepadMode_ = false;
 };

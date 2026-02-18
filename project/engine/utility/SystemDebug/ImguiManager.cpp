@@ -15,63 +15,84 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     // 1. ImGuiのコンテキストを生成
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-
-    // ドッキング機能を有効にする
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // ドッキング有効
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // ドッキング有効化 (ウィンドウ同士をくっつける)
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // マルチビューポート有効化 (ウィンドウ外に出す)
 
     // ImGuiのスタイルを設定
     ImGui::StyleColorsDark();
+
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;              // ウィンドウの角丸をなくす
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f; // 背景を完全に不透明にする
+    }
+    // --- Unity Dark風のスタイル調整 ---
+
+    // 角丸をなくしてフラットにする
+    style.WindowRounding = 0.0f;
+    style.ChildRounding = 0.0f;
+    style.FrameRounding = 2.0f;
+    style.GrabRounding = 2.0f;
+    style.PopupRounding = 0.0f;
+    style.TabRounding = 2.0f;
+
+    // 枠線の太さ
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 0.0f;
+
+    // Unity Dark風の配色 (グレー基調)
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f); // 背景
+    style.Colors[ImGuiCol_Header] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f); // 選択項目
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.32f, 0.32f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f); // タイトルバー
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f); // 入力項目背景
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f); // タブ
+    style.Colors[ImGuiCol_TabActive] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+    style.Colors[ImGuiCol_DockingPreview] = ImVec4(0.30f, 0.50f, 0.80f, 0.70f); // ドッキング時の青い影
+
+    // フォント読み込み（パスは環境に合わせて確認してください）
     io.Fonts->AddFontFromFileTTF(
-        "Resources/sprite/meiryo.ttc",   // フォントファイルのパス
-        18.0f,                                // フォントサイズ
+        "Resources/sprite/meiryo.ttc",
+        18.0f,
         nullptr,
-        io.Fonts->GetGlyphRangesJapanese()    // 日本語の範囲（ひらがな・カタカナ・漢字）
+        io.Fonts->GetGlyphRangesJapanese()
     );
+
     // プラットフォームとレンダラーのバックエンドを初期化
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 
-    // SRVManagerからSRV用のデスクリプタヒープを取得
+    // --- (以下、SRV周りの設定は元のまま変更なしでOK) ---
     ID3D12DescriptorHeap* srvDescriptorHeap = SRVManager::GetInstance()->GetDescriptorHeap();
-
-    // デスクリプタ1個分のサイズ（メモリ上の階段1段分の高さ）を取得
     UINT incrementSize = dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-    // 先頭ハンドルを取得
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 
-
-
-    // ポインタを「1個分」ずらす（SRVの1番目を使う場合）
     cpuHandle.ptr += incrementSize;
     gpuHandle.ptr += incrementSize;
 
     ImGui_ImplDX12_InitInfo initInfo = {};
     initInfo.Device = dxCommon_->GetDevice();
     initInfo.CommandQueue = dxCommon_->GetCommandQueue();
-    initInfo.NumFramesInFlight = 3;
-    initInfo.RTVFormat = dxCommon_->GetRTVFormat();
+    initInfo.NumFramesInFlight = 2;
+    initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;   
     initInfo.SrvDescriptorHeap = srvDescriptorHeap;
-
     initInfo.LegacySingleSrvCpuDescriptor = cpuHandle;
     initInfo.LegacySingleSrvGpuDescriptor = gpuHandle;
     initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     initInfo.UserData = dxCommon_->GetDevice();
-
     initInfo.SrvDescriptorAllocFn = nullptr;
     initInfo.SrvDescriptorFreeFn = nullptr;
 
-    // 初期化
     ImGui_ImplDX12_Init(&initInfo);
 
-
-
-
-
 #endif
-
-    
 }
 
 void ImGuiManager::Finalize() {
@@ -95,12 +116,13 @@ void ImGuiManager::BeginFrame() {
 
 void ImGuiManager::Draw() {
 #ifdef USE_IMGUI
-    // 1. まず「描画内容」を確定させる（これで FrameCountEnded が更新されます）
+    // 1. まず「描画内容」を確定させる
     ImGui::Render();
 
     // 2. DX12のコマンドリストに記録
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     assert(commandList != nullptr);
+    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 #endif
 }

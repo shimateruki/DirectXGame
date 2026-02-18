@@ -16,7 +16,8 @@ struct Material
     float32_t4x4 uvTransform;
     int32_t selectedLighting;
     float32_t shininess;
-    float32_t2 padding2;
+    int32_t materialType;
+    float32_t padding2;
 };
 
 struct DirectionalLight
@@ -24,6 +25,10 @@ struct DirectionalLight
     float32_t4 color;
     float32_t3 direction;
     float intenssity;
+    float32_t3 ambientColor;
+    float fogStart;
+    float fogEnd;
+    float32_t3 fogColor;
 };
 
 struct Camera
@@ -83,7 +88,8 @@ PixelShanderOutput main(VecrtexShaderOutput input)
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
-    if (textureColor.a <= 0.5)
+    // アルファテスト (ガラスの場合は透明部分も描画したいので、materialTypeが0の時だけdiscardする手もあるが、一旦そのまま)
+    if (gMaterial.materialType == 0 && textureColor.a <= 0.5)
     {
         discard;
     }
@@ -114,7 +120,6 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             
             float32_t3 diffuse = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
             
-            
             float32_t3 halfVector = normalize(L + toEye);
             float NdotH = dot(N, halfVector);
             float specularPow = pow(saturate(NdotH), gMaterial.shininess);
@@ -127,13 +132,10 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             for (int i = 0; i < gPointLights.activeCount; ++i)
             {
                 PointLight light = gPointLights.lights[i];
-
                 float32_t3 directionToLight = light.position - input.worldPosition;
                 float distance = length(directionToLight);
                 float32_t3 L_Point = normalize(directionToLight);
-
                 float factor = pow(saturate(-distance / light.radius + 1.0), light.decay);
-
                 float pointCos = saturate(dot(N, L_Point));
                 float32_t3 pDiffuse = gMaterial.color.rgb * textureColor.rgb * light.color.rgb * light.intensity * factor * pointCos;
                 totalPointDiffuse += pDiffuse;
@@ -155,15 +157,12 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             for (int j = 0; j < gSpotLights.activeCount; ++j)
             {
                 SpotLight light = gSpotLights.lights[j];
-
                 float32_t3 directionToSpotLight = normalize(light.position - input.worldPosition);
                 float distanceSpot = length(light.position - input.worldPosition);
                 float32_t3 spotLightDir = normalize(light.direction);
-
                 float angleCos = dot(directionToSpotLight, -spotLightDir);
                 float falloffFactor = saturate((angleCos - light.cosAngle) / (light.cosFalloffStart - light.cosAngle));
                 float distanceFactor = pow(saturate(-distanceSpot / light.distance + 1.0), light.decay);
-
                 float spotCos = saturate(dot(N, directionToSpotLight));
                 float32_t3 sDiffuse = gMaterial.color.rgb * textureColor.rgb * light.color.rgb * light.intensity * distanceFactor * falloffFactor * spotCos;
                 totalSpotDiffuse += sDiffuse;
@@ -177,58 +176,142 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     totalSpotSpecular += sSpecular;
                 }
             }
+          // ===========================================================
+            // ガラスシェーダー (Crystal Glass Shader)
+            // ===========================================================
+            if (gMaterial.materialType == 1)
+            {
+                float3 N = normalize(input.smoothNormal);
+                float3 V = normalize(toEye);
+                float NdotV = saturate(dot(N, V));
+                float PI = 3.14159265f;
 
-            // Final Composition
-            output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
-            output.color.a = gMaterial.color.a * textureColor.a;
-        // 1. 視線ベクトルと法線の角度を見る
-    // N (法線) と toEye (カメラへの方向) の内積をとる
-    // 正面ほど 1.0、輪郭(90度)ほど 0.0 になる
-    float rimFactor = 1.0f - saturate(dot(N, toEye));
+            // 環境色の設定
+                float3 skyColor = float3(0.3f, 0.6f, 0.9f);
+                float3 groundColor = float3(0.4f, 0.4f, 0.4f);
+                float3 horizonColor = float3(1.0f, 1.0f, 1.0f);
 
-    // 2. 範囲を調整する (powで絞る)
-    // 3.0f という数字を大きくすると、もっと細い線になります
-    rimFactor = pow(rimFactor, 3.0f);
+            // ===========================================================
+            // 1. プリズム屈折 (RGBを別々に曲げる！)
+            // ===========================================================
+            // 屈折率を色ごとに少しずらす (ガラスの分散特性)
+                float iorRatio = 1.0f / 1.52f;
+                float3 IOR_RGB = float3(iorRatio * 0.99f, iorRatio, iorRatio * 1.01f); // 赤、緑、青
 
-    // 3. 光の色を決める (とりあえず白)
-    float3 rimColor = float3(1.0f, 1.0f, 1.0f);
+            // 3回屈折計算を行う
+                float3 RefractR = refract(-V, N, IOR_RGB.r);
+                float3 RefractG = refract(-V, N, IOR_RGB.g);
+                float3 RefractB = refract(-V, N, IOR_RGB.b);
 
-    // 4. 強さを決める (0.5くらいが丁度いいかも)
-    float rimIntensity = 0.5f;
+            // --- 関数化できないので、3回サンプリング処理を展開します ---
+            
+            // [Rチャンネル]
+                float2 uvR;
+                uvR.x = atan2(RefractR.x, RefractR.z) / (2.0f * PI) + 0.5f;
+                uvR.y = acos(clamp(RefractR.y, -1.0f, 1.0f)) / PI;
+                float horizonR = pow(saturate(1.0f - abs(uvR.y - 0.5f) * 2.0f), 20.0f);
+                float3 envR = (uvR.y > 0.5f) ? skyColor : groundColor;
+                float colorR = lerp(envR.r, horizonColor.r, horizonR);
 
-    // 最終カラーに足し算する！
-    output.color.rgb += rimColor * rimFactor * rimIntensity;
-        // ホラーゲームならここを 0.02f (2%) くらいにする
-    // 普通のゲームなら 0.1f (10%) ～ 0.2f (20%) くらい
-            float3 ambientColor = float3(0.02f, 0.02f, 0.02f);
+            // [Gチャンネル]
+                float2 uvG;
+                uvG.x = atan2(RefractG.x, RefractG.z) / (2.0f * PI) + 0.5f;
+                uvG.y = acos(clamp(RefractG.y, -1.0f, 1.0f)) / PI;
+                float horizonG = pow(saturate(1.0f - abs(uvG.y - 0.5f) * 2.0f), 20.0f);
+                float3 envG = (uvG.y > 0.5f) ? skyColor : groundColor;
+                float colorG = lerp(envG.g, horizonColor.g, horizonG);
 
-    // 元の色(テクスチャなど)に対して、最低限の明るさを保証する
-    output.color.rgb += ambientColor * gMaterial.color.rgb * textureColor.rgb;
-        
-        // -----------------------------------------------------------
-    // ★距離フォグ (Distance Fog) の追加
-    // -----------------------------------------------------------
+            // [Bチャンネル]
+                float2 uvB;
+                uvB.x = atan2(RefractB.x, RefractB.z) / (2.0f * PI) + 0.5f;
+                uvB.y = acos(clamp(RefractB.y, -1.0f, 1.0f)) / PI;
+                float horizonB = pow(saturate(1.0f - abs(uvB.y - 0.5f) * 2.0f), 20.0f);
+                float3 envB = (uvB.y > 0.5f) ? skyColor : groundColor;
+                float colorB = lerp(envB.b, horizonColor.b, horizonB);
 
-    // 1. 背景色（フォグの色）
-    // ※ 本来は C++ から送るべきですが、今は背景クリア色(画面の背景色)と同じにします
-    float3 fogColor = float3(0.1f, 0.1f, 0.1f); 
+            // RGBを合成
+                float3 refractionColor = float3(colorR, colorG, colorB);
 
-    // 2. カメラとピクセルの距離を測る
-    // input.worldPosition : ピクセルの場所
-    // gCamera.worldPosition : カメラの場所 (RimLightで使ったはず！)
-    float distance = length(input.worldPosition - gCamera.worldPosition);
 
-    // 3. フォグのかかり具合を計算
-    // 10.0f から霧がかかり始め、50.0f で真っ白(完全に霧)になる設定
-    float fogStart = 10.0f;
-    float fogEnd = 50.0f;
+            // ===========================================================
+            // 2. フレネル & ダークリム
+            // ===========================================================
+                float F0 = 0.04f;
+                float fresnel = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
+                float darkRim = smoothstep(0.6f, 1.0f, 1.0f - pow(NdotV, 0.5f));
 
-    // 線形補間 (0.0=霧なし ～ 1.0=完全に霧)
-    float fogFactor = saturate((distance - fogStart) / (fogEnd - fogStart));
+            // 表面反射 (反射は色ズレしないので1回でOK)
+                float3 ReflectVec = reflect(-V, N);
+                float2 uvReflect;
+                uvReflect.y = acos(clamp(ReflectVec.y, -1.0f, 1.0f)) / PI;
+                float3 reflectionColor = (uvReflect.y < 0.5f) ? skyColor : groundColor;
 
-    // 4. 元の色とフォグの色を混ぜる
-    // fogFactor が増えるほど fogColor に近づく
-    output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
+            // ===========================================================
+            // 3. ダブル・スペキュラ
+            // ===========================================================
+                float3 L_Dir = normalize(-gDirectionalLight.direction);
+                float3 H = normalize(L_Dir + V);
+                float NdotH = saturate(dot(N, H));
+            
+                float specPowerPrimary = 8192.0f;
+                float3 specPrimary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH, specPowerPrimary) * 5.0f;
+
+                float3 N_Back = normalize(N + V * 0.2f);
+                float NdotH_Back = saturate(dot(N_Back, H));
+                float specPowerSecondary = 512.0f;
+                float3 specSecondary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH_Back, specPowerSecondary) * 1.0f;
+
+                float3 totalSpecular = specPrimary + specSecondary;
+
+            // ===========================================================
+            // 4. 集光 (Caustics)
+            // ===========================================================
+                float internalFocus = dot(N, -L_Dir);
+                float caustic = smoothstep(0.9f, 1.0f, internalFocus);
+                float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic * 2.0f;
+
+            // ===========================================================
+            // 5. 最終合成
+            // ===========================================================
+            // 虹色屈折 + 表面反射
+                float3 bodyColor = lerp(refractionColor * (1.0f - darkRim * 0.8f), reflectionColor, fresnel);
+            
+                output.color.rgb = bodyColor + totalSpecular + fakeCaustics;
+
+            // 透明度 (以前と同じ設定)
+                float alphaBase = 0.02f;
+                output.color.a = saturate(alphaBase + fresnel + caustic * 0.5f + (totalSpecular.r * 0.5f));
+            }
+            else
+            {
+            
+                output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
+                output.color.a = gMaterial.color.a * textureColor.a;
+
+                float rimFactor = 1.0f - saturate(dot(N, toEye));
+                rimFactor = pow(rimFactor, 3.0f);
+                output.color.rgb += float3(1.0f, 1.0f, 1.0f) * rimFactor * 0.5f;
+                output.color.rgb += gDirectionalLight.ambientColor * gMaterial.color.rgb * textureColor.rgb;
+            }
+
+  
+            // ===========================================================
+            //  距離フォグ (Distance Fog) - 全体共通
+            // ===========================================================
+            // ハードコードをやめて、定数バッファの値を使う
+            float3 fogColor = gDirectionalLight.fogColor;
+            float fogStart = gDirectionalLight.fogStart;
+            float fogEnd = gDirectionalLight.fogEnd;
+
+            float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
+      
+            float fogRange = max(fogEnd - fogStart, 0.01f);
+            
+            float fogFactor = saturate((distanceToCamera - fogStart) / fogRange);
+
+            // フォグを適用
+            output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
+
             break;
     }
 
