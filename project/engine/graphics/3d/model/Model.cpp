@@ -59,7 +59,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 }
 
 // ==========================================
-// ボーンバッファの作成とSRV登録 (★新規実装)
+// ボーンバッファの作成とSRV登録 
 // ==========================================
 void Model::CreateBoneBuffer() {
     DirectXCommon* dxCommon = common_->GetDxCommon();

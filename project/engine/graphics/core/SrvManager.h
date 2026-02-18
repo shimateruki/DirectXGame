@@ -30,6 +30,7 @@ public:
     //  確保済みのインデックスを指定してSRVを作る
     void CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
     uint32_t Allocate();
+    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
 private:
     SRVManager() = default;
     ~SRVManager() = default;

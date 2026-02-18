@@ -89,8 +89,8 @@ void ParticleCommon::CreatePipeline() {
         blendDesc.RenderTarget[0].BlendEnable = true;
 
         // α値のブレンド設定（基本共通でOK）
-        blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-        blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+        blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ZERO;  // パーティクルのAlphaは足さない
+        blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ONE;  // もともとのAlpha(1.0)を維持
         blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 
         // ★モードごとのRGBブレンド設定

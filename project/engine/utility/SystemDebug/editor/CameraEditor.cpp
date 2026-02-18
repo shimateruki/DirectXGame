@@ -209,6 +209,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 }
 
 void CameraEditor::DrawImGui() {
+#ifdef USE_IMGUI
     ImGui::Begin("カメラ");
 
     // ==========================================================
@@ -315,6 +316,7 @@ void CameraEditor::DrawImGui() {
         }
     }
     ImGui::End();
+#endif
 }
 void CameraEditor::SaveSettings() {
     // ディレクトリパス + 入力されたファイル名 を結合

@@ -218,25 +218,30 @@ Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) 
 // ==========================================================================
 // DrawPreview (可視化機能)
 // ==========================================================================
-void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection) {
+void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
+#ifdef USE_IMGUI
     if (!isShowPreview_ || !target_) return;
 
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImDrawList* drawList = ImGui::GetBackgroundDrawList(viewport);
+    // ★重要: Backgroundではなく ForegroundDrawList を使うことでウィンドウの上に描画される
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
     float time = (float)ImGui::GetTime();
 
+    // ★座標変換：World -> Clip -> Screen (GameViewウィンドウ内)
     auto WorldToScreen = [&](const Vector3& worldPos) -> ImVec2 {
         Vector3 clip = TransformCoord(worldPos, viewProjection);
+
+        // Z値によるカリング（カメラの後ろなら描画しない）
         if (clip.z < 0.0f || clip.z > 1.0f) return ImVec2(-10000.0f, -10000.0f);
-        float screenX = viewport->Pos.x + (clip.x + 1.0f) * 0.5f * viewport->Size.x;
-        float screenY = viewport->Pos.y + (1.0f - clip.y) * 0.5f * viewport->Size.y;
+
+        // クリップ空間(-1.0～1.0)を、ウィンドウ内のピクセル座標(offset～offset+size)に変換
+        float screenX = offset.x + (clip.x + 1.0f) * 0.5f * size.x;
+        float screenY = offset.y + (1.0f - clip.y) * 0.5f * size.y;
         return ImVec2(screenX, screenY);
         };
 
-    // 計算用の全ポイント（位置と回転）を整理
+    // --- 計算用の全ポイント整理 ---
     std::vector<Vector3> allPos;
     std::vector<Vector3> allRot;
-
     allPos.push_back(genParams_.startPos);
     allRot.push_back(genParams_.startRot);
     for (const auto& wp : genParams_.waypoints) {
@@ -248,7 +253,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection) {
 
     if (allPos.size() < 2) return;
 
-    // 1. 軌跡のメインライン（白い点線）
+    // --- 1. 軌跡のメインライン（白い点線） ---
     const int samples = 60;
     ImVec2 prevScreenPos = WorldToScreen(allPos[0]);
     for (int i = 1; i <= samples; ++i) {
@@ -263,18 +268,18 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection) {
             }();
 
         ImVec2 screenPos = WorldToScreen(currentPos);
+        // 両方の点が有効な座標（-5000より大きい）場合のみ線を引く
         if (screenPos.x > -5000.0f && prevScreenPos.x > -5000.0f) {
             drawList->AddLine(prevScreenPos, screenPos, IM_COL32(255, 255, 255, 100), 1.5f);
         }
         prevScreenPos = screenPos;
     }
 
-    // 2. 視線ベクトルと進行方向の可視化（一定間隔で描画）
+    // --- 2. 視線ベクトルと進行方向の可視化 ---
     const int arrowSteps = 10;
     for (int i = 0; i <= arrowSteps; ++i) {
         float t = (float)i / (float)arrowSteps;
 
-        // --- 位置と回転の補間計算 ---
         Vector3 pos, rot;
         float p = t * (allPos.size() - 1);
         int idx = (int)p;
@@ -282,34 +287,26 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection) {
         if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
 
         pos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : Lerp(allPos[idx], allPos[idx + 1], lt);
-        rot = Lerp(allRot[idx], allRot[idx + 1], lt); // 回転は常にLerp
+        rot = Lerp(allRot[idx], allRot[idx + 1], lt);
 
         ImVec2 baseScr = WorldToScreen(pos);
         if (baseScr.x < -5000.0f) continue;
 
-        // --- 視線ベクトル（向き）の計算 ---
-        // オブジェクトの前方方向(Z軸)を計算
+        // 視線ベクトル計算
         float cosX = cosf(rot.x);
-        Vector3 forward;
-        forward.x = cosX * sinf(rot.y);
-        forward.y = -sinf(rot.x);
-        forward.z = cosX * cosf(rot.y);
-
-        // 視線の先 3.0f の地点
+        Vector3 forward = { cosX * sinf(rot.y), -sinf(rot.x), cosX * cosf(rot.y) };
         Vector3 lookTarget = { pos.x + forward.x * 3.0f, pos.y + forward.y * 3.0f, pos.z + forward.z * 3.0f };
         ImVec2 lookScr = WorldToScreen(lookTarget);
 
         if (lookScr.x > -5000.0f) {
-            // 視線ライン（水色）
             drawList->AddLine(baseScr, lookScr, IM_COL32(0, 255, 255, 200), 2.0f);
-            // 先端に小さな点
             drawList->AddCircleFilled(lookScr, 2.0f, IM_COL32(0, 255, 255, 255));
         }
 
-        // 進行方向の矢印（黄色）
+        // 進行方向の矢印
         if (i < arrowSteps) {
             float nextT = t + 0.02f;
-            Vector3 nPos = genParams_.useSpline ? GetSplinePoint(allPos, nextT, false) : pos; // 簡易化
+            Vector3 nPos = genParams_.useSpline ? GetSplinePoint(allPos, nextT, false) : Lerp(allPos[idx], allPos[idx + 1], lt + 0.02f);
             ImVec2 nScr = WorldToScreen(nPos);
             if (nScr.x > -5000.0f) {
                 float dx = nScr.x - baseScr.x, dy = nScr.y - baseScr.y;
@@ -328,15 +325,22 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection) {
         }
     }
 
-    // 3. アニメーションドット（流れる光）
+    // --- 3. アニメーションドット（流れる光） ---
     for (int i = 0; i < 5; ++i) {
         float t = fmodf(time * 0.4f + (float)i / 5.0f, 1.0f);
-        Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : allPos[0]; // 簡易
+        Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) :
+            [&]() {
+            float p = t * (allPos.size() - 1);
+            int idx = (int)p;
+            float lt = p - idx;
+            if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
+            return Lerp(allPos[idx], allPos[idx + 1], lt);
+            }();
         ImVec2 pScr = WorldToScreen(pPos);
         if (pScr.x > -5000.0f) drawList->AddCircleFilled(pScr, 3.0f, IM_COL32(255, 255, 0, 200));
     }
 
-    // 4. 各重要ポイントのラベル
+    // --- 4. 重要ポイントのラベル ---
     ImVec2 startScr = WorldToScreen(genParams_.startPos);
     if (startScr.x > -5000.0f) {
         drawList->AddCircleFilled(startScr, 6.0f, IM_COL32(0, 255, 0, 255));
@@ -355,6 +359,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection) {
             drawList->AddText(ImVec2(wpScr.x + 8, wpScr.y - 12), IM_COL32(255, 255, 0, 255), buf);
         }
     }
+#endif
 }
 // ==========================================================================
 // DrawImGui (UI部分)

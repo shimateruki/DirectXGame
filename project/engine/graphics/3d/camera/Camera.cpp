@@ -20,6 +20,13 @@ void Camera::ConfigFixedPoint(const Vector3& position) {
     fixedPointPos_ = position;
 }
 
+void Camera::UpdateProjectionMatrix() {
+  
+    static Math math;
+
+    // 現在のパラメータを使ってプロジェクション行列を再計算
+    projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+}
 void Camera::Initialize() {
     // デフォルトの視点、注視点、上方向を設定
     eye_ = { 0.0f, 5.0f, -20.0f };

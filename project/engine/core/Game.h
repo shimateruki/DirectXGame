@@ -8,11 +8,14 @@
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
 #include "ParticleEditor.h"
+#include "imgui_internal.h"
+#include <imgui.h>
 #endif
 
 #include"LightEditor.h"
 #include <GhostRecorder.h>
 #include "CameraEditor.h"
+
 
 
 class Game : public Framework {
@@ -31,6 +34,7 @@ private:
 	float timeScale_ = 1.0f;
 	bool isPlaying_ = false;
 	std::string currentSceneName_;
+	
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
@@ -44,6 +48,6 @@ private:
 	bool showCameraEditor = false;
 	bool showGhostRecorder_ = false;
 	bool showTimeController_ = false;
-
+	ImVec2 lastGameViewSize_ = { 0, 0 };
 #endif
 };

@@ -31,9 +31,9 @@ void SpriteDebugEditor::Initialize(SceneManager* sceneManager, InputManager* inp
 void SpriteDebugEditor::Finalize() {
     // (unique_ptr が自動で解放するので、特に何もしない)
 }
-void SpriteDebugEditor::Update() {
+void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 #ifdef USE_IMGUI
-    if (sceneManager_ == nullptr || inputManager_ == nullptr) return;
+    if (sceneManager_ == nullptr) return;
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) {
@@ -41,6 +41,7 @@ void SpriteDebugEditor::Update() {
         return;
     }
 
+    // シーン切り替え時のリセット
     if (lastUpdatedScene_ != currentScene) {
         selectedSprite_ = nullptr;
         isMovingX_ = false;
@@ -48,23 +49,24 @@ void SpriteDebugEditor::Update() {
         lastUpdatedScene_ = currentScene;
     }
 
-    bool isImGuiBusy = ImGui::GetIO().WantCaptureMouse;
+    // ★重要：GameViewの上にマウスがない、または他のウィンドウが重なっている場合は無視
+    // ただし、ドラッグ中は操作を継続させたいので isMoving もチェック
+    if (!isHovered && !isMovingX_ && !isMovingY_) return;
 
     // --- 1. ギズモ操作 (簡易移動) ---
-    if (selectedSprite_ && !isImGuiBusy) {
-        if (inputManager_->IsMouseButtonTriggered(0) && IsMouseOver(selectedSprite_)) {
+    if (selectedSprite_) {
+        // マウスが押された瞬間
+        if (inputManager_->IsMouseButtonTriggered(0) && IsMouseOver(selectedSprite_, localMousePos)) {
             isMovingX_ = true;
             isMovingY_ = true;
-            dragStartMousePos_ = inputManager_->GetMousePosition();
+            dragStartMousePos_ = localMousePos; // 引数の座標を保存
             dragStartSpritePos_ = selectedSprite_->GetPosition();
         }
 
+        // ドラッグ中
         if (inputManager_->IsMouseButtonPressed(0) && (isMovingX_ || isMovingY_)) {
-            Vector2 mousePos = inputManager_->GetMousePosition();
-            Vector2 delta = { mousePos.x - dragStartMousePos_.x, mousePos.y - dragStartMousePos_.y };
-            Vector2 newPos = dragStartSpritePos_;
-            newPos.x += delta.x;
-            newPos.y += delta.y;
+            Vector2 delta = { localMousePos.x - dragStartMousePos_.x, localMousePos.y - dragStartMousePos_.y };
+            Vector2 newPos = { dragStartSpritePos_.x + delta.x, dragStartSpritePos_.y + delta.y };
             selectedSprite_->SetPosition(newPos);
         }
 
@@ -75,12 +77,14 @@ void SpriteDebugEditor::Update() {
     }
 
     // --- 2. スプライト選択 ---
-    if (!isMovingX_ && !isMovingY_ && !isImGuiBusy && inputManager_->IsMouseButtonTriggered(0)) {
+    // ドラッグ中でなく、クリックされた瞬間
+    if (!isMovingX_ && !isMovingY_ && inputManager_->IsMouseButtonTriggered(0)) {
         auto& sprites = currentScene->GetSprites();
         bool hit = false;
+        // 重なり順を考慮して逆順（手前）からチェック
         for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
             Sprite* sprite = it->get();
-            if (sprite && IsMouseOver(sprite)) {
+            if (sprite && IsMouseOver(sprite, localMousePos)) {
                 selectedSprite_ = sprite;
                 hit = true;
                 break;
@@ -272,23 +276,22 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 
 
 
-bool SpriteDebugEditor::IsMouseOver(Sprite* sprite) const {
-    if (sprite == nullptr || inputManager_ == nullptr) return false;
+bool SpriteDebugEditor::IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const {
+    if (sprite == nullptr) return false;
 
-    Vector2 mousePos = inputManager_->GetMousePosition();
     Vector2 pos = sprite->GetPosition();
     Vector2 size = sprite->GetSize();
     Vector2 anchor = sprite->GetAnchorPoint();
 
+    // スプライトの描画範囲を計算
     float minX = pos.x - (anchor.x * size.x);
     float maxX = minX + size.x;
     float minY = pos.y - (anchor.y * size.y);
     float maxY = minY + size.y;
 
-    return (mousePos.x >= minX && mousePos.x <= maxX &&
-            mousePos.y >= minY && mousePos.y <= maxY);
+    return (localMousePos.x >= minX && localMousePos.x <= maxX &&
+        localMousePos.y >= minY && localMousePos.y <= maxY);
 }
-
 bool SpriteDebugEditor::IsMouseBusy() const {
     // ImGui操作中かどうか
 #ifdef USE_IMGUI

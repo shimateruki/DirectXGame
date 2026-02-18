@@ -52,7 +52,13 @@ public:
 
 
     void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    void SetGameViewRegion(const Vector2& offset, const Vector2& size) {
+        gameViewOffset_ = offset;
+        gameViewSize_ = size;
+    }
 
+    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
+    void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
 private:
     void InitializePrimitiveDrawing();
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
@@ -126,4 +132,9 @@ private:
 
     std::string currentPreviewModelName_ = "";
     char presetNameBuffer_[64] = "";
+
+    Vector2 gameViewMousePos_ = { 0, 0 }; // ローカルマウス座標
+    Vector2 gameViewSize_ = { 1266, 530 }; // GameViewのサイズ
+    Vector2 gameViewOffset_ = { 0, 0 };   // GameViewの絶対座標
+    bool isGameViewHovered_ = false;
 };

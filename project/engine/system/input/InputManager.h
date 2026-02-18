@@ -11,6 +11,7 @@
 #pragma comment(lib, "xinput.lib")  
 #pragma comment(lib, "dxguid.lib")  
 
+
 /// <summary>
 /// キーボード、マウス、ゲームパッドからの入力を管理するクラス
 /// </summary>

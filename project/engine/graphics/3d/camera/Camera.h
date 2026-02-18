@@ -117,6 +117,11 @@ public:
         static Math math; 
         return math.Multiply(viewMatrix_, projectionMatrix_);
     }
+    // ★追加: アスペクト比を外部から変更するためのセッター
+    void SetAspectRatio(float ratio) { aspectRatio_ = ratio; }
+
+    // ★追加: プロジェクション行列だけを即座に更新する関数
+    void UpdateProjectionMatrix();
 private:
     // --- カメラの三要素 ---
     Vector3 eye_ = { 0.0f, 0.0f, -10.0f };

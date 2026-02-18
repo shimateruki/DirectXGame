@@ -29,6 +29,33 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
         style.WindowRounding = 0.0f;              // ウィンドウの角丸をなくす
         style.Colors[ImGuiCol_WindowBg].w = 1.0f; // 背景を完全に不透明にする
     }
+    // --- Unity Dark風のスタイル調整 ---
+
+    // 角丸をなくしてフラットにする
+    style.WindowRounding = 0.0f;
+    style.ChildRounding = 0.0f;
+    style.FrameRounding = 2.0f;
+    style.GrabRounding = 2.0f;
+    style.PopupRounding = 0.0f;
+    style.TabRounding = 2.0f;
+
+    // 枠線の太さ
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 0.0f;
+
+    // Unity Dark風の配色 (グレー基調)
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f); // 背景
+    style.Colors[ImGuiCol_Header] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f); // 選択項目
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.28f, 0.28f, 1.00f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.32f, 0.32f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f); // タイトルバー
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f); // 入力項目背景
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f); // タブ
+    style.Colors[ImGuiCol_TabActive] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+    style.Colors[ImGuiCol_DockingPreview] = ImVec4(0.30f, 0.50f, 0.80f, 0.70f); // ドッキング時の青い影
 
     // フォント読み込み（パスは環境に合わせて確認してください）
     io.Fonts->AddFontFromFileTTF(
@@ -95,6 +122,7 @@ void ImGuiManager::Draw() {
     // 2. DX12のコマンドリストに記録
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     assert(commandList != nullptr);
+    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 #endif
 }

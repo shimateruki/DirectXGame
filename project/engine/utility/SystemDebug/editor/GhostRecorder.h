@@ -54,7 +54,7 @@ public:
     void DrawImGui();
 
     //  3D空間への軌跡プレビュー描画
-    void DrawPreview(const Matrix4x4& viewProjection);
+    void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size);
 
     // ターゲットの切り替え
     void SetTarget(Object3d* target) { target_ = target; }

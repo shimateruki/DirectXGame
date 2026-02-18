@@ -81,3 +81,18 @@ void SRVManager::CreateSRVforResource(uint32_t index, ID3D12Resource* pResource,
     // そこで SRV を作成する
     device_->CreateShaderResourceView(pResource, &srvDesc, cpuHandle);
 }
+
+D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
+    // 範囲外チェック (任意ですがあると安全)
+    if (index >= kMaxSRVCount) {
+        assert(false && "SRV Index out of range!");
+    }
+
+    // 先頭ハンドルを取得
+    D3D12_GPU_DESCRIPTOR_HANDLE handle = srvDescriptorHeap_->GetGPUDescriptorHandleForHeapStart();
+
+    // インデックス分だけアドレスをずらす
+    handle.ptr += (static_cast<UINT64>(descriptorSize_) * index);
+
+    return handle;
+}

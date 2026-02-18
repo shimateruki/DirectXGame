@@ -44,13 +44,30 @@ void LightManager::Update() {
     // ---------------------------------------------------
     // 1. 平行光源 (Directional Light)
     // ---------------------------------------------------
-    DirectionalLight* dirMap = nullptr;
-    directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&dirMap));
+    if (directionalLightResource_) {
+        DirectionalLight* dirMap = nullptr;
 
-    directionalLightData_.direction = Math::Normalize(directionalLightData_.direction);
-    *dirMap = directionalLightData_;
+        // 1. Mapを実行し、かつ成功(SUCCEEDED)したか、ポインタがNULLでないかを確認
+        if (SUCCEEDED(directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&dirMap))) && dirMap) {
 
-    directionalLightResource_->Unmap(0, nullptr);
+            // 2. Normalizeする前に、ベクトルの長さが0でないかチェック(0除算防止)
+            if (Math::Length(directionalLightData_.direction) > 0.0001f) {
+                directionalLightData_.direction = Math::Normalize(directionalLightData_.direction);
+            } else {
+                // 長さが0ならデフォルトの向きをセット
+                directionalLightData_.direction = { 0.0f, -1.0f, 0.0f };
+            }
+
+            // 3. 安全が確認できたので書き込む
+            *dirMap = directionalLightData_;
+
+            // 4. アンマップ
+            directionalLightResource_->Unmap(0, nullptr);
+        } else {
+            // ここに来る場合は、GPUデバイスが失われている可能性があります
+            // OutputDebugStringA("Warning: DirectionalLight Map failed.\n");
+        }
+    }
 
     // ---------------------------------------------------
     // 2. 点光源 (Point Lights)
