@@ -631,17 +631,17 @@ void DirectXCommon::WaitForGPUAndReset() {
     assert(SUCCEEDED(hr));
 }
 
-
-// DirectXCommon.cpp
-
 void DirectXCommon::CreateRenderTexture() {
-    // 1. リソース設定 (UNORM)
+    // 1. リソース設定
     D3D12_RESOURCE_DESC resDesc = {};
     resDesc.Width = WinApp::kClientWidth;
     resDesc.Height = WinApp::kClientHeight;
     resDesc.MipLevels = 1;
     resDesc.DepthOrArraySize = 1;
-    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★全部 UNORM！
+
+    // ★修正1: UNORM -> UNORM_SRGB に変更
+    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
     resDesc.SampleDesc.Count = 1;
     resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -653,13 +653,16 @@ void DirectXCommon::CreateRenderTexture() {
     clearColor_[3] = 1.0f;
 
     D3D12_CLEAR_VALUE clearValue = {};
-    clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★UNORM
+
+    // ★修正2: UNORM -> UNORM_SRGB に変更
+    clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
     clearValue.Color[0] = clearColor_[0];
     clearValue.Color[1] = clearColor_[1];
     clearValue.Color[2] = clearColor_[2];
     clearValue.Color[3] = clearColor_[3];
 
-    // 3. 生成
+    // 3. 生成 (変更なし)
     D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
     HRESULT hr = device_->CreateCommittedResource(
         &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
@@ -668,7 +671,7 @@ void DirectXCommon::CreateRenderTexture() {
     );
     assert(SUCCEEDED(hr));
 
-    // 4. RTV (UNORM)
+    // 4. RTV (Render Target View)
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
     rtvHeapDesc.NumDescriptors = 1;
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -676,13 +679,19 @@ void DirectXCommon::CreateRenderTexture() {
     assert(SUCCEEDED(hr));
 
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-    rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★UNORM
+
+    // ★修正3: UNORM -> UNORM_SRGB に変更 (これがPSOと一致するために必須！)
+    rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
     device_->CreateRenderTargetView(renderTexture_.Get(), &rtvDesc, rtRtvHeap_->GetCPUDescriptorHandleForHeapStart());
 
-    // 5. SRV (UNORM)
+    // 5. SRV (Shader Resource View)
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // ★UNORM
+
+    // ★修正4: UNORM -> UNORM_SRGB に変更 (ImGuiで正しく表示するために合わせる)
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
