@@ -289,12 +289,12 @@ void Game::Update() {
         ImGui::SliderFloat("時間倍率", &timeScale_, 0.0f, 2.0f);
         ImGui::End();
     }
-#endif
+
 
     // ギズモ操作中はカメラ入力をオフにする
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }
-
+#endif
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
 }

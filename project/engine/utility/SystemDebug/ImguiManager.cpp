@@ -81,7 +81,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     initInfo.Device = dxCommon_->GetDevice();
     initInfo.CommandQueue = dxCommon_->GetCommandQueue();
     initInfo.NumFramesInFlight = 2;
-    initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;   
+    initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     initInfo.SrvDescriptorHeap = srvDescriptorHeap;
     initInfo.LegacySingleSrvCpuDescriptor = cpuHandle;
     initInfo.LegacySingleSrvGpuDescriptor = gpuHandle;
