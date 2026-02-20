@@ -142,8 +142,6 @@ void ParticleEditor::DrawImGui() {
     // カーブ設定（サイズ推移）
     ImGui::Text("サイズ推移 (Lifetime Graph)");
     ImGui::TextDisabled("※グラフをマウスでなぞって描けます");
-
-    // ★ParticleSystem.h に sizeCurve 配列を追加しないとここでエラーになります
     EditCurve("サイズ変化カーブ", params.sizeCurve, 10, 0.0f, 5.0f);
 
     if (ImGui::Button("カーブをリセット (平坦化)")) {
