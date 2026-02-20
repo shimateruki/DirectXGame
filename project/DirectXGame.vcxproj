@@ -248,6 +248,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="ParticleManager.cpp" />
     <ClCompile Include="PlayerMover.cpp" />
     <ClCompile Include="PlayerState.cpp" />
+    <ClCompile Include="PostEffect.cpp" />
+    <ClCompile Include="PostEffectEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DUMPS\2025-0422-1117.dmp" />
@@ -291,6 +293,12 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
+    <FxCompile Include="Resources\shader\PostEffect.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <None Include="Resources\shader\PostEffect.PS.hlsl" />
     <None Include="Resources\shader\Sprite.PS.hlsl">
       <FileType>Document</FileType>
     </None>
@@ -551,6 +559,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="ParticleManager.h" />
     <ClInclude Include="PlayerMover.h" />
     <ClInclude Include="PlayerState.h" />
+    <ClInclude Include="PostEffect.h" />
+    <ClInclude Include="PostEffectEditor.h" />
     <ClInclude Include="Transform.h" />
   </ItemGroup>
   <ItemGroup>

@@ -4,6 +4,7 @@
 #include "SceneManager.h"
 #include"CameraManager.h"
 #include"AbstractSceneFactory.h"
+#include "PostEffect.h"
 #ifdef USE_IMGUI
 #include "DebugEditor.h"
 #include "SpriteDebugEditor.h"
@@ -15,6 +16,7 @@
 #include"LightEditor.h"
 #include <GhostRecorder.h>
 #include "CameraEditor.h"
+#include <PostEffectEditor.h>
 
 
 
@@ -34,7 +36,8 @@ private:
 	float timeScale_ = 1.0f;
 	bool isPlaying_ = false;
 	std::string currentSceneName_;
-	
+	std::unique_ptr<PostEffect> postEffect_; 
+	std::unique_ptr<PostEffectEditor> postEffectEditor_;
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
@@ -48,6 +51,7 @@ private:
 	bool showCameraEditor = false;
 	bool showGhostRecorder_ = false;
 	bool showTimeController_ = false;
+	bool showPostEffectEditor_ = false; 
 	ImVec2 lastGameViewSize_ = { 0, 0 };
 #endif
 };

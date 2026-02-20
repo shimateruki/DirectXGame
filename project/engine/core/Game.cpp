@@ -5,6 +5,7 @@
 #include"DebugConsole.h"
 #include "SceneFactory.h"
 #include "LightManager.h"
+#include"WinApp.h"
 #include"imgui.h"
 #include "ImGuizmo.h" 
 #include <chrono>
@@ -48,7 +49,10 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
-
+    postEffect_ = std::make_unique<PostEffect>();
+    postEffect_->Initialize(dxCommon_);
+    postEffectEditor_ = std::make_unique<PostEffectEditor>();
+    postEffectEditor_->Initialize(postEffect_.get());
 #endif
 #ifdef  USE_IMGUI
     isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
@@ -145,7 +149,7 @@ void Game::Update() {
 
         if (displaySize.x > 0 && displaySize.y > 0) {
             // テクスチャ表示
-            uint32_t texHandle = dxCommon_->GetRenderTextureSrvHandle();
+            uint32_t texHandle = postEffect_->GetSRVHandle();
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
 
@@ -167,10 +171,8 @@ void Game::Update() {
                 float localX = mPos.x - imageScreenPos.x;
                 float localY = mPos.y - imageScreenPos.y;
 
-                // スプライトの基準解像度 (1280x720) に合わせて座標をスケール変換
-                // これにより、Game View を縮小していても正しくクリックできる
-                float gameResW = 1280.0f;
-                float gameResH = 720.0f;
+                float gameResW = WinApp::kClientWidth;
+                float gameResH = WinApp::kClientHeight;
                 Vector2 spriteLocalPos = {
                     localX * (gameResW / displaySize.x),
                     localY * (gameResH / displaySize.y)
@@ -235,6 +237,7 @@ void Game::Update() {
             ImGui::MenuItem("カメラ", NULL, &showCameraEditor);
             ImGui::Separator();
             ImGui::MenuItem("ライティング", NULL, &showLightEditor_);
+            ImGui::MenuItem("ポストエフェクト", NULL, &showPostEffectEditor_);
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
             ImGui::MenuItem("ステータス", NULL, &showTimeController_);
             ImGui::EndMenu();
@@ -280,6 +283,9 @@ void Game::Update() {
         ghostRecorder_->DrawImGui();
         ImGui::End();
     }
+    if (showPostEffectEditor_) {
+        postEffectEditor_->DrawImGui();
+    }
     if (showLightEditor_) LightEditor::GetInstance()->DrawImGui();
     if (showCameraEditor) CameraEditor::GetInstance()->DrawImGui();
     if (showDebugConsole_) DebugConsole::GetInstance()->DrawImGui();
@@ -306,37 +312,68 @@ void Game::Draw() {
     // =================================================================
     // パターンA: エディタモード (Develop / Debug)
     // =================================================================
-    // 1. まず「レンダーテクスチャ（ゲーム画面用）」をクリアして描画先にセット
-    dxCommon_->PreDrawRenderTexture();
 
-    // 2. ゲームの中身をテクスチャに描画
+    // ---------------------------------------------------------------
+    // 1. シーン描画フェーズ
+    //    描画先：dxCommon内の「レンダーテクスチャA」
+    // ---------------------------------------------------------------
+    dxCommon_->PreDrawRenderTexture(); // TextureA を RTV(描画先) にセット
+
+    // ゲームの中身を描画
     if (sceneManager_) {
         sceneManager_->Draw();
     }
 
-    // 3. デバッグ表示（グリッドやコライダー枠など）もテクスチャに描画
+    // デバッグ表示（グリッドやコライダー枠など）
     if (debugEditor_) {
         debugEditor_->DrawDebug(dxCommon_->GetCommandList());
     }
 
-
-
-    // 4. テクスチャへの描画終了
+    // TextureA への描画終了 -> SRV(画像) に変換
     dxCommon_->PostDrawRenderTexture();
 
-    // ---------------------------------------------------------------
 
-    // 5. 次に「本物の画面（バックバッファ）」をクリアして描画先にセット
-    //    ※ここでImGuiのウィンドウなどを描画します
+    // ---------------------------------------------------------------
+    // 2. ポストエフェクトフェーズ (バケツリレー)
+    //    描画先：postEffect内の「レンダーテクスチャB」
+    //    入力  ：さっき描いた「レンダーテクスチャA」
+    // ---------------------------------------------------------------
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+
+    // 描画先を TextureB に切り替え & クリア
+    postEffect_->PreDrawScene(commandList);
+
+    // TextureA を元画像として渡し、板ポリゴンを描画 (コピー or 加工)
+    uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
+    postEffect_->Draw(commandList, texA_Handle);
+
+    // TextureB への描画終了 -> SRV(画像) に変換
+    // (PostEffectクラスにPostDrawを作っていないので、ここで手動バリアを張ります)
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = postEffect_->GetRenderTexture();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    commandList->ResourceBarrier(1, &barrier);
+
+
+    // ---------------------------------------------------------------
+    // 3. UI合成 & 画面表示フェーズ
+    //    描画先：バックバッファ (本物の画面)
+    // ---------------------------------------------------------------
     dxCommon_->PreDrawBackBuffer();
 
-    // 6. ImGuiの描画 (さっき作ったテクスチャがGameViewウィンドウ内に表示される)
+    // スプライトエディタの描画
     if (spriteDebugEditor_) {
         spriteDebugEditor_->Draw();
     }
+
+    // ImGuiを描画
+    // ※ Game::Update内で ImGui::Image に渡しているのは TextureB (postEffect_->GetSRVHandle())
     ImGuiManager::GetInstance()->Draw();
 
-    // 7. 描画終了 (画面フリップ)
+    // 描画終了 (フリップ)
     dxCommon_->PostDraw();
     ImGuiManager::GetInstance()->EndFrame();
 
@@ -344,18 +381,12 @@ void Game::Draw() {
     // =================================================================
     // パターンB: ゲームモード (Release)
     // =================================================================
-    // 1. いきなり「本物の画面（バックバッファ）」をクリアして描画先にセット
-    //    ※余計な切り替えは一切しません
     dxCommon_->PreDraw();
 
-    // 2. ゲームの中身を直接画面に描画
     if (sceneManager_) {
         sceneManager_->Draw();
     }
 
-    // (Releaseではデバッグ表示やImGui描画はスキップ)
-
-    // 3. 描画終了 (画面フリップ)
     dxCommon_->PostDraw();
 
 #endif

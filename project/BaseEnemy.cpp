@@ -10,7 +10,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
 
     // 3. 当たり判定の設定
     SetCollisionAttribute(kEnemy);       // 自分は「敵」グループ
-    SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet); // 当たる相手は「プレイヤー」「床」「弾」
+    SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet); 
     SetClassName("Enemy");
 }
 
