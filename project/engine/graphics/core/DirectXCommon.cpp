@@ -162,7 +162,7 @@ void DirectXCommon::UpdateFixFPS()
 }
 
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
-    const std::wstring& filePath, const wchar_t* profile)
+    const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint)
 {
     // ログ出力用のストリームを準備
     std::ofstream logStream("shader_compile.log", std::ios_base::app);
@@ -178,8 +178,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
     LPCWSTR arguments[] = {
-        filePath.c_str(), L"-E", L"main", L"-T", profile,
-        L"-Zi", L"-Qembed_debug", L"-Od", L"-Zpr",
+          filePath.c_str(), L"-E", entryPoint, L"-T", profile,
+          L"-Zi", L"-Qembed_debug", L"-Od", L"-Zpr",
     };
 
     Microsoft::WRL::ComPtr<IDxcResult> shaderResult = nullptr;
@@ -630,7 +630,6 @@ void DirectXCommon::WaitForGPUAndReset() {
     hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
     assert(SUCCEEDED(hr));
 }
-
 void DirectXCommon::CreateRenderTexture() {
     // 1. リソース設定
     D3D12_RESOURCE_DESC resDesc = {};
@@ -639,8 +638,8 @@ void DirectXCommon::CreateRenderTexture() {
     resDesc.MipLevels = 1;
     resDesc.DepthOrArraySize = 1;
 
-    // ★修正1: UNORM -> UNORM_SRGB に変更
-    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    // ★修正1: SRGB から HDRフォーマット に変更
+    resDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     resDesc.SampleDesc.Count = 1;
     resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -654,15 +653,15 @@ void DirectXCommon::CreateRenderTexture() {
 
     D3D12_CLEAR_VALUE clearValue = {};
 
-    // ★修正2: UNORM -> UNORM_SRGB に変更
-    clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    // ★修正2: SRGB から HDRフォーマット に変更
+    clearValue.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     clearValue.Color[0] = clearColor_[0];
     clearValue.Color[1] = clearColor_[1];
     clearValue.Color[2] = clearColor_[2];
     clearValue.Color[3] = clearColor_[3];
 
-    // 3. 生成 (変更なし)
+    // 3. 生成 
     D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
     HRESULT hr = device_->CreateCommittedResource(
         &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
@@ -680,8 +679,8 @@ void DirectXCommon::CreateRenderTexture() {
 
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 
-    // ★修正3: UNORM -> UNORM_SRGB に変更 (これがPSOと一致するために必須！)
-    rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    // ★修正3: SRGB から HDRフォーマット に変更
+    rtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
     device_->CreateRenderTargetView(renderTexture_.Get(), &rtvDesc, rtRtvHeap_->GetCPUDescriptorHandleForHeapStart());
@@ -689,8 +688,8 @@ void DirectXCommon::CreateRenderTexture() {
     // 5. SRV (Shader Resource View)
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 
-    // ★修正4: UNORM -> UNORM_SRGB に変更 (ImGuiで正しく表示するために合わせる)
-    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    // ★修正4: SRGB から HDRフォーマット に変更
+    srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = 1;
@@ -700,7 +699,6 @@ void DirectXCommon::CreateRenderTexture() {
 }
 
 void DirectXCommon::PreDrawRenderTexture() {
-    // ★追加: コマンドアロケータとリストをリセット (これがないと書き込めない！)
     HRESULT hr = commandAllocator_->Reset();
     assert(SUCCEEDED(hr));
     hr = commandList_->Reset(commandAllocator_.Get(), nullptr);

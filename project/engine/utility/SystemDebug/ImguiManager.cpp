@@ -17,7 +17,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // ドッキング有効化 (ウィンドウ同士をくっつける)
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // マルチビューポート有効化 (ウィンドウ外に出す)
+    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // マルチビューポート有効化 (ウィンドウ外に出す)
 
     // ImGuiのスタイルを設定
     ImGui::StyleColorsDark();

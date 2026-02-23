@@ -34,6 +34,12 @@ void Game::Initialize() {
     sceneManager_->Initialize(sceneFactory_.get(), startScene);
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();
+    postEffect_ = std::make_unique<PostEffect>();
+    postEffect_->Initialize(dxCommon_);
+    uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle.png");
+    postEffect_->SetLUTTexture(lutHandle);
+    postEffectEditor_ = std::make_unique<PostEffectEditor>();
+    postEffectEditor_->Initialize(postEffect_.get());
 #ifdef USE_IMGUI
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
@@ -49,10 +55,7 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
-    postEffect_ = std::make_unique<PostEffect>();
-    postEffect_->Initialize(dxCommon_);
-    postEffectEditor_ = std::make_unique<PostEffectEditor>();
-    postEffectEditor_->Initialize(postEffect_.get());
+
 #endif
 #ifdef  USE_IMGUI
     isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
@@ -108,7 +111,14 @@ void Game::Update() {
         ImGuiID dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
 
         ImGui::DockBuilderDockWindow("Hierarchy", dock_left_id);
+
+        // ★ 各エディタを右側パネルに「タブ」として重ねる設定
         ImGui::DockBuilderDockWindow("Inspector", dock_right_id);
+        ImGui::DockBuilderDockWindow("Particle Editor", dock_right_id);
+        ImGui::DockBuilderDockWindow("PostEffectEditor", dock_right_id); // ※エディタで設定しているウィンドウ名と完全に一致させる必要があります
+        ImGui::DockBuilderDockWindow("Light Editor", dock_right_id);
+        ImGui::DockBuilderDockWindow("Camera Editor", dock_right_id);
+
         ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_id);
         ImGui::DockBuilderDockWindow("録画", dock_bottom_id);
         ImGui::DockBuilderDockWindow("デバッグログ", dock_bottom_id);
@@ -125,6 +135,10 @@ void Game::Update() {
     // 2. Game View ウィンドウ (座標計算と各エディタへの通知)
     // -------------------------------------------------------------------------
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+    // ★ 追加：Game View の背景を真っ黒にする
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+
     ImGui::Begin("Game View");
     {
         ImVec2 windowSize = ImGui::GetContentRegionAvail();
@@ -140,8 +154,11 @@ void Game::Update() {
             displaySize.y = displaySize.x / targetAspect;
         }
 
-        // 配置位置（上詰め・中央）
-        ImVec2 offset = { (windowSize.x - displaySize.x) * 0.5f, 0.0f };
+        // ★ 変更：配置位置を上下左右の中央揃えにする
+        ImVec2 offset = {
+            (windowSize.x - displaySize.x) * 0.5f,
+            (windowSize.y - displaySize.y) * 0.5f
+        };
         ImGui::SetCursorPos(offset);
 
         // ゲーム画面のスクリーン座標（左上）を取得
@@ -149,7 +166,7 @@ void Game::Update() {
 
         if (displaySize.x > 0 && displaySize.y > 0) {
             // テクスチャ表示
-            uint32_t texHandle = postEffect_->GetSRVHandle();
+            uint32_t texHandle = postEffect_->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
 
@@ -208,6 +225,9 @@ void Game::Update() {
         }
     }
     ImGui::End();
+
+    // ★ 追加：PushしたStyle設定を元に戻す
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 
     // -------------------------------------------------------------------------
@@ -296,16 +316,14 @@ void Game::Update() {
         ImGui::End();
     }
 
-
     // ギズモ操作中はカメラ入力をオフにする
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }
 #endif
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
+    postEffect_->GetParams()->time += deltaTime;
 }
-
-
 
 void Game::Draw() {
 #ifdef USE_IMGUI
@@ -314,66 +332,79 @@ void Game::Draw() {
     // =================================================================
 
     // ---------------------------------------------------------------
-    // 1. シーン描画フェーズ
+    // 1. シーン描画フェーズ (最初の絵作り)
     //    描画先：dxCommon内の「レンダーテクスチャA」
     // ---------------------------------------------------------------
-    dxCommon_->PreDrawRenderTexture(); // TextureA を RTV(描画先) にセット
+    dxCommon_->PreDrawRenderTexture();
 
-    // ゲームの中身を描画
-    if (sceneManager_) {
-        sceneManager_->Draw();
-    }
+    if (sceneManager_) { sceneManager_->Draw(); }
+    if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
 
-    // デバッグ表示（グリッドやコライダー枠など）
-    if (debugEditor_) {
-        debugEditor_->DrawDebug(dxCommon_->GetCommandList());
-    }
-
-    // TextureA への描画終了 -> SRV(画像) に変換
     dxCommon_->PostDrawRenderTexture();
 
-
     // ---------------------------------------------------------------
-    // 2. ポストエフェクトフェーズ (バケツリレー)
-    //    描画先：postEffect内の「レンダーテクスチャB」
-    //    入力  ：さっき描いた「レンダーテクスチャA」
+    // 2. ポストエフェクトフェーズ (マルチパス・ブルーム)
     // ---------------------------------------------------------------
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-
-    // 描画先を TextureB に切り替え & クリア
-    postEffect_->PreDrawScene(commandList);
-
-    // TextureA を元画像として渡し、板ポリゴンを描画 (コピー or 加工)
     uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
-    postEffect_->Draw(commandList, texA_Handle);
 
-    // TextureB への描画終了 -> SRV(画像) に変換
-    // (PostEffectクラスにPostDrawを作っていないので、ここで手動バリアを張ります)
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = postEffect_->GetRenderTexture();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-    commandList->ResourceBarrier(1, &barrier);
+    // 【パス1：高輝度抽出】 (元画像 -> Tex2: 1/2サイズ)
+    postEffect_->PreDrawScene(commandList, 2);
+    postEffect_->Draw(commandList, texA_Handle, 2); // PSO 2: Extract (抽出用)
+    postEffect_->TransitionToSRV(commandList, 2);
 
+    // 【パス2：縮小ブラー 1】 (Tex2 -> Tex3: 1/4サイズ)
+    postEffect_->PreDrawScene(commandList, 3);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 3); // PSO 3: Downsample (ぼかし用)
+    postEffect_->TransitionToSRV(commandList, 3);
+
+    // 【パス3：縮小ブラー 2】 (Tex3 -> Tex4: 1/8サイズ)
+    postEffect_->PreDrawScene(commandList, 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 3); // PSO 3: Downsample
+    postEffect_->TransitionToSRV(commandList, 4);
+
+    // 【パス4：縮小ブラー 3】 (Tex4 -> Tex5: 1/16サイズ)
+    postEffect_->PreDrawScene(commandList, 5);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 3); // PSO 3: Downsample
+    postEffect_->TransitionToSRV(commandList, 5);
+
+    // 【パス5：ベース画像のコピー】 (元画像 -> Tex0: 元サイズ)
+    postEffect_->PreDrawScene(commandList, 0);
+    postEffect_->Draw(commandList, texA_Handle, 0); // PSO 0: Copy (そのままコピー)
+
+    // 【パス6：ブルーム加算】 (Tex2, 3, 4, 5 を順番に Tex0 に足していく)
+    // ※ clear=false にして、元の絵を消さずに上から光を加算する！
+    postEffect_->PreDrawScene(commandList, 0, false);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 4); // PSO 4: Add (加算用)
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(5), 4);
+    postEffect_->TransitionToSRV(commandList, 0);
+
+    // 【パス7：最終合成＆トーンマッピング】 (Tex0 -> Tex1: SDR用)
+    // ここでシネマティックエフェクト(ノイズや色収差)も一緒にかかる
+    postEffect_->PreDrawScene(commandList, 1);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1); // PSO 1: Composite (トーンマップ)
+
+    // ===============================================================
+    // ★ 追加：3. UI描画フェーズ (SDRの Tex1 に直接描き込む！)
+    // ===============================================================
+    // ポストエフェクトが完了した直後の綺麗な状態に、UIを上乗せする
+    if (sceneManager_) {
+        sceneManager_->DrawUI();
+    }
+
+    // UIを描き終わってから、Tex1 を SRV (ImGui用の画像) に変換する
+    postEffect_->TransitionToSRV(commandList, 1);
 
     // ---------------------------------------------------------------
-    // 3. UI合成 & 画面表示フェーズ
-    //    描画先：バックバッファ (本物の画面)
+    // 4. エディタUI合成 & 画面表示フェーズ
     // ---------------------------------------------------------------
     dxCommon_->PreDrawBackBuffer();
 
-    // スプライトエディタの描画
-    if (spriteDebugEditor_) {
-        spriteDebugEditor_->Draw();
-    }
-
-    // ImGuiを描画
-    // ※ Game::Update内で ImGui::Image に渡しているのは TextureB (postEffect_->GetSRVHandle())
+    if (spriteDebugEditor_) { spriteDebugEditor_->Draw(); }
     ImGuiManager::GetInstance()->Draw();
 
-    // 描画終了 (フリップ)
     dxCommon_->PostDraw();
     ImGuiManager::GetInstance()->EndFrame();
 
@@ -381,10 +412,54 @@ void Game::Draw() {
     // =================================================================
     // パターンB: ゲームモード (Release)
     // =================================================================
-    dxCommon_->PreDraw();
 
+    // 1. シーン描画フェーズ
+    dxCommon_->PreDrawRenderTexture();
+    if (sceneManager_) { sceneManager_->Draw(); }
+    dxCommon_->PostDrawRenderTexture();
+
+    // 2. ポストエフェクトフェーズ (マルチパス・ブルーム)
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
+
+    // エディタ側と全く同じパス1〜6のバケツリレーを実行する
+    postEffect_->PreDrawScene(commandList, 2);
+    postEffect_->Draw(commandList, texA_Handle, 2);
+    postEffect_->TransitionToSRV(commandList, 2);
+
+    postEffect_->PreDrawScene(commandList, 3);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 3);
+    postEffect_->TransitionToSRV(commandList, 3);
+
+    postEffect_->PreDrawScene(commandList, 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 3);
+    postEffect_->TransitionToSRV(commandList, 4);
+
+    postEffect_->PreDrawScene(commandList, 5);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 3);
+    postEffect_->TransitionToSRV(commandList, 5);
+
+    postEffect_->PreDrawScene(commandList, 0);
+    postEffect_->Draw(commandList, texA_Handle, 0);
+
+    postEffect_->PreDrawScene(commandList, 0, false);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 4);
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(5), 4);
+    postEffect_->TransitionToSRV(commandList, 0);
+
+    // 3. 画面表示フェーズ (ここで直接バックバッファに描き込む！)
+    dxCommon_->PreDraw(); // ★ バックバッファへの描画開始
+
+    // バックバッファに対して PSO[1] (トーンマップ+LUT+レンズエフェクト) を適用
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
+
+    // ===============================================================
+    // ★ 追加：UI描画フェーズ (バックバッファに直接描き込む)
+    // ===============================================================
     if (sceneManager_) {
-        sceneManager_->Draw();
+        sceneManager_->DrawUI();
     }
 
     dxCommon_->PostDraw();

@@ -65,7 +65,7 @@ public:
 	/// <summary>
 	/// HLSLシェーダーファイルをコンパイルする
 	/// </summary>
-	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profile);
+	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst , const wchar_t* entryPoint = L"main");
 
 	/// <summary>
 	/// 汎用的なバッファリソースを作成する

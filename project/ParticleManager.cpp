@@ -42,6 +42,7 @@ void to_json(json& j, const ParticleSystem::EmitterParams& p) {
         {"endSize", p.endSize},
         {"initialRotationSpeed", p.initialRotationSpeed},
     {"rotationSpeedRandomness", p.rotationSpeedRandomness},
+    {"hdrIntensity", p.hdrIntensity},
     {"emitterType", (int)p.emitterType}, 
     {"spawnRadius", p.spawnRadius},      
     {"coneAngle", p.coneAngle},
@@ -66,6 +67,7 @@ void from_json(const json& j, ParticleSystem::EmitterParams& p) {
     if (j.contains("startSize")) j.at("startSize").get_to(p.startSize);
     if (j.contains("endSize")) j.at("endSize").get_to(p.endSize);
     if(j.contains("initialRotationSpeed")) j.at("initialRotationSpeed").get_to(p.initialRotationSpeed);
+    if (j.contains("hdrIntensity")) j.at("hdrIntensity").get_to(p.hdrIntensity);
     if (j.contains("rotationSpeedRandomness")) j.at("rotationSpeedRandomness").get_to(p.rotationSpeedRandomness);
     p.emitterType = (EmitterType)j.value("emitterType", (int)EmitterType::Box); 
     p.spawnRadius = j.value("spawnRadius", 1.0f); 

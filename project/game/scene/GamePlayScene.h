@@ -44,6 +44,7 @@ public:
     void Finalize() override;
     void Update(float deltaTime) override;
     void Draw() override;
+    void DrawUI() override;
 
     // --- BaseScene インターフェース実装 ---
 
