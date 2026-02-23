@@ -53,7 +53,18 @@ void PostEffectEditor::DrawImGui() {
     ImGui::DragFloat("Vignette (周辺減光)", &params->vignetteIntensity, 0.01f, 0.0f, 5.0f);
     ImGui::DragFloat("Chromatic Aberration (色収差)", &params->chromaticAberration, 0.001f, 0.0f, 0.1f);
     ImGui::DragFloat("Film Grain (ノイズ)", &params->filmGrainIntensity, 0.001f, 0.0f, 0.5f);
-
+    ImGui::Text("Action Camera Effects");
+    ImGui::DragFloat("Radial Blur Intensity (集中線の強さ)", &params->radialIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat("Radial Center X", &params->radialCenterX, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat("Radial Center Y", &params->radialCenterY, 0.01f, 0.0f, 1.0f);
+    ImGui::Text("Action Game Effects");
+    ImGui::DragFloat("Damage Flash (被弾赤画面)", &params->damageFlash, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat("Cinema Bar (黒帯)", &params->cinemaBarHeight, 0.005f, 0.0f, 0.5f);
+    ImGui::DragFloat("Wobble (波打ち)", &params->wobbleIntensity, 0.001f, 0.0f, 0.1f);
+    ImGui::Separator();
+    ImGui::Text("Retro Effects");
+    ImGui::DragFloat("Scanline (ブラウン管)", &params->scanlineIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat("Mosaic Size (ドット絵化)", &params->mosaicSize, 1.0f, 0.0f, 64.0f);
 
     ImGui::Separator();
 
@@ -69,6 +80,9 @@ void PostEffectEditor::DrawImGui() {
     ImGui::End();
 #endif
 }
+
+
+
 
 void PostEffectEditor::SaveParams(const std::string& filename) {
     if (!targetEffect_) return;
@@ -88,7 +102,15 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["vignetteIntensity"] = params->vignetteIntensity;
     j["chromaticAberration"] = params->chromaticAberration;
     j["filmGrainIntensity"] = params->filmGrainIntensity;
-
+    j["radialIntensity"] = params->radialIntensity;
+    j["radialCenterX"] = params->radialCenterX;
+    j["radialCenterY"] = params->radialCenterY;
+    j["lutIntensity"] = params->lutIntensity;
+    j["damageFlash"] = params->damageFlash;
+    j["cinemaBarHeight"] = params->cinemaBarHeight;
+    j["wobbleIntensity"] = params->wobbleIntensity;
+    j["scanlineIntensity"] = params->scanlineIntensity;
+    j["mosaicSize"] = params->mosaicSize;
     std::ofstream file(filename);
     if (file.is_open()) {
         file << j.dump(4); // インデント4で綺麗に出力
@@ -114,9 +136,18 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
         if (j.contains("vignetteIntensity")) params->vignetteIntensity = j["vignetteIntensity"];
         if (j.contains("chromaticAberration")) params->chromaticAberration = j["chromaticAberration"];
         if (j.contains("filmGrainIntensity")) params->filmGrainIntensity = j["filmGrainIntensity"];
+        if (j.contains("radialIntensity")) params->radialIntensity = j["radialIntensity"];
+        if (j.contains("radialCenterX")) params->radialCenterX = j["radialCenterX"];
+        if (j.contains("radialCenterY")) params->radialCenterY = j["radialCenterY"];
+        if (j.contains("lutIntensity")) params->lutIntensity = j["lutIntensity"];
+        if (j.contains("damageFlash")) params->damageFlash = j["damageFlash"];
+        if (j.contains("cinemaBarHeight")) params->cinemaBarHeight = j["cinemaBarHeight"];
+        if (j.contains("wobbleIntensity")) params->wobbleIntensity = j["wobbleIntensity"];
+        if (j.contains("scanlineIntensity")) params->scanlineIntensity = j["scanlineIntensity"];
+        if (j.contains("mosaicSize")) params->mosaicSize = j["mosaicSize"];
 
     }
     catch (...) {
-        // ロード失敗時のエラーハンドリング（必要ならログ出力など）
+        // ロード失敗時のエラーハンドリング
     }
 }

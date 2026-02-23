@@ -64,7 +64,7 @@ public:
     void SetDebugEditor(DebugEditor* editor) {
         debugEditor_ = editor;
     }
-
+    void DrawUI();
 private:
     static SceneManager* instance_;
     std::unique_ptr<BaseScene> currentScene_ = nullptr;

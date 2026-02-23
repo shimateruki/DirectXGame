@@ -175,6 +175,7 @@ void GamePlayScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 }
 
+
 void GamePlayScene::Draw() {
 	// --- 一人称視点判定 ---
 	bool isFirstPerson = false;
@@ -210,11 +211,16 @@ void GamePlayScene::Draw() {
 			obj->Draw(pointLightRes, spotLightRes);
 		}
 	}
+	particleSystem_->Draw();
+}
 
-	// --- 4. 2D描画 ---
+// ====================================================================
+// UI描画専用の関数
+// ====================================================================
+void GamePlayScene::DrawUI() {
+	// --- 4. 2D描画 (UIスプライト) ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) {
 		sprite->Draw();
 	}
-	particleSystem_->Draw();
 }

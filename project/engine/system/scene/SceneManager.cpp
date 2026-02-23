@@ -168,3 +168,11 @@ std::string SceneManager::LoadLastSceneName() {
     }
     return "";
 }
+
+
+void SceneManager::DrawUI() {
+    // 現在のシーンがあれば、そのシーンのUI描画を呼ぶ
+    if (currentScene_) {
+        currentScene_->DrawUI();
+    }
+}

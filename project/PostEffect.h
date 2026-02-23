@@ -15,6 +15,19 @@ public:
         float chromaticAberration = 0.02f; // 色収差のズレ幅
         float filmGrainIntensity = 0.03f;  // ノイズの強さ
         float time = 0.0f;                 // ノイズを毎フレーム動かすための時間
+        float radialCenterX = 0.5f;   // ぼかしの中心X (0.0 ～ 1.0)
+        float radialCenterY = 0.5f;   // ぼかしの中心Y (0.0 ～ 1.0)
+        float radialIntensity = 0.0f; // ぼかしの強さ (0.0でオフ)
+        float radialPadding = 0.0f;   // 16バイト合わせの詰め物
+        float lutIntensity = 0.0f;
+        float damageFlash = 0.0f;     // ダメージ時の赤画面 (0.0 ～ 1.0)
+        float cinemaBarHeight = 0.0f; // 上下の黒帯の太さ (0.0 ～ 0.5)
+        float wobbleIntensity = 0.0f; // 画面の波打ちの強さ (0.0 でオフ)
+        float scanlineIntensity = 0.0f; // ブラウン管の横縞の強さ (0.0 ～ 1.0)
+        float mosaicSize = 0.0f;        // モザイクの粗さ (1.0以下でオフ、大きいほど粗い)
+        float padding1 = 0.0f;          // 16バイト合わせの詰め物
+        float padding2 = 0.0f;
+        float padding3 = 0.0f;
 
     };
 
@@ -23,8 +36,7 @@ public:
     //  どのPSO（シェーダー）を使って、どのテクスチャを、どこに描くか指定できるように変更
     void Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex = 0);
 
-    // ★ 描画先を任意のテクスチャ番号に変更できるようにする
-    void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0);
+    void PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex = 0, bool clear = true);
 
     // ★ テクスチャのリソースバリア（RTV <-> SRV）を張る関数を追加
     void TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex);
@@ -34,7 +46,7 @@ public:
     uint32_t GetSRVHandle(int texIndex = 0) const { return renderTextures_[texIndex].srvHandle; }
     ID3D12Resource* GetRenderTexture(int texIndex = 0) const { return renderTextures_[texIndex].resource.Get(); }
     Params* GetParams() { return paramsData_; }
-
+    void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
 private:
     void CreateMesh();
     void CreateRootSignature();
@@ -71,4 +83,6 @@ private:
         Vector3 pos;
         Vector2 uv;
     };
+
+    uint32_t lutSrvHandle_ = 0; 
 };

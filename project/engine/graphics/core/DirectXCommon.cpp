@@ -162,7 +162,7 @@ void DirectXCommon::UpdateFixFPS()
 }
 
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
-    const std::wstring& filePath, const wchar_t* profile)
+    const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint)
 {
     // ログ出力用のストリームを準備
     std::ofstream logStream("shader_compile.log", std::ios_base::app);
@@ -178,8 +178,8 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
     LPCWSTR arguments[] = {
-        filePath.c_str(), L"-E", L"main", L"-T", profile,
-        L"-Zi", L"-Qembed_debug", L"-Od", L"-Zpr",
+          filePath.c_str(), L"-E", entryPoint, L"-T", profile,
+          L"-Zi", L"-Qembed_debug", L"-Od", L"-Zpr",
     };
 
     Microsoft::WRL::ComPtr<IDxcResult> shaderResult = nullptr;
