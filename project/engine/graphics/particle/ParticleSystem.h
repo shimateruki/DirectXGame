@@ -34,6 +34,8 @@ private:
         float rotationSpeed;  // 回転スピード (ラジアン/秒)
         Vector3 acceleration;
 
+        float hdrIntensity;
+
     };
 
     struct ParticleForGPU {
@@ -63,6 +65,7 @@ public:
 
         float startSize = 1.0f; // 開始時のサイズ
         float endSize = 0.1f;   // 終了時のサイズ
+        float hdrIntensity = 1.0f;
 
         bool isEmitting = true; // 発生させるかどうか
         float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };

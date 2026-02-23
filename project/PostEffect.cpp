@@ -6,12 +6,14 @@
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-
+    renderTextures_.resize(2);
     CreateMesh();
     CreateConstBuffer();
     CreateRootSignature();
     CreatePipelineState();
-    CreateRenderTexture();
+    // ★ HDRフォーマット (R16G16B16A16_FLOAT) でテクスチャを2枚生成！
+    CreateRenderTexture(0, WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
+    CreateRenderTexture(1, WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 void PostEffect::CreateMesh() {
@@ -80,6 +82,9 @@ void PostEffect::CreateRootSignature() {
     assert(SUCCEEDED(hr));
 }
 
+// ==========================================================
+// ★ パイプラインステートの生成（PSOを複数作れるようにする）
+// ==========================================================
 void PostEffect::CreatePipelineState() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
@@ -98,117 +103,101 @@ void PostEffect::CreatePipelineState() {
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
 
     psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // カリングなし
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-
-    // ★ポストエフェクトなので深度テスト(Zバッファ)はOFFにする
     psoDesc.DepthStencilState.DepthEnable = FALSE;
     psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets = 1;
-    // さっき設定した GameView用と同じフォーマットにする
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 
-    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState_));
+    // -----------------------------------------------------------------
+    // [PSO 0] 中間描画用（HDRフォーマット出力）
+    // -----------------------------------------------------------------
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> psoHDR;
+    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&psoHDR));
     assert(SUCCEEDED(hr));
+    pipelineStates_.push_back(psoHDR); // インデックス0に登録
+
+    // -----------------------------------------------------------------
+    // [PSO 1] 最終出力用（SDRフォーマット出力 / トーンマッピング用）
+    // -----------------------------------------------------------------
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> psoSDR;
+    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&psoSDR));
+    assert(SUCCEEDED(hr));
+    pipelineStates_.push_back(psoSDR); // インデックス1に登録
 }
 
-void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle) {
-    commandList->SetGraphicsRootSignature(rootSignature_.Get());
-    commandList->SetPipelineState(pipelineState_.Get());
 
-    // 板ポリゴンをセット 
+// ==========================================================
+// ★ リソースバリア（テクスチャの状態切り替え）関数
+// ==========================================================
+void PostEffect::TransitionToRTV(ID3D12GraphicsCommandList* commandList, int texIndex) {
+    RenderTexture& rt = renderTextures_[texIndex];
+    if (rt.currentState == D3D12_RESOURCE_STATE_RENDER_TARGET) return; // 既にRTVなら何もしない
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = rt.resource.Get();
+    barrier.Transition.StateBefore = rt.currentState;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    commandList->ResourceBarrier(1, &barrier);
+    rt.currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+}
+
+void PostEffect::TransitionToSRV(ID3D12GraphicsCommandList* commandList, int texIndex) {
+    RenderTexture& rt = renderTextures_[texIndex];
+    if (rt.currentState == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) return; // 既にSRVなら何もしない
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = rt.resource.Get();
+    barrier.Transition.StateBefore = rt.currentState;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    commandList->ResourceBarrier(1, &barrier);
+    rt.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+}
+
+
+// ==========================================================
+// ★ 描画処理（新仕様）
+// ==========================================================
+void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int targetTexIndex) {
+    // 指定されたテクスチャを描画先(RTV)に切り替える
+    TransitionToRTV(commandList, targetTexIndex);
+
+    RenderTexture& rt = renderTextures_[targetTexIndex];
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+
+    float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+    commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+    D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 1.0f };
+    D3D12_RECT scissorRect = { 0, 0, WinApp::kClientWidth, WinApp::kClientHeight };
+    commandList->RSSetViewports(1, &viewport);
+    commandList->RSSetScissorRects(1, &scissorRect);
+}
+
+void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex) {
+    commandList->SetGraphicsRootSignature(rootSignature_.Get());
+
+    // ★ 指定されたPSO(シェーダー)を使う
+    commandList->SetPipelineState(pipelineStates_[psoIndex].Get());
+
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 
     commandList->SetGraphicsRootConstantBufferView(0, constBuffer_->GetGPUVirtualAddress());
 
+    // 読み込む画像(SRV)をセット
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, srvHandle);
 
-    // 頂点4つを描画
     commandList->DrawInstanced(4, 1, 0, 0);
 }
-
-void PostEffect::CreateRenderTexture() {
-    ID3D12Device* device = dxCommon_->GetDevice();
-
-    // 1. リソース設定 
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Width = WinApp::kClientWidth;
-    resDesc.Height = WinApp::kClientHeight;
-    resDesc.MipLevels = 1;
-    resDesc.DepthOrArraySize = 1;
-    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // ★SRGB
-    resDesc.SampleDesc.Count = 1;
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-
-    // クリアカラー (少し暗めのグレーなど)
-    D3D12_CLEAR_VALUE clearValue = {};
-    clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    clearValue.Color[0] = 0.1f; clearValue.Color[1] = 0.1f; clearValue.Color[2] = 0.1f; clearValue.Color[3] = 1.0f;
-
-    // リソース生成
-    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
-    HRESULT hr = device->CreateCommittedResource(
-        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
-        IID_PPV_ARGS(&renderTexture_)
-    );
-    assert(SUCCEEDED(hr));
-
-    // 2. RTV (描画先としての設定)
-    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-    rtvHeapDesc.NumDescriptors = 1;
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap_));
-    assert(SUCCEEDED(hr));
-
-    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-    rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-    device->CreateRenderTargetView(renderTexture_.Get(), &rtvDesc, rtvHeap_->GetCPUDescriptorHandleForHeapStart());
-
-    // 3. SRV (画像としての設定)
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-    // SRVManagerを使ってインデックスを取得
-    srvHandle_ = SRVManager::GetInstance()->CreateSRV(renderTexture_.Get(), srvDesc);
-}
-
-// 描画先を「テクスチャB」にセットする関数
-void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList) {
-    // SRV(画像) から RTV(描画先) へ状態変更
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Transition.pResource = renderTexture_.Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    commandList->ResourceBarrier(1, &barrier);
-
-    // 描画先をセット
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap_->GetCPUDescriptorHandleForHeapStart();
-    commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // Zバッファは不要なのでnullptr
-
-    // 画面クリア
-    float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
-    commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-
-    // ビューポート設定
-    D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 1.0f };
-    D3D12_RECT scissorRect = { 0, 0, WinApp::kClientWidth, WinApp::kClientHeight };
-
-    commandList->RSSetViewports(1, &viewport);
-    commandList->RSSetScissorRects(1, &scissorRect);
-}
-
 
 void PostEffect::CreateConstBuffer() {
     // 定数バッファは256バイトアラインメントが必要
@@ -218,4 +207,58 @@ void PostEffect::CreateConstBuffer() {
     paramsData_->threshold = 0.8f;
     paramsData_->bloomIntensity = 2.0f;
     paramsData_->spread = 2.0f;
+}
+
+void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format) {
+    ID3D12Device* device = dxCommon_->GetDevice();
+
+    RenderTexture& rt = renderTextures_[texIndex];
+
+    // 1. リソース設定 
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Width = width;
+    resDesc.Height = height;
+    resDesc.MipLevels = 1;
+    resDesc.DepthOrArraySize = 1;
+    resDesc.Format = format; // ★ HDRフォーマットが渡される
+    resDesc.SampleDesc.Count = 1;
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    // クリアカラー (少し暗めのグレーなど)
+    D3D12_CLEAR_VALUE clearValue = {};
+    clearValue.Format = format;
+    clearValue.Color[0] = 0.1f; clearValue.Color[1] = 0.1f; clearValue.Color[2] = 0.1f; clearValue.Color[3] = 1.0f;
+
+    // リソース生成
+    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_DEFAULT };
+    HRESULT hr = device->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
+        IID_PPV_ARGS(&rt.resource)
+    );
+    assert(SUCCEEDED(hr));
+    rt.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+    // 2. RTV (描画先としての設定)
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+    rtvHeapDesc.NumDescriptors = 1;
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rt.rtvHeap));
+    assert(SUCCEEDED(hr));
+
+    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+    rtvDesc.Format = format;
+    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    device->CreateRenderTargetView(rt.resource.Get(), &rtvDesc, rt.rtvHeap->GetCPUDescriptorHandleForHeapStart());
+
+    // 3. SRV (画像としての設定)
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+    // SRVManagerを使ってインデックスを取得
+    rt.srvHandle = SRVManager::GetInstance()->CreateSRV(rt.resource.Get(), srvDesc);
 }

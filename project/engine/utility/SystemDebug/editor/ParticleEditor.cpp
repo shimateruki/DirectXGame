@@ -128,7 +128,8 @@ void ParticleEditor::DrawImGui() {
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("例: 180を入れると、様々な速度で回ります");
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("初速度に加えるランダムなブレ幅です");
     ImGui::DragFloat3("加速度 (Gravity)", &params.acceleration.x, 0.01f);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Yをマイナスにすると重力がかかります (例: -9.8)");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Yをマイナスにすると重力がかかります");
+    ImGui::DragFloat("HDR Intensity (発光の強さ)", &params.hdrIntensity, 0.1f, 0.0f, 50.0f);
 
     ImGui::Separator();
 

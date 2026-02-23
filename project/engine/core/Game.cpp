@@ -34,6 +34,11 @@ void Game::Initialize() {
     sceneManager_->Initialize(sceneFactory_.get(), startScene);
     //  lastTime_ を「起動時」の時間で初期化
     lastTime_ = std::chrono::high_resolution_clock::now();
+
+    postEffect_ = std::make_unique<PostEffect>();
+    postEffect_->Initialize(dxCommon_);
+    postEffectEditor_ = std::make_unique<PostEffectEditor>();
+    postEffectEditor_->Initialize(postEffect_.get());
 #ifdef USE_IMGUI
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
@@ -49,10 +54,7 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
-    postEffect_ = std::make_unique<PostEffect>();
-    postEffect_->Initialize(dxCommon_);
-    postEffectEditor_ = std::make_unique<PostEffectEditor>();
-    postEffectEditor_->Initialize(postEffect_.get());
+
 #endif
 #ifdef  USE_IMGUI
     isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
@@ -149,7 +151,7 @@ void Game::Update() {
 
         if (displaySize.x > 0 && displaySize.y > 0) {
             // テクスチャ表示
-            uint32_t texHandle = postEffect_->GetSRVHandle();
+            uint32_t texHandle = postEffect_->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
 
@@ -303,8 +305,8 @@ void Game::Update() {
 #endif
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
+    postEffect_->GetParams()->time += deltaTime;
 }
-
 
 
 void Game::Draw() {
@@ -314,66 +316,47 @@ void Game::Draw() {
     // =================================================================
 
     // ---------------------------------------------------------------
-    // 1. シーン描画フェーズ
+    // 1. シーン描画フェーズ (最初の絵作り)
     //    描画先：dxCommon内の「レンダーテクスチャA」
     // ---------------------------------------------------------------
-    dxCommon_->PreDrawRenderTexture(); // TextureA を RTV(描画先) にセット
+    dxCommon_->PreDrawRenderTexture();
 
-    // ゲームの中身を描画
-    if (sceneManager_) {
-        sceneManager_->Draw();
-    }
+    if (sceneManager_) { sceneManager_->Draw(); }
+    if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
 
-    // デバッグ表示（グリッドやコライダー枠など）
-    if (debugEditor_) {
-        debugEditor_->DrawDebug(dxCommon_->GetCommandList());
-    }
-
-    // TextureA への描画終了 -> SRV(画像) に変換
     dxCommon_->PostDrawRenderTexture();
 
-
     // ---------------------------------------------------------------
-    // 2. ポストエフェクトフェーズ (バケツリレー)
-    //    描画先：postEffect内の「レンダーテクスチャB」
-    //    入力  ：さっき描いた「レンダーテクスチャA」
+    // 2. ポストエフェクトフェーズ (マルチパス・バケツリレー)
     // ---------------------------------------------------------------
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 
-    // 描画先を TextureB に切り替え & クリア
-    postEffect_->PreDrawScene(commandList);
-
-    // TextureA を元画像として渡し、板ポリゴンを描画 (コピー or 加工)
+    // 【パス1：中間処理 (HDR)】
+    // 描画先を PostEffect の「テクスチャ0 (HDR)」にセット
+    postEffect_->PreDrawScene(commandList, 0);
+    // TextureA を入力として、PSO[0] (HDR出力シェーダー) で描画
     uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
-    postEffect_->Draw(commandList, texA_Handle);
+    postEffect_->Draw(commandList, texA_Handle, 0);
+    // テクスチャ0 を「画像(SRV)」状態に変換（次のパスで読み込むため）
+    postEffect_->TransitionToSRV(commandList, 0);
 
-    // TextureB への描画終了 -> SRV(画像) に変換
-    // (PostEffectクラスにPostDrawを作っていないので、ここで手動バリアを張ります)
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = postEffect_->GetRenderTexture();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-    commandList->ResourceBarrier(1, &barrier);
-
+    // 【パス2：トーンマッピング (SDR)】
+    // 描画先を PostEffect の「テクスチャ1 (SDR・ImGui用)」にセット
+    postEffect_->PreDrawScene(commandList, 1);
+    // さっき描いた「テクスチャ0」を入力として、PSO[1] (SDR出力シェーダー) で描画
+    uint32_t tex0_Handle = postEffect_->GetSRVHandle(0);
+    postEffect_->Draw(commandList, tex0_Handle, 1);
+    // テクスチャ1 を「画像(SRV)」状態に変換（ImGuiで表示するため）
+    postEffect_->TransitionToSRV(commandList, 1);
 
     // ---------------------------------------------------------------
     // 3. UI合成 & 画面表示フェーズ
-    //    描画先：バックバッファ (本物の画面)
     // ---------------------------------------------------------------
     dxCommon_->PreDrawBackBuffer();
 
-    // スプライトエディタの描画
-    if (spriteDebugEditor_) {
-        spriteDebugEditor_->Draw();
-    }
-
-    // ImGuiを描画
-    // ※ Game::Update内で ImGui::Image に渡しているのは TextureB (postEffect_->GetSRVHandle())
+    if (spriteDebugEditor_) { spriteDebugEditor_->Draw(); }
     ImGuiManager::GetInstance()->Draw();
 
-    // 描画終了 (フリップ)
     dxCommon_->PostDraw();
     ImGuiManager::GetInstance()->EndFrame();
 
@@ -381,11 +364,26 @@ void Game::Draw() {
     // =================================================================
     // パターンB: ゲームモード (Release)
     // =================================================================
+
+    // ---------------------------------------------------------------
+    // 1. シーン描画フェーズ
+    // ---------------------------------------------------------------
+    dxCommon_->PreDrawRenderTexture();
+    if (sceneManager_) { sceneManager_->Draw(); }
+    dxCommon_->PostDrawRenderTexture();
+
+    // ---------------------------------------------------------------
+    // 2. ポストエフェクト ＆ 画面表示フェーズ
+    // ---------------------------------------------------------------
+    // ReleaseビルドではImGui表示用のテクスチャが不要なので、
+    // バックバッファ(SDR)に直接、PSO[1](トーンマッピング)で描画します。
     dxCommon_->PreDraw();
 
-    if (sceneManager_) {
-        sceneManager_->Draw();
-    }
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
+
+    // TextureA を入力として、バックバッファに対して直接 PSO[1] を適用
+    postEffect_->Draw(commandList, texA_Handle, 1);
 
     dxCommon_->PostDraw();
 

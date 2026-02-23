@@ -54,7 +54,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     Math math;
     materialData_->uvTransform = math.MakeIdentity4x4();
 
-    // 5. ボーン用バッファの作成 (★追加)
+    // 5. ボーン用バッファの作成 
     CreateBoneBuffer();
 }
 

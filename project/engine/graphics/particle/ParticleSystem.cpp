@@ -118,6 +118,7 @@ void ParticleSystem::SpawnFromEmitter() {
     p.startSize = params_.startSize;
     p.endSize = params_.endSize;
     p.acceleration = params_.acceleration;
+    p.hdrIntensity = params_.hdrIntensity;
     // 回転初期化 (前回の実装分)
     p.rotation = 0.0f;
     float rotSpeedDeg = params_.initialRotationSpeed + dis(gen) * params_.rotationSpeedRandomness;
@@ -174,6 +175,7 @@ void ParticleSystem::SpawnParticles(const Vector3& position, int count,
         p.endSize = endSize;
         p.rotation = 0.0f; 
         p.acceleration = params_.acceleration;
+        p.hdrIntensity = params_.hdrIntensity;
     // 回転スピード決定 (度数法 -> ラジアン変換)
     float rotSpeedDeg = params_.initialRotationSpeed + dis(gen) * params_.rotationSpeedRandomness;
     p.rotationSpeed = rotSpeedDeg * (3.141592f / 180.0f);
@@ -211,6 +213,7 @@ void ParticleSystem::EmitOneShot(const EmitterParams& params, const Vector3& pos
     p.endSize = params.endSize;
     p.rotation = 0.0f; // 最初は0度から (ランダムにしてもOK)
     p.acceleration = params_.acceleration;
+    p.hdrIntensity = params_.hdrIntensity;
     // 回転スピード決定 (度数法 -> ラジアン変換して保存)
     // 3.1415... / 180.0f = 0.01745...
     float rotSpeedDeg = params.initialRotationSpeed + dis(gen) * params.rotationSpeedRandomness;
@@ -290,6 +293,10 @@ void ParticleSystem::Update(float deltaTime) {
         currentColor.y = std::lerp(p.startColor.y, p.endColor.y, lifeRatio);
         currentColor.z = std::lerp(p.startColor.z, p.endColor.z, lifeRatio);
         currentColor.w = std::lerp(p.startColor.w, p.endColor.w, lifeRatio);
+
+        currentColor.x *= p.hdrIntensity;
+        currentColor.y *= p.hdrIntensity;
+        currentColor.z *= p.hdrIntensity;
 
         // --- サイズ更新 (グラフ適用) ---
         // 配列要素数10と仮定してインデックス計算 (0~9)
