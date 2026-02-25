@@ -367,9 +367,9 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
 void GhostRecorder::DrawImGui() {
 #ifdef USE_IMGUI
-    ImGui::Begin("Ghost Recorder");
-
-    // ターゲット選択
+    // -------------------------------------------------------------
+    // 1. ターゲット選択と状態表示
+    // -------------------------------------------------------------
     if (sceneManager_) {
         BaseScene* scene = sceneManager_->GetCurrentScene();
         if (scene) {
@@ -393,7 +393,9 @@ void GhostRecorder::DrawImGui() {
 
     ImGui::Separator();
 
-    // 手動録画
+    // -------------------------------------------------------------
+    // 2. 手動録画
+    // -------------------------------------------------------------
     if (ImGui::CollapsingHeader("手動録画", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (state_ == State::Idle) {
             if (!target_) ImGui::BeginDisabled();
@@ -404,16 +406,15 @@ void GhostRecorder::DrawImGui() {
         }
     }
 
-    // 自動生成 (パスエディタ)
+    // -------------------------------------------------------------
+    // 3. 自動生成 (パスエディタ)
+    // -------------------------------------------------------------
     if (ImGui::CollapsingHeader("パス生成 (Path Editor)", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (target_) {
             ImGui::Spacing();
-            // ★ 可視化チェックボックス
             ImGui::Checkbox("プレビュー線を表示 (Show Path)", &isShowPreview_);
 
-            // =========================================================
-            // Start 設定
-            // =========================================================
+            // --- Start 設定 ---
             ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "[ START ]");
             ImGui::SameLine();
             if (ImGui::Button("現在地をセット##Start")) {
@@ -423,10 +424,7 @@ void GhostRecorder::DrawImGui() {
             ImGui::DragFloat3("Pos##Start", &genParams_.startPos.x, 0.1f);
             ImGui::DragFloat3("Rot##Start", &genParams_.startRot.x, 1.0f);
 
-
-            // =========================================================
-            // Waypoints 設定
-            // =========================================================
+            // --- Waypoints 設定 ---
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "[ WAYPOINTS ]");
 
@@ -435,7 +433,6 @@ void GhostRecorder::DrawImGui() {
                 ImGui::Text("P%d", i + 1);
                 ImGui::SameLine();
 
-                // 構造体のメンバ (.pos, .rot) を操作
                 ImGui::DragFloat3("Pos", &genParams_.waypoints[i].pos.x, 0.1f);
                 ImGui::DragFloat3("Rot", &genParams_.waypoints[i].rot.x, 1.0f);
 
@@ -448,7 +445,6 @@ void GhostRecorder::DrawImGui() {
                 ImGui::PopID();
             }
 
-            // 新規追加時は構造体を作成してpushする
             if (ImGui::Button("+ 現在地を追加")) {
                 GenerationParams::Waypoint wp;
                 wp.pos = target_->GetTranslate();
@@ -458,10 +454,7 @@ void GhostRecorder::DrawImGui() {
             ImGui::SameLine();
             if (ImGui::Button("クリア")) genParams_.waypoints.clear();
 
-
-            // =========================================================
-            // End 設定
-            // =========================================================
+            // --- End 設定 ---
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0f), "[ END ]");
             ImGui::SameLine();
@@ -469,8 +462,6 @@ void GhostRecorder::DrawImGui() {
                 genParams_.endPos = target_->GetTranslate();
                 genParams_.endRot = target_->GetRotation();
             }
-
-            // ループ設定ボタン
             ImGui::SameLine();
             if (ImGui::Button("Startと同じにする(Loop)")) {
                 genParams_.endPos = genParams_.startPos;
@@ -479,41 +470,28 @@ void GhostRecorder::DrawImGui() {
             ImGui::DragFloat3("Pos##End", &genParams_.endPos.x, 0.1f);
             ImGui::DragFloat3("Rot##End", &genParams_.endRot.x, 1.0f);
 
-
             ImGui::Separator();
+
+            // --- 生成パラメータ ---
             ImGui::Checkbox("スプライン曲線", &genParams_.useSpline);
             ImGui::SameLine();
             ImGui::Checkbox("相対データ化", &genParams_.generateRelative);
             ImGui::DragFloat("時間 (sec)", &genParams_.duration, 0.1f, 0.1f, 120.0f);
             ImGui::Checkbox("イージング", &genParams_.useEasing);
 
-            // =========================================================
-            // 生成実行ロジック (ここが修正のキモです)
-            // =========================================================
+            // --- 生成実行 ---
             if (ImGui::Button("★ 生成実行 (Generate)", ImVec2(-1, 40))) {
                 frames_.clear();
                 int totalFrames = static_cast<int>(genParams_.duration * 60.0f);
                 if (totalFrames < 1) totalFrames = 1;
 
-                // 1. 位置計算用のリスト作成
-                std::vector<Vector3> posPoints;
-                posPoints.push_back(genParams_.startPos);
-                // 構造体から pos だけを取り出す
-                for (auto& wp : genParams_.waypoints) {
-                    posPoints.push_back(wp.pos);
-                }
+                std::vector<Vector3> posPoints = { genParams_.startPos };
+                for (auto& wp : genParams_.waypoints) posPoints.push_back(wp.pos);
                 posPoints.push_back(genParams_.endPos);
 
-
-                // 2. 回転計算用のリスト作成
-                std::vector<Vector3> rotPoints;
-                rotPoints.push_back(genParams_.startRot);
-                // 構造体から rot だけを取り出す
-                for (auto& wp : genParams_.waypoints) {
-                    rotPoints.push_back(wp.rot);
-                }
+                std::vector<Vector3> rotPoints = { genParams_.startRot };
+                for (auto& wp : genParams_.waypoints) rotPoints.push_back(wp.rot);
                 rotPoints.push_back(genParams_.endRot);
-
 
                 Vector3 offset = genParams_.generateRelative ? genParams_.startPos : Vector3{ 0,0,0 };
 
@@ -521,40 +499,27 @@ void GhostRecorder::DrawImGui() {
                     float t = (float)i / (float)totalFrames;
                     if (genParams_.useEasing) t = SmoothStep(t);
 
-                    // --- A. 位置の計算 ---
                     Vector3 pos;
                     if (genParams_.useSpline) {
                         pos = GetSplinePoint(posPoints, t, false);
                     } else {
-                        // 線形補間 (Position)
                         float p = t * (posPoints.size() - 1);
                         int idx = (int)p;
                         float lt = p - idx;
                         if (idx >= posPoints.size() - 1) { idx = (int)posPoints.size() - 2; lt = 1.0f; }
-
                         pos = Lerp(posPoints[idx], posPoints[idx + 1], lt);
                     }
 
-                    // --- B. 回転の計算 ---
-                    // 位置と同じロジックで「今の区間」を探して補間する
                     Vector3 rot;
                     float rp = t * (rotPoints.size() - 1);
                     int rIdx = (int)rp;
                     float rLt = rp - rIdx;
-
-                    if (rIdx >= rotPoints.size() - 1) {
-                        rIdx = (int)rotPoints.size() - 2;
-                        rLt = 1.0f;
-                    }
-
+                    if (rIdx >= rotPoints.size() - 1) { rIdx = (int)rotPoints.size() - 2; rLt = 1.0f; }
                     rot = Lerp(rotPoints[rIdx], rotPoints[rIdx + 1], rLt);
 
-
-                    // フレーム作成・登録
                     GhostFrame f;
                     f.position = { pos.x - offset.x, pos.y - offset.y, pos.z - offset.z };
                     f.rotation = rot;
-
                     frames_.push_back(f);
                 }
 
@@ -568,10 +533,14 @@ void GhostRecorder::DrawImGui() {
             ImGui::TextDisabled("ターゲットを選択してください");
         }
     }
+
     ImGui::Separator();
     ImGui::Checkbox("再生時にカメラを乗っ取る (Cinema Mode)", &isOverrideCamera_);
     ImGui::Separator();
-    // ファイルIO
+
+    // -------------------------------------------------------------
+    // 4. ファイルIO・再生制御
+    // -------------------------------------------------------------
     static char fName[64] = "anim_path";
     ImGui::InputText("ファイル名", fName, 64);
     if (ImGui::Button("Save")) Save(fName);
@@ -582,6 +551,7 @@ void GhostRecorder::DrawImGui() {
     ImGui::Checkbox("Loop再生", &isLoop_);
     ImGui::SameLine();
     ImGui::Checkbox("相対再生", &isRelative_);
+
     if (state_ != State::Recording) {
         if (!target_) ImGui::BeginDisabled();
         if (ImGui::Button("再生")) StartPlayingInternal();
@@ -590,7 +560,6 @@ void GhostRecorder::DrawImGui() {
     ImGui::SameLine();
     if (ImGui::Button("停止")) Stop();
 
-    ImGui::End();
 #endif
 }
 void GhostRecorder::Save(const std::string& fileName) {

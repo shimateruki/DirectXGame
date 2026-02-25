@@ -22,7 +22,7 @@
 #include "CameraEditor.h"
 #include "Transform.h"
 #include "ParticleManager.h"
-
+#include "EditorManager.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -466,31 +466,272 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
 }
 
-
-
-
-void DebugEditor::DrawImGui() {
+// ==========================================================================================
+// 1. 左パネル：Hierarchy (階層構造) と 生成メニュー
+// ==========================================================================================
+void DebugEditor::DrawHierarchy() {
 #ifdef USE_IMGUI
-    // 1. プロジェクトウィンドウ (Asset Browserなど)
+    // プロジェクトウィンドウ (Asset Browserなど)
     DrawProjectWindow();
 
     if (sceneManager_ == nullptr) return;
-
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
-    if (currentScene == nullptr) {
-        ImGui::Begin("Inspector");
-        ImGui::Text("アクティブなシーンがありません");
-        ImGui::End();
-        return;
+    if (currentScene == nullptr) return;
+
+    ImGui::Begin("Hierarchy");
+
+    // 1. 検索バー
+    ImGui::Text("検索:");
+    ImGui::SameLine();
+    ImGui::InputText("##Search", searchFilter_, sizeof(searchFilter_));
+
+    ImGui::Separator();
+
+    std::string filterStr = searchFilter_;
+    std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
+
+    if (!filterStr.empty()) {
+        // --- 検索モード ---
+        ImGui::TextColored(ImVec4(0, 1, 1, 1), "検索結果:");
+
+        auto& objects = currentScene->GetObjects();
+        for (auto& obj : objects) {
+            std::string name = obj->GetName();
+            if (name.empty()) continue;
+
+            std::string nameLower = name;
+            std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+
+            if (nameLower.find(filterStr) != std::string::npos) {
+                bool isSelected = (selectedObject_ == obj.get());
+                ImGui::PushID(obj.get());
+                if (ImGui::Selectable(name.c_str(), isSelected)) {
+                    selectedObject_ = obj.get();
+                    // ★選択されたらInspectorを自分(DebugEditor)に切り替える
+                    EditorManager::GetInstance()->SetSelectedObject(this);
+                }
+                ImGui::PopID();
+            }
+        }
+    } else {
+        // --- 通常モード ---
+        // ========================================================
+        // 1. ドロップを受け付ける UIパーツ (ボタン) を描画
+        // ========================================================
+        ImGui::Button("[ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
+
+        if (ImGui::BeginDragDropTarget()) {
+
+            // ----------------------------------------------------
+            // パターンA: モデルアセット ("MODEL_ASSET")
+            // ----------------------------------------------------
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                const char* modelName = (const char*)payload->Data;
+                ModelManager::GetInstance()->LoadModel(modelName);
+
+                Object3dCommon* common = currentScene->GetObject3dCommon();
+                if (common) {
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common);
+                    newObj->SetModel(modelName);
+                    newObj->SetClassName("Model");
+                    newObj->SetName("Preview_" + std::string(modelName));
+
+                    newObj->UpdateLocalMatrix();
+                    newObj->UpdateWorldMatrix();
+
+                    previewObject_ = std::move(newObj);
+                    DebugConsole::GetInstance()->AddLog("Placement Mode: " + std::string(modelName));
+                }
+            }
+
+            // ----------------------------------------------------
+            // パターンB: プリセットアセット ("PRESET_ASSET")
+            // ----------------------------------------------------
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+                const char* presetName = (const char*)payload->Data;
+                const auto& presets = PresetManager::GetInstance()->GetPresets();
+                if (presets.count(presetName) > 0) {
+                    const json& data = presets.at(presetName);
+
+                    std::string modelName = "cube.obj"; // デフォルト
+                    if (data.contains("modelName")) {
+                        modelName = data["modelName"];
+                        ModelManager::GetInstance()->LoadModel(modelName);
+                    }
+
+                    Object3dCommon* common = currentScene->GetObject3dCommon();
+                    if (common) {
+                        auto newObj = std::make_unique<Object3d>();
+                        newObj->Initialize(common);
+
+                        newObj->ImportFromJson(data);
+                        newObj->SetModel(modelName);
+                        newObj->SetName("Preview_" + std::string(presetName));
+
+                        newObj->UpdateLocalMatrix();
+                        newObj->UpdateWorldMatrix();
+
+                        previewObject_ = std::move(newObj);
+                        DebugConsole::GetInstance()->AddLog("Placement Mode (Preset): " + std::string(presetName));
+                    }
+                }
+            }
+
+            // ----------------------------------------------------
+            // パターンC: 演出用カメラ ("CINEMATIC_CAMERA_ASSET")
+            // ----------------------------------------------------
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CINEMATIC_CAMERA_ASSET")) {
+                Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
+
+                if (common) {
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common);
+                    newObj->SetModel("block");
+                    newObj->SetName("Camera_Cinematic");
+                    newObj->SetClassName("CinematicCamera");
+
+                    newObj->SetTranslate({ 0.0f, 5.0f, -10.0f });
+                    newObj->UpdateLocalMatrix();
+                    newObj->UpdateWorldMatrix();
+
+                    currentScene->AddObject(std::move(newObj));
+                    DebugConsole::GetInstance()->AddLog("Cinematic Camera Added to Scene.");
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::Separator();
+
+        // ========================================================
+        // ツリー表示 (階層構造)
+        // ========================================================
+        auto& objects = currentScene->GetObjects();
+        for (auto& obj : objects) {
+            if (obj->GetParent() == nullptr) {
+                // ※ DrawHierarchyNode の中で選択処理と SetSelectedObject(this) が呼ばれる想定です
+                DrawHierarchyNode(obj.get());
+            }
+        }
     }
 
-    // JSONパスの構築 (UI表示用)
-    std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
+    // ==========================================================================================
+    // Spawner Window (生成メニュー)
+    // ==========================================================================================
+    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.8f, 0.6f, 0.6f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.8f, 0.7f, 0.7f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.8f, 0.8f, 0.8f));
 
-    // ==========================================================================================
-    // Inspector Window (シーン管理 & 選択中オブジェクトの編集)
-    // ==========================================================================================
-    ImGui::Begin("Inspector"); // ウィンドウ名は設定ファイル(ini)に関わるので英語推奨
+    if (ImGui::Button("透明ボックス生成 (トリガー用)", ImVec2(-1, 40))) {
+        Object3dCommon* common = currentScene->GetObject3dCommon();
+        if (common) {
+            auto newObj = std::make_unique<Object3d>();
+            newObj->Initialize(common);
+
+            newObj->SetModel(nullptr);
+            newObj->SetIsVisible(false);
+            newObj->SetClassName("InvisibleBox");
+            newObj->SetName("Trigger_Box");
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kAABB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            newObj->SetColliderConfig(colConfig);
+            newObj->SetCollisionAttribute(CollisionAttribute::kTrigger);
+
+            newObj->SetTranslate({ 0, 2.0f, 0 });
+
+            selectedObject_ = newObj.get();
+            currentScene->AddObject(std::move(newObj));
+            EditorManager::GetInstance()->SetSelectedObject(this); // ★Inspector表示
+            DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
+        }
+    }
+
+    if (ImGui::Button("透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
+        Object3dCommon* common = currentScene->GetObject3dCommon();
+        if (common) {
+            auto newObj = std::make_unique<Object3d>();
+            newObj->Initialize(common);
+
+            newObj->SetModel(nullptr);
+            newObj->SetIsVisible(false);
+            newObj->SetClassName("InvisibleBox");
+            newObj->SetName("collision_Box");
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kAABB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            newObj->SetColliderConfig(colConfig);
+            newObj->SetCollisionAttribute(CollisionAttribute::kGround);
+
+            newObj->SetTranslate({ 0, 2.0f, 0 });
+
+            selectedObject_ = newObj.get();
+            currentScene->AddObject(std::move(newObj));
+            EditorManager::GetInstance()->SetSelectedObject(this); // ★Inspector表示
+            DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
+        }
+    }
+
+    if (ImGui::Button("演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
+        Object3dCommon* common = currentScene->GetObject3dCommon();
+        if (common) {
+            auto newObj = std::make_unique<Object3d>();
+            newObj->Initialize(common);
+
+            newObj->SetModel("block");
+            newObj->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f });
+            newObj->SetIsVisible(true);
+            newObj->SetClassName("CinematicCamera");
+            newObj->SetName("Cinematic_Camera_01");
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kAABB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            newObj->SetColliderConfig(colConfig);
+
+            newObj->SetTranslate({ 0, 5.0f, -10.0f });
+            newObj->UpdateWorldMatrix();
+
+            selectedObject_ = newObj.get();
+            currentScene->AddObject(std::move(newObj));
+            EditorManager::GetInstance()->SetSelectedObject(this); // ★Inspector表示
+            DebugConsole::GetInstance()->AddLog("Spawned Cinematic Camera Dummy");
+        }
+    }
+
+    ImGui::PopStyleColor(3);
+
+    // 親解除用エリア
+    ImGui::Dummy(ImVec2(0, 50));
+    ImGui::TextDisabled("(ここにドロップして親解除)");
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
+            Object3d* sourceObj = *(Object3d**)payload->Data;
+            sourceObj->SetParent(nullptr);
+            DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    ImGui::End(); // End Hierarchy
+#endif
+}
+
+
+// ==========================================================================================
+// 2. 右パネル：Inspector (選択したオブジェクトの詳細設定)
+// ※ EditorManager から呼ばれるため、ImGui::Begin("Inspector") は書きません！
+// ==========================================================================================
+void DebugEditor::DrawImGui() {
+#ifdef USE_IMGUI
+    if (sceneManager_ == nullptr) return;
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    if (currentScene == nullptr) return;
+
+    std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
 
     // ---------------------------------------------------------
     // 1. ファイル管理エリア (File Manager)
@@ -531,7 +772,7 @@ void DebugEditor::DrawImGui() {
     ImGui::Separator();
 
     // ---------------------------------------------------------
-    // 2. オブジェクト詳細 (Inspector)
+    // 2. オブジェクト詳細 (Inspector本体)
     // ---------------------------------------------------------
     if (selectedObject_ == nullptr) {
         ImGui::Text("オブジェクトが選択されていません");
@@ -554,9 +795,7 @@ void DebugEditor::DrawImGui() {
         if (ImGui::Button("複製 (Duplicate)")) {
             DuplicateSelected();
         }
-
         ImGui::SameLine();
-
         if (ImGui::Button("単体保存 (JSON更新)")) {
             SaveSingleObject();
         }
@@ -579,7 +818,6 @@ void DebugEditor::DrawImGui() {
         if (selectedObject_->GetClassName() != "InvisibleBox") {
             ImGui::Separator();
             ImGui::Text("モデルアセット: %s", selectedObject_->GetModelName().c_str());
-            // ドロップエリアを分かりやすく
             ImGui::Button(" [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
 
             if (ImGui::BeginDragDropTarget()) {
@@ -600,10 +838,9 @@ void DebugEditor::DrawImGui() {
             selectedObject_->SetIsVisible(isVisible);
         }
 
-        // --- Transform編集 (日本語だと直感的) ---
+        // --- Transform編集 ---
         ImGui::Separator();
         ImGui::Text("トランスフォーム (Transform)");
-        // ★修正: Object3d::Transform -> Transform
         Transform* transform = selectedObject_->GetTransform();
         bool isTransformChanged = false;
 
@@ -648,12 +885,9 @@ void DebugEditor::DrawImGui() {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
                 if (colConfig.type == ColliderType::kOBB) {
-                    // Radian -> Degree に変換して表示
-                    Vector3 rotDeg = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
-
-                    if (ImGui::DragFloat3("回転 (Rotation)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
-                        // Degree -> Radian に戻して保存
-                        colConfig.rotation = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
+                    Vector3 rotDegObj = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
+                    if (ImGui::DragFloat3("回転 (Rotation)", &rotDegObj.x, 1.0f, -360.0f, 360.0f)) {
+                        colConfig.rotation = { ToRadians(rotDegObj.x), ToRadians(rotDegObj.y), ToRadians(rotDegObj.z) };
                         isColChanged = true;
                     }
                 }
@@ -662,11 +896,8 @@ void DebugEditor::DrawImGui() {
             if (ImGui::CollapsingHeader("グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;
 
-                // 1. マテリアルタイプ (通常 / ガラス)
                 const char* matTypes[] = { "通常 (Standard)", "ガラス (Glass)" };
                 int currentMatType = selectedObject_->GetMaterialType();
-
-                // 安全のため範囲チェック
                 if (currentMatType < 0) currentMatType = 0;
                 if (currentMatType > 1) currentMatType = 0;
 
@@ -675,7 +906,6 @@ void DebugEditor::DrawImGui() {
                     isGraphicsChanged = true;
                 }
 
-                // 2. ブレンドモード
                 const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
                 int currentBlend = static_cast<int>(selectedObject_->GetBlendMode());
 
@@ -684,7 +914,6 @@ void DebugEditor::DrawImGui() {
                     isGraphicsChanged = true;
                 }
 
-                // 3. 色 (Color)
                 Vector4 color = selectedObject_->GetColor();
                 if (ImGui::ColorEdit4("色 (Color)", &color.x)) {
                     selectedObject_->SetColor(color);
@@ -693,51 +922,39 @@ void DebugEditor::DrawImGui() {
             }
             ImGui::Separator();
             if (ImGui::CollapsingHeader("パーティクル")) {
-
-                // マネージャーから全パーティクル情報を取得
                 const auto& paramsMap = ParticleManager::GetInstance()->GetParamsMap();
-
-                // リスト作成用の一時配列
                 std::vector<const char*> itemNames;
                 int currentItemIndex = 0;
                 int index = 0;
 
-                // "None" (なし) を選択肢の最初に追加
                 itemNames.push_back("None");
 
-                // 現在設定されている名前を取得
                 std::string currentParticleName = selectedObject_->GetParticleName();
                 if (currentParticleName.empty()) {
-                    currentItemIndex = 0; // Noneが選択されている
+                    currentItemIndex = 0;
                 }
 
-                // Mapから名前を取り出してリストに追加
                 for (const auto& [name, param] : paramsMap) {
                     itemNames.push_back(name.c_str());
-
-                    // 今の名前と一致したらインデックスを記録
                     if (name == currentParticleName) {
-                        currentItemIndex = index + 1; // +1はNoneの分
+                        currentItemIndex = index + 1;
                     }
                     index++;
                 }
 
-                // ★コンボボックス（リスト）表示
                 if (ImGui::Combo("Effect Name", &currentItemIndex, itemNames.data(), (int)itemNames.size())) {
                     if (currentItemIndex == 0) {
-                        selectedObject_->SetParticleName(""); // Noneを選択
+                        selectedObject_->SetParticleName("");
                     } else {
-                        // 選択された名前をセット
                         selectedObject_->SetParticleName(itemNames[currentItemIndex]);
                     }
                 }
 
-                // 補足情報: 保存されているか確認
                 if (!currentParticleName.empty() && paramsMap.find(currentParticleName) == paramsMap.end()) {
                     ImGui::TextColored(ImVec4(1, 0, 0, 1), "Warning: JSON not found!");
                 }
             }
-        
+
             if (isColChanged) {
                 selectedObject_->SetColliderConfig(colConfig);
                 UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
@@ -757,32 +974,29 @@ void DebugEditor::DrawImGui() {
                 selectedObject_->SetCollisionMask(currentMask);
             }
         }
+
         // --- Gimmick (ID設定) ---
         ImGui::Separator();
         if (ImGui::CollapsingHeader("ギミック設定 (Link IDs)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("イベント連携ID:");
 
-            // 1. Target ID (送信先: 誰を動かすか？)
             int tID = selectedObject_->GetTargetID();
             if (ImGui::InputInt("送信先ID (Target)", &tID)) {
                 selectedObject_->SetTargetID(tID);
             }
-            // マウスを乗せた時の説明文
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("トリガーを作動させたい相手のIDを指定してください");
 
-            // 2. Event ID (受信ID: 私は誰か？)
             int eID = selectedObject_->GetEventID();
             if (ImGui::InputInt("自分ID (Event)", &eID)) {
                 selectedObject_->SetEventID(eID);
             }
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("ギミック等から起動されるための、自分のIDを指定してください");
         }
+
         ImGui::Separator();
         std::string currentPreview = selectedObject_->animName_.empty() ? "(なし)" : selectedObject_->animName_;
 
         if (ImGui::BeginCombo("アニメーション", currentPreview.c_str())) {
-
-            // 1. 「設定なし」を選べるようにする
             bool isNoneSelected = selectedObject_->animName_.empty();
             if (ImGui::Selectable("(なし)", isNoneSelected)) {
                 selectedObject_->animName_ = "";
@@ -792,28 +1006,22 @@ void DebugEditor::DrawImGui() {
             }
             if (isNoneSelected) ImGui::SetItemDefaultFocus();
 
-            // 2. ディレクトリを走査してリストアップ
             std::string dirPath = "Resources/json/animation/";
-
             if (fs::exists(dirPath) && fs::is_directory(dirPath)) {
                 for (const auto& entry : fs::directory_iterator(dirPath)) {
                     if (entry.path().extension() == ".json") {
                         std::string fileName = entry.path().stem().string();
-
                         bool isSelected = (selectedObject_->animName_ == fileName);
 
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                             selectedObject_->animName_ = fileName;
-
                             if (selectedObject_->recorder_) {
-                                // 選択中のオブジェクトが演出用カメラ(CinematicCamera)なら true にする
                                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
-
                                 selectedObject_->recorder_->Play(
                                     selectedObject_->animName_,
                                     selectedObject_->isAnimLoop_,
                                     selectedObject_->isAnimRelative_,
-                                    isCinematic 
+                                    isCinematic
                                 );
                             }
                         }
@@ -826,48 +1034,37 @@ void DebugEditor::DrawImGui() {
             ImGui::EndCombo();
         }
 
-
-        // ループと相対座標の設定
-        // ##Anim をつけることでID重複を防ぎつつラベルを表示
         if (ImGui::Checkbox("ループ再生##Anim", &selectedObject_->isAnimLoop_)) {
             if (selectedObject_->recorder_ && !selectedObject_->animName_.empty()) {
-                // クラス名が "CinematicCamera" なら演出モード（カメラ乗っ取り）を有効にする
                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
-
                 selectedObject_->recorder_->Play(
                     selectedObject_->animName_,
                     selectedObject_->isAnimLoop_,
                     selectedObject_->isAnimRelative_,
-                    isCinematic 
+                    isCinematic
                 );
             }
         }
         if (ImGui::Checkbox("相対座標モード##Anim", &selectedObject_->isAnimRelative_)) {
             if (selectedObject_->recorder_ && !selectedObject_->animName_.empty()) {
-                // クラス名が "CinematicCamera" なら演出モードフラグを立てる
                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
-
                 selectedObject_->recorder_->Play(
                     selectedObject_->animName_,
                     selectedObject_->isAnimLoop_,
                     selectedObject_->isAnimRelative_,
-                    isCinematic 
+                    isCinematic
                 );
             }
         }
 
-
-        // テスト再生ボタン
         if (ImGui::Button("テスト再生##Anim")) {
             if (selectedObject_->recorder_) {
-                // クラス名が "CinematicCamera" なら演出モード（カメラ乗っ取り）を有効にする
                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
-
                 selectedObject_->recorder_->Play(
                     selectedObject_->animName_,
                     selectedObject_->isAnimLoop_,
                     selectedObject_->isAnimRelative_,
-                    isCinematic 
+                    isCinematic
                 );
             }
         }
@@ -875,7 +1072,6 @@ void DebugEditor::DrawImGui() {
         // --- Game Data (Stats) ---
         ImGui::Separator();
         if (ImGui::CollapsingHeader("ゲームデータ (Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // Event Type
             EventType currentType = selectedObject_->GetEventType();
             int currentItemIndex = static_cast<int>(currentType);
             const char* eventNames[] = { "なし", "ダメージ", "ワープ","中間ポイント","ゴール","ステージセレクト" };
@@ -886,21 +1082,12 @@ void DebugEditor::DrawImGui() {
             ImGui::Separator();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "--- Object Type Settings ---");
 
-            // ==========================================================
-            // 1. クラス名 (ClassName) の変更リスト
-            // ==========================================================
             const char* classItems[] = {
-                "Model",        // 通常
-                "Spawner",      // ★敵生成
-                "Player",       // プレイヤー
-                "Enemy",        // 敵 (直接配置)
-                "InvisibleBox", // 透明壁・トリガー
-                "Block"         // 特殊ブロック
+                "Model", "Spawner", "Player", "Enemy", "InvisibleBox", "Block"
             };
 
-            // 現在のクラス名がリストの何番目かを探す
             std::string currentClass = selectedObject_->GetClassName();
-            int currentClassIndex = 0; // デフォルト0番目
+            int currentClassIndex = 0;
 
             for (int i = 0; i < IM_ARRAYSIZE(classItems); i++) {
                 if (currentClass == classItems[i]) {
@@ -909,32 +1096,21 @@ void DebugEditor::DrawImGui() {
                 }
             }
 
-            // コンボボックス表示
             if (ImGui::Combo("Class Type", &currentClassIndex, classItems, IM_ARRAYSIZE(classItems))) {
-                // 変更を適用
                 selectedObject_->SetClassName(classItems[currentClassIndex]);
-
-                // Spawnerに変更された場合の親切設計
                 if (std::string(classItems[currentClassIndex]) == "Spawner") {
-                    // 名前が汎用的なら分かりやすく変える
                     if (selectedObject_->GetName().find("Object") != std::string::npos) {
                         selectedObject_->SetName("Spawner_New");
                     }
-                    // パラメータ領域確保
                     if (!selectedObject_->param_.has_value()) {
                         selectedObject_->param_.emplace();
                     }
                 }
             }
 
-            // ==========================================================
-            // 2. クラス別の設定関数を呼ぶ
-            // ==========================================================
             if (selectedObject_->GetClassName() == "Spawner") {
                 DrawSpawnerSettings();
             }
-
-
 
             ImGui::Spacing();
             if (selectedObject_->GetClassName() == "Enemy") {
@@ -942,7 +1118,7 @@ void DebugEditor::DrawImGui() {
                 DrawEnemyTypeSelector();
                 ImGui::Unindent();
             }
-            // Stats Parameters
+
             if (!selectedObject_->param_.has_value()) {
                 if (ImGui::Button("ステータスを追加", ImVec2(-1, 0))) {
                     selectedObject_->param_.emplace();
@@ -970,6 +1146,7 @@ void DebugEditor::DrawImGui() {
 
         if (ImGui::Button("オブジェクト削除", ImVec2(-1, 0))) {
             DeleteSelected();
+            EditorManager::GetInstance()->ClearSelection(); 
         }
 
         // --- Gizmo 操作切替 ---
@@ -981,300 +1158,10 @@ void DebugEditor::DrawImGui() {
             if (ImGui::IsKeyPressed(ImGuiKey_R)) currentOperation = ImGuizmo::ROTATE;
             if (ImGui::IsKeyPressed(ImGuiKey_S)) currentOperation = ImGuizmo::SCALE;
         }
-        // ここは直感的にするためカタカナか漢字で
         if (ImGui::RadioButton("移動", currentOperation == ImGuizmo::TRANSLATE)) currentOperation = ImGuizmo::TRANSLATE; ImGui::SameLine();
         if (ImGui::RadioButton("回転", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
         if (ImGui::RadioButton("拡大縮小", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
     }
-    ImGui::End(); // End Inspector
-
-
-    // ==========================================================================================
-    // Hierarchy Window (階層構造)
-    // ==========================================================================================
-    ImGui::Begin("Hierarchy"); // ウィンドウ名は英語推奨
-
-    // 1. 検索バー
-    ImGui::Text("検索:");
-    ImGui::SameLine();
-    ImGui::InputText("##Search", searchFilter_, sizeof(searchFilter_));
-
-    ImGui::Separator();
-
-    std::string filterStr = searchFilter_;
-    std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
-
-    if (!filterStr.empty()) {
-        // --- 検索モード ---
-        ImGui::TextColored(ImVec4(0, 1, 1, 1), "検索結果:");
-
-        auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-        for (auto& obj : objects) {
-            std::string name = obj->GetName();
-            if (name.empty()) continue;
-
-            std::string nameLower = name;
-            std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-
-            if (nameLower.find(filterStr) != std::string::npos) {
-                bool isSelected = (selectedObject_ == obj.get());
-                ImGui::PushID(obj.get());
-                if (ImGui::Selectable(name.c_str(), isSelected)) {
-                    selectedObject_ = obj.get();
-                }
-                ImGui::PopID();
-            }
-        }
-    } else {
-
-        // --- 通常モード ---
-        // ========================================================
-        // 1. ドロップを受け付ける UIパーツ (ボタン) を描画
-        // ========================================================
-        ImGui::Button("[ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
-
-        if (ImGui::BeginDragDropTarget()) {
-
-            // ----------------------------------------------------
-            // パターンA: モデルアセット ("MODEL_ASSET")
-            // ----------------------------------------------------
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
-                const char* modelName = (const char*)payload->Data;
-
-                // モデル読み込み
-                ModelManager::GetInstance()->LoadModel(modelName);
-
-                // シーンから共通リソース取得
-                Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-                if (common) {
-                    // プレビューオブジェクト作成
-                    auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common);
-                    newObj->SetModel(modelName);
-                    newObj->SetClassName("Model");
-                    newObj->SetName("Preview_" + std::string(modelName));
-
-                    // 行列更新
-                    newObj->UpdateLocalMatrix();
-                    newObj->UpdateWorldMatrix();
-
-                    // プレビューとして保持
-                    previewObject_ = std::move(newObj);
-
-                    DebugConsole::GetInstance()->AddLog("Placement Mode: " + std::string(modelName));
-                }
-            }
-
-            // ----------------------------------------------------
-            // パターンB: プリセットアセット ("PRESET_ASSET")
-            // ----------------------------------------------------
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
-                // 1. プリセット名を受け取る
-                const char* presetName = (const char*)payload->Data;
-
-                // 2. PresetManagerからJSONデータを取得
-                const auto& presets = PresetManager::GetInstance()->GetPresets();
-                if (presets.count(presetName) > 0) {
-                    const json& data = presets.at(presetName);
-
-                    // 3. モデルのロード (JSON内の "modelName" を確認)
-                    std::string modelName = "cube.obj"; // デフォルト
-                    if (data.contains("modelName")) {
-                        modelName = data["modelName"];
-                        ModelManager::GetInstance()->LoadModel(modelName);
-                    }
-
-                    // 4. プレビューオブジェクトを作成
-                    Object3dCommon* common = sceneManager_->GetCurrentScene()->GetObject3dCommon();
-                    if (common) {
-                        auto newObj = std::make_unique<Object3d>();
-                        newObj->Initialize(common);
-
-                        // ここでJSONデータを流し込む
-                        newObj->ImportFromJson(data);
-
-                        // モデルと名前の再設定
-                        newObj->SetModel(modelName);
-                        newObj->SetName("Preview_" + std::string(presetName));
-
-                        // 行列更新
-                        newObj->UpdateLocalMatrix();
-                        newObj->UpdateWorldMatrix();
-
-                        // プレビューとしてセット
-                        previewObject_ = std::move(newObj);
-
-                        DebugConsole::GetInstance()->AddLog("Placement Mode (Preset): " + std::string(presetName));
-                    }
-                }
-            }
-
-            // ----------------------------------------------------
-        // パターンC: 演出用カメラ ("CINEMATIC_CAMERA_ASSET")
-        // ----------------------------------------------------
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CINEMATIC_CAMERA_ASSET")) {
-                // シーンのCommonを取得
-                BaseScene* currentScene = sceneManager_->GetCurrentScene();
-                Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
-
-                if (common) {
-                    // 1. ダミーオブジェクト(Object3d)を作成
-                    auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common);
-
-                    // 2. モデルを設定
-                    newObj->SetModel("block"); 
-
-                    // 3. 名前をつける 
-                    newObj->SetName("Camera_Cinematic");
-
-                    // 4. クラス名を設定 (タグのようなもの)
-                    newObj->SetClassName("CinematicCamera");
-
-           
-
-                    // 位置を少し手前に
-                    newObj->SetTranslate({ 0.0f, 5.0f, -10.0f });
-                    newObj->UpdateLocalMatrix();
-                    newObj->UpdateWorldMatrix();
-
-                    // シーンに追加
-                    currentScene->AddObject(std::move(newObj));
-
-                    DebugConsole::GetInstance()->AddLog("Cinematic Camera Added to Scene.");
-                }
-            }
-
-            // ========================================================
-            // 3. ドロップ受け付け終了 
-            // ========================================================
-            ImGui::EndDragDropTarget();
-        }
-
-        ImGui::Separator();
-
-        // ========================================================
-        // ツリー表示 (階層構造)
-        // ========================================================
-        auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-        for (auto& obj : objects) {
-            // 親がいないルートオブジェクトだけを描画開始点にする
-            if (obj->GetParent() == nullptr) {
-                DrawHierarchyNode(obj.get());
-            }
-        }
-    }
-
-
-
-    // ==========================================================================================
-    // Spawner Window (生成メニュー)
-    // ==========================================================================================
-
-
-    // ★ Invisible Box 生成ボタン
-    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.8f, 0.6f, 0.6f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.8f, 0.7f, 0.7f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.8f, 0.8f, 0.8f));
-
-    if (ImGui::Button("透明ボックス生成 (トリガー用)", ImVec2(-1, 40))) {
-        Object3dCommon* common = currentScene->GetObject3dCommon();
-        if (common) {
-            auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common);
-
-            newObj->SetModel(nullptr);
-            newObj->SetIsVisible(false);
-            newObj->SetClassName("InvisibleBox");
-            newObj->SetName("Trigger_Box");
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kAABB;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            newObj->SetColliderConfig(colConfig);
-            newObj->SetCollisionAttribute(CollisionAttribute::kTrigger);
-
-            newObj->SetTranslate({ 0, 2.0f, 0 });
-
-            selectedObject_ = newObj.get();
-            currentScene->AddObject(std::move(newObj));
-            DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
-        }
-    }
-    if (ImGui::Button("透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
-        Object3dCommon* common = currentScene->GetObject3dCommon();
-        if (common) {
-            auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common);
-
-            newObj->SetModel(nullptr);
-            newObj->SetIsVisible(false);
-            newObj->SetClassName("InvisibleBox");
-            newObj->SetName("collision_Box");
-
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kAABB;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            newObj->SetColliderConfig(colConfig);
-            newObj->SetCollisionAttribute(CollisionAttribute::kGround);
-
-            newObj->SetTranslate({ 0, 2.0f, 0 });
-
-            selectedObject_ = newObj.get();
-            currentScene->AddObject(std::move(newObj));
-            DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
-        }
-    }
-    // ... (透明ボックス生成ボタンの続き) ...
-
-    // ★追加: 演出用カメラ生成ボタン
-    if (ImGui::Button("演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
-        Object3dCommon* common = currentScene->GetObject3dCommon();
-        if (common) {
-            auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common);
-
-            newObj->SetModel("block");
-
-            // 色を変えられるならカメラっぽい色に (例: 紫)
-             newObj->SetColor({0.8f, 0.2f, 0.8f, 1.0f}); 
-
-            newObj->SetIsVisible(true); // エディタでは見えていてほしい
-            newObj->SetClassName("CinematicCamera");
-            newObj->SetName("Cinematic_Camera_01"); // わかりやすい名前
-
-            // 選択しやすいようにコライダーもつけておく
-            Object3d::ColliderConfig colConfig;
-            colConfig.type = ColliderType::kAABB;
-            colConfig.size = { 1.0f, 1.0f, 1.0f };
-            newObj->SetColliderConfig(colConfig);
-
-            // ちょっと高い位置にスポーン
-            newObj->SetTranslate({ 0, 5.0f, -10.0f });
-            newObj->UpdateWorldMatrix();
-
-            selectedObject_ = newObj.get(); // 生成したらすぐ選択状態にする
-            currentScene->AddObject(std::move(newObj));
-            DebugConsole::GetInstance()->AddLog("Spawned Cinematic Camera Dummy");
-        }
-    }
-
-    ImGui::PopStyleColor(3);
-
-    // 親解除用エリア
-    ImGui::Dummy(ImVec2(0, 50));
-    ImGui::TextDisabled("(ここにドロップして親解除)");
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
-            Object3d* sourceObj = *(Object3d**)payload->Data;
-            sourceObj->SetParent(nullptr);
-            DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
-        }
-        ImGui::EndDragDropTarget();
-    }
-
-    ImGui::End(); // End Hierarchy
-
 #endif
 }
 

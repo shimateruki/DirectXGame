@@ -157,6 +157,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClCompile Include="BaseEnemy.cpp" />
     <ClCompile Include="Collider.cpp" />
+    <ClCompile Include="EditorManager.cpp" />
     <ClCompile Include="EnemyFactory.cpp" />
     <ClCompile Include="EnemySlime.cpp" />
     <ClCompile Include="EnemySpawner.cpp" />
@@ -309,6 +310,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClInclude Include="BaseEnemy.h" />
     <ClInclude Include="Collider.h" />
+    <ClInclude Include="EditorManager.h" />
     <ClInclude Include="EnemyFactory.h" />
     <ClInclude Include="EnemySlime.h" />
     <ClInclude Include="EnemySpawner.h" />
@@ -552,6 +554,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\LightEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h" />
     <ClInclude Include="IAnimationState.h" />
+    <ClInclude Include="IEditable.h" />
     <ClInclude Include="LevelLoader.h" />
     <ClInclude Include="LockOnSystem.h" />
     <ClInclude Include="MeshRenderer.h" />
