@@ -1,16 +1,20 @@
 #pragma once
 #include "PostEffect.h"
+#include "IEditable.h"
 #include <string>
 
-class PostEffectEditor {
+class PostEffectEditor : public IEditable {
 public:
-    // 初期化時に PostEffect のポインタを受け取る
+    // エフェクト本体のポインタを受け取って初期化する
     void Initialize(PostEffect* postEffect);
 
-    // ImGui描画用
-    void DrawImGui();
+    // Inspectorに表示するUIの描画処理
+    void DrawImGui() override;
 
-    // セーブ＆ロード関数 (デフォルトのファイル名付き)
+    // Inspector上部のタイトルバーに表示される名前
+    std::string GetName() override { return "Post Effect Settings"; }
+
+    // パラメータの保存と読み込み
     void SaveParams(const std::string& filename = "Resources/json/post_effect.json");
     void LoadParams(const std::string& filename = "Resources/json/post_effect.json");
 

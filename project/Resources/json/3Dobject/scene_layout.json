@@ -368,6 +368,59 @@
             ],
             "targetID": -1,
             "type": "Enemy"
+        },
+        {
+            "animName": "",
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "eventID": 0,
+            "isAnimLoop": true,
+            "materialType": 0,
+            "myEventID": -1,
+            "name": "Trigger_Box",
+            "parentName": "",
+            "position": [
+                3.200000047683716,
+                4.199999809265137,
+                0.0
+            ],
+            "rotation": [
+                0.03490658476948738,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "InvisibleBox"
         }
     ]
 }

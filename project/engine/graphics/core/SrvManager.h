@@ -31,6 +31,11 @@ public:
     void CreateSRVforResource(uint32_t index, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDesc);
     uint32_t Allocate();
     D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(uint32_t index);
+    // Compute Shader用のルートパラメータセット関数
+    void SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle);
+
+    // CPUディスクリプタハンドルの取得
+    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandle(uint32_t index);
 private:
     SRVManager() = default;
     ~SRVManager() = default;

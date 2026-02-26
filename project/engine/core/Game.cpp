@@ -11,6 +11,9 @@
 #include <chrono>
 #include <ParticleManager.h>
 #include <SrvManager.h>
+#include"EditorManager.h"
+#include"ModelManager.h"
+
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -55,6 +58,7 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
+
 
 #endif
 #ifdef  USE_IMGUI
@@ -111,61 +115,34 @@ void Game::Update() {
         ImGuiID dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
 
         ImGui::DockBuilderDockWindow("Hierarchy", dock_left_id);
-
-        // ★ 各エディタを右側パネルに「タブ」として重ねる設定
-        ImGui::DockBuilderDockWindow("Inspector", dock_right_id);
-        ImGui::DockBuilderDockWindow("Particle Editor", dock_right_id);
-        ImGui::DockBuilderDockWindow("PostEffectEditor", dock_right_id); // ※エディタで設定しているウィンドウ名と完全に一致させる必要があります
-        ImGui::DockBuilderDockWindow("Light Editor", dock_right_id);
-        ImGui::DockBuilderDockWindow("Camera Editor", dock_right_id);
+        ImGui::DockBuilderDockWindow("Inspector", dock_right_id); // ★右側はこれ1つだけ！
 
         ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_id);
-        ImGui::DockBuilderDockWindow("録画", dock_bottom_id);
         ImGui::DockBuilderDockWindow("デバッグログ", dock_bottom_id);
         ImGui::DockBuilderDockWindow("Game View", dock_main_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
     }
 
-    // 更新が必要なフラグ
     bool isSpriteEditorBusy = false;
     bool is3DGizmoBusy = false;
 
     // -------------------------------------------------------------------------
-    // 2. Game View ウィンドウ (座標計算と各エディタへの通知)
+    // 2. Game View ウィンドウ (余白なし・タブバー非表示設定)
     // -------------------------------------------------------------------------
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGuiWindowClass window_class;
+    window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
+    ImGui::SetNextWindowClass(&window_class);
 
-    // ★ 追加：Game View の背景を真っ黒にする
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
-
-    ImGui::Begin("Game View");
+    ImGui::Begin("Game View", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     {
         ImVec2 windowSize = ImGui::GetContentRegionAvail();
-        const float targetAspect = 16.0f / 9.0f;
-        ImVec2 displaySize;
-        float containerAspect = windowSize.x / windowSize.y;
-
-        if (containerAspect > targetAspect) {
-            displaySize.y = windowSize.y;
-            displaySize.x = displaySize.y * targetAspect;
-        } else {
-            displaySize.x = windowSize.x;
-            displaySize.y = displaySize.x / targetAspect;
-        }
-
-        // ★ 変更：配置位置を上下左右の中央揃えにする
-        ImVec2 offset = {
-            (windowSize.x - displaySize.x) * 0.5f,
-            (windowSize.y - displaySize.y) * 0.5f
-        };
-        ImGui::SetCursorPos(offset);
-
-        // ゲーム画面のスクリーン座標（左上）を取得
+        ImVec2 displaySize = windowSize;
+        ImGui::SetCursorPos(ImVec2(0, 0));
         ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();
 
         if (displaySize.x > 0 && displaySize.y > 0) {
-            // テクスチャ表示
             uint32_t texHandle = postEffect_->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
@@ -173,7 +150,7 @@ void Game::Update() {
             bool isHovered = ImGui::IsItemHovered();
             ImVec2 mPos = ImGui::GetIO().MousePos;
 
-            // --- A. 3Dデバッグエディタの更新 ---
+            // --- A. 3DデバッグエディタのGameView連携 ---
             if (debugEditor_) {
                 debugEditor_->SetGameViewRegion({ imageScreenPos.x, imageScreenPos.y }, { displaySize.x, displaySize.y });
                 debugEditor_->SetGameViewMousePos({ mPos.x - imageScreenPos.x, mPos.y - imageScreenPos.y });
@@ -182,24 +159,19 @@ void Game::Update() {
                 is3DGizmoBusy = ImGuizmo::IsUsing();
             }
 
-            // --- B. スプライトエディタの更新 (マウス座標の補正) ---
-            if (showSpriteInspector_) {
-                // ウィンドウ内の相対座標を計算
+            // --- B. スプライトエディタ連携 ---
+            if (spriteDebugEditor_) {
                 float localX = mPos.x - imageScreenPos.x;
                 float localY = mPos.y - imageScreenPos.y;
-
                 float gameResW = WinApp::kClientWidth;
                 float gameResH = WinApp::kClientHeight;
-                Vector2 spriteLocalPos = {
-                    localX * (gameResW / displaySize.x),
-                    localY * (gameResH / displaySize.y)
-                };
+                Vector2 spriteLocalPos = { localX * (gameResW / displaySize.x), localY * (gameResH / displaySize.y) };
 
                 spriteDebugEditor_->Update(spriteLocalPos, isHovered);
                 isSpriteEditorBusy = spriteDebugEditor_->IsMouseBusy();
             }
 
-            // --- C. 録画プレビュー (GhostRecorder) の可視化 ---
+            // --- C. ゴーストレコーダー連携 ---
             if (ghostRecorder_ && !isPlaying_) {
                 Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
                 if (camera) {
@@ -211,23 +183,15 @@ void Game::Update() {
                 }
             }
 
-            // カメラのアスペクト比を Game View に合わせる
+            // カメラのアスペクト比を画面に追従
             Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
             if (camera) {
-                camera->SetAspectRatio(targetAspect);
+                camera->SetAspectRatio(displaySize.x / displaySize.y);
                 camera->UpdateProjectionMatrix();
             }
-
-            // デバッグ情報
-            ImGui::SetCursorScreenPos(ImVec2(imageScreenPos.x + 10, imageScreenPos.y + 10));
-            ImGui::Text("Hovered: %s", isHovered ? "TRUE" : "FALSE");
-            ImGui::Text("Game View Size: %.0f x %.0f", displaySize.x, displaySize.y);
         }
     }
     ImGui::End();
-
-    // ★ 追加：PushしたStyle設定を元に戻す
-    ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 
     // -------------------------------------------------------------------------
@@ -246,18 +210,42 @@ void Game::Update() {
             CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
         }
         prevIsPlaying = isPlaying_;
-
         ImGui::Text(isPlaying_ ? " | 実行中" : " | 編集モード");
 
         if (ImGui::BeginMenu("表示")) {
-            ImGui::MenuItem("Hierarchy / Inspector", NULL, &showDebugWindows_);
-            ImGui::MenuItem("スプライト", NULL, &showSpriteInspector_);
-            ImGui::MenuItem("パーティクル", NULL, &showParticleEditor_);
-            ImGui::MenuItem("録画", NULL, &showGhostRecorder_);
-            ImGui::MenuItem("カメラ", NULL, &showCameraEditor);
+            ImGui::MenuItem("Hierarchy / Inspector 表示", NULL, &showDebugWindows_);
             ImGui::Separator();
-            ImGui::MenuItem("ライティング", NULL, &showLightEditor_);
-            ImGui::MenuItem("ポストエフェクト", NULL, &showPostEffectEditor_);
+
+            // =========================================================
+            // ★ 各エディタを Inspector に呼び出すためのボタン！
+            // =========================================================
+            ImGui::TextDisabled("Inspectorに表示:");
+            if (ImGui::MenuItem("スプライトエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(spriteDebugEditor_.get());
+                showDebugWindows_ = true;
+            }
+            if (ImGui::MenuItem("パーティクルエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(particleEditor_.get());
+                showDebugWindows_ = true;
+            }
+            if (ImGui::MenuItem("カメラエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(CameraEditor::GetInstance());
+                showDebugWindows_ = true;
+            }
+            if (ImGui::MenuItem("ライティングエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(LightEditor::GetInstance());
+                showDebugWindows_ = true;
+            }
+            if (ImGui::MenuItem("ポストエフェクトエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(postEffectEditor_.get());
+                showDebugWindows_ = true;
+            }
+            if (ImGui::MenuItem("ゴーストレコーダー (パス生成)")) {
+                EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_.get());
+                showDebugWindows_ = true;
+            }
+
+            ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
             ImGui::MenuItem("ステータス", NULL, &showTimeController_);
             ImGui::EndMenu();
@@ -279,35 +267,21 @@ void Game::Update() {
     std::chrono::duration<float> duration = currentTime - lastTime_;
     float deltaTime = (duration.count() > 0.1f) ? 1.0f / 60.0f : duration.count();
     lastTime_ = currentTime;
-
     float finalDeltaTime = isPlaying_ ? (deltaTime * timeScale_) : 0.0f;
 
 #ifdef USE_IMGUI
     // -------------------------------------------------------------------------
-    // 4. 各種エディタウィンドウの描画 (UI部分)
+    // 4. エディタ描画の総仕上げ！
     // -------------------------------------------------------------------------
     if (showDebugWindows_) {
-        debugEditor_->DrawImGui();
+        // ① 左パネル (Hierarchy) の描画
+        if (debugEditor_) debugEditor_->DrawHierarchy();
+
+        // ② 右パネル (Inspector) の描画
+        EditorManager::GetInstance()->DrawInspector();
     }
-    if (showSpriteInspector_) {
-        // SpriteDebugEditor::Update は GameView 内で行ったので、ここでは描画のみ
-        spriteDebugEditor_->DrawImGui();
-    }
-    if (showParticleEditor_) {
-        particleEditor_->Update();
-        particleEditor_->DrawImGui();
-    }
-    if (showGhostRecorder_) {
-        ImGui::Begin("録画", &showGhostRecorder_);
-        ghostRecorder_->Update();
-        ghostRecorder_->DrawImGui();
-        ImGui::End();
-    }
-    if (showPostEffectEditor_) {
-        postEffectEditor_->DrawImGui();
-    }
-    if (showLightEditor_) LightEditor::GetInstance()->DrawImGui();
-    if (showCameraEditor) CameraEditor::GetInstance()->DrawImGui();
+
+    // 独立したウィンドウ (ログとステータス)
     if (showDebugConsole_) DebugConsole::GetInstance()->DrawImGui();
     if (showTimeController_) {
         ImGui::Begin("ステータス", &showTimeController_);
@@ -320,11 +294,12 @@ void Game::Update() {
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }
 #endif
+
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     postEffect_->GetParams()->time += deltaTime;
-}
 
+}
 void Game::Draw() {
 #ifdef USE_IMGUI
     // =================================================================
@@ -332,8 +307,7 @@ void Game::Draw() {
     // =================================================================
 
     // ---------------------------------------------------------------
-    // 1. シーン描画フェーズ (最初の絵作り)
-    //    描画先：dxCommon内の「レンダーテクスチャA」
+    // 1. シーンレンダリング (オフスクリーン描画)
     // ---------------------------------------------------------------
     dxCommon_->PreDrawRenderTexture();
 
@@ -343,62 +317,57 @@ void Game::Draw() {
     dxCommon_->PostDrawRenderTexture();
 
     // ---------------------------------------------------------------
-    // 2. ポストエフェクトフェーズ (マルチパス・ブルーム)
+    // 2. ポストエフェクト・マルチパス (ブルーム生成)
     // ---------------------------------------------------------------
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
 
-    // 【パス1：高輝度抽出】 (元画像 -> Tex2: 1/2サイズ)
+    // [Pass 1] 高輝度抽出 (抽出用テクスチャへ)
     postEffect_->PreDrawScene(commandList, 2);
-    postEffect_->Draw(commandList, texA_Handle, 2); // PSO 2: Extract (抽出用)
+    postEffect_->Draw(commandList, texA_Handle, 2);
     postEffect_->TransitionToSRV(commandList, 2);
 
-    // 【パス2：縮小ブラー 1】 (Tex2 -> Tex3: 1/4サイズ)
+    // [Pass 2-4] 段階的ダウンサンプリング (ぼかしの生成)
     postEffect_->PreDrawScene(commandList, 3);
-    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 3); // PSO 3: Downsample (ぼかし用)
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 3);
     postEffect_->TransitionToSRV(commandList, 3);
 
-    // 【パス3：縮小ブラー 2】 (Tex3 -> Tex4: 1/8サイズ)
     postEffect_->PreDrawScene(commandList, 4);
-    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 3); // PSO 3: Downsample
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 3);
     postEffect_->TransitionToSRV(commandList, 4);
 
-    // 【パス4：縮小ブラー 3】 (Tex4 -> Tex5: 1/16サイズ)
     postEffect_->PreDrawScene(commandList, 5);
-    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 3); // PSO 3: Downsample
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 3);
     postEffect_->TransitionToSRV(commandList, 5);
 
-    // 【パス5：ベース画像のコピー】 (元画像 -> Tex0: 元サイズ)
+    // [Pass 5] ベース画像の複写
     postEffect_->PreDrawScene(commandList, 0);
-    postEffect_->Draw(commandList, texA_Handle, 0); // PSO 0: Copy (そのままコピー)
+    postEffect_->Draw(commandList, texA_Handle, 0);
 
-    // 【パス6：ブルーム加算】 (Tex2, 3, 4, 5 を順番に Tex0 に足していく)
-    // ※ clear=false にして、元の絵を消さずに上から光を加算する！
+    // [Pass 6] ブルーム加算合成 (各解像度のぼかしを元絵に乗せる)
     postEffect_->PreDrawScene(commandList, 0, false);
-    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 4); // PSO 4: Add (加算用)
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(2), 4);
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(3), 4);
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(4), 4);
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(5), 4);
     postEffect_->TransitionToSRV(commandList, 0);
 
-    // 【パス7：最終合成＆トーンマッピング】 (Tex0 -> Tex1: SDR用)
-    // ここでシネマティックエフェクト(ノイズや色収差)も一緒にかかる
+    // [Pass 7] 最終カラーグレーディング・トーンマッピング
     postEffect_->PreDrawScene(commandList, 1);
-    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1); // PSO 1: Composite (トーンマップ)
+    postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
 
-    // ===============================================================
-    // ★ 追加：3. UI描画フェーズ (SDRの Tex1 に直接描き込む！)
-    // ===============================================================
-    // ポストエフェクトが完了した直後の綺麗な状態に、UIを上乗せする
+    // ---------------------------------------------------------------
+    // 3. ゲームUI描画 (SDR合成後のテクスチャへ描き込み)
+    // ---------------------------------------------------------------
     if (sceneManager_) {
         sceneManager_->DrawUI();
     }
 
-    // UIを描き終わってから、Tex1 を SRV (ImGui用の画像) に変換する
+    // ImGui(GameView)での表示用にリソースを変換
     postEffect_->TransitionToSRV(commandList, 1);
 
     // ---------------------------------------------------------------
-    // 4. エディタUI合成 & 画面表示フェーズ
+    // 4. バックバッファ描画 & エディタUI合成
     // ---------------------------------------------------------------
     dxCommon_->PreDrawBackBuffer();
 
@@ -413,16 +382,15 @@ void Game::Draw() {
     // パターンB: ゲームモード (Release)
     // =================================================================
 
-    // 1. シーン描画フェーズ
+    // 1. シーンレンダリング
     dxCommon_->PreDrawRenderTexture();
     if (sceneManager_) { sceneManager_->Draw(); }
     dxCommon_->PostDrawRenderTexture();
 
-    // 2. ポストエフェクトフェーズ (マルチパス・ブルーム)
+    // 2. ポストエフェクト・マルチパス (ブルーム生成)
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
 
-    // エディタ側と全く同じパス1〜6のバケツリレーを実行する
     postEffect_->PreDrawScene(commandList, 2);
     postEffect_->Draw(commandList, texA_Handle, 2);
     postEffect_->TransitionToSRV(commandList, 2);
@@ -449,15 +417,13 @@ void Game::Draw() {
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(5), 4);
     postEffect_->TransitionToSRV(commandList, 0);
 
-    // 3. 画面表示フェーズ (ここで直接バックバッファに描き込む！)
-    dxCommon_->PreDraw(); // ★ バックバッファへの描画開始
+    // 3. 最終出力 (バックバッファへトーンマップ適用 & UI描画)
+    dxCommon_->PreDraw();
 
-    // バックバッファに対して PSO[1] (トーンマップ+LUT+レンズエフェクト) を適用
+    // HDRからSDRへの変換と最終エフェクトの適用
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
 
-    // ===============================================================
-    // ★ 追加：UI描画フェーズ (バックバッファに直接描き込む)
-    // ===============================================================
+    // ゲームUIのオーバーレイ描画
     if (sceneManager_) {
         sceneManager_->DrawUI();
     }

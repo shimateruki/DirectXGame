@@ -124,212 +124,212 @@ void LightEditor::DrawImGui() {
 #ifdef USE_IMGUI
     if (!lightManager_) return;
 
-    if (ImGui::Begin("ライト編集")) {
-        ImGui::Checkbox("ライト位置を表示 (Gizmos)", &isVisibleGizmos_);
-        ImGui::Separator();
+    ImGui::Checkbox("ライト位置を表示 (Gizmos)", &isVisibleGizmos_);
+    ImGui::Separator();
+    ImGui::Spacing();
 
-        // 1. ファイル操作
-        ImGui::Text("ファイル設定");
+    // -------------------------------------------------------------
+    // 1. ファイル操作
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader("ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::InputText("ファイル名 (.json)", currentFileName_, sizeof(currentFileName_));
         std::string fullPath = "Resources/json/light/" + std::string(currentFileName_);
 
-        if (ImGui::Button("セーブ")) lightManager_->SaveState(fullPath);
+        if (ImGui::Button("セーブ (Save)")) lightManager_->SaveState(fullPath);
         ImGui::SameLine();
-        if (ImGui::Button("ロード")) lightManager_->LoadState(fullPath);
+        if (ImGui::Button("ロード (Load)")) lightManager_->LoadState(fullPath);
         ImGui::TextDisabled("ターゲットパス: %s", fullPath.c_str());
+    }
+
+    ImGui::Separator();
+
+    // -------------------------------------------------------------
+    // 2. 太陽設定 (Directional Light)
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader("太陽設定 (Directional Light)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto& sun = lightManager_->GetDirectionalLight();
+
+        ImGui::Text("光の向き");
+        ImGui::DragFloat3("##Dir", &sun.direction.x, 0.01f, -1.0f, 1.0f);
+        if (ImGui::Button("向きを正規化")) {
+            // Updateで正規化されるため何もしない
+        }
+        ImGui::ColorEdit4("光の色", &sun.color.x);
+        ImGui::DragFloat("輝度", &sun.intensity, 0.01f, 0.0f, 5.0f);
 
         ImGui::Separator();
-
-        // 2. 太陽設定
-        if (ImGui::CollapsingHeader("太陽設定 (Directional Light)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            auto& sun = lightManager_->GetDirectionalLight();
-            ImGui::Text("光の向き");
-            ImGui::DragFloat3("##Dir", &sun.direction.x, 0.01f, -1.0f, 1.0f);
-            if (ImGui::Button("向きを正規化")) {
-                // Updateで正規化されるのでそのままでOK
-            }
-            ImGui::ColorEdit4("光の色", &sun.color.x);
-            ImGui::DragFloat("輝度", &sun.intensity, 0.01f, 0.0f, 5.0f);
-
-            ImGui::Separator();
-            ImGui::ColorEdit3("環境光 (Ambient)", &sun.ambientColor.x);
-
-            ImGui::Separator();
-            ImGui::Text("フォグ (Fog)");
-            ImGui::DragFloat("開始距離", &sun.fogStart, 1.0f, 0.0f, 5000.0f);
-            ImGui::DragFloat("終了距離", &sun.fogEnd, 1.0f, 0.0f, 5000.0f);
-            ImGui::ColorEdit3("フォグ色", &sun.fogColor.x);
-        }
+        ImGui::ColorEdit3("環境光 (Ambient)", &sun.ambientColor.x);
 
         ImGui::Separator();
+        ImGui::Text("フォグ (Fog)");
+        ImGui::DragFloat("開始距離", &sun.fogStart, 1.0f, 0.0f, 5000.0f);
+        ImGui::DragFloat("終了距離", &sun.fogEnd, 1.0f, 0.0f, 5000.0f);
+        ImGui::ColorEdit3("フォグ色", &sun.fogColor.x);
+    }
 
-        // 3. 点光源設定 (ここが大きく変わる)
-        if (ImGui::CollapsingHeader("点光源")) {
-            if (ImGui::Button("追加")) lightManager_->AddPointLight();
-            ImGui::SameLine();
-            if (ImGui::Button("全削除")) lightManager_->GetPointLights().clear();
+    ImGui::Separator();
 
-            auto& pointLights = lightManager_->GetPointLights();
-            for (int i = 0; i < pointLights.size(); ++i) {
-                ImGui::PushID(i);
+    // -------------------------------------------------------------
+    // 3. 点光源設定 (Point Light)
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader("点光源 (Point Light)")) {
+        if (ImGui::Button("追加##Point")) lightManager_->AddPointLight();
+        ImGui::SameLine();
+        if (ImGui::Button("全削除##Point")) lightManager_->GetPointLights().clear();
 
-                // インスタンスへの参照
-                auto& instance = pointLights[i];
-                auto& data = instance.data; // GPUデータへのショートカット
+        auto& pointLights = lightManager_->GetPointLights();
+        for (int i = 0; i < pointLights.size(); ++i) {
+            ImGui::PushID(i);
 
-                if (ImGui::TreeNode("点光源", "Point Light %d", i)) {
-                    if (ImGui::Button("削除")) {
-                        pointLights.erase(pointLights.begin() + i);
-                        ImGui::TreePop();
-                        ImGui::PopID();
-                        continue;
-                    }
+            auto& instance = pointLights[i];
+            auto& data = instance.data;
 
-                    // --- ターゲット追従設定 ---
-                    ImGui::Text("--- 挙動設定 ---");
-
-                    // 追従対象の選択
-                    std::string currentTargetName = instance.target ? instance.target->GetName() : "(None)";
-                    if (ImGui::BeginCombo("追従対象", currentTargetName.c_str())) {
-                        BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
-                        if (scene) {
-                            if (ImGui::Selectable("(None)", instance.target == nullptr)) {
-                                instance.target = nullptr;
-                            }
-                            // シーン内の全オブジェクトを列挙
-                            for (auto& obj : scene->GetObjects()) {
-                                bool isSelected = (instance.target == obj.get());
-                                // 名前がないオブジェクトは "Object" と表示するなど工夫しても良い
-                                std::string name = obj->GetName().empty() ? "Object" : obj->GetName();
-                                if (ImGui::Selectable(name.c_str(), isSelected)) {
-                                    instance.target = obj.get();
-                                }
-                                if (isSelected) ImGui::SetItemDefaultFocus();
-                            }
-                        }
-                        ImGui::EndCombo();
-                    }
-
-                    // モード選択
-                    const char* modes[] = { "通常", "追従のみ(Follow)", "点滅(Flicker)", "明滅(Sine)" };
-                    int currentMode = (int)instance.mode;
-                    if (ImGui::Combo("モード", &currentMode, modes, IM_ARRAYSIZE(modes))) {
-                        instance.mode = (LightManager::LightMode)currentMode;
-                    }
-
-                    // パラメータ分岐
-                    if (instance.target) {
-                        ImGui::DragFloat3("位置ズレ (Offset)", &instance.offset.x, 0.1f);
-                    } else {
-                        ImGui::DragFloat3("位置 (Position)", &data.position.x, 0.1f);
-                    }
-
-                    if (instance.mode == LightManager::LightMode::Flicker || instance.mode == LightManager::LightMode::SineWave) {
-                        ImGui::DragFloat("アニメ速度", &instance.speed, 0.1f, 0.0f, 20.0f);
-                        ImGui::DragFloat("基準の明るさ", &instance.baseIntensity, 0.01f, 0.0f, 10.0f);
-                        ImGui::TextDisabled("現在はアニメーション制御されています");
-                    } else {
-                        // 通常時は baseIntensity を直接いじるか、data.intensity をいじるか
-                        // ここでは baseIntensity をいじる形に統一すると楽
-                        if (ImGui::DragFloat("輝度", &instance.baseIntensity, 0.01f, 0.0f, 10.0f)) {
-                            data.intensity = instance.baseIntensity;
-                        }
-                    }
-
-                    ImGui::Text("--- 基本設定 ---");
-                    ImGui::ColorEdit4("色", &data.color.x);
-                    ImGui::DragFloat("半径", &data.radius, 0.1f, 0.0f, 100.0f);
-                    ImGui::DragFloat("減衰", &data.decay, 0.01f, 0.0f, 10.0f);
-
+            if (ImGui::TreeNode("点光源", "Point Light %d", i)) {
+                if (ImGui::Button("削除")) {
+                    pointLights.erase(pointLights.begin() + i);
                     ImGui::TreePop();
+                    ImGui::PopID();
+                    continue;
                 }
-                ImGui::PopID();
-            }
-        }
 
-        // 4. スポットライト設定
-        if (ImGui::CollapsingHeader("スポットライト")) {
-            if (ImGui::Button("追加")) lightManager_->AddSpotLight();
-            ImGui::SameLine();
-            if (ImGui::Button("全削除")) lightManager_->GetSpotLights().clear();
-
-            auto& spotLights = lightManager_->GetSpotLights();
-            for (int i = 0; i < spotLights.size(); ++i) {
-                ImGui::PushID(i + 1000);
-                auto& instance = spotLights[i];
-                auto& data = instance.data;
-
-                if (ImGui::TreeNode("スポットライト", "Spot Light %d", i)) {
-                    if (ImGui::Button("削除")) {
-                        spotLights.erase(spotLights.begin() + i);
-                        ImGui::TreePop();
-                        ImGui::PopID();
-                        continue;
-                    }
-
-                    // --- ターゲット追従 ---
-                    ImGui::Text("--- 挙動設定 ---");
-                    std::string currentTargetName = instance.target ? instance.target->GetName() : "(None)";
-                    if (ImGui::BeginCombo("追従対象", currentTargetName.c_str())) {
-                        BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
-                        if (scene) {
-                            if (ImGui::Selectable("(None)", instance.target == nullptr)) instance.target = nullptr;
-                            for (auto& obj : scene->GetObjects()) {
-                                bool isSelected = (instance.target == obj.get());
-                                std::string name = obj->GetName().empty() ? "Object" : obj->GetName();
-                                if (ImGui::Selectable(name.c_str(), isSelected)) instance.target = obj.get();
+                // 挙動設定
+                ImGui::Text("--- 挙動設定 ---");
+                std::string currentTargetName = instance.target ? instance.target->GetName() : "(None)";
+                if (ImGui::BeginCombo("追従対象", currentTargetName.c_str())) {
+                    BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
+                    if (scene) {
+                        if (ImGui::Selectable("(None)", instance.target == nullptr)) {
+                            instance.target = nullptr;
+                        }
+                        for (auto& obj : scene->GetObjects()) {
+                            bool isSelected = (instance.target == obj.get());
+                            std::string name = obj->GetName().empty() ? "Object" : obj->GetName();
+                            if (ImGui::Selectable(name.c_str(), isSelected)) {
+                                instance.target = obj.get();
                             }
-                        }
-                        ImGui::EndCombo();
-                    }
-
-                    const char* modes[] = { "通常", "追従/懐中電灯", "点滅", "明滅" };
-                    int currentMode = (int)instance.mode;
-                    if (ImGui::Combo("モード", &currentMode, modes, IM_ARRAYSIZE(modes))) {
-                        instance.mode = (LightManager::LightMode)currentMode;
-                    }
-
-                    if (instance.target) {
-                        ImGui::DragFloat3("位置ズレ (Offset)", &instance.offset.x, 0.1f);
-                        ImGui::TextDisabled("向きは対象の正面にロックされています");
-                    } else {
-                        ImGui::DragFloat3("位置", &data.position.x, 0.1f);
-                        ImGui::DragFloat3("向き", &data.direction.x, 0.01f, -1.0f, 1.0f);
-                    }
-
-                    if (instance.mode == LightManager::LightMode::Flicker || instance.mode == LightManager::LightMode::SineWave) {
-                        ImGui::DragFloat("アニメ速度", &instance.speed, 0.1f, 0.0f, 20.0f);
-                        ImGui::DragFloat("基準の明るさ", &instance.baseIntensity, 0.01f, 0.0f, 10.0f);
-                    } else {
-                        if (ImGui::DragFloat("輝度", &instance.baseIntensity, 0.01f, 0.0f, 10.0f)) {
-                            data.intensity = instance.baseIntensity;
+                            if (isSelected) ImGui::SetItemDefaultFocus();
                         }
                     }
-
-                    ImGui::Text("--- 基本設定 ---");
-                    ImGui::ColorEdit4("色", &data.color.x);
-                    ImGui::DragFloat("距離", &data.distance, 0.1f, 0.0f, 100.0f);
-                    ImGui::DragFloat("減衰", &data.decay, 0.01f, 0.0f, 10.0f);
-
-                    float angleDeg = std::acos(data.cosAngle) * 180.0f / 3.141592f;
-                    float falloffDeg = std::acos(data.cosFalloffStart) * 180.0f / 3.141592f;
-                    bool changed = false;
-                    if (ImGui::DragFloat("角度", &angleDeg, 1.0f, 0.1f, 179.0f)) changed = true;
-                    if (ImGui::DragFloat("減衰角", &falloffDeg, 1.0f, 0.1f, 179.0f)) changed = true;
-                    if (changed) {
-                        if (falloffDeg > angleDeg) falloffDeg = angleDeg;
-                        data.cosAngle = std::cos(angleDeg * 3.141592f / 180.0f);
-                        data.cosFalloffStart = std::cos(falloffDeg * 3.141592f / 180.0f);
-                    }
-
-                    ImGui::TreePop();
+                    ImGui::EndCombo();
                 }
-                ImGui::PopID();
+
+                const char* modes[] = { "通常", "追従のみ(Follow)", "点滅(Flicker)", "明滅(Sine)" };
+                int currentMode = (int)instance.mode;
+                if (ImGui::Combo("モード", &currentMode, modes, IM_ARRAYSIZE(modes))) {
+                    instance.mode = (LightManager::LightMode)currentMode;
+                }
+
+                if (instance.target) {
+                    ImGui::DragFloat3("位置ズレ (Offset)", &instance.offset.x, 0.1f);
+                } else {
+                    ImGui::DragFloat3("位置 (Position)", &data.position.x, 0.1f);
+                }
+
+                if (instance.mode == LightManager::LightMode::Flicker || instance.mode == LightManager::LightMode::SineWave) {
+                    ImGui::DragFloat("アニメ速度", &instance.speed, 0.1f, 0.0f, 20.0f);
+                    ImGui::DragFloat("基準の明るさ", &instance.baseIntensity, 0.01f, 0.0f, 10.0f);
+                    ImGui::TextDisabled("現在はアニメーション制御されています");
+                } else {
+                    if (ImGui::DragFloat("輝度", &instance.baseIntensity, 0.01f, 0.0f, 10.0f)) {
+                        data.intensity = instance.baseIntensity;
+                    }
+                }
+
+                // 基本設定
+                ImGui::Text("--- 基本設定 ---");
+                ImGui::ColorEdit4("色", &data.color.x);
+                ImGui::DragFloat("半径", &data.radius, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("減衰", &data.decay, 0.01f, 0.0f, 10.0f);
+
+                ImGui::TreePop();
             }
+            ImGui::PopID();
         }
     }
-    ImGui::End();
 
-   
+    // -------------------------------------------------------------
+    // 4. スポットライト設定 (Spot Light)
+    // -------------------------------------------------------------
+    if (ImGui::CollapsingHeader("スポットライト (Spot Light)")) {
+        if (ImGui::Button("追加##Spot")) lightManager_->AddSpotLight();
+        ImGui::SameLine();
+        if (ImGui::Button("全削除##Spot")) lightManager_->GetSpotLights().clear();
+
+        auto& spotLights = lightManager_->GetSpotLights();
+        for (int i = 0; i < spotLights.size(); ++i) {
+            ImGui::PushID(i + 1000); // PointLightとIDが被らないようにオフセット
+
+            auto& instance = spotLights[i];
+            auto& data = instance.data;
+
+            if (ImGui::TreeNode("スポットライト", "Spot Light %d", i)) {
+                if (ImGui::Button("削除")) {
+                    spotLights.erase(spotLights.begin() + i);
+                    ImGui::TreePop();
+                    ImGui::PopID();
+                    continue;
+                }
+
+                // 挙動設定
+                ImGui::Text("--- 挙動設定 ---");
+                std::string currentTargetName = instance.target ? instance.target->GetName() : "(None)";
+                if (ImGui::BeginCombo("追従対象", currentTargetName.c_str())) {
+                    BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
+                    if (scene) {
+                        if (ImGui::Selectable("(None)", instance.target == nullptr)) instance.target = nullptr;
+                        for (auto& obj : scene->GetObjects()) {
+                            bool isSelected = (instance.target == obj.get());
+                            std::string name = obj->GetName().empty() ? "Object" : obj->GetName();
+                            if (ImGui::Selectable(name.c_str(), isSelected)) instance.target = obj.get();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                const char* modes[] = { "通常", "追従/懐中電灯", "点滅", "明滅" };
+                int currentMode = (int)instance.mode;
+                if (ImGui::Combo("モード", &currentMode, modes, IM_ARRAYSIZE(modes))) {
+                    instance.mode = (LightManager::LightMode)currentMode;
+                }
+
+                if (instance.target) {
+                    ImGui::DragFloat3("位置ズレ (Offset)", &instance.offset.x, 0.1f);
+                    ImGui::TextDisabled("向きは対象の正面にロックされています");
+                } else {
+                    ImGui::DragFloat3("位置", &data.position.x, 0.1f);
+                    ImGui::DragFloat3("向き", &data.direction.x, 0.01f, -1.0f, 1.0f);
+                }
+
+                if (instance.mode == LightManager::LightMode::Flicker || instance.mode == LightManager::LightMode::SineWave) {
+                    ImGui::DragFloat("アニメ速度", &instance.speed, 0.1f, 0.0f, 20.0f);
+                    ImGui::DragFloat("基準の明るさ", &instance.baseIntensity, 0.01f, 0.0f, 10.0f);
+                } else {
+                    if (ImGui::DragFloat("輝度", &instance.baseIntensity, 0.01f, 0.0f, 10.0f)) {
+                        data.intensity = instance.baseIntensity;
+                    }
+                }
+
+                // 基本設定
+                ImGui::Text("--- 基本設定 ---");
+                ImGui::ColorEdit4("色", &data.color.x);
+                ImGui::DragFloat("距離", &data.distance, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("減衰", &data.decay, 0.01f, 0.0f, 10.0f);
+
+                float angleDeg = std::acos(data.cosAngle) * 180.0f / 3.141592f;
+                float falloffDeg = std::acos(data.cosFalloffStart) * 180.0f / 3.141592f;
+                bool changed = false;
+                if (ImGui::DragFloat("角度", &angleDeg, 1.0f, 0.1f, 179.0f)) changed = true;
+                if (ImGui::DragFloat("減衰角", &falloffDeg, 1.0f, 0.1f, 179.0f)) changed = true;
+                if (changed) {
+                    if (falloffDeg > angleDeg) falloffDeg = angleDeg;
+                    data.cosAngle = std::cos(angleDeg * 3.141592f / 180.0f);
+                    data.cosFalloffStart = std::cos(falloffDeg * 3.141592f / 180.0f);
+                }
+
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
+    }
 #endif
 }

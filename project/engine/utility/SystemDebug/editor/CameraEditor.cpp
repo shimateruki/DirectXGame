@@ -210,13 +210,10 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
 void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
-    ImGui::Begin("カメラ");
-
-    // ==========================================================
-    //  ファイル管理セクション 
-    // ==========================================================
-    if (ImGui::CollapsingHeader("ファイルマネージャー", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // 1. ファイルリスト (コンボボックス)
+    // ---------------------------------------------------------
+    // 1. ファイル管理セクション
+    // ---------------------------------------------------------
+    if (ImGui::CollapsingHeader("ファイル管理 (File Manager)", ImGuiTreeNodeFlags_DefaultOpen)) {
         static int currentItem = -1;
         if (ImGui::BeginCombo("ファイル選択", "Choose from list...")) {
             for (int i = 0; i < fileList_.size(); i++) {
@@ -226,28 +223,27 @@ void CameraEditor::DrawImGui() {
                     std::string selectedName = fileList_[i];
                     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), selectedName.c_str());
                 }
-                if (isSelected) {
-                    ImGui::SetItemDefaultFocus();
-                }
+                if (isSelected) ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
 
-        // 2. ファイル名入力欄
-        ImGui::Text("ファイル名(.json)");
-        ImGui::InputText("##ファイル名", fileNameBuffer_, sizeof(fileNameBuffer_));
+        ImGui::InputText("ファイル名(.json)", fileNameBuffer_, sizeof(fileNameBuffer_));
 
-        // 3. 操作ボタン
-        if (ImGui::Button("ロード")) { LoadSettings(); }
+        if (ImGui::Button("ロード")) LoadSettings();
         ImGui::SameLine();
-        if (ImGui::Button("セーブ")) { SaveSettings(); }
+        if (ImGui::Button("セーブ")) SaveSettings();
         ImGui::SameLine();
-        if (ImGui::Button("セーブファイルリスト")) { RefreshFileList(); }
+        if (ImGui::Button("更新")) RefreshFileList();
     }
-    ImGui::Separator();
 
-    // --- モード選択 ---
-    const char* modeNames[] = { "ゲームカメラ", "自由に動けるカメラ" };
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // ---------------------------------------------------------
+    // 2. モード選択
+    // ---------------------------------------------------------
+    const char* modeNames[] = { "ゲームカメラ (Game)", "自由カメラ (Editor)" };
     int currentModeInt = static_cast<int>(settings_.currentMode);
     if (ImGui::Combo("メインモード", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
         settings_.currentMode = static_cast<Mode>(currentModeInt);
@@ -255,38 +251,39 @@ void CameraEditor::DrawImGui() {
 
     ImGui::Separator();
 
+    // ---------------------------------------------------------
+    // 3. 各モードごとの詳細設定
+    // ---------------------------------------------------------
     if (settings_.currentMode == Mode::Game) {
         // --- Game Mode 設定 ---
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "カメラモード設定");
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "カメラ挙動設定 (Game)");
 
         const char* followModeNames[] = {
-                    "固定(Fixed)",
-                    "3人称(Aimable)",
-                    "1人称(FPS)",
-                    "ロックオン",
-                    "周回(Orbit)" ,
-                    "定点注視(FixedPoint)"
+            "固定 (Fixed)",
+            "3人称 (Aimable)",
+            "1人称 (FPS)",
+            "ロックオン",
+            "周回 (Orbit)",
+            "定点注視 (FixedPoint)"
         };
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
         if (ImGui::Combo("View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
             settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
         }
 
-        // 調整可能なパラメータのみ表示
         if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
             settings_.gameFollowMode == Camera::FollowMode::kFixed) {
-
-            ImGui::DragFloat("距離", &settings_.distance, 0.1f, 1.0f, 100.0f);
-            ImGui::DragFloat("高さ", &settings_.height, 0.1f, 0.0f, 50.0f);
-
-            ImGui::DragFloat3("角度(X/Y/Z)", &settings_.angle.x, 0.1f, -180.0f, 180.0f);
+            ImGui::DragFloat("距離 (Distance)", &settings_.distance, 0.1f, 1.0f, 100.0f);
+            ImGui::DragFloat("高さ (Height)", &settings_.height, 0.1f, 0.0f, 50.0f);
+            ImGui::DragFloat3("角度 (X/Y/Z)", &settings_.angle.x, 0.1f, -180.0f, 180.0f);
         }
+
         if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
             ImGui::Separator();
             ImGui::Text("周回設定");
             ImGui::DragFloat("半径 (Radius)", &settings_.orbitRadius, 0.1f, 1.0f, 100.0f);
             ImGui::DragFloat("高さ (Height)", &settings_.orbitHeight, 0.1f, -10.0f, 50.0f);
-            ImGui::DragFloat("回転速度", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
+            ImGui::DragFloat("回転速度 (Speed)", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
@@ -300,11 +297,10 @@ void CameraEditor::DrawImGui() {
         }
     } else {
         // --- Editor Mode 設定 ---
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "自由に動けるカメラ");
-        ImGui::TextWrapped("右クリックを押しながら WASD で移動。Q/E で上下移動。Shift でブースト");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "自由操作設定 (Editor)");
+        ImGui::TextDisabled("右クリック押下 + WASD で移動\nQ/E で上下移動 | Shift でブースト");
 
-        ImGui::Dummy(ImVec2(0, 5));
-        ImGui::Text("設定");
+        ImGui::Spacing();
         ImGui::SliderFloat("移動速度", &settings_.moveSpeed, 0.1f, 5.0f);
         ImGui::SliderFloat("加速速度", &settings_.boostSpeed, 1.0f, 10.0f);
         ImGui::SliderFloat("マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
@@ -312,10 +308,9 @@ void CameraEditor::DrawImGui() {
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (camera) {
             Vector3 pos = camera->GetEye();
-            ImGui::Text("Pos: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+            ImGui::TextDisabled("現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
         }
     }
-    ImGui::End();
 #endif
 }
 void CameraEditor::SaveSettings() {

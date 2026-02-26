@@ -15,8 +15,6 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         // 1. 初期化 (モデル読み込み)
         slime->Initialize(common, "block");
 
-        // 2. ★ここで「デフォルトの強さ」を注入する！
-        // param_ がまだ無ければ作る
         if (!slime->param_.has_value()) {
             slime->param_.emplace();
         }

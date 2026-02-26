@@ -1,67 +1,63 @@
 #pragma once
 #include <vector>
-#include <memory> // unique_ptr
+#include <memory>
 #include <string>
 #include "InputManager.h"
-
+#include "IEditable.h"
 
 // 前方宣言
 class Sprite;
 class SceneManager;
-class  SpriteCommon;
+class SpriteCommon;
 class BaseScene;
-class SpriteDebugEditor {
+
+class SpriteDebugEditor : public IEditable {
 public:
-	/// <summary>
-	/// 初期化
-	/// </summary>
-	void Initialize(SceneManager* sceneManager, InputManager* inputManager);
+    // 依存マネージャーの注入と初期化
+    void Initialize(SceneManager* sceneManager, InputManager* inputManager);
+    void Finalize();
 
-	/// <summary>
-	/// 終了処理
-	/// </summary>
-	void Finalize();
+    // 毎フレームのロジック更新（選択判定・ギズモ操作）
+    void Update(const Vector2& localMousePos, bool isHovered);
 
-	/// <summary>
-	/// ImGui を使った毎フレーム更新
-	/// </summary>
-	void Update(const Vector2& localMousePos, bool isHovered);
+    // GameView内でのデバッグ描画（選択枠やギズモ）
+    void Draw();
 
-	/// <summary>
-	/// (任意) デバッグ描画 (選択中のスプライト枠など)
-	/// </summary>
-	void Draw();
+    // Inspectorに表示するUI描画処理
+    void DrawImGui() override;
 
-	void DrawImGui();
+    // Inspector上部のタイトルバーに表示される名前
+    std::string GetName() override { return "Sprite Editor"; }
 
-	bool IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const;
-	/// <summary>
-	/// スプライトエディタがマウスを（ギズモ操作で）使用中か
-	/// </summary>
-	bool IsMouseBusy() const;
+    // マウスがスプライト上にあるか判定
+    bool IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const;
+
+    // ギズモ操作中など、エディタがマウス入力を占有しているか
+    bool IsMouseBusy() const;
+
 private:
-	// プライトレイアウト保存用
-	void SaveSpriteLayout(const std::string& filename);
-	SceneManager* sceneManager_ = nullptr;
-	/// <summary>
- /// 最後に Update を実行したシーン
- /// </summary>
-	BaseScene* lastUpdatedScene_ = nullptr;
-	Sprite* selectedSprite_ = nullptr; // 現在選択中のスプライトへのポインタ
-	InputManager* inputManager_ = nullptr; // マウス座標とクリック用
-	/// <summary>
-	/// ギズモの初期化に使った SpriteCommon のポインタ
-	/// </summary>
-	SpriteCommon* initializedSpriteCommon_ = nullptr;
+    // レイアウト保存
+    void SaveSpriteLayout(const std::string& filename);
 
+    SceneManager* sceneManager_ = nullptr;
+    InputManager* inputManager_ = nullptr;
+    BaseScene* lastUpdatedScene_ = nullptr;
+    SpriteCommon* initializedSpriteCommon_ = nullptr;
 
-	std::unique_ptr<Sprite> gizmoArrowX_; // X軸（赤）
-	std::unique_ptr<Sprite> gizmoArrowY_; // Y軸（緑）
-	uint32_t gizmoTextureHandle_ = 0;     // ギズモ用テクスチャハンドル
+    // 現在選択中のスプライト
+    Sprite* selectedSprite_ = nullptr;
 
-	bool isMovingX_ = false; // X軸をドラッグ中か
-	bool isMovingY_ = false; // Y軸をドラッグ中か
-	Vector2 dragStartMousePos_; // ドラッグ開始時のマウス座標
-	Vector2 dragStartSpritePos_; // ドラッグ開始時のスプライト座標
-	char currentSpriteFilename_[128] = "sprite_layout.json";
+    // ギズモ（移動用矢印）関連
+    std::unique_ptr<Sprite> gizmoArrowX_; // X軸（赤）
+    std::unique_ptr<Sprite> gizmoArrowY_; // Y軸（緑）
+    uint32_t gizmoTextureHandle_ = 0;
+
+    // ドラッグ操作の状態管理
+    bool isMovingX_ = false;
+    bool isMovingY_ = false;
+    Vector2 dragStartMousePos_;
+    Vector2 dragStartSpritePos_;
+
+    // 保存用ファイル名
+    char currentSpriteFilename_[128] = "sprite_layout.json";
 };

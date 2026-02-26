@@ -7,7 +7,7 @@
 #include "BaseScene.h"
 #include <deque>
 #include "Transform.h"
-
+#include "IEditable.h" 
 class Object3d;
 class DirectXCommon;
 class SceneManager;
@@ -27,13 +27,12 @@ struct AlignedVector4 {
 
 
 
-class DebugEditor {
+class DebugEditor : public IEditable {
 public:
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void Finalize();
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
-    void DrawImGui();
     void DrawProjectWindow();
     void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
     // ビットフラグ編集用のヘルパー関数
@@ -47,7 +46,15 @@ public:
     void PerformUndo();
     void PerformRedo();
     void DrawEnemyTypeSelector();
+    void DrawHierarchy();
 
+    //  右パネル（Inspectorがこの関数を呼ぶ）
+    void DrawImGui() override;
+
+    //  Inspector上部のタイトル
+    std::string GetName() override {
+        return selectedObject_ ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
+    }
     void DrawSpawnerSettings();
 
 
