@@ -96,3 +96,24 @@ D3D12_GPU_DESCRIPTOR_HANDLE SRVManager::GetGPUDescriptorHandle(uint32_t index) {
 
     return handle;
 }
+
+void SRVManager::SetComputeRootDescriptorTable(ID3D12GraphicsCommandList* commandList, UINT rootParameterIndex, uint32_t srvHandle) {
+    // 指定されたハンドルのGPUアドレスを計算して、Compute用のルートパラメータにセット
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = GetGPUDescriptorHandle(srvHandle);
+    commandList->SetComputeRootDescriptorTable(rootParameterIndex, gpuHandle);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE SRVManager::GetCPUDescriptorHandle(uint32_t index) {
+    // 範囲外チェック
+    if (index >= kMaxSRVCount) {
+        assert(false && "SRV Index out of range!");
+    }
+
+    // 先頭ハンドルを取得
+    D3D12_CPU_DESCRIPTOR_HANDLE handle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    // インデックス分だけアドレスをずらす
+    handle.ptr += (static_cast<SIZE_T>(descriptorSize_) * index);
+
+    return handle;
+}

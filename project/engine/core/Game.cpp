@@ -14,6 +14,7 @@
 #include"EditorManager.h"
 #include"ModelManager.h"
 
+
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
@@ -57,6 +58,7 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
+
 
 #endif
 #ifdef  USE_IMGUI

@@ -41,6 +41,7 @@
 #include <EnemySpawner.h>
 #include <LightEditor.h>
 #include <ParticleManager.h>
+#include <GPUParticleManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -101,7 +102,10 @@ void GamePlayScene::Initialize() {
 
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
+	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
 
+	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
+	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
 	// Enemy
 	std::unique_ptr<BaseEnemy> newEnemy = EnemyFactory::GetInstance()->CreateEnemy("Slime", object3dCommon_.get());
@@ -166,7 +170,21 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
+	// =======================================================
+	// ★追加: GPUパーティクルのテスト噴射！
+	// =======================================================
+	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
+	GPUParticleManager::GetInstance()->Emit(
+		{ 0.0f, 5.0f, 0.0f },  // 発生座標
+		{ 0.0f, 10.0f, 0.0f }, // 飛ぶ方向
+		500,                   // 発生数
+		2.0f,                  // 寿命 (2秒で消える)
+		5.0f,                   // 散らばり具合,
+	{1.0f, 0.5f, 0.0f, 1.0f} // 色 (オレンジ)
+	);
 
+	// ★追加: 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
+	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
 		sprite->Update();
 	}
@@ -179,8 +197,9 @@ void GamePlayScene::Update(float deltaTime) {
 void GamePlayScene::Draw() {
 	// --- 一人称視点判定 ---
 	bool isFirstPerson = false;
-#ifndef _DEBUG
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+#ifndef _DEBUG
+	
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
@@ -212,6 +231,18 @@ void GamePlayScene::Draw() {
 		}
 	}
 	particleSystem_->Draw();
+
+	// =======================================================
+	// : GPUパーティクルの描画！
+	// =======================================================
+
+	// 定数バッファではなく、View行列とProjection行列をそのまま渡す！
+	GPUParticleManager::GetInstance()->Draw(
+		dxCommon_->GetCommandList(),
+		camera->GetViewMatrix(),
+		camera->GetProjectionMatrix(),
+		gpuParticleTexHandle_
+	);
 }
 
 // ====================================================================

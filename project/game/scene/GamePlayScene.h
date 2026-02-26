@@ -102,4 +102,5 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
     MeshRenderer::SpotLight* spotLightData_ = nullptr;
+    uint32_t gpuParticleTexHandle_ = 0;
 };
