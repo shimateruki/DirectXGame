@@ -267,7 +267,7 @@
     <ClCompile Include="LevelLoader.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="LockOnSystem.cpp">
+    <ClCompile Include="game\system\LockOnSystem.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="ObjectManager.cpp">
@@ -288,13 +288,13 @@
     <ClCompile Include="PostEffect.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PostEffectEditor.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="EditorManager.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="GPUParticleManager.cpp">
+    <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1100,7 +1100,7 @@
     <ClInclude Include="LevelLoader.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="LockOnSystem.h">
+    <ClInclude Include="game\system\LockOnSystem.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="ObjectManager.h">
@@ -1121,16 +1121,16 @@
     <ClInclude Include="PostEffect.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="PostEffectEditor.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\PostEffectEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="IEditable.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="EditorManager.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="GPUParticleManager.h">
+    <ClInclude Include="engine\graphics\particle\GPUParticleManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
