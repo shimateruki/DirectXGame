@@ -1011,13 +1011,34 @@ void DebugEditor::DrawImGui() {
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("ギミック等から起動されるための、自分のIDを指定してください");
         }
 
-        ImGui::Separator();
-        std::string currentPreview = selectedObject_->animName_.empty() ? "(なし)" : selectedObject_->animName_;
 
-        if (ImGui::BeginCombo("アニメーション", currentPreview.c_str())) {
-            bool isNoneSelected = selectedObject_->animName_.empty();
+            // ==========================================
+            // 1. ボーンアニメーション設定
+            // ==========================================
+            ImGui::Separator();
+        ImGui::Text("【ボーンアニメーション】");
+
+        // アニメーション名の入力 (モデルに埋め込まれているアニメーション名)
+        char animNameBuf[64];
+        strncpy_s(animNameBuf, selectedObject_->animName_.c_str(), sizeof(animNameBuf));
+        if (ImGui::InputText("アニメ名##BoneAnim", animNameBuf, sizeof(animNameBuf))) {
+            selectedObject_->animName_ = animNameBuf;
+        }
+        ImGui::Checkbox("ループ再生##BoneAnim", &selectedObject_->isAnimLoop_);
+
+
+        // ==========================================
+        // 2. パス移動 (GhostRecorder) 設定
+        // ==========================================
+        ImGui::Separator();
+        ImGui::Text("【パス移動 (GhostRecorder)】");
+
+        std::string currentRecordPreview = selectedObject_->recordPathName_.empty() ? "(なし)" : selectedObject_->recordPathName_;
+
+        if (ImGui::BeginCombo("パスデータ", currentRecordPreview.c_str())) {
+            bool isNoneSelected = selectedObject_->recordPathName_.empty();
             if (ImGui::Selectable("(なし)", isNoneSelected)) {
-                selectedObject_->animName_ = "";
+                selectedObject_->recordPathName_ = "";
                 if (selectedObject_->recorder_) {
                     selectedObject_->recorder_->Stop();
                 }
@@ -1029,16 +1050,16 @@ void DebugEditor::DrawImGui() {
                 for (const auto& entry : fs::directory_iterator(dirPath)) {
                     if (entry.path().extension() == ".json") {
                         std::string fileName = entry.path().stem().string();
-                        bool isSelected = (selectedObject_->animName_ == fileName);
+                        bool isSelected = (selectedObject_->recordPathName_ == fileName);
 
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-                            selectedObject_->animName_ = fileName;
+                            selectedObject_->recordPathName_ = fileName;
                             if (selectedObject_->recorder_) {
                                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
                                 selectedObject_->recorder_->Play(
-                                    selectedObject_->animName_,
-                                    selectedObject_->isAnimLoop_,
-                                    selectedObject_->isAnimRelative_,
+                                    selectedObject_->recordPathName_,
+                                    selectedObject_->isRecordLoop_,
+                                    selectedObject_->isRecordRelative_,
                                     isCinematic
                                 );
                             }
@@ -1052,36 +1073,36 @@ void DebugEditor::DrawImGui() {
             ImGui::EndCombo();
         }
 
-        if (ImGui::Checkbox("ループ再生##Anim", &selectedObject_->isAnimLoop_)) {
-            if (selectedObject_->recorder_ && !selectedObject_->animName_.empty()) {
+        if (ImGui::Checkbox("ループ再生##Record", &selectedObject_->isRecordLoop_)) {
+            if (selectedObject_->recorder_ && !selectedObject_->recordPathName_.empty()) {
                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
                 selectedObject_->recorder_->Play(
-                    selectedObject_->animName_,
-                    selectedObject_->isAnimLoop_,
-                    selectedObject_->isAnimRelative_,
+                    selectedObject_->recordPathName_,
+                    selectedObject_->isRecordLoop_,
+                    selectedObject_->isRecordRelative_,
                     isCinematic
                 );
             }
         }
-        if (ImGui::Checkbox("相対座標モード##Anim", &selectedObject_->isAnimRelative_)) {
-            if (selectedObject_->recorder_ && !selectedObject_->animName_.empty()) {
+        if (ImGui::Checkbox("相対座標モード##Record", &selectedObject_->isRecordRelative_)) {
+            if (selectedObject_->recorder_ && !selectedObject_->recordPathName_.empty()) {
                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
                 selectedObject_->recorder_->Play(
-                    selectedObject_->animName_,
-                    selectedObject_->isAnimLoop_,
-                    selectedObject_->isAnimRelative_,
+                    selectedObject_->recordPathName_,
+                    selectedObject_->isRecordLoop_,
+                    selectedObject_->isRecordRelative_,
                     isCinematic
                 );
             }
         }
 
-        if (ImGui::Button("テスト再生##Anim")) {
-            if (selectedObject_->recorder_) {
+        if (ImGui::Button("テスト再生##Record")) {
+            if (selectedObject_->recorder_ && !selectedObject_->recordPathName_.empty()) {
                 bool isCinematic = (selectedObject_->GetClassName() == "CinematicCamera");
                 selectedObject_->recorder_->Play(
-                    selectedObject_->animName_,
-                    selectedObject_->isAnimLoop_,
-                    selectedObject_->isAnimRelative_,
+                    selectedObject_->recordPathName_,
+                    selectedObject_->isRecordLoop_,
+                    selectedObject_->isRecordRelative_,
                     isCinematic
                 );
             }
@@ -1307,7 +1328,6 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     }
 
     // --- Transform ---
-    // ★修正: Object3d::Transform -> Transform
     Transform* tf = object->GetTransform();
     currentData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
     currentData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
@@ -1341,9 +1361,21 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     }
     Vector4 color = object->GetColor();
     currentData["color"] = { color.x, color.y, color.z, color.w };
-    // アニメーション設定の保存
-    currentData["animName"] = object->animName_;
-    currentData["isAnimLoop"] = object->isAnimLoop_;
+
+    // ==========================================
+    // ★修正箇所：アニメーションとレコーダー設定の保存
+    // ==========================================
+    currentData["animation"] = {
+        {"animName", object->animName_},
+        {"isAnimLoop", object->isAnimLoop_}
+    };
+
+    currentData["recorder"] = {
+        {"recordPathName", object->recordPathName_},
+        {"isRecordLoop", object->isRecordLoop_},
+        {"isRecordRelative", object->isRecordRelative_}
+    };
+    // ==========================================
 
     currentData["blendMode"] = static_cast<int>(object->GetBlendMode());
     currentData["materialType"] = object->GetMaterialType();
@@ -1387,7 +1419,6 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
         DebugConsole::GetInstance()->AddLog("Failed to write JSON file: " + filename);
     }
 }
-
 
 #ifdef USE_IMGUI
 void DebugEditor::DrawProjectWindow() {
@@ -1644,7 +1675,6 @@ void DebugEditor::SaveScene() {
         }
 
         // Transform
-        // ★修正: Object3d::Transform -> Transform
         Transform* objTr = obj->GetTransform();
         d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
         d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
@@ -1684,13 +1714,22 @@ void DebugEditor::SaveScene() {
         Vector4 color = obj->GetColor();
         // [R, G, B, A] の配列としてJSONに保存
         d["color"] = { color.x, color.y, color.z, color.w };
-        // アニメーション設定
-        d["animName"] = obj->animName_;
-        d["isAnimLoop"] = obj->isAnimLoop_;
-        d["isAnimRelative"] = obj->isAnimRelative_;
+
+ 
+        d["animation"] = {
+            {"animName", obj->animName_},
+            {"isAnimLoop", obj->isAnimLoop_}
+        };
+
+        d["recorder"] = {
+            {"recordPathName", obj->recordPathName_},
+            {"isRecordLoop", obj->isRecordLoop_},
+            {"isRecordRelative", obj->isRecordRelative_}
+        };
+        // ==========================================
+
         d["blendMode"] = static_cast<int>(obj->GetBlendMode());
         d["materialType"] = obj->GetMaterialType();
-
 
         // 配列に追加
         sceneData["objects"].push_back(d);

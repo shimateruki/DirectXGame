@@ -98,7 +98,6 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
     }
 }
 
-
 std::unique_ptr<Object3d> Character::Clone() const {
     // Character として生成
     auto newObj = std::make_unique<Character>();
@@ -130,21 +129,32 @@ std::unique_ptr<Object3d> Character::Clone() const {
     newObj->velocity_ = this->velocity_;
     newObj->isGrounded_ = this->isGrounded_;
 
-    // 3. アニメーション設定のコピーと再生
+    // ===================================================
+    // ★ 3. アニメーション設定とレコーダー設定のコピー (修正箇所)
+    // ===================================================
+
+    // ボーンアニメーションのコピー
     newObj->animName_ = this->animName_;
     newObj->isAnimLoop_ = this->isAnimLoop_;
-    newObj->isAnimRelative_ = this->isAnimRelative_;
+
+    // ゴーストレコーダー(パス移動)のコピー
+    newObj->recordPathName_ = this->recordPathName_;
+    newObj->isRecordLoop_ = this->isRecordLoop_;
+    newObj->isRecordRelative_ = this->isRecordRelative_;
 
     newObj->InitializeRecorder(nullptr); // レコーダー初期化
-    if (!newObj->animName_.empty()) {
+
+    // レコーダーのパス名が設定されていれば再生開始
+    if (!newObj->recordPathName_.empty() && newObj->recorder_) {
         bool isCinematic = (newObj->GetClassName() == "CinematicCamera");
         newObj->recorder_->Play(
-            newObj->animName_,
-            newObj->isAnimLoop_,
-            newObj->isAnimRelative_,
+            newObj->recordPathName_,
+            newObj->isRecordLoop_,
+            newObj->isRecordRelative_,
             isCinematic
         );
     }
+    // ===================================================
 
     // "Player" や "Model" などのクラス名を引き継ぐ
     newObj->SetClassName(this->GetClassName());

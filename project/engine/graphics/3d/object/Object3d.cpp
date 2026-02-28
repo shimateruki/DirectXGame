@@ -327,14 +327,19 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->enemyType_ = other->enemyType_;
     this->param_ = other->param_;
 
+    // ★ボーンアニメーションのコピー
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
-    this->isAnimRelative_ = other->isAnimRelative_;
+
+    // ★GhostRecorder用のコピー
+    this->recordPathName_ = other->recordPathName_;
+    this->isRecordLoop_ = other->isRecordLoop_;
+    this->isRecordRelative_ = other->isRecordRelative_;
 
     this->InitializeRecorder(nullptr);
-    if (!this->animName_.empty() && this->recorder_) {
+    if (!this->recordPathName_.empty() && this->recorder_) {
         bool isCinematic = (this->className_ == "CinematicCamera");
-        this->recorder_->Play(this->animName_, this->isAnimLoop_, this->isAnimRelative_, isCinematic);
+        this->recorder_->Play(this->recordPathName_, this->isRecordLoop_, this->isRecordRelative_, isCinematic);
     }
 }
 
@@ -354,7 +359,6 @@ json Object3d::ExportToJson() {
     j["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
     j["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
 
-    // Collider設定
     if (collider_) {
         const auto& config = collider_->GetConfig();
         j["collider"] = {
@@ -365,21 +369,25 @@ json Object3d::ExportToJson() {
         };
     }
 
+    // ★ボーンアニメとレコーダーのパスを分けて保存
     j["animation"] = {
         {"animName", animName_},
-        {"isAnimLoop", isAnimLoop_},
-        {"isAnimRelative", isAnimRelative_}
+        {"isAnimLoop", isAnimLoop_}
     };
+    j["recorder"] = {
+        {"recordPathName", recordPathName_},
+        {"isRecordLoop", isRecordLoop_},
+        {"isRecordRelative", isRecordRelative_}
+    };
+
     j["eventType"] = static_cast<int>(eventType_);
     j["enemyType"] = enemyType_;
 
-    // MeshRenderer設定
     j["blendMode"] = static_cast<int>(GetBlendMode());
     j["materialType"] = GetMaterialType();
 
     return j;
 }
-
 void Object3d::ImportFromJson(const json& j) {
     if (j.contains("modelName")) {
         SetModel(j["modelName"].get<std::string>());
@@ -402,28 +410,39 @@ void Object3d::ImportFromJson(const json& j) {
         collider_->SetConfig(config);
     }
 
+    // ★ボーンアニメの読み込み
     if (j.contains("animation")) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
-        if (anim.contains("isAnimRelative")) isAnimRelative_ = anim["isAnimRelative"];
-        if (recorder_ && !animName_.empty()) {
-            // 自身が演出用カメラ(CinematicCamera)なら第4引数を true にする
-            bool isCinematic = (this->GetClassName() == "CinematicCamera");
 
-            recorder_->Play(
-                animName_,
-                isAnimLoop_,
-                isAnimRelative_,
-                isCinematic 
-            );
-        }
+        // （互換性用）過去のデータにパスが含まれていた場合の救済
+        if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"];
+        if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"];
+    }
+
+    // ★GhostRecorderのパスデータ読み込み
+    if (j.contains("recorder")) {
+        const auto& rec = j["recorder"];
+        if (rec.contains("recordPathName")) recordPathName_ = rec["recordPathName"];
+        if (rec.contains("isRecordLoop")) isRecordLoop_ = rec["isRecordLoop"];
+        if (rec.contains("isRecordRelative")) isRecordRelative_ = rec["isRecordRelative"];
+    }
+
+    // パスデータがあれば再生準備
+    if (recorder_ && !recordPathName_.empty()) {
+        bool isCinematic = (this->GetClassName() == "CinematicCamera");
+        recorder_->Play(
+            recordPathName_,
+            isRecordLoop_,
+            isRecordRelative_,
+            isCinematic
+        );
     }
 
     if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
 
-    // MeshRenderer設定
     if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
     if (j.contains("materialType")) SetMaterialType(j["materialType"]);
 }

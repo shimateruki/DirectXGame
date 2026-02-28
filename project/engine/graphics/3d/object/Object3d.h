@@ -159,9 +159,14 @@ public:
     void SetEnemyType(const std::string& type) { enemyType_ = type; }
     std::string GetEnemyType() const { return enemyType_; }
 
+    // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;
-    bool isAnimRelative_ = false;
+
+    // --- GhostRecorder (パス再生) 用 ---
+    std::string recordPathName_ = ""; // 読み込むパスデータのファイル名
+    bool isRecordLoop_ = false;       // パスのループフラグ
+    bool isRecordRelative_ = false;   // パスの相対再生フラグ
     GhostRecorder* recorder_ = nullptr;
 
 protected:

@@ -41,6 +41,7 @@ public:
         bool useEasing = false;        // 加減速を使うか
         bool generateRelative = false; // 相対座標として生成するか
         bool useSpline = true;         // スプライン曲線にするか
+        int easingType = 0;
     };
 
 public:
