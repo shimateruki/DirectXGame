@@ -14,7 +14,7 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 	// [0] シーン描画用 (HDR / 元サイズ)
     CreateRenderTexture(0, WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
     // [1] トーンマップ後・ImGui表示用 (SDR / 元サイズ)
-    CreateRenderTexture(1, WinApp::kClientWidth, WinApp::kClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+    CreateRenderTexture(1, WinApp::kClientWidth, WinApp::kClientHeight,  DXGI_FORMAT_R16G16B16A16_FLOAT);
 
     // [2] 高輝度抽出用 (HDR / 1/2サイズで少し軽くする)
     CreateRenderTexture(2, WinApp::kClientWidth / 2, WinApp::kClientHeight / 2, DXGI_FORMAT_R16G16B16A16_FLOAT);
@@ -158,7 +158,7 @@ void PostEffect::CreatePipelineState() {
     // [PSO 1] トーンマップ・最終合成用 (SDR出力)
     // ==========================================================
     psoDesc.PS = { psComposite->GetBufferPointer(), psComposite->GetBufferSize() };
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // ★これだけSDR(ImGui用)
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
     hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)); assert(SUCCEEDED(hr));
     pipelineStates_.push_back(pso);
 

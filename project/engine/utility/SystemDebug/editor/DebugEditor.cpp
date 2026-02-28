@@ -58,7 +58,15 @@ void DebugEditor::Update() {
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     InputManager* input = InputManager::GetInstance();
     Math math;
+    IEditable* current = EditorManager::GetInstance()->GetSelectedObject();
 
+    // 選択対象が「DebugEditor自身」である間は、以前選んだオブジェクトを保持し続ける
+    if (current != nullptr && current != this) {
+        Object3d* obj = dynamic_cast<Object3d*>(current);
+        if (obj) {
+            selectedObject_ = obj;
+        }
+    }
     // シーン変更リセット
     if (lastUpdatedScene_ != currentScene) {
         selectedObject_ = nullptr; previewObject_ = nullptr; lastUpdatedScene_ = currentScene;
@@ -153,7 +161,10 @@ void DebugEditor::Update() {
                         if (tmp.distance < best.distance) { best = tmp; hit = obj.get(); }
                     }
                 }
-                selectedObject_ = hit;
+                if (hit) {
+                    selectedObject_ = hit;
+                    EditorManager::GetInstance()->SetSelectedObject(this);
+                }
             }
         }
 
@@ -232,7 +243,7 @@ void DebugEditor::InitializePrimitiveDrawing() {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = primitiveRootSignature_.Get(); psoDesc.InputLayout = inputLayout;
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() }; psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.RasterizerState = rasterDesc; psoDesc.NumRenderTargets = 1; psoDesc.RTVFormats[0] = dxCommon_->GetRTVFormat();
+    psoDesc.RasterizerState = rasterDesc; psoDesc.NumRenderTargets = 1;psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     psoDesc.SampleDesc.Count = 1; psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
     D3D12_BLEND_DESC blendDesc{};
@@ -471,7 +482,7 @@ void DebugEditor::DrawWireCube(ID3D12GraphicsCommandList* commandList, const Mat
 // ==========================================================================================
 void DebugEditor::DrawHierarchy() {
 #ifdef USE_IMGUI
-    // プロジェクトウィンドウ (Asset Browserなど)
+    // プロジェクトウィンドウ (Asset Browserなど) の描画
     DrawProjectWindow();
 
     if (sceneManager_ == nullptr) return;
@@ -507,7 +518,7 @@ void DebugEditor::DrawHierarchy() {
                 ImGui::PushID(obj.get());
                 if (ImGui::Selectable(name.c_str(), isSelected)) {
                     selectedObject_ = obj.get();
-                    // ★選択されたらInspectorを自分(DebugEditor)に切り替える
+                    // ★修正: 検索から選んだ時もインスペクターを表示
                     EditorManager::GetInstance()->SetSelectedObject(this);
                 }
                 ImGui::PopID();
@@ -595,7 +606,11 @@ void DebugEditor::DrawHierarchy() {
                     newObj->UpdateLocalMatrix();
                     newObj->UpdateWorldMatrix();
 
+                    // ★修正: 追加した瞬間に選択状態にする
+                    selectedObject_ = newObj.get();
                     currentScene->AddObject(std::move(newObj));
+                    EditorManager::GetInstance()->SetSelectedObject(this);
+
                     DebugConsole::GetInstance()->AddLog("Cinematic Camera Added to Scene.");
                 }
             }
@@ -610,7 +625,7 @@ void DebugEditor::DrawHierarchy() {
         auto& objects = currentScene->GetObjects();
         for (auto& obj : objects) {
             if (obj->GetParent() == nullptr) {
-                // ※ DrawHierarchyNode の中で選択処理と SetSelectedObject(this) が呼ばれる想定です
+                // ※ ここで呼ばれる DrawHierarchyNode 側でも通知処理が必要です！
                 DrawHierarchyNode(obj.get());
             }
         }
@@ -642,9 +657,10 @@ void DebugEditor::DrawHierarchy() {
 
             newObj->SetTranslate({ 0, 2.0f, 0 });
 
+            // ★生成した瞬間に選択してInspectorを表示
             selectedObject_ = newObj.get();
             currentScene->AddObject(std::move(newObj));
-            EditorManager::GetInstance()->SetSelectedObject(this); // ★Inspector表示
+            EditorManager::GetInstance()->SetSelectedObject(this);
             DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
         }
     }
@@ -668,9 +684,10 @@ void DebugEditor::DrawHierarchy() {
 
             newObj->SetTranslate({ 0, 2.0f, 0 });
 
+            // ★生成した瞬間に選択してInspectorを表示
             selectedObject_ = newObj.get();
             currentScene->AddObject(std::move(newObj));
-            EditorManager::GetInstance()->SetSelectedObject(this); // ★Inspector表示
+            EditorManager::GetInstance()->SetSelectedObject(this);
             DebugConsole::GetInstance()->AddLog("Spawned Invisible Box");
         }
     }
@@ -695,9 +712,10 @@ void DebugEditor::DrawHierarchy() {
             newObj->SetTranslate({ 0, 5.0f, -10.0f });
             newObj->UpdateWorldMatrix();
 
+            // ★生成した瞬間に選択してInspectorを表示
             selectedObject_ = newObj.get();
             currentScene->AddObject(std::move(newObj));
-            EditorManager::GetInstance()->SetSelectedObject(this); // ★Inspector表示
+            EditorManager::GetInstance()->SetSelectedObject(this);
             DebugConsole::GetInstance()->AddLog("Spawned Cinematic Camera Dummy");
         }
     }
@@ -1197,6 +1215,7 @@ void DebugEditor::DrawHierarchyNode(Object3d* obj) {
     // クリック処理
     if (ImGui::IsItemClicked()) {
         selectedObject_ = obj;
+        EditorManager::GetInstance()->SetSelectedObject(this);
     }
 
     // --- Drag: 子供にするために持ち上げる ---

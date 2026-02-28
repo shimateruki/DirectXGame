@@ -94,4 +94,6 @@ private:
 
     CameraManager* cameraManager_ = nullptr;
     bool isOverrideCamera_ = false;
+    Vector3 basePosition_ = {0, 0, 0};
+    Vector3 baseRotation_ = {0, 0, 0};
 };
