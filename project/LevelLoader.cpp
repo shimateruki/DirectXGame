@@ -213,7 +213,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 // ==========================================
                 // ★ 7. Animation & Recorder (修正箇所)
                 // ==========================================
-
+                
                 // 古いフラットな形式の読み込み（後方互換性用）
                 if (objData.contains("animName")) targetObject->animName_ = objData["animName"];
                 if (objData.contains("isAnimLoop")) targetObject->isAnimLoop_ = objData["isAnimLoop"];
@@ -241,7 +241,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                         targetObject->recordPathName_,
                         targetObject->isRecordLoop_,
                         targetObject->isRecordRelative_,
-                        isCinematic
+                        isCinematic 
                     );
                 }
                 // ==========================================

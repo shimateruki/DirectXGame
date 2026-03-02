@@ -13,6 +13,7 @@
 #include <SrvManager.h>
 #include"EditorManager.h"
 #include"ModelManager.h"
+#include "GhostDirector.h"
 
 
 void Game::Initialize() {
@@ -55,6 +56,8 @@ void Game::Initialize() {
     particleEditor_->Initialize(sceneManager_.get());
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
+    ghostDirector_ = std::make_unique<GhostDirector>();
+    ghostDirector_->Initialize(sceneManager_.get());
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
@@ -81,6 +84,7 @@ void Game::Finalize() {
     spriteDebugEditor_.reset();
     debugEditor_.reset();
     ghostRecorder_.reset();
+    ghostDirector_.reset();
    DebugConsole::GetInstance()->Finalize();
 #endif
 
@@ -242,8 +246,18 @@ void Game::Update() {
             }
             if (ImGui::MenuItem("ゴーストレコーダー (パス生成)")) {
                 EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_.get());
+                if (debugEditor_ && debugEditor_->GetSelectedObject3D()) {
+                    ghostRecorder_->SetTarget(debugEditor_->GetSelectedObject3D());
+                }
+
                 showDebugWindows_ = true;
             }
+            if(ImGui::MenuItem("ゴーストディレクター (シナリオ管理)")) {
+                EditorManager::GetInstance()->SetSelectedObject(ghostDirector_.get());
+                showDebugWindows_ = true;
+            }
+            ImGui::Separator();
+            ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
 
             ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);

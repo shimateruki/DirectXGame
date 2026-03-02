@@ -415,7 +415,7 @@ void Object3d::ImportFromJson(const json& j) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
-
+        
         // （互換性用）過去のデータにパスが含まれていた場合の救済
         if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"];
         if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"];
@@ -436,7 +436,7 @@ void Object3d::ImportFromJson(const json& j) {
             recordPathName_,
             isRecordLoop_,
             isRecordRelative_,
-            isCinematic
+            isCinematic 
         );
     }
 

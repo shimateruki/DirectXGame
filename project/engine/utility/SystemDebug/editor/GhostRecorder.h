@@ -12,7 +12,9 @@ class CameraManager;
 struct GhostFrame {
     Vector3 position;
     Vector3 rotation;
+    Vector3 scale = { 1.0f, 1.0f, 1.0f };
     bool triggerAttack = false;
+    int eventID = 0;
 };
 
 class GhostRecorder : public IEditable { 
@@ -28,11 +30,22 @@ public:
     struct GenerationParams {
         Vector3 startPos = { 0,0,0 };
         Vector3 startRot = { 0,0,0 };
+        Vector3 startScale = { 1.0f, 1.0f, 1.0f };
+        int startEventID = 0;
+        float startWaitTime = 0.0f;
         Vector3 endPos = { 0,0,0 };
         Vector3 endRot = { 0,0,0 };
+        Vector3 endScale = { 1.0f, 1.0f, 1.0f };
+        int endEventID = 0;
+        float endWaitTime = 0.0f;
+        Vector3 anchorOffsetPos = { 0.0f, 0.0f, 0.0f }; 
+        Vector3 anchorOffsetRot = { 0.0f, 0.0f, 0.0f }; 
         struct Waypoint {
             Vector3 pos;
             Vector3 rot;
+            Vector3 scale = { 1.0f, 1.0f, 1.0f };
+            int eventID = 0;
+            float waitTime = 0.0f;
         };
         // 中継点のリスト
         std::vector<Waypoint> waypoints;
@@ -61,12 +74,18 @@ public:
     State GetState() const { return state_; }
 
     void Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic);
-    void Stop();
+    void Stop(bool autoReset = true);
 
     void Save(const std::string& fileName);
     void Load(const std::string& fileName);
 
     void SetCameraManager(CameraManager* cameraManager) { cameraManager_ = cameraManager; }
+    int GetTotalFrames() const { return static_cast<int>(frames_.size()); }
+    void EvaluateAtFrame(int frameIndex);
+    void CaptureBasePose();
+    void RestoreBasePose();
+    void SetScrubbing(bool isScrubbing) { isScrubbing_ = isScrubbing; }
+
 
 private:
     void StartRecording();
@@ -97,4 +116,9 @@ private:
     bool isOverrideCamera_ = false;
     Vector3 basePosition_ = {0, 0, 0};
     Vector3 baseRotation_ = {0, 0, 0};
+    Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
+	bool isScrubbing_ = false; // Scrubbing中かどうかのフラグ
+    Object3d* anchor_ = nullptr;
+    std::string anchorName_ = "";
+    void FindAnchor(); // ロード後に名前から実体を結びつける関数
 };

@@ -3,7 +3,7 @@
         {
             "animation": {
                 "animName": "Idle",
-                "isAnimLoop": true
+                "isAnimLoop": false
             },
             "blendMode": 0,
             "collider": {
@@ -51,9 +51,9 @@
             },
             "parentName": "",
             "position": [
-                -6.262862682342529,
-                1.9835566282272339,
-                27.03957748413086
+                5.370184898376465,
+                1.982237458229065,
+                14.853262901306152
             ],
             "recorder": {
                 "isRecordLoop": true,
@@ -62,7 +62,7 @@
             },
             "rotation": [
                 6.278290811678744e-07,
-                2.4681856632232666,
+                -1.6383976936340332,
                 6.27829649602063e-07
             ],
             "scale": [
@@ -248,9 +248,9 @@
             },
             "parentName": "",
             "position": [
-                10.0,
-                -3428.712646484375,
-                10.0
+                6.291428565979004,
+                -11982.5703125,
+                15.147319793701172
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -259,7 +259,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -1.8797690868377686,
                 0.0
             ],
             "scale": [
@@ -280,7 +280,7 @@
                 "center": [
                     0.0,
                     0.0,
-                    0.0
+                    -1.4500000476837158
                 ],
                 "rotation": [
                     0.0,
@@ -288,13 +288,13 @@
                     0.0
                 ],
                 "size": [
-                    0.0,
-                    0.0,
-                    0.0
+                    1.2999999523162842,
+                    1.2999999523162842,
+                    3.049999952316284
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -311,7 +311,7 @@
             "parentName": "",
             "position": [
                 10.609573364257813,
-                2.470632314682007,
+                2.4698777198791504,
                 17.305397033691406
             ],
             "recorder": {
@@ -445,7 +445,7 @@
             "parentName": "",
             "position": [
                 10.0,
-                -2650.995849609375,
+                -9333.5537109375,
                 10.0
             ],
             "recorder": {
@@ -465,6 +465,68 @@
             ],
             "targetID": -1,
             "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "modelName": "sampleBlock.gltf",
+            "myEventID": -1,
+            "name": "Obj_0_Copy0",
+            "parentName": "Obj_0",
+            "position": [
+                12.609573364257813,
+                2.470632314682007,
+                24.651630401611328
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
         }
     ]
 }

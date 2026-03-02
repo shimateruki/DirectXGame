@@ -17,7 +17,7 @@
 #include <GhostRecorder.h>
 #include "CameraEditor.h"
 #include <PostEffectEditor.h>
-
+#include "GhostDirector.h"
 
 
 class Game : public Framework {
@@ -43,6 +43,7 @@ private:
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
 	std::unique_ptr<ParticleEditor> particleEditor_;
 	std::unique_ptr<GhostRecorder> ghostRecorder_;
+	std::unique_ptr<GhostDirector> ghostDirector_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;
 	bool showDebugWindows_ = false;

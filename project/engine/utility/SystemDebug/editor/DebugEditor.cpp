@@ -168,7 +168,6 @@ void DebugEditor::Update() {
             }
         }
 
-        // B-3. ギズモ表示
         if (selectedObject_) {
             static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
             if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
@@ -177,14 +176,16 @@ void DebugEditor::Update() {
 
             Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
             if (cam) {
-                // ★最重要: GameViewの描画リストを使う
                 ImGuizmo::SetDrawlist();
                 ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
 
                 Matrix4x4 view = cam->GetViewMatrix();
                 Matrix4x4 proj = cam->GetProjectionMatrix();
                 Transform* tr = selectedObject_->GetTransform();
-                Matrix4x4 world = math.MakeAffineMatrix(tr->scale, tr->rotate, tr->translate);
+
+                // ★修正1: ローカル行列ではなく、親の回転を含めた本物のワールド行列を渡す！
+                selectedObject_->UpdateWorldMatrix();
+                Matrix4x4 world = selectedObject_->GetWorldMatrix();
 
                 float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
                 float snapArr[3] = { snapVal, snapVal, snapVal };
@@ -193,11 +194,18 @@ void DebugEditor::Update() {
 
                 if (ImGuizmo::IsUsing()) {
                     if (!isDraggingTransform_) { isDraggingTransform_ = true; tempTransformStart_ = *tr; }
+                    Matrix4x4 newLocalMat = world;
+                    if (selectedObject_->GetParent()) {
+                        Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
+                        newLocalMat = math.Multiply(world, parentWorldInv);
+                    }
+
                     Vector3 s, rDeg, t;
-                    ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &t.x, &rDeg.x, &s.x);
+                    ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
                     tr->translate = t;
                     tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
                     tr->scale = s;
+                    selectedObject_->UpdateLocalMatrix();
                     selectedObject_->UpdateWorldMatrix();
                 } else if (isDraggingTransform_) {
                     isDraggingTransform_ = false;
@@ -722,13 +730,28 @@ void DebugEditor::DrawHierarchy() {
 
     ImGui::PopStyleColor(3);
 
-    // 親解除用エリア
     ImGui::Dummy(ImVec2(0, 50));
     ImGui::TextDisabled("(ここにドロップして親解除)");
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
-            sourceObj->SetParent(nullptr);
+
+            // ★修正3: 親を解除した時に、見た目の位置がすっ飛ばないように座標を再計算！
+            if (sourceObj->GetParent() != nullptr) {
+                // 1. 今のワールド行列を保存
+                Matrix4x4 worldMat = sourceObj->GetWorldMatrix();
+
+                // 2. 親を解除
+                sourceObj->SetParent(nullptr);
+
+                // 3. ワールド行列を分解して、そのままローカル座標に突っ込む
+                Vector3 t, rDeg, s;
+                ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &t.x, &rDeg.x, &s.x);
+                sourceObj->GetTransform()->translate = t;
+                sourceObj->GetTransform()->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+                sourceObj->GetTransform()->scale = s;
+                sourceObj->UpdateWorldMatrix();
+            }
             DebugConsole::GetInstance()->AddLog("Unparented: " + sourceObj->GetName());
         }
         ImGui::EndDragDropTarget();

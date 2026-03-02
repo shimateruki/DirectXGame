@@ -158,7 +158,7 @@ public:
     void CopyFrom(const Object3d* other);
     void SetEnemyType(const std::string& type) { enemyType_ = type; }
     std::string GetEnemyType() const { return enemyType_; }
-
+    virtual void OnRecordEvent(int eventID) {}
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;
