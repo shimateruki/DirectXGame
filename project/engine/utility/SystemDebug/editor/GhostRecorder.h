@@ -33,6 +33,8 @@ public:
         Vector3 startScale = { 1.0f, 1.0f, 1.0f };
         int startEventID = 0;
         float startWaitTime = 0.0f;
+        float startDurationToNext = 1.0f;
+        int startEasingToNext = 0;
         Vector3 endPos = { 0,0,0 };
         Vector3 endRot = { 0,0,0 };
         Vector3 endScale = { 1.0f, 1.0f, 1.0f };
@@ -46,15 +48,16 @@ public:
             Vector3 scale = { 1.0f, 1.0f, 1.0f };
             int eventID = 0;
             float waitTime = 0.0f;
+            float durationToNext = 1.0f;
+            int easingToNext = 0;
         };
         // 中継点のリスト
         std::vector<Waypoint> waypoints;
 
-        float duration = 3.0f;         // 移動にかかる時間
         bool useEasing = false;        // 加減速を使うか
         bool generateRelative = false; // 相対座標として生成するか
         bool useSpline = true;         // スプライン曲線にするか
-        int easingType = 0;
+     
     };
 
 public:

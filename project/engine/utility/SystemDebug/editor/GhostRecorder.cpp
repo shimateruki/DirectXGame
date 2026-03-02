@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "GhostRecorder.h"
 #include "imgui.h" 
 #include "SceneManager.h" 
@@ -279,9 +280,6 @@ Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) 
     return result;
 }
 
-// ==========================================================================
-// DrawPreview (可視化機能)
-// ==========================================================================
 
 // ==========================================================================
 // DrawPreview (パスとイベントの可視化機能)
@@ -294,8 +292,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     float time = (float)ImGui::GetTime();
 
     // --- 1. 座標変換用のヘルパー関数 ---
-
-    // ワールド座標をスクリーン(画面)座標に変換
     auto WorldToScreen = [&](const Vector3& worldPos) -> ImVec2 {
         Vector3 clip = TransformCoord(worldPos, viewProjection);
         if (clip.z < 0.0f || clip.z > 1.0f) return ImVec2(-10000.0f, -10000.0f);
@@ -304,7 +300,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         return ImVec2(screenX, screenY);
         };
 
-    // ローカル座標を親(または自身)のワールド座標に変換
     auto LocalToWorld = [&](const Vector3& localPos) -> Vector3 {
         if (!target_ || !target_->GetParent()) return localPos;
         const Matrix4x4& pMat = target_->GetParent()->GetWorldMatrix();
@@ -319,7 +314,10 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     Vector3 drawOffset = { 0, 0, 0 };
     Vector3 drawRotOffset = { 0, 0, 0 };
 
-    if (isRelative_ && target_) {
+    // =======================================================
+    // ★大修正：isRelative_ ではなく、UIのチェックボックス状態を直接見る！
+    // =======================================================
+    if (genParams_.generateRelative && target_) {
         FindAnchor();
 
         if (state_ == State::Playing || isScrubbing_) {
@@ -335,7 +333,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
                 baseRotation_.z - genParams_.startRot.z
             };
         } else {
-
             Vector3 currentBase;
             Vector3 currentBaseRot;
 
@@ -352,12 +349,11 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
                     anchor_->GetRotation().z + genParams_.anchorOffsetRot.z
                 };
             } else {
-         
+                // アンカーがいない場合は、ターゲット自身の現在地を基準にする
                 currentBase = target_->GetTranslate();
                 currentBaseRot = target_->GetRotation();
             }
 
-            // 決定した基準点から、Start地点との差分（オフセット）を計算する
             drawOffset = {
                 currentBase.x - genParams_.startPos.x,
                 currentBase.y - genParams_.startPos.y,
@@ -398,8 +394,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     ImVec2 prevScreenPos = WorldToScreen(LocalToWorld(allPos[0]));
     for (int i = 1; i <= samples; ++i) {
         float t = (float)i / (float)samples;
-        t = ApplyEasing(genParams_.easingType, t);
-
         Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) :
             [&]() {
             float p = t * (allPos.size() - 1);
@@ -480,8 +474,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     }
 
     // --- 7. 各ノード(Start/End/Waypoints)とイベントIDの描画 ---
-
-    // Start ノード
     ImVec2 startScr = WorldToScreen(LocalToWorld(allPos[0]));
     if (startScr.x > -5000.0f) {
         drawList->AddCircleFilled(startScr, 6.0f, IM_COL32(0, 255, 0, 255));
@@ -494,7 +486,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         }
     }
 
-    // End ノード
     ImVec2 endScr = WorldToScreen(LocalToWorld(allPos.back()));
     if (endScr.x > -5000.0f) {
         drawList->AddCircleFilled(endScr, 6.0f, IM_COL32(100, 100, 255, 255));
@@ -507,13 +498,11 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         }
     }
 
-    // Waypoints ノード
     for (int i = 0; i < (int)genParams_.waypoints.size(); ++i) {
         ImVec2 wpScr = WorldToScreen(LocalToWorld(allPos[i + 1]));
         if (wpScr.x > -5000.0f) {
             std::string wpText = "P" + std::to_string(i + 1);
             if (genParams_.waypoints[i].eventID != 0) {
-                // イベントがある地点はピンを少し大きくして色を変える
                 drawList->AddCircleFilled(wpScr, 6.0f, IM_COL32(255, 165, 0, 255));
                 wpText += "  [Event: " + std::to_string(genParams_.waypoints[i].eventID) + "]";
                 drawList->AddText(ImVec2(wpScr.x + 8, wpScr.y - 12), IM_COL32(255, 165, 0, 255), wpText.c_str());
@@ -525,7 +514,6 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     }
 #endif
 }
-
 // ==========================================================================
 // DrawImGui (UI部分)
 // ==========================================================================
@@ -536,7 +524,7 @@ void GhostRecorder::DrawImGui() {
     static char fName[64] = "anim_path";
 
     // -------------------------------------------------------------
-    // ★ 1. ファイル管理 (上部に配置してコンボボックス化)
+    // 1. ファイル管理 (File IO)
     // -------------------------------------------------------------
     if (ImGui::CollapsingHeader("ファイル管理 (File IO)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string dirPath = "Resources/json/animation/";
@@ -548,7 +536,7 @@ void GhostRecorder::DrawImGui() {
                         bool isSelected = (std::string(fName) == fileName);
                         if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                             strncpy_s(fName, sizeof(fName), fileName.c_str(), _TRUNCATE);
-                            Load(fName); // 選んだ瞬間にロードして復元
+                            Load(fName);
                         }
                         if (isSelected) ImGui::SetItemDefaultFocus();
                     }
@@ -565,7 +553,7 @@ void GhostRecorder::DrawImGui() {
     ImGui::Separator();
 
     // -------------------------------------------------------------
-    // 2. ターゲット選択
+    // 2. ターゲット & アンカー選択
     // -------------------------------------------------------------
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         std::string currentTargetName = target_ ? target_->GetName() : "(未選択)";
@@ -577,23 +565,25 @@ void GhostRecorder::DrawImGui() {
             }
             ImGui::EndCombo();
         }
-    }
-    std::string currentAnchorName = anchorName_.empty() ? "(なし: 自身を基準)" : anchorName_;
-    if (ImGui::BeginCombo("アンカー(相対基準)", currentAnchorName.c_str())) {
-        if (ImGui::Selectable("(なし: 自身を基準)", anchorName_.empty())) {
-            anchorName_ = "";
-            anchor_ = nullptr;
-        }
-        for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
-            bool isSelected = (anchorName_ == obj->GetName());
-            if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
-                anchorName_ = obj->GetName();
-                anchor_ = obj.get();
+
+        std::string currentAnchorName = anchorName_.empty() ? "(なし: 自身を基準)" : anchorName_;
+        if (ImGui::BeginCombo("アンカー(相対基準)", currentAnchorName.c_str())) {
+            if (ImGui::Selectable("(なし: 自身を基準)", anchorName_.empty())) {
+                anchorName_ = "";
+                anchor_ = nullptr;
             }
-            if (isSelected) ImGui::SetItemDefaultFocus();
+            for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+                bool isSelected = (anchorName_ == obj->GetName());
+                if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
+                    anchorName_ = obj->GetName();
+                    anchor_ = obj.get();
+                }
+                if (isSelected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
         }
-        ImGui::EndCombo();
     }
+
     if (anchor_ && genParams_.generateRelative) {
         ImGui::Indent();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "▼ アンカーからの相対距離 (微調整用)");
@@ -626,6 +616,13 @@ void GhostRecorder::DrawImGui() {
         if (target_) {
             ImGui::Checkbox("プレビュー線を表示", &isShowPreview_);
 
+            static const char* easingNames[] = {
+                "Linear(等速)", "InSine", "OutSine", "InOutSine", "InQuad", "OutQuad", "InOutQuad",
+                "InCubic", "OutCubic", "InOutCubic", "InQuart", "OutQuart", "InOutQuart",
+                "InQuint", "OutQuint", "InOutQuint", "InExpo", "OutExpo", "InOutExpo",
+                "InCirc", "OutCirc", "InOutCirc"
+            };
+
             // --- Start 設定 ---
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "[ START ]");
@@ -634,7 +631,6 @@ void GhostRecorder::DrawImGui() {
                 genParams_.startPos = target_->GetTranslate();
                 genParams_.startRot = target_->GetRotation();
                 genParams_.startScale = target_->GetScale();
-
             }
             ImGui::SameLine();
             if (ImGui::Button("ワープ(Warp)##Start")) {
@@ -647,10 +643,14 @@ void GhostRecorder::DrawImGui() {
             ImGui::DragFloat3("Scale##Start", &genParams_.startScale.x, 0.1f);
             ImGui::InputInt("Event ID##Start", &genParams_.startEventID);
             ImGui::DragFloat("待機(sec)##Start", &genParams_.startWaitTime, 0.1f, 0.0f, 10.0f);
+            ImGui::DragFloat("次への移動時間(sec)##Start", &genParams_.startDurationToNext, 0.1f, 0.1f, 10.0f);
+            ImGui::Combo("次へのイージング##Start", &genParams_.startEasingToNext, easingNames, IM_ARRAYSIZE(easingNames));
 
             // --- Waypoints 設定 ---
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.5f, 1.0f), "[ WAYPOINTS ]");
+
+            int waypointToDelete = -1; // 削除を安全に行うための予約変数
 
             for (int i = 0; i < genParams_.waypoints.size(); ++i) {
                 ImGui::PushID(i);
@@ -670,9 +670,7 @@ void GhostRecorder::DrawImGui() {
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Del")) {
-                    genParams_.waypoints.erase(genParams_.waypoints.begin() + i);
-                    ImGui::PopID();
-                    break;
+                    waypointToDelete = i;
                 }
 
                 ImGui::DragFloat3("Pos", &genParams_.waypoints[i].pos.x, 0.1f);
@@ -680,14 +678,25 @@ void GhostRecorder::DrawImGui() {
                 ImGui::DragFloat3("Scale", &genParams_.waypoints[i].scale.x, 0.1f);
                 ImGui::InputInt("Event ID", &genParams_.waypoints[i].eventID);
                 ImGui::DragFloat("待機(sec)", &genParams_.waypoints[i].waitTime, 0.1f, 0.0f, 10.0f);
+                ImGui::DragFloat("次への移動時間(sec)", &genParams_.waypoints[i].durationToNext, 0.1f, 0.1f, 10.0f);
+                ImGui::Combo("次へのイージング", &genParams_.waypoints[i].easingToNext, easingNames, IM_ARRAYSIZE(easingNames));
                 ImGui::Separator();
                 ImGui::PopID();
+            }
+
+            if (waypointToDelete >= 0) {
+                genParams_.waypoints.erase(genParams_.waypoints.begin() + waypointToDelete);
             }
 
             if (ImGui::Button("+ 現在地を追加")) {
                 GenerationParams::Waypoint wp;
                 wp.pos = target_->GetTranslate();
                 wp.rot = target_->GetRotation();
+                wp.scale = target_->GetScale();
+                wp.eventID = 0;
+                wp.waitTime = 0.0f;
+                wp.durationToNext = 1.0f;
+                wp.easingToNext = 0;
                 genParams_.waypoints.push_back(wp);
             }
 
@@ -723,24 +732,12 @@ void GhostRecorder::DrawImGui() {
             ImGui::Checkbox("スプライン曲線", &genParams_.useSpline);
             ImGui::SameLine();
             ImGui::Checkbox("相対データ化", &genParams_.generateRelative);
-            ImGui::DragFloat("時間 (sec)", &genParams_.duration, 0.1f, 0.1f, 120.0f);
 
-            static const char* easingNames[] = {
-                "Linear (等速)",
-                "InSine", "OutSine", "InOutSine",
-                "InQuad", "OutQuad", "InOutQuad",
-                "InCubic", "OutCubic", "InOutCubic",
-                "InQuart", "OutQuart", "InOutQuart",
-                "InQuint", "OutQuint", "InOutQuint",
-                "InExpo", "OutExpo", "InOutExpo",
-                "InCirc", "OutCirc", "InOutCirc"
-            };
-            ImGui::Combo("イージング", &genParams_.easingType, easingNames, IM_ARRAYSIZE(easingNames));
-
+            // =========================================================================
+            // ★ 生成ロジック（区間ごとの完全リレー方式）
+            // =========================================================================
             if (ImGui::Button("★ 生成実行 (Generate & AutoSave)", ImVec2(-1, 40))) {
                 frames_.clear();
-                int totalFrames = static_cast<int>(genParams_.duration * 60.0f);
-                if (totalFrames < 1) totalFrames = 1;
                 FindAnchor();
                 if (anchor_ && genParams_.generateRelative) {
                     genParams_.anchorOffsetPos = {
@@ -758,91 +755,70 @@ void GhostRecorder::DrawImGui() {
                     genParams_.anchorOffsetRot = { 0, 0, 0 };
                 }
 
-                std::vector<Vector3> posPoints = { genParams_.startPos };
-                for (auto& wp : genParams_.waypoints) posPoints.push_back(wp.pos);
-                posPoints.push_back(genParams_.endPos);
-
-                std::vector<Vector3> rotPoints = { genParams_.startRot };
-                for (auto& wp : genParams_.waypoints) rotPoints.push_back(wp.rot);
-                rotPoints.push_back(genParams_.endRot);
-
-                std::vector<Vector3> scalePoints = { genParams_.startScale };
-                for (auto& wp : genParams_.waypoints) scalePoints.push_back(wp.scale);
-                scalePoints.push_back(genParams_.endScale);
+                struct PointData {
+                    Vector3 pos, rot, scale; int eventID; float waitTime, durationToNext; int easingToNext;
+                };
+                std::vector<PointData> pts;
+                pts.push_back({ genParams_.startPos, genParams_.startRot, genParams_.startScale, genParams_.startEventID, genParams_.startWaitTime, genParams_.startDurationToNext, genParams_.startEasingToNext });
+                for (const auto& wp : genParams_.waypoints) {
+                    pts.push_back({ wp.pos, wp.rot, wp.scale, wp.eventID, wp.waitTime, wp.durationToNext, wp.easingToNext });
+                }
+                pts.push_back({ genParams_.endPos, genParams_.endRot, genParams_.endScale, genParams_.endEventID, genParams_.endWaitTime, 1.0f, 0 });
 
                 Vector3 offset = genParams_.generateRelative ? genParams_.startPos : Vector3{ 0,0,0 };
                 Vector3 rotOffset = genParams_.generateRelative ? genParams_.startRot : Vector3{ 0,0,0 };
 
-                // 【STEP 1】まずは待機時間なしの純粋な移動フレーム(temp)を作る
-                std::vector<GhostFrame> tempFrames;
-                std::vector<float> waitTimes(totalFrames + 1, 0.0f); // 待機時間記録用
-
-                for (int i = 0; i <= totalFrames; ++i) {
-                    float t = (float)i / (float)totalFrames;
-                    t = ApplyEasing(genParams_.easingType, t);
-
-                    Vector3 pos;
-                    if (genParams_.useSpline) {
-                        pos = GetSplinePoint(posPoints, t, false);
-                    } else {
-                        float p = t * (posPoints.size() - 1);
-                        int idx = (int)p;
-                        float lt = p - idx;
-                        if (idx >= posPoints.size() - 1) { idx = static_cast<int>(posPoints.size()) - 2; lt = 1.0f; }
-                        pos = Lerp(posPoints[idx], posPoints[idx + 1], lt);
+                for (int i = 0; i < (int)pts.size(); ++i) {
+                    int waitFrames = static_cast<int>(pts[i].waitTime * 60.0f);
+                    for (int w = 0; w < waitFrames; ++w) {
+                        GhostFrame f;
+                        f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
+                        f.rotation = { pts[i].rot.x - rotOffset.x, pts[i].rot.y - rotOffset.y, pts[i].rot.z - rotOffset.z };
+                        f.scale = pts[i].scale;
+                        f.eventID = (w == 0) ? pts[i].eventID : 0;
+                        frames_.push_back(f);
                     }
 
-                    Vector3 rot;
-                    float rp = t * (rotPoints.size() - 1);
-                    int rIdx = (int)rp;
-                    float rLt = rp - rIdx;
-                    if (rIdx >= rotPoints.size() - 1) { rIdx = static_cast<int>(rotPoints.size()) - 2; rLt = 1.0f; }
-                    rot = Lerp(rotPoints[rIdx], rotPoints[rIdx + 1], rLt);
-                    Vector3 scl;
-                    float sp = t * (scalePoints.size() - 1);
-                    int sIdx = (int)sp;
-                    float sLt = sp - sIdx;
-                    if (sIdx >= scalePoints.size() - 1) { sIdx = static_cast<int>(scalePoints.size()) - 2; sLt = 1.0f; }
-                    scl = Lerp(scalePoints[sIdx], scalePoints[sIdx + 1], sLt);
-
-
-                    GhostFrame f;
-                    f.position = { pos.x - offset.x, pos.y - offset.y, pos.z - offset.z };
-                    f.rotation = { rot.x - rotOffset.x, rot.y - rotOffset.y, rot.z - rotOffset.z };
-                    f.scale = scl;
-                    f.eventID = 0;
-                    tempFrames.push_back(f);
-                }
-
-                // イベントIDと待機時間を該当フレームに紐付け
-                tempFrames[0].eventID = genParams_.startEventID;
-                waitTimes[0] = genParams_.startWaitTime;
-
-                tempFrames.back().eventID = genParams_.endEventID;
-                waitTimes.back() = genParams_.endWaitTime;
-
-                int numSegments = static_cast<int>(genParams_.waypoints.size()) + 1;
-                for (int i = 0; i < static_cast<int>(genParams_.waypoints.size()); ++i) {
-                    float t = (float)(i + 1) / (float)numSegments;
-                    int frameIndex = static_cast<int>(std::round(t * totalFrames));
-                    if (frameIndex >= 0 && frameIndex <= totalFrames) {
-                        tempFrames[frameIndex].eventID = genParams_.waypoints[i].eventID;
-                        waitTimes[frameIndex] = genParams_.waypoints[i].waitTime;
-                    }
-                }
-
-                // 【STEP 2】待機時間を反映させて最終フレーム群(frames_)を構築
-                for (size_t i = 0; i < tempFrames.size(); ++i) {
-                    frames_.push_back(tempFrames[i]); // 通常の移動フレーム
-
-                    // 待機時間が設定されていたら、その場でフレームを複製して一時停止させる！
-                    if (waitTimes[i] > 0.0f) {
-                        int waitFrameCount = static_cast<int>(waitTimes[i] * 60.0f);
-                        for (int w = 0; w < waitFrameCount; ++w) {
-                            GhostFrame wf = tempFrames[i];
-                            wf.eventID = 0; // イベントは最初の1回だけ発火させるため0にする
-                            frames_.push_back(wf);
+                    if (i == (int)pts.size() - 1) {
+                        if (waitFrames == 0) {
+                            GhostFrame f;
+                            f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
+                            f.rotation = { pts[i].rot.x - rotOffset.x, pts[i].rot.y - rotOffset.y, pts[i].rot.z - rotOffset.z };
+                            f.scale = pts[i].scale;
+                            f.eventID = pts[i].eventID;
+                            frames_.push_back(f);
                         }
+                        break;
+                    }
+
+                    int travelFrames = static_cast<int>(pts[i].durationToNext * 60.0f);
+                    if (travelFrames < 1) travelFrames = 1;
+
+                    for (int f = 0; f < travelFrames; ++f) {
+                        if (f == 0 && waitFrames > 0) continue;
+
+                        float rawT = (float)f / (float)travelFrames;
+                        float t = ApplyEasing(pts[i].easingToNext, rawT);
+
+                        Vector3 currentPos;
+                        if (genParams_.useSpline) {
+                            Vector3 p0 = pts[std::max(0, i - 1)].pos;
+                            Vector3 p1 = pts[i].pos;
+                            Vector3 p2 = pts[i + 1].pos;
+                            Vector3 p3 = pts[std::min((int)pts.size() - 1, i + 2)].pos;
+                            currentPos = CatmullRom(p0, p1, p2, p3, t);
+                        } else {
+                            currentPos = Lerp(pts[i].pos, pts[i + 1].pos, t);
+                        }
+                        Vector3 currentRot = Lerp(pts[i].rot, pts[i + 1].rot, t);
+                        Vector3 currentScale = Lerp(pts[i].scale, pts[i + 1].scale, t);
+
+                        GhostFrame frame;
+                        frame.position = { currentPos.x - offset.x, currentPos.y - offset.y, currentPos.z - offset.z };
+                        frame.rotation = { currentRot.x - rotOffset.x, currentRot.y - rotOffset.y, currentRot.z - rotOffset.z };
+                        frame.scale = currentScale;
+                        frame.eventID = (f == 0 && waitFrames == 0) ? pts[i].eventID : 0;
+                        frames_.push_back(frame);
                     }
                 }
 
@@ -851,7 +827,11 @@ void GhostRecorder::DrawImGui() {
                 Save(fName);
                 ImGui::OpenPopup("Done");
             }
-            if (ImGui::BeginPopup("Done")) { ImGui::Text("生成＆セーブ完了!"); ImGui::EndPopup(); }
+            if (ImGui::BeginPopupModal("Done", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("生成＆セーブ完了!");
+                if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+                ImGui::EndPopup();
+            }
 
         } else {
             ImGui::TextDisabled("ターゲットを選択してください");
@@ -863,7 +843,7 @@ void GhostRecorder::DrawImGui() {
     ImGui::Separator();
 
     // -------------------------------------------------------------
-    // 5. 再生制御
+    // 5. 再生制御 (シークバー ＆ 実行)
     // -------------------------------------------------------------
     if (!frames_.empty()) {
         ImGui::Spacing();
@@ -873,15 +853,12 @@ void GhostRecorder::DrawImGui() {
         int displayFrame = static_cast<int>(currentFrameIndex_);
         if (displayFrame > maxFrame) displayFrame = maxFrame;
 
-        // ★ シークバー (スライダー) の描画
-        ImGui::SetNextItemWidth(-1); // 横幅いっぱいに広げる
+        ImGui::SetNextItemWidth(-1);
         ImGui::SliderInt("##SeekBar", &displayFrame, 0, maxFrame, "Frame: %d");
 
-        // --- シーク操作の裏側処理 ---
         if (ImGui::IsItemActivated()) {
-            // スライダーを「掴んだ瞬間」に、今のアンカー位置を基準点としてロックする
             isScrubbing_ = true;
-            state_ = State::Idle; // 再生中なら止める
+            state_ = State::Idle;
             FindAnchor();
             if (anchor_ && genParams_.generateRelative) {
                 basePosition_ = {
@@ -900,12 +877,10 @@ void GhostRecorder::DrawImGui() {
             }
         }
         if (ImGui::IsItemActive()) {
-            // スライダーを「動かしている最中」は、そのフレームの姿勢を反映させる
             currentFrameIndex_ = static_cast<decltype(currentFrameIndex_)>(displayFrame);
             EvaluateAtFrame(displayFrame);
         }
         if (ImGui::IsItemDeactivated()) {
-            // スライダーから「マウスを離した瞬間」
             isScrubbing_ = false;
         }
         ImGui::Separator();
@@ -968,6 +943,8 @@ void GhostRecorder::Save(const std::string& fileName) {
     paramsJson["endWaitTime"] = genParams_.endWaitTime;
     paramsJson["anchorOffsetPos"] = { genParams_.anchorOffsetPos.x, genParams_.anchorOffsetPos.y, genParams_.anchorOffsetPos.z };
     paramsJson["anchorOffsetRot"] = { genParams_.anchorOffsetRot.x, genParams_.anchorOffsetRot.y, genParams_.anchorOffsetRot.z };
+    paramsJson["startDurationToNext"] = genParams_.startDurationToNext;
+    paramsJson["startEasingToNext"] = genParams_.startEasingToNext;
     paramsJson["waypoints"] = json::array();
     for (const auto& wp : genParams_.waypoints) {
         paramsJson["waypoints"].push_back({
@@ -975,14 +952,15 @@ void GhostRecorder::Save(const std::string& fileName) {
             {"rot", {wp.rot.x, wp.rot.y, wp.rot.z}},
             {"scale", {wp.scale.x, wp.scale.y, wp.scale.z}}, 
             {"eventID", wp.eventID},
-            {"waitTime", wp.waitTime}
+            {"waitTime", wp.waitTime},
+            { "durationToNext", wp.durationToNext }, 
+            {"easingToNext", wp.easingToNext}
             });
     }
 
     paramsJson["useSpline"] = genParams_.useSpline;
     paramsJson["generateRelative"] = genParams_.generateRelative;
-    paramsJson["duration"] = genParams_.duration;
-    paramsJson["easingType"] = genParams_.easingType;
+
 
     root["genParams"] = paramsJson;
     root["anchorName"] = anchorName_;
@@ -1034,6 +1012,7 @@ void GhostRecorder::Load(const std::string& fileName) {
         genParams_.startEventID = pj.value("startEventID", 0);
         genParams_.startWaitTime = pj.value("startWaitTime", 0.0f);
 
+
         if (pj.contains("endPos"))   genParams_.endPos = { pj["endPos"][0], pj["endPos"][1], pj["endPos"][2] };
         if (pj.contains("endRot"))   genParams_.endRot = { pj["endRot"][0], pj["endRot"][1], pj["endRot"][2] };
         if (pj.contains("endScale")) {
@@ -1053,7 +1032,8 @@ void GhostRecorder::Load(const std::string& fileName) {
         }
         genParams_.endEventID = pj.value("endEventID", 0);
         genParams_.endWaitTime = pj.value("endWaitTime", 0.0f);
-
+        genParams_.startDurationToNext = pj.value("startDurationToNext", 1.0f);
+        genParams_.startEasingToNext = pj.value("startEasingToNext", 0);
         if (pj.contains("waypoints") && pj["waypoints"].is_array()) {
             genParams_.waypoints.clear();
             for (const auto& wj : pj["waypoints"]) {
@@ -1067,6 +1047,8 @@ void GhostRecorder::Load(const std::string& fileName) {
                 }
                 wp.eventID = wj.value("eventID", 0);
                 wp.waitTime = wj.value("waitTime", 0.0f);
+                wp.durationToNext = wj.value("durationToNext", 1.0f);
+                wp.easingToNext = wj.value("easingToNext", 0);
                 genParams_.waypoints.push_back(wp);
             }
         }
@@ -1078,8 +1060,7 @@ void GhostRecorder::Load(const std::string& fileName) {
             isRelative_ = genParams_.generateRelative;
         }
 
-        if (pj.contains("duration")) genParams_.duration = pj["duration"];
-        if (pj.contains("easingType")) genParams_.easingType = pj["easingType"];
+     
     }
 }
 

@@ -256,8 +256,7 @@ void Game::Update() {
                 EditorManager::GetInstance()->SetSelectedObject(ghostDirector_.get());
                 showDebugWindows_ = true;
             }
-            ImGui::Separator();
-            ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
+         
 
             ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
