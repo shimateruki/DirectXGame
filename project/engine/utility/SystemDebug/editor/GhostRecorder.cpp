@@ -285,9 +285,6 @@ Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) 
 // ==========================================================================
 // DrawPreview (パスとイベントの可視化機能)
 // ==========================================================================
-// ==========================================================================
-// DrawPreview (パスとイベントの可視化機能)
-// ==========================================================================
 void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
 #ifdef USE_IMGUI
     if (!isShowPreview_ || !target_) return;
@@ -484,13 +481,85 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         }
     }
 
-    // ★ 修正2：Gizmoに触れていない時だけ、クリック結果(選択/解除)を反映する！
     if (isMouseClicked && !isGizmoHovered) {
-        selectedPinType_ = hitType;
-        selectedWaypointIndex_ = hitIndex;
+        if (hitType != SelectedPinType::None) {
+            // ピン(Start, End, P1など)をクリックした場合は「選択」する
+            selectedPinType_ = hitType;
+            selectedWaypointIndex_ = hitIndex;
+
+            if (hitType == SelectedPinType::Start) DebugConsole::GetInstance()->AddLog("Select: START");
+            else if (hitType == SelectedPinType::End) DebugConsole::GetInstance()->AddLog("Select: END");
+            else if (hitType == SelectedPinType::Waypoint) DebugConsole::GetInstance()->AddLog("Select: P" + std::to_string(hitIndex + 1));
+
+        } else {
+            // ★追加：何もない空間をクリックし、かつ「Ctrlキー」を押していたら「ポイント追加」！
+            if (ImGui::GetIO().KeyCtrl) {
+                // 1. 2D画面の座標から、3D空間への逆変換(Rayの作成)
+                auto ScreenToWorld = [&](const ImVec2& sPos, float zClip) -> Vector3 {
+                    Matrix4x4 invVP = Math::Inverse(viewProjection);
+                    float ndcX = ((sPos.x - offset.x) / size.x) * 2.0f - 1.0f;
+                    float ndcY = 1.0f - ((sPos.y - offset.y) / size.y) * 2.0f; // Y軸反転
+                    Vector3 ndcPos = { ndcX, ndcY, zClip };
+                    return Math::Transform(ndcPos, invVP);
+                    };
+
+                Vector3 rayOrigin = ScreenToWorld(mousePos, 0.0f); // 手前
+                Vector3 rayEnd = ScreenToWorld(mousePos, 1.0f);    // 奥
+                Vector3 rayDir = Math::Normalize({ rayEnd.x - rayOrigin.x, rayEnd.y - rayOrigin.y, rayEnd.z - rayOrigin.z });
+
+                // 2. ポイントを打つ「基準の高さ(Y座標)」を計算
+                Vector3 currentBase = target_->GetTranslate();
+                if (anchor_) {
+                    currentBase = {
+                        anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
+                        anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
+                        anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
+                    };
+                }
+                float planeHeight = currentBase.y;
+
+                // 3. レイと見えない床（planeHeight）との交点を計算
+                if (std::abs(rayDir.y) > 0.0001f) {
+                    float hitT = (planeHeight - rayOrigin.y) / rayDir.y;
+                    if (hitT > 0.0f) {
+                        // 交点（ワールド座標）
+                        Vector3 hitPos = { rayOrigin.x + rayDir.x * hitT, planeHeight, rayOrigin.z + rayDir.z * hitT };
+
+                        // 4. ワールド座標からオフセットを引いて、「相対/絶対に対応したローカル座標」に戻す
+                        Vector3 localPos = { hitPos.x - drawOffset.x, hitPos.y - drawOffset.y, hitPos.z - drawOffset.z };
+
+                        // 5. 新しいWaypointを生成して配列の最後に追加！
+                        GenerationParams::Waypoint wp;
+                        wp.pos = localPos;
+                        // 回転は「一つ前のポイント」を引き継ぐと滑らかになる
+                        wp.rot = genParams_.waypoints.empty() ? genParams_.startRot : genParams_.waypoints.back().rot;
+                        wp.scale = target_->GetScale();
+                        wp.eventID = 0;
+                        wp.waitTime = 0.0f;
+                        wp.durationToNext = 1.0f;
+                        wp.easingToNext = 0;
+
+                        genParams_.waypoints.push_back(wp);
+
+                        // 6. 打った瞬間に「選択状態」にする（すぐにGizmoで高さを微調整できるようにするため）
+                        selectedPinType_ = SelectedPinType::Waypoint;
+                        selectedWaypointIndex_ = static_cast<int>(genParams_.waypoints.size()) - 1;
+                        DebugConsole::GetInstance()->AddLog("Waypoint Added by Ctrl+Click!");
+                    }
+                }
+            } else {
+                // Ctrlを押していなければ、ただの選択解除
+                selectedPinType_ = SelectedPinType::None;
+                selectedWaypointIndex_ = -1;
+                DebugConsole::GetInstance()->AddLog("Select: NONE (Deselected)");
+            }
+        }
     }
 #endif
-}// ==========================================================================
+}
+
+
+// ==========================================================================
 // DrawImGui (UI部分)
 // ==========================================================================
 
