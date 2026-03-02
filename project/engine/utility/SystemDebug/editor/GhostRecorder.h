@@ -124,4 +124,12 @@ private:
     Object3d* anchor_ = nullptr;
     std::string anchorName_ = "";
     void FindAnchor(); // ロード後に名前から実体を結びつける関数
+    enum class SelectedPinType {
+        None,
+        Start,
+        Waypoint,
+        End
+    };
+    SelectedPinType selectedPinType_ = SelectedPinType::None;
+    int selectedWaypointIndex_ = -1; // Waypointの場合の何番目か
 };

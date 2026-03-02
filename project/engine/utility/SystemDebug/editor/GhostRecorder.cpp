@@ -12,6 +12,7 @@
 #include <CameraEditor.h>
 #include <DebugConsole.h>
 #include"Easing.h"
+#include "ImGuizmo.h"
 
 using json = nlohmann::json;
 float ApplyEasing(int type, float t) {
@@ -284,6 +285,9 @@ Vector3 GhostRecorder::TransformCoord(const Vector3& vec, const Matrix4x4& mat) 
 // ==========================================================================
 // DrawPreview (パスとイベントの可視化機能)
 // ==========================================================================
+// ==========================================================================
+// DrawPreview (パスとイベントの可視化機能)
+// ==========================================================================
 void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
 #ifdef USE_IMGUI
     if (!isShowPreview_ || !target_) return;
@@ -310,83 +314,100 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         return res;
         };
 
-    // --- 2. 描画位置のオフセット(基準点)計算 ---
+    // --- 2. 描画位置のオフセット計算 ---
     Vector3 drawOffset = { 0, 0, 0 };
     Vector3 drawRotOffset = { 0, 0, 0 };
 
-    // =======================================================
-    // ★大修正：isRelative_ ではなく、UIのチェックボックス状態を直接見る！
-    // =======================================================
     if (genParams_.generateRelative && target_) {
         FindAnchor();
-
         if (state_ == State::Playing || isScrubbing_) {
-            // 再生中・シーク中はロックされた基準位置に追従
-            drawOffset = {
-                basePosition_.x - genParams_.startPos.x,
-                basePosition_.y - genParams_.startPos.y,
-                basePosition_.z - genParams_.startPos.z
-            };
-            drawRotOffset = {
-                baseRotation_.x - genParams_.startRot.x,
-                baseRotation_.y - genParams_.startRot.y,
-                baseRotation_.z - genParams_.startRot.z
-            };
+            drawOffset = { basePosition_.x - genParams_.startPos.x, basePosition_.y - genParams_.startPos.y, basePosition_.z - genParams_.startPos.z };
+            drawRotOffset = { baseRotation_.x - genParams_.startRot.x, baseRotation_.y - genParams_.startRot.y, baseRotation_.z - genParams_.startRot.z };
         } else {
-            Vector3 currentBase;
-            Vector3 currentBaseRot;
-
-            if (anchor_) {
-                // アンカーがいる場合は、アンカーの現在地＋オフセットを基準にする
-                currentBase = {
-                    anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
-                    anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
-                    anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
-                };
-                currentBaseRot = {
-                    anchor_->GetRotation().x + genParams_.anchorOffsetRot.x,
-                    anchor_->GetRotation().y + genParams_.anchorOffsetRot.y,
-                    anchor_->GetRotation().z + genParams_.anchorOffsetRot.z
-                };
-            } else {
-                // アンカーがいない場合は、ターゲット自身の現在地を基準にする
-                currentBase = target_->GetTranslate();
-                currentBaseRot = target_->GetRotation();
-            }
-
-            drawOffset = {
-                currentBase.x - genParams_.startPos.x,
-                currentBase.y - genParams_.startPos.y,
-                currentBase.z - genParams_.startPos.z
-            };
-            drawRotOffset = {
-                currentBaseRot.x - genParams_.startRot.x,
-                currentBaseRot.y - genParams_.startRot.y,
-                currentBaseRot.z - genParams_.startRot.z
-            };
+            Vector3 currentBase = anchor_ ? Vector3{ anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x, anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y, anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z } : target_->GetTranslate();
+            Vector3 currentBaseRot = anchor_ ? Vector3{ anchor_->GetRotation().x + genParams_.anchorOffsetRot.x, anchor_->GetRotation().y + genParams_.anchorOffsetRot.y, anchor_->GetRotation().z + genParams_.anchorOffsetRot.z } : target_->GetRotation();
+            drawOffset = { currentBase.x - genParams_.startPos.x, currentBase.y - genParams_.startPos.y, currentBase.z - genParams_.startPos.z };
+            drawRotOffset = { currentBaseRot.x - genParams_.startRot.x, currentBaseRot.y - genParams_.startRot.y, currentBaseRot.z - genParams_.startRot.z };
         }
     }
 
-    auto applyOffset = [&](const Vector3& p) {
-        return Vector3{ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z };
-        };
-    auto applyRotOffset = [&](const Vector3& r) {
-        return Vector3{ r.x + drawRotOffset.x, r.y + drawRotOffset.y, r.z + drawRotOffset.z };
-        };
+    auto applyOffset = [&](const Vector3& p) { return Vector3{ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z }; };
+    auto applyRotOffset = [&](const Vector3& r) { return Vector3{ r.x + drawRotOffset.x, r.y + drawRotOffset.y, r.z + drawRotOffset.z }; };
+
+    // ========================================================
+    // ★ 修正1：ピン判定の前に、先にGizmoを描画して入力を奪う！
+    // ========================================================
+    bool isGizmoHovered = false;
+
+    if (selectedPinType_ != SelectedPinType::None) {
+        Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+        if (cam) {
+            // ★ 本体Gizmoとの競合を防ぐため、専用のID(12345)を割り当てる！
+            ImGui::PushID("GhostRecorderGizmo");
+
+            // ★ 引数なしのSetDrawlistを呼ぶことで、GameViewウィンドウ内に正しく属させ、マウス入力を復活させる！
+            ImGuizmo::SetDrawlist();
+            ImGuizmo::SetRect(offset.x, offset.y, size.x, size.y);
+
+            Matrix4x4 view = cam->GetViewMatrix();
+            Matrix4x4 proj = cam->GetProjectionMatrix();
+
+            Vector3* targetPos = nullptr;
+            Vector3* targetRot = nullptr;
+
+            if (selectedPinType_ == SelectedPinType::Start) { targetPos = &genParams_.startPos; targetRot = &genParams_.startRot; } else if (selectedPinType_ == SelectedPinType::End) { targetPos = &genParams_.endPos; targetRot = &genParams_.endRot; } else if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ >= 0 && selectedWaypointIndex_ < genParams_.waypoints.size()) {
+                targetPos = &genParams_.waypoints[selectedWaypointIndex_].pos;
+                targetRot = &genParams_.waypoints[selectedWaypointIndex_].rot;
+            }
+
+            if (targetPos && targetRot) {
+                Vector3 worldPos = { targetPos->x + drawOffset.x, targetPos->y + drawOffset.y, targetPos->z + drawOffset.z };
+                Vector3 worldRot = { targetRot->x + drawRotOffset.x, targetRot->y + drawRotOffset.y, targetRot->z + drawRotOffset.z };
+
+                Matrix4x4 matTrans = Math::MakeTranslateMatrix(worldPos);
+                Matrix4x4 matRot = Math::MakeRotateMatrix(worldRot);
+                Matrix4x4 worldMat = Math::Multiply(matRot, matTrans);
+
+                static ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+                if (!ImGui::GetIO().WantTextInput) {
+                    if (ImGui::IsKeyPressed(ImGuiKey_W)) op = ImGuizmo::TRANSLATE;
+                    if (ImGui::IsKeyPressed(ImGuiKey_E)) op = ImGuizmo::ROTATE;
+                }
+
+                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], op, ImGuizmo::WORLD, &worldMat.m[0][0], nullptr, nullptr);
+
+                // ★ Gizmoの上にマウスがあるか、操作中の場合はフラグを立てる
+                if (ImGuizmo::IsOver() || ImGuizmo::IsUsing()) {
+                    isGizmoHovered = true;
+                }
+
+                if (ImGuizmo::IsUsing()) {
+                    Vector3 newTrans, newRotDeg, newScale;
+                    ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &newTrans.x, &newRotDeg.x, &newScale.x);
+
+                    targetPos->x = newTrans.x - drawOffset.x;
+                    targetPos->y = newTrans.y - drawOffset.y;
+                    targetPos->z = newTrans.z - drawOffset.z;
+
+                    float radX = newRotDeg.x * (3.14159265f / 180.0f);
+                    float radY = newRotDeg.y * (3.14159265f / 180.0f);
+                    float radZ = newRotDeg.z * (3.14159265f / 180.0f);
+
+                    targetRot->x = radX - drawRotOffset.x;
+                    targetRot->y = radY - drawRotOffset.y;
+                    targetRot->z = radZ - drawRotOffset.z;
+                }
+            }
+            ImGui::PopID();
+        }
+    }
 
     // --- 3. パスを構成する全頂点のリストを作成 ---
     std::vector<Vector3> allPos;
     std::vector<Vector3> allRot;
-
-    allPos.push_back(applyOffset(genParams_.startPos));
-    allRot.push_back(applyRotOffset(genParams_.startRot));
-    for (const auto& wp : genParams_.waypoints) {
-        allPos.push_back(applyOffset(wp.pos));
-        allRot.push_back(applyRotOffset(wp.rot));
-    }
-    allPos.push_back(applyOffset(genParams_.endPos));
-    allRot.push_back(applyRotOffset(genParams_.endRot));
-
+    allPos.push_back(applyOffset(genParams_.startPos)); allRot.push_back(applyRotOffset(genParams_.startRot));
+    for (const auto& wp : genParams_.waypoints) { allPos.push_back(applyOffset(wp.pos)); allRot.push_back(applyRotOffset(wp.rot)); }
+    allPos.push_back(applyOffset(genParams_.endPos)); allRot.push_back(applyRotOffset(genParams_.endRot));
     if (allPos.size() < 2) return;
 
     // --- 4. パスの軌跡(ライン)を描画 ---
@@ -394,19 +415,9 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     ImVec2 prevScreenPos = WorldToScreen(LocalToWorld(allPos[0]));
     for (int i = 1; i <= samples; ++i) {
         float t = (float)i / (float)samples;
-        Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) :
-            [&]() {
-            float p = t * (allPos.size() - 1);
-            int idx = (int)p;
-            float lt = p - idx;
-            if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
-            return Lerp(allPos[idx], allPos[idx + 1], lt);
-            }();
-
+        Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
         ImVec2 screenPos = WorldToScreen(LocalToWorld(currentPos));
-        if (screenPos.x > -5000.0f && prevScreenPos.x > -5000.0f) {
-            drawList->AddLine(prevScreenPos, screenPos, IM_COL32(255, 255, 255, 100), 1.5f);
-        }
+        if (screenPos.x > -5000.0f && prevScreenPos.x > -5000.0f) drawList->AddLine(prevScreenPos, screenPos, IM_COL32(255, 255, 255, 100), 1.5f);
         prevScreenPos = screenPos;
     }
 
@@ -414,107 +425,72 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
     const int arrowSteps = 10;
     for (int i = 0; i <= arrowSteps; ++i) {
         float t = (float)i / (float)arrowSteps;
-
-        Vector3 pos, rot;
-        float p = t * (allPos.size() - 1);
-        int idx = (int)p;
-        float lt = p - idx;
-        if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
-
-        pos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : Lerp(allPos[idx], allPos[idx + 1], lt);
-        rot = Lerp(allRot[idx], allRot[idx + 1], lt);
-
+        float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
+        Vector3 pos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : Lerp(allPos[idx], allPos[idx + 1], lt);
+        Vector3 rot = Lerp(allRot[idx], allRot[idx + 1], lt);
         ImVec2 baseScr = WorldToScreen(LocalToWorld(pos));
         if (baseScr.x < -5000.0f) continue;
-
         float cosX = cosf(rot.x);
         Vector3 forward = { cosX * sinf(rot.y), -sinf(rot.x), cosX * cosf(rot.y) };
         Vector3 lookTarget = { pos.x + forward.x * 3.0f, pos.y + forward.y * 3.0f, pos.z + forward.z * 3.0f };
         ImVec2 lookScr = WorldToScreen(LocalToWorld(lookTarget));
-
-        if (lookScr.x > -5000.0f) {
-            drawList->AddLine(baseScr, lookScr, IM_COL32(0, 255, 255, 200), 2.0f);
-            drawList->AddCircleFilled(lookScr, 2.0f, IM_COL32(0, 255, 255, 255));
-        }
-
-        if (i < arrowSteps) {
-            float nextT = t + 0.02f;
-            Vector3 nPos = genParams_.useSpline ? GetSplinePoint(allPos, nextT, false) : Lerp(allPos[idx], allPos[idx + 1], lt + 0.02f);
-            ImVec2 nScr = WorldToScreen(LocalToWorld(nPos));
-            if (nScr.x > -5000.0f) {
-                float dx = nScr.x - baseScr.x, dy = nScr.y - baseScr.y;
-                float len = sqrtf(dx * dx + dy * dy);
-                if (len > 0.1f) {
-                    dx /= len; dy /= len;
-                    float sz = 8.0f;
-                    drawList->AddTriangleFilled(
-                        ImVec2(baseScr.x + dx * sz, baseScr.y + dy * sz),
-                        ImVec2(baseScr.x - dy * sz * 0.4f, baseScr.y + dx * sz * 0.4f),
-                        ImVec2(baseScr.x + dy * sz * 0.4f, baseScr.y - dx * sz * 0.4f),
-                        IM_COL32(255, 255, 0, 180)
-                    );
-                }
-            }
-        }
+        if (lookScr.x > -5000.0f) { drawList->AddLine(baseScr, lookScr, IM_COL32(0, 255, 255, 200), 2.0f); drawList->AddCircleFilled(lookScr, 2.0f, IM_COL32(0, 255, 255, 255)); }
     }
 
     // --- 6. アニメーションして流れる光点の描画 ---
     for (int i = 0; i < 5; ++i) {
         float t = fmodf(time * 0.4f + (float)i / 5.0f, 1.0f);
-        Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) :
-            [&]() {
-            float p = t * (allPos.size() - 1);
-            int idx = (int)p;
-            float lt = p - idx;
-            if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
-            return Lerp(allPos[idx], allPos[idx + 1], lt);
-            }();
+        Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
         ImVec2 pScr = WorldToScreen(LocalToWorld(pPos));
         if (pScr.x > -5000.0f) drawList->AddCircleFilled(pScr, 3.0f, IM_COL32(255, 255, 0, 200));
     }
 
-    // --- 7. 各ノード(Start/End/Waypoints)とイベントIDの描画 ---
+    // --- 7. ピンのクリック判定と描画 ---
+    ImVec2 mousePos = ImGui::GetMousePos();
+    bool isHoveredGameView = (mousePos.x >= offset.x && mousePos.x <= offset.x + size.x && mousePos.y >= offset.y && mousePos.y <= offset.y + size.y);
+    bool isMouseClicked = ImGui::IsMouseClicked(0) && isHoveredGameView;
+
+    float minHitDist = 15.0f;
+    SelectedPinType hitType = SelectedPinType::None;
+    int hitIndex = -1;
+
+    auto CheckClick = [&](ImVec2 pos, SelectedPinType type, int index) {
+        if (!isMouseClicked) return;
+        float dx = mousePos.x - pos.x; float dy = mousePos.y - pos.y;
+        float dist = sqrtf(dx * dx + dy * dy);
+        if (dist < minHitDist) { minHitDist = dist; hitType = type; hitIndex = index; }
+        };
+
     ImVec2 startScr = WorldToScreen(LocalToWorld(allPos[0]));
     if (startScr.x > -5000.0f) {
+        if (selectedPinType_ == SelectedPinType::Start) drawList->AddCircle(startScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
         drawList->AddCircleFilled(startScr, 6.0f, IM_COL32(0, 255, 0, 255));
-        std::string startText = "[START]";
-        if (genParams_.startEventID != 0) {
-            startText += "  [Event: " + std::to_string(genParams_.startEventID) + "]";
-            drawList->AddText(ImVec2(startScr.x + 10, startScr.y - 15), IM_COL32(255, 100, 100, 255), startText.c_str());
-        } else {
-            drawList->AddText(ImVec2(startScr.x + 10, startScr.y - 15), IM_COL32(0, 255, 0, 255), startText.c_str());
-        }
+        CheckClick(startScr, SelectedPinType::Start, -1);
     }
 
     ImVec2 endScr = WorldToScreen(LocalToWorld(allPos.back()));
     if (endScr.x > -5000.0f) {
+        if (selectedPinType_ == SelectedPinType::End) drawList->AddCircle(endScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
         drawList->AddCircleFilled(endScr, 6.0f, IM_COL32(100, 100, 255, 255));
-        std::string endText = "[END]";
-        if (genParams_.endEventID != 0) {
-            endText += "  [Event: " + std::to_string(genParams_.endEventID) + "]";
-            drawList->AddText(ImVec2(endScr.x + 10, endScr.y - 15), IM_COL32(255, 100, 100, 255), endText.c_str());
-        } else {
-            drawList->AddText(ImVec2(endScr.x + 10, endScr.y - 15), IM_COL32(100, 100, 255, 255), endText.c_str());
-        }
+        CheckClick(endScr, SelectedPinType::End, -1);
     }
 
     for (int i = 0; i < (int)genParams_.waypoints.size(); ++i) {
         ImVec2 wpScr = WorldToScreen(LocalToWorld(allPos[i + 1]));
         if (wpScr.x > -5000.0f) {
-            std::string wpText = "P" + std::to_string(i + 1);
-            if (genParams_.waypoints[i].eventID != 0) {
-                drawList->AddCircleFilled(wpScr, 6.0f, IM_COL32(255, 165, 0, 255));
-                wpText += "  [Event: " + std::to_string(genParams_.waypoints[i].eventID) + "]";
-                drawList->AddText(ImVec2(wpScr.x + 8, wpScr.y - 12), IM_COL32(255, 165, 0, 255), wpText.c_str());
-            } else {
-                drawList->AddCircleFilled(wpScr, 4.0f, IM_COL32(255, 255, 0, 255));
-                drawList->AddText(ImVec2(wpScr.x + 8, wpScr.y - 12), IM_COL32(255, 255, 0, 255), wpText.c_str());
-            }
+            if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ == i) drawList->AddCircle(wpScr, 10.0f, IM_COL32(255, 255, 255, 255), 0, 2.0f);
+            drawList->AddCircleFilled(wpScr, 6.0f, IM_COL32(255, 165, 0, 255));
+            CheckClick(wpScr, SelectedPinType::Waypoint, i);
         }
     }
+
+    // ★ 修正2：Gizmoに触れていない時だけ、クリック結果(選択/解除)を反映する！
+    if (isMouseClicked && !isGizmoHovered) {
+        selectedPinType_ = hitType;
+        selectedWaypointIndex_ = hitIndex;
+    }
 #endif
-}
-// ==========================================================================
+}// ==========================================================================
 // DrawImGui (UI部分)
 // ==========================================================================
 
