@@ -2,6 +2,9 @@
 #include <imgui.h>
 
 void EditorManager::DrawInspector() {
+#ifdef USE_IMGUI
+
+
     // 右パネルの "Inspector" という1つの箱だけを描画する
     ImGui::Begin("Inspector");
 
@@ -19,4 +22,6 @@ void EditorManager::DrawInspector() {
     }
 
     ImGui::End();
+#endif // USE_IMGUI
+
 }

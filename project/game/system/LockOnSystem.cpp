@@ -27,7 +27,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
     if (!inputManager_ || !camera || !player) return;
 
     // (1) Zキー入力処理
-    if (inputManager_->IsKeyTriggered(DIK_Z)) {
+    if (inputManager_->IsKeyTriggered(DIK_0)) {
         isLockingOn_ = !isLockingOn_;
 
         if (isLockingOn_) {

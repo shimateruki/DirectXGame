@@ -15,16 +15,42 @@ void GhostDirector::Initialize(SceneManager* sceneManager) {
     sceneManager_ = sceneManager;
     tracks_.clear();
     isPlaying_ = false;
+    playTimer_ = 0.0f;
 }
 
 void GhostDirector::Update() {
-    // 実際の移動処理は各オブジェクトの GhostRecorder::Update() が行うので、
-    // ディレクター側は現状毎フレーム何もしなくても大丈夫です。
+    // ※エディタ上でUpdateが呼ばれない可能性があるため、
+    // 実際のタイマー進行は確実に呼ばれる DrawImGui() 側で行います！
 }
 
 void GhostDirector::DrawImGui() {
 #ifdef USE_IMGUI
-  
+
+    // =======================================================
+    // ★大修正：確実に毎フレーム呼ばれるここでタイマーを進めてPlayする！
+    // =======================================================
+    if (isPlaying_) {
+        // ImGuiの機能を使って正確なDeltaTime(フレーム間の経過時間)を足す
+        playTimer_ += ImGui::GetIO().DeltaTime;
+
+        for (auto& track : tracks_) {
+            // 出番が来たらPlay！
+            if (!track.hasStarted && playTimer_ >= track.delayTime) {
+                if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
+                    bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
+
+                    // ★修正：ターゲット本体が持っている Relative / Loop フラグをそのまま使う！
+                    track.target->recorder_->Play(
+                        track.pathFileName,
+                        track.target->isRecordLoop_,
+                        track.target->isRecordRelative_,
+                        isCinematic
+                    );
+                }
+                track.hasStarted = true; // スタート済み
+            }
+        }
+    }
 
     // 1. シナリオファイル管理
     if (ImGui::CollapsingHeader("シナリオファイル管理", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -53,7 +79,7 @@ void GhostDirector::DrawImGui() {
 
     ImGui::Separator();
 
-    // 2. タイムライン(トラック)管理
+    // 2. トラック管理
     if (ImGui::CollapsingHeader("トラック管理 (配役表)", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (ImGui::Button("+ トラックを追加")) {
             tracks_.push_back(Track());
@@ -63,8 +89,8 @@ void GhostDirector::DrawImGui() {
 
         for (int i = 0; i < static_cast<int>(tracks_.size()); ++i) {
             ImGui::PushID(i);
-            ImGui::Text("Track %d", i + 1);
-            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Track %d", i + 1);
+            ImGui::SameLine(ImGui::GetWindowWidth() - 50);
             if (ImGui::Button("Del")) {
                 tracks_.erase(tracks_.begin() + i);
                 ImGui::PopID();
@@ -73,7 +99,6 @@ void GhostDirector::DrawImGui() {
 
             auto& track = tracks_[i];
 
-            // --- ターゲット選択 ---
             std::string currentTargetName = track.target ? track.target->GetName() : track.targetName.empty() ? "(未選択)" : track.targetName + " (見つかりません)";
             if (ImGui::BeginCombo("Target", currentTargetName.c_str())) {
                 if (sceneManager_ && sceneManager_->GetCurrentScene()) {
@@ -89,7 +114,6 @@ void GhostDirector::DrawImGui() {
                 ImGui::EndCombo();
             }
 
-            // --- パスデータ選択 ---
             std::string currentPath = track.pathFileName.empty() ? "(未選択)" : track.pathFileName;
             if (ImGui::BeginCombo("Path Data", currentPath.c_str())) {
                 std::string animDirPath = "Resources/json/animation/";
@@ -100,10 +124,6 @@ void GhostDirector::DrawImGui() {
                             bool isSelected = (track.pathFileName == fileName);
                             if (ImGui::Selectable(fileName.c_str(), isSelected)) {
                                 track.pathFileName = fileName;
-
-                                // =======================================================
-                                // ★追加：選んだ瞬間にレコーダーに読み込ませてシーク可能にする
-                                // =======================================================
                                 if (track.target && track.target->recorder_) {
                                     track.target->recorder_->Load(fileName);
                                 }
@@ -115,8 +135,9 @@ void GhostDirector::DrawImGui() {
                 ImGui::EndCombo();
             }
 
-            ImGui::SameLine();
-            ImGui::Checkbox("ループ", &track.isLoop);
+            ImGui::SliderFloat("開始ディレイ (秒)", &track.delayTime, 0.0f, 10.0f, "%.2f sec");
+
+            // ★修正: Director側の Relative/Loop のチェックボックスは削除しました！
 
             ImGui::Separator();
             ImGui::PopID();
@@ -124,87 +145,70 @@ void GhostDirector::DrawImGui() {
     }
 
     ImGui::Separator();
-    // =======================================================
-        // ★タイムライン (シークバー) 操作UI
-        // =======================================================
+
+    // 3. タイムライン操作 (Timeline Scrub)
     if (ImGui::CollapsingHeader("タイムライン操作 (Timeline Scrub)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // 一番長いトラックの時間を計算する
-        int maxFrames = 0;
+        float maxTime = 0.0f;
         for (const auto& track : tracks_) {
             if (track.target && track.target->recorder_) {
-                maxFrames = std::max(maxFrames, track.target->recorder_->GetTotalFrames());
+                float duration = track.target->recorder_->GetTotalFrames() / 60.0f;
+                maxTime = std::max(maxTime, track.delayTime + duration);
             }
         }
-        float maxTime = maxFrames / 60.0f;
 
         ImGui::Text("全体の長さ: %.2f sec", maxTime);
 
-        // =======================================================
-        // ★大修正：処理の順番を「記憶 → 動かす → 戻す」に正しく直す！
-        // =======================================================
-
-        // シークバーの描画（ここではまだ動かさない。値が変わったかどうかのフラグだけ取る）
         bool isScrubbingChanged = ImGui::SliderFloat("シークバー", &currentScrubTime_, 0.0f, maxTime, "%.2f sec");
-
-        // ① まず、掴んだ瞬間の処理（移動よりも絶対に先に行う！）
+        if (!isPlaying_ && !ImGui::IsItemActive()) {
+            for (auto& track : tracks_) { if (track.target && track.target->recorder_) track.target->recorder_->CaptureBasePose(); }
+        }
         if (ImGui::IsItemActivated()) {
             for (auto& track : tracks_) {
-                if (track.target && track.target->recorder_) {
-                    track.target->recorder_->CaptureBasePose(); // 現在地を安全にロック
-                }
+                if (track.target && track.target->recorder_) track.target->recorder_->CaptureBasePose();
             }
         }
 
-        // ② 次に、スライダーが動いた時の処理（安全に記憶されたbasePositionを使える）
         if (isScrubbingChanged) {
             for (auto& track : tracks_) {
                 if (track.target && track.target->recorder_) {
-                    track.target->recorder_->EvaluateAtFrame(static_cast<int>(currentScrubTime_ * 60.0f));
+                    float localTime = currentScrubTime_ - track.delayTime;
+                    if (localTime < 0.0f) localTime = 0.0f;
+                    track.target->recorder_->EvaluateAtFrame(static_cast<int>(localTime * 60.0f));
                 }
             }
         }
 
-        // ③ 最後に、離した瞬間の処理
         if (ImGui::IsItemDeactivated()) {
             for (auto& track : tracks_) {
-                if (track.target && track.target->recorder_) {
-                    track.target->recorder_->RestoreBasePose(); // 元の位置にシュッと戻す
-                }
+                if (track.target && track.target->recorder_) track.target->recorder_->RestoreBasePose();
             }
         }
-        // =======================================================
 
         ImGui::SameLine();
-        // ★修正：強制移動させると原点バグが起きるため、時間だけをリセットするように変更
         if (ImGui::Button("先頭に戻す (Rewind)")) {
             currentScrubTime_ = 0.0f;
         }
     }
     ImGui::Separator();
 
-    // 3. 一斉再生コントロール
-    if (isPlaying_) {
-        ImGui::TextColored(ImVec4(0, 1, 0, 1), "▶ シナリオ再生中...");
-    } else {
-        ImGui::TextColored(ImVec4(1, 1, 1, 1), "■ 待機中");
-    }
+    // 4. 一斉再生コントロール
+    if (isPlaying_) ImGui::TextColored(ImVec4(0, 1, 0, 1), "▶ シナリオ再生中... (%.2f sec)", playTimer_);
+    else ImGui::TextColored(ImVec4(1, 1, 1, 1), "■ 待機中");
 
-    if (ImGui::Button("▶ 全体再生 (Play Scenario)", ImVec2(-1, 40))) {
-        PlayScenario();
-    }
-    if (ImGui::Button("■ 停止 (Stop Scenario)", ImVec2(-1, 30))) {
-        StopScenario();
-    }
+    if (ImGui::Button("▶ 全体再生 (Play Scenario)", ImVec2(-1, 40))) PlayScenario();
+    if (ImGui::Button("■ 停止 (Stop Scenario)", ImVec2(-1, 30))) StopScenario();
 
-   
 #endif
 }
+
 void GhostDirector::PlayScenario() {
     DebugConsole::GetInstance()->AddLog("GhostDirector: PlayScenario [" + std::string(scenarioNameBuf_) + "]");
     isPlaying_ = true;
+    playTimer_ = 0.0f;
 
     for (auto& track : tracks_) {
-        // 名前だけあってポインタがnullの場合、シーンから探し直す (ロード直後対策)
+        track.hasStarted = false;
+
         if (!track.target && !track.targetName.empty() && sceneManager_ && sceneManager_->GetCurrentScene()) {
             for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
                 if (obj->GetName() == track.targetName) {
@@ -214,19 +218,19 @@ void GhostDirector::PlayScenario() {
             }
         }
 
-        // 役者と台本が揃っていたら一斉にPlay！
+        // ここではまだPlayを呼ばず、「0フレーム目の待機ポーズ」をとらせる！
         if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
-            bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
-            track.target->recorder_->Play(track.pathFileName, track.isLoop, track.isRelative, isCinematic);
-        } else {
-            DebugConsole::GetInstance()->AddLog(" -> Warning: Track のターゲットまたはパスが不正です。Target: " + track.targetName);
+            track.target->recorder_->Load(track.pathFileName);
+            track.target->recorder_->EvaluateAtFrame(0);
         }
     }
 }
 
 void GhostDirector::StopScenario() {
     isPlaying_ = false;
+    playTimer_ = 0.0f;
     for (auto& track : tracks_) {
+        track.hasStarted = false;
         if (track.target && track.target->recorder_) {
             track.target->recorder_->Stop();
         }
@@ -241,8 +245,8 @@ void GhostDirector::SaveScenario(const std::string& fileName) {
         json t;
         t["targetName"] = track.target ? track.target->GetName() : track.targetName;
         t["pathFileName"] = track.pathFileName;
-        t["isRelative"] = track.isRelative;
-        t["isLoop"] = track.isLoop;
+        t["delayTime"] = track.delayTime;
+        // ★修正: isRelativeとisLoopはもう保存しない
         root["tracks"].push_back(t);
     }
 
@@ -271,11 +275,9 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
             Track t;
             t.targetName = j.value("targetName", "");
             t.pathFileName = j.value("pathFileName", "");
-            t.isRelative = j.value("isRelative", true);
-            t.isLoop = j.value("isLoop", false);
+            t.delayTime = j.value("delayTime", 0.0f);
             t.target = nullptr;
 
-            // ロード時にシーン内に一致する名前があれば結びつけておく
             if (sceneManager_ && sceneManager_->GetCurrentScene() && !t.targetName.empty()) {
                 for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
                     if (obj->GetName() == t.targetName) {
@@ -290,5 +292,16 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
             tracks_.push_back(t);
         }
         DebugConsole::GetInstance()->AddLog("GhostDirector: Loaded " + path);
+    }
+}
+
+void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
+    for (auto& track : tracks_) {
+        // ターゲットが存在し、レコーダーがあり、パスデータがセットされていれば描画
+        if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
+
+            // ★第4引数に true (isReadOnly) を渡すことで、誤操作を防ぎつつ線だけを描画！
+            track.target->recorder_->DrawPreview(viewProjection, offset, size, true);
+        }
     }
 }

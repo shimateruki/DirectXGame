@@ -4,6 +4,7 @@
 #include <string>
 #include "engine/utility/math/Math.h" 
 #include "IEditable.h" 
+#include <deque>
 
 class SceneManager;
 class CameraManager;
@@ -16,6 +17,7 @@ struct GhostFrame {
     bool triggerAttack = false;
     int eventID = 0;
 };
+
 
 class GhostRecorder : public IEditable { 
 public:
@@ -71,7 +73,7 @@ public:
     std::string GetName() override { return "Ghost Recorder (Cinematic/Path)"; }
 
     // 3D空間への軌跡プレビュー描画
-    void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size);
+    void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size, bool isReadOnly = false);
 
     void SetTarget(Object3d* target) { target_ = target; }
     State GetState() const { return state_; }
@@ -88,12 +90,14 @@ public:
     void CaptureBasePose();
     void RestoreBasePose();
     void SetScrubbing(bool isScrubbing) { isScrubbing_ = isScrubbing; }
-
+    void PerformUndo();  
+    void PerformRedo(); 
 
 private:
     void StartRecording();
     void StopRecording();
     void StartPlayingInternal();
+    void SaveHistory();
 
     Vector3 Lerp(const Vector3& start, const Vector3& end, float t);
     float SmoothStep(float t);
@@ -111,6 +115,7 @@ private:
     size_t currentFrameIndex_ = 0;
     bool isLoop_ = false;
     bool isRelative_ = true;
+
 
     GenerationParams genParams_;
     bool isShowPreview_ = true;
@@ -132,4 +137,7 @@ private:
     };
     SelectedPinType selectedPinType_ = SelectedPinType::None;
     int selectedWaypointIndex_ = -1; // Waypointの場合の何番目か
+    std::deque<GenerationParams> undoStack_; //  戻る用履歴
+    std::deque<GenerationParams> redoStack_; //  やり直し用履歴
+    bool isDraggingGizmo_ = false;           //  Gizmoドラッグ判定用
 };

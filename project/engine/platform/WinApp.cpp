@@ -26,7 +26,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 void WinApp::Initialize(const wchar_t* title, int width, int height) {
     hInstance_ = GetModuleHandle(nullptr);
-	timeBeginPeriod(1);
+    timeBeginPeriod(1);
 
     WNDCLASS wc{};
     wc.lpfnWndProc = WindowProc;
@@ -38,10 +38,11 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     RECT wrc = { 0, 0, width, height };
     AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
 
+
     hwnd_ = CreateWindow(
         wc.lpszClassName,
         title,
-        WS_OVERLAPPEDWINDOW,
+        WS_OVERLAPPEDWINDOW | WS_MAXIMIZE,
         CW_USEDEFAULT, CW_USEDEFAULT,
         wrc.right - wrc.left,
         wrc.bottom - wrc.top,
@@ -49,9 +50,14 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
         hInstance_,
         nullptr);
 
-    ShowWindow(hwnd_, SW_SHOW);
-}
 
+    RECT clientRect{};
+    GetClientRect(hwnd_, &clientRect);
+    kClientWidth = clientRect.right - clientRect.left;
+    kClientHeight = clientRect.bottom - clientRect.top;
+
+    ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
+}
 bool WinApp::Update() {
     MSG msg{};
 

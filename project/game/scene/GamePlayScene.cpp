@@ -170,9 +170,6 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
-	// =======================================================
-	// ★追加: GPUパーティクルのテスト噴射！
-	// =======================================================
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
 	GPUParticleManager::GetInstance()->Emit(
 		{ 0.0f, 5.0f, 0.0f },  // 発生座標

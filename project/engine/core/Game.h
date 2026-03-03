@@ -30,6 +30,8 @@ protected:
 	void Draw() override;
 
 private:
+	void SaveAllEditors();
+private:
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
 	std::chrono::high_resolution_clock::time_point lastTime_;
 	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
