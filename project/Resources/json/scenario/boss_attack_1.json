@@ -1,0 +1,10 @@
+{
+    "tracks": [
+        {
+            "isLoop": false,
+            "isRelative": true,
+            "pathFileName": "anim_path",
+            "targetName": "Obj_0"
+        }
+    ]
+}

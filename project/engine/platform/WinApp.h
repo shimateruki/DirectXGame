@@ -4,8 +4,8 @@
 
 class WinApp {
 public:
-    static const int32_t kClientWidth = 1280;
-    static const int32_t  kClientHeight = 720;
+    inline static int32_t kClientWidth = 1280;
+    inline static int32_t kClientHeight = 720;
     // 初期化（ウィンドウを作成）
     void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
 

@@ -210,20 +210,41 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                     if (p.contains("maxCount")) param.maxCount = p["maxCount"];
                 }
 
-                // 7. Animation
+                // ==========================================
+                // ★ 7. Animation & Recorder (修正箇所)
+                // ==========================================
+                
+                // 古いフラットな形式の読み込み（後方互換性用）
                 if (objData.contains("animName")) targetObject->animName_ = objData["animName"];
                 if (objData.contains("isAnimLoop")) targetObject->isAnimLoop_ = objData["isAnimLoop"];
-                if (objData.contains("isAnimRelative")) targetObject->isAnimRelative_ = objData["isAnimRelative"];
+                if (objData.contains("isAnimRelative")) targetObject->isRecordRelative_ = objData["isAnimRelative"];
+
+                // ネストされた形式の読み込み（最新仕様: Object3d::ExportToJsonに合わせた形）
+                if (objData.contains("animation")) {
+                    const auto& anim = objData["animation"];
+                    if (anim.contains("animName")) targetObject->animName_ = anim["animName"];
+                    if (anim.contains("isAnimLoop")) targetObject->isAnimLoop_ = anim["isAnimLoop"];
+                }
+                if (objData.contains("recorder")) {
+                    const auto& rec = objData["recorder"];
+                    if (rec.contains("recordPathName")) targetObject->recordPathName_ = rec["recordPathName"];
+                    if (rec.contains("isRecordLoop")) targetObject->isRecordLoop_ = rec["isRecordLoop"];
+                    if (rec.contains("isRecordRelative")) targetObject->isRecordRelative_ = rec["isRecordRelative"];
+                }
 
                 targetObject->InitializeRecorder(nullptr);
                 bool isCinematic = (targetObject->GetClassName() == "CinematicCamera");
 
-                targetObject->recorder_->Play(
-                    targetObject->animName_,
-                    targetObject->isAnimLoop_,
-                    targetObject->isAnimRelative_,
-                    isCinematic 
-                );
+                // ★ レコーダーのパスデータ名が入っている時だけ再生をスタートする！
+                if (!targetObject->recordPathName_.empty() && targetObject->recorder_) {
+                    targetObject->recorder_->Play(
+                        targetObject->recordPathName_,
+                        targetObject->isRecordLoop_,
+                        targetObject->isRecordRelative_,
+                        isCinematic 
+                    );
+                }
+                // ==========================================
 
                 // 8. 親子関係保留
                 if (objData.contains("parentName") && objData["parentName"].is_string()) {
@@ -253,7 +274,6 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     }
     file.close();
 }
-
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) return;

@@ -1,7 +1,10 @@
 {
     "objects": [
         {
-            "animName": "Idle",
+            "animation": {
+                "animName": "Idle",
+                "isAnimLoop": false
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -31,8 +34,6 @@
             ],
             "enemyType": "",
             "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
             "materialType": 0,
             "modelName": "a.gltf",
             "myEventID": -1,
@@ -50,13 +51,18 @@
             },
             "parentName": "",
             "position": [
-                -6.262862682342529,
-                1.9831926822662354,
-                27.03957748413086
+                7.790902137756348,
+                2.0021352767944336,
+                34.17733383178711
             ],
+            "recorder": {
+                "isRecordLoop": true,
+                "isRecordRelative": false,
+                "recordPathName": "anim_path"
+            },
             "rotation": [
                 6.278290811678744e-07,
-                2.4681856632232666,
+                3.0504751205444336,
                 6.27829649602063e-07
             ],
             "scale": [
@@ -68,7 +74,10 @@
             "type": "Player"
         },
         {
-            "animName": "",
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -98,8 +107,6 @@
             ],
             "enemyType": "",
             "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
             "materialType": 0,
             "modelName": "terrain",
             "myEventID": -1,
@@ -107,188 +114,14 @@
             "parentName": "",
             "position": [
                 2.0,
-                0.0,
+                0.0021353960037231445,
                 0.0
             ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "Armature|mixamo.com|Layer0",
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
             },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "materialType": 0,
-            "modelName": "a.gltf",
-            "myEventID": -1,
-            "name": "a",
-            "parentName": "",
-            "position": [
-                2.0,
-                0.0,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Model"
-        },
-        {
-            "animName": "",
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 13,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enemyType": "Slime",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "materialType": 0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Object",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 60.0,
-                "hp": 50.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 50.0,
-                "speed": 0.10000000149011612
-            },
-            "parentName": "",
-            "position": [
-                10.0,
-                -2188.210205078125,
-                10.0
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Enemy"
-        },
-        {
-            "animName": "",
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enemyType": "",
-            "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
-            "materialType": 0,
-            "modelName": "sampleBlock.gltf",
-            "myEventID": -1,
-            "name": "Obj_0",
-            "parentName": "",
-            "position": [
-                10.609573364257813,
-                2.470632314682007,
-                17.305397033691406
-            ],
             "rotation": [
                 0.0,
                 -0.0,
@@ -303,7 +136,10 @@
             "type": "Model"
         },
         {
-            "animName": "",
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -333,8 +169,6 @@
             ],
             "enemyType": "Slime",
             "eventID": 0,
-            "isAnimLoop": true,
-            "isAnimRelative": false,
             "materialType": 0,
             "modelName": "block",
             "myEventID": -1,
@@ -353,9 +187,14 @@
             "parentName": "",
             "position": [
                 10.0,
-                -779.7135009765625,
+                -1.9978646039962769,
                 10.0
             ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
             "rotation": [
                 0.0,
                 0.0,
@@ -370,7 +209,72 @@
             "type": "Enemy"
         },
         {
-            "animName": "",
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    -1.4500000476837158
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.2999999523162842,
+                    1.2999999523162842,
+                    3.049999952316284
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "modelName": "sampleBlock.gltf",
+            "myEventID": -1,
+            "name": "Obj_0",
+            "parentName": "",
+            "position": [
+                10.609573364257813,
+                2.4698777198791504,
+                17.305397033691406
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -398,8 +302,8 @@
                 1.0,
                 1.0
             ],
+            "enemyType": "",
             "eventID": 0,
-            "isAnimLoop": true,
             "materialType": 0,
             "myEventID": -1,
             "name": "Trigger_Box",
@@ -409,6 +313,11 @@
                 4.199999809265137,
                 0.0
             ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
             "rotation": [
                 0.03490658476948738,
                 0.0,
@@ -421,6 +330,141 @@
             ],
             "targetID": -1,
             "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "modelName": "sampleBlock.gltf",
+            "myEventID": -1,
+            "name": "Obj_0_Copy0",
+            "parentName": "Obj_0",
+            "position": [
+                12.609573364257813,
+                2.470632314682007,
+                24.651630401611328
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 13,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "Slime",
+            "eventID": 0,
+            "materialType": 0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Object",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 60.0,
+                "hp": 50.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 50.0,
+                "speed": 0.10000000149011612
+            },
+            "parentName": "",
+            "position": [
+                10.0,
+                -1.9978646039962769,
+                10.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Enemy"
         }
     ]
 }

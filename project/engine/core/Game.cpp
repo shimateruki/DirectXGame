@@ -13,6 +13,7 @@
 #include <SrvManager.h>
 #include"EditorManager.h"
 #include"ModelManager.h"
+#include "GhostDirector.h"
 
 
 void Game::Initialize() {
@@ -55,6 +56,8 @@ void Game::Initialize() {
     particleEditor_->Initialize(sceneManager_.get());
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
+    ghostDirector_ = std::make_unique<GhostDirector>();
+    ghostDirector_->Initialize(sceneManager_.get());
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
@@ -81,6 +84,7 @@ void Game::Finalize() {
     spriteDebugEditor_.reset();
     debugEditor_.reset();
     ghostRecorder_.reset();
+    ghostDirector_.reset();
    DebugConsole::GetInstance()->Finalize();
 #endif
 
@@ -163,8 +167,8 @@ void Game::Update() {
             if (spriteDebugEditor_) {
                 float localX = mPos.x - imageScreenPos.x;
                 float localY = mPos.y - imageScreenPos.y;
-                float gameResW = WinApp::kClientWidth;
-                float gameResH = WinApp::kClientHeight;
+                float gameResW =float( WinApp::kClientWidth);
+                float gameResH =float( WinApp::kClientHeight);
                 Vector2 spriteLocalPos = { localX * (gameResW / displaySize.x), localY * (gameResH / displaySize.y) };
 
                 spriteDebugEditor_->Update(spriteLocalPos, isHovered);
@@ -182,7 +186,19 @@ void Game::Update() {
                     );
                 }
             }
-
+            if (ghostDirector_ && !isPlaying_) {
+                // EditorManagerでDirectorが選択されている時だけ全員のパスを描画！
+                if (EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_.get()) {
+                    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+                    if (camera) {
+                        ghostDirector_->DrawPreview(
+                            camera->GetViewProjectionMatrix(),
+                            Vector2{ imageScreenPos.x, imageScreenPos.y },
+                            Vector2{ displaySize.x, displaySize.y }
+                        );
+                    }
+                }
+            }
             // カメラのアスペクト比を画面に追従
             Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
             if (camera) {
@@ -202,7 +218,15 @@ void Game::Update() {
         if (isPlaying_) {
             if (ImGui::Button("■ 停止")) isPlaying_ = false;
         } else {
-            if (ImGui::Button("▶ 再生")) isPlaying_ = true;
+            if (ImGui::Button("▶ 再生")) {
+          
+                SaveAllEditors();
+
+         
+                sceneManager_->ChangeScene(currentSceneName_);
+
+                isPlaying_ = true;
+            }
         }
 
         if (prevIsPlaying != isPlaying_ && !isPlaying_) {
@@ -242,8 +266,17 @@ void Game::Update() {
             }
             if (ImGui::MenuItem("ゴーストレコーダー (パス生成)")) {
                 EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_.get());
+                if (debugEditor_ && debugEditor_->GetSelectedObject3D()) {
+                    ghostRecorder_->SetTarget(debugEditor_->GetSelectedObject3D());
+                }
+
                 showDebugWindows_ = true;
             }
+            if(ImGui::MenuItem("ゴーストディレクター (シナリオ管理)")) {
+                EditorManager::GetInstance()->SetSelectedObject(ghostDirector_.get());
+                showDebugWindows_ = true;
+            }
+         
 
             ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
@@ -434,4 +467,29 @@ void Game::Draw() {
 
     // FPS固定処理
     dxCommon_->UpdateFixFPS();
+}
+
+void Game::SaveAllEditors() {
+#ifdef USE_IMGUI
+    DebugConsole::GetInstance()->AddLog("--- Auto Saving All Editor Data... ---");
+
+    // ① Object3D (Scene) の保存
+    if (debugEditor_) {
+        debugEditor_->SaveScene();
+    }
+
+    // ② カメラの保存 (実装済みなら追加)
+    // CameraEditor::GetInstance()->Save();
+
+    // ③ ライティングの保存 (実装済みなら追加)
+    // LightEditor::GetInstance()->Save();
+
+    // ④ パーティクルやスプライトの保存 (実装済みなら追加)
+    // if (spriteDebugEditor_) spriteDebugEditor_->Save();
+
+    // ⑤ ゴーストディレクターのシナリオ保存
+    // (※必要であればGhostDirector側に現在開いているシナリオを保存するSaveCurrent()のような関数を作って呼ぶ)
+
+    DebugConsole::GetInstance()->AddLog("--- Save Complete! ---");
+#endif
 }

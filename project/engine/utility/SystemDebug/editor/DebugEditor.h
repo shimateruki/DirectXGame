@@ -66,6 +66,7 @@ public:
 
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
+    Object3d* GetSelectedObject3D() const { return selectedObject_; }
 private:
     void InitializePrimitiveDrawing();
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
