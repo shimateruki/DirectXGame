@@ -20,6 +20,7 @@ public:
     /// ロード済みのすべてのモデル名を取得する
     /// </summary>
     std::vector<std::string> GetLoadedModelNames() const;
+    void LoadAllModels();
 private:
     ModelManager() = default;
     ~ModelManager() = default;

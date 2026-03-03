@@ -3,6 +3,7 @@
 #include <cassert>
 #include <filesystem> 
 
+
 // 静的メンバ変数の実体定義
 ModelManager* ModelManager::instance = nullptr;
 const std::string ModelManager::kDefaultBaseDirectory = "Resources/3DModel/";
@@ -72,4 +73,37 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
         names.push_back(pair.first);
     }
     return names;
+}
+
+
+// ---------------------------------------------------------
+// ★修正版：フォルダ内を自動スキャンして一括ロード
+// ---------------------------------------------------------
+void ModelManager::LoadAllModels() {
+    if (!std::filesystem::exists(kDefaultBaseDirectory)) {
+        return; // フォルダが存在しなければ終了
+    }
+
+    // ★修正点: recursive_directory_iterator を使ってサブフォルダの中の「ファイル」まで直接探す
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(kDefaultBaseDirectory)) {
+
+        // フォルダではなく「ファイル」だった場合のみ処理する
+        if (entry.is_regular_file()) {
+            std::string ext = entry.path().extension().string();
+
+            // パターンA: .obj ファイルの場合
+            if (ext == ".obj") {
+                // これまでの書き方に合わせて、拡張子なしの名前でロード (例: "player")
+                std::string stemName = entry.path().stem().string();
+                LoadModel(stemName);
+            }
+            // パターンB: .gltf, .glb ファイルの場合
+            else if (ext == ".gltf" || ext == ".glb") {
+                // 拡張子付きの名前でロード (例: "sampleBlock.gltf")
+                std::string fileName = entry.path().filename().string();
+                LoadModel(fileName);
+            }
+            // .png や .mtl や .bin などは自動的に無視されるので安全！
+        }
+    }
 }

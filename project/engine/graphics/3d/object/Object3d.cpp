@@ -148,7 +148,9 @@ void Object3d::SetModel(Model* model) {
 }
 
 void Object3d::SetModel(const std::string& modelName) {
-    if (meshRenderer_) {
+    if (meshRenderer_ && !modelName.empty()) {
+        ModelManager::GetInstance()->LoadModel(modelName);
+
         meshRenderer_->SetModel(modelName);
     }
 }

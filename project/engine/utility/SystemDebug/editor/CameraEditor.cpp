@@ -318,7 +318,7 @@ void CameraEditor::SaveSettings() {
     std::string filePath = kDirectoryPath_ + std::string(fileNameBuffer_);
 
     json j;
-    j["mode"] = static_cast<int>(settings_.currentMode);
+    //j["mode"] = static_cast<int>(settings_.currentMode);
     j["gameFollowMode"] = static_cast<int>(settings_.gameFollowMode);
     j["distance"] = settings_.distance;
     j["height"] = settings_.height;
@@ -352,7 +352,7 @@ void CameraEditor::LoadSettings() {
     try {
         json j;
         file >> j;
-        if (j.contains("mode")) settings_.currentMode = static_cast<Mode>(j["mode"]);
+      /*  if (j.contains("mode")) settings_.currentMode = static_cast<Mode>(j["mode"]);*/
         if (j.contains("gameFollowMode")) settings_.gameFollowMode = static_cast<Camera::FollowMode>(j["gameFollowMode"]);
 
         if (j.contains("distance")) settings_.distance = j["distance"];
