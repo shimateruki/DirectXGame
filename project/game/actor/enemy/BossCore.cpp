@@ -11,19 +11,25 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
-    // =========================================================
-    // ★追加：最初の1フレーム目（すべての準備が整った瞬間）にシナリオを読む！
-    // =========================================================
-    if (isFirstFrame_) {
-        ChangeState(State::Idle); // ここで Idle にして boss_attack_1.json をロード
-        isFirstFrame_ = false;    // 二度と呼ばれないようにする
-    }
-
-    // 純粋な3Dオブジェクトとしての更新
+    // 1. 純粋な3Dオブジェクトとしての更新
     Object3d::Update(deltaTime);
 
+    // =========================================================
+    // ★ SceneManagerに今の状態を聞く！
+    // =========================================================
+    if (sceneManager_ && !sceneManager_->IsPlaying()) {
+        // 停止中（エディタ操作中）ならここで処理を終わらせる
+        return;
+    }
 
-    // 状態ごとの更新処理
+    // =========================================================
+    // 以降はプレイ中のみ実行される自律AIの処理
+    // =========================================================
+    if (isFirstFrame_) {
+        ChangeState(State::Idle);
+        isFirstFrame_ = false;
+    }
+
     switch (state_) {
     case State::Idle:   UpdateIdle(deltaTime);   break;
     case State::Attack: UpdateAttack(deltaTime); break;
@@ -34,7 +40,6 @@ void BossCore::Update(float deltaTime) {
         director_->Update(deltaTime);
     }
 }
-
 // =========================================================
 // 状態切り替えと同時に、該当するモーションのビデオテープを入れ替えて再生する関数
 // =========================================================

@@ -221,6 +221,7 @@ void Game::Update() {
         static bool prevIsPlaying = isPlaying_;
         if (isPlaying_) {
             if (ImGui::Button("■ 停止")) isPlaying_ = false;
+            if (sceneManager_) { sceneManager_->SetIsPlaying(false); }
         } else {
             if (ImGui::Button("▶ 再生")) {
           
@@ -230,6 +231,7 @@ void Game::Update() {
                 sceneManager_->ChangeScene(currentSceneName_);
 
                 isPlaying_ = true;
+                if (sceneManager_) { sceneManager_->SetIsPlaying(true); }
                 CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
             }
         }
@@ -336,7 +338,9 @@ void Game::Update() {
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     postEffect_->GetParams()->time += deltaTime;
-
+    if (sceneManager_) {
+        sceneManager_->SetIsPlaying(isPlaying_);
+    }
 }
 void Game::Draw() {
 #ifdef USE_IMGUI
