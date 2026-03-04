@@ -651,7 +651,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
 void GhostRecorder::DrawImGui() {
 #ifdef USE_IMGUI
-	Update();
+	//Update();
 	if (!ImGui::GetIO().WantTextInput) {
 		// Undo / Redo
 		if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z)) PerformUndo();

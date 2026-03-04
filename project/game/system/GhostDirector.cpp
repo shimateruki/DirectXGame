@@ -18,61 +18,33 @@ void GhostDirector::Initialize(SceneManager* sceneManager) {
     playTimer_ = 0.0f;
 }
 
-void GhostDirector::Update() {
+void GhostDirector::Update(float deltaTime) {
+    if (!isPlaying_) return;
 
-    if (isPlaying_) {
-        // フレームごとの固定時間（1/60秒）を足す
-        playTimer_ += 1.0f / 60.0f;
-
-        for (auto& track : tracks_) {
-            // 出番が来たらPlay！
-            if (!track.hasStarted && playTimer_ >= track.delayTime) {
-                if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
-                    bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
-
-                    track.target->recorder_->Play(
-                        track.pathFileName,
-                        track.target->isRecordLoop_,
-                        track.target->isRecordRelative_,
-                        isCinematic
-                    );
-                }
-                track.hasStarted = true; // スタート済み
-            }
-        }
+    // ゲーム再生中（useImguiTime_ == false）なら、ゲームの deltaTime で進める
+    // これにより、ゲーム側の停止処理（deltaTime=0）でボスも止まります
+    if (!useImguiTime_) {
+        AdvanceTime(deltaTime);
     }
 }
 
 void GhostDirector::DrawImGui() {
 #ifdef USE_IMGUI
-
     // =======================================================
-    // ★大修正：確実に毎フレーム呼ばれるここでタイマーを進めてPlayする！
+    // 1. 時間の更新（エディタ再生モード時のみ）
     // =======================================================
-    if (isPlaying_) {
-        // ImGuiの機能を使って正確なDeltaTime(フレーム間の経過時間)を足す
-        playTimer_ += ImGui::GetIO().DeltaTime;
-
-        for (auto& track : tracks_) {
-            // 出番が来たらPlay！
-            if (!track.hasStarted && playTimer_ >= track.delayTime) {
-                if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
-                    bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
-
-                    // ★修正：ターゲット本体が持っている Relative / Loop フラグをそのまま使う！
-                    track.target->recorder_->Play(
-                        track.pathFileName,
-                        track.target->isRecordLoop_,
-                        track.target->isRecordRelative_,
-                        isCinematic
-                    );
-                }
-                track.hasStarted = true; // スタート済み
-            }
-        }
+    // エディタプレビュー中（useImguiTime_ == true）なら、ここで ImGui の時間を使って進める
+    // これにより、ゲームが一時停止していてもエディタ上では再生が可能です
+    if (isPlaying_ && useImguiTime_) {
+        AdvanceTime(ImGui::GetIO().DeltaTime);
     }
 
-    // 1. シナリオファイル管理
+    // ※以前ここにあった「if (isPlaying_) { playTimer_ += ... }」という
+    //   ガードなしの生出しロジックは、二重更新の原因になるため削除しました。
+
+    // =======================================================
+    // 2. シナリオファイル管理
+    // =======================================================
     if (ImGui::CollapsingHeader("シナリオファイル管理", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string dirPath = "Resources/json/scenario/";
         if (!fs::exists(dirPath)) fs::create_directories(dirPath);
@@ -99,7 +71,9 @@ void GhostDirector::DrawImGui() {
 
     ImGui::Separator();
 
-    // 2. トラック管理
+    // =======================================================
+    // 3. トラック管理 (配役表)
+    // =======================================================
     if (ImGui::CollapsingHeader("トラック管理 (配役表)", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (ImGui::Button("+ トラックを追加")) {
             tracks_.push_back(Track());
@@ -119,6 +93,7 @@ void GhostDirector::DrawImGui() {
 
             auto& track = tracks_[i];
 
+            // ターゲットオブジェクト選択
             std::string currentTargetName = track.target ? track.target->GetName() : track.targetName.empty() ? "(未選択)" : track.targetName + " (見つかりません)";
             if (ImGui::BeginCombo("Target", currentTargetName.c_str())) {
                 if (sceneManager_ && sceneManager_->GetCurrentScene()) {
@@ -134,6 +109,7 @@ void GhostDirector::DrawImGui() {
                 ImGui::EndCombo();
             }
 
+            // 録画データ（パス）選択
             std::string currentPath = track.pathFileName.empty() ? "(未選択)" : track.pathFileName;
             if (ImGui::BeginCombo("Path Data", currentPath.c_str())) {
                 std::string animDirPath = "Resources/json/animation/";
@@ -156,9 +132,6 @@ void GhostDirector::DrawImGui() {
             }
 
             ImGui::SliderFloat("開始ディレイ (秒)", &track.delayTime, 0.0f, 10.0f, "%.2f sec");
-
-            // ★修正: Director側の Relative/Loop のチェックボックスは削除しました！
-
             ImGui::Separator();
             ImGui::PopID();
         }
@@ -166,7 +139,9 @@ void GhostDirector::DrawImGui() {
 
     ImGui::Separator();
 
-    // 3. タイムライン操作 (Timeline Scrub)
+    // =======================================================
+    // 4. タイムライン操作 (Scrub)
+    // =======================================================
     if (ImGui::CollapsingHeader("タイムライン操作 (Timeline Scrub)", ImGuiTreeNodeFlags_DefaultOpen)) {
         float maxTime = 0.0f;
         for (const auto& track : tracks_) {
@@ -179,9 +154,7 @@ void GhostDirector::DrawImGui() {
         ImGui::Text("全体の長さ: %.2f sec", maxTime);
 
         bool isScrubbingChanged = ImGui::SliderFloat("シークバー", &currentScrubTime_, 0.0f, maxTime, "%.2f sec");
-        if (!isPlaying_ && !ImGui::IsItemActive()) {
-            for (auto& track : tracks_) { if (track.target && track.target->recorder_) track.target->recorder_->CaptureBasePose(); }
-        }
+
         if (ImGui::IsItemActivated()) {
             for (auto& track : tracks_) {
                 if (track.target && track.target->recorder_) track.target->recorder_->CaptureBasePose();
@@ -207,28 +180,58 @@ void GhostDirector::DrawImGui() {
         ImGui::SameLine();
         if (ImGui::Button("先頭に戻す (Rewind)")) {
             currentScrubTime_ = 0.0f;
+            for (auto& track : tracks_) {
+                if (track.target && track.target->recorder_) track.target->recorder_->EvaluateAtFrame(0);
+            }
         }
     }
+
     ImGui::Separator();
 
-    // 4. 一斉再生コントロール
-    if (isPlaying_) ImGui::TextColored(ImVec4(0, 1, 0, 1), "▶ シナリオ再生中... (%.2f sec)", playTimer_);
-    else ImGui::TextColored(ImVec4(1, 1, 1, 1), "■ 待機中");
+    // =======================================================
+    // 5. 再生コントロール
+    // =======================================================
+    if (isPlaying_) {
+        ImGui::TextColored(ImVec4(0, 1, 0, 1), "▶ 再生中 (%sモード): %.2f sec",
+            useImguiTime_ ? "エディタ" : "ゲーム", playTimer_);
+    } else {
+        ImGui::TextColored(ImVec4(1, 1, 1, 1), "■ 待機中");
+    }
 
-    if (ImGui::Button("▶ 全体再生 (Play Scenario)", ImVec2(-1, 40))) PlayScenario();
-    if (ImGui::Button("■ 停止 (Stop Scenario)", ImVec2(-1, 30))) StopScenario();
+    static bool editorLoopCheck = false;
+    ImGui::Checkbox("Loop Playback", &editorLoopCheck);
+
+    // エディタ用：ゲームが止まっていても動く
+    if (ImGui::Button("▶ エディタでプレビュー (Editor Preview)", ImVec2(-1, 40))) {
+        PlayScenario(editorLoopCheck, true);
+    }
+
+    // ゲーム用：デルタタイムの影響を受ける（ボス等の挙動確認用）
+    if (ImGui::Button("▶ ゲーム内挙動テスト (Game Play Test)", ImVec2(-1, 30))) {
+        PlayScenario(editorLoopCheck, false);
+    }
+
+    if (ImGui::Button("■ 停止 (Stop Scenario)", ImVec2(-1, 30))) {
+        StopScenario();
+    }
 
 #endif
 }
+void GhostDirector::PlayScenario(bool isLoop, bool useImguiTime) {
+    DebugConsole::GetInstance()->AddLog("GhostDirector: PlayScenario [" + std::string(scenarioNameBuf_) +
+        "] (Loop: " + (isLoop ? "On" : "Off") + ")");
 
-void GhostDirector::PlayScenario() {
-    DebugConsole::GetInstance()->AddLog("GhostDirector: PlayScenario [" + std::string(scenarioNameBuf_) + "]");
+    // 1. 再生フラグとタイマーの初期化
     isPlaying_ = true;
     playTimer_ = 0.0f;
+    isLooping_ = isLoop;           // シナリオ全体をループさせるか
+    useImguiTime_ = useImguiTime;  // UpdateのdeltaTimeを無視してImGuiのdeltaを使うか
 
+    // 2. 全トラックの状態をリセット
     for (auto& track : tracks_) {
-        track.hasStarted = false;
+        track.hasStarted = false; // ディレイ待ち状態に戻す
 
+        // ターゲットが外れている（ロード直後など）場合は名前で再検索
         if (!track.target && !track.targetName.empty() && sceneManager_ && sceneManager_->GetCurrentScene()) {
             for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
                 if (obj->GetName() == track.targetName) {
@@ -238,9 +241,14 @@ void GhostDirector::PlayScenario() {
             }
         }
 
-        // ここではまだPlayを呼ばず、「0フレーム目の待機ポーズ」をとらせる！
+        // 3. 各オブジェクト（レコーダー）の準備
         if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
+            // 一旦停止させてからデータを最新状態にロード
+            track.target->recorder_->Stop();
             track.target->recorder_->Load(track.pathFileName);
+
+            // 再生開始前に「0フレーム目」のポーズをとらせる
+            // これにより、ディレイがあるトラックも開始地点で待機できる
             track.target->recorder_->EvaluateAtFrame(0);
         }
     }
@@ -321,6 +329,15 @@ bool GhostDirector::IsFinished() const
 
     // 全てのトラック（キューブ）の再生が終わったかチェック
     for (const auto& track : tracks_) {
+
+        // =======================================================
+        // ★ここが諸悪の根源を断つ超重要な追加ポイント！★
+        // まだ開始時間（ディレイ）が来ていないトラックがあるなら、シナリオは終わっていない！
+        // =======================================================
+        if (!track.hasStarted) {
+            return false;
+        }
+
         if (track.target && track.target->recorder_) {
             // もしどれか一つでも再生中なら、まだ終わっていない
             if (track.target->recorder_->GetState() == GhostRecorder::State::Playing) {
@@ -328,9 +345,8 @@ bool GhostDirector::IsFinished() const
             }
         }
     }
-    return true; // 全員終わった！
+    return true; // 全員が出番を迎え、かつ全再生が終わった！
 }
-
 int GhostDirector::GetActiveEventID() const
 {
     {
@@ -377,4 +393,39 @@ ActiveEvent GhostDirector::GetActiveEvent() const {
         }
     }
     return result; // 誰も起こしていなければ id=0 で返る
+}
+
+void GhostDirector::AdvanceTime(float deltaTime) {
+    playTimer_ += deltaTime;
+
+    for (auto& track : tracks_) {
+        if (!track.hasStarted && playTimer_ >= track.delayTime) {
+            if (track.target && track.target->recorder_) {
+                // 各パーツの録画データ再生。
+                // シナリオ全体でループ管理するため、レコーダー単体のループ(第2引数)は false にするのがコツです。
+                track.target->recorder_->Play(
+                    track.pathFileName,
+                    false,
+                    track.target->isRecordRelative_,
+                    (track.target->GetClassName() == "CinematicCamera")
+                );
+            }
+            track.hasStarted = true;
+        }
+    }
+
+    // 全員の再生が終わったかチェック
+    if (IsFinished()) {
+        if (isLooping_) {
+            // ループありなら、タイマーと各トラックの開始フラグをリセットして最初から
+            playTimer_ = 0.0f;
+            for (auto& t : tracks_) {
+                t.hasStarted = false;
+                // 最初に戻すポーズをとらせる
+                if (t.target && t.target->recorder_) t.target->recorder_->EvaluateAtFrame(0);
+            }
+        } else {
+            isPlaying_ = false;
+        }
+    }
 }

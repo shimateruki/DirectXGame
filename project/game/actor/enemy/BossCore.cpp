@@ -31,7 +31,7 @@ void BossCore::Update(float deltaTime) {
     }
 
     if (director_) {
-        director_->Update();
+        director_->Update(deltaTime);
     }
 }
 
@@ -45,15 +45,15 @@ void BossCore::ChangeState(State nextState) {
 
     switch (state_) {
     case State::Idle:
-        director_->LoadScenario("boss_attack_1.json");
-        director_->PlayScenario();
-        
+        // .json を削除
+        director_->LoadScenario("boss_attack_1");
+        director_->PlayScenario(false,false);
         break;
 
     case State::Attack: {
-        // 次の攻撃パターンを1〜10からランダムに選ぶ！
         int nextAttack = rand() % 10 + 1;
-        std::string attackName = "boss_attack_" + std::to_string(nextAttack) + ".json";
+        // .json を削除
+        std::string attackName = "boss_attack_" + std::to_string(nextAttack);
 
         //director_->LoadScenario(attackName);
         //director_->PlayScenario();
@@ -61,7 +61,8 @@ void BossCore::ChangeState(State nextState) {
     }
 
     case State::Weak:
-        //director_->LoadScenario("boss_weak.json");
+        // .json を削除
+        //director_->LoadScenario("boss_weak");
         //director_->PlayScenario();
         break;
     }
