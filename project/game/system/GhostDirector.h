@@ -22,10 +22,10 @@ public:
     };
 
     void Initialize(SceneManager* sceneManager);
-    void Update();
+    void Update(float deltaTime);
     void DrawImGui() override;
     std::string GetName() override { return "GhostDirector(Cinematic/Path)"; }
-    void PlayScenario();
+    void PlayScenario(bool isLoop = false, bool useImguiTime = false);
     void StopScenario();
     void DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size);
 
@@ -34,6 +34,11 @@ public:
     bool IsFinished() const;
     int GetActiveEventID() const;
     ActiveEvent GetActiveEvent() const;
+
+    // 時間を進める共通処理
+    void AdvanceTime(float deltaTime);
+
+
 private:
     SceneManager* sceneManager_ = nullptr;
     std::vector<Track> tracks_;
@@ -43,4 +48,6 @@ private:
     bool isPlaying_ = false;
     float currentScrubTime_ = 0.0f;
     float playTimer_ = 0.0f;
+    bool isLooping_ = false;    // シナリオ全体をループさせるか
+    bool useImguiTime_ = false; // ImGuiのDeltaTimeを使うか
 };
