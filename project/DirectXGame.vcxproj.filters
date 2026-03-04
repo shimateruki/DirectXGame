@@ -141,7 +141,7 @@
     <ClCompile Include="engine\system\collision\CollisionManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\Player.cpp">
+    <ClCompile Include="game\actor\player\Player.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\Character.cpp">
@@ -216,13 +216,13 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\CameraEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="BaseEnemy.cpp">
+    <ClCompile Include="game\actor\enemy\BaseEnemy.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="EnemySlime.cpp">
+    <ClCompile Include="game\actor\enemy\EnemySlime.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="EnemyFactory.cpp">
+    <ClCompile Include="game\system\EnemyFactory.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="externals\imgui\imgui.cpp">
@@ -249,7 +249,7 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\PresetManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="EnemySpawner.cpp">
+    <ClCompile Include="game\system\EnemySpawner.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\GameClearScene.cpp">
@@ -258,34 +258,34 @@
     <ClCompile Include="game\scene\GameOverScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Collider.cpp">
+    <ClCompile Include="engine\component\Collider.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="MeshRenderer.cpp">
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="LevelLoader.cpp">
+    <ClCompile Include="game\system\LevelLoader.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="game\system\LockOnSystem.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="ObjectManager.cpp">
+    <ClCompile Include="game\system\ObjectManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerMover.cpp">
+    <ClCompile Include="game\actor\player\PlayerMover.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="IAnimationState.cpp">
+    <ClCompile Include="engine\utility\state\IAnimationState.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerState.cpp">
+    <ClCompile Include="game\actor\player\PlayerState.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="ParticleManager.cpp">
+    <ClCompile Include="engine\graphics\particle\ParticleManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PostEffect.cpp">
+    <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp">
@@ -297,7 +297,10 @@
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="GhostDirector.cpp">
+    <ClCompile Include="game\system\GhostDirector.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\BossCore.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -440,7 +443,7 @@
     <ClInclude Include="engine\system\collision\CollisionManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="game\actor\Player.h">
+    <ClInclude Include="game\actor\player\Player.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\CollisionConfig.h">
@@ -773,13 +776,13 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\CameraEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="BaseEnemy.h">
+    <ClInclude Include="game\actor\enemy\BaseEnemy.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="EnemySlime.h">
+    <ClInclude Include="game\actor\enemy\EnemySlime.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="EnemyFactory.h">
+    <ClInclude Include="game\system\EnemyFactory.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\imconfig.h">
@@ -809,7 +812,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="EnemySpawner.h">
+    <ClInclude Include="game\system\EnemySpawner.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\GameClearScene.h">
@@ -1091,43 +1094,43 @@
     <ClInclude Include="externals\SDL2\include\SDL_vulkan.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Transform.h">
+    <ClInclude Include="engine\component\Transform.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Collider.h">
+    <ClInclude Include="engine\component\Collider.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="MeshRenderer.h">
+    <ClInclude Include="engine\graphics\3d\MeshRenderer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="LevelLoader.h">
+    <ClInclude Include="game\system\LevelLoader.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\system\LockOnSystem.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="ObjectManager.h">
+    <ClInclude Include="game\system\ObjectManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerMover.h">
+    <ClInclude Include="game\actor\player\PlayerMover.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="IAnimationState.h">
+    <ClInclude Include="engine\utility\state\IAnimationState.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerState.h">
+    <ClInclude Include="game\actor\player\PlayerState.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="ParticleManager.h">
+    <ClInclude Include="engine\graphics\particle\ParticleManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="PostEffect.h">
+    <ClInclude Include="engine\graphics\postprocess\PostEffect.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\PostEffectEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="IEditable.h">
+    <ClInclude Include="engine\utility\state\IEditable.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h">
@@ -1136,7 +1139,10 @@
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="GhostDirector.h">
+    <ClInclude Include="game\system\GhostDirector.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\BossCore.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

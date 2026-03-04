@@ -81,7 +81,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;$(ProjectDir)game/character;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor/player</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;$(ProjectDir)game/character;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -109,7 +109,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/DirectXTex;$(ProjectDir)externals/nlohmann;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/ImGuiFileDialog;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor/player</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/DirectXTex;$(ProjectDir)externals/nlohmann;$(ProjectDir)game/scene;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/ImGuiFileDialog;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <Optimization>MaxSpeed</Optimization>
     </ClCompile>
@@ -138,7 +138,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor/player</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\externals;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(ProjectDir)externals/imgui;$(ProjectDir)externals/ImGuizmo;$(ProjectDir)externals/nlohmann;$(ProjectDir)externals/DirectXTex;$(ProjectDir)game/character;$(ProjectDir)engine/particle;$(ProjectDir)engine/debug;$(ProjectDir)game/scene;%(AdditionalIncludeDirectories);$(ProjectDir)engine/core;$(ProjectDir)engine/graphics/core;$(ProjectDir)engine/graphics/2d;$(ProjectDir)engine/graphics/3d/camera;$(ProjectDir)engine/graphics/3d/light;$(ProjectDir)engine/graphics/3d/model;$(ProjectDir)engine/graphics/3d/object;$(ProjectDir)engine/graphics/particle;$(ProjectDir)engine/platform;$(ProjectDir)engine/system/audio;$(ProjectDir)engine/system/collision;$(ProjectDir)engine/system/input;$(ProjectDir)engine/system/scene;$(ProjectDir)engine/utility/SystemDebug;$(ProjectDir)engine/utility/SystemDebug/editor;$(ProjectDir)engine/utility/math;$(ProjectDir)game/actor;$(ProjectDir)game/system;$(ProjectDir)game/component;$(ProjectDir)externals/assimp/include;$(ProjectDir)externals/SDL2/include;$(ProjectDir)engine/editor;$(ProjectDir)engine/graphics/postprocess;$(ProjectDir)engine/level;$(ProjectDir)game/actor/enemy;$(ProjectDir)game/actor/player;$(ProjectDir)engine/utility/state;$(ProjectDir)engine\component;$(ProjectDir)engine\graphics\3d</AdditionalIncludeDirectories>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
@@ -155,12 +155,13 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BaseEnemy.cpp" />
-    <ClCompile Include="Collider.cpp" />
+    <ClCompile Include="game\actor\enemy\BossCore.cpp" />
+    <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
+    <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp" />
-    <ClCompile Include="EnemyFactory.cpp" />
-    <ClCompile Include="EnemySlime.cpp" />
-    <ClCompile Include="EnemySpawner.cpp" />
+    <ClCompile Include="game\system\EnemyFactory.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
+    <ClCompile Include="game\system\EnemySpawner.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\CameraEditor.cpp" />
     <ClCompile Include="engine\utility\math\Easing.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp">
@@ -230,7 +231,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\graphics\particle\ParticleCommon.cpp" />
     <ClCompile Include="engine\graphics\particle\ParticleSystem.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\ParticleEditor.cpp" />
-    <ClCompile Include="game\actor\Player.cpp" />
+    <ClCompile Include="game\actor\player\Player.cpp" />
     <ClCompile Include="engine\system\scene\SceneFactory.cpp" />
     <ClCompile Include="engine\system\scene\SceneManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.cpp" />
@@ -242,16 +243,16 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\LightEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\PresetManager.cpp" />
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
-    <ClCompile Include="GhostDirector.cpp" />
-    <ClCompile Include="IAnimationState.cpp" />
-    <ClCompile Include="LevelLoader.cpp" />
+    <ClCompile Include="game\system\GhostDirector.cpp" />
+    <ClCompile Include="engine\utility\state\IAnimationState.cpp" />
+    <ClCompile Include="game\system\LevelLoader.cpp" />
     <ClCompile Include="game\system\LockOnSystem.cpp" />
-    <ClCompile Include="MeshRenderer.cpp" />
-    <ClCompile Include="ObjectManager.cpp" />
-    <ClCompile Include="ParticleManager.cpp" />
-    <ClCompile Include="PlayerMover.cpp" />
-    <ClCompile Include="PlayerState.cpp" />
-    <ClCompile Include="PostEffect.cpp" />
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.cpp" />
+    <ClCompile Include="game\system\ObjectManager.cpp" />
+    <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
+    <ClCompile Include="game\actor\player\PlayerMover.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.cpp" />
+    <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -331,12 +332,13 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BaseEnemy.h" />
-    <ClInclude Include="Collider.h" />
+    <ClInclude Include="game\actor\enemy\BossCore.h" />
+    <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
+    <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h" />
-    <ClInclude Include="EnemyFactory.h" />
-    <ClInclude Include="EnemySlime.h" />
-    <ClInclude Include="EnemySpawner.h" />
+    <ClInclude Include="game\system\EnemyFactory.h" />
+    <ClInclude Include="game\actor\enemy\EnemySlime.h" />
+    <ClInclude Include="game\system\EnemySpawner.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\CameraEditor.h" />
     <ClInclude Include="engine\utility\math\Easing.h" />
     <ClInclude Include="externals\assimp\include\assimp\aabb.h" />
@@ -563,7 +565,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\graphics\3d\light\Light.h" />
     <ClInclude Include="engine\graphics\3d\light\LightManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\ParticleEditor.h" />
-    <ClInclude Include="game\actor\Player.h" />
+    <ClInclude Include="game\actor\player\Player.h" />
     <ClInclude Include="engine\system\scene\SceneFactory.h" />
     <ClInclude Include="engine\system\scene\SceneManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.h" />
@@ -577,19 +579,19 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\LightEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
-    <ClInclude Include="GhostDirector.h" />
-    <ClInclude Include="IAnimationState.h" />
-    <ClInclude Include="IEditable.h" />
-    <ClInclude Include="LevelLoader.h" />
+    <ClInclude Include="game\system\GhostDirector.h" />
+    <ClInclude Include="engine\utility\state\IAnimationState.h" />
+    <ClInclude Include="engine\utility\state\IEditable.h" />
+    <ClInclude Include="game\system\LevelLoader.h" />
     <ClInclude Include="game\system\LockOnSystem.h" />
-    <ClInclude Include="MeshRenderer.h" />
-    <ClInclude Include="ObjectManager.h" />
-    <ClInclude Include="ParticleManager.h" />
-    <ClInclude Include="PlayerMover.h" />
-    <ClInclude Include="PlayerState.h" />
-    <ClInclude Include="PostEffect.h" />
+    <ClInclude Include="engine\graphics\3d\MeshRenderer.h" />
+    <ClInclude Include="game\system\ObjectManager.h" />
+    <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
+    <ClInclude Include="game\actor\player\PlayerMover.h" />
+    <ClInclude Include="game\actor\player\PlayerState.h" />
+    <ClInclude Include="engine\graphics\postprocess\PostEffect.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\PostEffectEditor.h" />
-    <ClInclude Include="Transform.h" />
+    <ClInclude Include="engine\component\Transform.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

@@ -19,6 +19,7 @@
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
+    ModelManager::GetInstance()->LoadAllModels();
     sceneFactory_ = std::make_unique<SceneFactory>();
     //  SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
@@ -68,6 +69,9 @@ void Game::Initialize() {
     isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
 #else
     isPlaying_ = true;  // リリース時は最初から再生
+#endif
+#ifdef USE_IMGUI
+    CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
 #endif
     CameraEditor::GetInstance()->Initialize();
     dxCommon_->CreateRenderTexture();
@@ -226,6 +230,7 @@ void Game::Update() {
                 sceneManager_->ChangeScene(currentSceneName_);
 
                 isPlaying_ = true;
+                CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
             }
         }
 

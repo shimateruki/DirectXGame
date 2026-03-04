@@ -51,7 +51,7 @@ public:
     /// 描画
     /// </summary>
     void Draw() override;
-
+    void DrawUI() override;
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }

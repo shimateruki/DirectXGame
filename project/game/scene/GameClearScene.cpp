@@ -120,29 +120,52 @@ void GameClearScene::Update(float deltaTime) {
 }
 
 void GameClearScene::Draw() {
-    // ライトリソースの取得
+    // --- 一人称視点判定 ---
+    bool isFirstPerson = false;
+#ifndef _DEBUG
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+        isFirstPerson = true;
+    }
+#endif
+
     ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
-
-    // --- 1. 3Dオブジェクト描画 ---
     object3dCommon_->SetGraphicsCommand();
 
     auto& objects = objectManager_->GetObjects();
+
+    // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
+        if (isFirstPerson && obj.get() == player_) continue;
+        if (obj->GetMaterialType() == 1) continue; // 透明はスキップ
         obj->Draw(pointLightRes, spotLightRes);
     }
 
-    // 弾の描画
+    // --- 2. 中間描画 (弾・デバッグ) ---
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
-
-    // エディタ系描画
+    //if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
     LightEditor::GetInstance()->Draw3D();
 
-    // --- 2. 2Dスプライト・パーティクル描画 ---
+    // --- 3. 透明描画 ---
+    for (auto& obj : objects) {
+        if (isFirstPerson && obj.get() == player_) continue;
+        if (obj->GetMaterialType() == 1) { // 透明のみ描画
+            obj->Draw(pointLightRes, spotLightRes);
+        }
+    }
+    particleSystem_->Draw();
+}
+
+
+
+// ====================================================================
+// UI描画専用の関数
+// ====================================================================
+void GameClearScene::DrawUI() {
+    // --- 4. 2D描画 (UIスプライト) ---
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_) {
         sprite->Draw();
     }
-
-    particleSystem_->Draw();
 }

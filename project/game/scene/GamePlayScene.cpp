@@ -56,19 +56,6 @@ void GamePlayScene::Initialize() {
 
 	LOG("Game Initialized!");
 
-	ModelManager::GetInstance()->LoadModel("player");
-	ModelManager::GetInstance()->LoadModel("teapot");
-	ModelManager::GetInstance()->LoadModel("multiMaterial");
-	ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
-	ModelManager::GetInstance()->LoadModel("saka");
-	ModelManager::GetInstance()->LoadModel("zimen.gltf");
-	ModelManager::GetInstance()->LoadModel("a.gltf");
-	ModelManager::GetInstance()->LoadModel("sphere.gltf");
-	ModelManager::GetInstance()->LoadModel("skydome");
-	ModelManager::GetInstance()->LoadModel("sample");
-	ModelManager::GetInstance()->LoadModel("terrain");
-	ModelManager::GetInstance()->LoadModel("sampleRun.gltf");
-
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
 	// --- 2. 各種マネージャ初期化 ---
