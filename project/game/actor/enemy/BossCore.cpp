@@ -1,73 +1,68 @@
 #include "BossCore.h"
 
-void BossCore::Initialize(Object3dCommon* common, const std::string& modelName, SceneManager* sceneManager) {
+void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
 
-    // =========================================================
-    // 登場時に全モーション（待機・隙・攻撃10種）を雇っておく
-    // =========================================================
-
-    // 待機モーション
-    directors_["Idle"] = std::make_unique<GhostDirector>();
-    directors_["Idle"]->Initialize(sceneManager);
-    // directors_["Idle"]->LoadScenario("boss_idle.json");
-
-    // 弱点露出（隙）モーション
-    directors_["Weak"] = std::make_unique<GhostDirector>();
-    directors_["Weak"]->Initialize(sceneManager);
-    // directors_["Weak"]->LoadScenario("boss_weak.json");
-
-    // 攻撃パターン1〜10を一括ロード
-    for (int i = 1; i <= 10; ++i) {
-        std::string attackName = "Attack" + std::to_string(i);
-        directors_[attackName] = std::make_unique<GhostDirector>();
-        directors_[attackName]->Initialize(sceneManager);
-        // directors_[attackName]->LoadScenario("boss_attack_" + std::to_string(i) + ".json");
+    director_ = std::make_unique<GhostDirector>();
+    if (sceneManager_) {
+        director_->Initialize(sceneManager_);
     }
 
-    // 最初の状態を待機（Idle）にセットして再生開始！
-    ChangeState(State::Idle);
 }
 
 void BossCore::Update(float deltaTime) {
-    BaseEnemy::Update(deltaTime);
+    // =========================================================
+    // ★追加：最初の1フレーム目（すべての準備が整った瞬間）にシナリオを読む！
+    // =========================================================
+    if (isFirstFrame_) {
+        ChangeState(State::Idle); // ここで Idle にして boss_attack_1.json をロード
+        isFirstFrame_ = false;    // 二度と呼ばれないようにする
+    }
 
+    // 純粋な3Dオブジェクトとしての更新
+    Object3d::Update(deltaTime);
+
+
+    // 状態ごとの更新処理
     switch (state_) {
     case State::Idle:   UpdateIdle(deltaTime);   break;
     case State::Attack: UpdateAttack(deltaTime); break;
     case State::Weak:   UpdateWeak(deltaTime);   break;
     }
 
-    if (currentDirector_) {
-        currentDirector_->Update();
+    if (director_) {
+        director_->Update();
     }
 }
 
 // =========================================================
-// 状態切り替えと同時に、該当するモーションの再生を開始する関数
+// 状態切り替えと同時に、該当するモーションのビデオテープを入れ替えて再生する関数
 // =========================================================
 void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
+    if (!director_) return;
+
     switch (state_) {
     case State::Idle:
-        currentDirector_ = directors_["Idle"].get();
-        if (currentDirector_) currentDirector_->PlayScenario();
+        director_->LoadScenario("boss_attack_1.json");
+        director_->PlayScenario();
+        
         break;
 
     case State::Attack: {
         // 次の攻撃パターンを1〜10からランダムに選ぶ！
         int nextAttack = rand() % 10 + 1;
-        std::string attackName = "Attack" + std::to_string(nextAttack);
+        std::string attackName = "boss_attack_" + std::to_string(nextAttack) + ".json";
 
-        currentDirector_ = directors_[attackName].get();
-        if (currentDirector_) currentDirector_->PlayScenario();
+        //director_->LoadScenario(attackName);
+        //director_->PlayScenario();
         break;
     }
 
     case State::Weak:
-        currentDirector_ = directors_["Weak"].get();
-        if (currentDirector_) currentDirector_->PlayScenario();
+        //director_->LoadScenario("boss_weak.json");
+        //director_->PlayScenario();
         break;
     }
 }
@@ -78,18 +73,16 @@ void BossCore::ChangeState(State nextState) {
 
 void BossCore::UpdateIdle(float deltaTime) {
     // 待機モーション（フワフワ等）の再生が終わったら、攻撃へ！
-    if (currentDirector_ && currentDirector_->IsFinished()) {
+    if (director_ && director_->IsFinished()) {
         ChangeState(State::Attack);
     }
 }
 
 void BossCore::UpdateAttack(float deltaTime) {
-    if (!currentDirector_) return;
+    if (!director_) return;
 
-    // ★監督から「何のイベントが」「誰で」起きたかを聞き出す想定の処理
-     ActiveEvent eventInfo = currentDirector_->GetActiveEvent();
-
-
+    // ★監督から「何のイベントが」「誰で」起きたかを聞き出す
+    ActiveEvent eventInfo = director_->GetActiveEvent();
 
     if (eventInfo.id != 0 && eventInfo.targetObject) {
 
@@ -106,14 +99,14 @@ void BossCore::UpdateAttack(float deltaTime) {
     }
 
     // 攻撃モーション（シナリオ）が最後まで終わったら、隙を晒す状態へ！
-    if (currentDirector_->IsFinished()) {
+    if (director_->IsFinished()) {
         ChangeState(State::Weak);
     }
 }
 
 void BossCore::UpdateWeak(float deltaTime) {
     // 弱点露出のモーションが終わったら、再び待機へ戻る！
-    if (currentDirector_ && currentDirector_->IsFinished()) {
+    if (director_ && director_->IsFinished()) {
         ChangeState(State::Idle);
     }
 }

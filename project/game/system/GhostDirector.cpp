@@ -19,8 +19,28 @@ void GhostDirector::Initialize(SceneManager* sceneManager) {
 }
 
 void GhostDirector::Update() {
-    // ※エディタ上でUpdateが呼ばれない可能性があるため、
-    // 実際のタイマー進行は確実に呼ばれる DrawImGui() 側で行います！
+
+    if (isPlaying_) {
+        // フレームごとの固定時間（1/60秒）を足す
+        playTimer_ += 1.0f / 60.0f;
+
+        for (auto& track : tracks_) {
+            // 出番が来たらPlay！
+            if (!track.hasStarted && playTimer_ >= track.delayTime) {
+                if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
+                    bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
+
+                    track.target->recorder_->Play(
+                        track.pathFileName,
+                        track.target->isRecordLoop_,
+                        track.target->isRecordRelative_,
+                        isCinematic
+                    );
+                }
+                track.hasStarted = true; // スタート済み
+            }
+        }
+    }
 }
 
 void GhostDirector::DrawImGui() {
