@@ -27,7 +27,19 @@ public:
 
     void SaveScenario(const std::string& fileName);
     void LoadScenario(const std::string& fileName);
+    bool IsFinished() const;
+    int GetActiveEventID() const {
+        if (!isPlaying_) return 0;
 
+        // 全トラック（キューブ）を調べて、イベントが発生していたらそれを返す
+        for (const auto& track : tracks_) {
+            if (track.target && track.target->recorder_) {
+                int eID = track.target->recorder_->GetCurrentEventID();
+                if (eID != 0) return eID; // イベントを見つけたらボスコアに報告！
+            }
+        }
+        return 0;
+    }
 private:
     SceneManager* sceneManager_ = nullptr;
     std::vector<Track> tracks_;

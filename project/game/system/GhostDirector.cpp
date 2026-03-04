@@ -295,6 +295,22 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
     }
 }
 
+bool GhostDirector::IsFinished() const
+{
+    if (!isPlaying_) return true; // 再生してなければ終了扱い
+
+    // 全てのトラック（キューブ）の再生が終わったかチェック
+    for (const auto& track : tracks_) {
+        if (track.target && track.target->recorder_) {
+            // もしどれか一つでも再生中なら、まだ終わっていない
+            if (track.target->recorder_->GetState() == GhostRecorder::State::Playing) {
+                return false;
+            }
+        }
+    }
+    return true; // 全員終わった！
+}
+
 void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
     for (auto& track : tracks_) {
         // ターゲットが存在し、レコーダーがあり、パスデータがセットされていれば描画

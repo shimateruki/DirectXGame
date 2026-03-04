@@ -92,7 +92,12 @@ public:
     void SetScrubbing(bool isScrubbing) { isScrubbing_ = isScrubbing; }
     void PerformUndo();  
     void PerformRedo(); 
-
+    int GetCurrentEventID() const {
+        if (state_ == State::Playing && currentFrameIndex_ < frames_.size()) {
+            return frames_[currentFrameIndex_].eventID; // 今のフレームのIDを返す
+        }
+        return 0; // 何も起きていないときは0
+    }
 private:
     void StartRecording();
     void StopRecording();
