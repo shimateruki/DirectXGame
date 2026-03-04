@@ -1,41 +1,35 @@
 #pragma once
-#include "BaseEnemy.h" // ※既存の基底クラスがあればそれに合わせます
+#include "BaseEnemy.h"
 #include "GhostDirector.h"
 #include <memory>
 #include <string>
+#include <unordered_map>
+
+class SceneManager;
 
 class BossCore : public BaseEnemy {
 public:
-    // ボスの状態
     enum class State {
-        Idle,       // 待機中（フワフワ浮いているなど）
-        Attack,     // 攻撃中（GhostDirectorでシナリオ再生中）
-        Weak,       // 攻撃後の隙（コアが露出してダメージが通る）
+        Idle,       // 待機（Idleモーション再生）
+        Attack,     // 攻撃中（Attack1〜10のいずれかを再生）
+        Weak,       // 攻撃後の隙（Weakモーション再生）
         Dead        // 撃破
     };
 
-    void Initialize(SceneManager* sceneManager);
-    void Update() override;
-    void Draw() override;
-
-    // 特定の攻撃シナリオをロードして再生準備する
-    void LoadAttackScenario(const std::string& scenarioName);
-
-
+    void Initialize(Object3dCommon* common, const std::string& modelName, SceneManager* sceneManager);
+    void Update(float deltaTime) override;
 
 private:
     State state_ = State::Idle;
-    float stateTimer_ = 0.0f;
 
-    // ボス自身が「専用の監督（シナリオ再生機）」を持つ！
-    std::unique_ptr<GhostDirector> director_;
+    // 状態（ステート）を切り替える便利関数
+    void ChangeState(State nextState);
 
-    // 状態ごとの更新処理
-    void UpdateIdle();
-    void UpdateAttack();
-    void UpdateWeak();
-
-    // シナリオ名と監督（ディレクター）をセットで保持しておく辞書（マップ）
+    // 全モーションの監督を保持する辞書
     std::unordered_map<std::string, std::unique_ptr<GhostDirector>> directors_;
-    GhostDirector* currentDirector_ = nullptr; // 今再生している監督
+    GhostDirector* currentDirector_ = nullptr;
+
+    void UpdateIdle(float deltaTime);
+    void UpdateAttack(float deltaTime);
+    void UpdateWeak(float deltaTime);
 };
