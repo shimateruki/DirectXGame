@@ -97,7 +97,10 @@ public:
             return frames_[currentFrameIndex_].eventID; // 今のフレームのIDを返す
         }
         return 0; // 何も起きていないときは0
-    }
+    }// 今の自分の状態（再生中かどうか）を返す
+
+
+
 private:
     void StartRecording();
     void StopRecording();

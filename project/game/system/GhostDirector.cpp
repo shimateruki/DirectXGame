@@ -311,6 +311,22 @@ bool GhostDirector::IsFinished() const
     return true; // 全員終わった！
 }
 
+int GhostDirector::GetActiveEventID() const
+{
+    {
+        if (!isPlaying_) return 0;
+
+        // 全トラック（キューブ）を調べて、イベントが発生していたらそれを返す
+        for (const auto& track : tracks_) {
+            if (track.target && track.target->recorder_) {
+                int eID = track.target->recorder_->GetCurrentEventID();
+                if (eID != 0) return eID; // イベントを見つけたらボスコアに報告！
+            }
+        }
+        return 0;
+    }
+}
+
 void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
     for (auto& track : tracks_) {
         // ターゲットが存在し、レコーダーがあり、パスデータがセットされていれば描画
@@ -320,4 +336,25 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
             track.target->recorder_->DrawPreview(viewProjection, offset, size, true);
         }
     }
+}
+
+
+ActiveEvent GhostDirector::GetActiveEvent() const {
+    ActiveEvent result;
+    if (!isPlaying_) return result;
+
+    // 全員（全トラック）を調べて、イベントを起こしている奴がいないかチェック
+    for (const auto& track : tracks_) {
+        if (track.target && track.target->recorder_) {
+            int eID = track.target->recorder_->GetCurrentEventID();
+
+            if (eID != 0) {
+                // イベントを見つけたら、「誰が」「何の」イベントを起こしたか詰めて返す！
+                result.id = eID;
+                result.targetObject = track.target;
+                return result;
+            }
+        }
+    }
+    return result; // 誰も起こしていなければ id=0 で返る
 }
