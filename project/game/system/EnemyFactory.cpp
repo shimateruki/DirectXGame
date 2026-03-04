@@ -1,5 +1,7 @@
 #include "EnemyFactory.h"
 #include "EnemySlime.h"
+#include <BossCore.h>
+#include "SceneManager.h"
 // 他の敵ができたらここに追加 (#include "EnemyRobot.h" 等)
 
 EnemyFactory* EnemyFactory::GetInstance() {
@@ -28,8 +30,28 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(slime);
     }
-    // 将来ここに追加していく
-    // else if (enemyName == "Robot") { ... }
+    else if (enemyName == "BossCore") 
+    {
+        auto boss = std::make_unique<BossCore>();
+
+     
+    boss->SetSceneManager(SceneManager::GetInstance());
+        // 2. 引数を気にせずオーバーライドした Initialize を呼べる！
+        boss->Initialize(common, "block");
+
+        if (!boss->param_.has_value()) {
+            boss->param_.emplace();
+        }
+
+        // ボス用ステータス設定
+        auto& p = boss->param_.value();
+        p.hp = 1000.0f;        // ボスなので体力多め
+        p.maxHp = 1000.0f;
+        p.speed = 0.05f;       // ゆっくり動く、あるいは浮遊など
+        p.gravity = 0.0f;      // 無相の雷のように常に浮いているなら重力を切るのもあり
+
+        newEnemy = std::move(boss);
+    }
 
     //:作った敵に「名札」をつける
     if (newEnemy) {

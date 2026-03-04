@@ -1968,7 +1968,7 @@ void DebugEditor::DrawEnemyTypeSelector() {
     // ★ 登録したい敵の名前リスト 
     const char* enemyTypes[] = {
         "Slime",
-
+        "BossCore"
     };
 
     // 現在の設定値を取得

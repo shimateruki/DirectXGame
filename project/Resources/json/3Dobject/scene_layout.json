@@ -62,7 +62,7 @@
             },
             "rotation": [
                 6.278290811678744e-07,
-                1.3415902853012085,
+                2.541592836380005,
                 6.27829649602063e-07
             ],
             "scale": [
@@ -392,6 +392,79 @@
             ],
             "targetID": -1,
             "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enemyType": "BossCore",
+            "eventID": 0,
+            "materialType": 0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Enemy_BossCore",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 0.0,
+                "hp": 1000.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 1000.0,
+                "speed": 0.05000000074505806
+            },
+            "parentName": "",
+            "position": [
+                -5.001794815063477,
+                2.0021355152130127,
+                -11.86160659790039
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "type": "Enemy"
         },
         {
             "animation": {

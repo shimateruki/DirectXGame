@@ -1,10 +1,9 @@
 {
     "tracks": [
         {
-            "isLoop": false,
-            "isRelative": true,
+            "delayTime": 0.0,
             "pathFileName": "anim_path",
-            "targetName": "Obj_0"
+            "targetName": "Enemy_BossCore"
         }
     ]
 }
