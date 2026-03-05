@@ -35,6 +35,7 @@
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "a.gltf",
             "myEventID": -1,
             "name": "Player",
@@ -62,9 +63,10 @@
             },
             "rotation": [
                 -3.1415908336639404,
-                0.9270003437995911,
+                2.5535924434661865,
                 -3.1415908336639404
             ],
+            "roughness": 0.5,
             "scale": [
                 0.9999998211860657,
                 1.0,
@@ -108,6 +110,7 @@
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "terrain",
             "myEventID": -1,
             "name": "terrain",
@@ -127,6 +130,7 @@
                 -0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -170,6 +174,7 @@
             "enemyType": "Slime",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "block",
             "myEventID": -1,
             "name": "Object",
@@ -200,6 +205,7 @@
                 -2.42612886428833,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -243,6 +249,7 @@
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "sampleBlock.gltf",
             "myEventID": -1,
             "name": "Obj_0",
@@ -262,6 +269,7 @@
                 -0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -305,6 +313,7 @@
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "myEventID": -1,
             "name": "Trigger_Box",
             "parentName": "",
@@ -323,6 +332,7 @@
                 0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -366,6 +376,7 @@
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "sampleBlock.gltf",
             "myEventID": -1,
             "name": "Obj_0_Copy0",
@@ -385,6 +396,7 @@
                 -0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -428,6 +440,7 @@
             "enemyType": "BossCore",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 1.0,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_BossCore",
@@ -455,9 +468,10 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
+            "roughness": 0.7129999995231628,
             "scale": [
                 1.0,
                 1.0,

@@ -118,7 +118,10 @@ public:
     uint32_t GetCollisionAttribute() const;
     void SetCollisionMask(uint32_t mask);
     uint32_t GetCollisionMask() const;
-
+    void SetMetallic(float metallic) { if (meshRenderer_) meshRenderer_->SetMetallic(metallic); }
+    float GetMetallic() const { return meshRenderer_ ? meshRenderer_->GetMetallic() : 0.0f; }
+    void SetRoughness(float roughness) { if (meshRenderer_) meshRenderer_->SetRoughness(roughness); }
+    float GetRoughness() const { return meshRenderer_ ? meshRenderer_->GetRoughness() : 0.3f; }
     AABB GetAABB() const;
     OBB GetOBB() const;
 

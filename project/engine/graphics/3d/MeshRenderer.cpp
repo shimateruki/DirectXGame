@@ -37,6 +37,9 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->selectedLighting = 2;
     materialData_->shininess = 20.0f;
     materialData_->materialType = 0;
+    materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
+    materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
+    
 }
 
 void MeshRenderer::Update() {
@@ -108,4 +111,20 @@ Vector4 MeshRenderer::GetColor() const {
 
 int32_t MeshRenderer::GetMaterialType() const {
     return materialData_ ? materialData_->materialType : 0;
+}
+
+void MeshRenderer::SetMetallic(float metallic) {
+    if (materialData_) materialData_->metallic = metallic;
+}
+
+void MeshRenderer::SetRoughness(float roughness) {
+    if (materialData_) materialData_->roughness = roughness;
+}
+
+float MeshRenderer::GetMetallic() const {
+    return materialData_ ? materialData_->metallic : 0.0f;
+}
+
+float MeshRenderer::GetRoughness() const {
+    return materialData_ ? materialData_->roughness : 0.3f;
 }

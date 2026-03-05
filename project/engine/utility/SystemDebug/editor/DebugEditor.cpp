@@ -946,7 +946,19 @@ void DebugEditor::DrawImGui() {
                     selectedObject_->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
                 }
+                if (currentMatType == 0) { // 通常のPBRマテリアルの時だけ表示する親切設計
+                    float metallic = selectedObject_->GetMetallic();
+                    if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {
+                        selectedObject_->SetMetallic(metallic);
+                        isGraphicsChanged = true;
+                    }
 
+                    float roughness = selectedObject_->GetRoughness();
+                    if (ImGui::SliderFloat("粗さ (Roughness)", &roughness, 0.0f, 1.0f)) {
+                        selectedObject_->SetRoughness(roughness);
+                        isGraphicsChanged = true;
+                    }
+                }
                 const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
                 int currentBlend = static_cast<int>(selectedObject_->GetBlendMode());
 
@@ -961,6 +973,7 @@ void DebugEditor::DrawImGui() {
                     isGraphicsChanged = true;
                 }
             }
+
             ImGui::Separator();
             if (ImGui::CollapsingHeader("パーティクル")) {
                 const auto& paramsMap = ParticleManager::GetInstance()->GetParamsMap();
@@ -1402,7 +1415,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
 
     currentData["blendMode"] = static_cast<int>(object->GetBlendMode());
     currentData["materialType"] = object->GetMaterialType();
-
+    currentData["metallic"] = object->GetMetallic();
+    currentData["roughness"] = object->GetRoughness();
     // =========================================================
     // 3. JSON配列内を探して更新 or 追加
     // =========================================================
@@ -1753,7 +1767,8 @@ void DebugEditor::SaveScene() {
 
         d["blendMode"] = static_cast<int>(obj->GetBlendMode());
         d["materialType"] = obj->GetMaterialType();
-
+        d["metallic"] = obj->GetMetallic();
+        d["roughness"] = obj->GetRoughness();
         // 配列に追加
         sceneData["objects"].push_back(d);
     }

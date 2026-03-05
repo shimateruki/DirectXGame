@@ -171,11 +171,16 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 if (objData.contains("position")) { transform->translate.x = objData["position"][0]; transform->translate.y = objData["position"][1]; transform->translate.z = objData["position"][2]; }
                 if (objData.contains("rotation")) { transform->rotate.x = objData["rotation"][0]; transform->rotate.y = objData["rotation"][1]; transform->rotate.z = objData["rotation"][2]; }
                 if (objData.contains("scale")) { transform->scale.x = objData["scale"][0]; transform->scale.y = objData["scale"][1]; transform->scale.z = objData["scale"][2]; }
-
+                
                 // ロード直後に行列更新
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
-
+                if (objData.contains("metallic")) {
+                    targetObject->SetMetallic(objData["metallic"].get<float>());
+                }
+                if (objData.contains("roughness")) {
+                    targetObject->SetRoughness(objData["roughness"].get<float>());
+                }
                 // 5. Collider
                 if (objData.contains("collider")) {
                     json colData = objData["collider"];
@@ -244,7 +249,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                         isCinematic 
                     );
                 }
-                // ==========================================
+
 
                 // 8. 親子関係保留
                 if (objData.contains("parentName") && objData["parentName"].is_string()) {

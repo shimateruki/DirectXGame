@@ -1,0 +1,18 @@
+{
+    "bloomIntensity": 2.0,
+    "chromaticAberration": 0.0,
+    "cinemaBarHeight": 0.0,
+    "damageFlash": 0.0,
+    "enableToneMapping": 0,
+    "filmGrainIntensity": 0.0,
+    "lutIntensity": 0.0,
+    "mosaicSize": 0.0,
+    "radialCenterX": 0.0,
+    "radialCenterY": 0.0,
+    "radialIntensity": 0.0,
+    "scanlineIntensity": 0.0,
+    "spread": 2.0,
+    "threshold": 2.359999895095825,
+    "vignetteIntensity": 0.0,
+    "wobbleIntensity": 0.0
+}

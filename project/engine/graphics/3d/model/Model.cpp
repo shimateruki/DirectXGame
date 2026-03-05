@@ -52,6 +52,8 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->selectedLighting = 2;
     materialData_->shininess = 50;
     materialData_->materialType = 0; // 通常
+    materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
+    materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
     Math math;
     materialData_->uvTransform = math.MakeIdentity4x4();
 

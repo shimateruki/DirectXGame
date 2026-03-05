@@ -54,7 +54,10 @@ public:
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
-        float padding2;
+        float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
+        float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
+        float padding2[2];         // 8 byte (アライメント調整)
+
     };
 
     struct Node {

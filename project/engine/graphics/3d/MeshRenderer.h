@@ -32,7 +32,9 @@ public:
         int32_t selectedLighting;
         float shininess;
         int32_t materialType;
-        float padding2;
+        float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
+        float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
+        float padding2[2];         // 8 byte (アライメント調整)
     };
 
     struct PointLight {
@@ -89,7 +91,10 @@ public:
     // マテリアルやライトデータへの直接アクセス（必要に応じて）
     MaterialData* GetMaterialData() { return materialData_; }
     DirectionalLight* GetLightData() { return directionalLightData_; }
-
+    void SetMetallic(float metallic);
+    void SetRoughness(float roughness);
+    float GetMetallic() const;
+    float GetRoughness() const;
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
