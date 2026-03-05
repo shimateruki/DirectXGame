@@ -246,7 +246,7 @@ void GhostDirector::PlayScenario(bool isLoop, bool useImguiTime) {
             // 一旦停止させてからデータを最新状態にロード
             track.target->recorder_->Stop();
             track.target->recorder_->Load(track.pathFileName);
-
+            track.target->recorder_->CaptureBasePose();
             // 再生開始前に「0フレーム目」のポーズをとらせる
             // これにより、ディレイがあるトラックも開始地点で待機できる
             track.target->recorder_->EvaluateAtFrame(0);
@@ -330,10 +330,7 @@ bool GhostDirector::IsFinished() const
     // 全てのトラック（キューブ）の再生が終わったかチェック
     for (const auto& track : tracks_) {
 
-        // =======================================================
-        // ★ここが諸悪の根源を断つ超重要な追加ポイント！★
-        // まだ開始時間（ディレイ）が来ていないトラックがあるなら、シナリオは終わっていない！
-        // =======================================================
+
         if (!track.hasStarted) {
             return false;
         }
@@ -401,12 +398,10 @@ void GhostDirector::AdvanceTime(float deltaTime) {
     for (auto& track : tracks_) {
         if (!track.hasStarted && playTimer_ >= track.delayTime) {
             if (track.target && track.target->recorder_) {
-                // 各パーツの録画データ再生。
-                // シナリオ全体でループ管理するため、レコーダー単体のループ(第2引数)は false にするのがコツです。
                 track.target->recorder_->Play(
                     track.pathFileName,
                     false,
-                    track.target->isRecordRelative_,
+					false,
                     (track.target->GetClassName() == "CinematicCamera")
                 );
             }

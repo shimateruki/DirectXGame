@@ -51,24 +51,24 @@
             },
             "parentName": "",
             "position": [
-                7.790902137756348,
-                2.0021352767944336,
-                34.17733383178711
+                5.449210166931152,
+                2.779629945755005,
+                -14.023777961730957
             ],
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": false,
-                "recordPathName": "anim_path"
+                "recordPathName": ""
             },
             "rotation": [
-                6.278290811678744e-07,
-                2.7965924739837646,
-                6.27829649602063e-07
+                -3.1415908336639404,
+                0.6923828125,
+                -3.1415908336639404
             ],
             "scale": [
+                0.9999998211860657,
                 1.0,
-                1.0,
-                1.0
+                0.9999998211860657
             ],
             "targetID": -1,
             "type": "Player"
@@ -197,7 +197,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -2.42612886428833,
                 0.0
             ],
             "scale": [
@@ -447,79 +447,6 @@
                 -5.001794815063477,
                 2.0021355152130127,
                 -11.86160659790039
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Enemy"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 13,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enemyType": "Slime",
-            "eventID": 0,
-            "materialType": 0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Object",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 60.0,
-                "hp": 50.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 50.0,
-                "speed": 0.10000000149011612
-            },
-            "parentName": "",
-            "position": [
-                10.0,
-                -1.9978646039962769,
-                10.0
             ],
             "recorder": {
                 "isRecordLoop": false,

@@ -16,6 +16,9 @@ public:
     // ★ 引数は BaseEnemy と完全一致させる
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
+#ifdef USE_IMGUI
+    void DrawImGui(); 
+#endif
 
 private:
     void ChangeState(State nextState);

@@ -13,6 +13,7 @@ static Math math;
 
 
 void Character::Update(float deltaTime) {
+    Object3d::Update(deltaTime);
 
     if (!this->param_.has_value()) {
         return;

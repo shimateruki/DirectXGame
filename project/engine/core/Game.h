@@ -55,6 +55,7 @@ private:
 	bool showGhostRecorder_ = false;
 	bool showTimeController_ = false;
 	bool showPostEffectEditor_ = false; 
+	bool showBossDebug_ = false;
 	ImVec2 lastGameViewSize_ = { 0, 0 };
 #endif
 };

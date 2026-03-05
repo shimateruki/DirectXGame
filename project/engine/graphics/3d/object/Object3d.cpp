@@ -9,6 +9,7 @@
 #include <cassert>
 #include <algorithm> // min, max
 #include <ParticleManager.h>
+#include <DebugConsole.h>
 
 Object3d::~Object3d() {
     if (recorder_) {
@@ -66,6 +67,10 @@ void Object3d::Update(float deltaTime) {
                     time = std::min(time, anim->duration);
                 }
                 model->ApplyAnimation(*anim, time);
+            }
+            else {
+                // ★追加: アニメーション名が間違っている証拠を掴む！
+                DebugConsole::GetInstance()->AddLog("[ERROR] Animation Not Found: " + animName_);
             }
         }
         meshRenderer_->GetModel()->Update();

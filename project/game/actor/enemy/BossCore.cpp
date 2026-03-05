@@ -1,5 +1,5 @@
 #include "BossCore.h"
-
+#include "imgui.h"
 void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
 
@@ -96,11 +96,9 @@ void BossCore::UpdateAttack(float deltaTime) {
         Vector3 spawnPos = eventInfo.targetObject->GetWorldPosition();
 
         if (eventInfo.id == 1) {
-            // 例: そのパーツの当たり判定をONにする
-            // eventInfo.targetObject->SetCollisionEnable(true);
+  
         } else if (eventInfo.id == 2) {
-            // 例: そのパーツの位置で砂煙パーティクルを出す
-            // ParticleManager::GetInstance()->Emit("Dust", spawnPos);
+        
         }
     }
 
@@ -116,3 +114,4 @@ void BossCore::UpdateWeak(float deltaTime) {
         ChangeState(State::Idle);
     }
 }
+

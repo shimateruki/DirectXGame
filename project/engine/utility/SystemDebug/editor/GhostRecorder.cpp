@@ -126,29 +126,21 @@ void GhostRecorder::Update() {
 	}
 }
 
-void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic) {
-	DebugConsole::GetInstance()->AddLog("GhostRecorder: Play called! File: " + fileName);
+void GhostRecorder::Play(const std::string& fileName, bool loop, bool isCinematic, bool captureBase) {
 	Load(fileName);
 	if (frames_.empty()) return;
 
 	isLoop_ = loop;
+	isRelative_ = genParams_.generateRelative; // JSONのデータをそのまま使う！
+	isOverrideCamera_ = isCinematic;
 
-	isRelative_ = genParams_.generateRelative;
+	if (target_) { target_->SetIsVisible(!isCinematic); }
 
-	isOverrideCamera_ = isCinematic; // 演出の時だけカメラ乗っ取り
-
-	// ターゲットの表示設定
-	if (target_) {
-		if (isCinematic) {
-			target_->SetIsVisible(false);
-		} else {
-			target_->SetIsVisible(true);
-		}
-	}
+	// 指示があれば、ここで現在の正しい座標を記憶する！
+	if (captureBase) { CaptureBasePose(); }
 
 	StartPlayingInternal();
 }
-
 void GhostRecorder::Stop(bool autoReset) {
 
 	if (autoReset && state_ == State::Playing && isRelative_ && target_) {
@@ -178,34 +170,11 @@ void GhostRecorder::StopRecording() {
 }
 
 void GhostRecorder::StartPlayingInternal() {
-	DebugConsole::GetInstance()->AddLog("GhostRecorder: StartPlayingInternal() called!");
-	if (!target_ || frames_.empty()) {
-		DebugConsole::GetInstance()->AddLog(" -> Aborted: 再生をキャンセルしました。");
-		return;
-	}
-	DebugConsole::GetInstance()->AddLog(" -> Success: 再生を開始します!");
+	if (!target_ || frames_.empty()) return;
 	state_ = State::Playing;
 	currentFrameIndex_ = 0;
 
-	// =======================================================
-	//  再生開始時の基準点をアンカーから取得！
-	// =======================================================
-	FindAnchor();
-	if (anchor_ && genParams_.generateRelative) {
-		basePosition_ = {
-			anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
-			anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
-			anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
-		};
-		baseRotation_ = {
-			anchor_->GetRotation().x + genParams_.anchorOffsetRot.x,
-			anchor_->GetRotation().y + genParams_.anchorOffsetRot.y,
-			anchor_->GetRotation().z + genParams_.anchorOffsetRot.z
-		};
-	} else if (target_) {
-		basePosition_ = target_->GetTranslate();
-		baseRotation_ = target_->GetRotation();
-	}
+
 
 	if (isOverrideCamera_) {
 		CameraEditor* camEditor = CameraEditor::GetInstance();
