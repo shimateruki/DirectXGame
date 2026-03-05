@@ -29,6 +29,9 @@ struct DirectionalLight
     float fogStart;
     float fogEnd;
     float32_t3 fogColor;
+    int32_t enableEnvMap;
+    float envIntensity;
+    float2 padding2;
 };
 
 struct Camera
@@ -80,7 +83,9 @@ ConstantBuffer<PointLightConstData> gPointLights : register(b3);
 ConstantBuffer<SpotLightConstData> gSpotLights : register(b4);
 
 Texture2D<float32_t4> gTexture : register(t0);
+TextureCube<float32_t4> gEnvTexture : register(t2);
 SamplerState gSampler : register(s0);
+
 
 PixelShanderOutput main(VecrtexShaderOutput input)
 {
@@ -284,14 +289,42 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             }
             else
             {
-            
-                output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
-                output.color.a = gMaterial.color.a * textureColor.a;
+                // メタリック（金属度）パラメータ
+                float metallic = 0.8f;
 
+                // ベースカラーは金属度が高いほど暗くなる
+                float3 baseDiffuse = diffuse * (1.0f - metallic);
+                
+             
+                float3 metalReflection = float3(0.0f, 0.0f, 0.0f); // 初期値は真っ黒
+
+                // 定数バッファのフラグが 1(ON) の時だけ反射の計算をする
+                if (gDirectionalLight.enableEnvMap == 1)
+                {
+                    // 1. 視線の反射ベクトルを計算
+                    float3 reflectDir = reflect(-toEye, N);
+                    
+                    // 2. MipLevelを上げる（0.0 → 3.0など）と、画像がぼやけてマットな金属に
+                    float mipLevel = 3.0f;
+                    float3 envColor = gEnvTexture.SampleLevel(gSampler, reflectDir, mipLevel).rgb;
+
+                    // 3. 定数バッファ（ImGui）からまぶしさを受け取る
+                    envColor *= gDirectionalLight.envIntensity;
+
+                    // 4. 環境の反射を金属の色とテクスチャの色と掛け合わせる
+                    metalReflection = envColor * gMaterial.color.rgb * textureColor.rgb * metallic;
+                }
+
+                // 最終合成 (ONなら反射が足され、OFFなら真っ黒が足される=変化なし)
+                output.color.rgb = baseDiffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
+                output.color.rgb += metalReflection;
+
+                output.color.a = gMaterial.color.a * textureColor.a;
+            
                 float rimFactor = 1.0f - saturate(dot(N, toEye));
                 rimFactor = pow(rimFactor, 3.0f);
                 output.color.rgb += float3(1.0f, 1.0f, 1.0f) * rimFactor * 0.5f;
-                output.color.rgb += gDirectionalLight.ambientColor * gMaterial.color.rgb * textureColor.rgb;
+                output.color.rgb += gDirectionalLight.ambientColor * gMaterial.color.rgb * textureColor.rgb * (1.0f - metallic);
             }
 
   

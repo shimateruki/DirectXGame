@@ -39,7 +39,7 @@ void Object3dCommon::CreateRootSignature() {
     descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    // ★追加: ボーン行列用 (t1) - StructuredBuffer
+    // ボーン行列用 (t1) - StructuredBuffer
     D3D12_DESCRIPTOR_RANGE descriptorRangeBone[1] = {};
     descriptorRangeBone[0].BaseShaderRegister = 1; // t1
     descriptorRangeBone[0].NumDescriptors = 1;
@@ -47,10 +47,18 @@ void Object3dCommon::CreateRootSignature() {
     descriptorRangeBone[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 
+    // ==========================================
+    //  環境マップ用 (t2) - TextureCube
+    // ==========================================
+    D3D12_DESCRIPTOR_RANGE descriptorRangeEnvMap[1] = {};
+    descriptorRangeEnvMap[0].BaseShaderRegister = 2; // t2
+    descriptorRangeEnvMap[0].NumDescriptors = 1;
+    descriptorRangeEnvMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRangeEnvMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     // =================================================================
-    // 2. ルートパラメータの設定 (サイズを 7 -> 8 に変更！)
+    // 2. ルートパラメータの設定
     // =================================================================
-    D3D12_ROOT_PARAMETER rootParameters[8] = {}; // ★ここ重要
+    D3D12_ROOT_PARAMETER rootParameters[9] = {}; 
 
     // [0] Material (CBV b0 - Pixel)
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -88,14 +96,20 @@ void Object3dCommon::CreateRootSignature() {
     rootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[6].Descriptor.ShaderRegister = 4;
 
-    // ★追加: [7] Skinning Matrix (DescriptorTable t1 - Vertex)
+    // [7] Skinning Matrix (DescriptorTable t1 - Vertex)
     rootParameters[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使用
     rootParameters[7].DescriptorTable.pDescriptorRanges = descriptorRangeBone;
     rootParameters[7].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeBone);
+    // ==========================================
+    // [8] Environment Map (DescriptorTable t2 - Pixel)
+    // ==========================================
+    rootParameters[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // ピクセルシェーダーで使用
+    rootParameters[8].DescriptorTable.pDescriptorRanges = descriptorRangeEnvMap;
+    rootParameters[8].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeEnvMap);
 
 
-    // 以下は変更なし
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 

@@ -469,13 +469,31 @@ void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resourc
 
 DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
 {
-    //テクスチャファイルを読み込んでプログラムで扱えるようにする
     DirectX::ScratchImage image{};
     DirectX::ScratchImage mipImages{};
     std::wstring filePathW = DirectXCommon::ConvertString(filePath);
-    HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+    HRESULT hr = S_FALSE;
 
-    //テクスチャが読み込まれなかった場合は白色のテクスチャを張る
+    // =========================================================
+    //  拡張子が .dds かどうかで読み込み関数を分ける！
+    // =========================================================
+    if (filePath.size() >= 4 && filePath.substr(filePath.size() - 4) == ".dds")
+    {
+        // DDS用の読み込み関数
+        hr = DirectX::LoadFromDDSFile(filePathW.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
+
+        // DDSの場合はすでにミップマップやキューブマップが構築されていることが多いので、
+        // そのまま返す（ミップマップ生成をスキップ）
+        if (SUCCEEDED(hr)) {
+            return image;
+        }
+    } else
+    {
+        // PNG, JPGなどの一般的な画像用
+        hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+    }
+
+    // テクスチャが読み込まれなかった場合は白色のテクスチャを張る
     if (FAILED(hr))
     {
         D3D12_RESOURCE_DESC materialData;
@@ -485,7 +503,8 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
         materialData.MipLevels = 1;
         materialData.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         materialData.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        //白色のテクスチャを作成
+
+        // 白色のテクスチャを作成
         DirectX::Image whiteImage;
         whiteImage.width = 1;
         whiteImage.height = 1;
@@ -498,17 +517,18 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
 
         image.InitializeFromImage(whiteImage);
         mipImages.InitializeFromImage(whiteImage);
-        delete pixels;
+
+        // ★ついでにメモリリーク修正: 配列をnewしたので delete[] が正解です
+        delete[] pixels;
         return mipImages;
     }
 
-    //ミニマップの作成
+    // ミニマップの作成 (DDS以外の場合のみ実行される)
     hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
     assert(SUCCEEDED(hr));
 
     return mipImages;
 }
-
 
 std::wstring DirectXCommon::ConvertString(const std::string& str) {
     if (str.empty()) {

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include "SRVManager.h"
 #include <DebugConsole.h>
+#include <LightManager.h>
 
 // ==========================================
 // 初期化: メッシュごとにバッファを作る
@@ -135,12 +136,15 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     if (pointLightResource) commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
     if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
 
-    // ★追加: ボーンSRVの設定 (RootParam[7])
-    // ダミーボーン対応により bones は空ではないため、常にセットしてOK
+ 
     if (!modelData_.bones.empty()) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
     }
 
+    uint32_t envMapHandle = LightManager::GetInstance()->GetEnvironmentMapHandle();
+    if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
+    }
     // 3. メッシュごとの描画ループ
     for (const auto& mesh : modelData_.meshes) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
