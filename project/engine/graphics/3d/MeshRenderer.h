@@ -101,6 +101,13 @@ public:
     void SetNormalMap(const std::string& texturePath);
     std::string GetNormalMapPath() const { return normalMapPath_; }
     uint32_t GetNormalMapHandle() const { return normalMapHandle_; }
+    void SetOrmMap(const std::string& texturePath);
+    std::string GetOrmMapPath() const { return ormMapPath_; }
+    uint32_t GetOrmMapHandle() const { return ormMapHandle_; }
+
+    void SetTexture(const std::string& texturePath);
+    std::string GetTexturePath() const { return texturePath_; }
+    uint32_t GetTextureHandle() const { return textureHandle_; }
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -128,4 +135,9 @@ private:
 
     std::string normalMapPath_ = "";
     uint32_t normalMapHandle_ = 0;
+    std::string ormMapPath_ = "";
+    uint32_t ormMapHandle_ = 0;
+
+    std::string texturePath_ = "";
+    uint32_t textureHandle_ = 0;
 };

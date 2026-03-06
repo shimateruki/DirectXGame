@@ -187,6 +187,12 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 if (objData.contains("normalMapPath")) {
                     targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
                 }
+                if (objData.contains("ormMapPath")) {
+                    targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
+                }
+                if (objData.contains("texturePath")) {
+                    targetObject->SetTexture(objData["texturePath"].get<std::string>());
+                }
                 // 5. Collider
                 if (objData.contains("collider")) {
                     json colData = objData["collider"];
