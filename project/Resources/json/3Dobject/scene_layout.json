@@ -462,7 +462,7 @@
                 1.0
             ],
             "enableNormalMap": true,
-            "enemyType": "",
+            "enemyType": "BossCore",
             "eventID": 0,
             "materialType": 0,
             "metallic": 1.0,
@@ -506,7 +506,7 @@
             ],
             "targetID": -1,
             "texturePath": "Resources/sprite/a.png",
-            "type": "Model"
+            "type": "Enemy"
         }
     ]
 }

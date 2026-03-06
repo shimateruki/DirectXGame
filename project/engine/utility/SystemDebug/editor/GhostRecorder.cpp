@@ -126,18 +126,20 @@ void GhostRecorder::Update() {
 	}
 }
 
-void GhostRecorder::Play(const std::string& fileName, bool loop, bool isCinematic, bool captureBase) {
+void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative, bool isCinematic) {
 	Load(fileName);
 	if (frames_.empty()) return;
 
 	isLoop_ = loop;
-	isRelative_ = genParams_.generateRelative; // JSONのデータをそのまま使う！
+	isRelative_ = isRelative; // 渡された引数（Objectのチェックボックス）を優先
 	isOverrideCamera_ = isCinematic;
 
 	if (target_) { target_->SetIsVisible(!isCinematic); }
 
-	// 指示があれば、ここで現在の正しい座標を記憶する！
-	if (captureBase) { CaptureBasePose(); }
+	// ★ 修正：相対再生フラグがONなら、再生開始時の座標を必ず基準(Base)として記憶する！
+	if (isRelative_) {
+		CaptureBasePose();
+	}
 
 	StartPlayingInternal();
 }
@@ -281,6 +283,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 		};
 
 	// --- 2. 描画位置のオフセット計算 ---
+// --- 2. 描画位置のオフセット計算 ---
 	Vector3 drawOffset = { 0, 0, 0 };
 	Vector3 drawRotOffset = { 0, 0, 0 };
 
@@ -290,16 +293,32 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 			drawOffset = { basePosition_.x - genParams_.startPos.x, basePosition_.y - genParams_.startPos.y, basePosition_.z - genParams_.startPos.z };
 			drawRotOffset = { baseRotation_.x - genParams_.startRot.x, baseRotation_.y - genParams_.startRot.y, baseRotation_.z - genParams_.startRot.z };
 		} else {
-			Vector3 currentBase = anchor_ ? Vector3{ anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x, anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y, anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z } : target_->GetTranslate();
-			Vector3 currentBaseRot = anchor_ ? Vector3{ anchor_->GetRotation().x + genParams_.anchorOffsetRot.x, anchor_->GetRotation().y + genParams_.anchorOffsetRot.y, anchor_->GetRotation().z + genParams_.anchorOffsetRot.z } : target_->GetRotation();
-			drawOffset = { currentBase.x - genParams_.startPos.x, currentBase.y - genParams_.startPos.y, currentBase.z - genParams_.startPos.z };
-			drawRotOffset = { currentBaseRot.x - genParams_.startRot.x, currentBaseRot.y - genParams_.startRot.y, currentBaseRot.z - genParams_.startRot.z };
+			// =========================================================================
+			// ★大修正: オブジェクトの現在地にしっかり追従させる！
+			// =========================================================================
+			Vector3 currentBase = anchor_ ? anchor_->GetTranslate() : target_->GetTranslate();
+			Vector3 currentRot = anchor_ ? anchor_->GetRotation() : target_->GetRotation();
+
+			// ドラッグ中のフィードバックループ（Gizmoの暴走）を防ぐためのキャッシュ
+			static Vector3 s_cachedOffset = { 0, 0, 0 };
+			static Vector3 s_cachedRotOffset = { 0, 0, 0 };
+
+			if (isDraggingGizmo_ && selectedPinType_ == SelectedPinType::Start) {
+				// StartピンをGizmoでドラッグしている間だけオフセットを固定し、暴走を防ぐ
+				drawOffset = s_cachedOffset;
+				drawRotOffset = s_cachedRotOffset;
+			} else {
+				// 通常時はターゲットの現在地との差分をオフセットにする（これでピッタリ追従する！）
+				drawOffset = { currentBase.x - genParams_.startPos.x, currentBase.y - genParams_.startPos.y, currentBase.z - genParams_.startPos.z };
+				drawRotOffset = { currentRot.x - genParams_.startRot.x, currentRot.y - genParams_.startRot.y, currentRot.z - genParams_.startRot.z };
+				s_cachedOffset = drawOffset;
+				s_cachedRotOffset = drawRotOffset;
+			}
 		}
 	}
 
 	auto applyOffset = [&](const Vector3& p) { return Vector3{ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z }; };
 	auto applyRotOffset = [&](const Vector3& r) { return Vector3{ r.x + drawRotOffset.x, r.y + drawRotOffset.y, r.z + drawRotOffset.z }; };
-
 	// ========================================================
 	// ★ Gizmo処理 (Rotate / Scale 修正版)
 	// ========================================================
@@ -1310,4 +1329,19 @@ void GhostRecorder::PerformRedo() {
 	selectedWaypointIndex_ = -1;
 
 	DebugConsole::GetInstance()->AddLog("GhostRecorder: Redo!");
+}
+
+
+
+void GhostRecorder::DeleteSelectedPin() {
+	// StartとEndは消せないので、Waypoint(途中の点)だけ消せるようにする
+	if (selectedPinType_ == SelectedPinType::Waypoint && selectedWaypointIndex_ >= 0 && selectedWaypointIndex_ < genParams_.waypoints.size()) {
+		SaveHistory(); // Ctrl+Zで戻せるように履歴を保存
+		genParams_.waypoints.erase(genParams_.waypoints.begin() + selectedWaypointIndex_);
+
+		// 選択状態を解除
+		selectedPinType_ = SelectedPinType::None;
+		selectedWaypointIndex_ = -1;
+		DebugConsole::GetInstance()->AddLog("Waypoint Deleted!");
+	}
 }

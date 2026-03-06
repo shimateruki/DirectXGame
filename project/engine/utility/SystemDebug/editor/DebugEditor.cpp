@@ -135,17 +135,28 @@ void DebugEditor::Update() {
     //  モードB: 通常選択モード
     // =========================================================
     else {
-        // B-1. ショートカット
         if (!ImGui::GetIO().WantCaptureKeyboard) {
-            if (input->IsKeyTriggered(DIK_DELETE)) DeleteSelected();
+
+            // ★完全版: 削除処理の完全分離
+            if (input->IsKeyTriggered(DIK_DELETE)) {
+                // パス編集モード中なら「点」を消す！
+                if (isPathEditMode_ && selectedObject_ && selectedObject_->recorder_ && selectedObject_->recorder_->IsPinSelected()) {
+                    selectedObject_->recorder_->DeleteSelectedPin();
+                }
+                // 通常モードなら「オブジェクト」を消す！
+                else if (!isPathEditMode_) {
+                    DeleteSelected();
+                }
+            }
+
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Z)) PerformUndo();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Y)) PerformRedo();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_S)) SaveScene();
         }
 
-        // B-2. マウス選択 (ギズモを触っていない時)
-        if (isGameViewHovered_ && !ImGuizmo::IsOver()) {
+        // B-2. マウス選択 (ギズモを触っていない時 ＆ ★パス編集モードじゃない時)
+        if (!isPathEditMode_ && isGameViewHovered_ && !ImGuizmo::IsOver()) {
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 Ray ray = ScreenPointToRay(gameViewMousePos_);
                 auto& objects = currentScene->GetObjects();
@@ -169,48 +180,52 @@ void DebugEditor::Update() {
         }
 
         if (selectedObject_) {
-            static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
-            if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
-            if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
-            if (input->IsKeyTriggered(DIK_S)) curOp = ImGuizmo::SCALE;
+            // =====================================================
+            // ★完全版: パス編集モードじゃない時だけ、オブジェクトのGizmoを出す！
+            // =====================================================
+            if (!isPathEditMode_) {
+                static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
+                if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
+                if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
+                if (input->IsKeyTriggered(DIK_S)) curOp = ImGuizmo::SCALE;
 
-            Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-            if (cam) {
-                ImGuizmo::SetDrawlist();
-                ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
+                Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+                if (cam) {
+                    ImGuizmo::SetDrawlist();
+                    ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
 
-                Matrix4x4 view = cam->GetViewMatrix();
-                Matrix4x4 proj = cam->GetProjectionMatrix();
-                Transform* tr = selectedObject_->GetTransform();
+                    Matrix4x4 view = cam->GetViewMatrix();
+                    Matrix4x4 proj = cam->GetProjectionMatrix();
+                    Transform* tr = selectedObject_->GetTransform();
 
-                // ★修正1: ローカル行列ではなく、親の回転を含めた本物のワールド行列を渡す！
-                selectedObject_->UpdateWorldMatrix();
-                Matrix4x4 world = selectedObject_->GetWorldMatrix();
-
-                float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
-                float snapArr[3] = { snapVal, snapVal, snapVal };
-
-                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &world.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
-
-                if (ImGuizmo::IsUsing()) {
-                    if (!isDraggingTransform_) { isDraggingTransform_ = true; tempTransformStart_ = *tr; }
-                    Matrix4x4 newLocalMat = world;
-                    if (selectedObject_->GetParent()) {
-                        Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
-                        newLocalMat = math.Multiply(world, parentWorldInv);
-                    }
-
-                    Vector3 s, rDeg, t;
-                    ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
-                    tr->translate = t;
-                    tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
-                    tr->scale = s;
-                    selectedObject_->UpdateLocalMatrix();
                     selectedObject_->UpdateWorldMatrix();
-                } else if (isDraggingTransform_) {
-                    isDraggingTransform_ = false;
-                    TransformCommand cmd = { selectedObject_, tempTransformStart_, *tr };
-                    undoStack_.push_back(cmd);
+                    Matrix4x4 world = selectedObject_->GetWorldMatrix();
+
+                    float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
+                    float snapArr[3] = { snapVal, snapVal, snapVal };
+
+                    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &world.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
+
+                    if (ImGuizmo::IsUsing()) {
+                        if (!isDraggingTransform_) { isDraggingTransform_ = true; tempTransformStart_ = *tr; }
+                        Matrix4x4 newLocalMat = world;
+                        if (selectedObject_->GetParent()) {
+                            Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
+                            newLocalMat = math.Multiply(world, parentWorldInv);
+                        }
+
+                        Vector3 s, rDeg, t;
+                        ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
+                        tr->translate = t;
+                        tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+                        tr->scale = s;
+                        selectedObject_->UpdateLocalMatrix();
+                        selectedObject_->UpdateWorldMatrix();
+                    } else if (isDraggingTransform_) {
+                        isDraggingTransform_ = false;
+                        TransformCommand cmd = { selectedObject_, tempTransformStart_, *tr };
+                        undoStack_.push_back(cmd);
+                    }
                 }
             }
         }
@@ -830,7 +845,29 @@ void DebugEditor::DrawImGui() {
         if (ImGui::InputText("名前", nameBuffer, sizeof(nameBuffer))) {
             selectedObject_->SetName(std::string(nameBuffer));
         }
+        ImGui::Spacing();
+        if (isPathEditMode_) {
+            // 編集モード中は目立つ色（オレンジ）にして警告を表示
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
+            if (ImGui::Button("✅ パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
+                isPathEditMode_ = false;
+                if (selectedObject_->recorder_) selectedObject_->recorder_->DeselectPin();
+            }
+            ImGui::PopStyleColor(2);
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠️ 現在パスを編集中です。");
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "   本体の移動・選択・削除はロックされています。");
+        } else {
+            if (ImGui::Button("✏️ パスの軌跡を編集する (Enter Path Edit Mode)", ImVec2(-1, 35))) {
+                isPathEditMode_ = true;
+            }
+        }
+        ImGui::Separator();
 
+        // =========================================================================
+        // 🚨 ここから下は「パス編集中」はロック（操作不能）にするエリア
+        // =========================================================================
+        ImGui::BeginDisabled(isPathEditMode_);
         ImGui::Spacing();
 
         if (ImGui::Button("複製 (Duplicate)")) {
@@ -1328,6 +1365,7 @@ void DebugEditor::DrawImGui() {
             }
         }
 
+        ImGui::EndDisabled();
         ImGui::Separator();
 
         if (ImGui::Button("オブジェクト削除", ImVec2(-1, 0))) {
@@ -1667,7 +1705,7 @@ void DebugEditor::DrawProjectWindow() {
     if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         // -------------------------------------------------------
-        // ★ 新規プリセット作成エリア (選択中のオブジェクトを保存)
+        // ★ 新規プリセット作成エリア (選択中のオブジェクトを保存) 
         // -------------------------------------------------------
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "▼ Create New Preset");
