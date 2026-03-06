@@ -61,10 +61,16 @@ void Object3dCommon::CreateRootSignature() {
     descriptorRangeNormalMap[0].NumDescriptors = 1;
     descriptorRangeNormalMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRangeNormalMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_DESCRIPTOR_RANGE descriptorRangeOrmMap[1] = {};
+    descriptorRangeOrmMap[0].BaseShaderRegister = 4; // t4
+    descriptorRangeOrmMap[0].NumDescriptors = 1;
+    descriptorRangeOrmMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRangeOrmMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     // =================================================================
     // 2. ルートパラメータの設定
     // =================================================================
-    D3D12_ROOT_PARAMETER rootParameters[10] = {}; 
+    D3D12_ROOT_PARAMETER rootParameters[11] = {}; 
 
     // [0] Material (CBV b0 - Pixel)
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -121,6 +127,11 @@ void Object3dCommon::CreateRootSignature() {
     rootParameters[9].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[9].DescriptorTable.pDescriptorRanges = descriptorRangeNormalMap;
     rootParameters[9].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeNormalMap);
+
+    rootParameters[10].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[10].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[10].DescriptorTable.pDescriptorRanges = descriptorRangeOrmMap;
+    rootParameters[10].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeOrmMap);
 
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);

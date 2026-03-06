@@ -121,7 +121,7 @@ void Model::UpdateBoneBuffer() {
 }
 
 // モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle)
+void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle)
 {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     // 1. マテリアル設定
@@ -139,7 +139,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     if (pointLightResource) commandList->SetGraphicsRootConstantBufferView(5, pointLightResource->GetGPUVirtualAddress());
     if (spotLightResource) commandList->SetGraphicsRootConstantBufferView(6, spotLightResource->GetGPUVirtualAddress());
 
- 
+
     if (!modelData_.bones.empty()) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
     }
@@ -154,11 +154,25 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, handleToBind);
+    uint32_t ormHandleToBind = ormMapHandle;
+
+    // 画像が未設定(0)、または異常な値の時は「white.png (RGBすべて1.0)」をセットする！
+    if (ormHandleToBind <= 0 || ormHandleToBind > 1000) {
+        ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+    }
+
+    // 次のインデックス(例: 10番)にORMマップをセット！
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, ormHandleToBind);
     // 3. メッシュごとの描画ループ
     for (const auto& mesh : modelData_.meshes) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
 
-        if (mesh.materialIndex < modelData_.materials.size()) {
+
+        if (overrideTextureHandle > 0 && overrideTextureHandle <= 1000) {
+            // エディタで画像が選ばれていたら、そっちを優先して貼る！
+            SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
+        } else if (mesh.materialIndex < modelData_.materials.size()) {
+            // 選ばれていない場合は、モデル本来のテクスチャを貼る
             uint32_t handle = modelData_.materials[mesh.materialIndex].textureHandle;
             SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
         }
@@ -166,7 +180,6 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
     }
 }
-
 // ==========================================
 // 読み込み: Assimpのメッシュごとにデータを分ける
 // ==========================================

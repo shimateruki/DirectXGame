@@ -41,6 +41,7 @@
             "myEventID": -1,
             "name": "Player",
             "normalMapPath": "",
+            "ormMapPath": "",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 54.0,
@@ -65,7 +66,7 @@
             },
             "rotation": [
                 -3.1415908336639404,
-                1.524592638015747,
+                2.601592540740967,
                 -3.1415908336639404
             ],
             "roughness": 1.0,
@@ -75,6 +76,7 @@
                 0.9999955892562866
             ],
             "targetID": -1,
+            "texturePath": "",
             "type": "Player"
         },
         {
@@ -118,6 +120,7 @@
             "myEventID": -1,
             "name": "terrain",
             "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "position": [
                 2.0,
@@ -141,6 +144,7 @@
                 1.0
             ],
             "targetID": -1,
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -184,6 +188,7 @@
             "myEventID": -1,
             "name": "Object",
             "normalMapPath": "",
+            "ormMapPath": "",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 60.0,
@@ -218,6 +223,7 @@
                 1.0
             ],
             "targetID": -1,
+            "texturePath": "",
             "type": "Enemy"
         },
         {
@@ -261,6 +267,7 @@
             "myEventID": -1,
             "name": "Obj_0",
             "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "position": [
                 10.609573364257813,
@@ -284,6 +291,7 @@
                 1.0
             ],
             "targetID": -1,
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -326,6 +334,7 @@
             "myEventID": -1,
             "name": "Trigger_Box",
             "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "position": [
                 3.200000047683716,
@@ -349,6 +358,7 @@
                 1.0
             ],
             "targetID": -1,
+            "texturePath": "",
             "type": "InvisibleBox"
         },
         {
@@ -392,6 +402,7 @@
             "myEventID": -1,
             "name": "Obj_0_Copy0",
             "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "Obj_0",
             "position": [
                 12.609573364257813,
@@ -415,6 +426,7 @@
                 1.0
             ],
             "targetID": -1,
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -449,15 +461,16 @@
                 1.0,
                 1.0
             ],
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "BossCore",
             "eventID": 0,
             "materialType": 0,
             "metallic": 1.0,
-            "modelName": "block",
+            "modelName": "sphere.gltf",
             "myEventID": -1,
             "name": "Enemy_BossCore",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/sprite/b.png",
+            "ormMapPath": "Resources/sprite/c.png",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 0.0,
@@ -472,8 +485,8 @@
             "parentName": "",
             "position": [
                 -5.001794815063477,
-                2.0021355152130127,
-                -11.86160659790039
+                2.9021353721618652,
+                -11.78464412689209
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -485,13 +498,14 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5899999737739563,
             "scale": [
                 1.0,
                 1.0,
                 1.0
             ],
             "targetID": -1,
+            "texturePath": "Resources/sprite/a.png",
             "type": "Enemy"
         }
     ]
