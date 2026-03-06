@@ -48,7 +48,7 @@ private:
 	float dashSpeed_ = 25.0f;       // ダッシュ速度
 	float dashDuration_ = 0.20f;    // ダッシュ継続時間（秒）
 	float dashTimer_ = 0.0f;        // 残りダッシュ時間
-	float dashCooldown_ = 5.0f;     // ダッシュクールダウン（秒）
+	float dashCooldown_ = 3.5f;     // ダッシュクールダウン（秒）
 	float dashCooldownTimer_ = 0.0f;// クールダウン残り時間
 	bool dashAvailable_ = true;     // ダッシュが使えるかどうか
 	Vector3 dashDirection_{};       // 値初期化（{0,0,0}）

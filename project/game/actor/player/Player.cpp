@@ -73,6 +73,14 @@ bool Player::OnCollision(Object3d* other) {
         return false;
     }
 
+    // 無敵時: ダメージ通知は行わないが物理押し戻しは適用（壁との衝突は処理）
+    if (isInvincible_) {
+        if (attribute & kAllSolid) {
+            ApplyPhysicsCollision(info, attribute);
+        }
+        return true;
+    }
+
     // イベントの発行 (ゲームルールやUIへの通知)
     PlayerHitEvent event;
     event.me = this;
@@ -125,4 +133,22 @@ void Player::PlayAnimation(const std::string& animName, bool loop) {
         animationTime_ = 0.0f;
     }
     isAnimLoop_ = loop;
+}
+
+// =======================================================
+// 無敵関連の実装
+// =======================================================
+void Player::SetInvincible(bool inv) {
+    if (inv == isInvincible_) return;
+
+    if (inv) {
+        // 無敵開始: 現在の色を保存し、青にする
+        savedColor_ = GetColor();
+        SetColor({ 0.0f, 0.0f, 1.0f, 1.0f });
+        isInvincible_ = true;
+    } else {
+        // 無敵終了: 色を復元
+        SetColor(savedColor_);
+        isInvincible_ = false;
+    }
 }

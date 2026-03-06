@@ -55,6 +55,11 @@ void PlayerMover::Update(float deltaTime) {
 			dashAvailable_ = false;
 			dashCooldownTimer_ = dashCooldown_;
 
+			// 無敵付与（ダッシュ中のみ）
+			if (player_) {
+				player_->SetInvincible(true);
+			}
+
 			// エフェクト（任意）
 			if (particleSystem_) {
 				Vector3 pos = player_->GetWorldPosition();
@@ -77,6 +82,10 @@ void PlayerMover::Update(float deltaTime) {
 		dashTimer_ -= deltaTime;
 		if (dashTimer_ <= 0.0f) {
 			isDashing_ = false;
+			// 無敵解除（ダッシュ終了時）
+			if (player_) {
+				player_->SetInvincible(false);
+			}
 			// クールダウンは既に開始済みなのでここでは何もしない
 		}
 	} else {

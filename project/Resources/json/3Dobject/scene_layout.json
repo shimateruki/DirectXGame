@@ -32,7 +32,7 @@
                 1.0,
                 1.0
             ],
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
@@ -66,7 +66,7 @@
             },
             "rotation": [
                 -3.1415908336639404,
-                -3.1145925521850586,
+                -1.5707963705062866,
                 -3.1415908336639404
             ],
             "roughness": 1.0,
@@ -544,10 +544,10 @@
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.17399999499320984,
             "modelName": "sword",
             "myEventID": -1,
-            "name": "Preview_sword",
+            "name": "Player_sword",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
@@ -566,7 +566,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.6800000071525574,
             "scale": [
                 3.5,
                 3.5,
