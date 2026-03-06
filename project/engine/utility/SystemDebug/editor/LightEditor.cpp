@@ -165,6 +165,21 @@ void LightEditor::DrawImGui() {
         ImGui::DragFloat("開始距離", &sun.fogStart, 1.0f, 0.0f, 5000.0f);
         ImGui::DragFloat("終了距離", &sun.fogEnd, 1.0f, 0.0f, 5000.0f);
         ImGui::ColorEdit3("フォグ色", &sun.fogColor.x);
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "環境マップ (Environment Map / IBL)");
+
+        // ON/OFF スイッチ
+        bool enableEnv = lightManager_->GetEnableEnvMap();
+        if (ImGui::Checkbox("環境マップを有効化", &enableEnv)) {
+            lightManager_->SetEnableEnvMap(enableEnv);
+        }
+
+        // 強度スライダー
+        float envIntensity = lightManager_->GetEnvIntensity();
+        if (ImGui::SliderFloat("反射強度", &envIntensity, 0.0f, 2.0f)) {
+            lightManager_->SetEnvIntensity(envIntensity);
+        }
+
     }
 
     ImGui::Separator();

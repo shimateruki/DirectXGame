@@ -16,26 +16,28 @@
             -1.0,
             0.0
         ],
+        "enableEnvMap": true,
+        "envIntensity": 0.257999986410141,
         "fogColor": [
-            0.5,
-            0.5,
-            0.5
+            0.0,
+            0.0,
+            0.0
         ],
         "fogEnd": 1000.0,
-        "fogStart": 10.0,
+        "fogStart": 501.0,
         "intensity": 0.0
     },
     "pointLights": [
         {
-            "baseIntensity": 1.0,
+            "baseIntensity": 4.53000020980835,
             "color": [
                 1.0,
                 1.0,
                 1.0,
                 1.0
             ],
-            "decay": 1.0,
-            "intensity": 1.0,
+            "decay": 0.5699999928474426,
+            "intensity": 4.53000020980835,
             "mode": 0,
             "offset": [
                 0.0,
@@ -43,13 +45,45 @@
                 0.0
             ],
             "position": [
-                -5.061834335327148,
-                7.682231903076172,
-                9.905275344848633
+                -9.161999702453613,
+                7.48199987411499,
+                4.40500020980835
             ],
-            "radius": 10.0,
+            "radius": 11.600000381469727,
             "speed": 1.0
         }
     ],
-    "spotLights": []
+    "spotLights": [
+        {
+            "baseIntensity": 2.0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "cosAngle": 0.8377092480659485,
+            "cosFalloffStart": 0.9999984502792358,
+            "decay": 0.7400000095367432,
+            "direction": [
+                0.0,
+                -1.0,
+                0.0
+            ],
+            "distance": 33.599998474121094,
+            "intensity": 2.0,
+            "mode": 0,
+            "offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "position": [
+                0.0,
+                10.5,
+                0.0
+            ],
+            "speed": 1.0
+        }
+    ]
 }

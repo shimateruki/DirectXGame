@@ -15,6 +15,8 @@ LightManager* LightManager::GetInstance() {
 void LightManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
+    uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/rostock_laage_airport_4k.dds");
+    LightManager::GetInstance()->SetEnvironmentMapHandle(envHandle);
 
     // --- バッファ作成 (サイズはConstData構造体に合わせる) ---
     pointLightResource_ = dxCommon_->CreateBufferResource(sizeof(PointLightConstData));
@@ -41,6 +43,8 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 void LightManager::Update() {
+    directionalLightData_.enableEnvMap = isEnableEnvMap_ ? 1 : 0;
+    directionalLightData_.envIntensity = envIntensity_;
     // ---------------------------------------------------
     // 1. 平行光源 (Directional Light)
     // ---------------------------------------------------
@@ -223,7 +227,8 @@ void LightManager::SaveState(const std::string& filename) {
     root["directionalLight"]["fogStart"] = directionalLightData_.fogStart;
     root["directionalLight"]["fogEnd"] = directionalLightData_.fogEnd;
     root["directionalLight"]["fogColor"] = { directionalLightData_.fogColor.x, directionalLightData_.fogColor.y, directionalLightData_.fogColor.z };
-
+    root["directionalLight"]["enableEnvMap"] = isEnableEnvMap_;
+    root["directionalLight"]["envIntensity"] = envIntensity_;
     // --- 点光源 ---
     json pArray = json::array();
     for (const auto& instance : pointLights_) {
@@ -311,6 +316,8 @@ void LightManager::LoadState(const std::string& filename) {
             directionalLightData_.fogColor.x = d["fogColor"][0]; directionalLightData_.fogColor.y = d["fogColor"][1];
             directionalLightData_.fogColor.z = d["fogColor"][2];
         }
+        if (d.contains("enableEnvMap")) isEnableEnvMap_ = d["enableEnvMap"];
+        if (d.contains("envIntensity")) envIntensity_ = d["envIntensity"];
     }
 
     // --- 点光源 ---

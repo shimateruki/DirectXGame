@@ -17,7 +17,11 @@ struct Material
     int32_t selectedLighting;
     float32_t shininess;
     int32_t materialType;
-    float32_t padding2;
+    float32_t roughness;
+    float32_t metallic;
+    
+    int32_t enableNormalMap;
+    float padding2;
 };
 
 struct DirectionalLight
@@ -29,6 +33,9 @@ struct DirectionalLight
     float fogStart;
     float fogEnd;
     float32_t3 fogColor;
+    int32_t enableEnvMap;
+    float envIntensity;
+    float2 padding2;
 };
 
 struct Camera
@@ -80,7 +87,72 @@ ConstantBuffer<PointLightConstData> gPointLights : register(b3);
 ConstantBuffer<SpotLightConstData> gSpotLights : register(b4);
 
 Texture2D<float32_t4> gTexture : register(t0);
+TextureCube<float32_t4> gEnvTexture : register(t2);
 SamplerState gSampler : register(s0);
+Texture2D<float32_t4> gNormalMap : register(t3);
+
+
+
+static const float PI = 3.14159265359;
+
+// 1. GGX (微小面分布関数：ザラザラ具合)
+float DistributionGGX(float3 N, float3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0f);
+    float NdotH2 = NdotH * NdotH;
+    float num = a2;
+    float denom = (NdotH2 * (a2 - 1.0f) + 1.0f);
+    denom = PI * denom * denom;
+    return num / max(denom, 0.0000001f); // 0除算防止
+}
+
+// 2. Geometry (幾何減衰関数：ミクロな影)
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0f);
+    float k = (r * r) / 8.0f;
+    float num = NdotV;
+    float denom = NdotV * (1.0f - k) + k;
+    return num / max(denom, 0.0000001f);
+}
+float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0f);
+    float NdotL = max(dot(N, L), 0.0f);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
+// 3. Fresnel (フレネル反射：角度による反射率)
+float3 FresnelSchlick(float cosTheta, float3 F0)
+{
+    return F0 + (1.0f - F0) * pow(clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
+}
+
+// ★あらゆるライト（平行・点・スポット）のPBR計算を統一する関数
+float3 CalcPBRLight(float3 L, float3 V, float3 N, float3 radiance, float3 albedo, float roughness, float metallic, float3 F0)
+{
+    float3 H = normalize(V + L);
+    float NDF = DistributionGGX(N, H, roughness);
+    float G = GeometrySmith(N, V, L, roughness);
+    float3 F = FresnelSchlick(max(dot(H, V), 0.0f), F0);
+
+    float3 numerator = NDF * G * F;
+    float denominator = 4.0f * max(dot(N, V), 0.0f) * max(dot(N, L), 0.0f) + 0.0001f;
+    float3 specular = numerator / denominator;
+
+    float3 kS = F;
+    float3 kD = float3(1.0f, 1.0f, 1.0f) - kS;
+    kD *= 1.0f - metallic;
+
+    float NdotL = max(dot(N, L), 0.0f);
+    // (拡散反射 + 鏡面反射) * ライトの強さ * 角度
+    return (kD * albedo / PI + specular) * radiance * NdotL;
+}
+
 
 PixelShanderOutput main(VecrtexShaderOutput input)
 {
@@ -109,210 +181,211 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             output.color.a = gMaterial.color.a * textureColor.a;
             break;
 
-        case 2: // Blinn-Phong (Multiple Lights)
-            float32_t3 N = normalize(input.normal);
-            float32_t3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
+        case 2: // PBR (Cook-Torrance BRDF)
+        {   // ★修正: case 2 の開始を波括弧で囲む！
+                float3 N = normalize(input.normal);
+            // ★修正: toEye ではなく V として定義し、ガラスでも使う
+                float3 V = normalize(gCamera.worldPosition - input.worldPosition);
 
-            // 1. Directional Light
-            float32_t3 L = normalize(-gDirectionalLight.direction);
-            NdotL = dot(N, L);
-            cos = pow(NdotL * 0.5f + 0.5f, 2.0f);
-            
-            float32_t3 diffuse = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * cos * gDirectionalLight.intenssity;
-            
-            float32_t3 halfVector = normalize(L + toEye);
-            float NdotH = dot(N, halfVector);
-            float specularPow = pow(saturate(NdotH), gMaterial.shininess);
-            float32_t3 specular = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * specularPow;
-
-            // 2. Point Lights (Loop)
-            float32_t3 totalPointDiffuse = float32_t3(0.0f, 0.0f, 0.0f);
-            float32_t3 totalPointSpecular = float32_t3(0.0f, 0.0f, 0.0f);
-
-            for (int i = 0; i < gPointLights.activeCount; ++i)
-            {
-                PointLight light = gPointLights.lights[i];
-                float32_t3 directionToLight = light.position - input.worldPosition;
-                float distance = length(directionToLight);
-                float32_t3 L_Point = normalize(directionToLight);
-                float factor = pow(saturate(-distance / light.radius + 1.0), light.decay);
-                float pointCos = saturate(dot(N, L_Point));
-                float32_t3 pDiffuse = gMaterial.color.rgb * textureColor.rgb * light.color.rgb * light.intensity * factor * pointCos;
-                totalPointDiffuse += pDiffuse;
-
-                if (pointCos > 0.0f)
-                {
-                    float32_t3 halfVectorPoint = normalize(L_Point + toEye);
-                    float pointNdotH = dot(N, halfVectorPoint);
-                    float pointSpecularPow = pow(saturate(pointNdotH), gMaterial.shininess);
-                    float32_t3 pSpecular = light.color.rgb * light.intensity * factor * pointSpecularPow;
-                    totalPointSpecular += pSpecular;
-                }
-            }
-
-            // 3. Spot Lights (Loop)
-            float32_t3 totalSpotDiffuse = float32_t3(0.0f, 0.0f, 0.0f);
-            float32_t3 totalSpotSpecular = float32_t3(0.0f, 0.0f, 0.0f);
-
-            for (int j = 0; j < gSpotLights.activeCount; ++j)
-            {
-                SpotLight light = gSpotLights.lights[j];
-                float32_t3 directionToSpotLight = normalize(light.position - input.worldPosition);
-                float distanceSpot = length(light.position - input.worldPosition);
-                float32_t3 spotLightDir = normalize(light.direction);
-                float angleCos = dot(directionToSpotLight, -spotLightDir);
-                float falloffFactor = saturate((angleCos - light.cosAngle) / (light.cosFalloffStart - light.cosAngle));
-                float distanceFactor = pow(saturate(-distanceSpot / light.distance + 1.0), light.decay);
-                float spotCos = saturate(dot(N, directionToSpotLight));
-                float32_t3 sDiffuse = gMaterial.color.rgb * textureColor.rgb * light.color.rgb * light.intensity * distanceFactor * falloffFactor * spotCos;
-                totalSpotDiffuse += sDiffuse;
-
-                if (spotCos > 0.0f)
-                {
-                    float32_t3 halfVectorSpot = normalize(directionToSpotLight + toEye);
-                    float spotNdotH = dot(N, halfVectorSpot);
-                    float spotSpecularPow = pow(saturate(spotNdotH), gMaterial.shininess);
-                    float32_t3 sSpecular = light.color.rgb * light.intensity * distanceFactor * falloffFactor * spotSpecularPow;
-                    totalSpotSpecular += sSpecular;
-                }
-            }
-          // ===========================================================
+            // ===========================================================
             // ガラスシェーダー (Crystal Glass Shader)
             // ===========================================================
-            if (gMaterial.materialType == 1)
-            {
-                float3 N = normalize(input.smoothNormal);
-                float3 V = normalize(toEye);
-                float NdotV = saturate(dot(N, V));
-                float PI = 3.14159265f;
+                if (gMaterial.materialType == 1)
+                {
+                    float NdotV = saturate(dot(N, V)); // ★ toEye を V に変更
+                    float PI_GLASS = 3.14159265f; // 重複を避けるため名前変更
 
-            // 環境色の設定
-                float3 skyColor = float3(0.3f, 0.6f, 0.9f);
-                float3 groundColor = float3(0.4f, 0.4f, 0.4f);
-                float3 horizonColor = float3(1.0f, 1.0f, 1.0f);
+                // 環境色の設定
+                    float3 skyColor = float3(0.3f, 0.6f, 0.9f);
+                    float3 groundColor = float3(0.4f, 0.4f, 0.4f);
+                    float3 horizonColor = float3(1.0f, 1.0f, 1.0f);
+
+                // 1. プリズム屈折
+                    float iorRatio = 1.0f / 1.52f;
+                    float3 IOR_RGB = float3(iorRatio * 0.99f, iorRatio, iorRatio * 1.01f);
+
+                    float3 RefractR = refract(-V, N, IOR_RGB.r);
+                    float3 RefractG = refract(-V, N, IOR_RGB.g);
+                    float3 RefractB = refract(-V, N, IOR_RGB.b);
+
+                // [Rチャンネル]
+                    float2 uvR;
+                    uvR.x = atan2(RefractR.x, RefractR.z) / (2.0f * PI_GLASS) + 0.5f;
+                    uvR.y = acos(clamp(RefractR.y, -1.0f, 1.0f)) / PI_GLASS;
+                    float horizonR = pow(saturate(1.0f - abs(uvR.y - 0.5f) * 2.0f), 20.0f);
+                    float3 envR = (uvR.y > 0.5f) ? skyColor : groundColor;
+                    float colorR = lerp(envR.r, horizonColor.r, horizonR);
+
+                // [Gチャンネル]
+                    float2 uvG;
+                    uvG.x = atan2(RefractG.x, RefractG.z) / (2.0f * PI_GLASS) + 0.5f;
+                    uvG.y = acos(clamp(RefractG.y, -1.0f, 1.0f)) / PI_GLASS;
+                    float horizonG = pow(saturate(1.0f - abs(uvG.y - 0.5f) * 2.0f), 20.0f);
+                    float3 envG = (uvG.y > 0.5f) ? skyColor : groundColor;
+                    float colorG = lerp(envG.g, horizonColor.g, horizonG);
+
+                // [Bチャンネル]
+                    float2 uvB;
+                    uvB.x = atan2(RefractB.x, RefractB.z) / (2.0f * PI_GLASS) + 0.5f;
+                    uvB.y = acos(clamp(RefractB.y, -1.0f, 1.0f)) / PI_GLASS;
+                    float horizonB = pow(saturate(1.0f - abs(uvB.y - 0.5f) * 2.0f), 20.0f);
+                    float3 envB = (uvB.y > 0.5f) ? skyColor : groundColor;
+                    float colorB = lerp(envB.b, horizonColor.b, horizonB);
+
+                    float3 refractionColor = float3(colorR, colorG, colorB);
+
+                // 2. フレネル & ダークリム
+                    float F0_glass = 0.04f;
+                    float fresnel = F0_glass + (1.0f - F0_glass) * pow(1.0f - NdotV, 5.0f);
+                    float darkRim = smoothstep(0.6f, 1.0f, 1.0f - pow(NdotV, 0.5f));
+
+                    float3 ReflectVec = reflect(-V, N);
+                    float2 uvReflect;
+                    uvReflect.y = acos(clamp(ReflectVec.y, -1.0f, 1.0f)) / PI_GLASS;
+                    float3 reflectionColor = (uvReflect.y < 0.5f) ? skyColor : groundColor;
+
+                // 3. ダブル・スペキュラ
+                    float3 L_Dir = normalize(-gDirectionalLight.direction);
+                    float3 H_glass = normalize(L_Dir + V);
+                    float NdotH_glass = saturate(dot(N, H_glass));
+
+                    float specPowerPrimary = 8192.0f;
+                    float3 specPrimary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH_glass, specPowerPrimary) * 5.0f;
+
+                    float3 N_Back = normalize(N + V * 0.2f);
+                    float NdotH_Back = saturate(dot(N_Back, H_glass));
+                    float specPowerSecondary = 512.0f;
+                    float3 specSecondary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH_Back, specPowerSecondary) * 1.0f;
+
+                    float3 totalSpecular = specPrimary + specSecondary;
+
+                // 4. 集光 (Caustics)
+                    float internalFocus = dot(N, -L_Dir);
+                    float caustic = smoothstep(0.9f, 1.0f, internalFocus);
+                    float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic * 2.0f;
+
+                // 5. 最終合成
+                    float3 bodyColor = lerp(refractionColor * (1.0f - darkRim * 0.8f), reflectionColor, fresnel);
+                    output.color.rgb = bodyColor + totalSpecular + fakeCaustics;
+
+                    float alphaBase = 0.02f;
+                    output.color.a = saturate(alphaBase + fresnel + caustic * 0.5f + (totalSpecular.r * 0.5f));
+                }
+            // ===========================================================
+            // 通常のPBRマテリアル
+            // ===========================================================
+                else
+                {
+                
+                    float metallic = gMaterial.metallic;
+                float roughness = gMaterial.roughness;
+                    float3 N = normalize(input.normal);
+
+                    if (gMaterial.enableNormalMap == 1)
+                    {
+                        float3 T = normalize(input.tangent);
+                    
+                    // グラム・シュミットの直交化 (NとTを確実に90度にする)
+                        T = normalize(T - dot(T, N) * N);
+                    // 従法線 (Binormal/Bitangent) の計算
+                        float3 B = cross(N, T);
+                    
+                    // TBN行列の作成 (Tangent Space -> World Space)
+                        float3x3 TBN = float3x3(T, B, N);
+                    
+                    // ノーマルマップの画像からRGBを取得 (0.0 ～ 1.0)
+                        float3 normalMap = gNormalMap.Sample(gSampler, input.texcoord).rgb;
+                    
+                    // RGBを -1.0 ～ 1.0 のベクトルに変換
+                        normalMap = normalMap * 2.0f - 1.0f;
+                    
+                    // ワールド空間の新しい法線（ねじ曲げられた法線）を計算！
+                        N = normalize(mul(normalMap, TBN));
+                    }
+                    float3 albedo = gMaterial.color.rgb * textureColor.rgb;
+
+                    float3 F0 = float3(0.04f, 0.04f, 0.04f);
+                    F0 = lerp(F0, albedo, metallic);
+
+                    float3 Lo = float3(0.0f, 0.0f, 0.0f);
+
+                // 1. 平行光源
+                    float3 L_dir = normalize(-gDirectionalLight.direction);
+                    float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity;
+                    Lo += CalcPBRLight(L_dir, V, N, radiance_dir, albedo, roughness, metallic, F0);
+
+                // 2. 点光源
+                    for (int i = 0; i < gPointLights.activeCount; ++i)
+                    {
+                        PointLight pLight = gPointLights.lights[i];
+                        float3 L_point = pLight.position - input.worldPosition;
+                        float distance = length(L_point);
+                        L_point = normalize(L_point);
+                    
+                        float attenuation = pow(saturate(-distance / pLight.radius + 1.0f), pLight.decay);
+                        float3 radiance_point = pLight.color.rgb * pLight.intensity * attenuation;
+                        Lo += CalcPBRLight(L_point, V, N, radiance_point, albedo, roughness, metallic, F0);
+                    }
+
+                // 3. スポットライト
+                    for (int j = 0; j < gSpotLights.activeCount; ++j)
+                    {
+                        SpotLight sLight = gSpotLights.lights[j];
+                        float3 L_spot = sLight.position - input.worldPosition;
+                        float distance = length(L_spot);
+                        L_spot = normalize(L_spot);
+                    
+                        float distanceFactor = pow(saturate(-distance / sLight.distance + 1.0f), sLight.decay);
+                        float angleCos = dot(-L_spot, normalize(sLight.direction));
+                        float falloffFactor = saturate((angleCos - sLight.cosAngle) / (sLight.cosFalloffStart - sLight.cosAngle));
+                        float3 radiance_spot = sLight.color.rgb * sLight.intensity * distanceFactor * falloffFactor;
+                        Lo += CalcPBRLight(L_spot, V, N, radiance_spot, albedo, roughness, metallic, F0);
+                    }
+
+                // 4. 環境マップ (IBL)
+                    float3 ambient = float3(0.0f, 0.0f, 0.0f);
+                
+                    if (gDirectionalLight.enableEnvMap == 1)
+                    {
+                        float3 R = reflect(-V, N);
+                        const float MAX_REFLECTION_LOD = 5.0f;
+                        float3 envColor = gEnvTexture.SampleLevel(gSampler, R, roughness * MAX_REFLECTION_LOD).rgb;
+                        envColor *= gDirectionalLight.envIntensity;
+
+                        float3 F_ibl = FresnelSchlick(max(dot(N, V), 0.0f), F0);
+                        float3 kS_ibl = F_ibl;
+                        float3 kD_ibl = 1.0f - kS_ibl;
+                        kD_ibl *= 1.0f - metallic;
+
+                        float3 specular_ibl = envColor * F_ibl;
+                        float3 diffuse_ibl = kD_ibl * albedo * gDirectionalLight.ambientColor;
+
+                        ambient = diffuse_ibl + specular_ibl;
+                    }
+                    else
+                    {
+                        ambient = gDirectionalLight.ambientColor * albedo * (1.0f - metallic);
+                    }
+
+                    output.color.rgb = Lo + ambient;
+                    output.color.a = gMaterial.color.a * textureColor.a;
+                }
 
             // ===========================================================
-            // 1. プリズム屈折 (RGBを別々に曲げる！)
+            //  距離フォグ
             // ===========================================================
-            // 屈折率を色ごとに少しずらす (ガラスの分散特性)
-                float iorRatio = 1.0f / 1.52f;
-                float3 IOR_RGB = float3(iorRatio * 0.99f, iorRatio, iorRatio * 1.01f); // 赤、緑、青
+                float3 fogColor = gDirectionalLight.fogColor;
+                float fogStart = gDirectionalLight.fogStart;
+                float fogEnd = gDirectionalLight.fogEnd;
 
-            // 3回屈折計算を行う
-                float3 RefractR = refract(-V, N, IOR_RGB.r);
-                float3 RefractG = refract(-V, N, IOR_RGB.g);
-                float3 RefractB = refract(-V, N, IOR_RGB.b);
+                float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
+                float fogRange = max(fogEnd - fogStart, 0.01f);
+                float fogFactor = saturate((distanceToCamera - fogStart) / fogRange);
 
-            // --- 関数化できないので、3回サンプリング処理を展開します ---
-            
-            // [Rチャンネル]
-                float2 uvR;
-                uvR.x = atan2(RefractR.x, RefractR.z) / (2.0f * PI) + 0.5f;
-                uvR.y = acos(clamp(RefractR.y, -1.0f, 1.0f)) / PI;
-                float horizonR = pow(saturate(1.0f - abs(uvR.y - 0.5f) * 2.0f), 20.0f);
-                float3 envR = (uvR.y > 0.5f) ? skyColor : groundColor;
-                float colorR = lerp(envR.r, horizonColor.r, horizonR);
+                output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
 
-            // [Gチャンネル]
-                float2 uvG;
-                uvG.x = atan2(RefractG.x, RefractG.z) / (2.0f * PI) + 0.5f;
-                uvG.y = acos(clamp(RefractG.y, -1.0f, 1.0f)) / PI;
-                float horizonG = pow(saturate(1.0f - abs(uvG.y - 0.5f) * 2.0f), 20.0f);
-                float3 envG = (uvG.y > 0.5f) ? skyColor : groundColor;
-                float colorG = lerp(envG.g, horizonColor.g, horizonG);
-
-            // [Bチャンネル]
-                float2 uvB;
-                uvB.x = atan2(RefractB.x, RefractB.z) / (2.0f * PI) + 0.5f;
-                uvB.y = acos(clamp(RefractB.y, -1.0f, 1.0f)) / PI;
-                float horizonB = pow(saturate(1.0f - abs(uvB.y - 0.5f) * 2.0f), 20.0f);
-                float3 envB = (uvB.y > 0.5f) ? skyColor : groundColor;
-                float colorB = lerp(envB.b, horizonColor.b, horizonB);
-
-            // RGBを合成
-                float3 refractionColor = float3(colorR, colorG, colorB);
-
-
-            // ===========================================================
-            // 2. フレネル & ダークリム
-            // ===========================================================
-                float F0 = 0.04f;
-                float fresnel = F0 + (1.0f - F0) * pow(1.0f - NdotV, 5.0f);
-                float darkRim = smoothstep(0.6f, 1.0f, 1.0f - pow(NdotV, 0.5f));
-
-            // 表面反射 (反射は色ズレしないので1回でOK)
-                float3 ReflectVec = reflect(-V, N);
-                float2 uvReflect;
-                uvReflect.y = acos(clamp(ReflectVec.y, -1.0f, 1.0f)) / PI;
-                float3 reflectionColor = (uvReflect.y < 0.5f) ? skyColor : groundColor;
-
-            // ===========================================================
-            // 3. ダブル・スペキュラ
-            // ===========================================================
-                float3 L_Dir = normalize(-gDirectionalLight.direction);
-                float3 H = normalize(L_Dir + V);
-                float NdotH = saturate(dot(N, H));
-            
-                float specPowerPrimary = 8192.0f;
-                float3 specPrimary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH, specPowerPrimary) * 5.0f;
-
-                float3 N_Back = normalize(N + V * 0.2f);
-                float NdotH_Back = saturate(dot(N_Back, H));
-                float specPowerSecondary = 512.0f;
-                float3 specSecondary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH_Back, specPowerSecondary) * 1.0f;
-
-                float3 totalSpecular = specPrimary + specSecondary;
-
-            // ===========================================================
-            // 4. 集光 (Caustics)
-            // ===========================================================
-                float internalFocus = dot(N, -L_Dir);
-                float caustic = smoothstep(0.9f, 1.0f, internalFocus);
-                float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic * 2.0f;
-
-            // ===========================================================
-            // 5. 最終合成
-            // ===========================================================
-            // 虹色屈折 + 表面反射
-                float3 bodyColor = lerp(refractionColor * (1.0f - darkRim * 0.8f), reflectionColor, fresnel);
-            
-                output.color.rgb = bodyColor + totalSpecular + fakeCaustics;
-
-            // 透明度 (以前と同じ設定)
-                float alphaBase = 0.02f;
-                output.color.a = saturate(alphaBase + fresnel + caustic * 0.5f + (totalSpecular.r * 0.5f));
-            }
-            else
-            {
-            
-                output.color.rgb = diffuse + specular + totalPointDiffuse + totalPointSpecular + totalSpotDiffuse + totalSpotSpecular;
-                output.color.a = gMaterial.color.a * textureColor.a;
-
-                float rimFactor = 1.0f - saturate(dot(N, toEye));
-                rimFactor = pow(rimFactor, 3.0f);
-                output.color.rgb += float3(1.0f, 1.0f, 1.0f) * rimFactor * 0.5f;
-                output.color.rgb += gDirectionalLight.ambientColor * gMaterial.color.rgb * textureColor.rgb;
-            }
-
-  
-            // ===========================================================
-            //  距離フォグ (Distance Fog) - 全体共通
-            // ===========================================================
-            // ハードコードをやめて、定数バッファの値を使う
-            float3 fogColor = gDirectionalLight.fogColor;
-            float fogStart = gDirectionalLight.fogStart;
-            float fogEnd = gDirectionalLight.fogEnd;
-
-            float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
-      
-            float fogRange = max(fogEnd - fogStart, 0.01f);
-            
-            float fogFactor = saturate((distanceToCamera - fogStart) / fogRange);
-
-            // フォグを適用
-            output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
-
-            break;
+                break; 
+            } 
     }
 
     return output;

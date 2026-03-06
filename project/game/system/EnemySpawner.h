@@ -22,7 +22,7 @@ private:
     void Spawn();
 
 private:
-    // ★追加: 工場に渡すために保持しておく
+    //  工場に渡すために保持しておく
     Object3dCommon* common_ = nullptr;
 
     std::string enemyType_;

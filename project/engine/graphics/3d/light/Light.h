@@ -15,6 +15,10 @@ struct DirectionalLight {
 
     float fogEnd;          // 4 byte
     Vector3 fogColor;      // 12 byte
+
+    int32_t enableEnvMap;  // 4 byte (0 = OFF, 1 = ON)
+    float envIntensity;    // 4 byte (環境マップの強さ)
+    float padding2[2];     // 8 byte (アライメント調整用)
 };
 
 /// <summary>

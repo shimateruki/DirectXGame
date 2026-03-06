@@ -26,51 +26,51 @@ void LockOnSystem::Initialize(InputManager* inputManager) {
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
 
-    //// (1) Zキー入力処理
-    //if (inputManager_->IsKeyTriggered(DIK_0)) {
-    //    isLockingOn_ = !isLockingOn_;
+    // (1) Zキー入力処理
+    if (inputManager_->IsKeyTriggered(DIK_0)) {
+        isLockingOn_ = !isLockingOn_;
 
-    //    if (isLockingOn_) {
-    //        // ロックオン開始 -> 対象検索
-    //        lockOnTarget_ = FindBestTarget(objects, camera, player);
-    //        if (!lockOnTarget_) {
-    //            isLockingOn_ = false; // 見つからなかったら解除
-    //        }
-    //    }
+        if (isLockingOn_) {
+            // ロックオン開始 -> 対象検索
+            lockOnTarget_ = FindBestTarget(objects, camera, player);
+            if (!lockOnTarget_) {
+                isLockingOn_ = false; // 見つからなかったら解除
+            }
+        }
 
-    //    if (!isLockingOn_) {
-    //        // ロックオン解除
-    //        lockOnTarget_ = nullptr;
-    //        camera->SyncRotationToCurrentView();
-    //        camera->SetLockOnTarget(nullptr);
-    //        camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モード
-    //    }
+        if (!isLockingOn_) {
+            // ロックオン解除
+            lockOnTarget_ = nullptr;
+            camera->SyncRotationToCurrentView();
+            camera->SetLockOnTarget(nullptr);
+            camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モード
+        }
 
-    //    player->SetLockOn(isLockingOn_); // プレイヤーに通知
-    //}
+        player->SetLockOn(isLockingOn_); // プレイヤーに通知
+    }
 
-    //// (2) ロックオン中の挙動
-    //if (isLockingOn_) {
-    //    // ターゲットが消えた(死亡など)場合の安全対策
-    //    if (!lockOnTarget_) {
-    //        isLockingOn_ = false;
-    //        player->SetLockOn(false);
-    //        camera->SetFollowMode(Camera::FollowMode::kAimable);
-    //        return;
-    //    }
+    // (2) ロックオン中の挙動
+    if (isLockingOn_) {
+        // ターゲットが消えた(死亡など)場合の安全対策
+        if (!lockOnTarget_) {
+            isLockingOn_ = false;
+            player->SetLockOn(false);
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            return;
+        }
 
-    //    // カメラ設定 (毎フレーム更新)
-    //    camera->SetFollowMode(Camera::FollowMode::kLockOn);
-    //    camera->SetLockOnTarget(lockOnTarget_);
+        // カメラ設定 (毎フレーム更新)
+        camera->SetFollowMode(Camera::FollowMode::kLockOn);
+        camera->SetLockOnTarget(lockOnTarget_);
 
-    //    // プレイヤーの向き制御 (Y軸だけ敵に向ける)
-    //    Vector3 playerPos = player->GetWorldPosition();
-    //    Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
-    //    Vector3 toEnemy = enemyPos - playerPos;
+        // プレイヤーの向き制御 (Y軸だけ敵に向ける)
+        Vector3 playerPos = player->GetWorldPosition();
+        Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
+        Vector3 toEnemy = enemyPos - playerPos;
 
-    //    static Math math;
-    //    player->SetRotationY(std::atan2(toEnemy.x, toEnemy.z));
-    //}
+        static Math math;
+        player->SetRotationY(std::atan2(toEnemy.x, toEnemy.z));
+    }
 }
 
 Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {

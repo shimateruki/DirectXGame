@@ -55,7 +55,7 @@ void GamePlayScene::Initialize() {
 	audioPlayer_ = AudioPlayer::GetInstance();
 
 	LOG("Game Initialized!");
-
+	TextureManager::GetInstance()->Load("Resources/sprite/b.png");
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
 	// --- 2. 各種マネージャ初期化 ---
@@ -94,13 +94,6 @@ void GamePlayScene::Initialize() {
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
-	// Enemy
-	std::unique_ptr<BaseEnemy> newEnemy = EnemyFactory::GetInstance()->CreateEnemy("Slime", object3dCommon_.get());
-	if (newEnemy) {
-		newEnemy->SetTranslate({ 10.0f, 0.0f, 10.0f });
-		newEnemy->SetTarget(player_);
-		objectManager_->AddObject(std::move(newEnemy));
-	}
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
@@ -221,12 +214,12 @@ void GamePlayScene::Draw() {
 	// =======================================================
 
 	// 定数バッファではなく、View行列とProjection行列をそのまま渡す！
-	GPUParticleManager::GetInstance()->Draw(
-		dxCommon_->GetCommandList(),
-		camera->GetViewMatrix(),
-		camera->GetProjectionMatrix(),
-		gpuParticleTexHandle_
-	);
+	//GPUParticleManager::GetInstance()->Draw(
+	//	dxCommon_->GetCommandList(),
+	//	camera->GetViewMatrix(),
+	//	camera->GetProjectionMatrix(),
+	//	gpuParticleTexHandle_
+	//);
 }
 
 // ====================================================================

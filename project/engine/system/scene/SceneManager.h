@@ -65,6 +65,8 @@ public:
         debugEditor_ = editor;
     }
     void DrawUI();
+    bool IsPlaying() const { return isPlaying_; }
+    void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
 private:
     static SceneManager* instance_;
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
@@ -72,4 +74,5 @@ private:
     AbstractSceneFactory* sceneFactory_ = nullptr; // ファクトリーのポインタ
     DebugEditor* debugEditor_ = nullptr;
     const std::string kUserConfigPath = "Resources/json/user_config.json";
+    bool isPlaying_ = false;
 };

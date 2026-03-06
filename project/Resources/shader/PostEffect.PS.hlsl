@@ -44,13 +44,16 @@ float4 mainCopy(PSInput input) : SV_TARGET
     return tex.Sample(smp, input.uv);
 }
 
-// --- 2. Extract ---
 float4 mainExtract(PSInput input) : SV_TARGET
 {
     float4 color = tex.Sample(smp, input.uv);
     float brightness = dot(color.rgb, float3(0.299, 0.587, 0.114));
-    float extract = max(0.0, brightness - threshold);
-    return float4(color.rgb * extract, 1.0);
+    
+    // 閾値を超えた分の「割合」を計算する（HDR対応の安全な計算）
+    float contribution = max(0.0, brightness - threshold);
+    contribution /= max(brightness, 0.00001); // 0除算防止
+    
+    return float4(color.rgb * contribution, 1.0);
 }
 
 // --- 3. Downsample ---

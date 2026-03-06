@@ -32,12 +32,15 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": false,
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 1.0,
             "modelName": "a.gltf",
             "myEventID": -1,
             "name": "Player",
+            "normalMapPath": "",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 54.0,
@@ -51,24 +54,25 @@
             },
             "parentName": "",
             "position": [
-                7.790902137756348,
+                -5.609375,
                 2.0021352767944336,
-                34.17733383178711
+                15.162572860717773
             ],
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": false,
-                "recordPathName": "anim_path"
+                "recordPathName": ""
             },
             "rotation": [
-                6.278290811678744e-07,
-                2.7275924682617188,
-                6.27829649602063e-07
+                -3.1415908336639404,
+                1.524592638015747,
+                -3.1415908336639404
             ],
+            "roughness": 1.0,
             "scale": [
+                0.9999955892562866,
                 1.0,
-                1.0,
-                1.0
+                0.9999955892562866
             ],
             "targetID": -1,
             "type": "Player"
@@ -105,12 +109,15 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": true,
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "terrain",
             "myEventID": -1,
             "name": "terrain",
+            "normalMapPath": "",
             "parentName": "",
             "position": [
                 2.0,
@@ -127,6 +134,7 @@
                 -0.0,
                 0.0
             ],
+            "roughness": 0.20200000703334808,
             "scale": [
                 1.0,
                 1.0,
@@ -167,12 +175,15 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": false,
             "enemyType": "Slime",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "block",
             "myEventID": -1,
             "name": "Object",
+            "normalMapPath": "",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 60.0,
@@ -197,9 +208,10 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -1.2513856887817383,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -240,12 +252,15 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": false,
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "sampleBlock.gltf",
             "myEventID": -1,
             "name": "Obj_0",
+            "normalMapPath": "",
             "parentName": "",
             "position": [
                 10.609573364257813,
@@ -262,6 +277,7 @@
                 -0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -302,11 +318,14 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": false,
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "myEventID": -1,
             "name": "Trigger_Box",
+            "normalMapPath": "",
             "parentName": "",
             "position": [
                 3.200000047683716,
@@ -323,6 +342,7 @@
                 0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -363,17 +383,20 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": false,
             "enemyType": "",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 0.0,
             "modelName": "sampleBlock.gltf",
             "myEventID": -1,
             "name": "Obj_0_Copy0",
+            "normalMapPath": "",
             "parentName": "Obj_0",
             "position": [
                 12.609573364257813,
                 2.4706320762634277,
-                24.672588348388672
+                24.34272003173828
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -385,6 +408,7 @@
                 -0.0,
                 0.0
             ],
+            "roughness": 0.5,
             "scale": [
                 1.0,
                 1.0,
@@ -417,7 +441,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 6,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -425,12 +449,15 @@
                 1.0,
                 1.0
             ],
+            "enableNormalMap": false,
             "enemyType": "BossCore",
             "eventID": 0,
             "materialType": 0,
+            "metallic": 1.0,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_BossCore",
+            "normalMapPath": "",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 0.0,
@@ -455,82 +482,10 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "type": "Enemy"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 13,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enemyType": "Slime",
-            "eventID": 0,
-            "materialType": 0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Object",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 60.0,
-                "hp": 50.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 50.0,
-                "speed": 0.10000000149011612
-            },
-            "parentName": "",
-            "position": [
-                10.0,
-                -1.9978646039962769,
-                10.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
+            "roughness": 1.0,
             "scale": [
                 1.0,
                 1.0,

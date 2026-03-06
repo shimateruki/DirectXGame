@@ -14,7 +14,7 @@
 #include"EditorManager.h"
 #include"ModelManager.h"
 #include "GhostDirector.h"
-
+#include"BossCore.h"
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -181,15 +181,19 @@ void Game::Update() {
 
             // --- C. ゴーストレコーダー連携 ---
             if (ghostRecorder_ && !isPlaying_) {
-                Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-                if (camera) {
-                    ghostRecorder_->DrawPreview(
-                        camera->GetViewProjectionMatrix(),
-                        Vector2{ imageScreenPos.x, imageScreenPos.y },
-                        Vector2{ displaySize.x, displaySize.y }
-                    );
+           
+                if (EditorManager::GetInstance()->GetSelectedObject() == ghostRecorder_.get()) {
+                    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+                    if (camera) {
+                        ghostRecorder_->DrawPreview(
+                            camera->GetViewProjectionMatrix(),
+                            Vector2{ imageScreenPos.x, imageScreenPos.y },
+                            Vector2{ displaySize.x, displaySize.y }
+                        );
+                    }
                 }
             }
+
             if (ghostDirector_ && !isPlaying_) {
                 // EditorManagerでDirectorが選択されている時だけ全員のパスを描画！
                 if (EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_.get()) {
@@ -221,6 +225,7 @@ void Game::Update() {
         static bool prevIsPlaying = isPlaying_;
         if (isPlaying_) {
             if (ImGui::Button("■ 停止")) isPlaying_ = false;
+            if (sceneManager_) { sceneManager_->SetIsPlaying(false); }
         } else {
             if (ImGui::Button("▶ 再生")) {
           
@@ -230,6 +235,7 @@ void Game::Update() {
                 sceneManager_->ChangeScene(currentSceneName_);
 
                 isPlaying_ = true;
+                if (sceneManager_) { sceneManager_->SetIsPlaying(true); }
                 CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
             }
         }
@@ -286,6 +292,7 @@ void Game::Update() {
             ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
             ImGui::MenuItem("ステータス", NULL, &showTimeController_);
+            ImGui::MenuItem("ボスロジックデバッグ", NULL, &showBossDebug_);
             ImGui::EndMenu();
         }
 
@@ -327,7 +334,7 @@ void Game::Update() {
         ImGui::SliderFloat("時間倍率", &timeScale_, 0.0f, 2.0f);
         ImGui::End();
     }
-
+  
     // ギズモ操作中はカメラ入力をオフにする
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }
@@ -336,7 +343,9 @@ void Game::Update() {
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     postEffect_->GetParams()->time += deltaTime;
-
+    if (sceneManager_) {
+        sceneManager_->SetIsPlaying(isPlaying_);
+    }
 }
 void Game::Draw() {
 #ifdef USE_IMGUI

@@ -9,6 +9,7 @@
 #include <cassert>
 #include <algorithm> // min, max
 #include <ParticleManager.h>
+#include <DebugConsole.h>
 
 Object3d::~Object3d() {
     if (recorder_) {
@@ -31,7 +32,6 @@ void Object3d::Initialize(Object3dCommon* common) {
     transform_.translate = { 0.0f, 0.0f, 0.0f };
     transform_.parent = nullptr;
 
-    // ★コンポーネント生成
     // 1. コライダー (Transformと同期)
     collider_ = std::make_unique<Collider>(&transform_);
 
@@ -67,11 +67,12 @@ void Object3d::Update(float deltaTime) {
                 }
                 model->ApplyAnimation(*anim, time);
             }
+        
         }
         meshRenderer_->GetModel()->Update();
     }
 
-    // ★レンダラー更新 (WVP行列転送など)
+    // レンダラー更新 (WVP行列転送など)
     if (meshRenderer_) {
         meshRenderer_->Update();
     }

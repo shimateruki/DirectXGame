@@ -30,9 +30,6 @@ void GameClearScene::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
 
     // --- 2. リソースロード ---
-    ModelManager::GetInstance()->LoadModel("player");
-    ModelManager::GetInstance()->LoadModel("teapot");
-    ModelManager::GetInstance()->LoadModel("sampleBlock.gltf");
     LOG("GameClearScene Initialized!");
 
     bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");

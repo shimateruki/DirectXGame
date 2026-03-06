@@ -39,7 +39,7 @@ void Object3dCommon::CreateRootSignature() {
     descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    // ★追加: ボーン行列用 (t1) - StructuredBuffer
+    // ボーン行列用 (t1) - StructuredBuffer
     D3D12_DESCRIPTOR_RANGE descriptorRangeBone[1] = {};
     descriptorRangeBone[0].BaseShaderRegister = 1; // t1
     descriptorRangeBone[0].NumDescriptors = 1;
@@ -47,10 +47,24 @@ void Object3dCommon::CreateRootSignature() {
     descriptorRangeBone[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 
+    // ==========================================
+    //  環境マップ用 (t2) - TextureCube
+    // ==========================================
+    D3D12_DESCRIPTOR_RANGE descriptorRangeEnvMap[1] = {};
+    descriptorRangeEnvMap[0].BaseShaderRegister = 2; // t2
+    descriptorRangeEnvMap[0].NumDescriptors = 1;
+    descriptorRangeEnvMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRangeEnvMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_DESCRIPTOR_RANGE descriptorRangeNormalMap[1] = {};
+    descriptorRangeNormalMap[0].BaseShaderRegister = 3; // t3
+    descriptorRangeNormalMap[0].NumDescriptors = 1;
+    descriptorRangeNormalMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRangeNormalMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     // =================================================================
-    // 2. ルートパラメータの設定 (サイズを 7 -> 8 に変更！)
+    // 2. ルートパラメータの設定
     // =================================================================
-    D3D12_ROOT_PARAMETER rootParameters[8] = {}; // ★ここ重要
+    D3D12_ROOT_PARAMETER rootParameters[10] = {}; 
 
     // [0] Material (CBV b0 - Pixel)
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -88,14 +102,26 @@ void Object3dCommon::CreateRootSignature() {
     rootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[6].Descriptor.ShaderRegister = 4;
 
-    // ★追加: [7] Skinning Matrix (DescriptorTable t1 - Vertex)
+    // [7] Skinning Matrix (DescriptorTable t1 - Vertex)
     rootParameters[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使用
     rootParameters[7].DescriptorTable.pDescriptorRanges = descriptorRangeBone;
     rootParameters[7].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeBone);
+    // ==========================================
+    // [8] Environment Map (DescriptorTable t2 - Pixel)
+    // ==========================================
+    rootParameters[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // ピクセルシェーダーで使用
+    rootParameters[8].DescriptorTable.pDescriptorRanges = descriptorRangeEnvMap;
+    rootParameters[8].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeEnvMap);
+	// ==========================================
+	// [9] Normal Map (DescriptorTable t3 - Pixel)
+	// ==========================================
+    rootParameters[9].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[9].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[9].DescriptorTable.pDescriptorRanges = descriptorRangeNormalMap;
+    rootParameters[9].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeNormalMap);
 
-
-    // 以下は変更なし
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 
@@ -130,13 +156,13 @@ void Object3dCommon::CreatePipelineStates() {
     // =========================================================
     // 1. 入力レイアウト (Input Layout)
     // =========================================================
-    D3D12_INPUT_ELEMENT_DESC inputElementDescs[5] = {};
+    D3D12_INPUT_ELEMENT_DESC inputElementDescs[6] = {};
     inputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
     inputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
     inputElementDescs[2] = { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[3] = { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[4] = { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    
+    inputElementDescs[3] = { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+    inputElementDescs[4] = { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+    inputElementDescs[5] = { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
     D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = { inputElementDescs, _countof(inputElementDescs) };
 
     // =========================================================
