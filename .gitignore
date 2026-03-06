@@ -362,7 +362,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /project/imgui.ini
-Resources/json/user_config.json
-/project/Resources/json/user_config.json
-!project/externals/SDL2/lib/**
-*.pdb
+!externals/assimp/
+!externals/assimp/include/
+!externals/assimp/lib/
+!externals/assimp/lib/**
