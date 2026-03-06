@@ -37,7 +37,7 @@
             "eventID": 0,
             "materialType": 0,
             "metallic": 1.0,
-            "modelName": "a.gltf",
+            "modelName": "block",
             "myEventID": -1,
             "name": "Player",
             "normalMapPath": "",
@@ -66,7 +66,7 @@
             },
             "rotation": [
                 -3.1415908336639404,
-                2.601592540740967,
+                -3.1145925521850586,
                 -3.1415908336639404
             ],
             "roughness": 1.0,
@@ -506,6 +506,74 @@
             ],
             "targetID": -1,
             "texturePath": "Resources/sprite/a.png",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.20000000298023224,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.3499999940395355,
+                    0.10000000149011612,
+                    0.05000000074505806
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sword",
+            "myEventID": -1,
+            "name": "Preview_sword",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -8.32848072052002,
+                3.662675619125366,
+                17.05594253540039
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "scale": [
+                3.5,
+                3.5,
+                3.5
+            ],
+            "targetID": -1,
+            "texturePath": "",
             "type": "Model"
         }
     ]

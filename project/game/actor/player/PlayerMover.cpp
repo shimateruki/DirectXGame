@@ -22,20 +22,73 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 void PlayerMover::Update(float deltaTime) {
 	if (!player_ || !inputManager_ || !strategy_) return;
 
+	// --- クールダウンタイマー更新（先に処理） ---
+	if (dashCooldownTimer_ > 0.0f) {
+		dashCooldownTimer_ -= deltaTime;
+		if (dashCooldownTimer_ <= 0.0f) {
+			dashCooldownTimer_ = 0.0f;
+			dashAvailable_ = true; // クールダウン終了で再使用可能
+		}
+	}
+
 	// 1. 現在の速度を取得 (Characterによる重力計算済み)
 	Vector3 velocity = player_->GetVelocity();
 
 	// 2. 入力移動ベクトルの計算
 	Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
+	// ダッシュ開始判定: Shift 押下（トリガー）かつ移動入力ありかつダッシュ可能であること
+	bool shiftTriggered = inputManager_->IsKeyTriggered(DIK_LSHIFT) || inputManager_->IsKeyTriggered(DIK_RSHIFT);
+	bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
+
+	if (shiftTriggered && hasMoveInput && !isDashing_ && dashAvailable_) {
+		// ダッシュ開始
+		float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
+		if (len > 0.001f) {
+			dashDirection_.x = inputMove.x / len;
+			dashDirection_.y = 0.0f;
+			dashDirection_.z = inputMove.z / len;
+			isDashing_ = true;
+			dashTimer_ = dashDuration_;
+
+			// クールタイムは開始と同時にカウントダウンを始める（これで連続回避を防止）
+			dashAvailable_ = false;
+			dashCooldownTimer_ = dashCooldown_;
+
+			// エフェクト（任意）
+			if (particleSystem_) {
+				Vector3 pos = player_->GetWorldPosition();
+				pos.y -= 1.0f;
+				particleSystem_->SpawnParticles(
+					pos, 6, 1.0f, &dashDirection_, 20.0f,
+					{ 1,0.8f,0.2f,1 }, { 1,0.8f,0.2f,0 }, 0.1f, 0.4f, 0.6f, 0.05f
+				);
+			}
+		}
+	}
+
 	// ★重要: X, Z (移動) は上書きし、Y (重力) は維持する
-	velocity.x = inputMove.x;
-	velocity.z = inputMove.z;
+	if (isDashing_) {
+		// ダッシュ中は指定速度で override
+		velocity.x = dashDirection_.x * dashSpeed_;
+		velocity.z = dashDirection_.z * dashSpeed_;
+
+		// ダッシュタイマー更新
+		dashTimer_ -= deltaTime;
+		if (dashTimer_ <= 0.0f) {
+			isDashing_ = false;
+			// クールダウンは既に開始済みなのでここでは何もしない
+		}
+	} else {
+		// 通常時は入力移動を適用
+		velocity.x = inputMove.x;
+		velocity.z = inputMove.z;
+	}
 
 	// 3. 回転処理 (移動入力がある場合のみ)
 	if (!player_->IsLockingOn()) {
-		if (std::abs(inputMove.x) > 0.001f || std::abs(inputMove.z) > 0.001f) {
-			float targetAngle = std::atan2(inputMove.x, inputMove.z);
+		if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f) {
+			float targetAngle = std::atan2(velocity.x, velocity.z);
 			player_->SetRotationY(targetAngle);
 		}
 	}
