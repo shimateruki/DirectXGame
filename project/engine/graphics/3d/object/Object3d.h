@@ -162,6 +162,13 @@ public:
     void SetEnemyType(const std::string& type) { enemyType_ = type; }
     std::string GetEnemyType() const { return enemyType_; }
     virtual void OnRecordEvent(int eventID) {}
+    // ゲッター・セッターがいっぱい並んでいるあたりに追加
+    void SetEnableNormalMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableNormalMap(enable); }
+    bool GetEnableNormalMap() const { return meshRenderer_ ? meshRenderer_->GetEnableNormalMap() : false; }
+    void SetNormalMap(const std::string& texturePath) { if (meshRenderer_) meshRenderer_->SetNormalMap(texturePath); }
+    std::string GetNormalMapPath() const { return meshRenderer_ ? meshRenderer_->GetNormalMapPath() : ""; }
+
+
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;

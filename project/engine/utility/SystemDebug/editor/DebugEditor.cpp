@@ -959,6 +959,78 @@ void DebugEditor::DrawImGui() {
                         isGraphicsChanged = true;
                     }
                 }
+                ImGui::Separator();
+                bool enableNormal = selectedObject_->GetEnableNormalMap();
+                if (ImGui::Checkbox("法線マップ (Normal Map) 有効化", &enableNormal)) {
+                    selectedObject_->SetEnableNormalMap(enableNormal);
+                    isGraphicsChanged = true;
+                }
+                if (enableNormal) {
+                    // =========================================================
+                    // 1. フォルダ内の画像を自動検索してリスト化 (初回 or 更新ボタンが押された時のみ)
+                    // =========================================================
+                    static std::vector<std::string> texturePaths;
+                    static bool isListInitialized = false;
+
+                    if (!isListInitialized) {
+                        texturePaths.clear();
+                        // 検索する基準のフォルダ
+                        std::string targetDir = "Resources/sprite/";
+
+                        if (std::filesystem::exists(targetDir)) {
+                            // フォルダの中を再帰的に（サブフォルダの中まで）探す
+                            for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
+                                if (entry.is_regular_file()) {
+                                    std::string ext = entry.path().extension().string();
+                                    // 画像ファイルっぽいものだけリストアップ
+                                    if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
+                                        std::string pathString = entry.path().string();
+                                        // Windowsのバックスラッシュ(\)をスラッシュ(/)に統一
+                                        std::replace(pathString.begin(), pathString.end(), '\\', '/');
+                                        texturePaths.push_back(pathString);
+                                    }
+                                }
+                            }
+                        }
+                        isListInitialized = true;
+                    }
+
+                    // =========================================================
+                    // 2. ImGuiのプルダウンリスト(コンボボックス)で表示
+                    // =========================================================
+                    std::string currentPath = selectedObject_->GetNormalMapPath();
+                    const char* previewValue = currentPath.empty() ? "未設定 (クリックで選択)" : currentPath.c_str();
+
+                    if (ImGui::BeginCombo("ノーマル画像", previewValue)) {
+                        // 検索して見つかった全画像をリストに並べる
+                        for (const std::string& path : texturePaths) {
+                            bool isSelected = (currentPath == path);
+                            if (ImGui::Selectable(path.c_str(), isSelected)) {
+                                selectedObject_->SetNormalMap(path);
+                                isGraphicsChanged = true;
+                            }
+                            if (isSelected) {
+                                ImGui::SetItemDefaultFocus(); // スクロール位置を合わせる
+                            }
+                        }
+
+                        ImGui::Separator();
+
+                        // 「外す（なしにする）」選択肢も用意しておく
+                        if (ImGui::Selectable("なし (クリア)", currentPath.empty())) {
+                            selectedObject_->SetNormalMap("");
+                            isGraphicsChanged = true;
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    // エクスプローラーから画像を新しく追加した時に、リストを再読み込みするボタン
+                    ImGui::SameLine();
+                    if (ImGui::Button("更新")) {
+                        isListInitialized = false;
+                    }
+                }
+                ImGui::Separator();
                 const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
                 int currentBlend = static_cast<int>(selectedObject_->GetBlendMode());
 
@@ -1417,6 +1489,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     currentData["materialType"] = object->GetMaterialType();
     currentData["metallic"] = object->GetMetallic();
     currentData["roughness"] = object->GetRoughness();
+    currentData["enableNormalMap"] = object->GetEnableNormalMap();
+    currentData["normalMapPath"] = object->GetNormalMapPath();
     // =========================================================
     // 3. JSON配列内を探して更新 or 追加
     // =========================================================
@@ -1769,6 +1843,8 @@ void DebugEditor::SaveScene() {
         d["materialType"] = obj->GetMaterialType();
         d["metallic"] = obj->GetMetallic();
         d["roughness"] = obj->GetRoughness();
+        d["enableNormalMap"] = obj->GetEnableNormalMap();
+        d["normalMapPath"] = obj->GetNormalMapPath();
         // 配列に追加
         sceneData["objects"].push_back(d);
     }

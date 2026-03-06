@@ -19,7 +19,9 @@ struct Material
     int32_t materialType;
     float32_t roughness;
     float32_t metallic;
-    float32_t2 padding2;
+    
+    int32_t enableNormalMap;
+    float padding2;
 };
 
 struct DirectionalLight
@@ -87,6 +89,8 @@ ConstantBuffer<SpotLightConstData> gSpotLights : register(b4);
 Texture2D<float32_t4> gTexture : register(t0);
 TextureCube<float32_t4> gEnvTexture : register(t2);
 SamplerState gSampler : register(s0);
+Texture2D<float32_t4> gNormalMap : register(t3);
+
 
 
 static const float PI = 3.14159265359;
@@ -275,6 +279,29 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                 
                     float metallic = gMaterial.metallic;
                 float roughness = gMaterial.roughness;
+                    float3 N = normalize(input.normal);
+
+                    if (gMaterial.enableNormalMap == 1)
+                    {
+                        float3 T = normalize(input.tangent);
+                    
+                    // グラム・シュミットの直交化 (NとTを確実に90度にする)
+                        T = normalize(T - dot(T, N) * N);
+                    // 従法線 (Binormal/Bitangent) の計算
+                        float3 B = cross(N, T);
+                    
+                    // TBN行列の作成 (Tangent Space -> World Space)
+                        float3x3 TBN = float3x3(T, B, N);
+                    
+                    // ノーマルマップの画像からRGBを取得 (0.0 ～ 1.0)
+                        float3 normalMap = gNormalMap.Sample(gSampler, input.texcoord).rgb;
+                    
+                    // RGBを -1.0 ～ 1.0 のベクトルに変換
+                        normalMap = normalMap * 2.0f - 1.0f;
+                    
+                    // ワールド空間の新しい法線（ねじ曲げられた法線）を計算！
+                        N = normalize(mul(normalMap, TBN));
+                    }
                     float3 albedo = gMaterial.color.rgb * textureColor.rgb;
 
                     float3 F0 = float3(0.04f, 0.04f, 0.04f);

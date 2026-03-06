@@ -6,30 +6,49 @@
 
 class SceneManager; // 前方宣言
 
+// ボスのコア(中核)となる統合制御クラス
 class BossCore : public BaseEnemy {
 public:
-    enum class State { Idle, Attack, Weak };
+    // ==================================================
+    // 状態定義
+    // ==================================================
+    enum class State {
+        Idle,   // 待機
+        Attack, // 攻撃
+        Weak    // 弱点露出(ダウン)
+    };
 
-
-    void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
-
-    // ★ 引数は BaseEnemy と完全一致させる
+    // ==================================================
+    // 基本サイクル (BaseEnemy オーバーライド)
+    // ==================================================
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
+
 #ifdef USE_IMGUI
-    void DrawImGui(); 
+    void DrawImGui();
 #endif
 
+    // ==================================================
+    // アクセッサ
+    // ==================================================
+    void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
+
 private:
+    // ==================================================
+    // ステート(状態)管理メソッド
+    // ==================================================
     void ChangeState(State nextState);
     void UpdateIdle(float deltaTime);
     void UpdateAttack(float deltaTime);
     void UpdateWeak(float deltaTime);
 
+    // ==================================================
+    // 内部コンポーネント・変数
+    // ==================================================
+    std::unique_ptr<GhostDirector> director_; // 演出・モーション制御用の監督
 
-    std::unique_ptr<GhostDirector> director_;
+    SceneManager* sceneManager_ = nullptr;    // エディタ操作/プレイ状態の判定用
 
-    SceneManager* sceneManager_ = nullptr;
-    State state_ = State::Idle;
-    bool isFirstFrame_ = true;
+    State state_ = State::Idle;               // 現在のステート
+    bool isFirstFrame_ = true;                // 初回更新フラグ
 };

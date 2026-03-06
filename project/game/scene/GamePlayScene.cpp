@@ -55,7 +55,7 @@ void GamePlayScene::Initialize() {
 	audioPlayer_ = AudioPlayer::GetInstance();
 
 	LOG("Game Initialized!");
-
+	TextureManager::GetInstance()->Load("Resources/sprite/b.png");
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
 	// --- 2. 各種マネージャ初期化 ---

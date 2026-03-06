@@ -54,6 +54,7 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->materialType = 0; // 通常
     materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
     materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
+    materialData_->enableNormalMap = 1;
     Math math;
     materialData_->uvTransform = math.MakeIdentity4x4();
 
@@ -120,9 +121,9 @@ void Model::UpdateBoneBuffer() {
 }
 
 // モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource) {
+void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle)
+{
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-
     // 1. マテリアル設定
     if (overrideMaterialResource) {
         commandList->SetGraphicsRootConstantBufferView(0, overrideMaterialResource->GetGPUVirtualAddress());
@@ -147,6 +148,12 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     if (envMapHandle != 0) { // 念のため0（未読み込み）じゃないかチェック
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 8, envMapHandle);
     }
+    uint32_t handleToBind = normalMapHandle;
+    if (handleToBind == 0) {
+        // 画像が設定されていない場合はダミーの白画像を使う
+        handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+    }
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, handleToBind);
     // 3. メッシュごとの描画ループ
     for (const auto& mesh : modelData_.meshes) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
@@ -171,7 +178,8 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
     std::string sep = (directoryPath.back() == '/' || directoryPath.back() == '\\') ? "" : "/";
     std::string filePath = directoryPath + sep + filename;
 
-    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_ConvertToLeftHanded);
+
+    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_ConvertToLeftHanded | aiProcess_CalcTangentSpace);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         return modelData;
@@ -213,11 +221,23 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         for (unsigned int v = 0; v < aiMesh->mNumVertices; ++v) {
             VertexData& vertex = tempVertices[v];
             vertex.position = { aiMesh->mVertices[v].x, aiMesh->mVertices[v].y, aiMesh->mVertices[v].z, 1.0f };
+
+            // 法線の取得
             if (aiMesh->HasNormals()) {
                 vertex.normal = { aiMesh->mNormals[v].x, aiMesh->mNormals[v].y, aiMesh->mNormals[v].z };
             } else {
                 vertex.normal = { 0.0f, 1.0f, 0.0f };
             }
+
+          
+            if (aiMesh->HasTangentsAndBitangents()) {
+                vertex.tangent = { aiMesh->mTangents[v].x, aiMesh->mTangents[v].y, aiMesh->mTangents[v].z };
+            } else {
+                vertex.tangent = { 1.0f, 0.0f, 0.0f }; // 計算できなかった場合の安全対策(仮のX軸)
+            }
+            // ==========================================
+
+            // UVの取得
             if (aiMesh->HasTextureCoords(0)) {
                 vertex.texcoord = { aiMesh->mTextureCoords[0][v].x, aiMesh->mTextureCoords[0][v].y };
             } else {

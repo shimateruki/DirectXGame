@@ -2,150 +2,139 @@
 #include "Character.h"
 #include "CollisionConfig.h"
 #include "Math.h"
-#include <algorithm> // std::min, std::max
-#include <cmath>     // std::abs
+#include <algorithm>
+#include <cmath>
 #include "GhostRecorder.h"
 
-//  Math のインスタンスを作成
 static Math math;
 
-
-
+// =================================================================
+// 更新・描画処理
+// =================================================================
 
 void Character::Update(float deltaTime) {
     Object3d::Update(deltaTime);
 
-    if (!this->param_.has_value()) {
+    if (!param_.has_value()) {
         return;
     }
 
-    float gravity = this->param_->gravity;
-    float maxFallSpeed = this->param_->maxFallSpeed;
-
-
+    // 重力と落下速度の計算
     isGrounded_ = false;
-    velocity_.y -= gravity * deltaTime;
+    velocity_.y -= param_->gravity * deltaTime;
 
-    if (velocity_.y < -maxFallSpeed) {
-        velocity_.y = -maxFallSpeed;
+    if (velocity_.y < -param_->maxFallSpeed) {
+        velocity_.y = -param_->maxFallSpeed;
     }
-    if (this->param_->hp <=0)
-    {
+
+    // 死亡判定
+    if (param_->hp <= 0) {
         isDead = true;
     }
 
+    // 速度を座標に適用
     transform_.translate += velocity_ * deltaTime;
 }
 
+void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    // 生存している場合のみ描画
+    if (!isDead) {
+        Object3d::Draw(pointLightResource, spotLightResource);
+    }
+}
+
+// =================================================================
+// 衝突判定・物理挙動
+// =================================================================
+
 bool Character::OnCollision(Object3d* other) {
-    // ★ 1. 衝突情報を取得
     CollisionInfo info = CheckCollision(other);
+
     if (!info.isColliding) {
         return false;
     }
 
-    // 新しい関数に処理を委譲
+    // 物理的な押し戻し・速度補正を適用
     ApplyPhysicsCollision(info, other->GetCollisionAttribute());
 
     return info.isColliding;
 }
 
-
 void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute) {
-    // 1. 地面・壁属性以外（敵の攻撃判定など）は物理押し出ししない
-    // ※ kAllSolid は「kGround | kWall」などのビットマスクと想定
+    // 地面や壁(ソリッド属性)以外は物理的な押し出しを行わない
     if (!(attribute & kAllSolid)) {
         return;
     }
 
-    // ★重要: 法線ベクトルの向きの確認
-    // この関数では info.normal を「プレイヤーを押し出す方向（壁からプレイヤーへの矢印）」として扱います。
-    // もし当たり判定の計算で「プレイヤーから壁への矢印」が入っている場合は、
-    // ここで -1.0f を掛けて反転させる必要があります。
-    // (現状のコードが += で動いているなら、そのままでOKなはずです)
     Vector3 pushNormal = info.normal;
 
+    // 1. 座標の押し戻し (めり込み解消)
+    transform_.translate += (pushNormal * info.penetration);
 
-    // 2. 座標を押し戻す (めり込み解消)
-    // 坂道の場合、斜め上に押し出されることで登れるようになります。
-    this->transform_.translate += (pushNormal * info.penetration);
-
-
-    // 3. 速度の補正 (壁ずり・床滑り防止)
-    // 壁や床に向かって進んでいる場合のみ、その方向の速度成分を消します。
+    // 2. 速度の補正 (壁ずり・床滑り)
     float dot = math.Dot(velocity_, pushNormal);
-
-    // dot < 0.0f ＝ 壁に向かって進んでいる（めり込もうとしている）
     if (dot < 0.0f) {
-        // 壁・坂の表面に沿って滑るベクトル（Slide Vector）を作る
-        // Velocity = Velocity - (Normal * dot)
+        // 壁に向かって進んでいる成分を打ち消し、表面に沿って滑らせる
         velocity_ = velocity_ - (pushNormal * dot);
     }
 
-
-    // 4. 接地判定 (坂道対応)
-    // 法線のY成分が上を向いていれば「地面」または「坂」とみなします。
-    // 1.0f = 平地(0度), 0.7f = 約45度, 0.0f = 垂直な壁
-    const float kSlopeThreshold = 0.7f;
+    // 3. 接地判定と重力リセット (坂道対応)
+    const float kSlopeThreshold = 0.7f; // 法線のY成分が約45度以上なら地面と判定
 
     if (pushNormal.y > kSlopeThreshold) {
         isGrounded_ = true;
 
-        // 【最重要】坂道での重力リセット
-        // これがないと、坂を登っても重力で下に引っ張られ、ずり落ちてしまいます。
+        // 坂を登る際に重力でずり落ちないよう、下方向の速度をリセット
         if (velocity_.y < 0.0f) {
             velocity_.y = 0.0f;
         }
     }
 }
 
+// =================================================================
+// オブジェクト複製 (Clone)
+// =================================================================
+
 std::unique_ptr<Object3d> Character::Clone() const {
-    // Character として生成
     auto newObj = std::make_unique<Character>();
 
     assert(common_ != nullptr);
     newObj->Initialize(common_);
 
-    // モデル設定
+    // 1. 基本設定とTransformのコピー
     if (!GetModelName().empty()) {
-        newObj->SetModel(this->GetModelName());
+        newObj->SetModel(GetModelName());
     }
-    // Transform 情報
-    // (Transform構造体はコピー可能なのでそのまま代入OK)
-    newObj->transform_ = this->transform_;
+    newObj->transform_ = transform_;
+    newObj->SetName(name_);
+    newObj->SetClassName(GetClassName());
+    newObj->SetEnemyType(GetEnemyType());
 
-    // 名前 
-    newObj->SetName(this->name_);
-    newObj->SetColliderConfig(this->GetColliderConfig());
-    newObj->SetCollisionAttribute(this->GetCollisionAttribute());
-    newObj->SetCollisionMask(this->GetCollisionMask());
+    // 2. 衝突判定・属性のコピー
+    newObj->SetColliderConfig(GetColliderConfig());
+    newObj->SetCollisionAttribute(GetCollisionAttribute());
+    newObj->SetCollisionMask(GetCollisionMask());
 
-    // 1. イベントIDとステータス(param_)をコピー
-    newObj->SetEventType(this->eventType_);
-    if (this->param_.has_value()) {
-        newObj->param_ = this->param_.value();
+    // 3. ステータスと状態フラグのコピー
+    newObj->SetEventType(eventType_);
+    if (param_.has_value()) {
+        newObj->param_ = param_.value();
     }
+    newObj->velocity_ = velocity_;
+    newObj->isGrounded_ = isGrounded_;
 
-    // 2. Character 独自のメンバをコピー
-    newObj->velocity_ = this->velocity_;
-    newObj->isGrounded_ = this->isGrounded_;
+    // 4. アニメーション設定のコピー
+    newObj->animName_ = animName_;
+    newObj->isAnimLoop_ = isAnimLoop_;
 
-    // ===================================================
-    // ★ 3. アニメーション設定とレコーダー設定のコピー (修正箇所)
-    // ===================================================
+    // 5. ゴーストレコーダー(パス移動)のコピーと初期化
+    newObj->recordPathName_ = recordPathName_;
+    newObj->isRecordLoop_ = isRecordLoop_;
+    newObj->isRecordRelative_ = isRecordRelative_;
 
-    // ボーンアニメーションのコピー
-    newObj->animName_ = this->animName_;
-    newObj->isAnimLoop_ = this->isAnimLoop_;
+    newObj->InitializeRecorder(nullptr);
 
-    // ゴーストレコーダー(パス移動)のコピー
-    newObj->recordPathName_ = this->recordPathName_;
-    newObj->isRecordLoop_ = this->isRecordLoop_;
-    newObj->isRecordRelative_ = this->isRecordRelative_;
-
-    newObj->InitializeRecorder(nullptr); // レコーダー初期化
-
-    // レコーダーのパス名が設定されていれば再生開始
+    // パス名が設定されていれば自動再生を開始
     if (!newObj->recordPathName_.empty() && newObj->recorder_) {
         bool isCinematic = (newObj->GetClassName() == "CinematicCamera");
         newObj->recorder_->Play(
@@ -155,23 +144,6 @@ std::unique_ptr<Object3d> Character::Clone() const {
             isCinematic
         );
     }
-    // ===================================================
-
-    // "Player" や "Model" などのクラス名を引き継ぐ
-    newObj->SetClassName(this->GetClassName());
-
-    // "Slime" などの敵タイプ名を引き継ぐ
-    newObj->SetEnemyType(this->GetEnemyType());
-
-    // ---------------------------------------------------
 
     return newObj;
-}
-void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    // 親の描画処理をそのまま実行する
-    if (!isDead)
-    {
-        Object3d::Draw(pointLightResource, spotLightResource);
-    }
-   
 }

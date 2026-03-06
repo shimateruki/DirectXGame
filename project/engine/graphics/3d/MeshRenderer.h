@@ -34,6 +34,7 @@ public:
         int32_t materialType;
         float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
         float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
+        int32_t enableNormalMap;
         float padding2[2];         // 8 byte (アライメント調整)
     };
 
@@ -95,6 +96,11 @@ public:
     void SetRoughness(float roughness);
     float GetMetallic() const;
     float GetRoughness() const;
+    void SetEnableNormalMap(bool enable);
+    bool GetEnableNormalMap() const;
+    void SetNormalMap(const std::string& texturePath);
+    std::string GetNormalMapPath() const { return normalMapPath_; }
+    uint32_t GetNormalMapHandle() const { return normalMapHandle_; }
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -119,4 +125,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
+
+    std::string normalMapPath_ = "";
+    uint32_t normalMapHandle_ = 0;
 };

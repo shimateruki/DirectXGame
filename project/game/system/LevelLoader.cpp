@@ -181,6 +181,12 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 if (objData.contains("roughness")) {
                     targetObject->SetRoughness(objData["roughness"].get<float>());
                 }
+                if (objData.contains("enableNormalMap")) {
+                    targetObject->SetEnableNormalMap(objData["enableNormalMap"].get<bool>());
+                }
+                if (objData.contains("normalMapPath")) {
+                    targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
+                }
                 // 5. Collider
                 if (objData.contains("collider")) {
                     json colData = objData["collider"];

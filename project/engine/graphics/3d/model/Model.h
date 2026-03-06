@@ -56,6 +56,7 @@ public:
         int32_t materialType;
         float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
         float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
+        int32_t enableNormalMap;
         float padding2[2];         // 8 byte (アライメント調整)
 
     };
@@ -71,8 +72,10 @@ public:
         Vector4 position;
         Vector2 texcoord;
         Vector3 normal;
+        Vector3 tangent;
         Vector4 boneWeights; // 重み
         Vector4 boneIndices; // 骨番号
+   
     };
 
     // --- データまとめる用 ---
@@ -118,7 +121,7 @@ public: // メンバ関数
         ID3D12Resource* cameraResource,
         ID3D12Resource* pointLightResource,
         ID3D12Resource* spotLightResource,
-        ID3D12Resource* overrideMaterialResource = nullptr);
+        ID3D12Resource* overrideMaterialResource = nullptr, uint32_t normalMapHandle = 0);
 
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)

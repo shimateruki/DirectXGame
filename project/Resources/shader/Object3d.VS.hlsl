@@ -18,6 +18,7 @@ struct VertexShanderInput
     float32_t3 normal : NORMAL0;
     float32_t4 weight : WEIGHT0;
     float32_t4 index : INDEX0;
+    float32_t3 tangent : TANGENT0;
 };
 
 VecrtexShaderOutput main(VertexShanderInput input)
@@ -44,7 +45,7 @@ VecrtexShaderOutput main(VertexShanderInput input)
 
     // 法線ベクトルの変換 (回転のみ適用)
     float32_t3 skinnedNormal = mul(input.normal, (float32_t3x3) skinningMatrix);
-
+    float32_t3 skinnedTangent = mul(input.tangent, (float32_t3x3) skinningMatrix);
     // スムース法線の計算 (球体近似 / ローカル座標を法線として扱う)
     float32_t3 localSmoothNormal = normalize(input.position.xyz);
     float32_t3 skinnedSmoothNormal = mul(localSmoothNormal, (float32_t3x3) skinningMatrix);
@@ -59,7 +60,7 @@ VecrtexShaderOutput main(VertexShanderInput input)
 
     // 法線のワールド変換
     output.normal = normalize(mul(skinnedNormal, (float32_t3x3) gTransformationMatrix.WorldInverseTranspose));
-
+    output.tangent = normalize(mul(skinnedTangent, (float32_t3x3) gTransformationMatrix.World));
     // スムース法線のワールド変換 (ガラス描画等で使用)
     output.smoothNormal = normalize(mul(skinnedSmoothNormal, (float32_t3x3) gTransformationMatrix.World));
 

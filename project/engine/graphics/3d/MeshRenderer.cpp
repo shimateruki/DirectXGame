@@ -39,6 +39,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->materialType = 0;
     materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
     materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
+    materialData_->enableNormalMap = 0;
     
 }
 
@@ -84,7 +85,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         cameraResource_.Get(),
         pointLightResource,
         spotLightResource,
-        materialResource_.Get()
+        materialResource_.Get(), normalMapHandle_
     );
 }
 
@@ -127,4 +128,19 @@ float MeshRenderer::GetMetallic() const {
 
 float MeshRenderer::GetRoughness() const {
     return materialData_ ? materialData_->roughness : 0.3f;
+}
+
+void MeshRenderer::SetEnableNormalMap(bool enable) {
+    if (materialData_) materialData_->enableNormalMap = enable ? 1 : 0;
+}
+bool MeshRenderer::GetEnableNormalMap() const {
+    return materialData_ ? (materialData_->enableNormalMap == 1) : false;
+}
+void MeshRenderer::SetNormalMap(const std::string& texturePath) {
+    normalMapPath_ = texturePath;
+    if (!texturePath.empty()) {
+        normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath);
+    } else {
+        normalMapHandle_ = 0;
+    }
 }
