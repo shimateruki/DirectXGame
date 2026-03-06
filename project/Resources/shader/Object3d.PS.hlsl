@@ -90,7 +90,7 @@ Texture2D<float32_t4> gTexture : register(t0);
 TextureCube<float32_t4> gEnvTexture : register(t2);
 SamplerState gSampler : register(s0);
 Texture2D<float32_t4> gNormalMap : register(t3);
-
+Texture2D<float32_t4> gOrmMap : register(t4);
 
 
 static const float PI = 3.14159265359;
@@ -187,20 +187,15 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             // ★修正: toEye ではなく V として定義し、ガラスでも使う
                 float3 V = normalize(gCamera.worldPosition - input.worldPosition);
 
+          
             // ===========================================================
-            // ガラスシェーダー (Crystal Glass Shader)
+            // 進化版：環境マップ対応 ガラスシェーダー (Crystal Glass Shader)
             // ===========================================================
                 if (gMaterial.materialType == 1)
                 {
-                    float NdotV = saturate(dot(N, V)); // ★ toEye を V に変更
-                    float PI_GLASS = 3.14159265f; // 重複を避けるため名前変更
+                    float NdotV = saturate(dot(N, V));
 
-                // 環境色の設定
-                    float3 skyColor = float3(0.3f, 0.6f, 0.9f);
-                    float3 groundColor = float3(0.4f, 0.4f, 0.4f);
-                    float3 horizonColor = float3(1.0f, 1.0f, 1.0f);
-
-                // 1. プリズム屈折
+                    // 1. プリズム屈折 (RGBごとに少しずつ角度をずらして色収差を出す)
                     float iorRatio = 1.0f / 1.52f;
                     float3 IOR_RGB = float3(iorRatio * 0.99f, iorRatio, iorRatio * 1.01f);
 
@@ -208,43 +203,24 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float3 RefractG = refract(-V, N, IOR_RGB.g);
                     float3 RefractB = refract(-V, N, IOR_RGB.b);
 
-                // [Rチャンネル]
-                    float2 uvR;
-                    uvR.x = atan2(RefractR.x, RefractR.z) / (2.0f * PI_GLASS) + 0.5f;
-                    uvR.y = acos(clamp(RefractR.y, -1.0f, 1.0f)) / PI_GLASS;
-                    float horizonR = pow(saturate(1.0f - abs(uvR.y - 0.5f) * 2.0f), 20.0f);
-                    float3 envR = (uvR.y > 0.5f) ? skyColor : groundColor;
-                    float colorR = lerp(envR.r, horizonColor.r, horizonR);
+                    // ★大進化: 偽物の色ではなく、本物の環境マップを「屈折した方向」でサンプリング！
+                    float3 envR = gEnvTexture.SampleLevel(gSampler, RefractR, 0.0f).rgb;
+                    float3 envG = gEnvTexture.SampleLevel(gSampler, RefractG, 0.0f).rgb;
+                    float3 envB = gEnvTexture.SampleLevel(gSampler, RefractB, 0.0f).rgb;
 
-                // [Gチャンネル]
-                    float2 uvG;
-                    uvG.x = atan2(RefractG.x, RefractG.z) / (2.0f * PI_GLASS) + 0.5f;
-                    uvG.y = acos(clamp(RefractG.y, -1.0f, 1.0f)) / PI_GLASS;
-                    float horizonG = pow(saturate(1.0f - abs(uvG.y - 0.5f) * 2.0f), 20.0f);
-                    float3 envG = (uvG.y > 0.5f) ? skyColor : groundColor;
-                    float colorG = lerp(envG.g, horizonColor.g, horizonG);
+                    // RGBを合体させて、色収差（虹色のにじみ）のある屈折色を作る
+                    float3 refractionColor = float3(envR.r, envG.g, envB.b) * gDirectionalLight.envIntensity;
 
-                // [Bチャンネル]
-                    float2 uvB;
-                    uvB.x = atan2(RefractB.x, RefractB.z) / (2.0f * PI_GLASS) + 0.5f;
-                    uvB.y = acos(clamp(RefractB.y, -1.0f, 1.0f)) / PI_GLASS;
-                    float horizonB = pow(saturate(1.0f - abs(uvB.y - 0.5f) * 2.0f), 20.0f);
-                    float3 envB = (uvB.y > 0.5f) ? skyColor : groundColor;
-                    float colorB = lerp(envB.b, horizonColor.b, horizonB);
-
-                    float3 refractionColor = float3(colorR, colorG, colorB);
-
-                // 2. フレネル & ダークリム
+                    // 2. フレネル & ダークリム
                     float F0_glass = 0.04f;
                     float fresnel = F0_glass + (1.0f - F0_glass) * pow(1.0f - NdotV, 5.0f);
                     float darkRim = smoothstep(0.6f, 1.0f, 1.0f - pow(NdotV, 0.5f));
 
+                    // ★大進化: 偽物の反射ではなく、本物の環境マップを「反射した方向」でサンプリング！
                     float3 ReflectVec = reflect(-V, N);
-                    float2 uvReflect;
-                    uvReflect.y = acos(clamp(ReflectVec.y, -1.0f, 1.0f)) / PI_GLASS;
-                    float3 reflectionColor = (uvReflect.y < 0.5f) ? skyColor : groundColor;
+                    float3 reflectionColor = gEnvTexture.SampleLevel(gSampler, ReflectVec, 0.0f).rgb * gDirectionalLight.envIntensity;
 
-                // 3. ダブル・スペキュラ
+                    // 3. ダブル・スペキュラ (太陽光の鋭いハイライト)
                     float3 L_Dir = normalize(-gDirectionalLight.direction);
                     float3 H_glass = normalize(L_Dir + V);
                     float NdotH_glass = saturate(dot(N, H_glass));
@@ -256,15 +232,14 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float NdotH_Back = saturate(dot(N_Back, H_glass));
                     float specPowerSecondary = 512.0f;
                     float3 specSecondary = float3(1.0f, 1.0f, 1.0f) * pow(NdotH_Back, specPowerSecondary) * 1.0f;
-
                     float3 totalSpecular = specPrimary + specSecondary;
 
-                // 4. 集光 (Caustics)
-                    float internalFocus = dot(N, -L_Dir);
+                    // 4. 集光 (Caustics)
+                    float internalFocus = saturate(dot(N, -L_Dir));
                     float caustic = smoothstep(0.9f, 1.0f, internalFocus);
                     float3 fakeCaustics = float3(1.0f, 0.9f, 0.7f) * caustic * 2.0f;
 
-                // 5. 最終合成
+                    // 5. 最終合成
                     float3 bodyColor = lerp(refractionColor * (1.0f - darkRim * 0.8f), reflectionColor, fresnel);
                     output.color.rgb = bodyColor + totalSpecular + fakeCaustics;
 
@@ -277,8 +252,13 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                 else
                 {
                 
-                    float metallic = gMaterial.metallic;
-                float roughness = gMaterial.roughness;
+                 // ★大進化: ORMマップ(t4)から画像をサンプリング！
+                    float3 ormColor = gOrmMap.Sample(gSampler, input.texcoord).rgb;
+
+                    // 画像がない(white.png)時は 1.0 が掛かるのでスライダーの値がそのまま使われる！
+                    float roughness = gMaterial.roughness * ormColor.g;
+                    float metallic = gMaterial.metallic * ormColor.b;
+                    
                     float3 N = normalize(input.normal);
 
                     if (gMaterial.enableNormalMap == 1)

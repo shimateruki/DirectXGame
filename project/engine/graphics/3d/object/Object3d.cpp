@@ -322,6 +322,9 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->SetBlendMode(other->GetBlendMode());
         this->SetMaterialType(other->GetMaterialType());
         this->SetColor(other->GetColor());
+        this->SetNormalMap(other->GetNormalMapPath()); 
+        this->SetOrmMap(other->GetOrmMapPath());
+        this->SetTexture(other->GetTexturePath());
     }
 
     this->className_ = other->className_;
@@ -388,6 +391,8 @@ json Object3d::ExportToJson() {
 
     j["blendMode"] = static_cast<int>(GetBlendMode());
     j["materialType"] = GetMaterialType();
+    j["ormMapPath"] = GetOrmMapPath();
+    j["texturePath"] = GetTexturePath();
 
     return j;
 }
@@ -448,4 +453,10 @@ void Object3d::ImportFromJson(const json& j) {
 
     if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
     if (j.contains("materialType")) SetMaterialType(j["materialType"]);
+    if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"].get<bool>());
+    if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"].get<std::string>());
+    if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"].get<std::string>()); 
+    if (j.contains("texturePath")) SetTexture(j["texturePath"].get<std::string>());
+
+
 }
