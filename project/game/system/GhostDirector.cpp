@@ -418,7 +418,7 @@ void GhostDirector::AdvanceTime(float deltaTime) {
                 if (t.target && t.target->recorder_) t.target->recorder_->EvaluateAtFrame(0);
             }
         } else {
-            isPlaying_ = false;
+            StopScenario();
         }
     }
 }

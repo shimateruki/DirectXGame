@@ -246,6 +246,155 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float alphaBase = 0.02f;
                     output.color.a = saturate(alphaBase + fresnel + caustic * 0.5f + (totalSpecular.r * 0.5f));
                 }
+                else if (gMaterial.materialType == 2)
+                {
+                    float NdotV = saturate(dot(N, V));
+
+                    // 1. 氷の屈折 (IOR 1.31) とファンタジーな色収差
+                    float iorRatio = 1.0f / 1.31f;
+                    float3 IOR_RGB = float3(iorRatio * 0.96f, iorRatio, iorRatio * 1.04f);
+
+                    float3 RefractR = refract(-V, N, IOR_RGB.r);
+                    float3 RefractG = refract(-V, N, IOR_RGB.g);
+                    float3 RefractB = refract(-V, N, IOR_RGB.b);
+
+                    float3 envR = gEnvTexture.SampleLevel(gSampler, RefractR, 0.0f).rgb;
+                    float3 envG = gEnvTexture.SampleLevel(gSampler, RefractG, 0.0f).rgb;
+                    float3 envB = gEnvTexture.SampleLevel(gSampler, RefractB, 0.0f).rgb;
+                    float3 refractionColor = float3(envR.r, envG.g, envB.b) * gDirectionalLight.envIntensity;
+
+                    // 2. 氷特有の「内部の濁り」をベースカラーで表現
+                    float3 iceBaseColor = gMaterial.color.rgb * textureColor.rgb;
+                    // 屈折した景色に、オブジェクト自身の色を40%混ぜて濁らせる
+                    refractionColor = lerp(refractionColor, iceBaseColor, 0.4f);
+
+                    // 3. フレネル & 反射
+                    float F0_ice = 0.02f;
+                    float fresnel = F0_ice + (1.0f - F0_ice) * pow(1.0f - NdotV, 5.0f);
+                    float3 ReflectVec = reflect(-V, N);
+                    float3 reflectionColor = gEnvTexture.SampleLevel(gSampler, ReflectVec, 0.0f).rgb * gDirectionalLight.envIntensity;
+
+                    // 4. 冷たいスペキュラ (太陽光の鋭い反射)
+                    float3 L_Dir = normalize(-gDirectionalLight.direction);
+                    float3 H = normalize(L_Dir + V);
+                    float3 specular = float3(1.0f, 1.0f, 1.0f) * pow(saturate(dot(N, H)), 1024.0f) * 2.0f;
+
+                    // 5. 合成
+                    float3 bodyColor = lerp(refractionColor, reflectionColor, fresnel);
+                    output.color.rgb = bodyColor + specular;
+                    output.color.a = saturate(0.5f + fresnel + (specular.r * 0.5f)); // 氷は少し不透明度高め
+                }
+            // ===========================================================
+            // 3. ホログラム・バリア (Hologram / Force Field)
+            // ===========================================================
+                else if (gMaterial.materialType == 3)
+                {
+                    float NdotV = saturate(dot(N, V));
+                    
+                    // 1. エッジ発光 (輪郭に近いほど 1.0 に近づく)
+                    // powの数値を小さくする(例: 2.0)とフチが太く、大きくする(例: 5.0)と細くなります
+                    float rimLight = pow(1.0f - NdotV, 3.0f);
+                    
+                    // 2. ベースカラー
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    
+                    // 3. 発光カラーの計算 (フチは強烈に光り、正面はうっすら色を残す)
+                    float3 emission = baseColor * rimLight * 3.0f; // フチを3倍の強さで光らせる
+                    float3 frontColor = baseColor * 0.2f; // 正面は20%の明るさ
+                    
+                    output.color.rgb = emission + frontColor;
+                    
+                    // 4. 透明度 (フチは不透明に、正面は透明に抜く)
+                    // ※エディターでブレンドモードを「加算(Add)」にするとさらに綺麗です！
+                    output.color.a = saturate(rimLight * 2.0f + 0.1f) * gMaterial.color.a * textureColor.a;
+                }
+                else if (gMaterial.materialType == 4)
+                {
+                    // 1. UV座標から疑似ノイズ（ランダムな砂嵐模様）を作る
+                    float2 st = input.texcoord * 15.0f; // ノイズの細かさ
+                    float noise = frac(sin(dot(st, float2(12.9898f, 78.233f))) * 43758.5453123f);
+                    
+                    // 2. エディターの「色(Color)」の【アルファ値(A)】を「溶け具合」として流用！
+                    // (A=1.0 なら無傷、Aを下げていくと徐々に溶ける)
+                    float threshold = gMaterial.color.a;
+                    
+                    // ノイズの値がしきい値を超えたら、そのピクセルは描画せずに「穴」を開ける
+                    if (noise > threshold)
+                    {
+                        discard;
+                    }
+                    
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    
+                    // 3. 溶けている境界線（エッジ）をマグマのように赤熱させる
+                    float edgeWidth = 0.08f; // 境界線の太さ
+                    if (noise > threshold - edgeWidth)
+                    {
+                        float3 fireColor = float3(3.0f, 0.5f, 0.0f); // 超高輝度のオレンジ
+                        output.color.rgb = baseColor + fireColor;
+                    }
+                    else
+                    {
+                        // 穴が開いていない通常部分は、シンプルな光の計算
+                        float NdotL = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
+                        output.color.rgb = baseColor * gDirectionalLight.color.rgb * NdotL + (baseColor * 0.2f);
+                    }
+                    // アルファ値は「溶け具合」に使ったので、描画自体は不透明(1.0)として出力
+                    output.color.a = 1.0f;
+                }
+            // ===========================================================
+            // ★追加 5. マグマ・覚醒 (Emissive)
+            // ===========================================================
+                else if (gMaterial.materialType == 5)
+                {
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    
+                    // 1. 画像の「暗い部分」を判定する (輝度計算)
+                    float luminance = dot(baseColor, float3(0.299f, 0.587f, 0.114f));
+                    
+                    // 2. 「暗い部分」ほど強く光らせる (smoothstepで光る範囲を調整)
+                    // (元のテクスチャの溝や影になっている部分からエネルギーが漏れ出す表現)
+                    float glowFactor = smoothstep(0.4f, 0.0f, luminance);
+                    
+                    // 3. 怒りのオーラ色（赤〜オレンジ）エディターの色(Color)を乗算して色を変えられる！
+                    float3 glowColor = float3(2.5f, 0.8f, 0.0f) * gMaterial.color.rgb;
+                    
+                    // 4. 通常の照明計算
+                    float NdotL = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
+                    float3 litColor = baseColor * gDirectionalLight.color.rgb * NdotL;
+                    
+                    // 5. 元の絵の上に発光を足し合わせる
+                    output.color.rgb = litColor + (glowColor * glowFactor);
+                    output.color.a = gMaterial.color.a * textureColor.a;
+                }
+            // ===========================================================
+            // . トゥーン調 (Cel Shaded)
+            // ===========================================================
+                else if (gMaterial.materialType == 6)
+                {
+                    float3 N = normalize(input.normal);
+                    float3 L = normalize(-gDirectionalLight.direction);
+                    float3 V = normalize(gCamera.worldPosition - input.worldPosition);
+                    
+                    float NdotL = dot(N, L);
+                    
+                    // 1. 光の階調化（リアルなグラデーションを捨てて、パキッとした影を作る）
+                    // NdotL が 0.0 以上なら明るい(1.0)、0.0 未満なら暗い(0.3)、という2階調アニメ塗り
+                    float celFactor = (NdotL > 0.0f) ? 1.0f : 0.3f;
+                    
+                    // 2. 輪郭線（アウトライン）の抽出
+                    float NdotV = saturate(dot(N, V));
+                    // 視線と法線が直角に近い(エッジ部分)なら 0.0 (黒)、それ以外は 1.0
+                    float outline = (NdotV < 0.25f) ? 0.0f : 1.0f;
+                    
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 finalColor = baseColor * gDirectionalLight.color.rgb * celFactor;
+                    
+                    // 3. アニメ塗りの色に、黒い輪郭線を乗算する
+                    output.color.rgb = finalColor * outline;
+                    output.color.a = gMaterial.color.a * textureColor.a;
+                }
+
             // ===========================================================
             // 通常のPBRマテリアル
             // ===========================================================

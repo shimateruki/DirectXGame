@@ -99,7 +99,7 @@ void GamePlayScene::Initialize() {
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
-	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/scene_layout.json");
+	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
 	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
 
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");

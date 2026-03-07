@@ -1,0 +1,162 @@
+{
+    "objects": [
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 13,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Object",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 60.0,
+                "hp": 50.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 50.0,
+                "speed": 0.10000000149011612
+            },
+            "parentName": "",
+            "position": [
+                10.0,
+                -1.9978646039962769,
+                10.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.2513856887817383,
+                0.0
+            ],
+            "roughness": 0.5,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 6,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": true,
+            "enemyType": "BossCore",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 1.0,
+            "modelName": "sphere.gltf",
+            "myEventID": -1,
+            "name": "Enemy_BossCore",
+            "normalMapPath": "Resources/sprite/b.png",
+            "ormMapPath": "Resources/sprite/c.png",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 0.0,
+                "hp": 1000.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 1000.0,
+                "speed": 0.05000000074505806
+            },
+            "parentName": "",
+            "position": [
+                -5.001794815063477,
+                2.9021353721618652,
+                -7.960583686828613
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5899999737739563,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/sprite/a.png",
+            "type": "Enemy"
+        }
+    ]
+}
