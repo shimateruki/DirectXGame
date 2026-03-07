@@ -109,7 +109,13 @@ public:
         selectedPinType_ = SelectedPinType::None;
         selectedWaypointIndex_ = -1;
     }
-
+    void PlayFromMemory(bool loop, bool isCinematic) {
+        if (frames_.empty()) return;
+        isLoop_ = loop;
+        isOverrideCamera_ = isCinematic;
+        if (target_) { target_->SetIsVisible(!isCinematic); }
+        StartPlayingInternal();
+    }
 private:
     void StartRecording();
     void StopRecording();

@@ -316,6 +316,8 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
             }
             if (t.target && t.target->recorder_ && !t.pathFileName.empty()) {
                 t.target->recorder_->Load(t.pathFileName);
+                t.target->recorder_->CaptureBasePose();
+                t.target->recorder_->EvaluateAtFrame(0);
             }
             tracks_.push_back(t);
         }
@@ -398,12 +400,8 @@ void GhostDirector::AdvanceTime(float deltaTime) {
     for (auto& track : tracks_) {
         if (!track.hasStarted && playTimer_ >= track.delayTime) {
             if (track.target && track.target->recorder_) {
-                track.target->recorder_->Play(
-                    track.pathFileName,
-                    false,                          // loop (単体再生)
-                    track.target->isRecordRelative_, // ★ 相対フラグを渡す
-                    (track.target->GetClassName() == "CinematicCamera") // cinematic
-                );
+                bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
+                track.target->recorder_->PlayFromMemory(false, isCinematic);
             }
             track.hasStarted = true;
         }

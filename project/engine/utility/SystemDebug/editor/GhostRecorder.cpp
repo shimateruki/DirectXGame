@@ -294,10 +294,23 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 			drawRotOffset = { baseRotation_.x - genParams_.startRot.x, baseRotation_.y - genParams_.startRot.y, baseRotation_.z - genParams_.startRot.z };
 		} else {
 			// =========================================================================
-			// ★大修正: オブジェクトの現在地にしっかり追従させる！
+			// ★大修正: 待機中(Idle)でもアンカーオフセットを正しく加味して追従させる！
 			// =========================================================================
-			Vector3 currentBase = anchor_ ? anchor_->GetTranslate() : target_->GetTranslate();
-			Vector3 currentRot = anchor_ ? anchor_->GetRotation() : target_->GetRotation();
+			Vector3 currentBase = target_->GetTranslate();
+			Vector3 currentRot = target_->GetRotation();
+
+			if (anchor_) {
+				currentBase = {
+					anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x,
+					anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
+					anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
+				};
+				currentRot = {
+					anchor_->GetRotation().x + genParams_.anchorOffsetRot.x,
+					anchor_->GetRotation().y + genParams_.anchorOffsetRot.y,
+					anchor_->GetRotation().z + genParams_.anchorOffsetRot.z
+				};
+			}
 
 			// ドラッグ中のフィードバックループ（Gizmoの暴走）を防ぐためのキャッシュ
 			static Vector3 s_cachedOffset = { 0, 0, 0 };
@@ -314,6 +327,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 				s_cachedOffset = drawOffset;
 				s_cachedRotOffset = drawRotOffset;
 			}
+		
 		}
 	}
 
@@ -1039,6 +1053,9 @@ void GhostRecorder::DrawImGui() {
 		if (!target_) ImGui::BeginDisabled();
 
 		if (ImGui::Button("メモリから再生 (生成直後用)")) {
+			if (isRelative_) {
+				CaptureBasePose();
+			}
 			StartPlayingInternal();
 		}
 		ImGui::SameLine();
