@@ -357,7 +357,12 @@ void Game::Draw() {
     // 1. シーンレンダリング (オフスクリーン描画)
     // ---------------------------------------------------------------
     dxCommon_->PreDrawRenderTexture();
-
+    dxCommon_->PreDrawShadow();
+    SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
+    if (sceneManager_) {
+        sceneManager_->DrawShadow();
+    }
+    dxCommon_->PostDrawShadow();
     if (sceneManager_) { sceneManager_->Draw(); }
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
 

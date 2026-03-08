@@ -75,7 +75,7 @@ public:
 
     void SetLoadedFilename(const std::string& name) { loadedFilename_ = name; }
     std::string GetLoadedFilename() const { return loadedFilename_; }
-
+    virtual void DrawShadow() {}
 protected:
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;

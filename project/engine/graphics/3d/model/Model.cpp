@@ -521,3 +521,21 @@ const Model::Animation* Model::GetAnimation(const std::string& name) const {
     // 見つからなければ nullptr
     return nullptr;
 }
+
+void Model::DrawShadow(ID3D12Resource* wvpResource) {
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+    // [0] WVP
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource->GetGPUVirtualAddress());
+
+    // [1] ボーン情報
+    if (!modelData_.bones.empty()) {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, boneSrvIndex_);
+    }
+
+    // 各メッシュの頂点を描画
+    for (auto& mesh : modelData_.meshes) {
+        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+        commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
+    }
+}

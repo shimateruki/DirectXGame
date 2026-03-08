@@ -9,7 +9,9 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     CreateRootSignature();
+    CreateShadowRootSignature();
     CreatePipelineStates();
+
 }
 
 void Object3dCommon::SetGraphicsCommand() {
@@ -311,4 +313,85 @@ void Object3dCommon::CreatePipelineStates() {
         HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineStates_[i]));
         assert(SUCCEEDED(hr));
     }
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowDesc{};
+    shadowDesc.pRootSignature = shadowRootSignature_.Get();
+    shadowDesc.InputLayout = inputLayoutDesc; // 頂点レイアウトは通常と同じ
+
+    // ★修正: パスを Resources/ 始まりに合わせる
+    Microsoft::WRL::ComPtr<IDxcBlob> shadowVsBlob = dxCommon_->CompileShader(L"Resources/shader/Shadow.VS.hlsl", L"vs_6_0");
+    shadowDesc.VS = { shadowVsBlob->GetBufferPointer(), shadowVsBlob->GetBufferSize() };
+
+    // ★超重要: ピクセルシェーダーは不要！（深度だけ書き込むため）
+    shadowDesc.PS = { nullptr, 0 };
+
+    // ★修正1: rasterizerDefault -> rasterizerDesc (上で定義した変数を使う)
+    shadowDesc.RasterizerState = rasterizerDesc;
+    // 影のギザギザノイズ（シャドウアクネ）を防ぐ魔法の数値
+    shadowDesc.RasterizerState.DepthBias = 10000;
+    shadowDesc.RasterizerState.DepthBiasClamp = 0.0f;
+    shadowDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
+
+    // ★修正2: currentDepthDesc -> depthStencilDesc (上で定義したベース設定を使う)
+    shadowDesc.DepthStencilState = depthStencilDesc;
+
+    // ★修正3: blendDesc -> ダミーの空設定を作る (PSが無いので何でもOK)
+    D3D12_BLEND_DESC dummyBlend{};
+    shadowDesc.BlendState = dummyBlend;
+    shadowDesc.NumRenderTargets = 0;
+    shadowDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT; // デプスバッファのフォーマット
+    shadowDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+    shadowDesc.SampleDesc.Count = 1;
+    shadowDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    HRESULT hrShadow = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&shadowDesc, IID_PPV_ARGS(&shadowPipelineState_));
+    assert(SUCCEEDED(hrShadow));
+}
+
+void Object3dCommon::SetShadowPipelineState() {
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetPipelineState(shadowPipelineState_.Get());
+}
+
+void Object3dCommon::SetShadowGraphicsCommand() {
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(shadowRootSignature_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::CreateShadowRootSignature() {
+    ID3D12Device* device = dxCommon_->GetDevice();
+
+    // ★ 影に必要なのは「WVP行列」と「ボーン情報」の2つだけ！
+    D3D12_ROOT_PARAMETER rootParams[2] = {};
+
+    // [0] WVP行列 (b0)
+    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParams[0].Descriptor.ShaderRegister = 0; // b0
+    rootParams[0].Descriptor.RegisterSpace = 0;
+    rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+    // [1] ボーン情報 (t0)
+    D3D12_DESCRIPTOR_RANGE boneRange{};
+    boneRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    boneRange.NumDescriptors = 1;
+    boneRange.BaseShaderRegister = 0; // t0
+    boneRange.RegisterSpace = 0;
+    boneRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[1].DescriptorTable.pDescriptorRanges = &boneRange;
+    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
+    rsDesc.NumParameters = _countof(rootParams);
+    rsDesc.pParameters = rootParams;
+    rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+    HRESULT hr = D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signatureBlob, &errorBlob);
+    if (FAILED(hr)) {
+        assert(false);
+    }
+    device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&shadowRootSignature_));
 }

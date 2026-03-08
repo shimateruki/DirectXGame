@@ -45,6 +45,7 @@ public:
     void Update(float deltaTime) override;
     void Draw() override;
     void DrawUI() override;
+    void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 ---
 
@@ -64,6 +65,7 @@ public:
     // プレイヤー連携
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
+
 
 private:
 

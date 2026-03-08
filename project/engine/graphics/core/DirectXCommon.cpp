@@ -798,3 +798,105 @@ void DirectXCommon::PreDrawBackBuffer() {
     ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
     commandList_->SetDescriptorHeaps(1, descriptorHeaps);
 };
+
+void DirectXCommon::CreateShadowMap() {
+    // 1. デスクリプタヒープの作成 (DSV用)
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    HRESULT hr = device_->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&shadowDsvHeap_));
+    assert(SUCCEEDED(hr));
+
+    // 2. リソースの設定 (DSVとSRVの両方で使えるように TYPELESS にする)
+    D3D12_RESOURCE_DESC resDesc{};
+    resDesc.Width = kShadowMapWidth;
+    resDesc.Height = kShadowMapHeight;
+    resDesc.MipLevels = 1;
+    resDesc.DepthOrArraySize = 1;
+    resDesc.Format = DXGI_FORMAT_R32_TYPELESS; // ★重要: 型無しフォーマット
+    resDesc.SampleDesc.Count = 1;
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    // 3. ヒーププロパティとクリア値
+    D3D12_HEAP_PROPERTIES heapProps{ D3D12_HEAP_TYPE_DEFAULT };
+    D3D12_CLEAR_VALUE clearValue{};
+    clearValue.Format = DXGI_FORMAT_D32_FLOAT; // クリア時は深度フォーマット
+    clearValue.DepthStencil.Depth = 1.0f;
+    clearValue.DepthStencil.Stencil = 0;
+
+    // 4. リソースの生成 (初期状態は読み込み可能な SRV 状態にしておく)
+    hr = device_->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
+        IID_PPV_ARGS(&shadowMapResource_)
+    );
+    assert(SUCCEEDED(hr));
+
+    // 5. DSV (Depth Stencil View) の作成
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT; // 深度として解釈
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+    device_->CreateDepthStencilView(shadowMapResource_.Get(), &dsvDesc, shadowDsvHeap_->GetCPUDescriptorHandleForHeapStart());
+
+    // 6. SRV (Shader Resource View) の作成
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = DXGI_FORMAT_R32_FLOAT; // テクスチャとして読むときはFloat
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Texture2D.MipLevels = 1;
+
+    // SRVManagerに登録してハンドルをもらう
+    shadowMapSrvHandle_ = SRVManager::GetInstance()->CreateSRV(shadowMapResource_.Get(), srvDesc);
+
+    Log("Created Shadow Map successfully.\n");
+}
+
+void DirectXCommon::PreDrawShadow() {
+    // 1. バリア：画像として読むモード -> 深度を書き込むモードへ
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = shadowMapResource_.Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    commandList_->ResourceBarrier(1, &barrier);
+
+    // 2. 描画先を「シャドウマップのDSV」のみに設定（RTVは無し）
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = shadowDsvHeap_->GetCPUDescriptorHandleForHeapStart();
+    commandList_->OMSetRenderTargets(0, nullptr, false, &dsvHandle);
+
+    // 3. 画面を真っ白（深度1.0f）にクリアする！
+    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+    // 4. ビューポートとシザー矩形をシャドウマップの解像度に合わせる
+    D3D12_VIEWPORT viewport{};
+    viewport.Width = (float)kShadowMapWidth;
+    viewport.Height = (float)kShadowMapHeight;
+    viewport.MaxDepth = 1.0f;
+    commandList_->RSSetViewports(1, &viewport);
+
+    D3D12_RECT scissorRect{};
+    scissorRect.right = kShadowMapWidth;
+    scissorRect.bottom = kShadowMapHeight;
+    commandList_->RSSetScissorRects(1, &scissorRect);
+}
+
+void DirectXCommon::PostDrawShadow() {
+    // 1. バリア：深度を書き込むモード -> 画像として読むモードに戻す
+    // （これがないとImGuiやメインシェーダーで読めなくてエラーになります）
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = shadowMapResource_.Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    commandList_->ResourceBarrier(1, &barrier);
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+    // ビューポートとシザー矩形もメイン画面用に戻す
+    commandList_->RSSetViewports(1, &viewport_);
+    commandList_->RSSetScissorRects(1, &scissorRect_);
+}

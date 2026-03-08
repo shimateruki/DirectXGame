@@ -108,6 +108,8 @@ public:
     void SetTexture(const std::string& texturePath);
     std::string GetTexturePath() const { return texturePath_; }
     uint32_t GetTextureHandle() const { return textureHandle_; }
+
+    void DrawShadow(); // 追加
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -140,4 +142,8 @@ private:
 
     std::string texturePath_ = "";
     uint32_t textureHandle_ = 0;
+
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
+    TransformationMatrix* shadowWvpData_ = nullptr;
 };
