@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "GamePlayScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -25,6 +25,7 @@
 #include "LockOnSystem.h"
 #include "GameRule.h"
 #include "ObjectManager.h" // 追加
+#include "easing.h" // 追加
 
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -152,6 +153,103 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
+
+	{
+		// アニメーション管理用の変数
+		static int bossPhase = 1;
+		static float timer = 0.0f;
+		static Vector3 startPos = { 0,0,0 };
+		static Vector3 targetPos = { 0,0,0 };
+
+		// ★リセット検知用の変数
+		static bool wasPlaying = false;
+		bool isPlaying = SceneManager::GetInstance ()->IsPlaying ();
+
+		// 【ここが重要！】再生ボタンが押された瞬間（false -> true）にリセット
+		if (isPlaying && !wasPlaying) {
+			bossPhase = 1;
+			timer = 0.0f;
+			// 他にリセットしたい数値があればここに書く
+		}
+		wasPlaying = isPlaying; // 今の状態を保存して次フレームへ
+
+		// エディター停止中は何もしない
+		if (!isPlaying) {
+
+			Object3d *boss = nullptr;
+			// 名前でボスを探す
+			for (auto &obj : objectManager_->GetObjects ()) {
+				if (obj->GetName () == "Enemy_BossCore") {
+					boss = obj.get ();
+					break;
+				}
+			}
+
+			if (boss && player_) {
+				// --- 1. 指定位置 (x = -50) まで移動 ---
+				if (bossPhase == 1) {
+					if (timer == 0.0f) startPos = boss->GetTranslate ();
+
+					timer += deltaTime;
+					float duration = 1.5f;
+					float t = std::min (timer / duration, 1.0f);
+					float easedT = Easing::OutExpo (t);
+
+					Vector3 pos = boss->GetTranslate ();
+					// X座標を -50 へ移動
+					pos.x = Math::Lerp (startPos.x, -50.0f, easedT);
+					boss->SetTranslate (pos);
+
+					if (t >= 1.0f) {
+						bossPhase = 2;
+						timer = 0.0f;
+						startPos = boss->GetTranslate ();
+					}
+				}
+				// --- 2. シェイク（溜め）処理 ---
+				else if (bossPhase == 2) {
+					timer += deltaTime;
+					float duration = 1.0f; // 1秒間溜める
+					float t = std::min (timer / duration, 1.0f);
+
+					Vector3 pos = startPos;
+					// 微振動を加える
+					float shake = 0.3f;
+					pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+					pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+					boss->SetTranslate (pos);
+
+					if (t >= 1.0f) {
+						bossPhase = 3;
+						timer = 0.0f;
+						startPos = boss->GetTranslate ();
+						// ★突進の瞬間の「プレイヤーの場所」をロックオン！
+						targetPos = player_->GetWorldPosition ();
+					}
+				}
+				// --- 3. プレイヤーに突撃（必中狙い） ---
+				else if (bossPhase == 3) {
+					timer += deltaTime;
+					float duration = 1.0f; // 0.4秒で超高速突進
+					float t = std::min (timer / duration, 1.0f);
+
+					// 溜めた力を一気に解放する InExpo
+					float easedT = Easing::InExpo (t);
+
+					// 待機地点(startPos)から、ロックオンしたプレイヤー(targetPos)へ
+					Vector3 pos = Math::Lerp (startPos, targetPos, easedT);
+					boss->SetTranslate (pos);
+
+					if (t >= 1.0f) {
+						bossPhase = 4; // 攻撃終了
+					}
+				}
+			}
+		}
+
+	}
+
+
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
 	GPUParticleManager::GetInstance()->Emit(
 		{ 0.0f, 5.0f, 0.0f },  // 発生座標
