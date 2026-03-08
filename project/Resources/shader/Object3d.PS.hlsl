@@ -91,7 +91,8 @@ TextureCube<float32_t4> gEnvTexture : register(t2);
 SamplerState gSampler : register(s0);
 Texture2D<float32_t4> gNormalMap : register(t3);
 Texture2D<float32_t4> gOrmMap : register(t4);
-
+Texture2D<float32_t> gShadowMap : register(t5);
+SamplerState gShadowSampler : register(s1);
 
 static const float PI = 3.14159265359;
 
@@ -166,6 +167,37 @@ PixelShanderOutput main(VecrtexShaderOutput input)
         discard;
     }
 
+    
+    float shadowFactor = 1.0f; // 1.0なら日向、暗くするなら0.5などに下げる
+
+    // W除算 (同次座標系からデカルト座標系へ)
+    float3 shadowPos = input.shadowPosition.xyz / input.shadowPosition.w;
+
+    // クリップ空間(-1 ～ 1) を UV空間(0 ～ 1) に変換
+    float2 shadowUV = float2(
+        (shadowPos.x + 1.0f) / 2.0f,
+        (1.0f - shadowPos.y) / 2.0f // Yは上下反転
+    );
+
+    // 画面外を真っ黒にしないための範囲チェック
+    if (shadowPos.z > 0.0f && shadowPos.z < 1.0f &&
+        shadowUV.x > 0.0f && shadowUV.x < 1.0f &&
+        shadowUV.y > 0.0f && shadowUV.y < 1.0f)
+    {
+        // シャドウマップから「ライトから一番近い深度」を取得
+        float depthFromLight = gShadowMap.Sample(gShadowSampler, shadowUV);
+
+        // シャドウアクネ（縞模様のノイズ）を防ぐための微小なバイアス
+        float bias = 0.005f;
+
+        // 今のピクセルの深度 が シャドウマップの深度 より遠ければ、そこは影！
+        if (shadowPos.z - bias > depthFromLight)
+        {
+            shadowFactor = 0.0f; // 影の濃さ (0.0だと真っ黒、1.0だと影なし)
+        }
+    }
+    
+    
     float NdotL;
     float cos;
     
@@ -440,7 +472,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
                 // 1. 平行光源
                     float3 L_dir = normalize(-gDirectionalLight.direction);
-                    float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity;
+                    float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * shadowFactor;
                     Lo += CalcPBRLight(L_dir, V, N, radiance_dir, albedo, roughness, metallic, F0);
 
                 // 2. 点光源

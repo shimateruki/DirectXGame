@@ -69,10 +69,15 @@ void Object3dCommon::CreateRootSignature() {
     descriptorRangeOrmMap[0].NumDescriptors = 1;
     descriptorRangeOrmMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRangeOrmMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    D3D12_DESCRIPTOR_RANGE descriptorRangeShadowMap[1] = {};
+    descriptorRangeShadowMap[0].BaseShaderRegister = 5; // t5 (影マップ用)
+    descriptorRangeShadowMap[0].NumDescriptors = 1;
+    descriptorRangeShadowMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRangeShadowMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     // =================================================================
     // 2. ルートパラメータの設定
     // =================================================================
-    D3D12_ROOT_PARAMETER rootParameters[11] = {}; 
+    D3D12_ROOT_PARAMETER rootParameters[13] = {};
 
     // [0] Material (CBV b0 - Pixel)
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -135,10 +140,21 @@ void Object3dCommon::CreateRootSignature() {
     rootParameters[10].DescriptorTable.pDescriptorRanges = descriptorRangeOrmMap;
     rootParameters[10].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeOrmMap);
 
+    // [11] Shadow WVP (CBV b1 - VertexShader用)
+    rootParameters[11].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[11].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[11].Descriptor.ShaderRegister = 1; // b1
+
+    // [12] Shadow Map (DescriptorTable t5 - PixelShader用)
+    rootParameters[12].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[12].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[12].DescriptorTable.pDescriptorRanges = descriptorRangeShadowMap;
+    rootParameters[12].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeShadowMap);
+
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 
-    D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+    D3D12_STATIC_SAMPLER_DESC staticSamplers[2] = {};
     staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
     staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -147,6 +163,17 @@ void Object3dCommon::CreateRootSignature() {
     staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
     staticSamplers[0].ShaderRegister = 0;
     staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    staticSamplers[1].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT; // 影はくっきり判定させる
+    staticSamplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER; // 範囲外は境界色を使用
+    staticSamplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    staticSamplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    staticSamplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    staticSamplers[1].MaxLOD = D3D12_FLOAT32_MAX;
+    staticSamplers[1].ShaderRegister = 1; // s1
+    staticSamplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    // 境界色は「真っ白（深度1.0 = 一番遠い＝影にならない）」に設定
+    staticSamplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
     descriptionRootSignature.pStaticSamplers = staticSamplers;
     descriptionRootSignature.NumStaticSamplers = _countof(staticSamplers);
 
@@ -317,7 +344,7 @@ void Object3dCommon::CreatePipelineStates() {
     shadowDesc.pRootSignature = shadowRootSignature_.Get();
     shadowDesc.InputLayout = inputLayoutDesc; // 頂点レイアウトは通常と同じ
 
-    // ★修正: パスを Resources/ 始まりに合わせる
+
     Microsoft::WRL::ComPtr<IDxcBlob> shadowVsBlob = dxCommon_->CompileShader(L"Resources/shader/Shadow.VS.hlsl", L"vs_6_0");
     shadowDesc.VS = { shadowVsBlob->GetBufferPointer(), shadowVsBlob->GetBufferSize() };
 

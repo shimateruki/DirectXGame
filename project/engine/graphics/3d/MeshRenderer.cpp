@@ -4,6 +4,7 @@
 #include "CameraManager.h"
 #include "LightManager.h"
 #include <cassert>
+#include <SrvManager.h>
 
 MeshRenderer::MeshRenderer(Transform* transform) {
     assert(transform);
@@ -106,7 +107,16 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     if (!model_ || !common_) return;
     common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
+    // [11] 影用のWVP行列 (b1) をセット
+    if (shadowWvpResource_) {
+        commandList->SetGraphicsRootConstantBufferView(11, shadowWvpResource_->GetGPUVirtualAddress());
+    }
+
+    // [12] シャドウマップのテクスチャ (t5) をセット
+    uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
     // ModelのDrawを呼ぶ
     model_->Draw(
         wvpResource_.Get(),
