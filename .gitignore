@@ -366,3 +366,4 @@ FodyWeavers.xsd
 !externals/assimp/include/
 !externals/assimp/lib/
 !externals/assimp/lib/**
+/project/GameLog.txt
