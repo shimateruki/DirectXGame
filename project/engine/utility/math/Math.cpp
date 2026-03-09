@@ -561,3 +561,109 @@ Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, f
 
 	return result;
 }
+Quaternion Math::EulerToQuaternion(const Vector3& rot) {
+	// 各軸の半角のサイン・コサインを計算
+	float cx = std::cos(rot.x * 0.5f);
+	float sx = std::sin(rot.x * 0.5f);
+	float cy = std::cos(rot.y * 0.5f);
+	float sy = std::sin(rot.y * 0.5f);
+	float cz = std::cos(rot.z * 0.5f);
+	float sz = std::sin(rot.z * 0.5f);
+
+	// それぞれの軸単体のクォータニオン
+	Quaternion qX = { sx, 0.0f, 0.0f, cx };
+	Quaternion qY = { 0.0f, sy, 0.0f, cy };
+	Quaternion qZ = { 0.0f, 0.0f, sz, cz };
+
+	// Z -> X -> Y の順番で掛け算して合成
+	return (qY * qX) * qZ;
+}
+
+Vector3 Math::MatrixToEuler(const Matrix4x4& m) {
+	Vector3 euler;
+
+	// 1. スケール成分を取り除いて純粋な回転行列にする
+	Vector3 scale;
+	scale.x = std::sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1] + m.m[0][2] * m.m[0][2]);
+	scale.y = std::sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1] + m.m[1][2] * m.m[1][2]);
+	scale.z = std::sqrt(m.m[2][0] * m.m[2][0] + m.m[2][1] * m.m[2][1] + m.m[2][2] * m.m[2][2]);
+
+	Matrix4x4 rmat = m;
+	if (scale.x > 0.0001f) { rmat.m[0][0] /= scale.x; rmat.m[0][1] /= scale.x; rmat.m[0][2] /= scale.x; }
+	if (scale.y > 0.0001f) { rmat.m[1][0] /= scale.y; rmat.m[1][1] /= scale.y; rmat.m[1][2] /= scale.y; }
+	if (scale.z > 0.0001f) { rmat.m[2][0] /= scale.z; rmat.m[2][1] /= scale.z; rmat.m[2][2] /= scale.z; }
+
+	// 2. Z->X->Y の回転順序に基づいたオイラー角の逆算
+	float sinX = -rmat.m[1][2];
+	// 安全のため -1 ～ 1 の範囲にクランプ
+	sinX = std::max(-1.0f, std::min(1.0f, sinX));
+	euler.x = std::asin(sinX);
+
+	// ジンバルロック（Xが±90度）の判定
+	if (std::abs(rmat.m[1][2]) < 0.9999f) {
+		euler.y = std::atan2(rmat.m[0][2], rmat.m[2][2]);
+		euler.z = std::atan2(rmat.m[1][0], rmat.m[1][1]);
+	} else {
+		// ジンバルロック時は Zを0に固定し、Yだけで表現する
+		euler.y = std::atan2(-rmat.m[2][0], rmat.m[0][0]);
+		euler.z = 0.0f;
+	}
+
+	return euler;
+}
+
+Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
+	// 1. まず行列からスケール成分を取り除き、純粋な回転行列にする
+	Vector3 scale;
+	scale.x = std::sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1] + m.m[0][2] * m.m[0][2]);
+	scale.y = std::sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1] + m.m[1][2] * m.m[1][2]);
+	scale.z = std::sqrt(m.m[2][0] * m.m[2][0] + m.m[2][1] * m.m[2][1] + m.m[2][2] * m.m[2][2]);
+
+	Matrix4x4 rmat = m;
+	if (scale.x > 0.0001f) { rmat.m[0][0] /= scale.x; rmat.m[0][1] /= scale.x; rmat.m[0][2] /= scale.x; }
+	if (scale.y > 0.0001f) { rmat.m[1][0] /= scale.y; rmat.m[1][1] /= scale.y; rmat.m[1][2] /= scale.y; }
+	if (scale.z > 0.0001f) { rmat.m[2][0] /= scale.z; rmat.m[2][1] /= scale.z; rmat.m[2][2] /= scale.z; }
+
+	// 2. 純粋な回転行列からクォータニオンを抽出する
+	Quaternion q;
+	float tr = rmat.m[0][0] + rmat.m[1][1] + rmat.m[2][2];
+
+	if (tr > 0.0f) {
+		float s = std::sqrt(tr + 1.0f) * 2.0f;
+		q.w = 0.25f * s;
+		q.x = (rmat.m[1][2] - rmat.m[2][1]) / s;
+		q.y = (rmat.m[2][0] - rmat.m[0][2]) / s;
+		q.z = (rmat.m[0][1] - rmat.m[1][0]) / s;
+	} else if ((rmat.m[0][0] >= rmat.m[1][1]) && (rmat.m[0][0] >= rmat.m[2][2])) {
+		float s = std::sqrt(1.0f + rmat.m[0][0] - rmat.m[1][1] - rmat.m[2][2]) * 2.0f;
+		q.w = (rmat.m[1][2] - rmat.m[2][1]) / s;
+		q.x = 0.25f * s;
+		q.y = (rmat.m[0][1] + rmat.m[1][0]) / s;
+		q.z = (rmat.m[2][0] + rmat.m[0][2]) / s;
+	} else if (rmat.m[1][1] >= rmat.m[2][2]) {
+		float s = std::sqrt(1.0f + rmat.m[1][1] - rmat.m[0][0] - rmat.m[2][2]) * 2.0f;
+		q.w = (rmat.m[2][0] - rmat.m[0][2]) / s;
+		q.x = (rmat.m[0][1] + rmat.m[1][0]) / s;
+		q.y = 0.25f * s;
+		q.z = (rmat.m[1][2] + rmat.m[2][1]) / s;
+	} else {
+		float s = std::sqrt(1.0f + rmat.m[2][2] - rmat.m[0][0] - rmat.m[1][1]) * 2.0f;
+		q.w = (rmat.m[0][1] - rmat.m[1][0]) / s;
+		q.x = (rmat.m[2][0] + rmat.m[0][2]) / s;
+		q.y = (rmat.m[1][2] + rmat.m[2][1]) / s;
+		q.z = 0.25f * s;
+	}
+
+	// 3. 念のため正規化（ゼロ除算や誤差の蓄積による爆発を防ぐ）
+	float len = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+	if (len > 0.0001f) {
+		q.x /= len;
+		q.y /= len;
+		q.z /= len;
+		q.w /= len;
+	} else {
+		q = { 0.0f, 0.0f, 0.0f, 1.0f }; // 安全な初期値
+	}
+
+	return q;
+}

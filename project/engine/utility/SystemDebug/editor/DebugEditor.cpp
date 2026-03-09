@@ -225,8 +225,11 @@ void DebugEditor::Update() {
                         Vector3 s, rDeg, t;
                         ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
                         tr->translate = t;
-                        tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
                         tr->scale = s;
+                        tr->quaternion = math_.MatrixToQuaternion(newLocalMat);
+                        tr->isQuaternionMaster = true; // クォータニオン優先モードにする
+                        tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+                      
                         selectedObject_->UpdateLocalMatrix();
                         selectedObject_->UpdateWorldMatrix();
                     } else if (isDraggingTransform_) {
@@ -962,6 +965,7 @@ void DebugEditor::DrawImGui() {
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
         if (ImGui::DragFloat3("回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
+            transform->isQuaternionMaster = false;
             isTransformChanged = true;
         }
         if (ImGui::DragFloat3("スケール (Scale)", &transform->scale.x, 0.05f)) isTransformChanged = true;

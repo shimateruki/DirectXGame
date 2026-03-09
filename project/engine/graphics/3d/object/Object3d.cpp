@@ -76,7 +76,9 @@ void Object3d::Update(float deltaTime) {
     if (meshRenderer_) {
         meshRenderer_->Update();
     }
-
+    for (Object3d* child : children_) {
+        child->UpdateWorldMatrix();
+    }
     if (recorder_) {
         recorder_->Update();
     }

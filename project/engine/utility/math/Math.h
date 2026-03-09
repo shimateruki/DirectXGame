@@ -138,4 +138,8 @@ public:
 	// クォータニオンから回転行列を作成
 	static Matrix4x4 MakeRotateQuaternionMatrix(const Quaternion& q);
 	static Matrix4x4 MakeOrthographicMatrix(float width, float height, float nearZ, float farZ);
+
+	static Quaternion EulerToQuaternion(const Vector3& rot);
+	static Vector3 MatrixToEuler(const Matrix4x4& m);
+	static Quaternion MatrixToQuaternion(const Matrix4x4& m);
 };
