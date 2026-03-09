@@ -33,22 +33,24 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 }
 
 void Player::Update(float deltaTime) {
-    // 1. 移動制御の更新 (Strategy)
-    if (isControlActive_ && mover_) {
-        mover_->Update(deltaTime);
-    }
+    // 時間が進んでいる（ポーズ中ではない）時だけ、操作やアニメーションを更新する
+    if (deltaTime > 0.0f) {
+        // 1. 移動制御の更新 (Strategy)
+        if (isControlActive_ && mover_) {
+            mover_->Update(deltaTime);
+        }
 
-    // 2. アニメーション・状態の更新 (State)
-    if (state_) {
-        state_->Update(this);
-    } else {
-        DebugConsole::GetInstance()->AddLog("[ERROR] Player state_ is NULL!");
+        // 2. アニメーション・状態の更新 (State)
+        if (state_) {
+            state_->Update(this);
+        } else {
+            DebugConsole::GetInstance()->AddLog("[ERROR] Player state_ is NULL!");
+        }
     }
 
     // 3. 親クラスの更新 (物理挙動・行列計算など)
     Character::Update(deltaTime);
 }
-
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     Character::Draw(pointLightResource, spotLightResource);
 }
