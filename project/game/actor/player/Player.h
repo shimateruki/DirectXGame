@@ -62,6 +62,12 @@ public:
         return param_.has_value() ? param_->speed : 0.5f;
     }
 
+    // ==================================================
+    // 無敵フレーム (Invincibility) 管理
+    // ==================================================
+    void SetInvincible(bool inv);
+    bool IsInvincible() const { return isInvincible_; }
+
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先
@@ -74,4 +80,8 @@ private:
     // --- プレイヤー状態フラグ ---
     bool isLockingOn_ = false;       // 敵をロックオンしているか
     bool isControlActive_ = true;    // 入力を受け付ける状態か（デモシーン等で制限用）
+
+    // --- 無敵関連 ---
+    bool isInvincible_ = false;
+    Vector4 savedColor_ = {1.0f, 1.0f, 1.0f, 1.0f}; // 無敵解除時に戻す色
 };
