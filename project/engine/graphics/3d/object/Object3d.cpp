@@ -303,6 +303,22 @@ void Object3d::InitializeRecorder(SceneManager* sceneManager) {
     recorder_->SetTarget(this);
 }
 
+
+std::unique_ptr<Object3d> Object3d::Clone() const {
+    auto newObj = std::make_unique<Object3d>();
+    assert(common_ != nullptr);
+    newObj->Initialize(common_);
+    newObj->CopyFrom(this);
+    return newObj;
+}
+
+
+void Object3d::DrawShadow() {
+    if (meshRenderer_) {
+        meshRenderer_->DrawShadow();
+    }
+}
+
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
     this->saveCategory_ = other->saveCategory_;
@@ -310,6 +326,8 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->SetModel(other->GetModelName());
     }
     this->name_ = other->name_;
+
+    // ★Transform構造体を丸ごとコピーするため、quaternion や isQuaternionMaster も自動的にコピーされます
     this->transform_ = other->transform_;
 
     // Colliderコピー
@@ -324,7 +342,7 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->SetBlendMode(other->GetBlendMode());
         this->SetMaterialType(other->GetMaterialType());
         this->SetColor(other->GetColor());
-        this->SetNormalMap(other->GetNormalMapPath()); 
+        this->SetNormalMap(other->GetNormalMapPath());
         this->SetOrmMap(other->GetOrmMapPath());
         this->SetTexture(other->GetTexturePath());
     }
@@ -351,14 +369,6 @@ void Object3d::CopyFrom(const Object3d* other) {
     }
 }
 
-std::unique_ptr<Object3d> Object3d::Clone() const {
-    auto newObj = std::make_unique<Object3d>();
-    assert(common_ != nullptr);
-    newObj->Initialize(common_);
-    newObj->CopyFrom(this);
-    return newObj;
-}
-
 json Object3d::ExportToJson() {
     json j;
     j["name"] = name_;
@@ -366,6 +376,9 @@ json Object3d::ExportToJson() {
 
     j["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
     j["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
+
+    // ★追加: クォータニオンの完全な値を保存
+    j["quaternion"] = { transform_.quaternion.x, transform_.quaternion.y, transform_.quaternion.z, transform_.quaternion.w };
 
     if (collider_) {
         const auto& config = collider_->GetConfig();
@@ -398,13 +411,31 @@ json Object3d::ExportToJson() {
     j["saveCategory"] = saveCategory_;
     return j;
 }
+
 void Object3d::ImportFromJson(const json& j) {
     if (j.contains("modelName")) {
         SetModel(j["modelName"].get<std::string>());
     }
 
     if (j.contains("scale")) transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
-    if (j.contains("rotate")) transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+
+    // ★追加: クォータニオンのデータがあれば最優先で読み込む！
+    if (j.contains("quaternion")) {
+        transform_.quaternion.x = j["quaternion"][0];
+        transform_.quaternion.y = j["quaternion"][1];
+        transform_.quaternion.z = j["quaternion"][2];
+        transform_.quaternion.w = j["quaternion"][3];
+        transform_.isQuaternionMaster = true; // クォータニオン優先モード
+
+        if (j.contains("rotate")) {
+            transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+        }
+    }
+    // 古いセーブデータ（オイラー角しかない場合）の互換性対応
+    else if (j.contains("rotate")) {
+        transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
+        transform_.isQuaternionMaster = false; // UpdateMatrix時にクォータニオンを生成させる
+    }
 
     transform_.UpdateMatrix();
 
@@ -425,7 +456,7 @@ void Object3d::ImportFromJson(const json& j) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
-        
+
         // （互換性用）過去のデータにパスが含まれていた場合の救済
         if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"];
         if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"];
@@ -446,7 +477,7 @@ void Object3d::ImportFromJson(const json& j) {
             recordPathName_,
             isRecordLoop_,
             isRecordRelative_,
-            isCinematic 
+            isCinematic
         );
     }
 
@@ -457,14 +488,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("materialType")) SetMaterialType(j["materialType"]);
     if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"].get<bool>());
     if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"].get<std::string>());
-    if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"].get<std::string>()); 
+    if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"].get<std::string>());
     if (j.contains("texturePath")) SetTexture(j["texturePath"].get<std::string>());
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"].get<std::string>();
-
-}
-
-void Object3d::DrawShadow() {
-    if (meshRenderer_) {
-        meshRenderer_->DrawShadow();
-    }
 }

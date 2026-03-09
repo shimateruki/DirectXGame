@@ -266,7 +266,27 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 // 4. Transform
                 Transform* transform = targetObject->GetTransform();
                 if (objData.contains("position")) { transform->translate.x = objData["position"][0]; transform->translate.y = objData["position"][1]; transform->translate.z = objData["position"][2]; }
-                if (objData.contains("rotation")) { transform->rotate.x = objData["rotation"][0]; transform->rotate.y = objData["rotation"][1]; transform->rotate.z = objData["rotation"][2]; }
+                if (objData.contains("quaternion")) {
+                    transform->quaternion.x = objData["quaternion"][0];
+                    transform->quaternion.y = objData["quaternion"][1];
+                    transform->quaternion.z = objData["quaternion"][2];
+                    transform->quaternion.w = objData["quaternion"][3];
+                    transform->isQuaternionMaster = true; // クォータニオン優先モード
+
+                    // インスペクター表示用などにオイラー角も読んでおく
+                    if (objData.contains("rotation")) {
+                        transform->rotate.x = objData["rotation"][0];
+                        transform->rotate.y = objData["rotation"][1];
+                        transform->rotate.z = objData["rotation"][2];
+                    }
+                }
+                // 古いセーブデータ（オイラー角しかない場合）の互換性対応
+                else if (objData.contains("rotation")) {
+                    transform->rotate.x = objData["rotation"][0];
+                    transform->rotate.y = objData["rotation"][1];
+                    transform->rotate.z = objData["rotation"][2];
+                    transform->isQuaternionMaster = false; // UpdateMatrix時にクォータニオンを作らせる
+                }
                 if (objData.contains("scale")) { transform->scale.x = objData["scale"][0]; transform->scale.y = objData["scale"][1]; transform->scale.z = objData["scale"][2]; }
 
                 // ロード直後に行列更新
