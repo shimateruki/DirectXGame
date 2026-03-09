@@ -41,6 +41,8 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
     materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
     materialData_->enableNormalMap = 0;
+    materialData_->enableEnvMap = 0;     // デフォルトoff
+    materialData_->envIntensity = 1.0f;  // デフォルト1.0倍
 
     shadowWvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
     shadowWvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&shadowWvpData_));
@@ -212,4 +214,18 @@ void MeshRenderer::DrawShadow() {
 
     // 軽量版のドローコールを呼ぶ
     model_->DrawShadow(shadowWvpResource_.Get());
+}
+
+
+void MeshRenderer::SetEnableEnvMap(bool enable) {
+    if (materialData_) materialData_->enableEnvMap = enable ? 1 : 0;
+}
+bool MeshRenderer::GetEnableEnvMap() const {
+    return materialData_ ? (materialData_->enableEnvMap == 1) : false;
+}
+void MeshRenderer::SetEnvIntensity(float intensity) {
+    if (materialData_) materialData_->envIntensity = intensity;
+}
+float MeshRenderer::GetEnvIntensity() const {
+    return materialData_ ? materialData_->envIntensity : 1.0f;
 }

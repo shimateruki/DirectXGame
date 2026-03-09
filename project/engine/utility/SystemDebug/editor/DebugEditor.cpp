@@ -1043,6 +1043,20 @@ void DebugEditor::DrawImGui() {
                     selectedObject_->SetEnableNormalMap(enableNormal);
                     isGraphicsChanged = true;
                 }
+
+                ImGui::Separator();
+                bool enableEnv = selectedObject_->GetEnableEnvMap();
+                if (ImGui::Checkbox("環境マップ (IBL) 有効化", &enableEnv)) {
+                    selectedObject_->SetEnableEnvMap(enableEnv);
+                    isGraphicsChanged = true;
+                }
+                if (enableEnv) {
+                    float envIntensity = selectedObject_->GetEnvIntensity();
+                    if (ImGui::SliderFloat("環境マップ強度", &envIntensity, 0.0f, 5.0f)) {
+                        selectedObject_->SetEnvIntensity(envIntensity);
+                        isGraphicsChanged = true;
+                    }
+                }
                 if (enableNormal) {
                     // =========================================================
                     // 1. フォルダ内の画像を自動検索してリスト化 (初回 or 更新ボタンが押された時のみ)
@@ -1636,7 +1650,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     currentData["normalMapPath"] = object->GetNormalMapPath();
     currentData["ormMapPath"] = object->GetOrmMapPath();
     currentData["texturePath"] = object->GetTexturePath();
-
+      currentData["enableEnvMap"] =  object->GetEnableEnvMap();
+      currentData["envIntensity"] =  object->GetEnvIntensity();
     // =========================================================
     // 4. JSON配列内を探して更新 or 追加
     // =========================================================
@@ -1917,7 +1932,7 @@ void DebugEditor::SaveScene(SaveMode mode) {
         }
         d["type"] = className;
 
-        // ★追加: 保存先カテゴリをJSONに記録
+        //  保存先カテゴリをJSONに記録
         d["saveCategory"] = obj->GetSaveCategory();
 
         // 2. 敵の種類 ("Slime", "Robot" など) を保存
@@ -2002,7 +2017,8 @@ void DebugEditor::SaveScene(SaveMode mode) {
         d["normalMapPath"] = obj->GetNormalMapPath();
         d["ormMapPath"] = obj->GetOrmMapPath();
         d["texturePath"] = obj->GetTexturePath();
-
+        d["enableEnvMap"] = obj->GetEnableEnvMap();
+        d["envIntensity"] = obj->GetEnvIntensity();
         // =========================================================
         // ★ クラス名ではなく「SaveCategory」を見て振り分ける！
         // =========================================================

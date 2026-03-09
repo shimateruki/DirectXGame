@@ -35,7 +35,8 @@ public:
         float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
         float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
         int32_t enableNormalMap;
-        float padding2[2];         // 8 byte (アライメント調整)
+        int32_t enableEnvMap;      // 4 byte (環境マップ有効化)
+        float envIntensity;        // 4 byte (環境マップ強度)
     };
 
     struct PointLight {
@@ -109,7 +110,12 @@ public:
     std::string GetTexturePath() const { return texturePath_; }
     uint32_t GetTextureHandle() const { return textureHandle_; }
 
-    void DrawShadow(); // 追加
+    void SetEnableEnvMap(bool enable);
+    bool GetEnableEnvMap() const;
+    void SetEnvIntensity(float intensity);
+    float GetEnvIntensity() const;
+
+    void DrawShadow(); 
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
