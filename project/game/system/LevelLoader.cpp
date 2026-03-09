@@ -12,6 +12,7 @@
 #include "EnemyFactory.h"
 #include "EnemySpawner.h"
 #include "BaseEnemy.h"
+#include "MapBlock.h"
 #include "MoveStrategy3D.h"
 #include "GhostRecorder.h"
 // マネージャ系
@@ -129,7 +130,13 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                             });
                         newObj = std::move(spawner);
                     }
-                    // パターンD: 通常オブジェクト
+                    // パターンD: マップブロック (新設※現状設定はjsonで直書きでのみ可能、ボスが吸収ブロック探索時に検索できる想定)
+                    else if (type == "MapBlock") {
+                        auto mapBlock = std::make_unique<MapBlock>();
+                        mapBlock->Initialize(object3dCommon);
+                        newObj = std::move(mapBlock);
+                    }
+                    // パターンE: 通常オブジェクト
                     else {
                         newObj = std::make_unique<Object3d>();
                         newObj->Initialize(object3dCommon);
