@@ -29,6 +29,15 @@ struct AlignedVector4 {
 
 class DebugEditor : public IEditable {
 public:
+    enum class SaveMode {
+        All,
+        Player,
+        Enemy,
+        Object
+    };
+
+
+public:
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void Finalize();
@@ -40,7 +49,7 @@ public:
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
     void DrawHierarchyNode(Object3d* obj);
 
-    void SaveScene();             // シーン全体保存 (Ctrl + S)
+    void SaveScene(SaveMode mode = SaveMode::All);
     void SaveSingleObject();      // 単体保存 (Ctrl + Shift + S)
     void DuplicateSelected();     // 複製 (Ctrl + C)
     void DeleteSelected();        // 削除 (Delete)

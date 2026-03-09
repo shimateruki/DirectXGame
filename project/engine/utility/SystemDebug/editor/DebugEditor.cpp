@@ -160,7 +160,7 @@ void DebugEditor::Update() {
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Z)) PerformUndo();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Y)) PerformRedo();
-            if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_S)) SaveScene();
+  /*          if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_S)) SaveScene();*/
         }
 
         // B-2. マウス選択 (ギズモを触っていない時 ＆ ★パス編集モードじゃない時)
@@ -522,7 +522,60 @@ void DebugEditor::DrawHierarchy() {
     if (currentScene == nullptr) return;
 
     ImGui::Begin("Hierarchy");
+    std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
+    if (ImGui::CollapsingHeader("シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
+        std::string directoryPath = "Resources/json/3Dobject/";
+        if (!fs::exists(directoryPath)) {
+            fs::create_directories(directoryPath);
+        }
+
+        // --- A. ファイル一覧コンボボックス ---
+        if (ImGui::BeginCombo("既存ファイル", currentSceneFilename_)) {
+            if (fs::exists(directoryPath)) {
+                for (const auto& entry : fs::directory_iterator(directoryPath)) {
+                    if (entry.path().extension() == ".json") {
+                        std::string filename = entry.path().filename().string();
+                        if (filename.find("_player.json") != std::string::npos ||
+                            filename.find("_enemy.json") != std::string::npos ||
+                            filename.find("_object.json") != std::string::npos) {
+                            continue;
+                        }
+                        bool isSelected = (std::string(currentSceneFilename_) == filename);
+                        if (ImGui::Selectable(filename.c_str(), isSelected)) {
+                            strcpy_s(currentSceneFilename_, filename.c_str());
+                        }
+                        if (isSelected) ImGui::SetItemDefaultFocus();
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        // --- B. ファイル名入力 ---
+        ImGui::InputText("保存名 (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
+
+        // --- C. 保存ボタン (Save Scene) ---
+        ImGui::Text("個別保存 (競合回避用):");
+        if (ImGui::Button("Playerのみ保存")) {
+            SaveScene(SaveMode::Player);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Enemyのみ保存")) {
+            SaveScene(SaveMode::Enemy);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Objectのみ保存")) {
+            SaveScene(SaveMode::Object);
+        }
+
+        ImGui::Separator();
+        if (ImGui::Button("シーン全体保存 (All)")) {
+            SaveScene(SaveMode::All);
+        }
+        ImGui::TextDisabled("保存先: %s", currentJsonPath.c_str());
+    }
+    ImGui::Separator();
     // 1. 検索バー
     ImGui::Text("検索:");
     ImGui::SameLine();
@@ -798,48 +851,7 @@ void DebugEditor::DrawImGui() {
 
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
 
-    // ---------------------------------------------------------
-    // 1. ファイル管理エリア (File Manager)
-    // ---------------------------------------------------------
-    if (ImGui::CollapsingHeader("シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
-
-        std::string directoryPath = "Resources/json/3Dobject/";
-        if (!fs::exists(directoryPath)) {
-            fs::create_directories(directoryPath);
-        }
-
-        // --- A. ファイル一覧コンボボックス ---
-        if (ImGui::BeginCombo("既存ファイル", currentSceneFilename_)) {
-            if (fs::exists(directoryPath)) {
-                for (const auto& entry : fs::directory_iterator(directoryPath)) {
-                    if (entry.path().extension() == ".json") {
-                        std::string filename = entry.path().filename().string();
-                        if (filename.find("_player.json") != std::string::npos ||
-                            filename.find("_enemy.json") != std::string::npos ||
-                            filename.find("_object.json") != std::string::npos) {
-                            continue;
-                        }
-                        bool isSelected = (std::string(currentSceneFilename_) == filename);
-                        if (ImGui::Selectable(filename.c_str(), isSelected)) {
-                            strcpy_s(currentSceneFilename_, filename.c_str());
-                        }
-                        if (isSelected) ImGui::SetItemDefaultFocus();
-                    }
-                }
-            }
-            ImGui::EndCombo();
-        }
-
-        // --- B. ファイル名入力 ---
-        ImGui::InputText("保存名 (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
-
-        // --- C. 保存ボタン (Save Scene) ---
-        if (ImGui::Button("シーン保存 (All)")) {
-            SaveScene();
-        }
-        ImGui::TextDisabled("保存先: %s", currentJsonPath.c_str());
-    }
-    ImGui::Separator();
+  
 
     // ---------------------------------------------------------
     // 2. オブジェクト詳細 (Inspector本体)
@@ -895,6 +907,15 @@ void DebugEditor::DrawImGui() {
 
         // --- クラス名表示 ---
         ImGui::TextDisabled("クラス: %s", selectedObject_->GetClassName().c_str());
+        const char* saveCategories[] = { "Object", "Player", "Enemy" };
+        std::string currentCat = selectedObject_->GetSaveCategory();
+        int catIndex = 0;
+        if (currentCat == "Player") catIndex = 1;
+        else if (currentCat == "Enemy") catIndex = 2;
+
+        if (ImGui::Combo("保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
+            selectedObject_->SetSaveCategory(saveCategories[catIndex]);
+        }
 
         // --- 親の名前表示 ---
         if (selectedObject_->GetParent()) {
@@ -1488,7 +1509,7 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     using json = nlohmann::json;
 
     // =========================================================
-    // 1. ファイル名の自動振り分け (stage1.json -> stage1_player.json など)
+    // 1. ファイル名の自動振り分け (SaveCategoryを見る)
     // =========================================================
     std::string baseName = filename;
     size_t extPos = baseName.find(".json");
@@ -1501,11 +1522,12 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
         className = "Model";
     }
 
-    // クラス名を見て、自分が書き込まれるべき「本当のファイル名」を決定
+    // ★ 変更: クラス名ではなく、保存カテゴリを見てファイル名を決定
+    std::string cat = object->GetSaveCategory();
     std::string targetFilename;
-    if (className == "Player") {
+    if (cat == "Player") {
         targetFilename = baseName + "_player.json";
-    } else if (className == "Enemy" || className == "Spawner") {
+    } else if (cat == "Enemy") {
         targetFilename = baseName + "_enemy.json";
     } else {
         targetFilename = baseName + "_object.json";
@@ -1541,7 +1563,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     json currentData;
 
     currentData["name"] = object->GetName();
-    currentData["type"] = className;
+    currentData["type"] = className;            // ← これが「ロード時に生成するクラス(Swordなど)」になる
+    currentData["saveCategory"] = cat;          // ★追加: 保存カテゴリをJSONに記録
     currentData["enemyType"] = object->GetEnemyType();
 
     if (className != "InvisibleBox") {
@@ -1848,14 +1871,12 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
 
 #endif
 
-// ========================================================================
-// ショートカット / ボタン機能の実装
-// ========================================================================
+
 
 // ========================================================================
 // シーン全体保存 (自動分割システム完全版)
 // ========================================================================
-void DebugEditor::SaveScene() {
+void DebugEditor::SaveScene(SaveMode mode) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
     // "stage1.json" のようなファイル名から ".json" を外してベース名を取得
@@ -1885,7 +1906,7 @@ void DebugEditor::SaveScene() {
         d["name"] = obj->GetName();
 
         // ---------------------------------------------------------
-        // クラス名と敵タイプを正しく保存する
+        // クラス名と保存カテゴリ、敵タイプを正しく保存する
         // ---------------------------------------------------------
 
         // 1. クラス名の取得と保存
@@ -1895,6 +1916,9 @@ void DebugEditor::SaveScene() {
             className = "Model"; // デフォルト
         }
         d["type"] = className;
+
+        // ★追加: 保存先カテゴリをJSONに記録
+        d["saveCategory"] = obj->GetSaveCategory();
 
         // 2. 敵の種類 ("Slime", "Robot" など) を保存
         // これがないとロード時に EnemyFactory が動かない
@@ -1980,11 +2004,12 @@ void DebugEditor::SaveScene() {
         d["texturePath"] = obj->GetTexturePath();
 
         // =========================================================
-        // ★ クラス名を見て、それぞれの配列(箱)に振り分ける！
+        // ★ クラス名ではなく「SaveCategory」を見て振り分ける！
         // =========================================================
-        if (className == "Player") {
+        std::string cat = obj->GetSaveCategory();
+        if (cat == "Player") {
             playerSceneData["objects"].push_back(d);
-        } else if (className == "Enemy" || className == "Spawner") {
+        } else if (cat == "Enemy") {
             enemySceneData["objects"].push_back(d);
         } else {
             objectSceneData["objects"].push_back(d);
@@ -2005,16 +2030,40 @@ void DebugEditor::SaveScene() {
         }
         };
 
-    // 3つのファイルに別々に保存！
-    SaveToFile(basePath + "_player.json", playerSceneData);
-    SaveToFile(basePath + "_enemy.json", enemySceneData);
-    SaveToFile(basePath + "_object.json", objectSceneData);
+    // =========================================================
+    // ★ 指示されたモードに応じて、必要なファイル「だけ」を上書き保存する！
+    // =========================================================
+    std::string savedFilesMsg = "";
+
+    if (mode == SaveMode::All || mode == SaveMode::Player) {
+        SaveToFile(basePath + "_player.json", playerSceneData);
+        savedFilesMsg += "Player, ";
+    }
+    if (mode == SaveMode::All || mode == SaveMode::Enemy) {
+        SaveToFile(basePath + "_enemy.json", enemySceneData);
+        savedFilesMsg += "Enemy, ";
+    }
+    if (mode == SaveMode::All || mode == SaveMode::Object) {
+        SaveToFile(basePath + "_object.json", objectSceneData);
+        savedFilesMsg += "Object, ";
+    }
 
     // ★ エディターのリスト表示用（目印）として、今まで通りのダミーファイルも保存しておく
-    json dummyData;
-    dummyData["_comment"] = "This is a metadata file for the editor. Actual data is in _player, _enemy, and _object.json";
-    SaveToFile("Resources/json/3Dobject/" + std::string(currentSceneFilename_), dummyData);
-    TriggerSaveNotification(std::string(currentSceneFilename_));
+    // （全体保存の時のみダミーファイルを更新）
+    if (mode == SaveMode::All) {
+        json dummyData;
+        dummyData["_comment"] = "This is a metadata file for the editor. Actual data is in _player, _enemy, and _object.json";
+        SaveToFile("Resources/json/3Dobject/" + std::string(currentSceneFilename_), dummyData);
+    }
+
+    // 通知メッセージの末尾のカンマとスペースを取る
+    if (!savedFilesMsg.empty()) {
+        savedFilesMsg.pop_back();
+        savedFilesMsg.pop_back();
+    }
+
+    // どのファイルが保存されたかを通知
+    TriggerSaveNotification(baseName + " (" + savedFilesMsg + ")");
 }
 // 単体保存
 void DebugEditor::SaveSingleObject() {

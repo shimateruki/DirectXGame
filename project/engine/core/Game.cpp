@@ -493,9 +493,9 @@ void Game::SaveAllEditors() {
     DebugConsole::GetInstance()->AddLog("--- Auto Saving All Editor Data... ---");
 
     // ① Object3D (Scene) の保存
-    if (debugEditor_) {
-        debugEditor_->SaveScene();
-    }
+    //if (debugEditor_) {
+    //    debugEditor_->SaveScene();
+    //}
 
     // ② カメラの保存 (実装済みなら追加)
     // CameraEditor::GetInstance()->Save();
