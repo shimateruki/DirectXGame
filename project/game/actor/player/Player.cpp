@@ -22,8 +22,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
     // 自機としての基本設定
     SetClassName("Player");
-    SetColliderType(ColliderType::kOBB);
-    SetCollisionSize({ 2.0f, 2.0f, 2.0f });
+
 
     // 移動コンポーネントの構築
     mover_ = std::make_unique<PlayerMover>();

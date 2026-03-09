@@ -193,23 +193,21 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     CollisionInfo info = { false, {0,0,0}, 0.0f };
     Math math;
 
-    // 半サイズ（既に obb.size は半サイズである前提）
     const float aH[3] = { a.size.x, a.size.y, a.size.z };
     const float bH[3] = { b.size.x, b.size.y, b.size.z };
 
-    // 回転行列 R[i][j] = Ai dot Bj
     float R[3][3];
     float absR[3][3];
-    const float EPS = 1e-6f;
+    // ★ EPS は削除（外積の計算時にゼロ除算回避が入っているため不要）
 
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
             R[i][j] = math.Dot(a.orientations[i], b.orientations[j]);
-            absR[i][j] = std::fabs(R[i][j]) + EPS; // 数値安定化
+            // ★ EPSを足さない純粋な絶対値にする（床が膨張するバグの修正）
+            absR[i][j] = std::fabs(R[i][j]);
         }
     }
 
-    // T = b.center - a.center 表示（Aの座標系での成分 tA）
     Vector3 tVec = b.center - a.center;
     float tA[3] = {
         math.Dot(tVec, a.orientations[0]),
@@ -217,10 +215,8 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
         math.Dot(tVec, a.orientations[2])
     };
 
-    // 最小の重なり（押し戻し量）を探すための記録
     float minOverlap = std::numeric_limits<float>::infinity();
     Vector3 minAxis = { 0,0,0 };
-    bool foundSeparating = false;
 
     // --- 1) Aの3軸をテスト ---
     for (int i = 0; i < 3; ++i) {
@@ -228,14 +224,11 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
         float rb = bH[0] * absR[i][0] + bH[1] * absR[i][1] + bH[2] * absR[i][2];
         float dist = std::fabs(tA[i]);
         float overlap = (ra + rb) - dist;
-        if (overlap <= 0.0f) {
-            return info; // 分離軸あり -> 衝突なし
-        }
+        if (overlap <= 0.0f) return info;
         if (overlap < minOverlap) {
             minOverlap = overlap;
             minAxis = a.orientations[i];
-            // 方向を a->b に合わせる
-            if (math.Dot(b.center - a.center, minAxis) < 0.0f) minAxis = minAxis * -1.0f;
+            if (math.Dot(a.center - b.center, minAxis) < 0.0f) minAxis = minAxis * -1.0f;
         }
     }
 
@@ -243,31 +236,24 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
     for (int j = 0; j < 3; ++j) {
         float ra = aH[0] * absR[0][j] + aH[1] * absR[1][j] + aH[2] * absR[2][j];
         float rb = bH[j];
-        // t in B frame = dot(T, Bj) = sum_k tA[k] * R[k][j]
         float tB = std::fabs(tA[0] * R[0][j] + tA[1] * R[1][j] + tA[2] * R[2][j]);
         float overlap = (ra + rb) - tB;
-        if (overlap <= 0.0f) {
-            return info;
-        }
+        if (overlap <= 0.0f) return info;
         if (overlap < minOverlap) {
             minOverlap = overlap;
             minAxis = b.orientations[j];
-            if (math.Dot(b.center - a.center, minAxis) < 0.0f) minAxis = minAxis * -1.0f;
+            if (math.Dot(a.center - b.center, minAxis) < 0.0f) minAxis = minAxis * -1.0f;
         }
     }
 
     // --- 3) 9つの外積軸 (Ai x Bj) をテスト ---
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
-            // axis = Ai x Bj
             Vector3 axis = math.Cross(a.orientations[i], b.orientations[j]);
             float axisLen = math.Length(axis);
-            if (axisLen < 1e-6f) {
-                continue; // 平行に近い -> スキップ（既に A/B 軸で判定済）
-            }
-            axis = axis / axisLen; // 正規化
+            if (axisLen < 1e-6f) continue; // ここで弾いているので EPS 不要
+            axis = axis / axisLen;
 
-            // ra, rb の計算（公式）
             int i1 = (i + 1) % 3;
             int i2 = (i + 2) % 3;
             int j1 = (j + 1) % 3;
@@ -276,29 +262,26 @@ CollisionInfo CheckOBBCollision(const OBB& a, const OBB& b) {
             float ra = aH[i1] * absR[i2][j] + aH[i2] * absR[i1][j];
             float rb = bH[j1] * absR[i][j2] + bH[j2] * absR[i][j1];
 
-            // 投影距離 t = | tA[i2]*R[i1][j] - tA[i1]*R[i2][j] |
             float proj = std::fabs(tA[i2] * R[i1][j] - tA[i1] * R[i2][j]);
-
             float overlap = (ra + rb) - proj;
-            if (overlap <= 0.0f) {
-                return info;
-            }
+
+            if (overlap <= 0.0f) return info;
+
+            overlap /= axisLen; // 実際の長さに補正
+
             if (overlap < minOverlap) {
                 minOverlap = overlap;
-                // 法線は cross(Ai, Bj) の向き（a->b に合わせる）
                 minAxis = axis;
-                if (math.Dot(b.center - a.center, minAxis) < 0.0f) minAxis = minAxis * -1.0f;
+                if (math.Dot(a.center - b.center, minAxis) < 0.0f) minAxis = minAxis * -1.0f;
             }
         }
     }
 
-    // ここまで来たら衝突
     info.isColliding = true;
     info.penetration = minOverlap;
-    info.normal = minAxis; // 既に a->b 方向に合わせている
+    info.normal = minAxis;
     return info;
 }
-
 // ========================================================================
 // AABB vs OBB 衝突判定
 // ========================================================================
