@@ -1001,6 +1001,10 @@ void DebugEditor::DrawImGui() {
                         isColChanged = true;
                     }
                 }
+                if (isColChanged) {
+                    selectedObject_->SetColliderConfig(colConfig);
+                }
+
             }
             ImGui::Separator();
             if (ImGui::CollapsingHeader("グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
