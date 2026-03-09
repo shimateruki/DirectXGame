@@ -9,6 +9,7 @@ enum CollisionAttribute : uint32_t {
     kGround = 1 << 2,  // 通常の地形
     kAttributePlayerBullet = 1 << 3,
 	kTrigger = 1 << 4, // トリガー 
+	kMapBlock = 1 << 5, // ボスが吸収可能なブロック
 };
 
 // 地形属性をまとめたマスク 

@@ -1024,6 +1024,45 @@ void DebugEditor::DrawImGui() {
                         ImGui::EndCombo();
                     }
 
+					// エクスプローラーから画像を新しく追加した時に、リストを再読み込みするボタン
+                    std::string currentOrmPath = selectedObject_->GetOrmMapPath();
+                    const char* previewOrmValue = currentOrmPath.empty() ? "未設定 (クリックで選択)" : currentOrmPath.c_str();
+
+                    if (ImGui::BeginCombo("ORMマップ (AO/粗さ/金属)", previewOrmValue)) {
+                        for (const std::string& path : texturePaths) {
+                            bool isSelected = (currentOrmPath == path);
+                            if (ImGui::Selectable(path.c_str(), isSelected)) {
+                                selectedObject_->SetOrmMap(path);
+                                isGraphicsChanged = true;
+                            }
+                            if (isSelected) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::Separator();
+                        if (ImGui::Selectable("なし (クリア)", currentOrmPath.empty())) {
+                            selectedObject_->SetOrmMap("");
+                            isGraphicsChanged = true;
+                        }
+                        ImGui::EndCombo();
+                    }
+                    std::string currentTexturePath = selectedObject_->GetTexturePath();
+                    const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
+
+                    if (ImGui::BeginCombo("基本画像 (Diffuse)", previewTextureValue)) {
+                        for (const std::string& path : texturePaths) {
+                            bool isSelected = (currentTexturePath == path);
+                            if (ImGui::Selectable(path.c_str(), isSelected)) {
+                                selectedObject_->SetTexture(path);
+                                isGraphicsChanged = true;
+                            }
+                            if (isSelected) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::Separator();
+                        if (ImGui::Selectable("デフォルトに戻す", currentTexturePath.empty())) {
+                            selectedObject_->SetTexture("");
+                            isGraphicsChanged = true;
+                        }
+                        ImGui::EndCombo();
+                    }
                     // エクスプローラーから画像を新しく追加した時に、リストを再読み込みするボタン
                     ImGui::SameLine();
                     if (ImGui::Button("更新")) {
@@ -1470,8 +1509,7 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     Vector4 color = object->GetColor();
     currentData["color"] = { color.x, color.y, color.z, color.w };
 
-    // ==========================================
-    // ★修正箇所：アニメーションとレコーダー設定の保存
+
     // ==========================================
     currentData["animation"] = {
         {"animName", object->animName_},
@@ -1491,6 +1529,8 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     currentData["roughness"] = object->GetRoughness();
     currentData["enableNormalMap"] = object->GetEnableNormalMap();
     currentData["normalMapPath"] = object->GetNormalMapPath();
+    currentData["ormMapPath"] = object->GetOrmMapPath();
+    currentData["texturePath"] = object->GetTexturePath();
     // =========================================================
     // 3. JSON配列内を探して更新 or 追加
     // =========================================================
@@ -1837,7 +1877,7 @@ void DebugEditor::SaveScene() {
             {"isRecordLoop", obj->isRecordLoop_},
             {"isRecordRelative", obj->isRecordRelative_}
         };
-        // ==========================================
+   
 
         d["blendMode"] = static_cast<int>(obj->GetBlendMode());
         d["materialType"] = obj->GetMaterialType();
@@ -1845,6 +1885,8 @@ void DebugEditor::SaveScene() {
         d["roughness"] = obj->GetRoughness();
         d["enableNormalMap"] = obj->GetEnableNormalMap();
         d["normalMapPath"] = obj->GetNormalMapPath();
+        d["ormMapPath"] = obj->GetOrmMapPath();
+        d["texturePath"] = obj->GetTexturePath();
         // 配列に追加
         sceneData["objects"].push_back(d);
     }

@@ -85,7 +85,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         cameraResource_.Get(),
         pointLightResource,
         spotLightResource,
-        materialResource_.Get(), normalMapHandle_
+        materialResource_.Get(), normalMapHandle_, ormMapHandle_, textureHandle_
     );
 }
 
@@ -142,5 +142,24 @@ void MeshRenderer::SetNormalMap(const std::string& texturePath) {
         normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath);
     } else {
         normalMapHandle_ = 0;
+    }
+}
+
+void MeshRenderer::SetOrmMap(const std::string& texturePath) {
+    ormMapPath_ = texturePath;
+    if (!texturePath.empty()) {
+        ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath);
+    } else {
+        ormMapHandle_ = 0;
+    }
+}
+
+
+void MeshRenderer::SetTexture(const std::string& texturePath) {
+    texturePath_ = texturePath;
+    if (!texturePath.empty()) {
+        textureHandle_ = TextureManager::GetInstance()->Load(texturePath);
+    } else {
+        textureHandle_ = 0;
     }
 }

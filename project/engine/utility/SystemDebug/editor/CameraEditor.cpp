@@ -113,6 +113,7 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
         UpdateFreeCamera(camera);
     }
 }
+
 void CameraEditor::UpdateFreeCamera(Camera* camera) {
     InputManager* input = InputManager::GetInstance();
 
@@ -139,21 +140,23 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     }
 
     // ----------------------------------------------------------
-    // 2. 移動処理 (WASD + QE)
+    // 2. カメラの向き(ローカル軸)の計算
     // ----------------------------------------------------------
     Vector3 forward, right;
 
-    // 前方ベクトル
+    // 前方ベクトル (カメラが向いている方向)
     forward.x = std::sin(rotation.y) * std::cos(rotation.x);
     forward.y = -std::sin(rotation.x);
     forward.z = std::cos(rotation.y) * std::cos(rotation.x);
 
-    // 右ベクトル
+    // 右ベクトル (カメラから見た右方向)
     right.x = std::cos(rotation.y);
     right.y = 0.0f;
     right.z = -std::sin(rotation.y);
 
-    // 実際の移動ベクトル
+    // ----------------------------------------------------------
+    // 3. 移動処理
+    // ----------------------------------------------------------
     Vector3 moveVelocity = { 0, 0, 0 };
 
     // Shiftキーで加速
@@ -161,19 +164,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
         ? settings_.boostSpeed
         : settings_.moveSpeed;
 
-    // 前後 (W/S)
-    if (input->IsKeyPressed(DIK_W)) {
-        moveVelocity.x += forward.x * speed;
-        moveVelocity.y += forward.y * speed;
-        moveVelocity.z += forward.z * speed;
-    }
-    if (input->IsKeyPressed(DIK_S)) {
-        moveVelocity.x -= forward.x * speed;
-        moveVelocity.y -= forward.y * speed;
-        moveVelocity.z -= forward.z * speed;
-    }
-
-    // 左右 (A/D)
+    // ★ A/D: カメラの左右へ移動 (X軸)
     if (input->IsKeyPressed(DIK_D)) {
         moveVelocity.x += right.x * speed;
         moveVelocity.y += right.y * speed;
@@ -185,12 +176,25 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
         moveVelocity.z -= right.z * speed;
     }
 
-    // 上下 (Q/E)
-    if (input->IsKeyPressed(DIK_E)) {
-        moveVelocity.y += speed;
+    // ★ W/S: 空間の上下へ移動 (Y軸)
+
+    if (input->IsKeyPressed(DIK_W)) {
+        moveVelocity.y += speed; // 上へ
     }
-    if (input->IsKeyPressed(DIK_Q)) {
-        moveVelocity.y -= speed;
+    if (input->IsKeyPressed(DIK_S)) {
+        moveVelocity.y -= speed; // 下へ
+    }
+
+    // ★ ホイール: カメラの向いている方向へズーム移動 (Z軸)
+    float wheelDelta = input->GetMouseWheelDelta();
+    if (wheelDelta != 0.0f) {
+        float wheelDir = (wheelDelta > 0.0f) ? 1.0f : -1.0f;
+        float zoomSpeed = speed * 3.0f; // ホイール1回分の進む距離の倍率
+
+        // forwardベクトルを掛けることで、常に「カメラが向いている方向」へ進む！
+        moveVelocity.x += forward.x * zoomSpeed * wheelDir;
+        moveVelocity.y += forward.y * zoomSpeed * wheelDir;
+        moveVelocity.z += forward.z * zoomSpeed * wheelDir;
     }
 
     // 座標更新
@@ -200,6 +204,9 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetEye(eye);
 
+    // ----------------------------------------------------------
+    // 4. ターゲットの更新
+    // ----------------------------------------------------------
     Vector3 newTarget;
     newTarget.x = eye.x + forward.x * 10.0f;
     newTarget.y = eye.y + forward.y * 10.0f;
@@ -207,7 +214,6 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetTarget(newTarget);
 }
-
 void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
     // ---------------------------------------------------------
