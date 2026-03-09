@@ -82,7 +82,6 @@ void MeshRenderer::Update() {
         if (shadowWvpData_ && transform_) {
             Math math;
 
-       
             Vector3 lightDir = LightManager::GetInstance()->GetDirectionalLight().direction;
             // 0除算防止のための安全対策を追加
             if (math.Length(lightDir) > 0.0001f) {
@@ -104,13 +103,16 @@ void MeshRenderer::Update() {
                 target.y - lightDir.y * 200.0f,
                 target.z - lightDir.z * 200.0f
             };
+
             Vector3 up = { 0.0f, 1.0f, 0.0f };
+
+            if (std::abs(lightDir.x) < 0.001f && std::abs(lightDir.z) < 0.001f) {
+                up = { 0.0f, 0.0f, 1.0f };
+            }
 
             // 太陽目線のビュー行列
             Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
 
-            // 3. カメラ周辺だけを狙うので、箱のサイズをギュッと小さく（高解像度に）できる！
-            // ※もし画面端で影が切れる場合は、ここの 80.0f を 100.0f や 120.0f などに広げてください
             Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
 
             Matrix4x4 lightVP = math.Multiply(lightView, lightProj);

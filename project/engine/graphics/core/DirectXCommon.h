@@ -210,6 +210,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
 	uint32_t shadowMapSrvHandle_ = 0;
 	// シャドウマップの解像度（とりあえず1024x1024。綺麗にしたいなら2048や4096に）
-	static const int kShadowMapWidth = 1024;
-	static const int kShadowMapHeight = 1024;
+	static const int kShadowMapWidth = 2048;
+	static const int kShadowMapHeight = 2048;
 };
