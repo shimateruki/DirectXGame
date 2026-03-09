@@ -1,0 +1,153 @@
+{
+    "objects": [
+        {
+            "animation": {
+                "animName": "Idle",
+                "isAnimLoop": false
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": true,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 1.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Player",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 54.0,
+                "hp": 74.0,
+                "interval": 3.0,
+                "jumpPower": 30.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 48.0,
+                "speed": 7.099999904632568
+            },
+            "parentName": "",
+            "position": [
+                -5.609375,
+                2.0021352767944336,
+                15.162572860717773
+            ],
+            "recorder": {
+                "isRecordLoop": true,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                -3.1415908336639404,
+                2.89559268951416,
+                -3.1415908336639404
+            ],
+            "roughness": 1.0,
+            "saveCategory": "Player",
+            "scale": [
+                0.9999955892562866,
+                1.0,
+                0.9999955892562866
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Player"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.20000000298023224,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.3499999940395355,
+                    0.10000000149011612,
+                    0.05000000074505806
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.17399999499320984,
+            "modelName": "sword",
+            "myEventID": -1,
+            "name": "Player_sword",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -8.32848072052002,
+                3.662675619125366,
+                17.05594253540039
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.6800000071525574,
+            "saveCategory": "Player",
+            "scale": [
+                3.5,
+                3.5,
+                3.5
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        }
+    ]
+}

@@ -4,6 +4,7 @@
 #include "CameraManager.h"
 #include "LightManager.h"
 #include <cassert>
+#include <SrvManager.h>
 
 MeshRenderer::MeshRenderer(Transform* transform) {
     assert(transform);
@@ -40,6 +41,11 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
     materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
     materialData_->enableNormalMap = 0;
+
+    shadowWvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
+    shadowWvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&shadowWvpData_));
+    shadowWvpData_->WVP = Math::MakeIdentity4x4();
+    shadowWvpData_->world = Math::MakeIdentity4x4();
     
 }
 
@@ -70,14 +76,47 @@ void MeshRenderer::Update() {
         if (directionalLightData_) {
             directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
         }
+
+        if (shadowWvpData_ && transform_) {
+            Math math;
+            // 本来はLightManagerから太陽の向きを取得しますが、まずは固定値でテストします
+            Vector3 lightDir = { -1.0f, -1.0f, 1.0f }; // 斜め下に向かう光
+            lightDir = math.Normalize(lightDir);
+
+            // 太陽の位置（原点から光の逆方向に少し離れた場所）
+            Vector3 lightPos = { -lightDir.x * 50.0f, -lightDir.y * 50.0f, -lightDir.z * 50.0f };
+            Vector3 target = { 0.0f, 0.0f, 0.0f };
+            Vector3 up = { 0.0f, 1.0f, 0.0f };
+
+            // 太陽目線のビュー行列
+            Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
+            // 太陽目線のプロジェクション行列（平行投影。幅40、高さ40、奥行き100）
+            Matrix4x4 lightProj = math.MakeOrthographicMatrix(40.0f, 40.0f, 1.0f, 100.0f);
+
+            Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
+
+            // 影用のWVP = モデルのワールド行列 * 太陽のビュープロジェクション
+            shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
+            shadowWvpData_->world = transform_->matWorld;
+        }
+    
     }
 }
 
 void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!model_ || !common_) return;
-
+    common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
+    // [11] 影用のWVP行列 (b1) をセット
+    if (shadowWvpResource_) {
+        commandList->SetGraphicsRootConstantBufferView(11, shadowWvpResource_->GetGPUVirtualAddress());
+    }
+
+    // [12] シャドウマップのテクスチャ (t5) をセット
+    uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
     // ModelのDrawを呼ぶ
     model_->Draw(
         wvpResource_.Get(),
@@ -162,4 +201,15 @@ void MeshRenderer::SetTexture(const std::string& texturePath) {
     } else {
         textureHandle_ = 0;
     }
+}
+
+
+void MeshRenderer::DrawShadow() {
+    if (!model_ || !common_ || !shadowWvpResource_) return;
+    common_->SetShadowGraphicsCommand();
+    // 影用のパイプラインに変更
+    common_->SetShadowPipelineState();
+
+    // 軽量版のドローコールを呼ぶ
+    model_->DrawShadow(shadowWvpResource_.Get());
 }

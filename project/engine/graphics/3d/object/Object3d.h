@@ -49,6 +49,7 @@ public:
     virtual void Update(float deltaTime);
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    void DrawShadow();
     virtual std::unique_ptr<Object3d> Clone() const;
 
     // トランスフォーム
@@ -183,7 +184,8 @@ public:
     bool isRecordLoop_ = false;       // パスのループフラグ
     bool isRecordRelative_ = false;   // パスの相対再生フラグ
     GhostRecorder* recorder_ = nullptr;
-
+    void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
+    std::string GetSaveCategory() const { return saveCategory_; }
 protected:
     Object3dCommon* common_ = nullptr;
     std::string name_ = "Object";
@@ -207,4 +209,5 @@ protected:
 
     std::string particleName_ = ""; // JSONファイル名
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
+    std::string saveCategory_ = "Object";
 };

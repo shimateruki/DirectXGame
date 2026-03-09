@@ -43,6 +43,7 @@
 #include <LightEditor.h>
 #include <ParticleManager.h>
 #include <GPUParticleManager.h>
+#include <SrvManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -100,7 +101,7 @@ void GamePlayScene::Initialize() {
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
-	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/scene_layout.json");
+	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
 	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
 
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
@@ -295,6 +296,12 @@ void GamePlayScene::Update(float deltaTime) {
 
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
+	ImGui::Begin("Shadow Map Debug");
+	// ハンドルからGPUアドレスを取得して表示
+	auto gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(DirectXCommon::GetInstance()->GetShadowMapSrvHandle());
+	// 200x200 のサイズで画像を表示
+	ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(200, 200));
+	ImGui::End();
 }
 
 
@@ -357,5 +364,12 @@ void GamePlayScene::DrawUI() {
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) {
 		sprite->Draw();
+	}
+}
+
+
+void GamePlayScene::DrawShadow() {
+	if (objectManager_) {
+		objectManager_->DrawShadow();
 	}
 }

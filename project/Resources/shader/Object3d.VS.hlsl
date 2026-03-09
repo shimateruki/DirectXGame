@@ -7,7 +7,7 @@ struct TransformationMatrix
     float32_t4x4 WorldInverseTranspose;
 };
 ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
-
+ConstantBuffer<TransformationMatrix> gShadowMatrix : register(b1);
 // スキニング用行列パレット
 StructuredBuffer<float32_t4x4> gMatrixPalette : register(t1);
 
@@ -66,6 +66,6 @@ VecrtexShaderOutput main(VertexShanderInput input)
 
     // ワールド座標 (PixelShader用)
     output.worldPosition = mul(skinnedPosition, gTransformationMatrix.World).xyz;
-
+    output.shadowPosition = mul(skinnedPosition, gShadowMatrix.WVP);
     return output;
 }

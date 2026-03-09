@@ -122,7 +122,7 @@ public: // メンバ関数
         ID3D12Resource* pointLightResource,
         ID3D12Resource* spotLightResource,
         ID3D12Resource* overrideMaterialResource = nullptr, uint32_t normalMapHandle = 0,uint32_t ormMapHandle= 0, uint32_t overrideTextureHandle = 0);
-
+    void DrawShadow(ID3D12Resource* wvpResource);
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)
     /// </summary>

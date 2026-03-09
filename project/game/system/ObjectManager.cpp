@@ -78,3 +78,11 @@ void ObjectManager::ProcessRemovals() {
 
 	removalList_.clear();
 }
+
+void ObjectManager::DrawShadow() {
+	// 管理している全オブジェクトの影を描画する
+	for (auto& obj : objects_) {
+
+		obj->DrawShadow();
+	}
+}
