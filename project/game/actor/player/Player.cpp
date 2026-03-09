@@ -68,15 +68,29 @@ bool Player::OnCollision(Object3d* other) {
         attribute = other->GetCollider()->GetAttribute();
     }
 
-    // 当たり判定の計算
+    // ① まずプレイヤー本体の当たり判定を計算
     CollisionInfo info = CheckCollision(other);
+
+    // ② ★追加: 子オブジェクト（パーツ）の当たり判定も全てチェックする
+    for (Object3d* child : GetChildren()) {
+        CollisionInfo childInfo = child->CheckCollision(other);
+        if (childInfo.isColliding) {
+            // パーツがぶつかっていた場合、本体よりめり込みが深ければ
+            // そのパーツの押し出し情報（法線とめり込み量）を採用して親を動かす！
+            if (!info.isColliding || childInfo.penetration > info.penetration) {
+                info = childInfo;
+            }
+        }
+    }
+
+    // 本体もパーツも当たっていなければ終了
     if (!info.isColliding) {
         return false;
     }
 
     // 無敵時: ダメージ通知は行わないが物理押し戻しは適用（壁との衝突は処理）
     if (isInvincible_) {
-        if (attribute & kAllSolid) {
+        if (attribute & kAllSolid) { // ※ kMapBlock などソリッド属性のマクロに合わせてください
             ApplyPhysicsCollision(info, attribute);
         }
         return true;
@@ -91,12 +105,11 @@ bool Player::OnCollision(Object3d* other) {
 
     // 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     if (attribute & kAllSolid) {
-        ApplyPhysicsCollision(info, attribute);
+        ApplyPhysicsCollision(info, attribute); // ここで親の座標が押し上げられ、落下速度もリセットされる
     }
 
     return true; // 衝突処理完了
 }
-
 // =================================================================
 // 移動制御 (Strategy Pattern)
 // =================================================================
