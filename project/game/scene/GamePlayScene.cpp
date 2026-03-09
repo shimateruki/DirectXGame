@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "GamePlayScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -25,6 +25,7 @@
 #include "LockOnSystem.h"
 #include "GameRule.h"
 #include "ObjectManager.h" // 追加
+#include "easing.h" // 追加
 
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -153,6 +154,130 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
+
+	{
+		static int bossPhase = 0;      // 0:待機, 1:移動, 2:溜め, 3:突進, 4:終了
+		static float timer = 0.0f;
+		static Vector3 startPos = { 0,0,0 };
+		static Vector3 targetPos = { 0,0,0 };
+
+		static bool wasPlaying = false;
+		bool isPlaying = SceneManager::GetInstance ()->IsPlaying ();
+
+		// 再生ボタンが押された瞬間に完全リセット
+		if (isPlaying && !wasPlaying) {
+			bossPhase = 0;
+			timer = 0.0f;
+		}
+		wasPlaying = isPlaying;
+
+		// ★ return を使わずに、再生中のみ実行されるように if で囲う
+		if (!isPlaying) {
+			Object3d *boss = nullptr;
+			for (auto &obj : objectManager_->GetObjects ()) {
+				if (obj->GetName () == "Enemy_BossCore") {
+					boss = obj.get ();
+					break;
+				}
+			}
+
+			if (boss && player_) {
+				// 【1キー判定】待機中(0) または 終了後(4) に押されたら開始！
+				// (途中からでもリセットしたい場合は if (inputManager_->IsTriggerKey(DIK_1)) だけでもOK)
+				if (bossPhase == 0 || bossPhase == 4) {
+					if (inputManager_->IsKeyPressed (DIK_1)) {
+						bossPhase = 1;
+						timer = 0.0f; // タイマーをリセットすることで開始座標を再取得させる
+					}
+				}
+
+				// --- フェーズ1: x = -50 まで移動 ---
+				if (bossPhase == 1) {
+					if (timer == 0.0f) startPos = boss->GetTranslate ();
+
+					timer += deltaTime;
+					float duration = 2.0f;
+					float t = std::min (timer / duration, 1.0f);
+					float easedT = Easing::OutExpo (t);
+
+					Vector3 pos = boss->GetTranslate ();
+					pos.x = Math::Lerp (startPos.x, -50.0f, easedT);
+					boss->SetTranslate (pos);
+
+					if (t >= 1.0f) {
+						bossPhase = 2;
+						timer = 0.0f;
+						startPos = boss->GetTranslate ();
+					}
+				}
+				// --- フェーズ2: シェイク（溜め） ---
+				else if (bossPhase == 2) {
+					timer += deltaTime;
+					float duration = 1.0f;
+					float t = std::min (timer / duration, 1.0f);
+
+					// --- 1. プレイヤーの方を向く計算（90度オフセット付き） ---
+					Vector3 playerPos = player_->GetWorldPosition ();
+					Vector3 bossPos = boss->GetWorldPosition ();
+					Vector3 toPlayer = playerPos - bossPos;
+
+					// 基本のターゲット角度を計算
+					float angleY = std::atan2 (toPlayer.x, toPlayer.z);
+
+					// 【ここを修正！】現在の角度に 90度 (PI / 2) を足して向きを補正する
+					// ※ 逆を向く場合はマイナスにしてみてください
+					float offset = std::numbers::pi_v<float> / 2.0f;
+					angleY += offset;
+
+					Vector3 rot = boss->GetRotation ();
+					rot.y = angleY;
+					boss->SetRotation (rot);
+
+					// --- 2. シェイク処理 (変更なし) ---
+					Vector3 pos = startPos;
+					float shake = 0.3f;
+					pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+					pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+					boss->SetTranslate (pos);
+
+					if (t >= 1.0f) {
+						bossPhase = 3;
+						timer = 0.0f;
+						startPos = boss->GetTranslate ();
+						targetPos = player_->GetWorldPosition ();
+					}
+				}
+				// --- フェーズ3: 突進 ---
+				else if (bossPhase == 3) {
+					timer += deltaTime;
+					// --- 調整ポイント1: 時間を短くすると迫力が出る ---
+					float duration = 1.5f;
+					float t = std::min (timer / duration, 1.0f);
+
+					// --- 調整ポイント2: ここの数字を変えて加速度を自由に操る ---
+					// 2.0なら普通、5.0ならかなり溜めてから一気に加速！
+					float acceleration = 5.0f;
+					float easedT = std::pow (t, acceleration);
+
+					// 1. 座標の移動
+					Vector3 pos = Math::Lerp (startPos, targetPos, easedT);
+					boss->SetTranslate (pos);
+
+					// 2. 回転の追加（X軸回転でドリルみたいにする例）
+					float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f; // 5回転
+					Vector3 rot = boss->GetRotation ();
+					rot.x = easedT * totalRotation; // 移動の加速に合わせて回転も速くなる
+					boss->SetRotation (rot);
+
+					if (t >= 1.0f) {
+						bossPhase = 4;
+					}
+				}
+			}
+		}
+	} // ボスアニメーション制御のブロック終了
+
+
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
 	GPUParticleManager::GetInstance()->Emit(
 		{ 0.0f, 5.0f, 0.0f },  // 発生座標
