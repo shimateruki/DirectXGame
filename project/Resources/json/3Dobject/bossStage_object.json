@@ -1097,6 +1097,171 @@
             "targetID": -1,
             "texturePath": "",
             "type": "MapBlock"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "dome",
+            "myEventID": -1,
+            "name": "Battle_Field_Dome",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                -55.900001525878906,
+                0.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.600000023841858,
+                1.600000023841858,
+                1.600000023841858
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "collider": {
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 36,
+            "modelName": "block",
+            "name": "Wall_Block_R1",
+            "position": [
+                15.0,
+                1.0,
+                0.0
+            ],
+            "scale": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "type": "MapBlock"
+        },
+        {
+            "collider": {
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 36,
+            "modelName": "block",
+            "name": "Wall_Block_R2",
+            "position": [
+                15.0,
+                3.0,
+                0.0
+            ],
+            "scale": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "type": "MapBlock"
+        },
+        {
+            "collider": {
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 36,
+            "modelName": "block",
+            "name": "Wall_Block_L1",
+            "position": [
+                -15.0,
+                1.0,
+                0.0
+            ],
+            "scale": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "type": "MapBlock"
+        },
+        {
+            "collider": {
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 36,
+            "modelName": "block",
+            "name": "Wall_Block_L2",
+            "position": [
+                -15.0,
+                3.0,
+                0.0
+            ],
+            "scale": [
+                2.0,
+                2.0,
+                2.0
+            ],
+            "type": "MapBlock"
         }
     ]
 }
