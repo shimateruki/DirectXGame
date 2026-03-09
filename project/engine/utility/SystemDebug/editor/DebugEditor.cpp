@@ -1604,6 +1604,7 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     Transform* tf = object->GetTransform();
     currentData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
     currentData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
+    currentData["quaternion"] = { tf->quaternion.x, tf->quaternion.y, tf->quaternion.z, tf->quaternion.w };
     currentData["scale"] = { tf->scale.x, tf->scale.y, tf->scale.z };
 
     // Collider
@@ -1968,6 +1969,7 @@ void DebugEditor::SaveScene(SaveMode mode) {
         Transform* objTr = obj->GetTransform();
         d["position"] = { objTr->translate.x, objTr->translate.y, objTr->translate.z };
         d["rotation"] = { objTr->rotate.x, objTr->rotate.y, objTr->rotate.z };
+        d["quaternion"] = { objTr->quaternion.x, objTr->quaternion.y, objTr->quaternion.z, objTr->quaternion.w };
         d["scale"] = { objTr->scale.x, objTr->scale.y, objTr->scale.z };
 
         // Collider
