@@ -137,4 +137,5 @@ public:
 
 	// クォータニオンから回転行列を作成
 	static Matrix4x4 MakeRotateQuaternionMatrix(const Quaternion& q);
+	static Matrix4x4 MakeOrthographicMatrix(float width, float height, float nearZ, float farZ);
 };

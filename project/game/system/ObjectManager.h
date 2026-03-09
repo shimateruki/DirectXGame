@@ -36,6 +36,11 @@ public:
 	/// </summary>
 	std::vector<std::unique_ptr<Object3d>>& GetObjects() { return objects_; }
 
+	/// <summary>
+	/// 影パス用の描画処理（全オブジェクトの影を落とす）
+	/// </summary>
+	void DrawShadow();
+
 private:
 	// 削除処理の実体
 	void ProcessRemovals();

@@ -6,4 +6,5 @@ struct VecrtexShaderOutput
     float32_t3 worldPosition : POSITION0;
     float32_t3 smoothNormal : NORMAL1;
     float32_t3 tangent : TANGENT0;
+    float32_t4 shadowPosition : TEXCOORD1;
 };

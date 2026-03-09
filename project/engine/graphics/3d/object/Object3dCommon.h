@@ -39,6 +39,9 @@ public:
 
    DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
+   void SetShadowPipelineState();
+   void SetShadowGraphicsCommand();
+   void CreateShadowRootSignature();
 private:
    /// <summary>
    /// ルートシグネチャの作成
@@ -56,4 +59,7 @@ private:
    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
 
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> graphicsPipelineStates_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> shadowPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12RootSignature> shadowRootSignature_;
+
 };

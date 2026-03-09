@@ -549,3 +549,15 @@ Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
 
 	return m;
 }
+
+Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, float farZ) {
+	Matrix4x4 result{}; // ゼロ初期化
+
+	result.m[0][0] = 2.0f / width;
+	result.m[1][1] = 2.0f / height;
+	result.m[2][2] = 1.0f / (farZ - nearZ);
+	result.m[3][2] = -nearZ / (farZ - nearZ);
+	result.m[3][3] = 1.0f;
+
+	return result;
+}
