@@ -49,6 +49,7 @@ public:
     virtual void Update(float deltaTime);
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    void DrawShadow();
     virtual std::unique_ptr<Object3d> Clone() const;
 
     // トランスフォーム

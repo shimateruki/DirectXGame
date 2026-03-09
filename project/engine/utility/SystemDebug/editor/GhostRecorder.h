@@ -99,8 +99,23 @@ public:
         return 0; // 何も起きていないときは0
     }// 今の自分の状態（再生中かどうか）を返す
 
+    //  ピンが選択中かどうかを返す
+    bool IsPinSelected() const { return selectedPinType_ != SelectedPinType::None; }
 
+    //  選択中のピン(Waypoint)を削除する
+    void DeleteSelectedPin();
 
+    void DeselectPin() {
+        selectedPinType_ = SelectedPinType::None;
+        selectedWaypointIndex_ = -1;
+    }
+    void PlayFromMemory(bool loop, bool isCinematic) {
+        if (frames_.empty()) return;
+        isLoop_ = loop;
+        isOverrideCamera_ = isCinematic;
+        if (target_) { target_->SetIsVisible(!isCinematic); }
+        StartPlayingInternal();
+    }
 private:
     void StartRecording();
     void StopRecording();

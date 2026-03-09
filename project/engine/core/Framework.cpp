@@ -20,6 +20,7 @@ void Framework::Initialize() {
     audioPlayer_->Initialize();
 
     SRVManager::GetInstance()->Initialize(dxCommon_);
+    dxCommon_->CreateShadowMap();
     ImGuiManager::GetInstance()->Initialize(winApp_.get(), dxCommon_);
     // ModelManagerとTextureManagerの初期化
     ModelManager::GetInstance()->Initialize(dxCommon_);

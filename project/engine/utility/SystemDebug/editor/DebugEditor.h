@@ -35,6 +35,7 @@ public:
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
     void DrawProjectWindow();
     void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
+
     // ビットフラグ編集用のヘルパー関数
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
     void DrawHierarchyNode(Object3d* obj);
@@ -67,6 +68,18 @@ public:
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
     Object3d* GetSelectedObject3D() const { return selectedObject_; }
+    void SetSceneFilename(const std::string& filepath) {
+        std::string name = filepath;
+        size_t pos = name.find_last_of("/\\");
+        if (pos != std::string::npos) {
+            name = name.substr(pos + 1);
+        }
+        // エディターのバッファにセット
+        strcpy_s(currentSceneFilename_, sizeof(currentSceneFilename_), name.c_str());
+    }
+
+    void TriggerSaveNotification(const std::string& filename);
+    void DrawSaveNotification();
 private:
     void InitializePrimitiveDrawing();
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
@@ -145,4 +158,10 @@ private:
     Vector2 gameViewSize_ = { 1266, 530 }; // GameViewのサイズ
     Vector2 gameViewOffset_ = { 0, 0 };   // GameViewの絶対座標
     bool isGameViewHovered_ = false;
+
+    bool isPathEditMode_ = false;
+
+    float saveNotificationTimer_ = 0.0f;
+    std::string saveNotificationMsg_ = "";
+
 };

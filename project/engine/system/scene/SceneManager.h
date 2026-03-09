@@ -67,6 +67,7 @@ public:
     void DrawUI();
     bool IsPlaying() const { return isPlaying_; }
     void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
+    void DrawShadow();
 private:
     static SceneManager* instance_;
     std::unique_ptr<BaseScene> currentScene_ = nullptr;

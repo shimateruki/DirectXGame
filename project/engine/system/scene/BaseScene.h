@@ -73,7 +73,11 @@ public:
     virtual Object3d* FindObjectByEventID(int eventID);
     virtual void DrawUI() {}
 
+    void SetLoadedFilename(const std::string& name) { loadedFilename_ = name; }
+    std::string GetLoadedFilename() const { return loadedFilename_; }
+    virtual void DrawShadow() {}
 protected:
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
+    std::string loadedFilename_ = "scene_layout.json";
 };

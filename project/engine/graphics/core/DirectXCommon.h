@@ -130,7 +130,10 @@ public:
 	//  ImGuiで表示するための SRVハンドルを取得
 	uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
 	void PreDrawBackBuffer(); // 描画先をバックバッファに戻す（リセットなし）
-
+	void CreateShadowMap();
+	uint32_t GetShadowMapSrvHandle() const { return shadowMapSrvHandle_; }
+	void PreDrawShadow();
+	void PostDrawShadow();
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 
@@ -202,4 +205,11 @@ private:
 
 	//  GameViewのクリアカラー (動作確認用に「緑」にしておきます)
 	float clearColor_[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
+	uint32_t shadowMapSrvHandle_ = 0;
+	// シャドウマップの解像度（とりあえず1024x1024。綺麗にしたいなら2048や4096に）
+	static const int kShadowMapWidth = 1024;
+	static const int kShadowMapHeight = 1024;
 };

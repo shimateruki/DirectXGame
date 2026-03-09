@@ -59,7 +59,15 @@ void DebugEditor::Update() {
     InputManager* input = InputManager::GetInstance();
     Math math;
     IEditable* current = EditorManager::GetInstance()->GetSelectedObject();
+    static std::string s_lastSyncedSceneFilename = "";
+    std::string currentLoadedName = currentScene->GetLoadedFilename();
 
+    // ファイル名が前フレームから変わった時「だけ」同期する
+    // （コンボボックスでの手動切り替え操作を邪魔しないための工夫です！）
+    if (!currentLoadedName.empty() && s_lastSyncedSceneFilename != currentLoadedName) {
+        SetSceneFilename(currentLoadedName);
+        s_lastSyncedSceneFilename = currentLoadedName;
+    }
     // 選択対象が「DebugEditor自身」である間は、以前選んだオブジェクトを保持し続ける
     if (current != nullptr && current != this) {
         Object3d* obj = dynamic_cast<Object3d*>(current);
@@ -135,17 +143,28 @@ void DebugEditor::Update() {
     //  モードB: 通常選択モード
     // =========================================================
     else {
-        // B-1. ショートカット
         if (!ImGui::GetIO().WantCaptureKeyboard) {
-            if (input->IsKeyTriggered(DIK_DELETE)) DeleteSelected();
+
+            // ★完全版: 削除処理の完全分離
+            if (input->IsKeyTriggered(DIK_DELETE)) {
+                // パス編集モード中なら「点」を消す！
+                if (isPathEditMode_ && selectedObject_ && selectedObject_->recorder_ && selectedObject_->recorder_->IsPinSelected()) {
+                    selectedObject_->recorder_->DeleteSelectedPin();
+                }
+                // 通常モードなら「オブジェクト」を消す！
+                else if (!isPathEditMode_) {
+                    DeleteSelected();
+                }
+            }
+
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Z)) PerformUndo();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Y)) PerformRedo();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_S)) SaveScene();
         }
 
-        // B-2. マウス選択 (ギズモを触っていない時)
-        if (isGameViewHovered_ && !ImGuizmo::IsOver()) {
+        // B-2. マウス選択 (ギズモを触っていない時 ＆ ★パス編集モードじゃない時)
+        if (!isPathEditMode_ && isGameViewHovered_ && !ImGuizmo::IsOver()) {
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 Ray ray = ScreenPointToRay(gameViewMousePos_);
                 auto& objects = currentScene->GetObjects();
@@ -169,52 +188,57 @@ void DebugEditor::Update() {
         }
 
         if (selectedObject_) {
-            static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
-            if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
-            if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
-            if (input->IsKeyTriggered(DIK_S)) curOp = ImGuizmo::SCALE;
+            // =====================================================
+            // ★完全版: パス編集モードじゃない時だけ、オブジェクトのGizmoを出す！
+            // =====================================================
+            if (!isPathEditMode_) {
+                static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
+                if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
+                if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
+                if (input->IsKeyTriggered(DIK_S)) curOp = ImGuizmo::SCALE;
 
-            Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
-            if (cam) {
-                ImGuizmo::SetDrawlist();
-                ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
+                Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+                if (cam) {
+                    ImGuizmo::SetDrawlist();
+                    ImGuizmo::SetRect(gameViewOffset_.x, gameViewOffset_.y, gameViewSize_.x, gameViewSize_.y);
 
-                Matrix4x4 view = cam->GetViewMatrix();
-                Matrix4x4 proj = cam->GetProjectionMatrix();
-                Transform* tr = selectedObject_->GetTransform();
+                    Matrix4x4 view = cam->GetViewMatrix();
+                    Matrix4x4 proj = cam->GetProjectionMatrix();
+                    Transform* tr = selectedObject_->GetTransform();
 
-                // ★修正1: ローカル行列ではなく、親の回転を含めた本物のワールド行列を渡す！
-                selectedObject_->UpdateWorldMatrix();
-                Matrix4x4 world = selectedObject_->GetWorldMatrix();
-
-                float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
-                float snapArr[3] = { snapVal, snapVal, snapVal };
-
-                ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &world.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
-
-                if (ImGuizmo::IsUsing()) {
-                    if (!isDraggingTransform_) { isDraggingTransform_ = true; tempTransformStart_ = *tr; }
-                    Matrix4x4 newLocalMat = world;
-                    if (selectedObject_->GetParent()) {
-                        Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
-                        newLocalMat = math.Multiply(world, parentWorldInv);
-                    }
-
-                    Vector3 s, rDeg, t;
-                    ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
-                    tr->translate = t;
-                    tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
-                    tr->scale = s;
-                    selectedObject_->UpdateLocalMatrix();
                     selectedObject_->UpdateWorldMatrix();
-                } else if (isDraggingTransform_) {
-                    isDraggingTransform_ = false;
-                    TransformCommand cmd = { selectedObject_, tempTransformStart_, *tr };
-                    undoStack_.push_back(cmd);
+                    Matrix4x4 world = selectedObject_->GetWorldMatrix();
+
+                    float snapVal = isGridSnapEnabled_ ? snapValue_ : 0.0f;
+                    float snapArr[3] = { snapVal, snapVal, snapVal };
+
+                    ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], curOp, ImGuizmo::WORLD, &world.m[0][0], nullptr, isGridSnapEnabled_ ? snapArr : nullptr);
+
+                    if (ImGuizmo::IsUsing()) {
+                        if (!isDraggingTransform_) { isDraggingTransform_ = true; tempTransformStart_ = *tr; }
+                        Matrix4x4 newLocalMat = world;
+                        if (selectedObject_->GetParent()) {
+                            Matrix4x4 parentWorldInv = math.Inverse(selectedObject_->GetParent()->GetWorldMatrix());
+                            newLocalMat = math.Multiply(world, parentWorldInv);
+                        }
+
+                        Vector3 s, rDeg, t;
+                        ImGuizmo::DecomposeMatrixToComponents(&newLocalMat.m[0][0], &t.x, &rDeg.x, &s.x);
+                        tr->translate = t;
+                        tr->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
+                        tr->scale = s;
+                        selectedObject_->UpdateLocalMatrix();
+                        selectedObject_->UpdateWorldMatrix();
+                    } else if (isDraggingTransform_) {
+                        isDraggingTransform_ = false;
+                        TransformCommand cmd = { selectedObject_, tempTransformStart_, *tr };
+                        undoStack_.push_back(cmd);
+                    }
                 }
             }
         }
     }
+    DrawSaveNotification();
 #endif
 }
 // ========================================================================
@@ -790,6 +814,11 @@ void DebugEditor::DrawImGui() {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
                     if (entry.path().extension() == ".json") {
                         std::string filename = entry.path().filename().string();
+                        if (filename.find("_player.json") != std::string::npos ||
+                            filename.find("_enemy.json") != std::string::npos ||
+                            filename.find("_object.json") != std::string::npos) {
+                            continue;
+                        }
                         bool isSelected = (std::string(currentSceneFilename_) == filename);
                         if (ImGui::Selectable(filename.c_str(), isSelected)) {
                             strcpy_s(currentSceneFilename_, filename.c_str());
@@ -830,7 +859,29 @@ void DebugEditor::DrawImGui() {
         if (ImGui::InputText("名前", nameBuffer, sizeof(nameBuffer))) {
             selectedObject_->SetName(std::string(nameBuffer));
         }
+        ImGui::Spacing();
+        if (isPathEditMode_) {
+            // 編集モード中は目立つ色（オレンジ）にして警告を表示
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
+            if (ImGui::Button("✅ パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
+                isPathEditMode_ = false;
+                if (selectedObject_->recorder_) selectedObject_->recorder_->DeselectPin();
+            }
+            ImGui::PopStyleColor(2);
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠️ 現在パスを編集中です。");
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "   本体の移動・選択・削除はロックされています。");
+        } else {
+            if (ImGui::Button("✏️ パスの軌跡を編集する (Enter Path Edit Mode)", ImVec2(-1, 35))) {
+                isPathEditMode_ = true;
+            }
+        }
+        ImGui::Separator();
 
+        // =========================================================================
+        // 🚨 ここから下は「パス編集中」はロック（操作不能）にするエリア
+        // =========================================================================
+        ImGui::BeginDisabled(isPathEditMode_);
         ImGui::Spacing();
 
         if (ImGui::Button("複製 (Duplicate)")) {
@@ -894,10 +945,7 @@ void DebugEditor::DrawImGui() {
         }
         if (ImGui::DragFloat3("スケール (Scale)", &transform->scale.x, 0.05f)) isTransformChanged = true;
 
-        if (isTransformChanged) {
-            UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
-        }
-
+ 
         // --- コライダー設定 ---
         ImGui::Separator();
         if (ImGui::CollapsingHeader("コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -937,10 +985,19 @@ void DebugEditor::DrawImGui() {
             if (ImGui::CollapsingHeader("グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;
 
-                const char* matTypes[] = { "通常 (Standard)", "ガラス (Glass)" };
+                const char* matTypes[] = {
+                                "通常 (Standard)",
+                                "ガラス (Glass)",
+                                "氷・宝石 (Ice/Crystal)",
+                                "ホログラム (Hologram)",
+                                "消滅 (Dissolve)",
+                                "マグマ・覚醒 (Emissive)",
+                                "トゥーン調 (Cel Shaded)",
+                             
+                };
                 int currentMatType = selectedObject_->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 1) currentMatType = 0;
+                if (currentMatType > 7) currentMatType = 0; 
 
                 if (ImGui::Combo("質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject_->SetMaterialType(currentMatType);
@@ -1120,10 +1177,6 @@ void DebugEditor::DrawImGui() {
                 }
             }
 
-            if (isColChanged) {
-                selectedObject_->SetColliderConfig(colConfig);
-                UpdateObjectInSceneJSON(selectedObject_, currentJsonPath);
-            }
 
             // 属性設定
             ImGui::Separator();
@@ -1328,6 +1381,7 @@ void DebugEditor::DrawImGui() {
             }
         }
 
+        ImGui::EndDisabled();
         ImGui::Separator();
 
         if (ImGui::Button("オブジェクト削除", ImVec2(-1, 0))) {
@@ -1348,7 +1402,9 @@ void DebugEditor::DrawImGui() {
         if (ImGui::RadioButton("回転", currentOperation == ImGuizmo::ROTATE)) currentOperation = ImGuizmo::ROTATE; ImGui::SameLine();
         if (ImGui::RadioButton("拡大縮小", currentOperation == ImGuizmo::SCALE)) currentOperation = ImGuizmo::SCALE;
     }
+
 #endif
+
 }
 
 // ---------------------------------------------------------------------
@@ -1425,13 +1481,42 @@ void DebugEditor::DrawHierarchyNode(Object3d* obj) {
 /// <summary>
 /// scene_layout.json を読み込み、特定のオブジェクトの情報だけを更新して上書き保存する
 /// </summary>
+// ========================================================================
+// 単体保存 / 更新 (自動分割システム対応版)
+// ========================================================================
 void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
     using json = nlohmann::json;
-    std::ifstream file(filename);
 
+    // =========================================================
+    // 1. ファイル名の自動振り分け (stage1.json -> stage1_player.json など)
+    // =========================================================
+    std::string baseName = filename;
+    size_t extPos = baseName.find(".json");
+    if (extPos != std::string::npos) {
+        baseName = baseName.substr(0, extPos);
+    }
+
+    std::string className = object->GetClassName();
+    if (className.empty()) {
+        className = "Model";
+    }
+
+    // クラス名を見て、自分が書き込まれるべき「本当のファイル名」を決定
+    std::string targetFilename;
+    if (className == "Player") {
+        targetFilename = baseName + "_player.json";
+    } else if (className == "Enemy" || className == "Spawner") {
+        targetFilename = baseName + "_enemy.json";
+    } else {
+        targetFilename = baseName + "_object.json";
+    }
+
+    // =========================================================
+    // 2. 既存の該当JSONファイルを読み込む
+    // =========================================================
     json sceneData;
+    std::ifstream file(targetFilename);
 
-    // 1. 既存のJSONファイルを読み込む
     if (file.is_open()) {
         try {
             if (file.peek() != std::ifstream::traits_type::eof()) {
@@ -1451,52 +1536,48 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     }
 
     // =========================================================
-    // 2. 保存するデータを構築 (オブジェクトの現在の状態)
+    // 3. 保存するデータを構築 (SaveScene と完全共通化)
     // =========================================================
     json currentData;
 
-    // --- 基本情報 ---
     currentData["name"] = object->GetName();
+    currentData["type"] = className;
+    currentData["enemyType"] = object->GetEnemyType();
 
-    // タイプ判定 (InvisibleBox か Model か)
-    if (object->GetClassName() == "InvisibleBox") {
-        currentData["type"] = "InvisibleBox";
-        // モデル名は不要なので保存しない (あるいは空文字)
-    } else {
-        currentData["type"] = "Model";
+    if (className != "InvisibleBox") {
         currentData["modelName"] = object->GetModelName();
     }
 
-    //  親子関係
+    // 親子関係
     if (object->GetParent()) {
         currentData["parentName"] = object->GetParent()->GetName();
     } else {
         currentData["parentName"] = "";
     }
 
-    // --- Transform ---
+    // Transform
     Transform* tf = object->GetTransform();
     currentData["position"] = { tf->translate.x, tf->translate.y, tf->translate.z };
     currentData["rotation"] = { tf->rotate.x, tf->rotate.y, tf->rotate.z };
     currentData["scale"] = { tf->scale.x, tf->scale.y, tf->scale.z };
 
-    // --- Collider Config ---
+    // Collider
     const Object3d::ColliderConfig& config = object->GetColliderConfig();
     currentData["collider"]["type"] = static_cast<int>(config.type);
     currentData["collider"]["center"] = { config.center.x, config.center.y, config.center.z };
     currentData["collider"]["size"] = { config.size.x, config.size.y, config.size.z };
     currentData["collider"]["rotation"] = { config.rotation.x, config.rotation.y, config.rotation.z };
 
-    // --- Attributes ---
+    // Attributes
     currentData["collisionAttribute"] = object->GetCollisionAttribute();
     currentData["collisionMask"] = object->GetCollisionMask();
 
-    // --- Event ID ---
+    // Event ID
     currentData["eventID"] = static_cast<int>(object->GetEventType());
     currentData["targetID"] = object->GetTargetID(); // 送信ID
     currentData["myEventID"] = object->GetEventID(); // 受信ID
 
-    // --- Entity Parameters (Stats) ---
+    // Stats (Param)
     if (object->param_.has_value()) {
         auto& p = object->param_.value();
         currentData["param"]["hp"] = p.hp;
@@ -1505,12 +1586,14 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
         currentData["param"]["gravity"] = p.gravity;
         currentData["param"]["jumpPower"] = p.jumpPower;
         currentData["param"]["maxFallSpeed"] = p.maxFallSpeed;
+        currentData["param"]["enemyType"] = p.enemyType; // SaveScene互換用
+        currentData["param"]["interval"] = p.interval;   // SaveScene互換用
+        currentData["param"]["maxCount"] = p.maxCount;   // SaveScene互換用
     }
+
     Vector4 color = object->GetColor();
     currentData["color"] = { color.x, color.y, color.z, color.w };
 
-
-    // ==========================================
     currentData["animation"] = {
         {"animName", object->animName_},
         {"isAnimLoop", object->isAnimLoop_}
@@ -1521,7 +1604,6 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
         {"isRecordLoop", object->isRecordLoop_},
         {"isRecordRelative", object->isRecordRelative_}
     };
-    // ==========================================
 
     currentData["blendMode"] = static_cast<int>(object->GetBlendMode());
     currentData["materialType"] = object->GetMaterialType();
@@ -1531,27 +1613,25 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     currentData["normalMapPath"] = object->GetNormalMapPath();
     currentData["ormMapPath"] = object->GetOrmMapPath();
     currentData["texturePath"] = object->GetTexturePath();
+
     // =========================================================
-    // 3. JSON配列内を探して更新 or 追加
+    // 4. JSON配列内を探して更新 or 追加
     // =========================================================
     bool found = false;
 
-    // "objects" 配列がない場合は作成
     if (!sceneData.contains("objects") || !sceneData["objects"].is_array()) {
         sceneData["objects"] = json::array();
     }
 
     for (auto& objData : sceneData["objects"]) {
-        // 名前で一致するオブジェクトを探す
         if (objData.contains("name") && objData["name"] == object->GetName()) {
-            // 見つかったらデータを丸ごと上書き更新
+            // 見つかったら上書き
             objData = currentData;
             found = true;
             break;
         }
     }
 
-    //  見つからなかった場合（新規スポーンなど）は、配列の末尾に追加
     if (!found) {
         sceneData["objects"].push_back(currentData);
         DebugConsole::GetInstance()->AddLog("Added new object to JSON: " + object->GetName());
@@ -1560,17 +1640,17 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     }
 
     // =========================================================
-    // 4. ファイル書き込み
+    // 5. ファイル書き込み
     // =========================================================
-    std::ofstream outFile(filename);
+    std::ofstream outFile(targetFilename);
     if (outFile.is_open()) {
         outFile << sceneData.dump(4); // インデント4で整形保存
         outFile.close();
+        TriggerSaveNotification(std::string(currentSceneFilename_));
     } else {
-        DebugConsole::GetInstance()->AddLog("Failed to write JSON file: " + filename);
+        DebugConsole::GetInstance()->AddLog("Failed to write JSON file: " + targetFilename);
     }
 }
-
 #ifdef USE_IMGUI
 void DebugEditor::DrawProjectWindow() {
     // ---------------------------------------------------------
@@ -1667,7 +1747,7 @@ void DebugEditor::DrawProjectWindow() {
     if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         // -------------------------------------------------------
-        // ★ 新規プリセット作成エリア (選択中のオブジェクトを保存)
+        // ★ 新規プリセット作成エリア (選択中のオブジェクトを保存) 
         // -------------------------------------------------------
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "▼ Create New Preset");
@@ -1772,16 +1852,28 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
 // ショートカット / ボタン機能の実装
 // ========================================================================
 
-// シーン全体保存
+// ========================================================================
+// シーン全体保存 (自動分割システム完全版)
+// ========================================================================
 void DebugEditor::SaveScene() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
-    // パスの構築
-    std::string path = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
+    // "stage1.json" のようなファイル名から ".json" を外してベース名を取得
+    std::string baseName = currentSceneFilename_;
+    size_t extPos = baseName.find(".json");
+    if (extPos != std::string::npos) {
+        baseName = baseName.substr(0, extPos);
+    }
+    // 保存先のベースパス
+    std::string basePath = "Resources/json/3Dobject/" + baseName;
 
     using json = nlohmann::json;
-    json sceneData;
-    sceneData["objects"] = json::array();
+
+    // ★ 3つのカテゴリ用の箱を用意
+    json playerSceneData, enemySceneData, objectSceneData;
+    playerSceneData["objects"] = json::array();
+    enemySceneData["objects"] = json::array();
+    objectSceneData["objects"] = json::array();
 
     auto& allObjects = sceneManager_->GetCurrentScene()->GetObjects();
 
@@ -1862,11 +1954,11 @@ void DebugEditor::SaveScene() {
             d["param"]["interval"] = p.interval;   // float
             d["param"]["maxCount"] = p.maxCount;   // int
         }
+
         Vector4 color = obj->GetColor();
         // [R, G, B, A] の配列としてJSONに保存
         d["color"] = { color.x, color.y, color.z, color.w };
 
- 
         d["animation"] = {
             {"animName", obj->animName_},
             {"isAnimLoop", obj->isAnimLoop_}
@@ -1877,7 +1969,6 @@ void DebugEditor::SaveScene() {
             {"isRecordLoop", obj->isRecordLoop_},
             {"isRecordRelative", obj->isRecordRelative_}
         };
-   
 
         d["blendMode"] = static_cast<int>(obj->GetBlendMode());
         d["materialType"] = obj->GetMaterialType();
@@ -1887,19 +1978,43 @@ void DebugEditor::SaveScene() {
         d["normalMapPath"] = obj->GetNormalMapPath();
         d["ormMapPath"] = obj->GetOrmMapPath();
         d["texturePath"] = obj->GetTexturePath();
-        // 配列に追加
-        sceneData["objects"].push_back(d);
+
+        // =========================================================
+        // ★ クラス名を見て、それぞれの配列(箱)に振り分ける！
+        // =========================================================
+        if (className == "Player") {
+            playerSceneData["objects"].push_back(d);
+        } else if (className == "Enemy" || className == "Spawner") {
+            enemySceneData["objects"].push_back(d);
+        } else {
+            objectSceneData["objects"].push_back(d);
+        }
     }
 
-    // ファイル書き込み
-    std::ofstream f(path);
-    if (f.is_open()) {
-        f << sceneData.dump(4); // インデント4で整形して保存
-        f.close();
-        DebugConsole::GetInstance()->AddLog("Saved SCENE to " + path);
-    } else {
-        DebugConsole::GetInstance()->AddLog("Failed to save JSON to " + path);
-    }
+    // =========================================================
+    // ★ 保存処理を共通化するためのラムダ関数
+    // =========================================================
+    auto SaveToFile = [](const std::string& path, const json& data) {
+        std::ofstream f(path);
+        if (f.is_open()) {
+            f << data.dump(4); // インデント4で整形して保存
+            f.close();
+            DebugConsole::GetInstance()->AddLog("Saved SCENE to " + path);
+        } else {
+            DebugConsole::GetInstance()->AddLog("Failed to save JSON to " + path);
+        }
+        };
+
+    // 3つのファイルに別々に保存！
+    SaveToFile(basePath + "_player.json", playerSceneData);
+    SaveToFile(basePath + "_enemy.json", enemySceneData);
+    SaveToFile(basePath + "_object.json", objectSceneData);
+
+    // ★ エディターのリスト表示用（目印）として、今まで通りのダミーファイルも保存しておく
+    json dummyData;
+    dummyData["_comment"] = "This is a metadata file for the editor. Actual data is in _player, _enemy, and _object.json";
+    SaveToFile("Resources/json/3Dobject/" + std::string(currentSceneFilename_), dummyData);
+    TriggerSaveNotification(std::string(currentSceneFilename_));
 }
 // 単体保存
 void DebugEditor::SaveSingleObject() {
@@ -2193,4 +2308,56 @@ void DebugEditor::DrawSpawnerSettings() {
 
     ImGui::Unindent(); // インデント戻す
 }
+
+
+// ========================================================================
+// セーブ通知のトリガー
+// ========================================================================
+void DebugEditor::TriggerSaveNotification(const std::string& filename) {
+    saveNotificationTimer_ = 1.0f; // 1.5秒間画面に表示する
+    saveNotificationMsg_ = "[ " + filename + " ] にセーブが完了しました！";
+}
+
+
+// ========================================================================
+// セーブ通知の描画処理 (フラッシュ & メッセージ)
+// ========================================================================
+void DebugEditor::DrawSaveNotification() {
+    if (saveNotificationTimer_ <= 0.0f) return;
+
+    // タイマー減算 (ImGuiのDeltaTimeを利用してフレームレート非依存に)
+    saveNotificationTimer_ -= ImGui::GetIO().DeltaTime;
+
+    // フェードアウトの割合 (1.0 -> 0.0 に向かって減っていく)
+    float fadeRatio = saveNotificationTimer_ / 1.5f;
+    if (fadeRatio > 1.0f) fadeRatio = 1.0f;
+
+    // 最前面レイヤーを取得
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+
+    // 1. 全画面の白いフラッシュ描画
+    int whiteAlpha = (int)(fadeRatio * 80.0f);
+    drawList->AddRectFilled(ImVec2(0, 0), displaySize, IM_COL32(255, 255, 255, whiteAlpha));
+
+    // 2. 文字の描画 (同じく最前面レイヤーに直接描く)
+    float fontSize = ImGui::GetFontSize() * 2.0f; // 文字を2倍サイズに
+    const char* text = saveNotificationMsg_.c_str();
+
+    // 文字のピクセルサイズを計算して、画面中央の座標を求める
+    ImVec2 baseTextSize = ImGui::CalcTextSize(text);
+    ImVec2 textSize = ImVec2(baseTextSize.x * 2.0f, baseTextSize.y * 2.0f);
+    ImVec2 textPos = ImVec2((displaySize.x - textSize.x) * 0.5f, (displaySize.y - textSize.y) * 0.5f);
+
+    // 文字のアルファ値 (フェードに合わせて透明になっていく)
+    int textAlpha = (int)(fadeRatio * 255.0f);
+    ImU32 textColor = IM_COL32(40, 40, 40, textAlpha);         // 濃いグレー
+    ImU32 outlineColor = IM_COL32(255, 255, 255, textAlpha);   // 白いフチ取り
+
+    // 少し文字を見やすくするために白い縁取り（シャドウ）を先に描画
+    drawList->AddText(ImGui::GetFont(), fontSize, ImVec2(textPos.x + 2, textPos.y + 2), outlineColor, text);
+    // メインの文字を描画
+    drawList->AddText(ImGui::GetFont(), fontSize, textPos, textColor, text);
+}
 #endif
+

@@ -1,0 +1,343 @@
+{
+    "objects": [
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    63.75,
+                    1.0,
+                    95.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967291,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": true,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "terrain",
+            "myEventID": -1,
+            "name": "terrain",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                2.0,
+                0.0021353960037231445,
+                0.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.20200000703334808,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    -1.4500000476837158
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.2999999523162842,
+                    1.2999999523162842,
+                    3.049999952316284
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sampleBlock.gltf",
+            "myEventID": -1,
+            "name": "Obj_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                10.609573364257813,
+                2.4698777198791504,
+                17.305397033691406
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Trigger_Box",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                3.200000047683716,
+                4.199999809265137,
+                0.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.03490658476948738,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sampleBlock.gltf",
+            "myEventID": -1,
+            "name": "Obj_0_Copy0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Obj_0",
+            "position": [
+                12.609573364257813,
+                2.4706320762634277,
+                24.34272003173828
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    1.100000023841858,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.44999998807907104
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 1.0,
+            "modelName": "sphere.gltf",
+            "myEventID": -1,
+            "name": "Preview_sphere.gltf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                5.544497013092041,
+                2.4735021591186523,
+                1.3276625871658325
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.6108651757240295,
+                0.0
+            ],
+            "roughness": 0.8429999947547913,
+            "scale": [
+                2.2786152362823486,
+                1.8240000009536743,
+                1.6640000343322754
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        }
+    ]
+}

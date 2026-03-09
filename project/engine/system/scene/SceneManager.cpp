@@ -176,3 +176,9 @@ void SceneManager::DrawUI() {
         currentScene_->DrawUI();
     }
 }
+
+void SceneManager::DrawShadow() {
+    if (currentScene_) {
+        currentScene_->DrawShadow();
+    }
+}

@@ -460,3 +460,9 @@ void Object3d::ImportFromJson(const json& j) {
 
 
 }
+
+void Object3d::DrawShadow() {
+    if (meshRenderer_) {
+        meshRenderer_->DrawShadow();
+    }
+}

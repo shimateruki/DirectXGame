@@ -1,0 +1,83 @@
+{
+    "objects": [
+        {
+            "animation": {
+                "animName": "Idle",
+                "isAnimLoop": false
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableNormalMap": false,
+            "enemyType": "",
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 1.0,
+            "modelName": "a.gltf",
+            "myEventID": -1,
+            "name": "Player",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 54.0,
+                "hp": 74.0,
+                "interval": 3.0,
+                "jumpPower": 30.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 48.0,
+                "speed": 7.099999904632568
+            },
+            "parentName": "",
+            "position": [
+                -5.609375,
+                2.002899169921875,
+                15.162572860717773
+            ],
+            "recorder": {
+                "isRecordLoop": true,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                1.8199250462203054e-06,
+                1.9830013513565063,
+                1.8199250462203054e-06
+            ],
+            "roughness": 1.0,
+            "scale": [
+                0.9999955892562866,
+                1.0,
+                0.9999955892562866
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Player"
+        }
+    ]
+}

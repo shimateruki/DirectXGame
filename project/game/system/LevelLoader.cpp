@@ -22,18 +22,88 @@
 
 using json = nlohmann::json;
 
+
+// ========================================================================
+// 1. 自動で3つのファイルを読み込み、無ければ旧仕様で読み込み、最後に親子関係を解決する
+// ========================================================================
 void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename) {
+    std::string justName = filename;
+    size_t slashPos = justName.find_last_of("/\\");
+    if (slashPos != std::string::npos) {
+        justName = justName.substr(slashPos + 1);
+    }
+    scene->SetLoadedFilename(justName);
+    // filename は "Resources/json/3Dobject/scene_layout.json" のようになっている
+    std::string baseFilename = filename;
+
+
+    size_t extPos = baseFilename.find(".json");
+    if (extPos != std::string::npos) {
+        baseFilename = baseFilename.substr(0, extPos);
+    }
+
+    // 以前のリストをクリア
+    parentPendingList_.clear();
+
+    // 確認用のファイルパスを作成
+    std::string playerFile = baseFilename + "_player.json";
+    std::string enemyFile = baseFilename + "_enemy.json";
+    std::string objectFile = baseFilename + "_object.json";
+
+    // ★ 3つの分割ファイルがどれか一つでも存在するかチェックする
+    bool useSplitFiles = false;
+    std::ifstream pFile(playerFile);
+    std::ifstream eFile(enemyFile);
+    std::ifstream oFile(objectFile);
+
+    if (pFile.is_open() || eFile.is_open() || oFile.is_open()) {
+        useSplitFiles = true;
+    }
+
+    // チェック用に開いたファイルを閉じる（この後 LoadSingleJson で開くため）
+    if (pFile.is_open()) pFile.close();
+    if (eFile.is_open()) eFile.close();
+    if (oFile.is_open()) oFile.close();
+
+    // ========================================================
+    // ★ 分岐処理：分割ファイルがあればそれを、無ければ元のファイルを読む
+    // ========================================================
+    if (useSplitFiles) {
+        // 新仕様：分割ファイルを読み込む
+        LoadSingleJson(scene, playerFile);
+        LoadSingleJson(scene, enemyFile);
+        LoadSingleJson(scene, objectFile);
+    } else {
+        // 旧仕様：過去の単一ファイル (scene_layout.json など) をそのまま読み込む
+        LoadSingleJson(scene, filename);
+    }
+
+    // ★すべてのファイルを読み終わった後に、一括で親子関係を解決する
+    auto& objects = scene->GetObjects();
+    for (auto const& [childObj, parentName] : parentPendingList_) {
+        Object3d* parentObj = nullptr;
+        for (auto& obj : objects) {
+            if (obj && obj->GetName() == parentName) {
+                parentObj = obj.get();
+                break;
+            }
+        }
+        if (parentObj) {
+            childObj->SetParent(parentObj);
+        }
+    }
+}
+// ========================================================================
+// 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
+// ========================================================================
+void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-        std::string warnMsg = "Warning: Could not open " + filename + " for Object layout.\n";
-        OutputDebugStringA(warnMsg.c_str());
+
         return;
     }
 
     json sceneData;
-    parentPendingList_.clear();
-
-    // シーンからリストへの参照を取得
     auto& objects = scene->GetObjects();
     Object3dCommon* object3dCommon = scene->GetObject3dCommon();
 
@@ -178,28 +248,19 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 if (objData.contains("position")) { transform->translate.x = objData["position"][0]; transform->translate.y = objData["position"][1]; transform->translate.z = objData["position"][2]; }
                 if (objData.contains("rotation")) { transform->rotate.x = objData["rotation"][0]; transform->rotate.y = objData["rotation"][1]; transform->rotate.z = objData["rotation"][2]; }
                 if (objData.contains("scale")) { transform->scale.x = objData["scale"][0]; transform->scale.y = objData["scale"][1]; transform->scale.z = objData["scale"][2]; }
-                
+
                 // ロード直後に行列更新
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
-                if (objData.contains("metallic")) {
-                    targetObject->SetMetallic(objData["metallic"].get<float>());
-                }
-                if (objData.contains("roughness")) {
-                    targetObject->SetRoughness(objData["roughness"].get<float>());
-                }
-                if (objData.contains("enableNormalMap")) {
-                    targetObject->SetEnableNormalMap(objData["enableNormalMap"].get<bool>());
-                }
-                if (objData.contains("normalMapPath")) {
-                    targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
-                }
-                if (objData.contains("ormMapPath")) {
-                    targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
-                }
-                if (objData.contains("texturePath")) {
-                    targetObject->SetTexture(objData["texturePath"].get<std::string>());
-                }
+
+                // マテリアル / グラフィック関連
+                if (objData.contains("metallic")) targetObject->SetMetallic(objData["metallic"].get<float>());
+                if (objData.contains("roughness")) targetObject->SetRoughness(objData["roughness"].get<float>());
+                if (objData.contains("enableNormalMap")) targetObject->SetEnableNormalMap(objData["enableNormalMap"].get<bool>());
+                if (objData.contains("normalMapPath")) targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
+                if (objData.contains("ormMapPath")) targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
+                if (objData.contains("texturePath")) targetObject->SetTexture(objData["texturePath"].get<std::string>());
+
                 // 5. Collider
                 if (objData.contains("collider")) {
                     json colData = objData["collider"];
@@ -235,15 +296,15 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                 }
 
                 // ==========================================
-                // ★ 7. Animation & Recorder (修正箇所)
+                // 7. Animation & Recorder
                 // ==========================================
-                
+
                 // 古いフラットな形式の読み込み（後方互換性用）
                 if (objData.contains("animName")) targetObject->animName_ = objData["animName"];
                 if (objData.contains("isAnimLoop")) targetObject->isAnimLoop_ = objData["isAnimLoop"];
                 if (objData.contains("isAnimRelative")) targetObject->isRecordRelative_ = objData["isAnimRelative"];
 
-                // ネストされた形式の読み込み（最新仕様: Object3d::ExportToJsonに合わせた形）
+                // ネストされた形式の読み込み（最新仕様）
                 if (objData.contains("animation")) {
                     const auto& anim = objData["animation"];
                     if (anim.contains("animName")) targetObject->animName_ = anim["animName"];
@@ -265,30 +326,15 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
                         targetObject->recordPathName_,
                         targetObject->isRecordLoop_,
                         targetObject->isRecordRelative_,
-                        isCinematic 
+                        isCinematic
                     );
                 }
 
-
-                // 8. 親子関係保留
+                // 8. 親子関係保留 (一括解決のためにメンバ変数のリストに追加しておく)
                 if (objData.contains("parentName") && objData["parentName"].is_string()) {
                     std::string pName = objData["parentName"].get<std::string>();
                     if (!pName.empty()) parentPendingList_[targetObject] = pName;
                 }
-            }
-        }
-
-        // 9. 親子解決
-        for (auto const& [childObj, parentName] : parentPendingList_) {
-            Object3d* parentObj = nullptr;
-            for (auto& obj : objects) {
-                if (obj && obj->GetName() == parentName) {
-                    parentObj = obj.get();
-                    break;
-                }
-            }
-            if (parentObj) {
-                childObj->SetParent(parentObj);
             }
         }
     }
