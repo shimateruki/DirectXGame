@@ -121,11 +121,6 @@ public:
     uint32_t GetEnvironmentMapHandle() const { return environmentMapHandle_; }
     void SetEnvironmentMapHandle(uint32_t handle) { environmentMapHandle_ = handle; }
 
-    bool GetEnableEnvMap() const { return isEnableEnvMap_; }
-    void SetEnableEnvMap(bool flag) { isEnableEnvMap_ = flag; }
-
-    float GetEnvIntensity() const { return envIntensity_; }
-    void SetEnvIntensity(float intensity) { envIntensity_ = intensity; }
 
 private:
     LightManager() = default;
@@ -149,6 +144,5 @@ private:
     DirectionalLight directionalLightData_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     uint32_t environmentMapHandle_ = 0;
-    bool isEnableEnvMap_ = true;   //  (デフォルトON)
-    float envIntensity_ = 0.2f;    //  (デフォルトの強さ)
+
 };
