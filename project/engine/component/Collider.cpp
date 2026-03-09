@@ -123,9 +123,10 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
         collision.normal = collision.normal * -1.0f;
     } else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
         collision = CheckAABBOBBCollision(this->GetAABB(), other->GetOBB());
-        collision.normal = collision.normal * -1.0f;
+
     } else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
         collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
+        collision.normal = collision.normal * -1.0f;
     }
 
     return collision;
