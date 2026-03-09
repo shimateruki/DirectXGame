@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "BaseEnemy.h"
 #include "GhostDirector.h"
 #include <memory>
@@ -41,6 +41,17 @@ private:
     void UpdateIdle(float deltaTime);
     void UpdateAttack(float deltaTime);
     void UpdateWeak(float deltaTime);
+    // --- BossAnimationの実装 ---
+    
+    // 新しく追加するアニメーション関数
+    void UpdateAnimationSequence (float deltaTime);
+
+    // static だった変数をメンバ変数に移動
+    int animPhase_ = 0;
+    float animTimer_ = 0.0f;
+    Vector3 animStartPos_ = { 0,0,0 };
+    Vector3 animTargetPos_ = { 0,0,0 };
+    bool wasPlaying_ = false;
 
     // ==================================================
     // 内部コンポーネント・変数

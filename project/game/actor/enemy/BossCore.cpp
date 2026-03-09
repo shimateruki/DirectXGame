@@ -1,5 +1,8 @@
-#include "BossCore.h"
+﻿#include "BossCore.h"
+#include "InputManager.h"
 #include "imgui.h"
+#include "easing.h" // 追加
+#include "DebugConsole.h"
 
 // =================================================================
 // 初期化・更新
@@ -17,30 +20,28 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
-    // 1. 基本的な3Dオブジェクトとしての更新
-    Object3d::Update(deltaTime);
+    // 1. 基本更新（行列計算など）
+    Object3d::Update (deltaTime);
 
-    // 2. エディタ操作中(非プレイ中)はAI処理をスキップ
-    if (sceneManager_ && !sceneManager_->IsPlaying()) {
+    // ★ 3. アニメーションシーケンスを優先実行
+    UpdateAnimationSequence (deltaTime);
+
+    // 【重要】アニメーション実行中（Phase 1～3）は、
+    // 下の既存ステート（Idle/Attackなど）を走らせないようにガードをかける！
+    if (animPhase_ != 0 && animPhase_ != 4) {
         return;
     }
 
-    // 3. 初回フレーム時の初期ステートセット
+    // 4. 通常のステート更新（アニメーション中以外に動く）
     if (isFirstFrame_) {
-        ChangeState(State::Idle);
+        ChangeState (State::Idle);
         isFirstFrame_ = false;
     }
 
-    // 4. 現在のステート(状態)に応じた更新処理
     switch (state_) {
-    case State::Idle:   UpdateIdle(deltaTime);   break;
-    case State::Attack: UpdateAttack(deltaTime); break;
-    case State::Weak:   UpdateWeak(deltaTime);   break;
-    }
-
-    // 5. ディレクター(シナリオ・モーション)の更新
-    if (director_) {
-        director_->Update(deltaTime);
+    case State::Idle:   UpdateIdle (deltaTime);   break;
+    case State::Attack: UpdateAttack (deltaTime); break;
+    case State::Weak:   UpdateWeak (deltaTime);   break;
     }
 }
 
@@ -117,5 +118,86 @@ void BossCore::UpdateWeak(float deltaTime) {
     // 弱点露出シナリオが終了したら、待機ステートへ戻る
     if (director_ && director_->IsFinished()) {
         ChangeState(State::Idle);
+    }
+}
+
+void BossCore::UpdateAnimationSequence (float deltaTime) {
+    InputManager *input = InputManager::GetInstance ();
+
+    // --- 【開始判定】待機中(0) に 1キーが押されたら ---
+    if (animPhase_ == 0) {
+        if (input->IsKeyTriggered (DIK_1)) {
+            //DebugConsole::Log ("Boss Charge Start!\n"); // ログを出して確認！
+            animPhase_ = 1;
+            animTimer_ = 0.0f;
+        }
+    }
+
+    if (animPhase_ == 0) return;
+
+    // --- フェーズ1: 移動 (x = -50) ---
+    if (animPhase_ == 1) {
+        if (animTimer_ == 0.0f) animStartPos_ = GetTranslate ();
+        animTimer_ += deltaTime;
+        float duration = 1.5f;
+        float t = std::min (animTimer_ / duration, 1.0f);
+
+        Vector3 pos = GetTranslate ();
+        pos.x = Math::Lerp (animStartPos_.x, -50.0f, Easing::OutExpo (t));
+        SetTranslate (pos);
+
+        if (t >= 1.0f) {
+            animPhase_ = 2;
+            animTimer_ = 0.0f;
+            animStartPos_ = GetTranslate ();
+        }
+    }
+    // --- フェーズ2: シェイク & プレイヤー注視 ---
+    else if (animPhase_ == 2) {
+        animTimer_ += deltaTime;
+        float duration = 1.0f;
+        float t = std::min (animTimer_ / duration, 1.0f);
+
+        if (target_) {
+            Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
+            float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+            SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+        }
+
+        Vector3 pos = animStartPos_;
+        float shake = 0.3f;
+        pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+        pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+        SetTranslate (pos);
+
+        if (t >= 1.0f) {
+            animPhase_ = 3;
+            animTimer_ = 0.0f;
+            animStartPos_ = GetTranslate ();
+            if (target_) animTargetPos_ = target_->GetWorldPosition ();
+        }
+    }
+    // --- フェーズ3: 加速突進 ---
+    else if (animPhase_ == 3) {
+        animTimer_ += deltaTime;
+        float duration = 0.5f; // 少し速くしました
+        float t = std::min (animTimer_ / duration, 1.0f);
+        float easedT = std::pow (t, 4.0f);
+
+        SetTranslate (Math::Lerp (animStartPos_, animTargetPos_, easedT));
+
+        float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
+        SetRotation ({ easedT * totalRotation, GetRotation ().y, GetRotation ().z });
+
+        if (t >= 1.0f) {
+            animPhase_ = 4;
+            //DebugConsole::Log ("Boss Charge Finished.\n");
+        }
+    }
+    // --- フェーズ4: 自動リセット ---
+    else if (animPhase_ == 4) {
+        // ここで 0 に戻すことで、再び 1キーが効くようになります
+        animPhase_ = 0;
+        animTimer_ = 0.0f;
     }
 }

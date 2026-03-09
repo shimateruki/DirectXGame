@@ -25,7 +25,7 @@
 #include "LockOnSystem.h"
 #include "GameRule.h"
 #include "ObjectManager.h" // 追加
-#include "easing.h" // 追加
+#include "BossCore.h"
 
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -108,7 +108,42 @@ void GamePlayScene::Initialize() {
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
+	// ★ 1. まず objectManager からオブジェクトのリストを取得する！
+	auto &objects = objectManager_->GetObjects ();
 
+	for (auto it = objects.begin (); it != objects.end (); ++it) {
+		if ((*it)->GetName () == "Enemy_BossCore") {
+			// 1. 古いボスの「今の住所」をメモ（まだ消さない）
+			Object3d *oldAddress = it->get ();
+
+			// 2. 新しい BossCore を準備（まだリストには入れない）
+			auto newBoss = std::make_unique<BossCore> ();
+			newBoss->SetSceneManager (SceneManager::GetInstance ());
+			newBoss->Initialize (object3dCommon_.get (), oldAddress->GetModelName ());
+			newBoss->CopyFrom (oldAddress); // 座標などをコピー
+			newBoss->SetTarget (player_);
+
+			BossCore *newAddress = newBoss.get ();
+
+			// ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
+
+			// (A) 当たり判定マネージャから古いボスを抹消し、新しいボスを登録する
+			// ※ もし Remove/Add 関数がない場合は、後述の「強硬手段」を使ってください
+			CollisionManager::GetInstance ()->RemoveObject (oldAddress);
+			CollisionManager::GetInstance ()->AddObject (newAddress);
+
+			// (B) 子供たちの親を、古い住所から新しい住所へ書き換える
+			for (auto &obj : objects) {
+				if (obj->GetParent () == oldAddress) {
+					obj->SetParent (newAddress);
+				}
+			}
+
+			// 3. 最後に実体を差し替える。ここで oldAddress は安全に消滅する
+			*it = std::move (newBoss);
+			break;
+		}
+	}
 
 	dxCommon_->FlushCommandQueue(false);
 }
@@ -155,128 +190,12 @@ void GamePlayScene::Update(float deltaTime) {
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
-	{
-		static int bossPhase = 0;      // 0:待機, 1:移動, 2:溜め, 3:突進, 4:終了
-		static float timer = 0.0f;
-		static Vector3 startPos = { 0,0,0 };
-		static Vector3 targetPos = { 0,0,0 };
-
-		static bool wasPlaying = false;
-		bool isPlaying = SceneManager::GetInstance ()->IsPlaying ();
-
-		// 再生ボタンが押された瞬間に完全リセット
-		if (isPlaying && !wasPlaying) {
-			bossPhase = 0;
-			timer = 0.0f;
+	for (auto &obj : objectManager_->GetObjects ()) {
+		if (obj->GetName () == "Enemy_BossCore") {
+			// エンジンのスキップ処理を無視して、強制的に毎フレーム叩き起こす！
+			obj->Update (deltaTime);
 		}
-		wasPlaying = isPlaying;
-
-		// ★ return を使わずに、再生中のみ実行されるように if で囲う
-		if (!isPlaying) {
-			Object3d *boss = nullptr;
-			for (auto &obj : objectManager_->GetObjects ()) {
-				if (obj->GetName () == "Enemy_BossCore") {
-					boss = obj.get ();
-					break;
-				}
-			}
-
-			if (boss && player_) {
-				// 【1キー判定】待機中(0) または 終了後(4) に押されたら開始！
-				// (途中からでもリセットしたい場合は if (inputManager_->IsTriggerKey(DIK_1)) だけでもOK)
-				if (bossPhase == 0 || bossPhase == 4) {
-					if (inputManager_->IsKeyPressed (DIK_1)) {
-						bossPhase = 1;
-						timer = 0.0f; // タイマーをリセットすることで開始座標を再取得させる
-					}
-				}
-
-				// --- フェーズ1: x = -50 まで移動 ---
-				if (bossPhase == 1) {
-					if (timer == 0.0f) startPos = boss->GetTranslate ();
-
-					timer += deltaTime;
-					float duration = 2.0f;
-					float t = std::min (timer / duration, 1.0f);
-					float easedT = Easing::OutExpo (t);
-
-					Vector3 pos = boss->GetTranslate ();
-					pos.x = Math::Lerp (startPos.x, -50.0f, easedT);
-					boss->SetTranslate (pos);
-
-					if (t >= 1.0f) {
-						bossPhase = 2;
-						timer = 0.0f;
-						startPos = boss->GetTranslate ();
-					}
-				}
-				// --- フェーズ2: シェイク（溜め） ---
-				else if (bossPhase == 2) {
-					timer += deltaTime;
-					float duration = 1.0f;
-					float t = std::min (timer / duration, 1.0f);
-
-					// --- 1. プレイヤーの方を向く計算（90度オフセット付き） ---
-					Vector3 playerPos = player_->GetWorldPosition ();
-					Vector3 bossPos = boss->GetWorldPosition ();
-					Vector3 toPlayer = playerPos - bossPos;
-
-					// 基本のターゲット角度を計算
-					float angleY = std::atan2 (toPlayer.x, toPlayer.z);
-
-					// 【ここを修正！】現在の角度に 90度 (PI / 2) を足して向きを補正する
-					// ※ 逆を向く場合はマイナスにしてみてください
-					float offset = std::numbers::pi_v<float> / 2.0f;
-					angleY += offset;
-
-					Vector3 rot = boss->GetRotation ();
-					rot.y = angleY;
-					boss->SetRotation (rot);
-
-					// --- 2. シェイク処理 (変更なし) ---
-					Vector3 pos = startPos;
-					float shake = 0.3f;
-					pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
-					pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
-					boss->SetTranslate (pos);
-
-					if (t >= 1.0f) {
-						bossPhase = 3;
-						timer = 0.0f;
-						startPos = boss->GetTranslate ();
-						targetPos = player_->GetWorldPosition ();
-					}
-				}
-				// --- フェーズ3: 突進 ---
-				else if (bossPhase == 3) {
-					timer += deltaTime;
-					// --- 調整ポイント1: 時間を短くすると迫力が出る ---
-					float duration = 1.5f;
-					float t = std::min (timer / duration, 1.0f);
-
-					// --- 調整ポイント2: ここの数字を変えて加速度を自由に操る ---
-					// 2.0なら普通、5.0ならかなり溜めてから一気に加速！
-					float acceleration = 5.0f;
-					float easedT = std::pow (t, acceleration);
-
-					// 1. 座標の移動
-					Vector3 pos = Math::Lerp (startPos, targetPos, easedT);
-					boss->SetTranslate (pos);
-
-					// 2. 回転の追加（X軸回転でドリルみたいにする例）
-					float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f; // 5回転
-					Vector3 rot = boss->GetRotation ();
-					rot.x = easedT * totalRotation; // 移動の加速に合わせて回転も速くなる
-					boss->SetRotation (rot);
-
-					if (t >= 1.0f) {
-						bossPhase = 4;
-					}
-				}
-			}
-		}
-	} // ボスアニメーション制御のブロック終了
-
+	}
 
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
 	GPUParticleManager::GetInstance()->Emit(
@@ -296,12 +215,12 @@ void GamePlayScene::Update(float deltaTime) {
 
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
-	ImGui::Begin("Shadow Map Debug");
-	// ハンドルからGPUアドレスを取得して表示
-	auto gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(DirectXCommon::GetInstance()->GetShadowMapSrvHandle());
-	// 200x200 のサイズで画像を表示
-	ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(200, 200));
-	ImGui::End();
+	//ImGui::Begin("Shadow Map Debug");
+	//// ハンドルからGPUアドレスを取得して表示
+	//auto gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(DirectXCommon::GetInstance()->GetShadowMapSrvHandle());
+	//// 200x200 のサイズで画像を表示
+	//ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(200, 200));
+	//ImGui::End();
 }
 
 
