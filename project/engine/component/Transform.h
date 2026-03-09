@@ -1,33 +1,36 @@
 #pragma once
-
 #include "engine/utility/math/Math.h"
 
 struct Transform {
-    // --- ローカル情報 ---
     Vector3 scale = { 1.0f, 1.0f, 1.0f };
-    Vector3 rotate = { 0.0f, 0.0f, 0.0f };
+    Vector3 rotate = { 0.0f, 0.0f, 0.0f }; // インスペクター表示・操作用
     Vector3 translate = { 0.0f, 0.0f, 0.0f };
 
-    // --- 計算結果バッファ (Object3dから引っ越してきました) ---
+    Quaternion quaternion = { 0.0f, 0.0f, 0.0f, 1.0f };
+    bool isQuaternionMaster = true; // ★追加：クォータニオンを優先するかどうか
+
     Matrix4x4 matLocal = Math::MakeIdentity4x4();
     Matrix4x4 matWorld = Math::MakeIdentity4x4();
-
-    // --- 親子関係 ---
     const Transform* parent = nullptr;
 
-    // --- 行列更新メソッド ---
-    // これを呼ぶだけで Local も World も一発で計算するようにします
     void UpdateMatrix() {
         Math math;
-        // 1. ローカル行列の計算 (Scale * Rotate * Translate)
-        matLocal = math.MakeAffineMatrix(scale, rotate, translate);
+        Matrix4x4 matScale = math.MakeScaleMatrix(scale);
 
-        // 2. 親子関係の解決
+        if (!isQuaternionMaster) {
+            // スライダー等で手動変更された瞬間だけ、オイラー角から作り直す
+            quaternion = math.EulerToQuaternion(rotate);
+            isQuaternionMaster = true; // 一度作ったらクォータニオン優先に戻す
+        }
+
+        Matrix4x4 matRot = math.MakeRotateQuaternionMatrix(quaternion);
+        Matrix4x4 matTrans = math.MakeTranslateMatrix(translate);
+
+        matLocal = math.Multiply(math.Multiply(matScale, matRot), matTrans);
+
         if (parent) {
-            // 親がいる場合: 親のワールド行列 * 自分のローカル行列
             matWorld = math.Multiply(matLocal, parent->matWorld);
         } else {
-            // 親がいない場合: ローカル行列がそのままワールド行列
             matWorld = matLocal;
         }
     }

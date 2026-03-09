@@ -81,19 +81,37 @@ void MeshRenderer::Update() {
 
         if (shadowWvpData_ && transform_) {
             Math math;
-            // 本来はLightManagerから太陽の向きを取得しますが、まずは固定値でテストします
-            Vector3 lightDir = { -1.0f, -1.0f, 1.0f }; // 斜め下に向かう光
-            lightDir = math.Normalize(lightDir);
 
-            // 太陽の位置（原点から光の逆方向に少し離れた場所）
-            Vector3 lightPos = { -lightDir.x * 50.0f, -lightDir.y * 50.0f, -lightDir.z * 50.0f };
+       
+            Vector3 lightDir = LightManager::GetInstance()->GetDirectionalLight().direction;
+            // 0除算防止のための安全対策を追加
+            if (math.Length(lightDir) > 0.0001f) {
+                lightDir = math.Normalize(lightDir);
+            } else {
+                lightDir = { 0.0f, -1.0f, 0.0f }; // デフォルトの下向き
+            }
+
+            // 1. カメラの位置を取得して、影の箱の「中心（ターゲット）」にする
+            const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
             Vector3 target = { 0.0f, 0.0f, 0.0f };
+            if (camera) {
+                target = camera->GetEye(); // カメラ（プレイヤー）の位置を基準にする
+            }
+
+            // 2. 太陽の位置を、カメラから光の逆方向へ離す
+            Vector3 lightPos = {
+                target.x - lightDir.x * 200.0f,
+                target.y - lightDir.y * 200.0f,
+                target.z - lightDir.z * 200.0f
+            };
             Vector3 up = { 0.0f, 1.0f, 0.0f };
 
             // 太陽目線のビュー行列
             Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
-            // 太陽目線のプロジェクション行列（平行投影。幅40、高さ40、奥行き100）
-            Matrix4x4 lightProj = math.MakeOrthographicMatrix(40.0f, 40.0f, 1.0f, 100.0f);
+
+            // 3. カメラ周辺だけを狙うので、箱のサイズをギュッと小さく（高解像度に）できる！
+            // ※もし画面端で影が切れる場合は、ここの 80.0f を 100.0f や 120.0f などに広げてください
+            Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
 
             Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
 
@@ -101,7 +119,6 @@ void MeshRenderer::Update() {
             shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
             shadowWvpData_->world = transform_->matWorld;
         }
-    
     }
 }
 
