@@ -155,29 +155,24 @@ void GamePlayScene::Update(float deltaTime) {
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
 	{
-		// アニメーション管理用の変数
-		static int bossPhase = 1;
+		static int bossPhase = 0;      // 0:待機, 1:移動, 2:溜め, 3:突進, 4:終了
 		static float timer = 0.0f;
 		static Vector3 startPos = { 0,0,0 };
 		static Vector3 targetPos = { 0,0,0 };
 
-		// ★リセット検知用の変数
 		static bool wasPlaying = false;
 		bool isPlaying = SceneManager::GetInstance ()->IsPlaying ();
 
-		// 【ここが重要！】再生ボタンが押された瞬間（false -> true）にリセット
+		// 再生ボタンが押された瞬間に完全リセット
 		if (isPlaying && !wasPlaying) {
-			bossPhase = 1;
+			bossPhase = 0;
 			timer = 0.0f;
-			// 他にリセットしたい数値があればここに書く
 		}
-		wasPlaying = isPlaying; // 今の状態を保存して次フレームへ
+		wasPlaying = isPlaying;
 
-		// エディター停止中は何もしない
+		// ★ return を使わずに、再生中のみ実行されるように if で囲う
 		if (!isPlaying) {
-
 			Object3d *boss = nullptr;
-			// 名前でボスを探す
 			for (auto &obj : objectManager_->GetObjects ()) {
 				if (obj->GetName () == "Enemy_BossCore") {
 					boss = obj.get ();
@@ -186,17 +181,25 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 			if (boss && player_) {
-				// --- 1. 指定位置 (x = -50) まで移動 ---
+				// 【1キー判定】待機中(0) または 終了後(4) に押されたら開始！
+				// (途中からでもリセットしたい場合は if (inputManager_->IsTriggerKey(DIK_1)) だけでもOK)
+				if (bossPhase == 0 || bossPhase == 4) {
+					if (inputManager_->IsKeyPressed (DIK_1)) {
+						bossPhase = 1;
+						timer = 0.0f; // タイマーをリセットすることで開始座標を再取得させる
+					}
+				}
+
+				// --- フェーズ1: x = -50 まで移動 ---
 				if (bossPhase == 1) {
 					if (timer == 0.0f) startPos = boss->GetTranslate ();
 
 					timer += deltaTime;
-					float duration = 1.5f;
+					float duration = 2.0f;
 					float t = std::min (timer / duration, 1.0f);
 					float easedT = Easing::OutExpo (t);
 
 					Vector3 pos = boss->GetTranslate ();
-					// X座標を -50 へ移動
 					pos.x = Math::Lerp (startPos.x, -50.0f, easedT);
 					boss->SetTranslate (pos);
 
@@ -206,14 +209,31 @@ void GamePlayScene::Update(float deltaTime) {
 						startPos = boss->GetTranslate ();
 					}
 				}
-				// --- 2. シェイク（溜め）処理 ---
+				// --- フェーズ2: シェイク（溜め） ---
 				else if (bossPhase == 2) {
 					timer += deltaTime;
-					float duration = 1.0f; // 1秒間溜める
+					float duration = 1.0f;
 					float t = std::min (timer / duration, 1.0f);
 
+					// --- 1. プレイヤーの方を向く計算（90度オフセット付き） ---
+					Vector3 playerPos = player_->GetWorldPosition ();
+					Vector3 bossPos = boss->GetWorldPosition ();
+					Vector3 toPlayer = playerPos - bossPos;
+
+					// 基本のターゲット角度を計算
+					float angleY = std::atan2 (toPlayer.x, toPlayer.z);
+
+					// 【ここを修正！】現在の角度に 90度 (PI / 2) を足して向きを補正する
+					// ※ 逆を向く場合はマイナスにしてみてください
+					float offset = std::numbers::pi_v<float> / 2.0f;
+					angleY += offset;
+
+					Vector3 rot = boss->GetRotation ();
+					rot.y = angleY;
+					boss->SetRotation (rot);
+
+					// --- 2. シェイク処理 (変更なし) ---
 					Vector3 pos = startPos;
-					// 微振動を加える
 					float shake = 0.3f;
 					pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
 					pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
@@ -223,31 +243,38 @@ void GamePlayScene::Update(float deltaTime) {
 						bossPhase = 3;
 						timer = 0.0f;
 						startPos = boss->GetTranslate ();
-						// ★突進の瞬間の「プレイヤーの場所」をロックオン！
 						targetPos = player_->GetWorldPosition ();
 					}
 				}
-				// --- 3. プレイヤーに突撃（必中狙い） ---
+				// --- フェーズ3: 突進 ---
 				else if (bossPhase == 3) {
 					timer += deltaTime;
-					float duration = 1.0f; // 0.4秒で超高速突進
+					// --- 調整ポイント1: 時間を短くすると迫力が出る ---
+					float duration = 1.5f;
 					float t = std::min (timer / duration, 1.0f);
 
-					// 溜めた力を一気に解放する InExpo
-					float easedT = Easing::InExpo (t);
+					// --- 調整ポイント2: ここの数字を変えて加速度を自由に操る ---
+					// 2.0なら普通、5.0ならかなり溜めてから一気に加速！
+					float acceleration = 5.0f;
+					float easedT = std::pow (t, acceleration);
 
-					// 待機地点(startPos)から、ロックオンしたプレイヤー(targetPos)へ
+					// 1. 座標の移動
 					Vector3 pos = Math::Lerp (startPos, targetPos, easedT);
 					boss->SetTranslate (pos);
 
+					// 2. 回転の追加（X軸回転でドリルみたいにする例）
+					float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f; // 5回転
+					Vector3 rot = boss->GetRotation ();
+					rot.x = easedT * totalRotation; // 移動の加速に合わせて回転も速くなる
+					boss->SetRotation (rot);
+
 					if (t >= 1.0f) {
-						bossPhase = 4; // 攻撃終了
+						bossPhase = 4;
 					}
 				}
 			}
 		}
-
-	}
+	} // ボスアニメーション制御のブロック終了
 
 
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
