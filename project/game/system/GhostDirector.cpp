@@ -400,9 +400,9 @@ void GhostDirector::AdvanceTime(float deltaTime) {
             if (track.target && track.target->recorder_) {
                 track.target->recorder_->Play(
                     track.pathFileName,
-                    false,
-					false,
-                    (track.target->GetClassName() == "CinematicCamera")
+                    false,                          // loop (単体再生)
+                    track.target->isRecordRelative_, // ★ 相対フラグを渡す
+                    (track.target->GetClassName() == "CinematicCamera") // cinematic
                 );
             }
             track.hasStarted = true;
