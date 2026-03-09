@@ -96,10 +96,12 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 // ========================================================================
 // 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
 // ========================================================================
+// ========================================================================
+// 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
+// ========================================================================
 void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-
         return;
     }
 
@@ -218,6 +220,24 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner") {
                             newObj->SetClassName(type);
                         }
+
+                        // ==========================================
+                        // ★追加: 保存カテゴリの復元処理
+                        // ==========================================
+                        if (objData.contains("saveCategory") && objData["saveCategory"].is_string()) {
+                            newObj->SetSaveCategory(objData["saveCategory"].get<std::string>());
+                        } else {
+                            // 過去の互換性用: categoryが無ければクラス名(Type)から推測する
+                            if (currentClass == "Player" || type == "Player") {
+                                newObj->SetSaveCategory("Player");
+                            } else if (currentClass == "Enemy" || currentClass == "Spawner" || type == "Spawner") {
+                                newObj->SetSaveCategory("Enemy");
+                            } else {
+                                newObj->SetSaveCategory("Object");
+                            }
+                        }
+                        // ==========================================
+
                         targetObject = newObj.get();
 
                         // 生成したら即座にCollisionManagerとシーンリストへ登録

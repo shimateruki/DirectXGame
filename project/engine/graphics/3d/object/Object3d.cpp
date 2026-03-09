@@ -303,7 +303,7 @@ void Object3d::InitializeRecorder(SceneManager* sceneManager) {
 
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
-
+    this->saveCategory_ = other->saveCategory_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
     }
@@ -393,7 +393,7 @@ json Object3d::ExportToJson() {
     j["materialType"] = GetMaterialType();
     j["ormMapPath"] = GetOrmMapPath();
     j["texturePath"] = GetTexturePath();
-
+    j["saveCategory"] = saveCategory_;
     return j;
 }
 void Object3d::ImportFromJson(const json& j) {
@@ -457,7 +457,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"].get<std::string>());
     if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"].get<std::string>()); 
     if (j.contains("texturePath")) SetTexture(j["texturePath"].get<std::string>());
-
+    if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"].get<std::string>();
 
 }
 
