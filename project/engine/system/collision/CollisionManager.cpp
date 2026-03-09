@@ -264,7 +264,9 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
 
     // 【簡易版】登録されている全てのオブジェクトをチェック
     for (Object3d* object : objects_) {
-
+        if (object->GetClassName() == "Player") {
+            continue;
+        }
         // (1) マスク判定 (指定した対象か？)
         if (!((object->GetCollisionAttribute()) & mask)) {
             continue; // 対象外 
