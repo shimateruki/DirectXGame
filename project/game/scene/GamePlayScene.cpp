@@ -136,6 +136,9 @@ void GamePlayScene::Initialize() {
 			for (auto &obj : objects) {
 				if (obj->GetParent () == oldAddress) {
 					obj->SetParent (newAddress);
+
+					// ★ ここを追加！新しいボスにパーツを登録する
+					newAddress->AddArmorBlock (obj.get ());
 				}
 			}
 

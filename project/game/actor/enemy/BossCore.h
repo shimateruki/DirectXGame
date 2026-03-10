@@ -33,6 +33,10 @@ public:
     // ==================================================
     void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
 
+    // パーツ(ブロック)を登録する関数
+    void AddArmorBlock (Object3d *block) { armorBlocks_.push_back (block); }
+
+
 private:
     // ==================================================
     // ステート(状態)管理メソッド
@@ -53,6 +57,10 @@ private:
     Vector3 animTargetPos_ = { 0,0,0 };
     bool wasPlaying_ = false;
 
+    int attackMode_ = 0;         // 0:待機, 1:突進攻撃, 2:ブロック射撃
+    int shotCount_ = 0;          // 撃った弾の数
+    float shotInterval_ = 0.0f;  // 連射のインターバル(間隔)計測用
+
     // ==================================================
     // 内部コンポーネント・変数
     // ==================================================
@@ -62,4 +70,10 @@ private:
 
     State state_ = State::Idle;               // 現在のステート
     bool isFirstFrame_ = true;                // 初回更新フラグ
+
+    std::vector<Object3d *> armorBlocks_;
+
+    // 形態変化アニメーション用の座標メモ
+    std::vector<Vector3> blockStartPos_;
+    std::vector<Vector3> blockTargetPos_;
 };

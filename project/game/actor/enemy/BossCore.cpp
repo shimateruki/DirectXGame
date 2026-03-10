@@ -124,80 +124,224 @@ void BossCore::UpdateWeak(float deltaTime) {
 void BossCore::UpdateAnimationSequence (float deltaTime) {
     InputManager *input = InputManager::GetInstance ();
 
-    // --- 【開始判定】待機中(0) に 1キーが押されたら ---
+    // ======================================
+    // フェーズ0: 入力待ち（待機）
+    // ======================================
     if (animPhase_ == 0) {
         if (input->IsKeyTriggered (DIK_1)) {
-            //DebugConsole::Log ("Boss Charge Start!\n"); // ログを出して確認！
-            animPhase_ = 1;
+            // モード1：形態変化からの突進
+            attackMode_ = 1;
+            animPhase_ = 1; // ★ 変形フェーズからスタート！
+            animTimer_ = 0.0f;
+
+            // --- 形態変化の準備（座標の計算と記憶） ---
+            blockStartPos_.clear ();
+            blockTargetPos_.clear ();
+
+            // ★ ここで各ブロックの【最終形態】を細かく設定します！
+            struct BlockSetting {
+                Vector3 translate; // コアからのローカル座標 (目的地)
+                Vector3 scale;     // 大きさ
+                Vector3 rotation;  // 回転（ラジアン）
+            };
+
+            std::vector<BlockSetting> settings = {
+                // { { 座標X, 座標Y, 座標Z }, { スケールX, スケールY, スケールZ }, { 回転X, 回転Y, 回転Z } }
+                { { -3.3f,  0.0f,  0.0f }, { 0.300f, 0.500f, 0.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像1 (左端の小型パーツ)
+                { { -2.0f,  0.0f,  0.0f }, { 1.035f, 1.000f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像2 (左側の厚みのあるパーツ)
+                { {  0.0f,  1.5f,  0.0f }, { 2.000f, 0.506f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像3 (頭上の平たいパーツ)
+                { {  0.0f, -1.5f,  0.0f }, { 2.000f, 0.511f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像4 (足元の平たいパーツ)
+                { {  2.5f,  0.0f,  0.0f }, { 0.500f, 3.000f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像5 (右側の縦長パーツ)
+                { {  3.5f,  0.0f,  0.0f }, { 0.500f, 1.000f, 0.500f }, { 0.0f, 0.0f, 0.0f } }  // 画像6 (右端の小型パーツ)
+            };
+
+            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                // 移動のスタート地点を記憶
+                blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
+
+                if (i < settings.size ()) {
+                    // ゴール地点を記憶 (Phase 1 でここに向かって Lerp します)
+                    blockTargetPos_.push_back (settings[i].translate);
+
+                    // 大きさと回転は、変形開始と同時に適用してしまう！
+                    armorBlocks_[i]->SetScale (settings[i].scale);
+                    armorBlocks_[i]->SetRotation (settings[i].rotation);
+                } else {
+                    blockTargetPos_.push_back ({ 0.0f, 0.0f, 0.0f });
+                }
+            }
+        } else if (input->IsKeyTriggered (DIK_2)) {
+            // モード2：ブロック射撃
+            attackMode_ = 2;
+            animPhase_ = 10; // 射撃用フェーズへ
             animTimer_ = 0.0f;
         }
     }
 
     if (animPhase_ == 0) return;
 
-    // --- フェーズ1: 移動 (x = -50) ---
-    if (animPhase_ == 1) {
-        if (animTimer_ == 0.0f) animStartPos_ = GetTranslate ();
-        animTimer_ += deltaTime;
-        float duration = 1.5f;
-        float t = std::min (animTimer_ / duration, 1.0f);
+    // ======================================
+    // 攻撃モード1：形態変化 ＆ 突進 (Phase 1 ~ 5)
+    // ======================================
+    if (attackMode_ == 1) {
 
-        Vector3 pos = GetTranslate ();
-        pos.x = Math::Lerp (animStartPos_.x, -50.0f, Easing::OutExpo (t));
-        SetTranslate (pos);
+        // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
+        if (animPhase_ == 1) {
+            animTimer_ += deltaTime;
+            float duration = 1.5f; // 1秒かけて変形
+            float t = std::min (animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo (t); // カッコよくスライドさせる
 
-        if (t >= 1.0f) {
-            animPhase_ = 2;
+            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                if (i < blockStartPos_.size () && i < blockTargetPos_.size ()) {
+                    Vector3 pos = Math::Lerp (blockStartPos_[i], blockTargetPos_[i], easeT);
+                    armorBlocks_[i]->SetTranslate (pos);
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 2; // 変形が終わったら、突進準備(X=-50)へ！
+                animTimer_ = 0.0f;
+                animStartPos_ = GetTranslate ();
+            }
+        }
+        // --- フェーズ2: 移動 (x = -50) ---
+        else if (animPhase_ == 2) {
+            animTimer_ += deltaTime;
+            float duration = 2.5f;
+            float t = std::min (animTimer_ / duration, 1.0f);
+
+            Vector3 pos = GetTranslate ();
+            pos.x = Math::Lerp (animStartPos_.x, -50.0f, Easing::OutExpo (t));
+            SetTranslate (pos);
+
+            if (t >= 1.0f) {
+                animPhase_ = 3;
+                animTimer_ = 0.0f;
+                animStartPos_ = GetTranslate ();
+            }
+        }
+        // --- フェーズ3: シェイク & プレイヤー注視 ---
+        else if (animPhase_ == 3) {
+            animTimer_ += deltaTime;
+            float duration = 3.0f;
+            float t = std::min (animTimer_ / duration, 1.0f);
+
+            if (target_) {
+                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
+                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+            }
+
+            Vector3 pos = animStartPos_;
+            float shake = 0.3f;
+            pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+            pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
+            SetTranslate (pos);
+
+            if (t >= 1.0f) {
+                animPhase_ = 4;
+                animTimer_ = 0.0f;
+                animStartPos_ = GetTranslate ();
+                if (target_) animTargetPos_ = target_->GetWorldPosition ();
+            }
+        }
+        // --- フェーズ4: 加速突進 ---
+        else if (animPhase_ == 4) {
+            animTimer_ += deltaTime;
+            float duration = 1.5f;
+            float t = std::min (animTimer_ / duration, 1.0f);
+            float easedT = std::pow (t, 4.0f);
+
+            SetTranslate (Math::Lerp (animStartPos_, animTargetPos_, easedT));
+
+            float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
+            SetRotation ({ easedT * totalRotation, GetRotation ().y, GetRotation ().z });
+
+            if (t >= 1.0f) {
+                animPhase_ = 5;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- フェーズ5: 自動リセット ---
+        else if (animPhase_ == 5) {
+            animPhase_ = 0;
+            attackMode_ = 0; // モードもリセット
             animTimer_ = 0.0f;
-            animStartPos_ = GetTranslate ();
         }
     }
-    // --- フェーズ2: シェイク & プレイヤー注視 ---
-    else if (animPhase_ == 2) {
-        animTimer_ += deltaTime;
-        float duration = 1.0f;
-        float t = std::min (animTimer_ / duration, 1.0f);
 
-        if (target_) {
-            Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
-            float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
-            SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+    // ======================================
+    // 攻撃モード2：ブロック射撃 (Phase 10 ~ 12)
+    // ======================================
+    else if (attackMode_ == 2) {
+
+        // --- Phase 10: X = 50.0f へ移動 ---
+        if (animPhase_ == 10) {
+            if (animTimer_ == 0.0f) animStartPos_ = GetTranslate ();
+            animTimer_ += deltaTime;
+            float t = std::min (animTimer_ / 1.5f, 1.0f);
+
+            Vector3 pos = GetTranslate ();
+            pos.x = Math::Lerp (animStartPos_.x, 50.0f, Easing::OutExpo (t));
+            SetTranslate (pos);
+
+            if (t >= 1.0f) {
+                animPhase_ = 11;
+                animTimer_ = 0.0f;
+                shotCount_ = 0;
+                shotInterval_ = 0.0f;
+            }
         }
+        // --- Phase 11: プレイヤーを向いて、1つずつ飛ばす ---
+        else if (animPhase_ == 11) {
+            animTimer_ += deltaTime;
+            shotInterval_ += deltaTime;
 
-        Vector3 pos = animStartPos_;
-        float shake = 0.3f;
-        pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
-        pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
-        SetTranslate (pos);
+            if (target_) {
+                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
+                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+            }
 
-        if (t >= 1.0f) {
-            animPhase_ = 3;
-            animTimer_ = 0.0f;
-            animStartPos_ = GetTranslate ();
-            if (target_) animTargetPos_ = target_->GetWorldPosition ();
+            if (shotInterval_ >= 0.5f) {
+                shotInterval_ = 0.0f;
+                shotCount_++;
+
+                if (!armorBlocks_.empty ()) {
+                    Object3d *block = armorBlocks_.back ();
+                    armorBlocks_.pop_back ();
+
+                    Vector3 spawnPos = block->GetWorldPosition ();
+                    block->SetScale ({ 0.0f, 0.0f, 0.0f });
+
+                    if (target_) {
+                        Vector3 targetPos = target_->GetWorldPosition ();
+                        static Math math;
+                        Vector3 dir = math.Normalize (targetPos - spawnPos);
+                        float bulletSpeed = 40.0f;
+                        Vector3 velocity = { dir.x * bulletSpeed, dir.y * bulletSpeed, dir.z * bulletSpeed };
+
+                        // DebugConsole::GetInstance()->AddLog("Block Detached and Fired!\n");
+                        // 弾を出す処理をここに書く
+                    }
+                }
+
+                if (shotCount_ >= 5 || armorBlocks_.empty ()) {
+                    animPhase_ = 12;
+                    animTimer_ = 0.0f;
+                }
+            }
         }
-    }
-    // --- フェーズ3: 加速突進 ---
-    else if (animPhase_ == 3) {
-        animTimer_ += deltaTime;
-        float duration = 0.5f; // 少し速くしました
-        float t = std::min (animTimer_ / duration, 1.0f);
-        float easedT = std::pow (t, 4.0f);
-
-        SetTranslate (Math::Lerp (animStartPos_, animTargetPos_, easedT));
-
-        float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
-        SetRotation ({ easedT * totalRotation, GetRotation ().y, GetRotation ().z });
-
-        if (t >= 1.0f) {
-            animPhase_ = 4;
-            //DebugConsole::Log ("Boss Charge Finished.\n");
+        // --- Phase 12: 撃ち終わった後の隙（硬直） ---
+        else if (animPhase_ == 12) {
+            animTimer_ += deltaTime;
+            if (animTimer_ >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
         }
-    }
-    // --- フェーズ4: 自動リセット ---
-    else if (animPhase_ == 4) {
-        // ここで 0 に戻すことで、再び 1キーが効くようになります
-        animPhase_ = 0;
-        animTimer_ = 0.0f;
     }
 }
+
