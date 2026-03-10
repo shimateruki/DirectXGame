@@ -166,6 +166,8 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                     // 大きさと回転は、変形開始と同時に適用してしまう！
                     armorBlocks_[i]->SetScale (settings[i].scale);
                     armorBlocks_[i]->SetRotation (settings[i].rotation);
+                    // ★ 修正箇所1：ブロックのオイラー角(XYZ)を優先させる
+                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
                 } else {
                     blockTargetPos_.push_back ({ 0.0f, 0.0f, 0.0f });
                 }
@@ -188,7 +190,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
         if (animPhase_ == 1) {
             animTimer_ += deltaTime;
-            float duration = 1.5f; // 1秒かけて変形
+            float duration = 1.5f; // 1.5秒かけて変形
             float t = std::min (animTimer_ / duration, 1.0f);
             float easeT = Easing::OutExpo (t); // カッコよくスライドさせる
 
@@ -231,6 +233,8 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
                 float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                 SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+                // ★ 修正箇所2：ボスの向き（オイラー角）を優先させる
+                GetTransform ()->isQuaternionMaster = false;
             }
 
             Vector3 pos = animStartPos_;
@@ -257,6 +261,8 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
 
             float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
             SetRotation ({ easedT * totalRotation, GetRotation ().y, GetRotation ().z });
+            // ★ 修正箇所3：ボスの突進回転（オイラー角）を優先させる
+            GetTransform ()->isQuaternionMaster = false;
 
             if (t >= 1.0f) {
                 animPhase_ = 5;
@@ -302,6 +308,8 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
                 float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                 SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+                // ★ 修正箇所4：ボスの向き（オイラー角）を優先させる
+                GetTransform ()->isQuaternionMaster = false;
             }
 
             if (shotInterval_ >= 0.5f) {
