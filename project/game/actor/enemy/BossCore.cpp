@@ -43,6 +43,16 @@ void BossCore::Update(float deltaTime) {
     case State::Attack: UpdateAttack (deltaTime); break;
     case State::Weak:   UpdateWeak (deltaTime);   break;
     }
+
+    for (auto &fb : flyingBlocks_) {
+        if (fb.block) {
+            Vector3 pos = fb.block->GetTranslate ();
+            pos.x += fb.velocity.x * deltaTime;
+            pos.y += fb.velocity.y * deltaTime;
+            pos.z += fb.velocity.z * deltaTime;
+            fb.block->SetTranslate (pos);
+        }
+    }
 }
 
 // =================================================================
@@ -278,7 +288,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
     }
 
     // ======================================
-    // 攻撃モード2：ブロック射撃 (Phase 10 ~ 12)
+    // 攻撃モード2：移動 → 陣形変化 → ブロック射撃 (Phase 10 ~ 13)
     // ======================================
     else if (attackMode_ == 2) {
 
@@ -286,32 +296,111 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         if (animPhase_ == 10) {
             if (animTimer_ == 0.0f) animStartPos_ = GetTranslate ();
             animTimer_ += deltaTime;
-            float t = std::min (animTimer_ / 1.5f, 1.0f);
+            float t = std::min (animTimer_ / 2.5f, 1.0f);
 
             Vector3 pos = GetTranslate ();
             pos.x = Math::Lerp (animStartPos_.x, 50.0f, Easing::OutExpo (t));
             SetTranslate (pos);
 
+            // 移動中も常にプレイヤーの方を向く！
+            if (target_) {
+                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
+                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+                GetTransform ()->isQuaternionMaster = false;
+            }
+
+            // 移動が終わったら、次の「陣形変化」の準備をする！
             if (t >= 1.0f) {
                 animPhase_ = 11;
+                animTimer_ = 0.0f;
+
+                // --- 射撃用の陣形データ（座標・スケール・回転） ---
+                blockStartPos_.clear ();
+                blockTargetPos_.clear ();
+
+                struct BlockSetting {
+                    Vector3 translate;
+                    Vector3 scale;
+                    Vector3 rotation;
+                };
+
+                // ★ ここが「射撃モードの時のブロックの形」です！
+                // とりあえず「ボスの前方に円を描くように並んで砲口を向ける」ような仮の数値をいれています。
+                // タイクラーさんのお好みで、モード1と同じようにカッコいい陣形に書き換えてください！
+                // 90度（π/2）をラジアンで定義（ブロック自体の向きを正面に合わせる用）
+                float turnY = std::numbers::pi_v<float> / 2.0f;
+
+                // ★ ここが「射撃モードの時のブロックの形」です！
+                std::vector<BlockSetting> settings = {
+                    // { { X(前後), Y(上下), Z(左右) }, { スケール }, { 回転(XYZ) } }
+                    { { -2.0f,  2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 上
+                    { { -2.0f,  1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 左上
+                    { { -2.0f,  1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 右上
+                    { { -2.0f, -1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 左下
+                    { { -2.0f, -1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 右下
+                    { { -2.0f, -2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }  // 下
+                };
+
+                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
+
+                    if (i < settings.size ()) {
+                        blockTargetPos_.push_back (settings[i].translate);
+                        armorBlocks_[i]->SetScale (settings[i].scale);
+                        armorBlocks_[i]->SetRotation (settings[i].rotation);
+                        // 回転オーバーライド（クォータニオン無効化）
+                        armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
+                    } else {
+                        blockTargetPos_.push_back ({ 0.0f, 0.0f, 0.0f });
+                    }
+                }
+            }
+        }
+        // --- Phase 11: 射撃陣形へスライド移動（カシャッ！） ---
+        else if (animPhase_ == 11) {
+            animTimer_ += deltaTime;
+            float duration = 1.0f; // 1秒かけて陣形を変える
+            float t = std::min (animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo (t);
+
+            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                if (i < blockStartPos_.size () && i < blockTargetPos_.size ()) {
+                    Vector3 pos = Math::Lerp (blockStartPos_[i], blockTargetPos_[i], easeT);
+                    armorBlocks_[i]->SetTranslate (pos);
+                }
+            }
+
+            // 変形中も常にプレイヤーの方を向く！
+            if (target_) {
+                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
+                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+                GetTransform ()->isQuaternionMaster = false;
+            }
+
+            // 陣形が完成したら、いよいよ射撃開始！
+            if (t >= 1.0f) {
+                animPhase_ = 12; // 射撃フェーズへ
                 animTimer_ = 0.0f;
                 shotCount_ = 0;
                 shotInterval_ = 0.0f;
             }
         }
-        // --- Phase 11: プレイヤーを向いて、1つずつ飛ばす ---
-        else if (animPhase_ == 11) {
+        // --- Phase 12: プレイヤーを向いて、1つずつ飛ばす ---
+        else if (animPhase_ == 12) {
             animTimer_ += deltaTime;
             shotInterval_ += deltaTime;
 
+            // ボス本体がプレイヤーの方を向く
             if (target_) {
                 Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
                 float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                 SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
-                // ★ 修正箇所4：ボスの向き（オイラー角）を優先させる
                 GetTransform ()->isQuaternionMaster = false;
             }
 
+            // 0.5秒ごとに1発飛ばす
             if (shotInterval_ >= 0.5f) {
                 shotInterval_ = 0.0f;
                 shotCount_++;
@@ -320,31 +409,40 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                     Object3d *block = armorBlocks_.back ();
                     armorBlocks_.pop_back ();
 
-                    Vector3 spawnPos = block->GetWorldPosition ();
-                    block->SetScale ({ 0.0f, 0.0f, 0.0f });
-
+                    // プレイヤーへの方向を計算して飛ばす
                     if (target_) {
                         Vector3 targetPos = target_->GetWorldPosition ();
+                        // 方向計算のために、今の絶対座標だけは取得しておく
+                        Vector3 spawnPos = block->GetWorldPosition ();
                         static Math math;
+
+                        // プレイヤーへ向かうベクトル（方向）を算出
                         Vector3 dir = math.Normalize (targetPos - spawnPos);
-                        float bulletSpeed = 40.0f;
+
+                        float bulletSpeed = 10.0f; // スピード
                         Vector3 velocity = { dir.x * bulletSpeed, dir.y * bulletSpeed, dir.z * bulletSpeed };
 
-                        // DebugConsole::GetInstance()->AddLog("Block Detached and Fired!\n");
-                        // 弾を出す処理をここに書く
+                        // ブロック自身もプレイヤーの方を向かせる
+                        float angleY = std::atan2 (dir.x, dir.z) + (std::numbers::pi_v<float> / 2.0f);
+                        block->SetRotation ({ 0.0f, angleY, 0.0f });
+                        block->GetTransform ()->isQuaternionMaster = false;
+
+                        // ★親子関係は解除せず、そのまま飛んでいくリストに追加！
+                        flyingBlocks_.push_back ({ block, velocity });
                     }
                 }
 
-                if (shotCount_ >= 5 || armorBlocks_.empty ()) {
-                    animPhase_ = 12;
+                // 全弾（ここでは6発）撃ち終わったら終了
+                if (shotCount_ >= 6 || armorBlocks_.empty ()) {
+                    animPhase_ = 13;
                     animTimer_ = 0.0f;
                 }
             }
         }
-        // --- Phase 12: 撃ち終わった後の隙（硬直） ---
-        else if (animPhase_ == 12) {
+        // --- Phase 13: 撃ち終わった後の隙（硬直） ---
+        else if (animPhase_ == 13) {
             animTimer_ += deltaTime;
-            if (animTimer_ >= 1.0f) {
+            if (animTimer_ >= 1.0f) { // 1秒の隙を晒す
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
