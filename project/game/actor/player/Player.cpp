@@ -50,6 +50,14 @@ void Player::Update(float deltaTime) {
 
     // 3. 親クラスの更新 (物理挙動・行列計算など)
     Character::Update(deltaTime);
+
+    // --- アプリ層での最終上書き（モデルアニメ適用後に頭を上書き） ---
+    if (state_) {
+        // Idle ステートなら頭上書き処理を呼ぶ（他ステートも同様に拡張可）
+        if (auto idle = dynamic_cast<PlayerStateIdle*>(state_.get())) {
+            idle->ApplyPostUpdate(this, deltaTime);
+        }
+    }
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     Character::Draw(pointLightResource, spotLightResource);
