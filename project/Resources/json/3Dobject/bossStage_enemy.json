@@ -102,7 +102,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 6,
             "collisionMask": 4294967295,
@@ -112,11 +112,13 @@
                 1.0,
                 1.0
             ],
-            "enableNormalMap": true,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
-            "metallic": 1.0,
+            "metallic": 0.0,
             "modelName": "sphere.gltf",
             "myEventID": -1,
             "name": "Enemy_BossCore",
@@ -136,8 +138,14 @@
             "parentName": "",
             "position": [
                 -5.001794815063477,
-                2.9021353721618652,
+                3.9859519004821777,
                 -11.78464412689209
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -149,7 +157,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5899999737739563,
+            "roughness": 0.5,
             "saveCategory": "Enemy",
             "scale": [
                 1.0,
@@ -182,9 +190,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 6,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -192,8 +200,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -207,6 +217,12 @@
                 -2.0,
                 0.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": true,
@@ -251,9 +267,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 6,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -261,8 +277,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -276,6 +294,12 @@
                 3.5,
                 0.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -320,9 +344,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 6,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -330,8 +354,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -345,6 +371,12 @@
                 2.0,
                 0.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -389,9 +421,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 6,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -399,8 +431,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -414,6 +448,12 @@
                 -3.5,
                 0.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -458,7 +498,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
@@ -468,8 +508,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -483,6 +525,12 @@
                 0.0,
                 -1.5036234855651855,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -527,9 +575,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 6,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -537,8 +585,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -552,6 +602,12 @@
                 0.0,
                 1.5102386474609375,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,

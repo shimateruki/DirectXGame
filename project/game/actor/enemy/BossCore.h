@@ -38,6 +38,15 @@ public:
 
 
 private:
+    // 飛んでいるブロックを管理するための構造体
+    struct FlyingBlock {
+        Object3d *block;
+        Vector3 velocity;
+    };
+
+    // 射出されたブロックのリスト
+    std::vector<FlyingBlock> flyingBlocks_;
+
     // ==================================================
     // ステート(状態)管理メソッド
     // ==================================================
