@@ -389,8 +389,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         }
         // --- Phase 12: プレイヤーを向いて、1つずつ飛ばす ---
         else if (animPhase_ == 12) {
-            animTimer_ += deltaTime;
-            shotInterval_ += deltaTime;
+            animTimer_ += deltaTime; // ★このフェーズに入ってからの合計時間を計る
 
             // ボス本体がプレイヤーの方を向く
             if (target_) {
@@ -400,37 +399,57 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 GetTransform ()->isQuaternionMaster = false;
             }
 
-            // 0.5秒ごとに1発飛ばす
-            if (shotInterval_ >= 0.5f) {
-                shotInterval_ = 0.0f;
-                shotCount_++;
+            // ==========================================
+            // ★超確実な発射タイミング制御！
+            // 撃った数(shotCount_) × 0.5秒 を次の目標時間にする
+            // ==========================================
+            float nextShotTime = shotCount_ * 0.5f; // 間隔を広げたい場合は 1.0f などに変更
+
+            // アニメーション時間が次の発射時間を超えたら1発撃つ
+            if (animTimer_ >= nextShotTime) {
 
                 if (!armorBlocks_.empty ()) {
                     Object3d *block = armorBlocks_.back ();
                     armorBlocks_.pop_back ();
 
+                    // ワールド座標を手動計算
+                    Vector3 bossPos = GetTranslate ();
+                    float bossRotY = GetRotation ().y;
+                    Vector3 localPos = block->GetTranslate ();
+
+                    Vector3 worldPos;
+                    worldPos.x = bossPos.x + (localPos.x * std::cos (bossRotY) + localPos.z * std::sin (bossRotY));
+                    worldPos.y = bossPos.y + localPos.y;
+                    worldPos.z = bossPos.z + (-localPos.x * std::sin (bossRotY) + localPos.z * std::cos (bossRotY));
+
+                    // 親を解除し、計算した真の座標をセット
+                    block->SetParent (nullptr);
+                    block->SetTranslate (worldPos);
+
                     // プレイヤーへの方向を計算して飛ばす
                     if (target_) {
                         Vector3 targetPos = target_->GetWorldPosition ();
-                        // 方向計算のために、今の絶対座標だけは取得しておく
-                        Vector3 spawnPos = block->GetWorldPosition ();
                         static Math math;
 
-                        // プレイヤーへ向かうベクトル（方向）を算出
-                        Vector3 dir = math.Normalize (targetPos - spawnPos);
-
-                        float bulletSpeed = 10.0f; // スピード
+                        Vector3 dir = math.Normalize (targetPos - worldPos);
+                        float bulletSpeed = 20.0f; // ブロックの飛ぶスピード
                         Vector3 velocity = { dir.x * bulletSpeed, dir.y * bulletSpeed, dir.z * bulletSpeed };
 
-                        // ブロック自身もプレイヤーの方を向かせる
+                        // ブロック自身も飛んでいく方向に向ける
                         float angleY = std::atan2 (dir.x, dir.z) + (std::numbers::pi_v<float> / 2.0f);
                         block->SetRotation ({ 0.0f, angleY, 0.0f });
                         block->GetTransform ()->isQuaternionMaster = false;
 
-                        // ★親子関係は解除せず、そのまま飛んでいくリストに追加！
+                        // リストに追加
                         flyingBlocks_.push_back ({ block, velocity });
+
+                        // ★デバッグログ：発射した時間と弾数をコンソールに表示
+                        DebugConsole::GetInstance ()->AddLog ("Fired block " + std::to_string (shotCount_) + " at time: " + std::to_string (animTimer_) + "\n");
                     }
                 }
+
+                // ★撃った数を確実に1増やす
+                shotCount_++;
 
                 // 全弾（ここでは6発）撃ち終わったら終了
                 if (shotCount_ >= 6 || armorBlocks_.empty ()) {
