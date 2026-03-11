@@ -386,9 +386,8 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         }
         // --- Phase 12: プレイヤーを向いて、1つずつ飛ばす ---
         else if (animPhase_ == 12) {
-            animTimer_ += deltaTime; // ★このフェーズに入ってからの合計時間を計る
+            animTimer_ += deltaTime;
 
-            // ボス本体がプレイヤーの方を向く
             if (target_) {
                 Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
                 float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
@@ -396,20 +395,13 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 GetTransform ()->isQuaternionMaster = false;
             }
 
-            // ==========================================
-            // ★超確実な発射タイミング制御！
-            // 撃った数(shotCount_) × 0.5秒 を次の目標時間にする
-            // ==========================================
-            float nextShotTime = shotCount_ * 0.5f; // 間隔を広げたい場合は 1.0f などに変更
+            float nextShotTime = shotCount_ * 0.5f;
 
-            // アニメーション時間が次の発射時間を超えたら1発撃つ
             if (animTimer_ >= nextShotTime) {
+                int idx = (int)armorBlocks_.size () - 1 - shotCount_;
+                if (idx >= 0 && idx < armorBlocks_.size ()) {
+                    Object3d *block = armorBlocks_[idx];
 
-                if (!armorBlocks_.empty ()) {
-                    Object3d *block = armorBlocks_.back ();
-                    armorBlocks_.pop_back ();
-
-                    // ワールド座標を手動計算
                     Vector3 bossPos = GetTranslate ();
                     float bossRotY = GetRotation ().y;
                     Vector3 localPos = block->GetTranslate ();
@@ -419,54 +411,36 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                     worldPos.y = bossPos.y + localPos.y;
                     worldPos.z = bossPos.z + (-localPos.x * std::sin (bossRotY) + localPos.z * std::cos (bossRotY));
 
-                    // 親を解除し、計算した真の座標をセット
                     block->SetParent (nullptr);
                     block->SetTranslate (worldPos);
 
-                    // プレイヤーへの方向を計算して飛ばす
-                    if (target_) {
-                        Vector3 targetPos = target_->GetWorldPosition ();
-                        static Math math;
+                    // 今のブロックの回転を維持
+                    Vector3 currentRot = block->GetRotation ();
+                    block->GetTransform ()->isQuaternionMaster = false;
 
-                        Vector3 dir = math.Normalize (targetPos - worldPos);
-                        float bulletSpeed = 20.0f; // ブロックの飛ぶスピード
-                        Vector3 velocity = { dir.x * bulletSpeed, dir.y * bulletSpeed, dir.z * bulletSpeed };
-
-                        // ブロック自身も飛んでいく方向に向ける
-                        float angleY = std::atan2 (dir.x, dir.z) + (std::numbers::pi_v<float> / 2.0f);
-                        // 角度を変数にして保存し、セットする
-                        Vector3 initialRot = { 0.0f, angleY, 0.0f };
-                        block->SetRotation (initialRot);
-                        block->GetTransform ()->isQuaternionMaster = false;
-
-                        // リストに追加する時、initialRot（初期角度）も一緒に渡す！
-                        flyingBlocks_.push_back ({ block, velocity, initialRot ,0 });
-
-                        // リストに追加
-                        flyingBlocks_.push_back ({ block, velocity });
-
-                        // ★デバッグログ：発射した時間と弾数をコンソールに表示
-                        DebugConsole::GetInstance ()->AddLog ("Fired block " + std::to_string (shotCount_) + " at time: " + std::to_string (animTimer_) + "\n");
-                    }
+                    // ==========================================
+                    // ★ 修正：いきなり飛ばさず、「モード4 (頭上へ装填中)」にする！
+                    // 速度(velocity)は一旦 {0,0,0} で登録します。
+                    // ==========================================
+                    flyingBlocks_.push_back ({ block, {0.0f, 0.0f, 0.0f}, currentRot, 4, idx });
                 }
 
-                // ★撃った数を確実に1増やす
                 shotCount_++;
 
-                // 全弾（ここでは6発）撃ち終わったら終了
-                if (shotCount_ >= 6 || armorBlocks_.empty ()) {
+                if (shotCount_ >= armorBlocks_.size ()) {
                     animPhase_ = 13;
                     animTimer_ = 0.0f;
                 }
             }
-        }
-        // --- Phase 13: 撃ち終わった後の隙（硬直） ---
-        else if (animPhase_ == 13) {
-            animTimer_ += deltaTime;
-            if (animTimer_ >= 1.0f) { // 1秒の隙を晒す
-                animPhase_ = 0;
-                attackMode_ = 0;
-                animTimer_ = 0.0f;
+        } else if (animPhase_ == 13) {
+            // ★ 超重要：飛んでいるブロックが「すべて」戻ってくるまで待つ！
+            if (flyingBlocks_.empty ()) {
+                animTimer_ += deltaTime;
+                if (animTimer_ >= 1.0f) { // すべて戻ってきてから1秒の隙を晒す
+                    animPhase_ = 0;
+                    attackMode_ = 0;
+                    animTimer_ = 0.0f;
+                }
             }
         }
     }
@@ -474,6 +448,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
 
 void BossCore::UpdateFlyingBlocks (float deltaTime) {
     int landedCount = 0; // 地面に刺さっているブロックの数
+    static Math math;
 
     // ==========================================
     // 1. 各ブロックの移動・回転・状態更新
@@ -481,10 +456,64 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
     for (auto &fb : flyingBlocks_) {
         if (!fb.block) continue;
 
+        // ==========================================
+        // モード4（頭上へ装填中）
+        // ==========================================
+        if (fb.mode == 4) {
+            Vector3 bossPos = GetTranslate ();
+            // コアの頭上（Y + 4.0f 付近）を目標地点にする
+            Vector3 headPos = { bossPos.x, bossPos.y + 4.0f, bossPos.z };
+            Vector3 currentPos = fb.block->GetTranslate ();
+
+            Vector3 dir = { headPos.x - currentPos.x, headPos.y - currentPos.y, headPos.z - currentPos.z };
+            float distance = std::sqrt (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+
+            if (distance < 0.5f) {
+                // --- 頭上に到着！装填完了！ ---
+                fb.block->SetTranslate (headPos);
+
+                // ここで初めてプレイヤーへの方向を計算して「ドカン！」と撃ち出す！
+                if (target_) {
+                    Vector3 targetPos = target_->GetWorldPosition ();
+
+                    // ==========================================
+                    // ★ 修正1：プレイヤーの「足元（地面）」を直接狙う！
+                    // ==========================================
+                    targetPos.y = 0.0f; // 確実に地面の座標をロックオン！
+
+                    Vector3 toPlayer = math.Normalize (targetPos - headPos);
+
+                    // 重力がなくなったので、初速を少し速め(60.0fなど)にすると鋭く飛んでカッコいいです！
+                    float bulletSpeed = 60.0f;
+                    fb.velocity = { toPlayer.x * bulletSpeed, toPlayer.y * bulletSpeed, toPlayer.z * bulletSpeed };
+
+                    float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                    fb.currentRot = { 0.0f, angleY, 0.0f };
+                }
+                fb.mode = 0; // 「飛翔モード」へ移行！
+            } else {
+                // --- 頭上に向かって移動中（シュッ！） ---
+                dir.x /= distance; dir.y /= distance; dir.z /= distance;
+                float gatherSpeed = 30.0f; // 頭上に移動するスピード
+                currentPos.x += dir.x * gatherSpeed * deltaTime;
+                currentPos.y += dir.y * gatherSpeed * deltaTime;
+                currentPos.z += dir.z * gatherSpeed * deltaTime;
+                fb.block->SetTranslate (currentPos);
+
+                // 移動中も少し回転させておくとカッコいいです
+                fb.currentRot.x += 15.0f * deltaTime;
+                fb.currentRot.y += 30.0f * deltaTime;
+                fb.block->SetRotation (fb.currentRot);
+            }
+            fb.block->GetTransform ()->isQuaternionMaster = false;
+        }
         if (fb.mode == 0) {
-            // --- 攻撃中（放物線を描いてプレイヤーへ） ---
-            // ★ 重力をかけて、必ずいつか地面に落ちるようにする！
-            fb.velocity.y -= 40.0f * deltaTime;
+            // --- 攻撃中（直線的に足元へ突撃！） ---
+
+            // ==========================================
+            // ★ 修正2：タイクラーさんの直感通り、重力の計算を完全に削除！
+            // fb.velocity.y -= 40.0f * deltaTime;  ←これを消す！
+            // ==========================================
 
             Vector3 pos = fb.block->GetTranslate ();
             pos.x += fb.velocity.x * deltaTime;
@@ -541,40 +570,60 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
     }
 
     // ==========================================
-    // 2. 「すべての弾が地面に落ちた」＆「全部撃ち終わった」なら一斉帰還！
+    // 2. 「すべての弾が地面に落ちた」＆「全部撃ち終わった」なら3秒待って一斉帰還！
     // ==========================================
-    if (!flyingBlocks_.empty () && landedCount == flyingBlocks_.size () && armorBlocks_.empty ()) {
-        for (auto &fb : flyingBlocks_) {
-            fb.mode = 2; // 全員一斉に帰還モードへ切り替え
+    if (!flyingBlocks_.empty () && landedCount == flyingBlocks_.size () && flyingBlocks_.size () == armorBlocks_.size ()) {
+
+        // ★ 修正：いきなり帰還させず、まずはタイマーを進める！
+        returnDelayTimer_ += deltaTime;
+
+        // ★ 3秒（3.0f）経過したら帰還命令を出す！
+        if (returnDelayTimer_ >= 5.0f) {
+            for (auto &fb : flyingBlocks_) {
+                fb.mode = 2; // 全員一斉に帰還モードへ
+            }
+            returnDelayTimer_ = 0.0f; // 次の攻撃のためにタイマーをリセットしておく
         }
-        DebugConsole::GetInstance ()->AddLog ("All blocks landed! Returning to boss...\n");
+
+    } else {
+        // まだ条件を満たしていない時（攻撃中など）は、タイマーを確実に0にしておく
+        returnDelayTimer_ = 0.0f;
     }
 
     // ==========================================
-    // 3. 回収完了（mode == 3）したブロックをリストから消し、ボスのパーツに戻す
+    // 3. 回収完了
     // ==========================================
     for (auto it = flyingBlocks_.begin (); it != flyingBlocks_.end (); ) {
         if (it->mode == 3) {
-            // ★ 親子関係をボスに戻す！
             it->block->SetParent (this);
 
-            // ボスの中心(0,0,0)で全部重なってしまわないように、周囲にランダムに散らして配置する
-            float offsetX = ((float)rand () / RAND_MAX * 6.0f) - 3.0f;
-            float offsetY = ((float)rand () / RAND_MAX * 6.0f) - 3.0f;
-            float offsetZ = ((float)rand () / RAND_MAX * 6.0f) - 3.0f;
-            it->block->SetTranslate ({ offsetX, offsetY, offsetZ });
+            struct DefaultSetting {
+                Vector3 translate;
+                Vector3 scale;
+                Vector3 rotation;
+            };
 
-            // ★ スケールを0にする処理を削除し、待機時用の標準的なサイズに戻しておく
-            it->block->SetScale ({ 1.0f, 1.0f, 1.0f });
+            std::vector<DefaultSetting> defaultSettings = {
+                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
+                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
+                { { 2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
+                { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
+            };
 
-            // 次の形態変化に備えて、回転もリセットしておく
-            it->block->SetRotation ({ 0.0f, 0.0f, 0.0f });
+            // ★ 修正：記憶していた「元々の定位置の番号」を使って絶対間違えないようにする！
+            int idx = it->originalIndex;
+            if (idx >= 0 && idx < defaultSettings.size ()) {
+                it->block->SetTranslate (defaultSettings[idx].translate);
+                it->block->SetScale (defaultSettings[idx].scale);
+                it->block->SetRotation (defaultSettings[idx].rotation);
+            }
+
             it->block->GetTransform ()->isQuaternionMaster = false;
 
-            // ボスの武装リストに復帰
-            armorBlocks_.push_back (it->block);
+            // ★ 削除：もう配列からは消していないので armorBlocks_.push_back() は書きません！
 
-            // 飛翔リストからは削除
             it = flyingBlocks_.erase (it);
         } else {
             ++it;

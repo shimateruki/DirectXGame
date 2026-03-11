@@ -44,10 +44,12 @@ private:
         Vector3 velocity;
         Vector3 currentRot;// 現在の回転角度を記憶する！
         int mode; // 0=飛翔中, 1=地面待機, 2=帰還中, 3=回収完了
+        int originalIndex; // 元の配列の番号(居場所)を記憶！
     };
 
     // 射出されたブロックのリスト
     std::vector<FlyingBlock> flyingBlocks_;
+    float returnDelayTimer_ = 0.0f;
 
     // ==================================================
     // ステート(状態)管理メソッド
