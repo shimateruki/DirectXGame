@@ -7,7 +7,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
-#include <cmath> // std::fmod, std::expf, std::cos
+#include <cmath>
 
 // ========================================================
 // ヘルパ: 小文字化
@@ -59,7 +59,7 @@ static void FindFeetInSceneByName(Player* player, Object3d*& leftOut, Object3d*&
     auto scene = SceneManager::GetInstance()->GetCurrentScene();
     if (!scene) return;
 
-    // まずは厳密候補 (Player_leftFoot / Player_rightFoot)
+    // まずは厳密候補
     for (auto& obj : scene->GetObjects()) {
         if (!obj) continue;
         std::string n = ToLower(obj->GetName());
@@ -77,7 +77,7 @@ static void FindFeetInSceneByName(Player* player, Object3d*& leftOut, Object3d*&
         if (leftOut && rightOut) return;
     }
 
-    // 補助: Player 名(prefix) を使って探す（例: Player_body が親で foot が子のとき）
+    // 補助: Player名(prefix)を使って探す
     std::string playerName = ToLower(player->GetName());
     if (!playerName.empty() && !(leftOut && rightOut)) {
         for (auto& obj : scene->GetObjects()) {
@@ -352,7 +352,6 @@ static Vector3 LerpVec(const Vector3& a, const Vector3& b, float t) {
 
 // イージング
 static float EaseInOutSine(float t) {
-    // t in [0,1]
     const float pi = 3.14159265358979323846f;
     return 0.5f * (1.0f - std::cos(pi * t));
 }
@@ -493,7 +492,6 @@ void PlayerStateRun::Update(Player* player) {
         DebugConsole::GetInstance()->AddLog("SUCCESS! Transitioning to Idle...");
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     } else {
-        // ここが出ているなら、速度が0.1より大きい
     }
 }
 
@@ -501,7 +499,6 @@ void PlayerStateRun::Exit(Player* player) {
     DebugConsole::GetInstance()->AddLog("EXIT: Run State");
 }
 
-// Character::Update 後に呼ばれる。頭の回転を 0deg -> -1deg に滑らかに補間して適用する
 void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime) {
     if (deltaTime <= 0.0f) return;
 
@@ -520,7 +517,7 @@ void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime) {
     auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
 
     // --- 足・腕アニメーション（イージング適用） ---
-    float targetAngle = targetAngleRad_; // 例: 3度 -> ラジアンで保持
+    float targetAngle = targetAngleRad_;
     float armZRightRad = DegToRad(5.0f);
     float armZLeftRad  = DegToRad(-5.0f);
 

@@ -11,11 +11,11 @@ class Object3d;
 class PlayerStateIdle : public IAnimationState {
 public:
     void Enter(Player* player) override;
-    // 修正: IAnimationState の Update は deltaTime を受け取らないため、引数を削除
+
     void Update(Player* player) override;
+
     void Exit(Player* player) override;
 
-    // Character::Update 後に呼ばれる「最終上書き」処理（頭の滑らか補間）
     void ApplyPostUpdate(Player* player, float deltaTime);
 
 private:
@@ -31,7 +31,7 @@ private:
     bool leftFootSaved_ = false;
     bool rightFootSaved_ = false;
 
-    // --- 腕 (Arm) 管理 ---
+    // --- 腕の管理 ---
     Object3d* leftArmObj_ = nullptr;
     Object3d* rightArmObj_ = nullptr;
     Vector3 leftArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
@@ -52,15 +52,15 @@ private:
     Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
     bool headSaved_ = false;
 
-    // アニメーションの共通時間管理（足・腕・頭を統一）
+    // アニメーションの共通時間管理
     float animTimer_ = 0.0f;
-    float animDuration_ = 1.0f; // 1回の「片道」にかける時間（秒）。全往復は 2 * animDuration_。
+    float animDuration_ = 1.0f;
 
 	// 足・腕のアニメーション段階管理
     int footStage_ = 0; 
     float targetAngleRad_ = 3.0f * 3.14159265f / 180.0f; // 3度をラジアンに変換
 
-    // 頭の滑らか係数（大きいほど早く追従する。目安: 4.0〜12.0）
+    // 頭の滑らか係数
     float headSmoothSpeed_ = 8.0f;
 };
 
