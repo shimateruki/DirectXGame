@@ -61,6 +61,12 @@
                 2.177135467529297,
                 0.0
             ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
             "recorder": {
                 "isRecordLoop": true,
                 "isRecordRelative": false,
@@ -68,15 +74,15 @@
             },
             "rotation": [
                 0.0,
-                2.356194496154785,
+                0.0,
                 0.0
             ],
             "roughness": 0.0,
             "saveCategory": "Player",
             "scale": [
+                2.5000007152557373,
                 2.5,
-                2.5,
-                2.5
+                2.5000007152557373
             ],
             "targetID": -1,
             "texturePath": "",
@@ -128,9 +134,15 @@
             "ormMapPath": "",
             "parentName": "Player_body",
             "position": [
-                0.44999998807907104,
-                -0.15000000596046448,
-                0.44999998807907104
+                0.44998466968536377,
+                -0.15000003576278687,
+                0.44999995827674866
+            ],
+            "quaternion": [
+                0.6830126643180847,
+                0.18301266431808472,
+                0.6830126643180847,
+                -0.1830127239227295
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -138,16 +150,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
-                -1.5707954168319702,
-                0.5235987901687622
+                -0.5235987901687622,
+                1.5707963705062866,
+                3.1415927410125732
             ],
             "roughness": 1.0,
             "saveCategory": "Player",
             "scale": [
-                1.5,
-                1.5,
-                1.5
+                1.4999691247940063,
+                1.499988317489624,
+                1.4999736547470093
             ],
             "targetID": -1,
             "texturePath": "",
@@ -203,6 +215,12 @@
                 4.76837158203125e-07,
                 1.212535835293238e-06
             ],
+            "quaternion": [
+                7.958078098412036e-13,
+                -2.980236502025946e-08,
+                -2.3021610659479386e-12,
+                1.0
+            ],
             "recorder": {
                 "isRecordLoop": false,
                 "isRecordRelative": false,
@@ -219,77 +237,6 @@
                 0.9999984502792358,
                 1.0,
                 0.9999984502792358
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    -0.4099999964237213,
-                    -0.07999999821186066,
-                    -0.009999999776482582
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    -0.5235987901687622
-                ],
-                "size": [
-                    0.05000000074505806,
-                    0.11999999731779099,
-                    0.10000000149011612
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 1,
-            "collisionMask": 4294967294,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Player_leftArm",
-            "myEventID": -1,
-            "name": "Player_leftArm",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Player_body",
-            "position": [
-                0.0,
-                -2.1457672119140625e-06,
-                0.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.0,
-            "saveCategory": "Player",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -334,7 +281,7 @@
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "Player_rightArm",
+            "modelName": "Player_leftArm",
             "myEventID": -1,
             "name": "Player_rightArm",
             "normalMapPath": "",
@@ -342,8 +289,14 @@
             "parentName": "Player_body",
             "position": [
                 0.0,
+                -2.1457672119140625e-06,
+                -0.0
+            ],
+            "quaternion": [
                 0.0,
-                0.0
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -352,15 +305,92 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.0,
             "saveCategory": "Player",
             "scale": [
+                0.9998381733894348,
+                0.9999414682388306,
+                0.9998058080673218
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    -0.4099999964237213,
+                    -0.07999999821186066,
+                    -0.009999999776482582
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    -0.5235987901687622
+                ],
+                "size": [
+                    0.05000000074505806,
+                    0.11999999731779099,
+                    0.10000000149011612
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
                 1.0,
                 1.0,
                 1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Player_rightArm",
+            "myEventID": -1,
+            "name": "Player_leftArm",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_body",
+            "position": [
+                0.0,
+                -2.384185791015625e-07,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.0,
+            "saveCategory": "Player",
+            "scale": [
+                0.9999961853027344,
+                0.9999908208847046,
+                0.9999953508377075
             ],
             "targetID": -1,
             "texturePath": "",
@@ -415,6 +445,12 @@
                 0.0,
                 0.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -486,6 +522,12 @@
                 0.0,
                 0.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
