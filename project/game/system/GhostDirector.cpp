@@ -290,6 +290,7 @@ void GhostDirector::SaveScenario(const std::string& fileName) {
     }
 }
 
+
 void GhostDirector::LoadScenario(const std::string& fileName) {
     std::string path = "Resources/json/scenario/" + fileName + ".json";
     std::ifstream file(path);

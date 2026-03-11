@@ -164,24 +164,42 @@ PixelShanderOutput main(VecrtexShaderOutput input)
     
     float shadowFactor = 1.0f;
 
+    // W除算 (同次座標系からデカルト座標系へ)
     float3 shadowPos = input.shadowPosition.xyz / input.shadowPosition.w;
+    // クリップ空間(-1 ～ 1) を UV空間(0 ～ 1) に変換
     float2 shadowUV = float2(
         (shadowPos.x + 1.0f) / 2.0f,
-        (1.0f - shadowPos.y) / 2.0f
+        (1.0f - shadowPos.y) / 2.0f // Yは上下反転
     );
 
+    // 画面外を真っ黒にしないための範囲チェック
     if (shadowPos.z > 0.0f && shadowPos.z < 1.0f &&
         shadowUV.x > 0.0f && shadowUV.x < 1.0f &&
         shadowUV.y > 0.0f && shadowUV.y < 1.0f)
     {
-        float depthFromLight = gShadowMap.Sample(gShadowSampler, shadowUV);
         float bias = 0.005f;
-        if (shadowPos.z - bias > depthFromLight)
+        shadowFactor = 0.0f;
+
+
+        float2 texelSize = 1.0f / 2048.0f;
+        float spread = 1.5f;
+
+        for (int y = -1; y <= 1; ++y)
         {
-            shadowFactor = 0.0f;
+            for (int x = -1; x <= 1; ++x)
+            {
+                // spread を掛けて、サンプリングする範囲を広げる
+                float2 offset = float2(x, y) * texelSize * spread;
+                float depthFromLight = gShadowMap.Sample(gShadowSampler, shadowUV + offset);
+                
+                if (shadowPos.z - bias <= depthFromLight)
+                {
+                    shadowFactor += 1.0f;
+                }
+            }
         }
+        shadowFactor /= 9.0f;
     }
-    
     float NdotL;
     float cos;
     
@@ -403,7 +421,15 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
                     // 1. 平行光源
                     float3 L_dir = normalize(-gDirectionalLight.direction);
-                    float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * shadowFactor;
+                    
+                    // 【青みのある影のブレンド】
+                    // shadowFactorが 0.0(影) の時は青い光、1.0(日向) の時は本来の光(白) になるように補間する
+                    float3 shadowTint = float3(0.15f, 0.25f, 0.5f); // ★ここの数値で影の青さを調整できます！
+                    float3 lightIntensity = lerp(shadowTint, float3(1.0f, 1.0f, 1.0f), shadowFactor);
+                    
+                    // 本来の光の強さに、青みを帯びたグラデーションを掛け合わせる
+                    float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * lightIntensity;
+                    
                     Lo += CalcPBRLight(L_dir, V, N, radiance_dir, albedo, roughness, metallic, F0);
 
                     // 2. 点光源

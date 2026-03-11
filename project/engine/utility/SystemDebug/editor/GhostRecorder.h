@@ -19,7 +19,7 @@ struct GhostFrame {
 };
 
 
-class GhostRecorder : public IEditable { 
+class GhostRecorder : public IEditable {
 public:
     // 状態管理用
     enum class State {
@@ -42,8 +42,8 @@ public:
         Vector3 endScale = { 1.0f, 1.0f, 1.0f };
         int endEventID = 0;
         float endWaitTime = 0.0f;
-        Vector3 anchorOffsetPos = { 0.0f, 0.0f, 0.0f }; 
-        Vector3 anchorOffsetRot = { 0.0f, 0.0f, 0.0f }; 
+        Vector3 anchorOffsetPos = { 0.0f, 0.0f, 0.0f };
+        Vector3 anchorOffsetRot = { 0.0f, 0.0f, 0.0f };
         struct Waypoint {
             Vector3 pos;
             Vector3 rot;
@@ -59,7 +59,7 @@ public:
         bool useEasing = false;        // 加減速を使うか
         bool generateRelative = false; // 相対座標として生成するか
         bool useSpline = true;         // スプライン曲線にするか
-     
+
     };
 
 public:
@@ -90,8 +90,8 @@ public:
     void CaptureBasePose();
     void RestoreBasePose();
     void SetScrubbing(bool isScrubbing) { isScrubbing_ = isScrubbing; }
-    void PerformUndo();  
-    void PerformRedo(); 
+    void PerformUndo();
+    void PerformRedo();
     int GetCurrentEventID() const {
         if (state_ == State::Playing && currentFrameIndex_ < frames_.size()) {
             return frames_[currentFrameIndex_].eventID; // 今のフレームのIDを返す
@@ -145,10 +145,10 @@ private:
 
     CameraManager* cameraManager_ = nullptr;
     bool isOverrideCamera_ = false;
-    Vector3 basePosition_ = {0, 0, 0};
-    Vector3 baseRotation_ = {0, 0, 0};
+    Vector3 basePosition_ = { 0, 0, 0 };
+    Vector3 baseRotation_ = { 0, 0, 0 };
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
-	bool isScrubbing_ = false; // Scrubbing中かどうかのフラグ
+    bool isScrubbing_ = false; // Scrubbing中かどうかのフラグ
     Object3d* anchor_ = nullptr;
     std::string anchorName_ = "";
     void FindAnchor(); // ロード後に名前から実体を結びつける関数

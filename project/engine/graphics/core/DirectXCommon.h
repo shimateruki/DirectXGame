@@ -134,6 +134,11 @@ public:
 	uint32_t GetShadowMapSrvHandle() const { return shadowMapSrvHandle_; }
 	void PreDrawShadow();
 	void PostDrawShadow();
+	float GetGpuDrawTimeMs() const { return gpuDrawTimeMs_; }
+	// GPUプロファイラ操作用
+	void StartGpuProfile();
+	void EndGpuProfile();
+	void ReadGpuProfile();
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 
@@ -210,6 +215,11 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
 	uint32_t shadowMapSrvHandle_ = 0;
 	// シャドウマップの解像度（とりあえず1024x1024。綺麗にしたいなら2048や4096に）
-	static const int kShadowMapWidth = 1024;
-	static const int kShadowMapHeight = 1024;
+	static const int kShadowMapWidth = 2048;
+	static const int kShadowMapHeight = 2048;
+	//Gpuの時間計測用
+	Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
+	uint64_t gpuFrequency_ = 0; // GPUのタイマーの周波数
+	float gpuDrawTimeMs_ = 0.0f; // 計測結果（ミリ秒）
 };

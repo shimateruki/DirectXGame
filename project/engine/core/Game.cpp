@@ -332,6 +332,14 @@ void Game::Update() {
         ImGui::Begin("ステータス", &showTimeController_);
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
         ImGui::SliderFloat("時間倍率", &timeScale_, 0.0f, 2.0f);
+        ImGui::Separator();
+        ImGui::Text("--- CPU Profiler ---");
+        ImGui::Text("Scene Update : %.3f ms", sceneUpdateTimeMs_);
+        ImGui::ProgressBar(sceneUpdateTimeMs_ / 16.66f, ImVec2(0.f, 0.f));
+        ImGui::PlotLines("##UpdateGraph", updateTimeHistory_, 120, timeHistoryIndex_,
+            "Update Time (ms)", 0.0f, 16.66f, ImVec2(ImGui::GetContentRegionAvail().x, 80.0f));
+        ImGui::Text("GPU Draw   : %.3f ms", dxCommon_->GetGpuDrawTimeMs());
+        ImGui::ProgressBar(dxCommon_->GetGpuDrawTimeMs() / 16.66f, ImVec2(0.f, 0.f));
         ImGui::End();
     }
   
@@ -339,19 +347,34 @@ void Game::Update() {
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }
 #endif
-
+    // ↓ 計測開始
+    auto startUpdate = std::chrono::high_resolution_clock::now();
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     postEffect_->GetParams()->time += deltaTime;
     if (sceneManager_) {
         sceneManager_->SetIsPlaying(isPlaying_);
     }
+    // ↓ 計測終了
+    auto endUpdate = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float, std::milli> updateDuration = endUpdate - startUpdate;
+    sceneUpdateTimeMs_ = updateDuration.count(); // ミリ秒で保存
+    updateTimeHistory_[timeHistoryIndex_] = sceneUpdateTimeMs_;
+    timeHistoryIndex_ = (timeHistoryIndex_ + 1) % 120;
 }
 void Game::Draw() {
+    // ★ 前フレームのGPUの計測結果を読み取る
+    dxCommon_->ReadGpuProfile();
+
+    // CPUプロファイラ開始
+    auto startDraw = std::chrono::high_resolution_clock::now();
+
 #ifdef USE_IMGUI
     // =================================================================
     // パターンA: エディタモード (Develop / Debug)
     // =================================================================
+
+
 
     // ---------------------------------------------------------------
     // 1. シーンレンダリング (オフスクリーン描画)
@@ -359,6 +382,8 @@ void Game::Draw() {
     dxCommon_->PreDrawRenderTexture();
     dxCommon_->PreDrawShadow();
     SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
+    // ★ GPUストップウォッチ開始！
+    dxCommon_->StartGpuProfile();
     if (sceneManager_) {
         sceneManager_->DrawShadow();
     }
@@ -426,6 +451,9 @@ void Game::Draw() {
     if (spriteDebugEditor_) { spriteDebugEditor_->Draw(); }
     ImGuiManager::GetInstance()->Draw();
 
+    // ★ GPUストップウォッチ終了！ (PostDrawの直前)
+    dxCommon_->EndGpuProfile();
+
     dxCommon_->PostDraw();
     ImGuiManager::GetInstance()->EndFrame();
 
@@ -434,8 +462,12 @@ void Game::Draw() {
     // パターンB: ゲームモード (Release)
     // =================================================================
 
+
     // 1. シーンレンダリング
     dxCommon_->PreDrawRenderTexture();
+
+    // ★ GPUストップウォッチ開始！
+    dxCommon_->StartGpuProfile();
     if (sceneManager_) { sceneManager_->Draw(); }
     dxCommon_->PostDrawRenderTexture();
 
@@ -480,9 +512,20 @@ void Game::Draw() {
         sceneManager_->DrawUI();
     }
 
+    // ★ GPUストップウォッチ終了！ (PostDrawの直前)
+    dxCommon_->EndGpuProfile();
+
     dxCommon_->PostDraw();
 
 #endif
+
+    // CPU側のプロファイリング終了
+    auto endDraw = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float, std::milli> drawDuration = endDraw - startDraw;
+    drawTimeMs_ = drawDuration.count();
+
+    // 履歴の保存 (Draw用)
+    drawTimeHistory_[timeHistoryIndex_] = drawTimeMs_;
 
     // FPS固定処理
     dxCommon_->UpdateFixFPS();
