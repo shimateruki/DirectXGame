@@ -4,9 +4,10 @@
 #include "engine/utility/math/Math.h"
 #include "DebugConsole.h"
 #include "SceneManager.h"
-#include <sstream> // 数字を文字にする用
+#include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cmath> // std::fmod, std::expf, std::cos
 
 // ========================================================
 // ヘルパ: 小文字化
@@ -103,7 +104,7 @@ static void TryFindFeet(Player* player, Object3d*& leftOut, Object3d*& rightOut)
 }
 
 // ========================================================
-// 再帰検索 - 腕(Arm)を探すヘルパー
+// 再帰検索: 腕を探すヘルパー
 // ========================================================
 static void FindArmsRecursive(Object3d* node, Object3d*& leftArmOut, Object3d*& rightArmOut) {
     if (!node) return;
@@ -161,7 +162,6 @@ static void FindArmsInSceneByName(Player* player, Object3d*& leftArmOut, Object3
     }
 }
 
-// try helpers
 static void TryFindArms(Player* player, Object3d*& leftArmOut, Object3d*& rightArmOut) {
     if (!player) return;
     FindArmsRecursive(player, leftArmOut, rightArmOut);
@@ -170,7 +170,7 @@ static void TryFindArms(Player* player, Object3d*& leftArmOut, Object3d*& rightA
 }
 
 // ========================================================
-// 新規: 剣 (Sword) 探索ヘルパー（位置のみ操作する）
+// 剣の探索ヘルパー
 // ========================================================
 static void FindSwordRecursive(Object3d* node, Object3d*& swordOut) {
     if (!node) return;
@@ -207,18 +207,55 @@ static void TryFindSword(Player* player, Object3d*& swordOut) {
 }
 
 // ========================================================
+//  頭の探索ヘルパー
+// ========================================================
+static void FindHeadRecursive(Object3d* node, Object3d*& headOut) {
+    if (!node) return;
+    const auto& children = node->GetChildren();
+    for (Object3d* child : children) {
+        if (!child) continue;
+        std::string name = ToLower(child->GetName());
+        if (name.find("head") != std::string::npos || name.find("neck") != std::string::npos) {
+            headOut = child;
+            return;
+        }
+        FindHeadRecursive(child, headOut);
+        if (headOut) return;
+    }
+}
+static void FindHeadInSceneByName(Player* player, Object3d*& headOut) {
+    if (!SceneManager::GetInstance()) return;
+    auto scene = SceneManager::GetInstance()->GetCurrentScene();
+    if (!scene) return;
+    for (auto& obj : scene->GetObjects()) {
+        if (!obj) continue;
+        std::string n = ToLower(obj->GetName());
+        if (n.find("head") != std::string::npos || n.find("neck") != std::string::npos) {
+            headOut = obj.get();
+            return;
+        }
+    }
+}
+static void TryFindHead(Player* player, Object3d*& headOut) {
+    if (!player) return;
+    FindHeadRecursive(player, headOut);
+    if (headOut) return;
+    FindHeadInSceneByName(player, headOut);
+}
+
+// ========================================================
 // 待機状態 (Idle)
 // ========================================================
 void PlayerStateIdle::Enter(Player* player) {
     player->PlayAnimation("Idle", false); // Tポーズ
-    DebugConsole::GetInstance()->AddLog("★ ENTER: Idle State (searching feet/arms/sword)");
+    DebugConsole::GetInstance()->AddLog("★ ENTER: Idle State (searching feet/arms/sword/head)");
 
     // 初期化
     leftFootObj_ = nullptr;
     rightFootObj_ = nullptr;
     leftFootSaved_ = false;
     rightFootSaved_ = false;
-    footTimer_ = 0.0f;
+    animTimer_ = 0.0f;
     footStage_ = 0;
 
     // --- arms 初期化 ---
@@ -234,6 +271,11 @@ void PlayerStateIdle::Enter(Player* player) {
     swordSaved_ = false;
     swordDefaultLocalPos_ = {0,0,0};
     swordDefaultWorldPos_ = {0,0,0};
+
+    // --- head 初期化 ---
+    headObj_ = nullptr;
+    headSaved_ = false;
+    headDefaultRot_ = {0,0,0};
 
     // すぐに見つかれば保存する (見つからなければ Update で再試行)
     TryFindFeet(player, leftFootObj_, rightFootObj_);
@@ -274,7 +316,7 @@ void PlayerStateIdle::Enter(Player* player) {
     // --- 剣の探索・位置保存 ---
     TryFindSword(player, swordObj_);
     if (swordObj_) {
-        // ローカルとワールドの両方を記録しておく（アニメーションは無効化する）
+        // ローカルとワールドの両方を記録しておく
         swordDefaultLocalPos_ = swordObj_->GetTransform()->translate;
         swordDefaultWorldPos_ = swordObj_->GetWorldPosition();
         swordSaved_ = true;
@@ -288,14 +330,31 @@ void PlayerStateIdle::Enter(Player* player) {
         DebugConsole::GetInstance()->AddLog("PlayerStateIdle: Sword not found.");
     }
 
+    // --- 頭の探索・保存 ---
+    TryFindHead(player, headObj_);
+    if (headObj_) {
+        headDefaultRot_ = headObj_->GetRotation();
+        headSaved_ = true;
+        DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Found head = ") + headObj_->GetName());
+    } else {
+        DebugConsole::GetInstance()->AddLog("PlayerStateIdle: Head not found.");
+    }
+
     // 初期ステートパラメータ初期化
-    footTimer_ = 0.0f;
-    footStage_ = 0; // 0: toward target, 1: back to default
+    animTimer_ = 0.0f;
+    footStage_ = 0;
 }
 
 // 緩やかな線形補間ヘルパー
 static Vector3 LerpVec(const Vector3& a, const Vector3& b, float t) {
     return { a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
+}
+
+// イージング
+static float EaseInOutSine(float t) {
+    // t in [0,1]
+    const float pi = 3.14159265358979323846f;
+    return 0.5f * (1.0f - std::cos(pi * t));
 }
 
 void PlayerStateIdle::Update(Player* player) {
@@ -308,173 +367,52 @@ void PlayerStateIdle::Update(Player* player) {
         return;
     }
 
-    // 足パーツが見つかっていなければ毎フレーム再探索する（LevelLoader の親付けタイミング対策）
+    // パーツ探索
     if (!leftFootObj_ || !rightFootObj_) {
         TryFindFeet(player, leftFootObj_, rightFootObj_);
-
         if (leftFootObj_ && !leftFootSaved_) {
             leftFootDefaultRot_ = leftFootObj_->GetRotation();
             leftFootSaved_ = true;
-            DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Late-found left foot = ") + leftFootObj_->GetName());
-            // reset animation so it starts cleanly after late discovery
-            footTimer_ = 0.0f; footStage_ = 0;
+            animTimer_ = 0.0f; footStage_ = 0;
         }
         if (rightFootObj_ && !rightFootSaved_) {
             rightFootDefaultRot_ = rightFootObj_->GetRotation();
             rightFootSaved_ = true;
-            DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Late-found right foot = ") + rightFootObj_->GetName());
-            footTimer_ = 0.0f; footStage_ = 0;
+            animTimer_ = 0.0f; footStage_ = 0;
         }
     }
 
-    // 腕を見つけられていなければ再探索
     if (!leftArmObj_ || !rightArmObj_) {
         TryFindArms(player, leftArmObj_, rightArmObj_);
         if (leftArmObj_ && !leftArmSaved_) {
             leftArmDefaultRot_ = leftArmObj_->GetRotation();
             leftArmSaved_ = true;
-            DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Late-found left arm = ") + leftArmObj_->GetName());
-            footTimer_ = 0.0f; footStage_ = 0;
+            animTimer_ = 0.0f; footStage_ = 0;
         }
         if (rightArmObj_ && !rightArmSaved_) {
             rightArmDefaultRot_ = rightArmObj_->GetRotation();
             rightArmSaved_ = true;
-            DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Late-found right arm = ") + rightArmObj_->GetName());
-            footTimer_ = 0.0f; footStage_ = 0;
+            animTimer_ = 0.0f; footStage_ = 0;
         }
     }
 
-    // 剣が見つかっていなければ再探索（位置のみ扱う）
     if (!swordObj_) {
         TryFindSword(player, swordObj_);
         if (swordObj_ && !swordSaved_) {
             swordDefaultLocalPos_ = swordObj_->GetTransform()->translate;
             swordDefaultWorldPos_ = swordObj_->GetWorldPosition();
             swordSaved_ = true;
-            DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Late-found sword = ") + swordObj_->GetName());
-            footTimer_ = 0.0f; footStage_ = 0;
-            // Ensure default placement
-            Transform* tf = swordObj_->GetTransform();
-            tf->translate = swordDefaultLocalPos_;
-            swordObj_->UpdateLocalMatrix();
-            swordObj_->UpdateWorldMatrix();
+            animTimer_ = 0.0f; footStage_ = 0;
         }
     }
 
-    // 足・腕アニメーション: デフォルト <-> 目標 を往復ループ
-    // 固定刻みで近似
-    const float kFixedDelta = 1.0f / 60.0f;
-    footTimer_ += kFixedDelta;
-    float t = footDuration_ > 0.0f ? (footTimer_ / footDuration_) : 1.0f;
-    if (t > 1.0f) t = 1.0f;
-
-    auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
-
-    // 目標値の設定（度 -> ラジアン）
-    float armZRightDeg = 5.0f;   // 右腕 z +5deg
-    float armZLeftDeg  = -5.0f;  // 左腕 z -5deg
-    float armZRightRad = DegToRad(armZRightDeg);
-    float armZLeftRad  = DegToRad(armZLeftDeg);
-
-    // --- 足・腕の処理 ---
-    if (footStage_ == 0) {
-        // デフォルト -> 目標
-        if (leftFootObj_) {
-            Vector3 r = leftFootDefaultRot_;
-            r.x = leftFootDefaultRot_.x + targetAngleRad_ * t;
-            Transform* tf = leftFootObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            leftFootObj_->UpdateWorldMatrix();
+    if (!headObj_) {
+        TryFindHead(player, headObj_);
+        if (headObj_ && !headSaved_) {
+            headDefaultRot_ = headObj_->GetRotation();
+            headSaved_ = true;
+            animTimer_ = 0.0f; footStage_ = 0;
         }
-        if (rightFootObj_) {
-            Vector3 r = rightFootDefaultRot_;
-            r.x = rightFootDefaultRot_.x + targetAngleRad_ * t;
-            Transform* tf = rightFootObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            rightFootObj_->UpdateWorldMatrix();
-        }
-
-        // 腕: デフォルト -> 目標 (z軸回転の加算)
-        if (leftArmObj_) {
-            Vector3 r = leftArmDefaultRot_;
-            r.z = leftArmDefaultRot_.z + armZLeftRad * t;
-            Transform* tf = leftArmObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            leftArmObj_->UpdateWorldMatrix();
-        }
-        if (rightArmObj_) {
-            Vector3 r = rightArmDefaultRot_;
-            r.z = rightArmDefaultRot_.z + armZRightRad * t;
-            Transform* tf = rightArmObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            rightArmObj_->UpdateWorldMatrix();
-        }
-
-        if (t >= 1.0f) {
-            footStage_ = 1;
-            footTimer_ = 0.0f;
-        }
-    } else { // footStage_ == 1 : 目標 -> デフォルト（戻す）
-        if (leftFootObj_) {
-            Vector3 r = leftFootDefaultRot_;
-            r.x = leftFootDefaultRot_.x + targetAngleRad_ * (1.0f - t);
-            Transform* tf = leftFootObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            leftFootObj_->UpdateWorldMatrix();
-        }
-        if (rightFootObj_) {
-            Vector3 r = rightFootDefaultRot_;
-            r.x = rightFootDefaultRot_.x + targetAngleRad_ * (1.0f - t);
-            Transform* tf = rightFootObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            rightFootObj_->UpdateWorldMatrix();
-        }
-
-        // 腕: 目標 -> デフォルト
-        if (leftArmObj_) {
-            Vector3 r = leftArmDefaultRot_;
-            r.z = leftArmDefaultRot_.z + armZLeftRad * (1.0f - t);
-            Transform* tf = leftArmObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            leftArmObj_->UpdateWorldMatrix();
-        }
-        if (rightArmObj_) {
-            Vector3 r = rightArmDefaultRot_;
-            r.z = rightArmDefaultRot_.z + armZRightRad * (1.0f - t);
-            Transform* tf = rightArmObj_->GetTransform();
-            tf->rotate = r;
-            tf->quaternion = Math::EulerToQuaternion(r);
-            tf->isQuaternionMaster = true;
-            rightArmObj_->UpdateWorldMatrix();
-        }
-
-        if (t >= 1.0f) {
-            // ループさせるために再びステージ0へ戻す
-            footStage_ = 0;
-            footTimer_ = 0.0f;
-        }
-    }
-
-    // --- 剣アニメーション無効化: 毎フレームデフォルトローカル位置に戻す ---
-    if (swordObj_ && swordSaved_) {
-        Transform* tf = swordObj_->GetTransform();
-        tf->translate = swordDefaultLocalPos_;
-        swordObj_->UpdateLocalMatrix();
-        swordObj_->UpdateWorldMatrix();
     }
 }
 
@@ -509,6 +447,15 @@ void PlayerStateIdle::Exit(Player* player) {
         tf->quaternion = Math::EulerToQuaternion(rightArmDefaultRot_);
         tf->isQuaternionMaster = true;
         rightArmObj_->UpdateWorldMatrix();
+    }
+
+    // 頭をデフォルトへ戻す
+    if (headObj_ && headSaved_) {
+        Transform* tf = headObj_->GetTransform();
+        tf->rotate = headDefaultRot_;
+        tf->quaternion = Math::EulerToQuaternion(headDefaultRot_);
+        tf->isQuaternionMaster = true;
+        headObj_->UpdateWorldMatrix();
     }
 
     // 剣をデフォルト位置へ戻す（ローカル優先で復元）
@@ -546,10 +493,109 @@ void PlayerStateRun::Update(Player* player) {
         DebugConsole::GetInstance()->AddLog("SUCCESS! Transitioning to Idle...");
         player->ChangeState(std::make_unique<PlayerStateIdle>());
     } else {
-        // ここが出ているなら、速度が0.1より大きい（スティックのドリフトなどの可能性）
+        // ここが出ているなら、速度が0.1より大きい
     }
 }
 
 void PlayerStateRun::Exit(Player* player) {
     DebugConsole::GetInstance()->AddLog("EXIT: Run State");
+}
+
+// Character::Update 後に呼ばれる。頭の回転を 0deg -> -1deg に滑らかに補間して適用する
+void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime) {
+    if (deltaTime <= 0.0f) return;
+
+    // 1) アニメタイマーを実時間ベースで進める（連続位相）
+    animTimer_ += deltaTime;
+
+    // ping-pong 位相 (0..1..0)
+    float twoDur = animDuration_ * 2.0f;
+    float local = (twoDur > 1e-6f) ? std::fmod(animTimer_, twoDur) : 0.0f;
+    float t = (animDuration_ > 0.0f) ? (local / animDuration_) : 1.0f;
+    if (t > 1.0f) t = 2.0f - t;
+
+    // イージング（足・腕と同じ EaseInOutSine を利用）
+    float e = EaseInOutSine(t);
+
+    auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
+
+    // --- 足・腕アニメーション（イージング適用） ---
+    float targetAngle = targetAngleRad_; // 例: 3度 -> ラジアンで保持
+    float armZRightRad = DegToRad(5.0f);
+    float armZLeftRad  = DegToRad(-5.0f);
+
+    if (leftFootObj_ && leftFootSaved_) {
+        Vector3 r = leftFootDefaultRot_;
+        r.x = leftFootDefaultRot_.x + targetAngle * e;
+        Transform* tf = leftFootObj_->GetTransform();
+        tf->quaternion = Math::EulerToQuaternion(r);
+        tf->isQuaternionMaster = true;
+        leftFootObj_->UpdateWorldMatrix();
+    }
+    if (rightFootObj_ && rightFootSaved_) {
+        Vector3 r = rightFootDefaultRot_;
+        r.x = rightFootDefaultRot_.x + targetAngle * e;
+        Transform* tf = rightFootObj_->GetTransform();
+        tf->quaternion = Math::EulerToQuaternion(r);
+        tf->isQuaternionMaster = true;
+        rightFootObj_->UpdateWorldMatrix();
+    }
+
+    if (leftArmObj_ && leftArmSaved_) {
+        Vector3 r = leftArmDefaultRot_;
+        r.z = leftArmDefaultRot_.z + armZLeftRad * e;
+        Transform* tf = leftArmObj_->GetTransform();
+        tf->quaternion = Math::EulerToQuaternion(r);
+        tf->isQuaternionMaster = true;
+        leftArmObj_->UpdateWorldMatrix();
+    }
+    if (rightArmObj_ && rightArmSaved_) {
+        Vector3 r = rightArmDefaultRot_;
+        r.z = rightArmDefaultRot_.z + armZRightRad * e;
+        Transform* tf = rightArmObj_->GetTransform();
+        tf->quaternion = Math::EulerToQuaternion(r);
+        tf->isQuaternionMaster = true;
+        rightArmObj_->UpdateWorldMatrix();
+    }
+
+    // --- 剣: 毎フレームローカル位置をデフォルトに戻す（アニメ無効化） ---
+    if (swordObj_ && swordSaved_) {
+        Transform* tf = swordObj_->GetTransform();
+        tf->translate = swordDefaultLocalPos_;
+        swordObj_->UpdateLocalMatrix();
+        swordObj_->UpdateWorldMatrix();
+    }
+
+    // --- 頭: イージング位相に基づく目標角を作り、Slerpで滑らかに追従 ---
+    if (headObj_ && headSaved_) {
+        // 位相 0..pi で cos による +1 -> -1 -> +1
+        const float pi = 3.14159265358979323846f;
+        float phase = t * pi;
+        float h = std::cos(phase);
+
+        Vector3 targetEuler = headDefaultRot_;
+        // 振幅は ±2度に設定済み
+        float headAmpRad = DegToRad(2.0f);
+        targetEuler.x = headDefaultRot_.x + h * headAmpRad;
+
+        Quaternion targetQ = Math::EulerToQuaternion(targetEuler);
+
+        Transform* tf = headObj_->GetTransform();
+        Quaternion currentQ = tf->quaternion;
+
+        // フレーム独立の追従係数（指数減衰）
+        float alpha = 1.0f - std::expf(-headSmoothSpeed_ * deltaTime);
+        alpha = std::clamp(alpha, 0.0f, 1.0f);
+
+        Quaternion blendedQ = Math::Slerp(currentQ, targetQ, alpha);
+
+        tf->quaternion = blendedQ;
+        tf->isQuaternionMaster = true;
+
+        // Euler 同期（表示一貫性のため）
+        Matrix4x4 rotMat = Math::MakeRotateQuaternionMatrix(blendedQ);
+        tf->rotate = Math::MatrixToEuler(rotMat);
+
+        headObj_->UpdateWorldMatrix();
+    }
 }

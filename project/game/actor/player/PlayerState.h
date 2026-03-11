@@ -1,8 +1,8 @@
 #pragma once
 #include "IAnimationState.h"
-#include "engine/utility/math/Math.h" // Vector3, Math
+#include "engine/utility/math/Math.h" 
 
-// 前方宣言（Object3d をここで宣言しておく）
+// 前方宣言
 class Object3d;
 
 // --------------------------------------------------------
@@ -11,8 +11,12 @@ class Object3d;
 class PlayerStateIdle : public IAnimationState {
 public:
     void Enter(Player* player) override;
+    // 修正: IAnimationState の Update は deltaTime を受け取らないため、引数を削除
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
+    // Character::Update 後に呼ばれる「最終上書き」処理（頭の滑らか補間）
+    void ApplyPostUpdate(Player* player, float deltaTime);
 
 private:
     // 足のID管理（見つからなければ nullptr のまま）
@@ -27,7 +31,7 @@ private:
     bool leftFootSaved_ = false;
     bool rightFootSaved_ = false;
 
-    // --- 追加: 腕 (Arm) 管理 ---
+    // --- 腕 (Arm) 管理 ---
     Object3d* leftArmObj_ = nullptr;
     Object3d* rightArmObj_ = nullptr;
     Vector3 leftArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
@@ -35,20 +39,29 @@ private:
     bool leftArmSaved_ = false;
     bool rightArmSaved_ = false;
 
-    // --- 追加: 剣 (Sword) 管理 (位置のみアニメーション) ---
+    // --- 剣の管理 ---
     Object3d* swordObj_ = nullptr;
-    // 保存: ローカルのデフォルト座標（剣の Transform.translate）
+    // ローカルのデフォルト座標（剣の Transform.translate）
     Vector3 swordDefaultLocalPos_{ 0.0f, 0.0f, 0.0f };
-    // 保存: ワールドのデフォルト座標（GetWorldPosition）
+    // ワールドのデフォルト座標（GetWorldPosition）
     Vector3 swordDefaultWorldPos_{ 0.0f, 0.0f, 0.0f };
     bool swordSaved_ = false;
-    // 注意: 剣は足/腕と同じ補間係数 `t` を使う（swordDuration_ を独立させない）。
 
-    // アニメーション制御
-    float footTimer_ = 0.0f;
-    float footDuration_ = 0.25f; // 足・腕（および剣）の往復にかける時間(秒)
-    int footStage_ = 0; // 0=to target, 1=to default
-    float targetAngleRad_ = 3.0f * 3.14159265f / 180.0f; // 3度 をラジアンに変換
+    // --- 頭の管理 ---
+    Object3d* headObj_ = nullptr;
+    Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    bool headSaved_ = false;
+
+    // アニメーションの共通時間管理（足・腕・頭を統一）
+    float animTimer_ = 0.0f;
+    float animDuration_ = 1.0f; // 1回の「片道」にかける時間（秒）。全往復は 2 * animDuration_。
+
+	// 足・腕のアニメーション段階管理
+    int footStage_ = 0; 
+    float targetAngleRad_ = 3.0f * 3.14159265f / 180.0f; // 3度をラジアンに変換
+
+    // 頭の滑らか係数（大きいほど早く追従する。目安: 4.0〜12.0）
+    float headSmoothSpeed_ = 8.0f;
 };
 
 // --------------------------------------------------------
