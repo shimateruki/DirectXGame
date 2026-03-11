@@ -40,4 +40,5 @@ private:
     Vector3 emitArea_ = { 0.0f, 0.0f, 0.0f }; // 発生範囲
     // 保存するJSONのファイル名
     char presetName_[64] = "BossExplosion";
+    int blendModeIndex_ = 0; // 0: Add, 1: Alpha
 };

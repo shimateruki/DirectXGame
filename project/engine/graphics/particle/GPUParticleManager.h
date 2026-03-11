@@ -34,7 +34,10 @@ public:
         Vector3 wind;
         float turbulence;
     };
-
+    enum class BlendMode {
+        kAdd,   // 加算合成（光る魔法や炎）
+        kAlpha, // 半透明合成（霧や煙、砂埃）
+    };
     // 圧倒的暴力：10万個のパーティクル
     static const uint32_t kMaxParticles = 100000;
 
@@ -54,6 +57,8 @@ public:
         envWind_ = wind;
         envTurbulence_ = turbulence;
     }
+
+    void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
 private:
     GPUParticleManager() = default;
     ~GPUParticleManager() = default;
@@ -72,7 +77,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> graphicsRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
-
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAdd_;   // 加算用
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAlpha_; // 霧用
     // --- GPUメモリ (UAV: 読み書き可能バッファ) ---
     Microsoft::WRL::ComPtr<ID3D12Resource> particleBuffer_;
 
@@ -100,5 +106,6 @@ private:
     float envDrag_ = 0.98f;
     Vector3 envWind_ = { 0.0f, 0.0f, 0.0f };
     float envTurbulence_ = 0.0f;
-
+    // 現在のブレンドモード
+    BlendMode blendMode_ = BlendMode::kAdd;
 };

@@ -12,6 +12,7 @@ void GPUParticleEditor::Initialize() {
 
 void GPUParticleEditor::Update(float deltaTime) {
     GPUParticleManager::GetInstance()->SetEnvironmentParams(envGravity_, envDrag_, envWind_, envTurbulence_);
+    GPUParticleManager::GetInstance()->SetBlendMode(static_cast<GPUParticleManager::BlendMode>(blendModeIndex_));
     if (isLooping_) {
         emitTimer_ += deltaTime;
         if (emitTimer_ >= emitInterval_) {
@@ -25,60 +26,68 @@ void GPUParticleEditor::Update(float deltaTime) {
 }
 
 void GPUParticleEditor::DrawImGui() {
-    ImGui::Text("--- GPU Particle Editor ---");
+    ImGui::Text("--- GPUパーティクルエディタ ---");
 
-    if (ImGui::CollapsingHeader("Emit Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat3("Position", &emitPos_.x, 0.1f);
-        ImGui::DragFloat3("Emit Area", &emitArea_.x, 0.1f);
-        ImGui::DragFloat3("Velocity", &emitVelocity_.x, 0.1f);
-        ImGui::DragInt("Emit Count", &emitCount_, 10, 1, GPUParticleManager::kMaxParticles);
-        ImGui::DragFloat("Life Time", &emitLife_, 0.05f, 0.1f, 10.0f);
-        ImGui::DragFloat("Velocity Variance", &velocityVariance_, 0.1f, 0.0f, 50.0f);
-        ImGui::ColorEdit4("Base Color", &baseColor_.x);
+    if (ImGui::CollapsingHeader("発生パラメータ (Emit Parameters)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const char* blendModes[] = { "加算 (光・魔法)", "半透明 (霧・煙)" };
+        ImGui::Combo("合成モード (Blend Mode)", &blendModeIndex_, blendModes, IM_ARRAYSIZE(blendModes));
+        ImGui::Separator();
 
+        ImGui::DragFloat3("発生位置 (Position)", &emitPos_.x, 0.1f);
+        ImGui::DragFloat3("発生範囲 (Area)", &emitArea_.x, 0.1f);
+        ImGui::DragFloat3("初期速度 (Velocity)", &emitVelocity_.x, 0.1f);
+        ImGui::DragInt("発生数 (Count)", &emitCount_, 10, 1, GPUParticleManager::kMaxParticles);
+        ImGui::DragFloat("寿命 (Life Time)", &emitLife_, 0.05f, 0.1f, 10.0f);
+        ImGui::DragFloat("速度のばらつき (Variance)", &velocityVariance_, 0.1f, 0.0f, 50.0f);
+        ImGui::ColorEdit4("基本色 (Base Color)", &baseColor_.x);
+
+        // ★隙間をなくすための超重要パラメータを復活！
+        //ImGui::DragFloat("発生時の大きさ (Base Size)", &baseSize_, 0.1f, 0.1f, 50.0f);
+        //ImGui::DragFloat("消滅時の大きさ (End Size)", &endSize_, 0.1f, 0.1f, 50.0f);
     }
-    if (ImGui::CollapsingHeader("Environment (Real-time)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat3("Gravity", &envGravity_.x, 0.01f);
-        ImGui::DragFloat("Air Drag", &envDrag_, 0.001f, 0.8f, 1.0f);
-        ImGui::DragFloat3("Wind", &envWind_.x, 0.1f);
-        ImGui::DragFloat("Turbulence (ノイズのうねり)", &envTurbulence_, 0.1f, 0.0f, 100.0f);
+
+    if (ImGui::CollapsingHeader("環境変化 (Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::DragFloat3("重力 (Gravity)", &envGravity_.x, 0.01f);
+        ImGui::DragFloat("空気抵抗 (Air Drag)", &envDrag_, 0.001f, 0.8f, 1.0f);
+        ImGui::DragFloat3("風 (Wind)", &envWind_.x, 0.1f);
+        ImGui::DragFloat("乱流・ノイズ (Turbulence)", &envTurbulence_, 0.1f, 0.0f, 100.0f);
     }
     ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("Editor Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::Button("Emit Once (1回発生)", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
+    if (ImGui::CollapsingHeader("エディタ操作 (Editor Controls)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button("1回発生 (Emit Once)", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
             GPUParticleManager::GetInstance()->Emit(
                 emitPos_, emitArea_, emitVelocity_, emitCount_,
                 emitLife_, velocityVariance_, baseColor_
             );
         }
 
-        ImGui::Checkbox("Loop Emit (連続発生テスト)", &isLooping_);
+        ImGui::Checkbox("連続発生テスト (Loop Emit)", &isLooping_);
         if (isLooping_) {
             ImGui::Indent();
-            ImGui::DragFloat("Emit Interval", &emitInterval_, 0.01f, 0.01f, 2.0f);
+            ImGui::DragFloat("発生間隔 (Interval)", &emitInterval_, 0.01f, 0.01f, 2.0f);
             ImGui::Unindent();
         }
     }
 
     ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("Save & Load (JSON)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::InputText("Preset Name", presetName_, sizeof(presetName_));
+    if (ImGui::CollapsingHeader("保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::InputText("プリセット名", presetName_, sizeof(presetName_));
 
-        if (ImGui::Button("Save Preset", ImVec2(120, 0))) {
+        if (ImGui::Button("保存 (Save)", ImVec2(120, 0))) {
             Save(presetName_);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Load Preset", ImVec2(120, 0))) {
+        if (ImGui::Button("読み込み (Load)", ImVec2(120, 0))) {
             Load(presetName_);
         }
     }
 }
-
 void GPUParticleEditor::Save(const std::string& presetName) {
     json j;
     j["emitPos"] = { emitPos_.x, emitPos_.y, emitPos_.z };
+    j["emitArea"] = { emitArea_.x, emitArea_.y, emitArea_.z };
     j["emitVelocity"] = { emitVelocity_.x, emitVelocity_.y, emitVelocity_.z };
     j["emitCount"] = emitCount_;
     j["emitLife"] = emitLife_;
@@ -109,6 +118,9 @@ void GPUParticleEditor::Load(const std::string& presetName) {
 
         if (j.contains("emitPos")) {
             emitPos_.x = j["emitPos"][0]; emitPos_.y = j["emitPos"][1]; emitPos_.z = j["emitPos"][2];
+        }
+        if (j.contains("emitArea")) {
+            emitArea_.x = j["emitArea"][0]; emitArea_.y = j["emitArea"][1]; emitArea_.z = j["emitArea"][2];
         }
         if (j.contains("emitVelocity")) {
             emitVelocity_.x = j["emitVelocity"][0]; emitVelocity_.y = j["emitVelocity"][1]; emitVelocity_.z = j["emitVelocity"][2];
