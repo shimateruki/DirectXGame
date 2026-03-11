@@ -274,11 +274,16 @@ void PlayerStateIdle::Enter(Player* player) {
     // --- 剣の探索・位置保存 ---
     TryFindSword(player, swordObj_);
     if (swordObj_) {
-        // ローカルとワールドの両方を記録しておく
+        // ローカルとワールドの両方を記録しておく（アニメーションは無効化する）
         swordDefaultLocalPos_ = swordObj_->GetTransform()->translate;
         swordDefaultWorldPos_ = swordObj_->GetWorldPosition();
         swordSaved_ = true;
         DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Found sword = ") + swordObj_->GetName());
+        // 明示的にデフォルト位置へ戻す（念のため）
+        Transform* tf = swordObj_->GetTransform();
+        tf->translate = swordDefaultLocalPos_;
+        swordObj_->UpdateLocalMatrix();
+        swordObj_->UpdateWorldMatrix();
     } else {
         DebugConsole::GetInstance()->AddLog("PlayerStateIdle: Sword not found.");
     }
@@ -348,10 +353,15 @@ void PlayerStateIdle::Update(Player* player) {
             swordSaved_ = true;
             DebugConsole::GetInstance()->AddLog(std::string("PlayerStateIdle: Late-found sword = ") + swordObj_->GetName());
             footTimer_ = 0.0f; footStage_ = 0;
+            // Ensure default placement
+            Transform* tf = swordObj_->GetTransform();
+            tf->translate = swordDefaultLocalPos_;
+            swordObj_->UpdateLocalMatrix();
+            swordObj_->UpdateWorldMatrix();
         }
     }
 
-    // 足・腕・剣アニメーション: デフォルト <-> 目標 を往復ループ
+    // 足・腕アニメーション: デフォルト <-> 目標 を往復ループ
     // 固定刻みで近似
     const float kFixedDelta = 1.0f / 60.0f;
     footTimer_ += kFixedDelta;
@@ -366,24 +376,7 @@ void PlayerStateIdle::Update(Player* player) {
     float armZRightRad = DegToRad(armZRightDeg);
     float armZLeftRad  = DegToRad(armZLeftDeg);
 
-    // 剣のローカルオフセット（"手のローカル空間" におけるオフセット）
-    Vector3 swordLocalOffset = { 0.45f, -1.1f, 0.45f }; // ← 修正: 目標座標を指定値に変更
-
-    // --- 目標ワールド位置を算出 ---
-    Vector3 swordTargetWorld = swordDefaultWorldPos_; // fallback
-    if (rightArmObj_) {
-        // 右腕のワールド行列を使ってローカルオフセット -> ワールド座標に変換
-        const Matrix4x4& handWorld = rightArmObj_->GetWorldMatrix();
-        swordTargetWorld = Math::Transform(swordLocalOffset, handWorld);
-    } else {
-        // 右腕が無ければ、プレイヤーのワールド位置を基準にオフセットする（安全策）
-        if (player) {
-            Vector3 base = player->GetWorldPosition();
-            swordTargetWorld = { base.x + swordLocalOffset.x, base.y + swordLocalOffset.y, base.z + swordLocalOffset.z };
-        }
-    }
-
-    // 足の動き (同じ往復ループロジックを使う)
+    // --- 足・腕の処理 ---
     if (footStage_ == 0) {
         // デフォルト -> 目標
         if (leftFootObj_) {
@@ -423,26 +416,6 @@ void PlayerStateIdle::Update(Player* player) {
             tf->quaternion = Math::EulerToQuaternion(r);
             tf->isQuaternionMaster = true;
             rightArmObj_->UpdateWorldMatrix();
-        }
-
-        // 剣: 位置のみ デフォルト -> 目標（ワールド空間ベースで補間）
-        if (swordObj_) {
-            Transform* tf = swordObj_->GetTransform();
-            // 剣の親がいる場合はワールド->ローカルを使ってローカル目標を算出して補間
-            Object3d* parent = swordObj_->GetParent();
-            if (parent) {
-                Matrix4x4 invParent = Math::Inverse(parent->GetWorldMatrix());
-                Vector3 targetLocal = Math::Transform(swordTargetWorld, invParent);
-                Vector3 newLocal = LerpVec(swordDefaultLocalPos_, targetLocal, t);
-                tf->translate = newLocal;
-            } else {
-                // 親がなければ、Transform.translate をワールド座標として扱っているケース
-                Vector3 newWorld = LerpVec(swordDefaultWorldPos_, swordTargetWorld, t);
-                tf->translate = newWorld;
-            }
-            // 回転は変更しない
-            swordObj_->UpdateLocalMatrix();
-            swordObj_->UpdateWorldMatrix();
         }
 
         if (t >= 1.0f) {
@@ -489,28 +462,19 @@ void PlayerStateIdle::Update(Player* player) {
             rightArmObj_->UpdateWorldMatrix();
         }
 
-        // 剣: 目標 -> デフォルト（位置のみ）
-        if (swordObj_) {
-            Transform* tf = swordObj_->GetTransform();
-            Object3d* parent = swordObj_->GetParent();
-            if (parent) {
-                Matrix4x4 invParent = Math::Inverse(parent->GetWorldMatrix());
-                Vector3 targetLocal = Math::Transform(swordTargetWorld, invParent);
-                Vector3 newLocal = LerpVec(targetLocal, swordDefaultLocalPos_, t);
-                tf->translate = newLocal;
-            } else {
-                Vector3 newWorld = LerpVec(swordTargetWorld, swordDefaultWorldPos_, t);
-                tf->translate = newWorld;
-            }
-            swordObj_->UpdateLocalMatrix();
-            swordObj_->UpdateWorldMatrix();
-        }
-
         if (t >= 1.0f) {
             // ループさせるために再びステージ0へ戻す
             footStage_ = 0;
             footTimer_ = 0.0f;
         }
+    }
+
+    // --- 剣アニメーション無効化: 毎フレームデフォルトローカル位置に戻す ---
+    if (swordObj_ && swordSaved_) {
+        Transform* tf = swordObj_->GetTransform();
+        tf->translate = swordDefaultLocalPos_;
+        swordObj_->UpdateLocalMatrix();
+        swordObj_->UpdateWorldMatrix();
     }
 }
 
