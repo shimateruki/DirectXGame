@@ -10,7 +10,10 @@ struct Particle
     float3 velocity;
     float maxLife;
     float4 color;
-    
+    float scale; 
+    float rotation;
+    float rotSpeed;
+    float padding;
 };
 
 // Compute Shaderで計算した結果を "読み取り専用(t0)" として受け取る！
@@ -60,16 +63,20 @@ VSOutput main(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
     {
         output.pos = float4(0, 0, 0, 0);
         output.color = float4(0, 0, 0, 0);
-        output.uv = float2(0.0f, 0.0f); 
+        output.uv = float2(0.0f, 0.0f);
         return output;
     }
-    // パーティクルのサイズ (とりあえず1.0f)
-    float particleSize = 1.0f;
-    float3 localPos = positions[vertexID] * particleSize;
-    
+
+    float3 localPos = positions[vertexID] * p.scale;
+    float c = cos(p.rotation);
+    float s = sin(p.rotation);
+    float3 rotatedPos;
+    rotatedPos.x = localPos.x * c - localPos.y * s;
+    rotatedPos.y = localPos.x * s + localPos.y * c;
+    rotatedPos.z = localPos.z;
     // ビルボード（常にカメラの方を向かせる処理）
     // localPos を billboardMatrix で回転させる
-    float3 worldPos = p.position + mul(localPos, (float3x3) billboardMatrix);
+    float3 worldPos = p.position + mul(rotatedPos, (float3x3) billboardMatrix);
     
     // 最終的な画面上の座標に変換
     output.pos = mul(float4(worldPos, 1.0f), viewProj);

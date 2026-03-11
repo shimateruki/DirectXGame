@@ -160,6 +160,10 @@ void GPUParticleManager::Update(float deltaTime) {
      configData_->drag = envDrag_;
      configData_->wind = envWind_;
      configData_->turbulence = envTurbulence_;
+     configData_->baseSize = baseSize_;
+     configData_->endSize = endSize_;
+     configData_->rotSpeedVariance = rotSpeed_;
+     configData_->endColor = endColor_;
     // CPU側で設定するだけ（GPUへの送信はDrawで行う）
     configData_->emitCount = emitCountThisFrame_;
 }

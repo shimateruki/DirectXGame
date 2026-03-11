@@ -13,6 +13,8 @@ void GPUParticleEditor::Initialize() {
 void GPUParticleEditor::Update(float deltaTime) {
     GPUParticleManager::GetInstance()->SetEnvironmentParams(envGravity_, envDrag_, envWind_, envTurbulence_);
     GPUParticleManager::GetInstance()->SetBlendMode(static_cast<GPUParticleManager::BlendMode>(blendModeIndex_));
+    GPUParticleManager::GetInstance()->SetSizeParams(baseSize_, endSize_, rotSpeed_);
+    GPUParticleManager::GetInstance()->SetEndColor(endColor_);
     if (isLooping_) {
         emitTimer_ += deltaTime;
         if (emitTimer_ >= emitInterval_) {
@@ -40,10 +42,12 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat("寿命 (Life Time)", &emitLife_, 0.05f, 0.1f, 10.0f);
         ImGui::DragFloat("速度のばらつき (Variance)", &velocityVariance_, 0.1f, 0.0f, 50.0f);
         ImGui::ColorEdit4("基本色 (Base Color)", &baseColor_.x);
+        ImGui::ColorEdit4("消滅時の色 (End Color)", &endColor_.x);
+        ImGui::DragFloat("回転スピード (Rot Speed)", &rotSpeed_, 0.05f, 0.0f, 20.0f);
 
         // ★隙間をなくすための超重要パラメータを復活！
-        //ImGui::DragFloat("発生時の大きさ (Base Size)", &baseSize_, 0.1f, 0.1f, 50.0f);
-        //ImGui::DragFloat("消滅時の大きさ (End Size)", &endSize_, 0.1f, 0.1f, 50.0f);
+        ImGui::DragFloat("発生時の大きさ (Base Size)", &baseSize_, 0.1f, 0.1f, 50.0f);
+        ImGui::DragFloat("消滅時の大きさ (End Size)", &endSize_, 0.1f, 0.1f, 50.0f);
     }
 
     if (ImGui::CollapsingHeader("環境変化 (Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -97,6 +101,10 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["envDrag"] = envDrag_;
     j["envWind"] = { envWind_.x, envWind_.y, envWind_.z };
     j["envTurbulence"] = envTurbulence_;
+    j["baseSize"] = baseSize_;
+    j["endSize"] = endSize_;
+    j["rotSpeed"] = rotSpeed_;
+    j["endColor"] = { endColor_.x, endColor_.y, endColor_.z, endColor_.w };
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
     if (file.is_open()) {
@@ -139,6 +147,13 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("baseColor")) {
             baseColor_.x = j["baseColor"][0]; baseColor_.y = j["baseColor"][1];
             baseColor_.z = j["baseColor"][2]; baseColor_.w = j["baseColor"][3];
+        }
+        if (j.contains("baseSize")) baseSize_ = j["baseSize"];
+        if (j.contains("endSize")) endSize_ = j["endSize"];
+        if (j.contains("rotSpeed")) rotSpeed_ = j["rotSpeed"];
+        if (j.contains("endColor")) {
+            endColor_.x = j["endColor"][0]; endColor_.y = j["endColor"][1];
+            endColor_.z = j["endColor"][2]; endColor_.w = j["endColor"][3];
         }
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);

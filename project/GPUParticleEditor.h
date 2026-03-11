@@ -41,4 +41,8 @@ private:
     // 保存するJSONのファイル名
     char presetName_[64] = "BossExplosion";
     int blendModeIndex_ = 0; // 0: Add, 1: Alpha
+    float baseSize_ = 1.0f;
+    float endSize_ = 5.0f;
+	float rotSpeed_ = 0.0f;
+    Vector4 endColor_ = { 0.0f, 0.0f, 0.0f, 1.0f }; // 消滅時の色
 };

@@ -15,6 +15,10 @@ public:
         Vector3 velocity;
         float maxLife;
         Vector4 color;
+        float scale;       
+        float rotation;  
+        float rotSpeed;  
+        float padding;   
 
     };
     struct CSConfig {
@@ -33,6 +37,11 @@ public:
         float drag;
         Vector3 wind;
         float turbulence;
+        float baseSize;
+        float endSize;
+        float rotSpeedVariance; 
+        float padding2;
+        Vector4 endColor;
     };
     enum class BlendMode {
         kAdd,   // 加算合成（光る魔法や炎）
@@ -59,6 +68,12 @@ public:
     }
 
     void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
+    void SetSizeParams(float baseSize, float endSize, float rotSpeed) {
+        baseSize_ = baseSize;
+        endSize_ = endSize;
+        rotSpeed_ = rotSpeed;
+    }
+    void SetEndColor(const Vector4& endColor) { endColor_ = endColor; }
 private:
     GPUParticleManager() = default;
     ~GPUParticleManager() = default;
@@ -108,4 +123,9 @@ private:
     float envTurbulence_ = 0.0f;
     // 現在のブレンドモード
     BlendMode blendMode_ = BlendMode::kAdd;
+    float baseSize_ = 1.0f;
+    float endSize_ = 1.0f;
+    float rotSpeed_ = 1.0f; 
+    Vector4 endColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+
 };
