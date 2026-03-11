@@ -42,10 +42,14 @@ private:
     struct FlyingBlock {
         Object3d *block;
         Vector3 velocity;
+        Vector3 currentRot;// 現在の回転角度を記憶する！
+        int mode; // 0=飛翔中, 1=地面待機, 2=帰還中, 3=回収完了
+        int originalIndex; // 元の配列の番号(居場所)を記憶！
     };
 
     // 射出されたブロックのリスト
     std::vector<FlyingBlock> flyingBlocks_;
+    float returnDelayTimer_ = 0.0f;
 
     // ==================================================
     // ステート(状態)管理メソッド
@@ -58,6 +62,9 @@ private:
     
     // 新しく追加するアニメーション関数
     void UpdateAnimationSequence (float deltaTime);
+
+    // 飛んでいるブロックを専用で更新する関数
+    void UpdateFlyingBlocks (float deltaTime);
 
     // static だった変数をメンバ変数に移動
     int animPhase_ = 0;

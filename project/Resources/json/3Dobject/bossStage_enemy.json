@@ -32,8 +32,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "Slime",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.0,
@@ -58,6 +60,12 @@
                 -1.7394723892211914,
                 -2051.04443359375,
                 25.741918563842773
+            ],
+            "quaternion": [
+                0.0,
+                -0.9846673607826233,
+                0.0,
+                0.1744423657655716
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -102,7 +110,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 3
+                "type": 2
             },
             "collisionAttribute": 6,
             "collisionMask": 4294967295,
@@ -138,7 +146,7 @@
             "parentName": "",
             "position": [
                 -5.001794815063477,
-                3.9859519004821777,
+                2.9021353721618652,
                 -11.78464412689209
             ],
             "quaternion": [
@@ -154,7 +162,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -267,9 +275,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 3
+                "type": 2
             },
-            "collisionAttribute": 6,
+            "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -344,9 +352,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 3
+                "type": 2
             },
-            "collisionAttribute": 6,
+            "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -498,7 +506,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 3
+                "type": 2
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
@@ -575,9 +583,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 3
+                "type": 2
             },
-            "collisionAttribute": 6,
+            "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
