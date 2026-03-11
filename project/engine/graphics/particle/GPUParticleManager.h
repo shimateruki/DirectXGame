@@ -15,20 +15,38 @@ public:
         Vector3 velocity;
         float maxLife;
         Vector4 color;
-    };
+        float scale;       
+        float rotation;  
+        float rotSpeed;  
+        float padding;   
 
+    };
     struct CSConfig {
         float deltaTime;
         float time;
-        uint32_t startIndex; // 発生開始インデックス
-        uint32_t emitCount;  // 何個発生させるか
-        Vector3 emitPos;     // 発生させる座標
-        float emitLife;      // パーティクルの寿命
-        Vector3 emitVelocity;// 飛んでいく方向
-        float velocityVariance; // 散らばり具合（ランダム度）
+        uint32_t startIndex;
+        uint32_t emitCount;
+        Vector3 emitPos;
+        float emitLife;
+        Vector3 emitArea;
+        float padding1;
+        Vector3 emitVelocity;
+        float velocityVariance;
         Vector4 baseColor;
+        Vector3 gravity;
+        float drag;
+        Vector3 wind;
+        float turbulence;
+        float baseSize;
+        float endSize;
+        float rotSpeedVariance; 
+        float padding2;
+        Vector4 endColor;
     };
-
+    enum class BlendMode {
+        kAdd,   // 加算合成（光る魔法や炎）
+        kAlpha, // 半透明合成（霧や煙、砂埃）
+    };
     // 圧倒的暴力：10万個のパーティクル
     static const uint32_t kMaxParticles = 100000;
 
@@ -41,7 +59,21 @@ public:
     void Update(float deltaTime);
 
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle);
-    void Emit(const Vector3& pos, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color);
+    void Emit(const Vector3& pos, const Vector3& area, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color);
+    void SetEnvironmentParams(const Vector3& gravity, float drag, const Vector3& wind, float turbulence) {
+        envGravity_ = gravity;
+        envDrag_ = drag;
+        envWind_ = wind;
+        envTurbulence_ = turbulence;
+    }
+
+    void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
+    void SetSizeParams(float baseSize, float endSize, float rotSpeed) {
+        baseSize_ = baseSize;
+        endSize_ = endSize;
+        rotSpeed_ = rotSpeed;
+    }
+    void SetEndColor(const Vector4& endColor) { endColor_ = endColor; }
 private:
     GPUParticleManager() = default;
     ~GPUParticleManager() = default;
@@ -60,7 +92,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> graphicsRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
-
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAdd_;   // 加算用
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAlpha_; // 霧用
     // --- GPUメモリ (UAV: 読み書き可能バッファ) ---
     Microsoft::WRL::ComPtr<ID3D12Resource> particleBuffer_;
 
@@ -84,4 +117,15 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraBuffer_;
     CameraData* cameraData_ = nullptr;
     uint32_t emitCountThisFrame_ = 0;
+    Vector3 envGravity_ = { 0.0f, -9.8f, 0.0f };
+    float envDrag_ = 0.98f;
+    Vector3 envWind_ = { 0.0f, 0.0f, 0.0f };
+    float envTurbulence_ = 0.0f;
+    // 現在のブレンドモード
+    BlendMode blendMode_ = BlendMode::kAdd;
+    float baseSize_ = 1.0f;
+    float endSize_ = 1.0f;
+    float rotSpeed_ = 1.0f; 
+    Vector4 endColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
+
 };

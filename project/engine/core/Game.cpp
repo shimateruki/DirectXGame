@@ -55,6 +55,8 @@ void Game::Initialize() {
     sceneManager_->SetDebugEditor(debugEditor_.get());
     particleEditor_ = std::make_unique<ParticleEditor>();
     particleEditor_->Initialize(sceneManager_.get());
+    gpuParticleEditor_ = std::make_unique<GPUParticleEditor>();
+    gpuParticleEditor_->Initialize();
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
     ghostDirector_ = std::make_unique<GhostDirector>();
@@ -89,6 +91,7 @@ void Game::Finalize() {
     debugEditor_.reset();
     ghostRecorder_.reset();
     ghostDirector_.reset();
+    gpuParticleEditor_.reset();
    DebugConsole::GetInstance()->Finalize();
 #endif
 
@@ -287,7 +290,10 @@ void Game::Update() {
                 EditorManager::GetInstance()->SetSelectedObject(ghostDirector_.get());
                 showDebugWindows_ = true;
             }
-         
+            if (ImGui::MenuItem("GPUパーティクルエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(gpuParticleEditor_.get());
+                showDebugWindows_ = true;
+            }
 
             ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
@@ -315,6 +321,9 @@ void Game::Update() {
     float finalDeltaTime = isPlaying_ ? (deltaTime * timeScale_) : 0.0f;
 
 #ifdef USE_IMGUI
+    if (gpuParticleEditor_) {
+        gpuParticleEditor_->Update(deltaTime);
+    }
     // -------------------------------------------------------------------------
     // 4. エディタ描画の総仕上げ！
     // -------------------------------------------------------------------------
@@ -351,6 +360,7 @@ void Game::Update() {
     auto startUpdate = std::chrono::high_resolution_clock::now();
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
+    GPUParticleManager::GetInstance()->Update(deltaTime);
     postEffect_->GetParams()->time += deltaTime;
     if (sceneManager_) {
         sceneManager_->SetIsPlaying(isPlaying_);
