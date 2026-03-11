@@ -40,6 +40,12 @@ private:
 	std::string currentSceneName_;
 	std::unique_ptr<PostEffect> postEffect_; 
 	std::unique_ptr<PostEffectEditor> postEffectEditor_;
+	float sceneUpdateTimeMs_ = 0.0f;
+	float sceneDrawTimeMs_ = 0.0f;
+	float updateTimeHistory_[120] = { 0 };
+	int timeHistoryIndex_ = 0;
+	float drawTimeMs_ = 0.0f;
+	float drawTimeHistory_[120] = { 0 };
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
