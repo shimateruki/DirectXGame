@@ -110,7 +110,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 6,
             "collisionMask": 4294967295,
@@ -162,7 +162,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -200,7 +200,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 6,
+            "collisionAttribute": 2,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -275,9 +275,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 2,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -352,9 +352,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 2,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -431,7 +431,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 6,
+            "collisionAttribute": 2,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -506,9 +506,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 2,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -583,9 +583,9 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 2,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
