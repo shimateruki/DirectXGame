@@ -23,6 +23,11 @@ void BossCore::Update(float deltaTime) {
     // 1. 基本更新（行列計算など）
     Object3d::Update (deltaTime);
 
+    // ==========================================
+    // ★ 飛んでいるブロックの更新
+    // ==========================================
+    UpdateFlyingBlocks (deltaTime);
+
     // ★ 3. アニメーションシーケンスを優先実行
     UpdateAnimationSequence (deltaTime);
 
@@ -44,15 +49,7 @@ void BossCore::Update(float deltaTime) {
     case State::Weak:   UpdateWeak (deltaTime);   break;
     }
 
-    for (auto &fb : flyingBlocks_) {
-        if (fb.block) {
-            Vector3 pos = fb.block->GetTranslate ();
-            pos.x += fb.velocity.x * deltaTime;
-            pos.y += fb.velocity.y * deltaTime;
-            pos.z += fb.velocity.z * deltaTime;
-            fb.block->SetTranslate (pos);
-        }
-    }
+    
 }
 
 // =================================================================
@@ -437,8 +434,13 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
 
                         // ブロック自身も飛んでいく方向に向ける
                         float angleY = std::atan2 (dir.x, dir.z) + (std::numbers::pi_v<float> / 2.0f);
-                        block->SetRotation ({ 0.0f, angleY, 0.0f });
+                        // 角度を変数にして保存し、セットする
+                        Vector3 initialRot = { 0.0f, angleY, 0.0f };
+                        block->SetRotation (initialRot);
                         block->GetTransform ()->isQuaternionMaster = false;
+
+                        // リストに追加する時、initialRot（初期角度）も一緒に渡す！
+                        flyingBlocks_.push_back ({ block, velocity, initialRot ,0 });
 
                         // リストに追加
                         flyingBlocks_.push_back ({ block, velocity });
@@ -466,6 +468,116 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
             }
+        }
+    }
+}
+
+void BossCore::UpdateFlyingBlocks (float deltaTime) {
+    int landedCount = 0; // 地面に刺さっているブロックの数
+
+    // ==========================================
+    // 1. 各ブロックの移動・回転・状態更新
+    // ==========================================
+    for (auto &fb : flyingBlocks_) {
+        if (!fb.block) continue;
+
+        if (fb.mode == 0) {
+            // --- 攻撃中（放物線を描いてプレイヤーへ） ---
+            // ★ 重力をかけて、必ずいつか地面に落ちるようにする！
+            fb.velocity.y -= 40.0f * deltaTime;
+
+            Vector3 pos = fb.block->GetTranslate ();
+            pos.x += fb.velocity.x * deltaTime;
+            pos.y += fb.velocity.y * deltaTime;
+            pos.z += fb.velocity.z * deltaTime;
+
+            // 地面（Y=0.0f）にぶつかったら刺さって止まる
+            if (pos.y <= 0.0f) {
+                pos.y = 0.0f;
+                fb.velocity = { 0.0f, 0.0f, 0.0f }; // 速度リセット
+                fb.mode = 1; // 地面待機モードへ！
+            }
+            fb.block->SetTranslate (pos);
+
+            // 乱回転
+            Vector3 spinSpeed = { 30.0f, 45.0f, 60.0f };
+            fb.currentRot.x += spinSpeed.x * deltaTime;
+            fb.currentRot.y += spinSpeed.y * deltaTime;
+            fb.currentRot.z += spinSpeed.z * deltaTime;
+            fb.block->SetRotation (fb.currentRot);
+            fb.block->GetTransform ()->isQuaternionMaster = false;
+        } else if (fb.mode == 1) {
+            // --- 地面待機中 ---
+            landedCount++; // 地面にある数をカウントする
+        } else if (fb.mode == 2) {
+            // --- ボスへ帰還中 ---
+            Vector3 bossPos = GetTranslate ();
+            Vector3 blockPos = fb.block->GetTranslate ();
+
+            // ボスとの距離と方向を計算
+            Vector3 dir = { bossPos.x - blockPos.x, bossPos.y - blockPos.y, bossPos.z - blockPos.z };
+            float distance = std::sqrt (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+
+            if (distance < 2.0f) {
+                fb.mode = 3; // ボスに十分近づいたら回収完了！
+            } else {
+                // 正規化してボスの方向へ進む
+                dir.x /= distance; dir.y /= distance; dir.z /= distance;
+                float returnSpeed = 60.0f; // ★帰りは超高速で引き戻す！
+                blockPos.x += dir.x * returnSpeed * deltaTime;
+                blockPos.y += dir.y * returnSpeed * deltaTime;
+                blockPos.z += dir.z * returnSpeed * deltaTime;
+                fb.block->SetTranslate (blockPos);
+
+                // 帰りも回転させる
+                Vector3 spinSpeed = { 60.0f, 60.0f, 60.0f };
+                fb.currentRot.x += spinSpeed.x * deltaTime;
+                fb.currentRot.y += spinSpeed.y * deltaTime;
+                fb.currentRot.z += spinSpeed.z * deltaTime;
+                fb.block->SetRotation (fb.currentRot);
+                fb.block->GetTransform ()->isQuaternionMaster = false;
+            }
+        }
+    }
+
+    // ==========================================
+    // 2. 「すべての弾が地面に落ちた」＆「全部撃ち終わった」なら一斉帰還！
+    // ==========================================
+    if (!flyingBlocks_.empty () && landedCount == flyingBlocks_.size () && armorBlocks_.empty ()) {
+        for (auto &fb : flyingBlocks_) {
+            fb.mode = 2; // 全員一斉に帰還モードへ切り替え
+        }
+        DebugConsole::GetInstance ()->AddLog ("All blocks landed! Returning to boss...\n");
+    }
+
+    // ==========================================
+    // 3. 回収完了（mode == 3）したブロックをリストから消し、ボスのパーツに戻す
+    // ==========================================
+    for (auto it = flyingBlocks_.begin (); it != flyingBlocks_.end (); ) {
+        if (it->mode == 3) {
+            // ★ 親子関係をボスに戻す！
+            it->block->SetParent (this);
+
+            // ボスの中心(0,0,0)で全部重なってしまわないように、周囲にランダムに散らして配置する
+            float offsetX = ((float)rand () / RAND_MAX * 6.0f) - 3.0f;
+            float offsetY = ((float)rand () / RAND_MAX * 6.0f) - 3.0f;
+            float offsetZ = ((float)rand () / RAND_MAX * 6.0f) - 3.0f;
+            it->block->SetTranslate ({ offsetX, offsetY, offsetZ });
+
+            // ★ スケールを0にする処理を削除し、待機時用の標準的なサイズに戻しておく
+            it->block->SetScale ({ 1.0f, 1.0f, 1.0f });
+
+            // 次の形態変化に備えて、回転もリセットしておく
+            it->block->SetRotation ({ 0.0f, 0.0f, 0.0f });
+            it->block->GetTransform ()->isQuaternionMaster = false;
+
+            // ボスの武装リストに復帰
+            armorBlocks_.push_back (it->block);
+
+            // 飛翔リストからは削除
+            it = flyingBlocks_.erase (it);
+        } else {
+            ++it;
         }
     }
 }
