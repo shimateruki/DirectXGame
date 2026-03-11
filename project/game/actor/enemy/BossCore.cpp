@@ -1,4 +1,4 @@
-﻿#include "BossCore.h"
+#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h" // 追加
@@ -57,8 +57,8 @@ void BossCore::ChangeState(State nextState) {
     // 状態移行に合わせて、ディレクターの再生シナリオを切り替える
     switch (state_) {
     case State::Idle:
-        director_->LoadScenario("boss_attack_1");
-        director_->PlayScenario(false, false);
+        //director_->LoadScenario("boss_attack_1");
+        //director_->PlayScenario(false, false);
         break;
 
     case State::Attack: {
