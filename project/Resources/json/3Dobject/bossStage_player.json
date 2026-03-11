@@ -132,7 +132,7 @@
             "name": "Player_sword",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Player_body",
+            "parentName": "Player_rightArm",
             "position": [
                 0.44998466968536377,
                 -0.15000003576278687,
