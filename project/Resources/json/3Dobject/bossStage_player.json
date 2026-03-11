@@ -9,8 +9,8 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
-                    0.0
+                    -0.09000000357627869,
+                    -0.019999999552965164
                 ],
                 "rotation": [
                     0.0,
@@ -18,13 +18,13 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0,
-                    1.0
+                    0.30000001192092896,
+                    0.20000000298023224,
+                    0.20000000298023224
                 ],
                 "type": 3
             },
-            "collisionAttribute": 1,
+            "collisionAttribute": 5,
             "collisionMask": 4294967294,
             "color": [
                 1.0,
@@ -33,15 +33,15 @@
                 1.0
             ],
             "enableEnvMap": false,
-            "enableNormalMap": true,
+            "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 1.1799999475479126,
             "eventID": 0,
             "materialType": 0,
-            "metallic": 1.0,
-            "modelName": "block",
+            "metallic": 0.0,
+            "modelName": "Player_body",
             "myEventID": -1,
-            "name": "Player",
+            "name": "Player_body",
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
@@ -57,15 +57,15 @@
             },
             "parentName": "",
             "position": [
-                -5.609375,
-                2.002139091491699,
-                15.162572860717773
+                0.0,
+                5.177000045776367,
+                0.0
             ],
             "quaternion": [
-                -1.0147316515940474e-06,
-                -0.12269008904695511,
-                7.914448474366509e-07,
-                0.9924450516700745
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": true,
@@ -73,16 +73,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                -2.2768829239794286e-06,
-                -0.24599997699260712,
-                1.8764169453788782e-06
+                0.0,
+                0.0,
+                0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.0,
             "saveCategory": "Player",
             "scale": [
-                0.9999954700469971,
-                1.0,
-                0.9999954700469971
+                2.5000007152557373,
+                2.5,
+                2.5000007152557373
             ],
             "targetID": -1,
             "texturePath": "",
@@ -112,8 +112,85 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableEnvMap": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.9549999833106995,
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.8029999732971191,
+            "modelName": "sword",
+            "myEventID": -1,
+            "name": "Player_sword",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_rightArm",
+            "position": [
+                0.44998466968536377,
+                -0.15000003576278687,
+                0.44999995827674866
+            ],
+            "quaternion": [
+                0.6830126643180847,
+                0.18301266431808472,
+                0.6830126643180847,
+                -0.1830127239227295
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                -0.5235987901687622,
+                1.5707963705062866,
+                3.1415927410125732
+            ],
+            "roughness": 1.0,
+            "saveCategory": "Player",
+            "scale": [
+                1.4999691247940063,
+                1.499988317489624,
+                1.4999736547470093
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.36000001430511475,
+                    0.019999999552965164
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.30000001192092896,
+                    0.27000001072883606,
+                    0.30000001192092896
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
             "color": [
                 1.0,
                 1.0,
@@ -126,17 +203,248 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
-            "metallic": 0.17399999499320984,
-            "modelName": "sword",
+            "metallic": 0.0,
+            "modelName": "Player_head",
             "myEventID": -1,
-            "name": "Player_sword",
+            "name": "Player_head",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "",
+            "parentName": "Player_body",
             "position": [
-                -8.32848072052002,
-                3.662675619125366,
-                17.05594253540039
+                1.5788947393957642e-06,
+                4.76837158203125e-07,
+                1.212535835293238e-06
+            ],
+            "quaternion": [
+                7.958078098412036e-13,
+                -2.980236502025946e-08,
+                -2.3021610659479386e-12,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                1.59161551126219e-12,
+                -5.960473004051892e-08,
+                -4.604322131895877e-12
+            ],
+            "roughness": 0.0,
+            "saveCategory": "Player",
+            "scale": [
+                0.9999984502792358,
+                1.0,
+                0.9999984502792358
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.4099999964237213,
+                    -0.07999999821186066,
+                    -0.009999999776482582
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.5235987901687622
+                ],
+                "size": [
+                    0.05000000074505806,
+                    0.11999999731779099,
+                    0.10000000149011612
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Player_leftArm",
+            "myEventID": -1,
+            "name": "Player_rightArm",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_body",
+            "position": [
+                0.0,
+                -2.1457672119140625e-06,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.0,
+            "saveCategory": "Player",
+            "scale": [
+                0.9998381733894348,
+                0.9999414682388306,
+                0.9998058080673218
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    -0.4099999964237213,
+                    -0.07999999821186066,
+                    -0.009999999776482582
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    -0.5235987901687622
+                ],
+                "size": [
+                    0.05000000074505806,
+                    0.11999999731779099,
+                    0.10000000149011612
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Player_rightArm",
+            "myEventID": -1,
+            "name": "Player_leftArm",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_body",
+            "position": [
+                0.0,
+                -2.384185791015625e-07,
+                -0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.0,
+            "saveCategory": "Player",
+            "scale": [
+                0.9999961853027344,
+                0.9999908208847046,
+                0.9999953508377075
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    -0.25,
+                    -0.44999998807907104,
+                    0.10000000149011612
+                ],
+                "rotation": [
+                    0.0,
+                    -0.4363323152065277,
+                    0.0
+                ],
+                "size": [
+                    0.10000000149011612,
+                    0.05000000074505806,
+                    0.23000000417232513
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Player_leftFoot",
+            "myEventID": -1,
+            "name": "Player_leftFoot",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_body",
+            "position": [
+                0.0,
+                0.0,
+                0.0
             ],
             "quaternion": [
                 0.0,
@@ -154,12 +462,89 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.6800000071525574,
+            "roughness": 0.0,
             "saveCategory": "Player",
             "scale": [
-                3.5,
-                3.5,
-                3.5
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.25,
+                    -0.44999998807907104,
+                    0.10000000149011612
+                ],
+                "rotation": [
+                    0.0,
+                    0.4363323152065277,
+                    0.0
+                ],
+                "size": [
+                    0.10000000149011612,
+                    0.05000000074505806,
+                    0.23000000417232513
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Player_rightFoot",
+            "myEventID": -1,
+            "name": "Player_rightFoot",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_body",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.0,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
