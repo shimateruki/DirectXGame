@@ -4,6 +4,7 @@
 #include "ParticleSystem.h"
 #include "PlayerMover.h"
 #include "IAnimationState.h" 
+#include "engine/utility/math/Math.h" 
 #include <memory>
 #include <string>
 
@@ -43,8 +44,20 @@ public:
     void SetVelocity(const Vector3& v) { velocity_ = v; }
 
     Vector3 GetRotation() const { return transform_.rotate; }
-    void SetRotation(const Vector3& r) { transform_.rotate = r; }
-    void SetRotationY(float y) { transform_.rotate.y = y; }
+
+    // SetRotation は Euler を受け取り、内部的にクォータニオンを更新するように修正
+    void SetRotation(const Vector3& r) { 
+        transform_.rotate = r;
+        transform_.quaternion = Math::EulerToQuaternion(r);
+        transform_.isQuaternionMaster = true;
+    }
+
+    // Y軸のみ更新するユーティリティも、クォータニオンを更新する
+    void SetRotationY(float y) { 
+        transform_.rotate.y = y;
+        transform_.quaternion = Math::EulerToQuaternion(transform_.rotate);
+        transform_.isQuaternionMaster = true;
+    }
 
     // --- 状態フラグ ---
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
