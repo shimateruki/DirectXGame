@@ -10,6 +10,7 @@ struct Particle
     float3 velocity;
     float maxLife;
     float4 color;
+    
 };
 
 // Compute Shaderで計算した結果を "読み取り専用(t0)" として受け取る！

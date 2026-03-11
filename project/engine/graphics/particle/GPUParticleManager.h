@@ -15,18 +15,24 @@ public:
         Vector3 velocity;
         float maxLife;
         Vector4 color;
-    };
 
+    };
     struct CSConfig {
         float deltaTime;
         float time;
-        uint32_t startIndex; // 発生開始インデックス
-        uint32_t emitCount;  // 何個発生させるか
-        Vector3 emitPos;     // 発生させる座標
-        float emitLife;      // パーティクルの寿命
-        Vector3 emitVelocity;// 飛んでいく方向
-        float velocityVariance; // 散らばり具合（ランダム度）
+        uint32_t startIndex;
+        uint32_t emitCount;
+        Vector3 emitPos;
+        float emitLife;
+        Vector3 emitArea;
+        float padding1;
+        Vector3 emitVelocity;
+        float velocityVariance;
         Vector4 baseColor;
+        Vector3 gravity;
+        float drag;
+        Vector3 wind;
+        float turbulence;
     };
 
     // 圧倒的暴力：10万個のパーティクル
@@ -41,7 +47,13 @@ public:
     void Update(float deltaTime);
 
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle);
-    void Emit(const Vector3& pos, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color);
+    void Emit(const Vector3& pos, const Vector3& area, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color);
+    void SetEnvironmentParams(const Vector3& gravity, float drag, const Vector3& wind, float turbulence) {
+        envGravity_ = gravity;
+        envDrag_ = drag;
+        envWind_ = wind;
+        envTurbulence_ = turbulence;
+    }
 private:
     GPUParticleManager() = default;
     ~GPUParticleManager() = default;
@@ -84,4 +96,9 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraBuffer_;
     CameraData* cameraData_ = nullptr;
     uint32_t emitCountThisFrame_ = 0;
+    Vector3 envGravity_ = { 0.0f, -9.8f, 0.0f };
+    float envDrag_ = 0.98f;
+    Vector3 envWind_ = { 0.0f, 0.0f, 0.0f };
+    float envTurbulence_ = 0.0f;
+
 };

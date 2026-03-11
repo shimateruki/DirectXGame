@@ -279,17 +279,17 @@ void GamePlayScene::Update(float deltaTime) {
 
 
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
-	GPUParticleManager::GetInstance()->Emit(
-		{ 0.0f, 5.0f, 0.0f },  // 発生座標
-		{ 0.0f, 10.0f, 0.0f }, // 飛ぶ方向
-		500,                   // 発生数
-		2.0f,                  // 寿命 (2秒で消える)
-		5.0f,                   // 散らばり具合,
-	{1.0f, 0.5f, 0.0f, 1.0f} // 色 (オレンジ)
-	);
+	//GPUParticleManager::GetInstance()->Emit(
+	//	{ 0.0f, 5.0f, 0.0f },  // 発生座標
+	//	{ 0.0f, 10.0f, 0.0f }, // 飛ぶ方向
+	//	500,                   // 発生数
+	//	2.0f,                  // 寿命 (2秒で消える)
+	//	5.0f,                   // 散らばり具合,
+	//{1.0f, 0.5f, 0.0f, 1.0f} // 色 (オレンジ)
+	//);
 
-	// ★追加: 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
-	GPUParticleManager::GetInstance()->Update(deltaTime);
+	//// ★追加: 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
+	//GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
 		sprite->Update();
 	}
@@ -348,12 +348,12 @@ void GamePlayScene::Draw() {
 	// =======================================================
 
 	// 定数バッファではなく、View行列とProjection行列をそのまま渡す！
-	//GPUParticleManager::GetInstance()->Draw(
-	//	dxCommon_->GetCommandList(),
-	//	camera->GetViewMatrix(),
-	//	camera->GetProjectionMatrix(),
-	//	gpuParticleTexHandle_
-	//);
+	GPUParticleManager::GetInstance()->Draw(
+		dxCommon_->GetCommandList(),
+		camera->GetViewMatrix(),
+		camera->GetProjectionMatrix(),
+		gpuParticleTexHandle_
+	);
 }
 
 // ====================================================================

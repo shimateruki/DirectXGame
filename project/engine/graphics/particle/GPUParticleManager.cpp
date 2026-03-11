@@ -156,7 +156,10 @@ void GPUParticleManager::Update(float deltaTime) {
     totalTime_ += deltaTime;
     configData_->deltaTime = deltaTime;
     configData_->time = totalTime_;
-
+     configData_->gravity = envGravity_;
+     configData_->drag = envDrag_;
+     configData_->wind = envWind_;
+     configData_->turbulence = envTurbulence_;
     // CPU側で設定するだけ（GPUへの送信はDrawで行う）
     configData_->emitCount = emitCountThisFrame_;
 }
@@ -315,7 +318,7 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     assert(SUCCEEDED(hr));
 }
 
-void GPUParticleManager::Emit(const Vector3& pos, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color) {
+void GPUParticleManager::Emit(const Vector3& pos, const Vector3& area, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color) {
     // GPUに送る発生用データをセット
     configData_->startIndex = currentParticleIndex_;
     configData_->emitCount = count;

@@ -22,7 +22,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 1
+                "type": 3
             },
             "collisionAttribute": 1,
             "collisionMask": 4294967294,
@@ -32,8 +32,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 1.0,
@@ -56,8 +58,14 @@
             "parentName": "",
             "position": [
                 -5.609375,
-                2.0021352767944336,
+                2.002139091491699,
                 15.162572860717773
+            ],
+            "quaternion": [
+                -1.0147316515940474e-06,
+                -0.12269008904695511,
+                7.914448474366509e-07,
+                0.9924450516700745
             ],
             "recorder": {
                 "isRecordLoop": true,
@@ -65,16 +73,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                -3.1415908336639404,
-                2.89559268951416,
-                -3.1415908336639404
+                -2.2768829239794286e-06,
+                -0.24599997699260712,
+                1.8764169453788782e-06
             ],
             "roughness": 1.0,
             "saveCategory": "Player",
             "scale": [
-                0.9999955892562866,
+                0.9999954700469971,
                 1.0,
-                0.9999955892562866
+                0.9999954700469971
             ],
             "targetID": -1,
             "texturePath": "",
@@ -112,8 +120,10 @@
                 1.0,
                 1.0
             ],
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
+            "envIntensity": 1.0,
             "eventID": 0,
             "materialType": 0,
             "metallic": 0.17399999499320984,
@@ -127,6 +137,12 @@
                 -8.32848072052002,
                 3.662675619125366,
                 17.05594253540039
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
             ],
             "recorder": {
                 "isRecordLoop": false,
