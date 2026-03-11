@@ -327,7 +327,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 				s_cachedOffset = drawOffset;
 				s_cachedRotOffset = drawRotOffset;
 			}
-		
+
 		}
 	}
 
