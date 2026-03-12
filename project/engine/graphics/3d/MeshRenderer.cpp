@@ -116,7 +116,7 @@ void MeshRenderer::Update() {
             Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
 
             Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
-
+            LightManager::GetInstance()->GetDirectionalLight().lightViewProj = lightVP;
             // 影用のWVP = モデルのワールド行列 * 太陽のビュープロジェクション
             shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
             shadowWvpData_->world = transform_->matWorld;

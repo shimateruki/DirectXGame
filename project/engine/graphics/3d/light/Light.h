@@ -15,8 +15,13 @@ struct DirectionalLight {
 
     float fogEnd;          // 4 byte
     Vector3 fogColor;      // 12 byte
-
-    float padding2[4];
+    float fogHeightMin = -5.0f;
+    float fogHeightMax = 5.0f;
+    float volumetricIntensity = 0.1f; // 光の筋の強さ (4 byte)
+    int32_t volumetricSteps = 16;     // 計算の精密さ (4 byte)
+    int32_t enableFog = 0; // 1=ON, 0=OFF
+    float padding3[3];
+    Matrix4x4 lightViewProj;          // ライトのビュープロジェクション行列 (64 byte)
 };
 
 /// <summary>
