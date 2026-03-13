@@ -8,18 +8,18 @@
 // 初期化・更新
 // =================================================================
 
-void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
+void BossCore::Initialize (Object3dCommon *common, const std::string &modelName) {
     // 親クラス(BaseEnemy)の初期化
-    BaseEnemy::Initialize(common, modelName);
+    BaseEnemy::Initialize (common, modelName);
 
     // 演出・攻撃パターン管理用ディレクターの生成
-    director_ = std::make_unique<GhostDirector>();
+    director_ = std::make_unique<GhostDirector> ();
     if (sceneManager_) {
-        director_->Initialize(sceneManager_);
+        director_->Initialize (sceneManager_);
     }
 }
 
-void BossCore::Update(float deltaTime) {
+void BossCore::Update (float deltaTime) {
     // 1. 基本更新（行列計算など）
     Object3d::Update (deltaTime);
 
@@ -49,14 +49,14 @@ void BossCore::Update(float deltaTime) {
     case State::Weak:   UpdateWeak (deltaTime);   break;
     }
 
-    
+
 }
 
 // =================================================================
 // ステート(状態)管理
 // =================================================================
 
-void BossCore::ChangeState(State nextState) {
+void BossCore::ChangeState (State nextState) {
     state_ = nextState;
 
     if (!director_) return;
@@ -70,8 +70,8 @@ void BossCore::ChangeState(State nextState) {
 
     case State::Attack: {
         // ランダムな攻撃パターンを選択 (1〜10)
-        int nextAttack = rand() % 10 + 1;
-        std::string attackName = "boss_attack_" + std::to_string(nextAttack);
+        int nextAttack = rand () % 10 + 1;
+        std::string attackName = "boss_attack_" + std::to_string (nextAttack);
 
         // TODO: 攻撃シナリオの実装が完了したらコメントアウトを外す
         // director_->LoadScenario(attackName);
@@ -91,22 +91,22 @@ void BossCore::ChangeState(State nextState) {
 // 各ステートの個別更新処理
 // =================================================================
 
-void BossCore::UpdateIdle(float deltaTime) {
+void BossCore::UpdateIdle (float deltaTime) {
     // 待機シナリオが終了したら、攻撃ステートへ移行
-    if (director_ && director_->IsFinished()) {
-        ChangeState(State::Attack);
+    if (director_ && director_->IsFinished ()) {
+        ChangeState (State::Attack);
     }
 }
 
-void BossCore::UpdateAttack(float deltaTime) {
+void BossCore::UpdateAttack (float deltaTime) {
     if (!director_) return;
 
     // シナリオ内で発生したイベント(トリガー)を取得
-    ActiveEvent eventInfo = director_->GetActiveEvent();
+    ActiveEvent eventInfo = director_->GetActiveEvent ();
 
     if (eventInfo.id != 0 && eventInfo.targetObject) {
         // イベント発生元のワールド座標を取得 (弾やエフェクトの発生位置として使用)
-        Vector3 spawnPos = eventInfo.targetObject->GetWorldPosition();
+        Vector3 spawnPos = eventInfo.targetObject->GetWorldPosition ();
 
         if (eventInfo.id == 1) {
             // イベントID 1 の処理 (例: 斬撃エフェクト生成など)
@@ -116,27 +116,27 @@ void BossCore::UpdateAttack(float deltaTime) {
     }
 
     // 攻撃シナリオが終了したら、弱点露出ステートへ移行
-    if (director_->IsFinished()) {
-        ChangeState(State::Weak);
+    if (director_->IsFinished ()) {
+        ChangeState (State::Weak);
     }
 }
 
-void BossCore::UpdateWeak(float deltaTime) {
+void BossCore::UpdateWeak (float deltaTime) {
     // 弱点露出シナリオが終了したら、待機ステートへ戻る
-    if (director_ && director_->IsFinished()) {
-        ChangeState(State::Idle);
+    if (director_ && director_->IsFinished ()) {
+        ChangeState (State::Idle);
     }
 }
 
 void BossCore::UpdateAnimationSequence (float deltaTime) {
-    
+
     // ==========================================
     // ゲームが再生中(Play)でなければ、この先のアニメーション・入力処理を一切行わない！
     // ==========================================
     if (!SceneManager::GetInstance ()->IsPlaying ()) {
         return; // 再生中でなければ操作を受け付けない
     }
-    
+
     InputManager *input = InputManager::GetInstance ();
 
     // ======================================
@@ -695,7 +695,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
         if (!fb.block) continue;
 
         // ==========================================
-        // モード4（頭上へ集まって「装填」中）
+        // モード4（頭上へ装填中）
         // ==========================================
         if (fb.mode == 4) {
             Vector3 bossPos = GetTranslate ();
@@ -707,28 +707,26 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             float distance = std::sqrt (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 
             if (distance < 0.5f) {
-                // --- 頭上に到着！ ---
+                // --- 頭上に到着！装填完了！ ---
                 fb.block->SetTranslate (headPos);
 
-                // ==========================================
-                // ★ NEW: 撃ち出す初速の計算を、モード3向けに調整！
-                // 攻撃中(attackMode_==3)なら、ここですぐにプレイヤーへの方向を計算して「撃ち出す」！
-                // ==========================================
-                if (attackMode_ == 3 && target_) {
+                // ここで初めてプレイヤーへの方向を計算して「ドカン！」と撃ち出す！
+                if (target_) {
                     Vector3 targetPos = target_->GetWorldPosition ();
 
-                    // 真っ直ぐプレイヤーに飛ばす（ハンマーを振り下ろす感じ）
+                    // ★ タイクラーさん仕様：プレイヤーの「足元（地面）」を直接狙う！
+                    targetPos.y = 0.0f;
+
                     Vector3 toPlayer = math.Normalize (targetPos - headPos);
 
-                    // 重力がかからない前提なので、初速を少し速め(60.0fなど)にすると鋭く飛んでカッコいいです！
+                    // 初速を少し速め(60.0f)にして鋭く飛ばす！
                     float bulletSpeed = 60.0f;
                     fb.velocity = { toPlayer.x * bulletSpeed, toPlayer.y * bulletSpeed, toPlayer.z * bulletSpeed };
 
                     float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                     fb.currentRot = { 0.0f, angleY, 0.0f };
-
-                    fb.mode = 0; // すぐに「飛翔モード(0)」へ切り替え！
                 }
+                fb.mode = 0; // 「飛翔モード」へ移行！
             } else {
                 // --- 頭上に向かって移動中（シュッ！） ---
                 dir.x /= distance; dir.y /= distance; dir.z /= distance;
@@ -738,7 +736,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 currentPos.z += dir.z * gatherSpeed * deltaTime;
                 fb.block->SetTranslate (currentPos);
 
-                // 移動中も少し回転させておくとカッコいいです
+                // 移動中も少し回転させておく
                 fb.currentRot.x += 15.0f * deltaTime;
                 fb.currentRot.y += 30.0f * deltaTime;
                 fb.block->SetRotation (fb.currentRot);
@@ -750,13 +748,9 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
         // モード0（飛翔中・攻撃）
         // ==========================================
         else if (fb.mode == 0) {
-            // --- 攻撃中（直線軌道でプレイヤーへ突撃！） ---
+            // --- 攻撃中（直線的に足元へ突撃！） ---
 
-            // ★ モード3の時は重力をかけない！
-            if (attackMode_ != 3) {
-                // 重力をかける（モード2の射撃など）
-                fb.velocity.y -= 40.0f * deltaTime;
-            }
+            // ★ タイクラーさん仕様：重力の計算はしない！（直線レーザー）
 
             Vector3 pos = fb.block->GetTranslate ();
             pos.x += fb.velocity.x * deltaTime;
@@ -768,7 +762,6 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 pos.y = 0.0f;
                 fb.velocity = { 0.0f, 0.0f, 0.0f }; // 速度リセット
                 fb.mode = 1; // 地面待機モードへ！
-                // ★ 修正：これで勝手に「3秒待ってから帰還」してくれます！！
             }
             fb.block->SetTranslate (pos);
 
@@ -779,9 +772,11 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             fb.currentRot.z += spinSpeed.z * deltaTime;
             fb.block->SetRotation (fb.currentRot);
             fb.block->GetTransform ()->isQuaternionMaster = false;
+
         } else if (fb.mode == 1) {
             // --- 地面待機中 ---
             landedCount++; // 地面にある数をカウントする
+
         } else if (fb.mode == 2) {
             // --- ボスへ帰還中 ---
             Vector3 bossPos = GetTranslate ();
@@ -796,7 +791,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             } else {
                 // 正規化してボスの方向へ進む
                 dir.x /= distance; dir.y /= distance; dir.z /= distance;
-                float returnSpeed = 60.0f; // ★帰りは超高速で引き戻す！
+                float returnSpeed = 60.0f; // 帰りは超高速で引き戻す！
                 blockPos.x += dir.x * returnSpeed * deltaTime;
                 blockPos.y += dir.y * returnSpeed * deltaTime;
                 blockPos.z += dir.z * returnSpeed * deltaTime;
@@ -811,92 +806,19 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 fb.block->GetTransform ()->isQuaternionMaster = false;
             }
         }
-        if (fb.mode == 10) {
-            if (target_) {
-                Vector3 targetPos = target_->GetWorldPosition ();
-
-                // ハンマーを構える高さ（迫力を出すため、かなり高めの Y+12.0f にセット）
-                Vector3 hammerCenter = { targetPos.x, targetPos.y + 12.0f, targetPos.z };
-
-                struct HammerSetting {
-                    Vector3 translate;
-                    Vector3 scale;
-                    Vector3 rotation;
-                };
-
-                // ==========================================
-                // ★ ここに、送っていただいた6枚の画像の数値を順番に入力してください！
-                // ==========================================
-                std::vector<HammerSetting> hammerSettings = {
-                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像1の数値
-                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像2の数値
-                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像3の数値
-                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像4の数値
-                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像5の数値
-                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }  // 画像6の数値
-                };
-
-                int idx = fb.originalIndex;
-                if (idx >= 0 && idx < hammerSettings.size ()) {
-                    // ハンマーの中心点(hammerCenter)を基準にして、各パーツを配置する
-                    Vector3 targetBlockPos = {
-                        hammerCenter.x + hammerSettings[idx].translate.x,
-                        hammerCenter.y + hammerSettings[idx].translate.y,
-                        hammerCenter.z + hammerSettings[idx].translate.z
-                    };
-
-                    // バラバラの状態から、ハンマーの形へ滑らかに集合しながら追従（Lerp）
-                    Vector3 currentPos = fb.block->GetTranslate ();
-                    float trackSpeed = 6.0f; // プレイヤーに追いつく＆合体するスピード
-                    currentPos.x = Math::Lerp (currentPos.x, targetBlockPos.x, trackSpeed * deltaTime);
-                    currentPos.y = Math::Lerp (currentPos.y, targetBlockPos.y, trackSpeed * deltaTime);
-                    currentPos.z = Math::Lerp (currentPos.z, targetBlockPos.z, trackSpeed * deltaTime);
-                    fb.block->SetTranslate (currentPos);
-
-                    // スケールと回転も画像の数値に合わせて上書き
-                    fb.block->SetScale (hammerSettings[idx].scale);
-                    fb.block->SetRotation (hammerSettings[idx].rotation);
-                }
-
-                // 回転オーバーライド
-                fb.block->GetTransform ()->isQuaternionMaster = false;
-            }
-        }
-        // ==========================================
-        // モード11（ハンマー全力振り下ろし！）
-        // ==========================================
-        else if (fb.mode == 11) {
-            Vector3 pos = fb.block->GetTranslate ();
-
-            // 重力加速ではなく、最初からトップスピードで叩きつける！
-            float smashSpeed = 80.0f;
-            pos.y -= smashSpeed * deltaTime;
-
-            // 地面に激突したら、前回作った「3秒待機モード(1)」へ合流させる！
-            if (pos.y <= 0.0f) {
-                pos.y = 0.0f;
-                fb.mode = 1;
-            }
-            fb.block->SetTranslate (pos);
-        }
     }
 
     // ==========================================
     // 2. 「すべての弾が地面に落ちた」＆「全部撃ち終わった」なら3秒待って一斉帰還！
     // ==========================================
     if (!flyingBlocks_.empty () && landedCount == flyingBlocks_.size () && flyingBlocks_.size () == armorBlocks_.size ()) {
-
-        // ★ 修正：いきなり帰還させず、まずはタイマーを進める！
         returnDelayTimer_ += deltaTime;
-
-        // ★ 3秒（3.0f）経過したら帰還命令を出す！
         if (returnDelayTimer_ >= 5.0f) {
             for (auto &fb : flyingBlocks_) {
                 fb.mode = 2; // 全員一斉に帰還モードへ
             }
             returnDelayTimer_ = 0.0f; // 次の攻撃のためにタイマーをリセットしておく
         }
-
     } else {
         // まだ条件を満たしていない時（攻撃中など）は、タイマーを確実に0にしておく
         returnDelayTimer_ = 0.0f;
@@ -924,7 +846,6 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
             };
 
-            // ★ 修正：記憶していた「元々の定位置の番号」を使って絶対間違えないようにする！
             int idx = it->originalIndex;
             if (idx >= 0 && idx < defaultSettings.size ()) {
                 it->block->SetTranslate (defaultSettings[idx].translate);
@@ -933,13 +854,9 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             }
 
             it->block->GetTransform ()->isQuaternionMaster = false;
-
-            // ★ 削除：もう配列からは消していないので armorBlocks_.push_back() は書きません！
-
             it = flyingBlocks_.erase (it);
         } else {
             ++it;
         }
     }
 }
-
