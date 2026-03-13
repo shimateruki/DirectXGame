@@ -141,6 +141,9 @@ public:
 	void ReadGpuProfile();
 	void CreateDepthSrv();
 	uint32_t GetDepthSrvHandle() const { return depthSrvHandle_; }
+
+	void PreDrawLocalFog();
+	void PostDrawLocalFog();
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 

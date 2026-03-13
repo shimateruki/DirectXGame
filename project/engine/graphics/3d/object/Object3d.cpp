@@ -323,6 +323,17 @@ void Object3d::DrawShadow() {
     }
 }
 
+void Object3d::DrawLocalFog(uint32_t depthSrvHandle) {
+    if (meshRenderer_) {
+        // メッシュレンダラーに描画を丸投げ！
+        meshRenderer_->DrawLocalFog(depthSrvHandle);
+    }
+}
+
+MeshRenderer::LocalFogData* Object3d::GetLocalFogData() {
+    return meshRenderer_ ? meshRenderer_->GetLocalFogData() : nullptr;
+}
+
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
     this->saveCategory_ = other->saveCategory_;

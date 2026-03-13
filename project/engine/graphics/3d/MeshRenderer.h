@@ -59,7 +59,20 @@ public:
         float cosFalloffStart;
         float padding[1];
     };
-
+    struct LocalFogData {
+        Vector4 fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // デフォルトは毒沼のような緑色
+        Vector3 cameraPos;
+        float fogDensity = 0.5f;
+        Matrix4x4 inverseViewProj;
+        float time = 0.0f;       // 経過時間
+        float edgeFade = 0.1f;   // 箱のフチのボケ具合
+        float noiseSpeed = 0.5f; // 揺らぐスピード
+        float noiseScale = 0.2f; // 模様の細かさ
+        Vector3 lightDirection;                        // 12 byte
+        float scatteringIntensity = 0.4f;              // 4 byte (光の明るさ)
+        Vector3 lightColor;                            // 12 byte
+        float scatteringG = 0.6f;                      // 4 byte (光の芯の強さ: 0.0~0.99)
+    };
 public:
     // コンストラクタ: 描画対象のTransformを受け取る
     MeshRenderer(Transform* transform);
@@ -116,6 +129,8 @@ public:
     float GetEnvIntensity() const;
 
     void DrawShadow(); 
+    void DrawLocalFog(uint32_t depthSrvHandle);
+    LocalFogData* GetLocalFogData() { return localFogData_; } // 後でエディタから操作するため
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -152,4 +167,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
+    LocalFogData* localFogData_ = nullptr;
+    float time_ = 0.0f;
 };

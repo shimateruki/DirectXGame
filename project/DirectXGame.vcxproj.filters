@@ -369,6 +369,8 @@
     <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
     <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
     <FxCompile Include="Resources\shader\GPUParticlePS.hlsl" />
+    <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
+    <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\system\audio\AudioPlayer.h">

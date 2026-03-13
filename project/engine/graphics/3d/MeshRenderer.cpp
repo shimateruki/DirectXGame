@@ -48,10 +48,30 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     shadowWvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&shadowWvpData_));
     shadowWvpData_->WVP = Math::MakeIdentity4x4();
     shadowWvpData_->world = Math::MakeIdentity4x4();
+
+    localFogResource_ = dxCommon->CreateBufferResource(sizeof(LocalFogData));
+    localFogResource_->Map(0, nullptr, reinterpret_cast<void**>(&localFogData_));
+    localFogData_->fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // 毒沼カラー
+    localFogData_->fogDensity = 0.5f;
     
 }
 
 void MeshRenderer::Update() {
+	// 経過時間を更新してGPUに転送
+    time_ += 1.0f / 60.0f;
+    if (localFogData_) {
+        localFogData_->time = time_;
+        auto& sun = LightManager::GetInstance()->GetDirectionalLight();
+        localFogData_->lightDirection = sun.direction;
+
+        // 光の色に「輝度(intensity)」を掛け合わせて、より強い光にする
+        localFogData_->lightColor = {
+            sun.color.x * sun.intensity,
+            sun.color.y * sun.intensity,
+            sun.color.z * sun.intensity
+        };
+
+    }
     // Transformの計算結果 (matWorld) をGPUに転送する
     if (wvpData_ && transform_) {
         Math math;
@@ -69,6 +89,8 @@ void MeshRenderer::Update() {
             wvpData_->world = worldMatrix;
             wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
             cameraData_->worldPosition = camera->GetEye();
+            localFogData_->cameraPos = camera->GetEye();
+            localFogData_->inverseViewProj = math.Inverse(viewProj);
         } else {
             wvpData_->WVP = Math::MakeIdentity4x4();
             wvpData_->world = Math::MakeIdentity4x4();
@@ -235,7 +257,21 @@ void MeshRenderer::DrawShadow() {
     model_->DrawShadow(shadowWvpResource_.Get());
 }
 
+void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
+    if (!model_ || !common_ || !localFogResource_) return;
 
+    common_->SetLocalFogGraphicsCommand();
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, depthSrvHandle);
+
+
+    commandList->SetGraphicsRootConstantBufferView(3, localFogResource_->GetGPUVirtualAddress());
+
+    // [0] にWVP、[1] にボーンが自動セットされる
+    model_->DrawShadow(wvpResource_.Get());
+}
 void MeshRenderer::SetEnableEnvMap(bool enable) {
     if (materialData_) materialData_->enableEnvMap = enable ? 1 : 0;
 }
@@ -248,3 +284,4 @@ void MeshRenderer::SetEnvIntensity(float intensity) {
 float MeshRenderer::GetEnvIntensity() const {
     return materialData_ ? materialData_->envIntensity : 1.0f;
 }
+

@@ -325,7 +325,7 @@ void GamePlayScene::Draw() {
 	// --- 1. 不透明描画 ---
 	for (auto& obj : objects) {
 		if (isFirstPerson && obj.get() == player_) continue;
-		if (obj->GetMaterialType() == 1) continue; // 透明はスキップ
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 
@@ -342,6 +342,27 @@ void GamePlayScene::Draw() {
 		}
 	}
 	particleSystem_->Draw();
+	// =======================================================
+	// 4. ローカルフォグ (霧の箱) の描画！
+	// =======================================================
+	bool hasFog = false;
+	for (auto& obj : objects) {
+		if (obj->GetMaterialType() == 7) hasFog = true;
+	}
+
+	if (hasFog) {
+		// ★ 描画の直前に「読み込みモード」へ切り替え！
+		dxCommon_->PreDrawLocalFog();
+
+		for (auto& obj : objects) {
+			if (obj->GetMaterialType() == 7) {
+				obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+			}
+		}
+
+		// ★ 描き終わったら安全のために「書き込みモード」へ戻す！
+		dxCommon_->PostDrawLocalFog();
+	}
 
 	// =======================================================
 	// : GPUパーティクルの描画！
@@ -370,6 +391,7 @@ void GamePlayScene::DrawUI() {
 
 void GamePlayScene::DrawShadow() {
 	if (objectManager_) {
+
 		objectManager_->DrawShadow();
 	}
 }

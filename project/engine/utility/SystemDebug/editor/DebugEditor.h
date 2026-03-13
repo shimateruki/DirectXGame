@@ -90,6 +90,8 @@ public:
 
     void TriggerSaveNotification(const std::string& filename);
     void DrawSaveNotification();
+
+
 private:
     void InitializePrimitiveDrawing();
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);

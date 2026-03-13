@@ -8,7 +8,7 @@ struct PixelShanderOutput
     float32_t4 color : SV_TARGET0;
 };
 
-// ★修正: 環境マップ設定を追加し、パディングを調整
+//  環境マップ設定を追加し、パディングを調整
 struct Material
 {
     float32_t4 color;
