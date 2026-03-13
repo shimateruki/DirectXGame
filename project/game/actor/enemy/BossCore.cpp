@@ -8,18 +8,18 @@
 // 初期化・更新
 // =================================================================
 
-void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
+void BossCore::Initialize (Object3dCommon *common, const std::string &modelName) {
     // 親クラス(BaseEnemy)の初期化
-    BaseEnemy::Initialize(common, modelName);
+    BaseEnemy::Initialize (common, modelName);
 
     // 演出・攻撃パターン管理用ディレクターの生成
-    director_ = std::make_unique<GhostDirector>();
+    director_ = std::make_unique<GhostDirector> ();
     if (sceneManager_) {
-        director_->Initialize(sceneManager_);
+        director_->Initialize (sceneManager_);
     }
 }
 
-void BossCore::Update(float deltaTime) {
+void BossCore::Update (float deltaTime) {
     // 1. 基本更新（行列計算など）
     Object3d::Update (deltaTime);
 
@@ -49,14 +49,14 @@ void BossCore::Update(float deltaTime) {
     case State::Weak:   UpdateWeak (deltaTime);   break;
     }
 
-    
+
 }
 
 // =================================================================
 // ステート(状態)管理
 // =================================================================
 
-void BossCore::ChangeState(State nextState) {
+void BossCore::ChangeState (State nextState) {
     state_ = nextState;
 
     if (!director_) return;
@@ -70,8 +70,8 @@ void BossCore::ChangeState(State nextState) {
 
     case State::Attack: {
         // ランダムな攻撃パターンを選択 (1〜10)
-        int nextAttack = rand() % 10 + 1;
-        std::string attackName = "boss_attack_" + std::to_string(nextAttack);
+        int nextAttack = rand () % 10 + 1;
+        std::string attackName = "boss_attack_" + std::to_string (nextAttack);
 
         // TODO: 攻撃シナリオの実装が完了したらコメントアウトを外す
         // director_->LoadScenario(attackName);
@@ -91,22 +91,22 @@ void BossCore::ChangeState(State nextState) {
 // 各ステートの個別更新処理
 // =================================================================
 
-void BossCore::UpdateIdle(float deltaTime) {
+void BossCore::UpdateIdle (float deltaTime) {
     // 待機シナリオが終了したら、攻撃ステートへ移行
-    if (director_ && director_->IsFinished()) {
-        ChangeState(State::Attack);
+    if (director_ && director_->IsFinished ()) {
+        ChangeState (State::Attack);
     }
 }
 
-void BossCore::UpdateAttack(float deltaTime) {
+void BossCore::UpdateAttack (float deltaTime) {
     if (!director_) return;
 
     // シナリオ内で発生したイベント(トリガー)を取得
-    ActiveEvent eventInfo = director_->GetActiveEvent();
+    ActiveEvent eventInfo = director_->GetActiveEvent ();
 
     if (eventInfo.id != 0 && eventInfo.targetObject) {
         // イベント発生元のワールド座標を取得 (弾やエフェクトの発生位置として使用)
-        Vector3 spawnPos = eventInfo.targetObject->GetWorldPosition();
+        Vector3 spawnPos = eventInfo.targetObject->GetWorldPosition ();
 
         if (eventInfo.id == 1) {
             // イベントID 1 の処理 (例: 斬撃エフェクト生成など)
@@ -116,27 +116,27 @@ void BossCore::UpdateAttack(float deltaTime) {
     }
 
     // 攻撃シナリオが終了したら、弱点露出ステートへ移行
-    if (director_->IsFinished()) {
-        ChangeState(State::Weak);
+    if (director_->IsFinished ()) {
+        ChangeState (State::Weak);
     }
 }
 
-void BossCore::UpdateWeak(float deltaTime) {
+void BossCore::UpdateWeak (float deltaTime) {
     // 弱点露出シナリオが終了したら、待機ステートへ戻る
-    if (director_ && director_->IsFinished()) {
-        ChangeState(State::Idle);
+    if (director_ && director_->IsFinished ()) {
+        ChangeState (State::Idle);
     }
 }
 
 void BossCore::UpdateAnimationSequence (float deltaTime) {
-    
+
     // ==========================================
     // ゲームが再生中(Play)でなければ、この先のアニメーション・入力処理を一切行わない！
     // ==========================================
     if (!SceneManager::GetInstance ()->IsPlaying ()) {
         return; // 再生中でなければ操作を受け付けない
     }
-    
+
     InputManager *input = InputManager::GetInstance ();
 
     // ======================================
@@ -292,11 +292,70 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
-        // --- フェーズ5: 自動リセット ---
+       // --- フェーズ5: 元の定位置に戻りつつ、装甲も完璧な形に戻る！ ---
         else if (animPhase_ == 5) {
-            animPhase_ = 0;
-            attackMode_ = 0; // モードもリセット
-            animTimer_ = 0.0f;
+
+            // ★ 最初の1フレーム目だけ、現在の「位置」と「回転」と「ブロック」の状態を記憶する！
+            if (animTimer_ == 0.0f) {
+                animStartPos_ = GetTranslate (); // 突進が終わったボスの現在地を記憶
+                animTargetPos_ = GetRotation (); // 現在の回転を記憶（不要になったTarget変数を間借り！）
+
+                // フェーズ4でX軸に大回転（5周）しているので、補間がおかしくならないよう0度にリセット
+                animTargetPos_.x = 0.0f;
+
+                blockStartPos_.clear ();
+                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
+                }
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 1.0f; // 1秒かけてスッと戻る
+            float t = std::min (animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo (t);
+
+            //// 1. ボス自身を元の初期位置（例：X=0.0f, Y=4.0f, Z=0.0f）に戻す
+            //Vector3 bossPos;
+            //bossPos.x = Math::Lerp (animStartPos_.x, 0.0f, easeT);
+            //bossPos.y = Math::Lerp (animStartPos_.y, 4.0f, easeT);
+            //bossPos.z = Math::Lerp (animStartPos_.z, 0.0f, easeT);
+            //SetTranslate (bossPos);
+
+            // 2. ボスの回転を綺麗に0（直立）に戻す
+            Vector3 currentRot;
+            currentRot.x = Math::Lerp (animTargetPos_.x, 0.0f, easeT);
+            currentRot.y = Math::Lerp (animTargetPos_.y, 0.0f, easeT);
+            currentRot.z = Math::Lerp (animTargetPos_.z, 0.0f, easeT);
+            SetRotation (currentRot);
+            GetTransform ()->isQuaternionMaster = false;
+
+            // 3. ブロックも元の完璧な装甲の形に戻す
+            struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+            std::vector<DefaultSetting> defaultSettings = {
+                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
+                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
+                { { 2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
+                { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
+            };
+
+            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                if (i < blockStartPos_.size () && i < defaultSettings.size ()) {
+                    Vector3 pos = Math::Lerp (blockStartPos_[i], defaultSettings[i].translate, easeT);
+                    armorBlocks_[i]->SetTranslate (pos);
+                    armorBlocks_[i]->SetScale (defaultSettings[i].scale);
+                    armorBlocks_[i]->SetRotation (defaultSettings[i].rotation);
+                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
+                }
+            }
+
+            // 完全に元に戻ったら、状態をすべてクリアして待機(Idle)へ！
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0; // モードもリセット
+                animTimer_ = 0.0f;
+            }
         }
     }
 
@@ -695,7 +754,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
         if (!fb.block) continue;
 
         // ==========================================
-        // モード4（頭上へ集まって「装填」中）
+        // モード4（頭上へ装填中）
         // ==========================================
         if (fb.mode == 4) {
             Vector3 bossPos = GetTranslate ();
@@ -707,22 +766,26 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             float distance = std::sqrt (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 
             if (distance < 0.5f) {
-                // --- 頭上に到着！ ---
+                // --- 頭上に到着！装填完了！ ---
                 fb.block->SetTranslate (headPos);
 
-                // ★ 修正：モード3の条件分岐を削除！頭上に着いたら無条件でプレイヤーへ撃ち出す！
+                // ここで初めてプレイヤーへの方向を計算して「ドカン！」と撃ち出す！
                 if (target_) {
                     Vector3 targetPos = target_->GetWorldPosition ();
+
+                    // ★ タイクラーさん仕様：プレイヤーの「足元（地面）」を直接狙う！
+                    targetPos.y = 0.0f;
+
                     Vector3 toPlayer = math.Normalize (targetPos - headPos);
 
+                    // 初速を少し速め(60.0f)にして鋭く飛ばす！
                     float bulletSpeed = 60.0f;
                     fb.velocity = { toPlayer.x * bulletSpeed, toPlayer.y * bulletSpeed, toPlayer.z * bulletSpeed };
 
                     float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                     fb.currentRot = { 0.0f, angleY, 0.0f };
                 }
-                fb.mode = 0; // すぐに「飛翔モード(0)」へ切り替え！
-
+                fb.mode = 0; // 「飛翔モード」へ移行！
             } else {
                 // --- 頭上に向かって移動中（シュッ！） ---
                 dir.x /= distance; dir.y /= distance; dir.z /= distance;
@@ -732,7 +795,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 currentPos.z += dir.z * gatherSpeed * deltaTime;
                 fb.block->SetTranslate (currentPos);
 
-                // 移動中も少し回転させておくとカッコいいです
+                // 移動中も少し回転させておく
                 fb.currentRot.x += 15.0f * deltaTime;
                 fb.currentRot.y += 30.0f * deltaTime;
                 fb.block->SetRotation (fb.currentRot);
@@ -744,10 +807,9 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
         // モード0（飛翔中・攻撃）
         // ==========================================
         else if (fb.mode == 0) {
-            // --- 攻撃中（直線軌道でプレイヤーへ突撃！） ---
+            // --- 攻撃中（直線的に足元へ突撃！） ---
 
-            // ★ 修正：不要な条件分岐を削除して、シンプルに重力をかける
-            fb.velocity.y -= 40.0f * deltaTime;
+            // ★ タイクラーさん仕様：重力の計算はしない！（直線レーザー）
 
             Vector3 pos = fb.block->GetTranslate ();
             pos.x += fb.velocity.x * deltaTime;
@@ -769,13 +831,13 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             fb.currentRot.z += spinSpeed.z * deltaTime;
             fb.block->SetRotation (fb.currentRot);
             fb.block->GetTransform ()->isQuaternionMaster = false;
-        }
-        // --- 地面待機中 ---
-        else if (fb.mode == 1) {
+
+        } else if (fb.mode == 1) {
+            // --- 地面待機中 ---
             landedCount++; // 地面にある数をカウントする
-        }
-        // --- ボスへ帰還中 ---
-        else if (fb.mode == 2) {
+
+        } else if (fb.mode == 2) {
+            // --- ボスへ帰還中 ---
             Vector3 bossPos = GetTranslate ();
             Vector3 blockPos = fb.block->GetTranslate ();
 
@@ -803,11 +865,10 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 fb.block->GetTransform ()->isQuaternionMaster = false;
             }
         }
-        // ★ 修正：ここに残っていた古いモード3のゴミコード（fb.mode == 10, 11）を完全削除しました！
     }
 
     // ==========================================
-    // 2. 「すべての弾が地面に落ちた」＆「全部撃ち終わった」なら待って一斉帰還！
+    // 2. 「すべての弾が地面に落ちた」＆「全部撃ち終わった」なら3秒待って一斉帰還！
     // ==========================================
     if (!flyingBlocks_.empty () && landedCount == flyingBlocks_.size () && flyingBlocks_.size () == armorBlocks_.size ()) {
         returnDelayTimer_ += deltaTime;
@@ -844,7 +905,6 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
             };
 
-            // 記憶していた「元々の定位置の番号」を使って絶対間違えないようにする！
             int idx = it->originalIndex;
             if (idx >= 0 && idx < defaultSettings.size ()) {
                 it->block->SetTranslate (defaultSettings[idx].translate);
