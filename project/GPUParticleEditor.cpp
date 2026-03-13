@@ -11,17 +11,12 @@ void GPUParticleEditor::Initialize() {
 }
 
 void GPUParticleEditor::Update(float deltaTime) {
-    GPUParticleManager::GetInstance()->SetEnvironmentParams(envGravity_, envDrag_, envWind_, envTurbulence_);
-    GPUParticleManager::GetInstance()->SetBlendMode(static_cast<GPUParticleManager::BlendMode>(blendModeIndex_));
-    GPUParticleManager::GetInstance()->SetSizeParams(baseSize_, endSize_, rotSpeed_);
-    GPUParticleManager::GetInstance()->SetEndColor(endColor_);
-    if (isLooping_) {
+
+    if (config_.isLooping) {
         emitTimer_ += deltaTime;
-        if (emitTimer_ >= emitInterval_) {
-            GPUParticleManager::GetInstance()->Emit(
-                emitPos_, emitArea_, emitVelocity_, emitCount_,
-                emitLife_, velocityVariance_, baseColor_
-            );
+        if (emitTimer_ >= config_.emitInterval) {
+            // これ1行で、設定データ(config_)の内容が全てManagerに伝わり発生します！
+            GPUParticleManager::GetInstance()->EmitFromConfig(config_);
             emitTimer_ = 0.0f;
         }
     }
@@ -32,44 +27,60 @@ void GPUParticleEditor::DrawImGui() {
 
     if (ImGui::CollapsingHeader("発生パラメータ (Emit Parameters)", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* blendModes[] = { "加算 (光・魔法)", "半透明 (霧・煙)" };
-        ImGui::Combo("合成モード (Blend Mode)", &blendModeIndex_, blendModes, IM_ARRAYSIZE(blendModes));
+        ImGui::Combo("合成モード (Blend Mode)", &config_.blendModeIndex, blendModes, IM_ARRAYSIZE(blendModes));
+        ImGui::Separator();
+        const char* shapeTypes[] = { "ボックス (Box)", "スフィア (Sphere)", "コーン (Cone)" };
+        ImGui::Combo("発生形状 (Shape Type)", &config_.shapeType, shapeTypes, IM_ARRAYSIZE(shapeTypes));
+
+        ImGui::DragFloat3("発生位置 (Position)", &config_.emitPos.x, 0.1f);
+
+        // 形に合わせて出すUIを変える！
+        if (config_.shapeType == 0) {
+            ImGui::DragFloat3("発生範囲 (Area)", &config_.emitArea.x, 0.1f);
+        } else if (config_.shapeType == 1) {
+            ImGui::DragFloat("半径 (Radius)", &config_.shapeRadius, 0.1f, 0.0f, 100.0f);
+        } else if (config_.shapeType == 2) {
+            ImGui::DragFloat("半径 (Radius)", &config_.shapeRadius, 0.1f, 0.0f, 100.0f);
+            ImGui::DragFloat("広がり角度 (Angle)", &config_.shapeAngle, 1.0f, 0.0f, 90.0f);
+        }
+        ImGui::Separator();
+        ImGui::DragFloat3("初期速度 (Velocity)", &config_.emitVelocity.x, 0.1f);
+        ImGui::DragInt("発生数 (Count)", &config_.emitCount, 10, 1, GPUParticleManager::kMaxParticles);
+        ImGui::DragFloat("寿命 (Life Time)", &config_.emitLife, 0.05f, 0.1f, 10.0f);
+        ImGui::DragFloat("速度のばらつき (Variance)", &config_.velocityVariance, 0.1f, 0.0f, 50.0f);
+        ImGui::DragFloat("回転スピード (Rot Speed)", &config_.rotSpeed, 0.05f, 0.0f, 20.0f);
+        ImGui::ColorEdit4("発生時の色 (Base Color)", &config_.baseColor.x);
+        ImGui::ColorEdit4("中間の色 (Mid Color)", &config_.midColor.x);
+        ImGui::DragFloat("色がMidになる時間(割合)", &config_.colorMidTime, 0.01f, 0.01f, 0.99f);
+        ImGui::ColorEdit4("消滅時の色 (End Color)", &config_.endColor.x);
+
         ImGui::Separator();
 
-        ImGui::DragFloat3("発生位置 (Position)", &emitPos_.x, 0.1f);
-        ImGui::DragFloat3("発生範囲 (Area)", &emitArea_.x, 0.1f);
-        ImGui::DragFloat3("初期速度 (Velocity)", &emitVelocity_.x, 0.1f);
-        ImGui::DragInt("発生数 (Count)", &emitCount_, 10, 1, GPUParticleManager::kMaxParticles);
-        ImGui::DragFloat("寿命 (Life Time)", &emitLife_, 0.05f, 0.1f, 10.0f);
-        ImGui::DragFloat("速度のばらつき (Variance)", &velocityVariance_, 0.1f, 0.0f, 50.0f);
-        ImGui::ColorEdit4("基本色 (Base Color)", &baseColor_.x);
-        ImGui::ColorEdit4("消滅時の色 (End Color)", &endColor_.x);
-        ImGui::DragFloat("回転スピード (Rot Speed)", &rotSpeed_, 0.05f, 0.0f, 20.0f);
-
-        // ★隙間をなくすための超重要パラメータを復活！
-        ImGui::DragFloat("発生時の大きさ (Base Size)", &baseSize_, 0.1f, 0.1f, 50.0f);
-        ImGui::DragFloat("消滅時の大きさ (End Size)", &endSize_, 0.1f, 0.1f, 50.0f);
+        // 既存のサイズ設定も3段階に書き換える
+        ImGui::DragFloat("中間の大きさ (Mid Size)", &config_.midSize, 0.1f, 0.0f, 50.0f);
+        ImGui::DragFloat("サイズがMidになる時間(割合)", &config_.sizeMidTime, 0.01f, 0.01f, 0.99f);
+        ImGui::DragFloat("発生時の大きさ (Base Size)", &config_.baseSize, 0.1f, 0.1f, 50.0f);
+        ImGui::DragFloat("消滅時の大きさ (End Size)", &config_.endSize, 0.1f, 0.1f, 50.0f);
     }
 
     if (ImGui::CollapsingHeader("環境変化 (Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat3("重力 (Gravity)", &envGravity_.x, 0.01f);
-        ImGui::DragFloat("空気抵抗 (Air Drag)", &envDrag_, 0.001f, 0.8f, 1.0f);
-        ImGui::DragFloat3("風 (Wind)", &envWind_.x, 0.1f);
-        ImGui::DragFloat("乱流・ノイズ (Turbulence)", &envTurbulence_, 0.1f, 0.0f, 100.0f);
+        ImGui::DragFloat3("重力 (Gravity)", &config_.envGravity.x, 0.01f);
+        ImGui::DragFloat("空気抵抗 (Air Drag)", &config_.envDrag, 0.001f, 0.8f, 1.0f);
+        ImGui::DragFloat3("風 (Wind)", &config_.envWind.x, 0.1f);
+        ImGui::DragFloat("乱流・ノイズ (Turbulence)", &config_.envTurbulence, 0.1f, 0.0f, 100.0f);
     }
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader("エディタ操作 (Editor Controls)", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (ImGui::Button("1回発生 (Emit Once)", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
-            GPUParticleManager::GetInstance()->Emit(
-                emitPos_, emitArea_, emitVelocity_, emitCount_,
-                emitLife_, velocityVariance_, baseColor_
-            );
+            // ★ こちらも1行で出せます！
+            GPUParticleManager::GetInstance()->EmitFromConfig(config_);
         }
 
-        ImGui::Checkbox("連続発生テスト (Loop Emit)", &isLooping_);
-        if (isLooping_) {
+        ImGui::Checkbox("連続発生テスト (Loop Emit)", &config_.isLooping);
+        if (config_.isLooping) {
             ImGui::Indent();
-            ImGui::DragFloat("発生間隔 (Interval)", &emitInterval_, 0.01f, 0.01f, 2.0f);
+            ImGui::DragFloat("発生間隔 (Interval)", &config_.emitInterval, 0.01f, 0.01f, 2.0f);
             ImGui::Unindent();
         }
     }
@@ -77,34 +88,46 @@ void GPUParticleEditor::DrawImGui() {
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader("保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::InputText("プリセット名", presetName_, sizeof(presetName_));
+        // ★ .h に合わせて変数名を presetNameInput_ に変更
+        ImGui::InputText("プリセット名", presetNameInput_, sizeof(presetNameInput_));
 
         if (ImGui::Button("保存 (Save)", ImVec2(120, 0))) {
-            Save(presetName_);
+            Save(presetNameInput_);
         }
         ImGui::SameLine();
         if (ImGui::Button("読み込み (Load)", ImVec2(120, 0))) {
-            Load(presetName_);
+            Load(presetNameInput_);
         }
     }
 }
+
 void GPUParticleEditor::Save(const std::string& presetName) {
     json j;
-    j["emitPos"] = { emitPos_.x, emitPos_.y, emitPos_.z };
-    j["emitArea"] = { emitArea_.x, emitArea_.y, emitArea_.z };
-    j["emitVelocity"] = { emitVelocity_.x, emitVelocity_.y, emitVelocity_.z };
-    j["emitCount"] = emitCount_;
-    j["emitLife"] = emitLife_;
-    j["velocityVariance"] = velocityVariance_;
-    j["baseColor"] = { baseColor_.x, baseColor_.y, baseColor_.z, baseColor_.w };
-    j["envGravity"] = { envGravity_.x, envGravity_.y, envGravity_.z };
-    j["envDrag"] = envDrag_;
-    j["envWind"] = { envWind_.x, envWind_.y, envWind_.z };
-    j["envTurbulence"] = envTurbulence_;
-    j["baseSize"] = baseSize_;
-    j["endSize"] = endSize_;
-    j["rotSpeed"] = rotSpeed_;
-    j["endColor"] = { endColor_.x, endColor_.y, endColor_.z, endColor_.w };
+    j["emitPos"] = { config_.emitPos.x, config_.emitPos.y, config_.emitPos.z };
+    j["emitArea"] = { config_.emitArea.x, config_.emitArea.y, config_.emitArea.z };
+    j["emitVelocity"] = { config_.emitVelocity.x, config_.emitVelocity.y, config_.emitVelocity.z };
+    j["emitCount"] = config_.emitCount;
+    j["emitLife"] = config_.emitLife;
+    j["velocityVariance"] = config_.velocityVariance;
+    j["baseColor"] = { config_.baseColor.x, config_.baseColor.y, config_.baseColor.z, config_.baseColor.w };
+    j["envGravity"] = { config_.envGravity.x, config_.envGravity.y, config_.envGravity.z };
+    j["envDrag"] = config_.envDrag;
+    j["envWind"] = { config_.envWind.x, config_.envWind.y, config_.envWind.z };
+    j["envTurbulence"] = config_.envTurbulence;
+    j["baseSize"] = config_.baseSize;
+    j["endSize"] = config_.endSize;
+    j["rotSpeed"] = config_.rotSpeed;
+    j["endColor"] = { config_.endColor.x, config_.endColor.y, config_.endColor.z, config_.endColor.w };
+    j["shapeType"] = config_.shapeType;
+    j["shapeRadius"] = config_.shapeRadius;
+    j["shapeAngle"] = config_.shapeAngle;
+    j["blendModeIndex"] = config_.blendModeIndex;
+    j["isLooping"] = config_.isLooping;
+    j["emitInterval"] = config_.emitInterval;
+    j["midColor"] = { config_.midColor.x, config_.midColor.y, config_.midColor.z, config_.midColor.w };
+    j["colorMidTime"] = config_.colorMidTime;
+    j["midSize"] = config_.midSize;
+    j["sizeMidTime"] = config_.sizeMidTime;
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
     if (file.is_open()) {
@@ -124,37 +147,34 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         file >> j;
         file.close();
 
-        if (j.contains("emitPos")) {
-            emitPos_.x = j["emitPos"][0]; emitPos_.y = j["emitPos"][1]; emitPos_.z = j["emitPos"][2];
-        }
-        if (j.contains("emitArea")) {
-            emitArea_.x = j["emitArea"][0]; emitArea_.y = j["emitArea"][1]; emitArea_.z = j["emitArea"][2];
-        }
-        if (j.contains("emitVelocity")) {
-            emitVelocity_.x = j["emitVelocity"][0]; emitVelocity_.y = j["emitVelocity"][1]; emitVelocity_.z = j["emitVelocity"][2];
-        }
-        if (j.contains("emitCount")) emitCount_ = j["emitCount"];
-        if (j.contains("emitLife")) emitLife_ = j["emitLife"];
-        if (j.contains("envGravity")) {
-            envGravity_.x = j["envGravity"][0]; envGravity_.y = j["envGravity"][1]; envGravity_.z = j["envGravity"][2];
-        }
-        if (j.contains("envDrag")) envDrag_ = j["envDrag"];
-        if (j.contains("envWind")) {
-            envWind_.x = j["envWind"][0]; envWind_.y = j["envWind"][1]; envWind_.z = j["envWind"][2];
-        }
-        if (j.contains("envTurbulence")) envTurbulence_ = j["envTurbulence"];
-        if (j.contains("velocityVariance")) velocityVariance_ = j["velocityVariance"];
-        if (j.contains("baseColor")) {
-            baseColor_.x = j["baseColor"][0]; baseColor_.y = j["baseColor"][1];
-            baseColor_.z = j["baseColor"][2]; baseColor_.w = j["baseColor"][3];
-        }
-        if (j.contains("baseSize")) baseSize_ = j["baseSize"];
-        if (j.contains("endSize")) endSize_ = j["endSize"];
-        if (j.contains("rotSpeed")) rotSpeed_ = j["rotSpeed"];
-        if (j.contains("endColor")) {
-            endColor_.x = j["endColor"][0]; endColor_.y = j["endColor"][1];
-            endColor_.z = j["endColor"][2]; endColor_.w = j["endColor"][3];
-        }
+        if (j.contains("emitPos")) { config_.emitPos.x = j["emitPos"][0]; config_.emitPos.y = j["emitPos"][1]; config_.emitPos.z = j["emitPos"][2]; }
+        if (j.contains("emitArea")) { config_.emitArea.x = j["emitArea"][0]; config_.emitArea.y = j["emitArea"][1]; config_.emitArea.z = j["emitArea"][2]; }
+        if (j.contains("emitVelocity")) { config_.emitVelocity.x = j["emitVelocity"][0]; config_.emitVelocity.y = j["emitVelocity"][1]; config_.emitVelocity.z = j["emitVelocity"][2]; }
+        if (j.contains("emitCount")) config_.emitCount = j["emitCount"];
+        if (j.contains("emitLife")) config_.emitLife = j["emitLife"];
+        if (j.contains("envGravity")) { config_.envGravity.x = j["envGravity"][0]; config_.envGravity.y = j["envGravity"][1]; config_.envGravity.z = j["envGravity"][2]; }
+        if (j.contains("envDrag")) config_.envDrag = j["envDrag"];
+        if (j.contains("envWind")) { config_.envWind.x = j["envWind"][0]; config_.envWind.y = j["envWind"][1]; config_.envWind.z = j["envWind"][2]; }
+        if (j.contains("envTurbulence")) config_.envTurbulence = j["envTurbulence"];
+        if (j.contains("velocityVariance")) config_.velocityVariance = j["velocityVariance"];
+
+        if (j.contains("baseColor")) { config_.baseColor.x = j["baseColor"][0]; config_.baseColor.y = j["baseColor"][1]; config_.baseColor.z = j["baseColor"][2]; config_.baseColor.w = j["baseColor"][3]; }
+        if (j.contains("baseSize")) config_.baseSize = j["baseSize"];
+        if (j.contains("endSize")) config_.endSize = j["endSize"];
+        if (j.contains("rotSpeed")) config_.rotSpeed = j["rotSpeed"];
+        if (j.contains("endColor")) { config_.endColor.x = j["endColor"][0]; config_.endColor.y = j["endColor"][1]; config_.endColor.z = j["endColor"][2]; config_.endColor.w = j["endColor"][3]; }
+        if (j.contains("shapeType")) config_.shapeType = j["shapeType"];
+        if (j.contains("shapeRadius")) config_.shapeRadius = j["shapeRadius"];
+        if (j.contains("shapeAngle")) config_.shapeAngle = j["shapeAngle"];
+        // ★ 追加したパラメータの読み込み
+        if (j.contains("blendModeIndex")) config_.blendModeIndex = j["blendModeIndex"];
+        if (j.contains("isLooping")) config_.isLooping = j["isLooping"];
+        if (j.contains("emitInterval")) config_.emitInterval = j["emitInterval"];
+        if (j.contains("midColor")) { config_.midColor.x = j["midColor"][0]; config_.midColor.y = j["midColor"][1]; config_.midColor.z = j["midColor"][2]; config_.midColor.w = j["midColor"][3]; }
+        if (j.contains("colorMidTime")) config_.colorMidTime = j["colorMidTime"];
+        if (j.contains("midSize")) config_.midSize = j["midSize"];
+        if (j.contains("sizeMidTime")) config_.sizeMidTime = j["sizeMidTime"];
+
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);
         }

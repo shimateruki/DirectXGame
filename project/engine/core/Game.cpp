@@ -57,6 +57,8 @@ void Game::Initialize() {
     particleEditor_->Initialize(sceneManager_.get());
     gpuParticleEditor_ = std::make_unique<GPUParticleEditor>();
     gpuParticleEditor_->Initialize();
+    vfxSequencerEditor_ = std::make_unique<VFXSequencerEditor>();
+    vfxSequencerEditor_->Initialize();
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
     ghostDirector_ = std::make_unique<GhostDirector>();
@@ -92,6 +94,7 @@ void Game::Finalize() {
     ghostRecorder_.reset();
     ghostDirector_.reset();
     gpuParticleEditor_.reset();
+    vfxSequencerEditor_.reset();
    DebugConsole::GetInstance()->Finalize();
 #endif
 
@@ -294,6 +297,10 @@ void Game::Update() {
                 EditorManager::GetInstance()->SetSelectedObject(gpuParticleEditor_.get());
                 showDebugWindows_ = true;
             }
+            if (ImGui::MenuItem("VFXシーケンサーエディタ")) {
+                EditorManager::GetInstance()->SetSelectedObject(vfxSequencerEditor_.get());
+                showDebugWindows_ = true;
+            }
 
             ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
@@ -323,6 +330,9 @@ void Game::Update() {
 #ifdef USE_IMGUI
     if (gpuParticleEditor_) {
         gpuParticleEditor_->Update(deltaTime);
+    }
+    if (vfxSequencerEditor_) {
+        vfxSequencerEditor_->Update(deltaTime);
     }
     // -------------------------------------------------------------------------
     // 4. エディタ描画の総仕上げ！
@@ -372,6 +382,8 @@ void Game::Update() {
     updateTimeHistory_[timeHistoryIndex_] = sceneUpdateTimeMs_;
     timeHistoryIndex_ = (timeHistoryIndex_ + 1) % 120;
 }
+
+
 void Game::Draw() {
     // ★ 前フレームのGPUの計測結果を読み取る
     dxCommon_->ReadGpuProfile();

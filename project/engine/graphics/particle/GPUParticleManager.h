@@ -2,6 +2,9 @@
 #include "DirectXCommon.h"
 #include "engine/utility/math/Math.h"
 #include <wrl.h>
+#include <map>        
+#include <string>      
+#include "GPUParticleConfig.h"
 
 /// <summary>
 /// Compute Shaderを用いてGPU上で10万個のパーティクルを制御する最強のマネージャー
@@ -26,6 +29,7 @@ public:
         float time;
         uint32_t startIndex;
         uint32_t emitCount;
+
         Vector3 emitPos;
         float emitLife;
         Vector3 emitArea;
@@ -33,15 +37,24 @@ public:
         Vector3 emitVelocity;
         float velocityVariance;
         Vector4 baseColor;
+
         Vector3 gravity;
         float drag;
         Vector3 wind;
         float turbulence;
         float baseSize;
+        float midSize;
         float endSize;
-        float rotSpeedVariance; 
-        float padding2;
+        float sizeMidTime;
+        Vector4 midColor;
+        float colorMidTime;
+        float rotSpeedVariance;
+        float padding2[2]; 
         Vector4 endColor;
+        uint32_t shapeType;
+        float shapeRadius;
+        float shapeAngle;
+        float padding3;
     };
     enum class BlendMode {
         kAdd,   // 加算合成（光る魔法や炎）
@@ -58,7 +71,7 @@ public:
     // 毎フレームの計算 (Compute Shaderの実行)
     void Update(float deltaTime);
 
-    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle);
+    void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle, uint32_t depthSrvHandle = 0);
     void Emit(const Vector3& pos, const Vector3& area, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color);
     void SetEnvironmentParams(const Vector3& gravity, float drag, const Vector3& wind, float turbulence) {
         envGravity_ = gravity;
@@ -74,6 +87,14 @@ public:
         rotSpeed_ = rotSpeed;
     }
     void SetEndColor(const Vector4& endColor) { endColor_ = endColor; }
+    // 起動時に全JSONを読み込んでメモリにキャッシュする
+    void LoadAllPresets(const std::string& directoryPath = "Resources/json/gpu_particles/");
+
+    // ゲーム側用：名前と座標を渡すだけで即座に再生！
+    void Emit(const std::string& presetName, const Vector3& position);
+
+    // エディタ側用：コンフィグデータを直接渡して再生！
+    void EmitFromConfig(const GPUParticleConfig& config);
 private:
     GPUParticleManager() = default;
     ~GPUParticleManager() = default;
@@ -111,6 +132,7 @@ private:
     struct CameraData {
         Matrix4x4 viewProj;
         Matrix4x4 billboardMatrix;
+        Matrix4x4 projection;
     };
 
     //  カメラ用定数バッファ
@@ -127,5 +149,5 @@ private:
     float endSize_ = 1.0f;
     float rotSpeed_ = 1.0f; 
     Vector4 endColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
-
+    std::map<std::string, GPUParticleConfig> presets_;
 };
