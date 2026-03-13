@@ -309,6 +309,15 @@
     <ClCompile Include="GPUParticleEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="GPUParticleEmitter.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="VFXSequencer.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="VFXSequencerEditor.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\shader\Object3d.hlsli">
@@ -353,6 +362,7 @@
       <Filter>ヘッダー ファイル</Filter>
     </None>
     <None Include="Resources\shader\PostEffect.PS.hlsl" />
+    <None Include="Resources\shader\GPUParticlePS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
@@ -368,7 +378,6 @@
     <FxCompile Include="Resources\shader\PostEffect.VS.hlsl" />
     <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
     <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
-    <FxCompile Include="Resources\shader\GPUParticlePS.hlsl" />
     <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
     <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
   </ItemGroup>
@@ -1157,6 +1166,18 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="GPUParticleEditor.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUParticleConfig.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUParticleEmitter.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="VFXSequencer.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="VFXSequencerEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

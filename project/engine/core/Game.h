@@ -11,6 +11,7 @@
 #include "ParticleEditor.h"
 #include "imgui_internal.h"
 #include <imgui.h>
+#include "VFXSequencerEditor.h"
 #endif
 
 #include"LightEditor.h"
@@ -19,6 +20,7 @@
 #include <PostEffectEditor.h>
 #include "GhostDirector.h"
 #include "GPUParticleEditor.h"
+
 
 
 class Game : public Framework {
@@ -54,6 +56,7 @@ private:
 	std::unique_ptr<GhostRecorder> ghostRecorder_;
 	std::unique_ptr<GhostDirector> ghostDirector_;
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
+	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;
 	bool showDebugWindows_ = false;

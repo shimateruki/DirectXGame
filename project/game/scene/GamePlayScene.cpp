@@ -94,7 +94,7 @@ void GamePlayScene::Initialize() {
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-
+	GPUParticleManager::GetInstance()->LoadAllPresets();
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
@@ -290,13 +290,19 @@ void GamePlayScene::Draw() {
 	// : GPUパーティクルの描画！
 	// =======================================================
 
+	dxCommon_->PreDrawLocalFog();
+
 	// 定数バッファではなく、View行列とProjection行列をそのまま渡す！
 	GPUParticleManager::GetInstance()->Draw(
 		dxCommon_->GetCommandList(),
 		camera->GetViewMatrix(),
 		camera->GetProjectionMatrix(),
-		gpuParticleTexHandle_
+		gpuParticleTexHandle_,
+		dxCommon_->GetDepthSrvHandle() 
 	);
+
+	// ★ 描き終わったら安全のために「書き込みモード」へ戻す！
+	dxCommon_->PostDrawLocalFog();
 }
 
 // ====================================================================
