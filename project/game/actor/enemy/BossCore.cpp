@@ -210,7 +210,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
     // ======================================
     if (attackMode_ == 1) {
 
-        // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
+         // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
         if (animPhase_ == 1) {
             animTimer_ += deltaTime;
             float duration = 1.5f; // 1.5秒かけて変形
@@ -292,70 +292,11 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
-       // --- フェーズ5: 元の定位置に戻りつつ、装甲も完璧な形に戻る！ ---
+        // --- フェーズ5: 自動リセット ---
         else if (animPhase_ == 5) {
-
-            // ★ 最初の1フレーム目だけ、現在の「位置」と「回転」と「ブロック」の状態を記憶する！
-            if (animTimer_ == 0.0f) {
-                animStartPos_ = GetTranslate (); // 突進が終わったボスの現在地を記憶
-                animTargetPos_ = GetRotation (); // 現在の回転を記憶（不要になったTarget変数を間借り！）
-
-                // フェーズ4でX軸に大回転（5周）しているので、補間がおかしくならないよう0度にリセット
-                animTargetPos_.x = 0.0f;
-
-                blockStartPos_.clear ();
-                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
-                }
-            }
-
-            animTimer_ += deltaTime;
-            float duration = 1.0f; // 1秒かけてスッと戻る
-            float t = std::min (animTimer_ / duration, 1.0f);
-            float easeT = Easing::OutExpo (t);
-
-            //// 1. ボス自身を元の初期位置（例：X=0.0f, Y=4.0f, Z=0.0f）に戻す
-            //Vector3 bossPos;
-            //bossPos.x = Math::Lerp (animStartPos_.x, 0.0f, easeT);
-            //bossPos.y = Math::Lerp (animStartPos_.y, 4.0f, easeT);
-            //bossPos.z = Math::Lerp (animStartPos_.z, 0.0f, easeT);
-            //SetTranslate (bossPos);
-
-            // 2. ボスの回転を綺麗に0（直立）に戻す
-            Vector3 currentRot;
-            currentRot.x = Math::Lerp (animTargetPos_.x, 0.0f, easeT);
-            currentRot.y = Math::Lerp (animTargetPos_.y, 0.0f, easeT);
-            currentRot.z = Math::Lerp (animTargetPos_.z, 0.0f, easeT);
-            SetRotation (currentRot);
-            GetTransform ()->isQuaternionMaster = false;
-
-            // 3. ブロックも元の完璧な装甲の形に戻す
-            struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
-            std::vector<DefaultSetting> defaultSettings = {
-                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
-                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
-                { { 0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
-                { { 0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
-                { { 2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
-                { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
-            };
-
-            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                if (i < blockStartPos_.size () && i < defaultSettings.size ()) {
-                    Vector3 pos = Math::Lerp (blockStartPos_[i], defaultSettings[i].translate, easeT);
-                    armorBlocks_[i]->SetTranslate (pos);
-                    armorBlocks_[i]->SetScale (defaultSettings[i].scale);
-                    armorBlocks_[i]->SetRotation (defaultSettings[i].rotation);
-                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
-                }
-            }
-
-            // 完全に元に戻ったら、状態をすべてクリアして待機(Idle)へ！
-            if (t >= 1.0f) {
-                animPhase_ = 0;
-                attackMode_ = 0; // モードもリセット
-                animTimer_ = 0.0f;
-            }
+            animPhase_ = 0;
+            attackMode_ = 0; // モードもリセット
+            animTimer_ = 0.0f;
         }
     }
 
