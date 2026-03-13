@@ -1,0 +1,50 @@
+{
+    "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "baseSize": 4.099999904632568,
+    "blendModeIndex": 0,
+    "emitArea": [
+        5.199999809265137,
+        10.199999809265137,
+        12.100000381469727
+    ],
+    "emitCount": 1,
+    "emitInterval": 2.0,
+    "emitLife": 2.0,
+    "emitPos": [
+        24.5,
+        11.800000190734863,
+        0.0
+    ],
+    "emitVelocity": [
+        0.0,
+        1.0,
+        0.0
+    ],
+    "endColor": [
+        1.0,
+        1.0,
+        1.0,
+        0.0
+    ],
+    "endSize": 8.300000190734863,
+    "envDrag": 0.0,
+    "envGravity": [
+        0.0,
+        -9.800000190734863,
+        0.20999999344348907
+    ],
+    "envTurbulence": 0.0,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "isLooping": true,
+    "rotSpeed": 0.0,
+    "velocityVariance": 1.0
+}

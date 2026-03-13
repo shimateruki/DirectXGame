@@ -2,6 +2,14 @@
 #include "SRVManager.h"
 #include <d3dcompiler.h>
 #include <cassert>
+#include <fstream>
+#include <filesystem>
+#include "json.hpp"
+#include "DebugConsole.h"
+
+using json = nlohmann::json;
+namespace fs = std::filesystem;
+
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -156,19 +164,30 @@ void GPUParticleManager::Update(float deltaTime) {
     totalTime_ += deltaTime;
     configData_->deltaTime = deltaTime;
     configData_->time = totalTime_;
-
-    // CPU側で設定するだけ（GPUへの送信はDrawで行う）
+     configData_->gravity = envGravity_;
+     configData_->drag = envDrag_;
+     configData_->wind = envWind_;
+     configData_->turbulence = envTurbulence_;
+     configData_->baseSize = baseSize_;
+     configData_->endSize = endSize_;
+     configData_->rotSpeedVariance = rotSpeed_;
+     configData_->endColor = endColor_;
     configData_->emitCount = emitCountThisFrame_;
 }
-void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle) {
+
+
+void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle, uint32_t depthSrvHandle) {
     if (!commandList) return;
 
     // =======================================================
     // 1. まず裏側で、10万個のパーティクルの物理演算 (Compute) を実行する！
     // =======================================================
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+
+    // ★ ここは「計算用」のパイプラインをセットする！
     commandList->SetPipelineState(computePipelineState_.Get());
     commandList->SetComputeRootSignature(computeRootSignature_.Get());
+
     SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 0, uavIndex_);
     commandList->SetComputeRootConstantBufferView(1, configBuffer_->GetGPUVirtualAddress());
 
@@ -189,6 +208,9 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     cameraData_->viewProj = math.Multiply(viewMatrix, projectionMatrix);
     cameraData_->billboardMatrix = billboard;
 
+    // ★追加: ソフトパーティクルの深度計算用にプロジェクション行列をセット！
+    cameraData_->projection = projectionMatrix;
+
     // 描画前に、バッファを「読み取り専用(SRV)モード」に切り替える（これがComputeとGraphicsの境界線！）
     D3D12_RESOURCE_BARRIER toSRV{};
     toSRV.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -198,8 +220,14 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     commandList->ResourceBarrier(1, &toSRV);
 
     // --- いつもの描画処理 ---
-    // (※さっきComputeでセットしたヒープがそのまま使えるのでSetDescriptorHeapsは省略OK)
-    commandList->SetPipelineState(graphicsPipelineState_.Get());
+
+    // 描画用のパイプラインをブレンドモードで切り替える！
+    if (blendMode_ == BlendMode::kAdd) {
+        commandList->SetPipelineState(graphicsPipelineStateAdd_.Get());
+    } else {
+        commandList->SetPipelineState(graphicsPipelineStateAlpha_.Get());
+    }
+
     commandList->SetGraphicsRootSignature(graphicsRootSignature_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
@@ -207,6 +235,12 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     commandList->SetGraphicsRootConstantBufferView(1, cameraBuffer_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle);
 
+    // 深度テクスチャが渡されていればシェーダー(t2 / ルートパラメータ[3])にセットする！
+    if (depthSrvHandle > 0) {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    }
+
+    // 描画の号令！
     commandList->DrawInstanced(4, kMaxParticles, 0, 0);
 
     // 描き終わったら、次のUpdate(Compute)のために「書き込み(UAV)モード」に戻す！
@@ -217,6 +251,8 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     toUAV.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     commandList->ResourceBarrier(1, &toUAV);
 }
+
+
 void GPUParticleManager::CreateGraphicsPipeline() {
     auto device = dxCommon_->GetDevice();
 
@@ -232,8 +268,13 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     srvRangeTexture.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeTexture.NumDescriptors = 1;
     srvRangeTexture.BaseShaderRegister = 1; // t1: テクスチャ
+	// 深度テクスチャ用のSRVも追加
+    D3D12_DESCRIPTOR_RANGE srvRangeDepth{};
+    srvRangeDepth.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRangeDepth.NumDescriptors = 1;
+    srvRangeDepth.BaseShaderRegister = 2; // t2: 深度テクスチ
 
-    D3D12_ROOT_PARAMETER rootParams[3] = {};
+    D3D12_ROOT_PARAMETER rootParams[4] = {};
     // [0] パーティクル配列 (t0)
     rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -247,7 +288,10 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
     rootParams[2].DescriptorTable.pDescriptorRanges = &srvRangeTexture;
-
+	// [3] 深度テクスチャ (t2)
+    rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[3].DescriptorTable.pDescriptorRanges = &srvRangeDepth;
     // 静的サンプラー (s0: テクスチャのピクセル補間用)
     D3D12_STATIC_SAMPLER_DESC samplerDesc{};
     samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -258,7 +302,7 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = 3;
+    rsDesc.NumParameters = 4; 
     rsDesc.pParameters = rootParams;
     rsDesc.NumStaticSamplers = 1;
     rsDesc.pStaticSamplers = &samplerDesc;
@@ -270,61 +314,165 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&graphicsRootSignature_));
 
     // =========================================================
-    // 2. PSO の作成
+    // 2. PSO の作成 (共通設定)
     // =========================================================
-    Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
-    Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
-    D3DCompileFromFile(L"Resources/shader/GPUParticleVS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", 0, 0, &vsBlob, &errorBlob);
-    D3DCompileFromFile(L"Resources/shader/GPUParticlePS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", 0, 0, &psBlob, &errorBlob);
-
+    Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticleVS.hlsl", L"vs_6_0");
+    Microsoft::WRL::ComPtr<IDxcBlob> psBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticlePS.hlsl", L"ps_6_0");
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = graphicsRootSignature_.Get();
     psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
 
-    // ★重要: ブレンドステート (加算合成で光らせる！)
-    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
-    psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_ONE; // ここがONEだと加算合成になる
-    psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-    psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-    psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-    psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-
-    // ★重要: ラスタライザ (両面描画)
+    // ラスタライザ (両面描画)
     psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 
-    // ★重要: 深度テスト (奥のものは描画しないが、パーティクル自体は深度を書き込まない)
-    psoDesc.DepthStencilState.DepthEnable = TRUE;
-    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO; // 深度書き込みOFF
+    // 深度テスト (奥のものは描画しないが、パーティクル自体は深度を書き込まない)
+    psoDesc.DepthStencilState.DepthEnable = FALSE; // TRUE から FALSE に変更！
+    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
     psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
-    // ★重要: 頂点レイアウト (シェーダー側で生成するので空っぽでOK！)
+    // 頂点レイアウト (シェーダー側で生成するので空っぽでOK)
     psoDesc.InputLayout.pInputElementDescs = nullptr;
     psoDesc.InputLayout.NumElements = 0;
 
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets = 1;
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
     psoDesc.SampleDesc.Count = 1;
     psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineState_));
+
+    // =========================================================
+    // ★ PSO 1: 加算合成 (Additive) - 光、炎、魔法用
+    // =========================================================
+    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
+    psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_ONE; // ここが ONE だと加算合成
+    psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+    psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+    psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+    psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineStateAdd_));
+    assert(SUCCEEDED(hr));
+
+    // =========================================================
+    // ★ PSO 2: 半透明合成 (Alpha Blend) - 霧、黒煙、砂埃用
+    // =========================================================
+    // DestBlend を INV_SRC_ALPHA に変えるだけで、背景を透かす「半透明（アルファブレンド）」になる！
+    psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+
+    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineStateAlpha_));
     assert(SUCCEEDED(hr));
 }
 
-void GPUParticleManager::Emit(const Vector3& pos, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color) {
-    // GPUに送る発生用データをセット
+// ====================================================================
+// ★ 起動時に指定フォルダのパーティクルJSONをすべて読み込む！
+// ====================================================================
+void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
+    if (!fs::exists(directoryPath)) {
+        fs::create_directories(directoryPath); // フォルダがなければ作る
+        return;
+    }
+
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (entry.path().extension() == ".json") {
+            std::string filename = entry.path().stem().string(); // ".json"を抜いた名前 (例: "Explosion")
+            std::ifstream file(entry.path());
+            if (file.is_open()) {
+                json j;
+                file >> j;
+
+                GPUParticleConfig config;
+                // --- JSONからデータを復元 ---
+                if (j.contains("emitPos")) { config.emitPos.x = j["emitPos"][0]; config.emitPos.y = j["emitPos"][1]; config.emitPos.z = j["emitPos"][2]; }
+                if (j.contains("emitArea")) { config.emitArea.x = j["emitArea"][0]; config.emitArea.y = j["emitArea"][1]; config.emitArea.z = j["emitArea"][2]; }
+                if (j.contains("emitVelocity")) { config.emitVelocity.x = j["emitVelocity"][0]; config.emitVelocity.y = j["emitVelocity"][1]; config.emitVelocity.z = j["emitVelocity"][2]; }
+                if (j.contains("emitCount")) config.emitCount = j["emitCount"];
+                if (j.contains("emitLife")) config.emitLife = j["emitLife"];
+                if (j.contains("velocityVariance")) config.velocityVariance = j["velocityVariance"];
+
+                if (j.contains("baseColor")) { config.baseColor.x = j["baseColor"][0]; config.baseColor.y = j["baseColor"][1]; config.baseColor.z = j["baseColor"][2]; config.baseColor.w = j["baseColor"][3]; }
+                if (j.contains("endColor")) { config.endColor.x = j["endColor"][0]; config.endColor.y = j["endColor"][1]; config.endColor.z = j["endColor"][2]; config.endColor.w = j["endColor"][3]; }
+                if (j.contains("baseSize")) config.baseSize = j["baseSize"];
+                if (j.contains("endSize")) config.endSize = j["endSize"];
+                if (j.contains("rotSpeed")) config.rotSpeed = j["rotSpeed"];
+                if (j.contains("blendModeIndex")) config.blendModeIndex = j["blendModeIndex"];
+
+                if (j.contains("envGravity")) { config.envGravity.x = j["envGravity"][0]; config.envGravity.y = j["envGravity"][1]; config.envGravity.z = j["envGravity"][2]; }
+                if (j.contains("envDrag")) config.envDrag = j["envDrag"];
+                if (j.contains("envWind")) { config.envWind.x = j["envWind"][0]; config.envWind.y = j["envWind"][1]; config.envWind.z = j["envWind"][2]; }
+                if (j.contains("envTurbulence")) config.envTurbulence = j["envTurbulence"];
+
+                if (j.contains("isLooping")) config.isLooping = j["isLooping"];
+                if (j.contains("emitInterval")) config.emitInterval = j["emitInterval"];
+                if (j.contains("shapeType")) config.shapeType = j["shapeType"];
+                if (j.contains("shapeRadius")) config.shapeRadius = j["shapeRadius"];
+                if (j.contains("shapeAngle")) config.shapeAngle = j["shapeAngle"];
+                if (j.contains("midColor")) {
+                    config.midColor.x = j["midColor"][0];
+                    config.midColor.y = j["midColor"][1];
+                    config.midColor.z = j["midColor"][2];
+                    config.midColor.w = j["midColor"][3];
+                }
+                if (j.contains("colorMidTime")) config.colorMidTime = j["colorMidTime"];
+                if (j.contains("midSize")) config.midSize = j["midSize"];
+                if (j.contains("sizeMidTime")) config.sizeMidTime = j["sizeMidTime"];
+                // 辞書に登録！
+                presets_[filename] = config;
+                DebugConsole::GetInstance()->AddLog("Loaded Particle Preset: " + filename);
+            }
+        }
+    }
+}
+
+// ====================================================================
+// ★ ゲームシステム用: 名前と座標を渡すだけでパーティクル発生！
+// ====================================================================
+void GPUParticleManager::Emit(const std::string& presetName, const Vector3& position) {
+    auto it = presets_.find(presetName);
+    if (it != presets_.end()) {
+        GPUParticleConfig config = it->second; // プリセットのコピーを作成
+        config.emitPos = position;             // 発生座標だけ上書き！
+        EmitFromConfig(config);                // 発生！
+    } else {
+        DebugConsole::GetInstance()->AddLog("Particle Preset Not Found: " + presetName);
+    }
+}
+
+// ====================================================================
+// ★ エディタ＆システム共通: Configデータを元にパーティクル発生！
+// ====================================================================
+void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     configData_->startIndex = currentParticleIndex_;
-    configData_->emitCount = count;
-    configData_->emitPos = pos;
-    configData_->emitVelocity = velocity;
-    configData_->emitLife = life;
-    configData_->velocityVariance = variance;
-    emitCountThisFrame_ += count;
-    configData_->baseColor = color;
-    // 10万個を使い切ったら 0 番目に戻る (リングバッファ)
-    currentParticleIndex_ = (currentParticleIndex_ + count) % kMaxParticles;
+    configData_->emitPos = config.emitPos;
+    configData_->emitArea = config.emitArea;
+    configData_->emitVelocity = config.emitVelocity;
+    configData_->emitLife = config.emitLife;
+    configData_->velocityVariance = config.velocityVariance;
+    configData_->baseColor = config.baseColor;
+
+    // 現在の仕様に合わせて、マネージャーの内部変数もConfigで上書き
+    envGravity_ = config.envGravity;
+    envDrag_ = config.envDrag;
+    envWind_ = config.envWind;
+    envTurbulence_ = config.envTurbulence;
+    baseSize_ = config.baseSize;
+    endSize_ = config.endSize;
+    rotSpeed_ = config.rotSpeed;
+    endColor_ = config.endColor;
+    blendMode_ = static_cast<BlendMode>(config.blendModeIndex);
+    configData_->shapeType = static_cast<uint32_t>(config.shapeType);
+    configData_->shapeRadius = config.shapeRadius;
+    configData_->shapeAngle = config.shapeAngle;
+    configData_->midColor = config.midColor;
+    configData_->colorMidTime = config.colorMidTime;
+
+    configData_->midSize = config.midSize;
+    configData_->sizeMidTime = config.sizeMidTime;
+    emitCountThisFrame_ += config.emitCount;
+    currentParticleIndex_ = (currentParticleIndex_ + config.emitCount) % kMaxParticles;
 }

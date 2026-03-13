@@ -94,7 +94,7 @@ void GamePlayScene::Initialize() {
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-
+	GPUParticleManager::GetInstance()->LoadAllPresets();
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
@@ -201,17 +201,17 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
-	GPUParticleManager::GetInstance()->Emit(
-		{ 0.0f, 5.0f, 0.0f },  // 発生座標
-		{ 0.0f, 10.0f, 0.0f }, // 飛ぶ方向
-		500,                   // 発生数
-		2.0f,                  // 寿命 (2秒で消える)
-		5.0f,                   // 散らばり具合,
-	{1.0f, 0.5f, 0.0f, 1.0f} // 色 (オレンジ)
-	);
+	//GPUParticleManager::GetInstance()->Emit(
+	//	{ 0.0f, 5.0f, 0.0f },  // 発生座標
+	//	{ 0.0f, 10.0f, 0.0f }, // 飛ぶ方向
+	//	500,                   // 発生数
+	//	2.0f,                  // 寿命 (2秒で消える)
+	//	5.0f,                   // 散らばり具合,
+	//{1.0f, 0.5f, 0.0f, 1.0f} // 色 (オレンジ)
+	//);
 
-	// ★追加: 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
-	GPUParticleManager::GetInstance()->Update(deltaTime);
+	//// ★追加: 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
+	//GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
 		sprite->Update();
 	}
@@ -247,7 +247,7 @@ void GamePlayScene::Draw() {
 	// --- 1. 不透明描画 ---
 	for (auto& obj : objects) {
 		if (isFirstPerson && obj.get() == player_) continue;
-		if (obj->GetMaterialType() == 1) continue; // 透明はスキップ
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 
@@ -264,18 +264,45 @@ void GamePlayScene::Draw() {
 		}
 	}
 	particleSystem_->Draw();
+	// =======================================================
+	// 4. ローカルフォグ (霧の箱) の描画！
+	// =======================================================
+	bool hasFog = false;
+	for (auto& obj : objects) {
+		if (obj->GetMaterialType() == 7) hasFog = true;
+	}
+
+	if (hasFog) {
+		// ★ 描画の直前に「読み込みモード」へ切り替え！
+		dxCommon_->PreDrawLocalFog();
+
+		for (auto& obj : objects) {
+			if (obj->GetMaterialType() == 7) {
+				obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+			}
+		}
+
+		// ★ 描き終わったら安全のために「書き込みモード」へ戻す！
+		dxCommon_->PostDrawLocalFog();
+	}
 
 	// =======================================================
 	// : GPUパーティクルの描画！
 	// =======================================================
 
+	dxCommon_->PreDrawLocalFog();
+
 	// 定数バッファではなく、View行列とProjection行列をそのまま渡す！
-	//GPUParticleManager::GetInstance()->Draw(
-	//	dxCommon_->GetCommandList(),
-	//	camera->GetViewMatrix(),
-	//	camera->GetProjectionMatrix(),
-	//	gpuParticleTexHandle_
-	//);
+	GPUParticleManager::GetInstance()->Draw(
+		dxCommon_->GetCommandList(),
+		camera->GetViewMatrix(),
+		camera->GetProjectionMatrix(),
+		gpuParticleTexHandle_,
+		dxCommon_->GetDepthSrvHandle() 
+	);
+
+	// ★ 描き終わったら安全のために「書き込みモード」へ戻す！
+	dxCommon_->PostDrawLocalFog();
 }
 
 // ====================================================================
@@ -292,6 +319,7 @@ void GamePlayScene::DrawUI() {
 
 void GamePlayScene::DrawShadow() {
 	if (objectManager_) {
+
 		objectManager_->DrawShadow();
 	}
 }

@@ -139,6 +139,11 @@ public:
 	void StartGpuProfile();
 	void EndGpuProfile();
 	void ReadGpuProfile();
+	void CreateDepthSrv();
+	uint32_t GetDepthSrvHandle() const { return depthSrvHandle_; }
+
+	void PreDrawLocalFog();
+	void PostDrawLocalFog();
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 
@@ -180,7 +185,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
-
+	uint32_t depthSrvHandle_ = 0; 
 	// --- GPUとの同期用 ---
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence_ = nullptr;
 	uint64_t fenceValue_ = 0;

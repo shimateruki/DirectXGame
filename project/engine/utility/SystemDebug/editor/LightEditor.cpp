@@ -161,10 +161,24 @@ void LightEditor::DrawImGui() {
         ImGui::ColorEdit3("環境光 (Ambient)", &sun.ambientColor.x);
 
         ImGui::Separator();
-        ImGui::Text("フォグ (Fog)");
-        ImGui::DragFloat("開始距離", &sun.fogStart, 1.0f, 0.0f, 5000.0f);
-        ImGui::DragFloat("終了距離", &sun.fogEnd, 1.0f, 0.0f, 5000.0f);
-        ImGui::ColorEdit3("フォグ色", &sun.fogColor.x);
+        bool isFogEnabled = (sun.enableFog != 0);
+        if (ImGui::Checkbox("フォグ関連をすべて有効化 (Enable All Fog)", &isFogEnabled)) {
+            sun.enableFog = isFogEnabled ? 1 : 0;
+        }
+        if (isFogEnabled) {
+            ImGui::Text("フォグ (Fog)");
+            ImGui::DragFloat("開始距離", &sun.fogStart, 1.0f, 0.0f, 5000.0f);
+            ImGui::DragFloat("終了距離", &sun.fogEnd, 1.0f, 0.0f, 5000.0f);
+            ImGui::ColorEdit3("フォグ色", &sun.fogColor.x);
+            ImGui::DragFloat("フォグ濃さの底 (Height Min)", &sun.fogHeightMin, 0.1f, -100.0f, 100.0f);
+            ImGui::DragFloat("フォグが晴れる高さ (Height Max)", &sun.fogHeightMax, 0.1f, -100.0f, 100.0f);
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "ボリューメトリックフォグ (God Rays)");
+            ImGui::DragFloat("光の筋の強さ (Intensity)", &sun.volumetricIntensity, 0.01f, 0.0f, 5.0f);
+            ImGui::DragInt("計算の精密さ (Steps)", &sun.volumetricSteps, 1, 0, 64);
+        }
+
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "環境マップ (Environment Map / IBL)");
 

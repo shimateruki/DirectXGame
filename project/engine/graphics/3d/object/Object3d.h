@@ -50,6 +50,9 @@ public:
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawShadow();
+    void DrawLocalFog(uint32_t depthSrvHandle);
+
+    MeshRenderer::LocalFogData* GetLocalFogData();
     virtual std::unique_ptr<Object3d> Clone() const;
 
     // トランスフォーム
@@ -190,6 +193,7 @@ public:
     GhostRecorder* recorder_ = nullptr;
     void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
     std::string GetSaveCategory() const { return saveCategory_; }
+
 protected:
     Object3dCommon* common_ = nullptr;
     std::string name_ = "Object";

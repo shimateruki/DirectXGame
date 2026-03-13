@@ -8,7 +8,7 @@ struct PixelShanderOutput
     float32_t4 color : SV_TARGET0;
 };
 
-// ★修正: 環境マップ設定を追加し、パディングを調整
+//  環境マップ設定を追加し、パディングを調整
 struct Material
 {
     float32_t4 color;
@@ -27,7 +27,7 @@ struct Material
     float padding2; // 16バイトアライメント調整
 };
 
-// ★修正: 環境マップ設定を削除し、パディングでサイズを埋める
+
 struct DirectionalLight
 {
     float32_t4 color;
@@ -37,7 +37,13 @@ struct DirectionalLight
     float fogStart;
     float fogEnd;
     float32_t3 fogColor;
-    float4 padding2; // 削除した2変数の代わりに16バイト分(float4)埋める
+    float fogHeightMin; // 霧が最も濃い（100%溜まっている）高さ (例: -5.0f)
+    float fogHeightMax; // 霧が完全に晴れる高さ (例: 5.0f)
+    float volumetricIntensity;
+    int volumetricSteps;
+    int enableFog;
+    float3 padding3;
+    float32_t4x4 lightViewProj;
 };
 
 struct Camera
@@ -489,20 +495,95 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     output.color.rgb = Lo + ambient;
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
-
+                if (gDirectionalLight.enableFog != 0 && output.color.a > 0.0f)
+                {
+                
             // ===========================================================
-            //  距離フォグ
+            //  距離 ＋ ハイト（高さ）フォグ
             // ===========================================================
-                float3 fogColor = gDirectionalLight.fogColor;
-                float fogStart = gDirectionalLight.fogStart;
-                float fogEnd = gDirectionalLight.fogEnd;
+                    float3 fogColor = gDirectionalLight.fogColor;
+                    float fogStart = gDirectionalLight.fogStart;
+                    float fogEnd = gDirectionalLight.fogEnd;
+                    float fogHeightMin = gDirectionalLight.fogHeightMin;
+                    float fogHeightMax = gDirectionalLight.fogHeightMax;
 
-                float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
-                float fogRange = max(fogEnd - fogStart, 0.01f);
-                float fogFactor = saturate((distanceToCamera - fogStart) / fogRange);
+                // ① 距離による霧の濃さ (0.0 ～ 1.0)
+                    float distanceToCamera = length(input.worldPosition - gCamera.worldPosition);
+                    float fogRange = max(fogEnd - fogStart, 0.01f);
+                    float distanceFogFactor = saturate((distanceToCamera - fogStart) / fogRange);
 
-                output.color.rgb = lerp(output.color.rgb, fogColor, fogFactor);
+                // ② 高さによる霧の濃さ (0.0 ～ 1.0)
+                // 低い(Min)ほど 1.0 に近づき、高い(Max)ほど 0.0 になるように計算
+                    float heightRange = max(fogHeightMax - fogHeightMin, 0.01f);
+                    float heightFogFactor = 1.0f - saturate((input.worldPosition.y - fogHeightMin) / heightRange);
 
+                // ③ 2つのフォグを掛け合わせる！（遠くて、かつ低い場所ほど濃くなる）
+                    float finalFogFactor = distanceFogFactor * heightFogFactor;
+
+                // ピクセルの色とフォグの色を合成
+                    output.color.rgb = lerp(output.color.rgb, fogColor, finalFogFactor);
+               // ===========================================================
+               // ボリューメトリックフォグ (光の筋 / ゴッドレイ) の計算
+               // ===========================================================
+                    if (gDirectionalLight.volumetricIntensity > 0.0f && gDirectionalLight.volumetricSteps > 0)
+                    {
+                        float3 rayStart = gCamera.worldPosition;
+                        float3 rayEnd = input.worldPosition;
+                        float3 rayDir = rayEnd - rayStart;
+                        float rayLength = length(rayDir);
+                        rayDir = normalize(rayDir);
+        
+                    // あまり遠くまでレイを飛ばすと処理が重い＆ノイズになるので、計算距離を制限
+                        float maxDistance = min(rayLength, 50.0f); // 50m先まで計算
+                        float stepSize = maxDistance / (float) gDirectionalLight.volumetricSteps;
+        
+                        float scattering = 0.0f;
+        
+                     // レイマーチング (空間を少しずつ進むループ)
+                        for (int i = 0; i < gDirectionalLight.volumetricSteps; ++i)
+                        {
+                       // 現在のチェック地点のワールド座標
+                            float3 currentPos = rayStart + rayDir * (stepSize * i);
+            
+                       // ワールド座標から、シャドウマップ上の座標に変換
+                            float4 shadowPos = mul(float4(currentPos, 1.0f), gDirectionalLight.lightViewProj);
+                            shadowPos.xyz /= shadowPos.w;
+            
+            // UV座標系 (0.0 ~ 1.0) に変換
+                            float2 shadowUV = float2(
+                (shadowPos.x + 1.0f) / 2.0f,
+                (1.0f - shadowPos.y) / 2.0f
+            );
+            
+            // 画面外チェック
+                            if (shadowPos.z > 0.0f && shadowPos.z < 1.0f &&
+                shadowUV.x > 0.0f && shadowUV.x < 1.0f &&
+                shadowUV.y > 0.0f && shadowUV.y < 1.0f)
+                            {
+                // シャドウマップからその地点の深度を取得（ループ内なので Sample ではなく SampleLevel を使う）
+                                float depthFromLight = gShadowMap.SampleLevel(gShadowSampler, shadowUV, 0);
+                
+                // もし「日向（光が遮られていない）」なら、空気中の散乱光を加算！
+                                if (shadowPos.z - 0.005f <= depthFromLight)
+                                {
+                                    scattering += 1.0f;
+                                }
+                            }
+                        }
+        
+                       // 平均化して、指定した強さを掛ける
+                        scattering = (scattering / (float) gDirectionalLight.volumetricSteps) * gDirectionalLight.volumetricIntensity;
+        
+                      // 光の筋の色を加算合成
+                        float3 godRayColor = gDirectionalLight.color.rgb * gDirectionalLight.intenssity;
+        
+                       // ※透明なピクセルには足さない
+                        if (output.color.a > 0.0f)
+                        {
+                            output.color.rgb += godRayColor * scattering;
+                        }
+                    }
+                }
                 break;
             }
     }

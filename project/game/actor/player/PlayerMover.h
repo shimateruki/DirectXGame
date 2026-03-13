@@ -1,17 +1,20 @@
 #pragma once
 #include "engine/utility/math/Math.h"
 #include <memory>
+#include <unordered_map>
 
 // 前方宣言
 class Player;
 class InputManager;
 class ParticleSystem; // ジャンプエフェクト用
 class IMoveStrategy;  // 戦略インターフェース
+class Object3d;       // 子オブジェクト用
 
 /// <summary>
 /// プレイヤーの移動制御コンポーネント
 /// </summary>
-class PlayerMover {
+class PlayerMover
+{
 public:
 	PlayerMover();
 	~PlayerMover();
@@ -52,4 +55,7 @@ private:
 	float dashCooldownTimer_ = 0.0f;// クールダウン残り時間
 	bool dashAvailable_ = true;     // ダッシュが使えるかどうか
 	Vector3 dashDirection_{};       // 値初期化（{0,0,0}）
+
+	// 子オブジェクトの元の衝突属性を保存して復元するためのマップ
+	std::unordered_map<Object3d*, uint32_t> childOriginalAttributes_;
 };

@@ -226,6 +226,11 @@ void LightManager::SaveState(const std::string& filename) {
     root["directionalLight"]["fogStart"] = directionalLightData_.fogStart;
     root["directionalLight"]["fogEnd"] = directionalLightData_.fogEnd;
     root["directionalLight"]["fogColor"] = { directionalLightData_.fogColor.x, directionalLightData_.fogColor.y, directionalLightData_.fogColor.z };
+    root["directionalLight"]["fogHeightMin"] = directionalLightData_.fogHeightMin;
+    root["directionalLight"]["fogHeightMax"] = directionalLightData_.fogHeightMax;
+    root["directionalLight"]["volumetricIntensity"] = directionalLightData_.volumetricIntensity;
+    root["directionalLight"]["volumetricSteps"] = directionalLightData_.volumetricSteps;
+    root["directionalLight"]["enableFog"] = directionalLightData_.enableFog;
 
     // --- 点光源 ---
     json pArray = json::array();
@@ -244,8 +249,6 @@ void LightManager::SaveState(const std::string& filename) {
         j["mode"] = static_cast<int>(instance.mode);
         j["speed"] = instance.speed;
         j["offset"] = { instance.offset.x, instance.offset.y, instance.offset.z };
-        // ターゲット名はポインタなので、ここでは保存が難しい(SceneManagerが必要)。
-        // 完全に復元するには名前文字列を別途保持・保存する必要があるが、一旦省略。
 
         pArray.push_back(j);
     }
@@ -308,13 +311,20 @@ void LightManager::LoadState(const std::string& filename) {
             directionalLightData_.ambientColor.x = d["ambientColor"][0]; directionalLightData_.ambientColor.y = d["ambientColor"][1];
             directionalLightData_.ambientColor.z = d["ambientColor"][2];
         }
+
+        // フォグの設定
         if (d.contains("fogStart")) directionalLightData_.fogStart = d["fogStart"];
         if (d.contains("fogEnd")) directionalLightData_.fogEnd = d["fogEnd"];
         if (d.contains("fogColor")) {
             directionalLightData_.fogColor.x = d["fogColor"][0]; directionalLightData_.fogColor.y = d["fogColor"][1];
             directionalLightData_.fogColor.z = d["fogColor"][2];
         }
-     
+        if (d.contains("fogHeightMin")) directionalLightData_.fogHeightMin = d["fogHeightMin"];
+        if (d.contains("fogHeightMax")) directionalLightData_.fogHeightMax = d["fogHeightMax"];
+
+        if (d.contains("volumetricIntensity")) directionalLightData_.volumetricIntensity = d["volumetricIntensity"];
+        if (d.contains("volumetricSteps")) directionalLightData_.volumetricSteps = d["volumetricSteps"];
+        if (d.contains("enableFog")) directionalLightData_.enableFog = d["enableFog"];
     }
 
     // --- 点光源 ---
