@@ -393,23 +393,15 @@ void DirectXCommon::CreateRTV() {
 }
 
 void DirectXCommon::CreateDSV() {
-
 	dsvDescriptorHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
-
-	// 深度バッファとして使用するテクスチャリソースを作成
-	// サイズはクライアント領域（ウィンドウ）の幅と高さに合わせる
 	depthStencilResource_ = CreateDepthStencilTextureResource(WinApp::kClientWidth, WinApp::kClientHeight);
 
-	// 深度ステンシルビューのデスクリプタ（設定）を定義
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-	// リソースのフォーマットを指定。D24_UNORM_S8_UINTは24bitの深度と8bitのステンシルを意味する
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	// どのような次元のリソースとして見るかを設定（今回は2Dテクスチャ）
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	// 上記の設定を基に、深度ステンシルビューを作成
 	device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
-}
 
+}
 void DirectXCommon::CreateFence() {
 	HRESULT hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
 	assert(SUCCEEDED(hr));
@@ -425,7 +417,9 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 	resourceDesc.Height = height;
 	resourceDesc.MipLevels = 1;
 	resourceDesc.DepthOrArraySize = 1;
-	resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+	resourceDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+
 	resourceDesc.SampleDesc.Count = 1;
 	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -435,6 +429,8 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 
 	D3D12_CLEAR_VALUE depthClearValue{};
 	depthClearValue.DepthStencil.Depth = 1.0f;
+
+	// ★ここはDSV用として固定のまま
 	depthClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
@@ -445,7 +441,6 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 
 	return resource;
 }
-
 
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(const DirectX::TexMetadata& metadata)
 {
@@ -643,14 +638,8 @@ D3D12_DEPTH_STENCIL_DESC DirectXCommon::GetDefaultDepthStencilDesc() const {
 /// 深度ステンシルビューのフォーマットを取得する
 /// </summary>
 DXGI_FORMAT DirectXCommon::GetDSVFormat() const {
-	// 深度ステンシルリソース (depthStencilResource_) のフォーマットを返す
-	// Initialize() 内の CreateDSV() で設定したフォーマットと同じである必要があります。
-	// 一般的には DXGI_FORMAT_D32_FLOAT が使われます。
-	if (depthStencilResource_) {
-		return depthStencilResource_->GetDesc().Format;
-	}
-	// もしリソースがまだ作られていない場合は、デフォルトを返す (エラー処理を追加しても良い)
-	return DXGI_FORMAT_D32_FLOAT;
+
+	return DXGI_FORMAT_D24_UNORM_S8_UINT;
 }
 
 
@@ -958,4 +947,40 @@ void DirectXCommon::ReadGpuProfile() {
 			gpuDrawTimeMs_ = static_cast<float>(endTime - startTime) / static_cast<float>(gpuFrequency_) * 1000.0f;
 		}
 	}
+}
+void DirectXCommon::CreateDepthSrv() {
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	// ここでSRVを作る！
+	depthSrvHandle_ = SRVManager::GetInstance()->CreateSRV(depthStencilResource_.Get(), srvDesc);
+}
+
+void DirectXCommon::PreDrawLocalFog() {
+	// バリア：深度「書き込みモード」 -> 「読み込みモード (画像)」に変換！
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Transition.pResource = depthStencilResource_.Get();
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	commandList_->ResourceBarrier(1, &barrier);
+	// =================================================================
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, nullptr); // ← DSVを nullptr にする！
+}
+
+void DirectXCommon::PostDrawLocalFog() {
+	// バリア：「読み込みモード」 -> 元の「書き込みモード」に戻す！
+	D3D12_RESOURCE_BARRIER barrier{};
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier.Transition.pResource = depthStencilResource_.Get();
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+	commandList_->ResourceBarrier(1, &barrier);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle); // ← DSVを復活！
 }

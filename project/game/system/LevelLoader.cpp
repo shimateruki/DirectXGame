@@ -96,9 +96,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 // ========================================================================
 // 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
 // ========================================================================
-// ========================================================================
-// 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
-// ========================================================================
+
 void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -292,7 +290,16 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 // ロード直後に行列更新
                 targetObject->UpdateLocalMatrix();
                 targetObject->UpdateWorldMatrix();
-
+                if (objData.contains("blendMode")) targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
+                if (objData.contains("materialType")) targetObject->SetMaterialType(objData["materialType"].get<int>());
+                if (objData.contains("color")) {
+                    targetObject->SetColor({
+                        objData["color"][0],
+                        objData["color"][1],
+                        objData["color"][2],
+                        objData["color"][3]
+                        });
+                }
                 // マテリアル / グラフィック関連
                 if (objData.contains("metallic")) targetObject->SetMetallic(objData["metallic"].get<float>());
                 if (objData.contains("roughness")) targetObject->SetRoughness(objData["roughness"].get<float>());
@@ -302,7 +309,20 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("texturePath")) targetObject->SetTexture(objData["texturePath"].get<std::string>());
                 if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
-
+                if (objData.contains("localFog")) {
+                    if (auto* fogData = targetObject->GetLocalFogData()) {
+                        auto& f = objData["localFog"];
+                        if (f.contains("color")) {
+                            fogData->fogColor = { f["color"][0], f["color"][1], f["color"][2], f["color"][3] };
+                        }
+                        if (f.contains("density")) fogData->fogDensity = f["density"];
+                        if (f.contains("edgeFade")) fogData->edgeFade = f["edgeFade"];
+                        if (f.contains("noiseSpeed")) fogData->noiseSpeed = f["noiseSpeed"];
+                        if (f.contains("noiseScale")) fogData->noiseScale = f["noiseScale"];
+                        if (f.contains("scatteringG")) fogData->scatteringG = f["scatteringG"];
+                        if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
+                    }
+                }
                 // 5. Collider
                 if (objData.contains("collider")) {
                     json colData = objData["collider"];
@@ -386,6 +406,10 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
     }
     file.close();
 }
+
+
+
+
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) return;

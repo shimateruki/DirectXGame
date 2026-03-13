@@ -1022,16 +1022,17 @@ void DebugEditor::DrawImGui() {
                                 "消滅 (Dissolve)",
                                 "マグマ・覚醒 (Emissive)",
                                 "トゥーン調 (Cel Shaded)",
+                                "ローカルフォグ (Local Fog)",
                              
                 };
                 int currentMatType = selectedObject_->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 7) currentMatType = 0; 
-
+                if (currentMatType > 7) currentMatType = 0;
                 if (ImGui::Combo("質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject_->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
                 }
+
                 if (currentMatType == 0) { // 通常のPBRマテリアルの時だけ表示する親切設計
                     float metallic = selectedObject_->GetMetallic();
                     if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {
@@ -1043,6 +1044,23 @@ void DebugEditor::DrawImGui() {
                     if (ImGui::SliderFloat("粗さ (Roughness)", &roughness, 0.0f, 1.0f)) {
                         selectedObject_->SetRoughness(roughness);
                         isGraphicsChanged = true;
+                    }
+                }
+
+                if (currentMatType == 7) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.5f, 1.0f), "--- Local Fog Settings ---");
+                    auto* fogData = selectedObject_->GetLocalFogData();
+                    if (fogData) {
+                        ImGui::ColorEdit4("Fog Color (霧の色)", &fogData->fogColor.x);
+                        ImGui::DragFloat("Density (濃さ)", &fogData->fogDensity, 0.01f, 0.0f, 10.0f);
+                        ImGui::DragFloat("Edge Fade (境界線のボケ)", &fogData->edgeFade, 0.01f, 0.0f, 0.5f);
+                        ImGui::DragFloat("Noise Speed (揺らぐ速さ)", &fogData->noiseSpeed, 0.01f, 0.0f, 5.0f);
+                        ImGui::DragFloat("Noise Scale (模様の細かさ)", &fogData->noiseScale, 0.01f, 0.0f, 5.0f);
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "--- Light Scattering ---");
+                        ImGui::DragFloat("Scattering G (光の芯の強さ)", &fogData->scatteringG, 0.01f, 0.0f, 0.99f);
+                        ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
                 ImGui::Separator();
@@ -1661,6 +1679,15 @@ void DebugEditor::UpdateObjectInSceneJSON(Object3d* object, const std::string& f
     currentData["texturePath"] = object->GetTexturePath();
       currentData["enableEnvMap"] =  object->GetEnableEnvMap();
       currentData["envIntensity"] =  object->GetEnvIntensity();
+      if (auto* fogData = object->GetLocalFogData()) {
+          currentData["localFog"]["color"] = { fogData->fogColor.x, fogData->fogColor.y, fogData->fogColor.z, fogData->fogColor.w };
+          currentData["localFog"]["density"] = fogData->fogDensity;
+          currentData["localFog"]["edgeFade"] = fogData->edgeFade;
+          currentData["localFog"]["noiseSpeed"] = fogData->noiseSpeed;
+          currentData["localFog"]["noiseScale"] = fogData->noiseScale;
+          currentData["localFog"]["scatteringG"] = fogData->scatteringG;
+          currentData["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
+      }
     // =========================================================
     // 4. JSON配列内を探して更新 or 追加
     // =========================================================
@@ -1897,9 +1924,6 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
 
 
 
-// ========================================================================
-// シーン全体保存 (自動分割システム完全版)
-// ========================================================================
 void DebugEditor::SaveScene(SaveMode mode) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
 
@@ -2029,6 +2053,22 @@ void DebugEditor::SaveScene(SaveMode mode) {
         d["texturePath"] = obj->GetTexturePath();
         d["enableEnvMap"] = obj->GetEnableEnvMap();
         d["envIntensity"] = obj->GetEnvIntensity();
+
+ 
+
+        // =========================================================
+        //  ローカルフォグの全パラメータ保存
+        // =========================================================
+        if (auto* fogData = obj->GetLocalFogData()) {
+            d["localFog"]["color"] = { fogData->fogColor.x, fogData->fogColor.y, fogData->fogColor.z, fogData->fogColor.w };
+            d["localFog"]["density"] = fogData->fogDensity;
+            d["localFog"]["edgeFade"] = fogData->edgeFade;
+            d["localFog"]["noiseSpeed"] = fogData->noiseSpeed;
+            d["localFog"]["noiseScale"] = fogData->noiseScale;
+            d["localFog"]["scatteringG"] = fogData->scatteringG;
+            d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
+        }
+
         // =========================================================
         // ★ クラス名ではなく「SaveCategory」を見て振り分ける！
         // =========================================================
@@ -2074,8 +2114,6 @@ void DebugEditor::SaveScene(SaveMode mode) {
         savedFilesMsg += "Object, ";
     }
 
-    // ★ エディターのリスト表示用（目印）として、今まで通りのダミーファイルも保存しておく
-    // （全体保存の時のみダミーファイルを更新）
     if (mode == SaveMode::All) {
         json dummyData;
         dummyData["_comment"] = "This is a metadata file for the editor. Actual data is in _player, _enemy, and _object.json";
@@ -2091,6 +2129,7 @@ void DebugEditor::SaveScene(SaveMode mode) {
     // どのファイルが保存されたかを通知
     TriggerSaveNotification(baseName + " (" + savedFilesMsg + ")");
 }
+
 // 単体保存
 void DebugEditor::SaveSingleObject() {
     if (!selectedObject_) return;
