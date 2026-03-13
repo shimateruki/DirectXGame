@@ -4,7 +4,7 @@
 #include "ParticleSystem.h"
 #include "IMoveStrategy.h"
 #include "MoveStrategy3D.h"
-#include <cmath> // std::abs, std::atan2
+#include <cmath>
 
 
 PlayerMover::PlayerMover() {}
@@ -27,7 +27,7 @@ void PlayerMover::Update(float deltaTime) {
 		dashCooldownTimer_ -= deltaTime;
 		if (dashCooldownTimer_ <= 0.0f) {
 			dashCooldownTimer_ = 0.0f;
-			dashAvailable_ = true; // クールダウン終了で再使用可能
+			dashAvailable_ = true; 
 		}
 	}
 
@@ -86,7 +86,6 @@ void PlayerMover::Update(float deltaTime) {
 			if (player_) {
 				player_->SetInvincible(false);
 			}
-			// クールダウンは既に開始済みなのでここでは何もしない
 		}
 	} else {
 		// 通常時は入力移動を適用
@@ -94,11 +93,31 @@ void PlayerMover::Update(float deltaTime) {
 		velocity.z = inputMove.z;
 	}
 
-	// 3. 回転処理 (移動入力がある場合のみ)
+	// 3. 回転処理 (移動入力がある場合のみ) - 滑らかに補間する
 	if (!player_->IsLockingOn()) {
 		if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f) {
 			float targetAngle = std::atan2(velocity.x, velocity.z);
-			player_->SetRotationY(targetAngle);
+
+			// 現在のY角度
+			float currentY = player_->GetRotation().y;
+
+			// 差分を [-PI,PI] に正規化
+			auto NormalizeAngle = [](float a) {
+				while (a > 3.14159265358979323846f) a -= 2.0f * 3.14159265358979323846f;
+				while (a < -3.14159265358979323846f) a += 2.0f * 3.14159265358979323846f;
+				return a;
+			};
+			float diff = NormalizeAngle(targetAngle - currentY);
+
+			// 滑らかさ係数（大きいほど速く追従） - 必要なら値を調整
+			const float turnSpeed = 12.0f; // [rad/s] 実用的な値
+			// 指数的減衰で補間（フレームレートに依存しづらい）
+			float alpha = 1.0f - std::expf(-turnSpeed * deltaTime);
+
+			float newY = currentY + diff * alpha;
+			newY = NormalizeAngle(newY);
+
+			player_->SetRotationY(newY);
 		}
 	}
 

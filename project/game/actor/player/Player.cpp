@@ -57,6 +57,10 @@ void Player::Update(float deltaTime) {
         if (auto idle = dynamic_cast<PlayerStateIdle*>(state_.get())) {
             idle->ApplyPostUpdate(this, deltaTime);
         }
+        // Run ステートなら走りの後処理（腕・足の振り等）を呼ぶ
+        if (auto run = dynamic_cast<PlayerStateRun*>(state_.get())) {
+            run->ApplyPostUpdate(this, deltaTime);
+        }
     }
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
