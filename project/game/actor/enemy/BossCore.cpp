@@ -210,7 +210,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
     // ======================================
     if (attackMode_ == 1) {
 
-         // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
+        // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
         if (animPhase_ == 1) {
             animTimer_ += deltaTime;
             float duration = 1.5f; // 1.5秒かけて変形
@@ -273,6 +273,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 if (target_) animTargetPos_ = target_->GetWorldPosition ();
             }
         }
+        // --- フェーズ4: 加速突進 ---
         else if (animPhase_ == 4) {
             animTimer_ += deltaTime;
             float duration = 1.5f;
@@ -283,77 +284,19 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
 
             float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
             SetRotation ({ easedT * totalRotation, GetRotation ().y, GetRotation ().z });
+            // ★ 修正箇所3：ボスの突進回転（オイラー角）を優先させる
             GetTransform ()->isQuaternionMaster = false;
 
             if (t >= 1.0f) {
-                // ★ 修正：いきなり戻らず、猶予フェーズ(4.5)へ！
-                animPhase_ = 45; // 整数で管理している場合は適宜変更してください
+                animPhase_ = 5;
                 animTimer_ = 0.0f;
             }
         }
-        // --- ★ 新設 フェーズ4.5: 突進後の硬直（猶予） ---
-        else if (animPhase_ == 45) {
-            animTimer_ += deltaTime;
-
-            // ここで「何秒止まるか」を指定します（例：1.5秒間ピタッと止まる）
-            float waitDuration = 1.5f;
-
-            if (animTimer_ >= waitDuration) {
-                animPhase_ = 5; // 時間が経ったら修復フェーズへ
-                animTimer_ = 0.0f;
-            }
-        }
-        // --- フェーズ5: 1秒かけて元の位置・形にシュッと戻る（完全復帰） ---
+        // --- フェーズ5: 自動リセット ---
         else if (animPhase_ == 5) {
-
-            // 最初の1フレーム目だけ、現在のブロックの状態を記憶
-            if (animTimer_ == 0.0f) {
-                blockStartPos_.clear ();
-                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
-                }
-            }
-
-            animTimer_ += deltaTime;
-            // ★ 時間を 3.0秒 に延長（ここをお好みで変えれば戻る速度が変わります！）
-            float duration = 3.0f;
-            float t = std::min (animTimer_ / duration, 1.0f);
-            float easeT = Easing::OutExpo (t);
-
-            // 1. ボス本体の移動（SetTranslate）を削除！
-            // その場に留まるので、何もしません。
-
-            // 2. ボスの回転だけは 0 にリセット（直立姿勢へ）
-            SetRotation ({ 0.0f, 0.0f, 0.0f });
-            GetTransform ()->isQuaternionMaster = false;
-
-            // 3. ブロックを元の装甲の形にゆっくり戻す
-            struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
-            std::vector<DefaultSetting> defaultSettings = {
-                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
-                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
-                { { 0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
-                { { 0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
-                { { 2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
-                { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
-            };
-
-            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                if (i < blockStartPos_.size () && i < defaultSettings.size ()) {
-                    // blockStartPos_(突進後のバラバラな位置) から 定位置へ Lerp
-                    Vector3 pos = Math::Lerp (blockStartPos_[i], defaultSettings[i].translate, easeT);
-                    armorBlocks_[i]->SetTranslate (pos);
-                    armorBlocks_[i]->SetScale (defaultSettings[i].scale);
-                    armorBlocks_[i]->SetRotation (defaultSettings[i].rotation);
-                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
-                }
-            }
-
-            if (t >= 1.0f) {
-                animPhase_ = 0;
-                attackMode_ = 0;
-                animTimer_ = 0.0f;
-            }
+            animPhase_ = 0;
+            attackMode_ = 0; // モードもリセット
+            animTimer_ = 0.0f;
         }
     }
 
