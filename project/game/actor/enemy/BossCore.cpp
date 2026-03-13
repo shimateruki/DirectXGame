@@ -1,4 +1,4 @@
-#include "BossCore.h"
+﻿#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h" // 追加
@@ -129,6 +129,14 @@ void BossCore::UpdateWeak(float deltaTime) {
 }
 
 void BossCore::UpdateAnimationSequence (float deltaTime) {
+    
+    // ==========================================
+    // ゲームが再生中(Play)でなければ、この先のアニメーション・入力処理を一切行わない！
+    // ==========================================
+    if (!SceneManager::GetInstance ()->IsPlaying ()) {
+        return; // 再生中でなければ操作を受け付けない
+    }
+    
     InputManager *input = InputManager::GetInstance ();
 
     // ======================================
@@ -183,6 +191,14 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             // モード2：ブロック射撃
             attackMode_ = 2;
             animPhase_ = 10; // 射撃用フェーズへ
+            animTimer_ = 0.0f;
+        }
+        // ==========================================
+        // 3キーで「こぶし落下攻撃」を発動！
+        // ==========================================
+        else if (input->IsKeyTriggered (DIK_3)) {
+            attackMode_ = 3;
+            animPhase_ = 20; // フェーズ20からスタート
             animTimer_ = 0.0f;
         }
     }
@@ -444,6 +460,228 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             }
         }
     }
+    // ======================================
+    // 攻撃モード3：ハンマー合体 ＆ 目の前で叩き潰す！（完全修正版）
+    // ======================================
+    else if (attackMode_ == 3) {
+
+        // --- Phase 20: 瞬時にハンマー形態へ変形
+        if (animPhase_ == 20) {
+            if (animTimer_ == 0.0f) {
+                struct HammerSetting {
+                    Vector3 translate; Vector3 scale; Vector3 rotation;
+                };
+
+                // 画像から抽出したハンマーの数値データ
+                std::vector<HammerSetting> hammerSettings = {
+                    { {  0.000f,  4.000f,  0.000f }, { 1.500f, 1.000f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
+                    { {  2.000f,  4.000f,  0.000f }, { 0.700f, 1.500f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
+                    { {  0.000f,  1.000f,  0.000f }, { 0.400f, 2.200f, 0.400f }, { 0.0f, 0.0f, 0.0f } },
+                    { { -2.000f,  4.000f,  0.000f }, { 0.700f, 1.500f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
+                    { {  0.000f, -1.800f, -0.002f }, { 0.500f, 0.500f, 0.800f }, { 0.0f, 0.0f, 0.0f } },
+                    { {  0.000f,  5.100f,  0.000f }, { 0.500f, 0.250f, 0.500f }, { 0.0f, 0.0f, 0.0f } }
+                };
+
+                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                    if (i < hammerSettings.size ()) {
+                        armorBlocks_[i]->SetTranslate (hammerSettings[i].translate);
+                        armorBlocks_[i]->SetScale (hammerSettings[i].scale);
+                        armorBlocks_[i]->SetRotation (hammerSettings[i].rotation);
+                        armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
+                    }
+                }
+            }
+
+            animTimer_ += deltaTime;
+
+            if (target_) {
+                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
+                float angleY = std::atan2 (toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
+                SetRotation ({ 0.0f, angleY, 0.0f });
+                GetTransform ()->isQuaternionMaster = false;
+            }
+
+            // ==========================================
+            // 1.5秒タメ終わった瞬間に「目標地点」をロックオン（記憶）する！
+            // ==========================================
+            if (animTimer_ >= 1.5f) {
+                animPhase_ = 21;
+                animTimer_ = 0.0f;
+
+                if (target_) {
+                    animTargetPos_ = target_->GetWorldPosition (); // プレイヤーの現在地を記憶！
+                } else {
+                    animTargetPos_ = GetTranslate ();
+                }
+            }
+        }
+        // --- Phase 21: ロックオンした位置（記憶した座標）へ移動 ＆ 振りかぶる！ ---
+        else if (animPhase_ == 21) {
+            animTimer_ += deltaTime;
+
+            // ==========================================
+            // ★ 修正：移動と振りかぶりの「時間」を完全に分離！
+            // ==========================================
+            float moveDuration = 4.5f; // 近づくのにかける時間（ゆっくりジリジリ）
+            float rotDuration = 3.0f; // 振りかぶるのにかける時間（元のキレをキープ！）
+
+            // それぞれの進行度 (0.0 ～ 1.0) を別々に計算
+            float moveT = std::min (animTimer_ / moveDuration, 1.0f);
+            float rotT = std::min (animTimer_ / rotDuration, 1.0f);
+
+            // ------------------------------------------
+            // 1. 移動の処理（moveT を使う）
+            // ------------------------------------------
+            Vector3 targetPos = animTargetPos_;
+            Vector3 currentPos = GetTranslate ();
+
+            Vector3 toBoss = currentPos - targetPos;
+            toBoss.y = 0.0f;
+            float dist = std::sqrt (toBoss.x * toBoss.x + toBoss.z * toBoss.z);
+            if (dist > 0.0f) { toBoss.x /= dist; toBoss.z /= dist; }
+
+            Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
+
+            // 瞬間移動感をなくすため、一定の速度(moveT)でヌルッと近づかせる
+            float easeT = moveT;
+            currentPos.x = Math::Lerp (currentPos.x, targetHoverPos.x, easeT);
+            currentPos.y = Math::Lerp (currentPos.y, targetHoverPos.y, easeT);
+            currentPos.z = Math::Lerp (currentPos.z, targetHoverPos.z, easeT);
+            SetTranslate (currentPos);
+
+            // ------------------------------------------
+            // 2. 回転（振りかぶり）の処理（rotT を使う）
+            // ------------------------------------------
+            Vector3 toPlayer = targetPos - currentPos;
+            float angleY = std::atan2 (toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
+
+            // easeInElastic の計算も rotT を基準に行う
+            float elasticT = 0.0f;
+            if (rotT == 0.0f) {
+                elasticT = 0.0f;
+            } else if (rotT == 1.0f) {
+                elasticT = 1.0f;
+            } else {
+                float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
+                elasticT = -std::pow (2.0f, 10.0f * rotT - 10.0f) * std::sin ((rotT * 10.0f - 10.75f) * c4);
+            }
+
+            // 目標の振りかぶり角度（お好みで変更可能）
+            float targetTilt = -70.0f * (std::numbers::pi_v<float> / 180.0f);
+
+            // elasticT を使って回転させる！
+            float tiltBack = Math::Lerp (0.0f, targetTilt, elasticT);
+
+            SetRotation ({ 0.0f, angleY, tiltBack });
+            GetTransform ()->isQuaternionMaster = false;
+
+            // ------------------------------------------
+            // 3. 次のフェーズへの移行
+            // ------------------------------------------
+            // 「移動」が終わったら叩きつける！(moveDuration基準)
+            if (moveT >= 1.0f) {
+                animPhase_ = 22;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
+        else if (animPhase_ == 22) {
+            animTimer_ += deltaTime;
+
+            float smashDuration = 0.15f;
+            float t = std::min (animTimer_ / smashDuration, 1.0f);
+
+            // ==========================================
+            // ★ 修正：倒れ込む方向を逆にする
+            // ==========================================
+            // 振りかぶり角度（例として -70度 まで大きくのけぞるように変更！）
+            float startRotZ = -70.0f * (std::numbers::pi_v<float> / 180.0f);
+
+            // 振り下ろし角度（例として 120度 まで深くめり込むように変更！）
+            float endRotZ = 270.0f * (std::numbers::pi_v<float> / 180.0f);
+
+            float currentRotZ = Math::Lerp (startRotZ, endRotZ, std::pow (t, 3.0f));
+            SetRotation ({ 0.0f, GetRotation ().y, currentRotZ });
+
+            if (t >= 1.0f) {
+                SetRotation ({ 0.0f, GetRotation ().y, endRotZ });
+                animPhase_ = 23;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 23: 地面に倒れたまま3秒待機 ---
+        else if (animPhase_ == 23) {
+
+            // ★ 修正：Phase 23 に入った最初の1フレーム目だけ、角度を記憶する！
+            if (animTimer_ == 0.0f) {
+                animStartPos_ = GetRotation (); // ボスの全回転角度を記憶
+            }
+
+            animTimer_ += deltaTime;
+
+            if (animTimer_ >= 3.0f) {
+                animPhase_ = 24;
+                animTimer_ = 0.0f;
+
+                blockStartPos_.clear ();
+                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
+                }
+            }
+        }
+        // --- Phase 24: ボスの姿勢と装甲が元の形にシュッと戻る ---
+        else if (animPhase_ == 24) {
+            animTimer_ += deltaTime;
+            float duration = 1.0f;
+            float t = std::min (animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo (t);
+
+            // 1. ボス自身を元の高さに戻す
+            Vector3 bossPos = GetTranslate ();
+            bossPos.y = Math::Lerp (bossPos.y, 4.0f, easeT);
+            SetTranslate (bossPos);
+
+            // ==========================================
+            // ★ 修正：記憶した角度(animStartPos_)から、完全に 0.0f へ戻す！
+            // ==========================================
+            Vector3 currentRot;
+            currentRot.x = Math::Lerp (animStartPos_.x, 0.0f, easeT);
+            currentRot.y = Math::Lerp (animStartPos_.y, 0.0f, easeT);
+            currentRot.z = Math::Lerp (animStartPos_.z, 0.0f, easeT);
+            SetRotation (currentRot);
+
+            // ★ 超重要：他の回転処理（ターゲット追従など）に上書きされないよう、マスター権限を奪う！
+            GetTransform ()->isQuaternionMaster = false;
+
+            // 3. ブロックも元の完璧な装甲の形に戻す
+            struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+            std::vector<DefaultSetting> defaultSettings = {
+                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
+                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
+                { { 2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
+                { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
+            };
+
+            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+                if (i < blockStartPos_.size () && i < defaultSettings.size ()) {
+                    Vector3 pos = Math::Lerp (blockStartPos_[i], defaultSettings[i].translate, easeT);
+                    armorBlocks_[i]->SetTranslate (pos);
+                    armorBlocks_[i]->SetScale (defaultSettings[i].scale);
+                    armorBlocks_[i]->SetRotation (defaultSettings[i].rotation);
+                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
+                }
+            }
+
+            // 完全に元に戻ったら、状態をすべてクリア！
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
+        }
+    }
 }
 
 void BossCore::UpdateFlyingBlocks (float deltaTime) {
@@ -457,7 +695,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
         if (!fb.block) continue;
 
         // ==========================================
-        // モード4（頭上へ装填中）
+        // モード4（頭上へ集まって「装填」中）
         // ==========================================
         if (fb.mode == 4) {
             Vector3 bossPos = GetTranslate ();
@@ -469,28 +707,28 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             float distance = std::sqrt (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 
             if (distance < 0.5f) {
-                // --- 頭上に到着！装填完了！ ---
+                // --- 頭上に到着！ ---
                 fb.block->SetTranslate (headPos);
 
-                // ここで初めてプレイヤーへの方向を計算して「ドカン！」と撃ち出す！
-                if (target_) {
+                // ==========================================
+                // ★ NEW: 撃ち出す初速の計算を、モード3向けに調整！
+                // 攻撃中(attackMode_==3)なら、ここですぐにプレイヤーへの方向を計算して「撃ち出す」！
+                // ==========================================
+                if (attackMode_ == 3 && target_) {
                     Vector3 targetPos = target_->GetWorldPosition ();
 
-                    // ==========================================
-                    // ★ 修正1：プレイヤーの「足元（地面）」を直接狙う！
-                    // ==========================================
-                    targetPos.y = 0.0f; // 確実に地面の座標をロックオン！
-
+                    // 真っ直ぐプレイヤーに飛ばす（ハンマーを振り下ろす感じ）
                     Vector3 toPlayer = math.Normalize (targetPos - headPos);
 
-                    // 重力がなくなったので、初速を少し速め(60.0fなど)にすると鋭く飛んでカッコいいです！
+                    // 重力がかからない前提なので、初速を少し速め(60.0fなど)にすると鋭く飛んでカッコいいです！
                     float bulletSpeed = 60.0f;
                     fb.velocity = { toPlayer.x * bulletSpeed, toPlayer.y * bulletSpeed, toPlayer.z * bulletSpeed };
 
                     float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                     fb.currentRot = { 0.0f, angleY, 0.0f };
+
+                    fb.mode = 0; // すぐに「飛翔モード(0)」へ切り替え！
                 }
-                fb.mode = 0; // 「飛翔モード」へ移行！
             } else {
                 // --- 頭上に向かって移動中（シュッ！） ---
                 dir.x /= distance; dir.y /= distance; dir.z /= distance;
@@ -507,13 +745,18 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
             }
             fb.block->GetTransform ()->isQuaternionMaster = false;
         }
-        if (fb.mode == 0) {
-            // --- 攻撃中（直線的に足元へ突撃！） ---
 
-            // ==========================================
-            // ★ 修正2：タイクラーさんの直感通り、重力の計算を完全に削除！
-            // fb.velocity.y -= 40.0f * deltaTime;  ←これを消す！
-            // ==========================================
+        // ==========================================
+        // モード0（飛翔中・攻撃）
+        // ==========================================
+        else if (fb.mode == 0) {
+            // --- 攻撃中（直線軌道でプレイヤーへ突撃！） ---
+
+            // ★ モード3の時は重力をかけない！
+            if (attackMode_ != 3) {
+                // 重力をかける（モード2の射撃など）
+                fb.velocity.y -= 40.0f * deltaTime;
+            }
 
             Vector3 pos = fb.block->GetTranslate ();
             pos.x += fb.velocity.x * deltaTime;
@@ -525,6 +768,7 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 pos.y = 0.0f;
                 fb.velocity = { 0.0f, 0.0f, 0.0f }; // 速度リセット
                 fb.mode = 1; // 地面待機モードへ！
+                // ★ 修正：これで勝手に「3秒待ってから帰還」してくれます！！
             }
             fb.block->SetTranslate (pos);
 
@@ -566,6 +810,74 @@ void BossCore::UpdateFlyingBlocks (float deltaTime) {
                 fb.block->SetRotation (fb.currentRot);
                 fb.block->GetTransform ()->isQuaternionMaster = false;
             }
+        }
+        if (fb.mode == 10) {
+            if (target_) {
+                Vector3 targetPos = target_->GetWorldPosition ();
+
+                // ハンマーを構える高さ（迫力を出すため、かなり高めの Y+12.0f にセット）
+                Vector3 hammerCenter = { targetPos.x, targetPos.y + 12.0f, targetPos.z };
+
+                struct HammerSetting {
+                    Vector3 translate;
+                    Vector3 scale;
+                    Vector3 rotation;
+                };
+
+                // ==========================================
+                // ★ ここに、送っていただいた6枚の画像の数値を順番に入力してください！
+                // ==========================================
+                std::vector<HammerSetting> hammerSettings = {
+                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像1の数値
+                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像2の数値
+                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像3の数値
+                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像4の数値
+                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }, // 画像5の数値
+                    { {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f} }  // 画像6の数値
+                };
+
+                int idx = fb.originalIndex;
+                if (idx >= 0 && idx < hammerSettings.size ()) {
+                    // ハンマーの中心点(hammerCenter)を基準にして、各パーツを配置する
+                    Vector3 targetBlockPos = {
+                        hammerCenter.x + hammerSettings[idx].translate.x,
+                        hammerCenter.y + hammerSettings[idx].translate.y,
+                        hammerCenter.z + hammerSettings[idx].translate.z
+                    };
+
+                    // バラバラの状態から、ハンマーの形へ滑らかに集合しながら追従（Lerp）
+                    Vector3 currentPos = fb.block->GetTranslate ();
+                    float trackSpeed = 6.0f; // プレイヤーに追いつく＆合体するスピード
+                    currentPos.x = Math::Lerp (currentPos.x, targetBlockPos.x, trackSpeed * deltaTime);
+                    currentPos.y = Math::Lerp (currentPos.y, targetBlockPos.y, trackSpeed * deltaTime);
+                    currentPos.z = Math::Lerp (currentPos.z, targetBlockPos.z, trackSpeed * deltaTime);
+                    fb.block->SetTranslate (currentPos);
+
+                    // スケールと回転も画像の数値に合わせて上書き
+                    fb.block->SetScale (hammerSettings[idx].scale);
+                    fb.block->SetRotation (hammerSettings[idx].rotation);
+                }
+
+                // 回転オーバーライド
+                fb.block->GetTransform ()->isQuaternionMaster = false;
+            }
+        }
+        // ==========================================
+        // モード11（ハンマー全力振り下ろし！）
+        // ==========================================
+        else if (fb.mode == 11) {
+            Vector3 pos = fb.block->GetTranslate ();
+
+            // 重力加速ではなく、最初からトップスピードで叩きつける！
+            float smashSpeed = 80.0f;
+            pos.y -= smashSpeed * deltaTime;
+
+            // 地面に激突したら、前回作った「3秒待機モード(1)」へ合流させる！
+            if (pos.y <= 0.0f) {
+                pos.y = 0.0f;
+                fb.mode = 1;
+            }
+            fb.block->SetTranslate (pos);
         }
     }
 
