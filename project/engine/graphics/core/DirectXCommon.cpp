@@ -678,7 +678,7 @@ void DirectXCommon::CreateRenderTexture() {
 	resDesc.MipLevels = 1;
 	resDesc.DepthOrArraySize = 1;
 
-	// ★修正1: SRGB から HDRフォーマット に変更
+	// HDRフォーマット (歪み用コピー先もこれに合わせる)
 	resDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
 	resDesc.SampleDesc.Count = 1;
@@ -692,10 +692,7 @@ void DirectXCommon::CreateRenderTexture() {
 	clearColor_[3] = 1.0f;
 
 	D3D12_CLEAR_VALUE clearValue = {};
-
-	// ★修正2: SRGB から HDRフォーマット に変更
 	clearValue.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
 	clearValue.Color[0] = clearColor_[0];
 	clearValue.Color[1] = clearColor_[1];
 	clearValue.Color[2] = clearColor_[2];
@@ -710,7 +707,7 @@ void DirectXCommon::CreateRenderTexture() {
 	);
 	assert(SUCCEEDED(hr));
 
-	// 4. RTV (Render Target View)
+	// 4. RTV (Render Target View) の作成
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = 1;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -718,24 +715,32 @@ void DirectXCommon::CreateRenderTexture() {
 	assert(SUCCEEDED(hr));
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-
-	// ★修正3: SRGB から HDRフォーマット に変更
 	rtvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	device_->CreateRenderTargetView(renderTexture_.Get(), &rtvDesc, rtRtvHeap_->GetCPUDescriptorHandleForHeapStart());
 
-	// 5. SRV (Shader Resource View)
+	// 5. SRV (Shader Resource View) の作成
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-
-	// ★修正4: SRGB から HDRフォーマット に変更
 	srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 	renderTextureSrvHandle_ = SRVManager::GetInstance()->CreateSRV(renderTexture_.Get(), srvDesc);
+
+	// =======================================================
+	// ★追加: ディストーション用の背景コピーテクスチャ (GrabTexture) の生成
+	// =======================================================
+	// 6. GrabTexture本体の生成 (設定は renderTexture_ と全く同じ)
+	HRESULT hrGrab = device_->CreateCommittedResource(
+		&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue,
+		IID_PPV_ARGS(&grabTexture_)
+	);
+	assert(SUCCEEDED(hrGrab));
+
+	// 7. GrabTexture をシェーダーで読むための SRV 作成
+	grabSrvHandle_ = SRVManager::GetInstance()->CreateSRV(grabTexture_.Get(), srvDesc);
 }
 
 void DirectXCommon::PreDrawRenderTexture() {
@@ -984,4 +989,34 @@ void DirectXCommon::PostDrawLocalFog() {
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtRtvHeap_->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle); // ← DSVを復活！
+}
+
+void DirectXCommon::UpdateGrabTexture() {
+	// バリア: RTV(描画先) -> COPY_SOURCE(コピー元) へ
+	D3D12_RESOURCE_BARRIER barrier1{};
+	barrier1.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier1.Transition.pResource = renderTexture_.Get();
+	barrier1.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	barrier1.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+	commandList_->ResourceBarrier(1, &barrier1);
+
+	// バリア: SRV(画像) -> COPY_DEST(コピー先) へ
+	D3D12_RESOURCE_BARRIER barrier2{};
+	barrier2.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier2.Transition.pResource = grabTexture_.Get();
+	barrier2.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	barrier2.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	commandList_->ResourceBarrier(1, &barrier2);
+
+	// ★コピー実行！(現在の画面を丸ごと保存)
+	commandList_->CopyResource(grabTexture_.Get(), renderTexture_.Get());
+
+	// バリアを元の状態に戻す
+	barrier1.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+	barrier1.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	commandList_->ResourceBarrier(1, &barrier1);
+
+	barrier2.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	barrier2.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	commandList_->ResourceBarrier(1, &barrier2);
 }

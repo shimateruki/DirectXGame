@@ -290,18 +290,22 @@ void GamePlayScene::Draw() {
 	// : GPUパーティクルの描画！
 	// =======================================================
 
+//  空間の歪みのために、不透明オブジェクトまで描画し終えた「今の画面」をコピー！
+	dxCommon_->UpdateGrabTexture();
+
+	// 深度バッファを「読み取りモード」へ切り替え（ソフトパーティクル用）
 	dxCommon_->PreDrawLocalFog();
 
-	// 定数バッファではなく、View行列とProjection行列をそのまま渡す！
+	// ビュー・プロジェクション行列と、深度テクスチャを渡して描画実行！
 	GPUParticleManager::GetInstance()->Draw(
 		dxCommon_->GetCommandList(),
 		camera->GetViewMatrix(),
 		camera->GetProjectionMatrix(),
 		gpuParticleTexHandle_,
-		dxCommon_->GetDepthSrvHandle() 
+		dxCommon_->GetDepthSrvHandle()
 	);
 
-	// ★ 描き終わったら安全のために「書き込みモード」へ戻す！
+	// ★ 描き終わったら安全のために「書き込みモード(DSVあり)」に戻す！
 	dxCommon_->PostDrawLocalFog();
 }
 
