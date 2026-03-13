@@ -59,6 +59,7 @@ public:
     enum class BlendMode {
         kAdd,   // 加算合成（光る魔法や炎）
         kAlpha, // 半透明合成（霧や煙、砂埃）
+        kDistortion,
     };
     // 圧倒的暴力：10万個のパーティクル
     static const uint32_t kMaxParticles = 100000;
@@ -133,6 +134,9 @@ private:
         Matrix4x4 viewProj;
         Matrix4x4 billboardMatrix;
         Matrix4x4 projection;
+        float softParticleFade;
+        int blendMode;       
+        Vector2 screenSize;  
     };
 
     //  カメラ用定数バッファ
@@ -143,6 +147,7 @@ private:
     float envDrag_ = 0.98f;
     Vector3 envWind_ = { 0.0f, 0.0f, 0.0f };
     float envTurbulence_ = 0.0f;
+    float softParticleFade_ = 5.0f;
     // 現在のブレンドモード
     BlendMode blendMode_ = BlendMode::kAdd;
     float baseSize_ = 1.0f;

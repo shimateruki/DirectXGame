@@ -35,4 +35,6 @@ struct GPUParticleConfig {
     // --- エディタ・プレビュー用設定 ---
     bool isLooping = false;
     float emitInterval = 0.1f;
+    float softParticleFade = 5.0f;
+
 };
