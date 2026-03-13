@@ -22,94 +22,6 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
-            },
-            "collisionAttribute": 2,
-            "collisionMask": 13,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "Slime",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Object",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 60.0,
-                "hp": 50.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 50.0,
-                "speed": 0.10000000149011612
-            },
-            "parentName": "",
-            "position": [
-                -1.7394723892211914,
-                -2051.04443359375,
-                25.741918563842773
-            ],
-            "quaternion": [
-                0.0,
-                -0.9846673607826233,
-                0.0,
-                0.1744423657655716
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -2.7909138202667236,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Enemy"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
                 "type": 3
             },
             "collisionAttribute": 6,
@@ -125,6 +37,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "sphere.gltf",
@@ -213,6 +139,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "block",
@@ -290,6 +230,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "block",
@@ -367,6 +321,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "block",
@@ -444,6 +412,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "block",
@@ -521,6 +503,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "block",
@@ -598,6 +594,20 @@
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
             "materialType": 0,
             "metallic": 0.0,
             "modelName": "block",
