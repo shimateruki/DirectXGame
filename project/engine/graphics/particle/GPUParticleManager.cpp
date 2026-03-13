@@ -6,7 +6,8 @@
 #include <filesystem>
 #include "json.hpp"
 #include "DebugConsole.h"
-
+#include"WinApp.h"
+    
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -205,13 +206,19 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     Matrix4x4 billboard = math.Inverse(viewMatrix);
     billboard.m[3][0] = 0.0f; billboard.m[3][1] = 0.0f; billboard.m[3][2] = 0.0f;
 
+    // --- 定数バッファの更新 ---
     cameraData_->viewProj = math.Multiply(viewMatrix, projectionMatrix);
     cameraData_->billboardMatrix = billboard;
-
-    // ★追加: ソフトパーティクルの深度計算用にプロジェクション行列をセット！
     cameraData_->projection = projectionMatrix;
 
-    // 描画前に、バッファを「読み取り専用(SRV)モード」に切り替える（これがComputeとGraphicsの境界線！）
+    // ★追加：ソフトパーティクルの馴染み幅をセット
+    cameraData_->softParticleFade = softParticleFade_;
+
+    // ★追加：ディストーション用のパラメータ（モード・画面サイズ）をセット
+    cameraData_->blendMode = static_cast<int>(blendMode_);
+    cameraData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+
+    // 描画前に、バッファを「読み取り専用(SRV)モード」に切り替える
     D3D12_RESOURCE_BARRIER toSRV{};
     toSRV.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     toSRV.Transition.pResource = particleBuffer_.Get();
@@ -219,9 +226,8 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     toSRV.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     commandList->ResourceBarrier(1, &toSRV);
 
-    // --- いつもの描画処理 ---
-
-    // 描画用のパイプラインをブレンドモードで切り替える！
+    // --- パイプラインのセット ---
+    // 加算かそれ以外（半透明・歪み）かで切り替え
     if (blendMode_ == BlendMode::kAdd) {
         commandList->SetPipelineState(graphicsPipelineStateAdd_.Get());
     } else {
@@ -231,19 +237,29 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     commandList->SetGraphicsRootSignature(graphicsRootSignature_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
+    // --- 各ルートパラメータ（Slot）にデータをセット ---
+    // Slot 0: パーティクルデータ (StructuredBuffer)
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 0, srvIndex_);
+    // Slot 1: カメラ定数バッファ (CBV)
     commandList->SetGraphicsRootConstantBufferView(1, cameraBuffer_->GetGPUVirtualAddress());
+    // Slot 2: パーティクル用テクスチャ (t1)
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle);
 
-    // 深度テクスチャが渡されていればシェーダー(t2 / ルートパラメータ[3])にセットする！
+    // Slot 3: 深度テクスチャ (t2)
     if (depthSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    }
+
+    // ：Slot 4: 背景コピーテクスチャ (t3)
+    uint32_t grabSrvHandle = dxCommon_->GetGrabSrvHandle();
+    if (grabSrvHandle > 0) {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
     }
 
     // 描画の号令！
     commandList->DrawInstanced(4, kMaxParticles, 0, 0);
 
-    // 描き終わったら、次のUpdate(Compute)のために「書き込み(UAV)モード」に戻す！
+    // 描き終わったら、次のUpdate(Compute)のために「書き込み(UAV)モード」に戻す
     D3D12_RESOURCE_BARRIER toUAV{};
     toUAV.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     toUAV.Transition.pResource = particleBuffer_.Get();
@@ -251,7 +267,6 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     toUAV.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     commandList->ResourceBarrier(1, &toUAV);
 }
-
 
 void GPUParticleManager::CreateGraphicsPipeline() {
     auto device = dxCommon_->GetDevice();
@@ -273,8 +288,12 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     srvRangeDepth.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeDepth.NumDescriptors = 1;
     srvRangeDepth.BaseShaderRegister = 2; // t2: 深度テクスチ
+    D3D12_DESCRIPTOR_RANGE srvRangeGrab{};
+    srvRangeGrab.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRangeGrab.NumDescriptors = 1;
+    srvRangeGrab.BaseShaderRegister = 3; // ★ t3: 背景コピー
 
-    D3D12_ROOT_PARAMETER rootParams[4] = {};
+    D3D12_ROOT_PARAMETER rootParams[5] = {};
     // [0] パーティクル配列 (t0)
     rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -292,6 +311,9 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
     rootParams[3].DescriptorTable.pDescriptorRanges = &srvRangeDepth;
+    rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParams[4].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[4].DescriptorTable.pDescriptorRanges = &srvRangeGrab;
     // 静的サンプラー (s0: テクスチャのピクセル補間用)
     D3D12_STATIC_SAMPLER_DESC samplerDesc{};
     samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -302,7 +324,7 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = 4; 
+    rsDesc.NumParameters = 5;
     rsDesc.pParameters = rootParams;
     rsDesc.NumStaticSamplers = 1;
     rsDesc.pStaticSamplers = &samplerDesc;
@@ -421,6 +443,7 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("colorMidTime")) config.colorMidTime = j["colorMidTime"];
                 if (j.contains("midSize")) config.midSize = j["midSize"];
                 if (j.contains("sizeMidTime")) config.sizeMidTime = j["sizeMidTime"];
+                if (j.contains("softParticleFade")) config.softParticleFade = j["softParticleFade"];
                 // 辞書に登録！
                 presets_[filename] = config;
                 DebugConsole::GetInstance()->AddLog("Loaded Particle Preset: " + filename);
@@ -474,5 +497,6 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     configData_->midSize = config.midSize;
     configData_->sizeMidTime = config.sizeMidTime;
     emitCountThisFrame_ += config.emitCount;
+    softParticleFade_ = config.softParticleFade;
     currentParticleIndex_ = (currentParticleIndex_ + config.emitCount) % kMaxParticles;
 }

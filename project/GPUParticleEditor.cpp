@@ -26,7 +26,7 @@ void GPUParticleEditor::DrawImGui() {
     ImGui::Text("--- GPUパーティクルエディタ ---");
 
     if (ImGui::CollapsingHeader("発生パラメータ (Emit Parameters)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const char* blendModes[] = { "加算 (光・魔法)", "半透明 (霧・煙)" };
+        const char* blendModes[] = { "加算 (光・魔法)", "半透明 (霧・煙)", "歪み (衝撃波・陽炎)" };
         ImGui::Combo("合成モード (Blend Mode)", &config_.blendModeIndex, blendModes, IM_ARRAYSIZE(blendModes));
         ImGui::Separator();
         const char* shapeTypes[] = { "ボックス (Box)", "スフィア (Sphere)", "コーン (Cone)" };
@@ -68,6 +68,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::DragFloat("空気抵抗 (Air Drag)", &config_.envDrag, 0.001f, 0.8f, 1.0f);
         ImGui::DragFloat3("風 (Wind)", &config_.envWind.x, 0.1f);
         ImGui::DragFloat("乱流・ノイズ (Turbulence)", &config_.envTurbulence, 0.1f, 0.0f, 100.0f);
+        ImGui::DragFloat("地形との馴染み (Soft Fade)", &config_.softParticleFade, 0.1f, 0.1f, 20.0f);
     }
     ImGui::Separator();
 
@@ -128,6 +129,7 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["colorMidTime"] = config_.colorMidTime;
     j["midSize"] = config_.midSize;
     j["sizeMidTime"] = config_.sizeMidTime;
+    j["softParticleFade"] = config_.softParticleFade;
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
     if (file.is_open()) {
@@ -174,7 +176,7 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("colorMidTime")) config_.colorMidTime = j["colorMidTime"];
         if (j.contains("midSize")) config_.midSize = j["midSize"];
         if (j.contains("sizeMidTime")) config_.sizeMidTime = j["sizeMidTime"];
-
+        if (j.contains("softParticleFade")) config_.softParticleFade = j["softParticleFade"];
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);
         }

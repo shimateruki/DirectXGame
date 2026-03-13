@@ -144,6 +144,8 @@ public:
 
 	void PreDrawLocalFog();
 	void PostDrawLocalFog();
+	uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
+	void UpdateGrabTexture();
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 
@@ -227,4 +229,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
 	uint64_t gpuFrequency_ = 0; // GPUのタイマーの周波数
 	float gpuDrawTimeMs_ = 0.0f; // 計測結果（ミリ秒）
+	Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
+	uint32_t grabSrvHandle_ = 0;
 };
