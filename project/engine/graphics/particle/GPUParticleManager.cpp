@@ -444,6 +444,8 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("midSize")) config.midSize = j["midSize"];
                 if (j.contains("sizeMidTime")) config.sizeMidTime = j["sizeMidTime"];
                 if (j.contains("softParticleFade")) config.softParticleFade = j["softParticleFade"];
+                if (j.contains("sizeEaseType")) config.sizeEaseType = j["sizeEaseType"];
+                if (j.contains("colorEaseType")) config.colorEaseType = j["colorEaseType"];
                 // 辞書に登録！
                 presets_[filename] = config;
                 DebugConsole::GetInstance()->AddLog("Loaded Particle Preset: " + filename);
@@ -498,5 +500,8 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     configData_->sizeMidTime = config.sizeMidTime;
     emitCountThisFrame_ += config.emitCount;
     softParticleFade_ = config.softParticleFade;
+    configData_->sizeEaseType = config.sizeEaseType;
+    configData_->colorEaseType = config.colorEaseType;
+
     currentParticleIndex_ = (currentParticleIndex_ + config.emitCount) % kMaxParticles;
 }

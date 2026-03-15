@@ -55,6 +55,9 @@ public:
         float shapeRadius;
         float shapeAngle;
         float padding3;
+        uint32_t sizeEaseType;
+        uint32_t colorEaseType;
+        float padding4[2]; // 16バイトの隙間埋め
     };
     enum class BlendMode {
         kAdd,   // 加算合成（光る魔法や炎）
@@ -155,4 +158,5 @@ private:
     float rotSpeed_ = 1.0f; 
     Vector4 endColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
     std::map<std::string, GPUParticleConfig> presets_;
+
 };

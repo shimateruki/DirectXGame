@@ -36,5 +36,6 @@ struct GPUParticleConfig {
     bool isLooping = false;
     float emitInterval = 0.1f;
     float softParticleFade = 5.0f;
-
+    int sizeEaseType = 0;  // 0:Linear, 1:EaseIn, 2:EaseOut, 3:EaseInOut
+    int colorEaseType = 0;
 };

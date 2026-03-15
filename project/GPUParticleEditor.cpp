@@ -33,7 +33,26 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::Combo("発生形状 (Shape Type)", &config_.shapeType, shapeTypes, IM_ARRAYSIZE(shapeTypes));
 
         ImGui::DragFloat3("発生位置 (Position)", &config_.emitPos.x, 0.1f);
+        const char* easeTypes[] = {
+                 "0: Linear (一定)",
+                 "1: InSine", "2: OutSine", "3: InOutSine",
+                 "4: InQuad", "5: OutQuad", "6: InOutQuad",
+                 "7: InCubic", "8: OutCubic", "9: InOutCubic",
+                 "10: InQuart", "11: OutQuart", "12: InOutQuart",
+                 "13: InQuint", "14: OutQuint", "15: InOutQuint",
+                 "16: InExpo", "17: OutExpo", "18: InOutExpo",
+                 "19: InCirc", "20: OutCirc", "21: InOutCirc",
+                 "22: InBack", "23: OutBack", "24: InOutBack",
+                 "25: InElastic", "26: OutElastic", "27: InOutElastic",
+                 "28: InBounce", "29: OutBounce", "30: InOutBounce"
+        };
 
+        // 色の設定のあたりに追加
+        ImGui::Combo("色の変化カーブ", &config_.colorEaseType, easeTypes, IM_ARRAYSIZE(easeTypes));
+        ImGui::Separator();
+
+        // サイズの設定のあたりに追加
+        ImGui::Combo("サイズの変形カーブ", &config_.sizeEaseType, easeTypes, IM_ARRAYSIZE(easeTypes));
         // 形に合わせて出すUIを変える！
         if (config_.shapeType == 0) {
             ImGui::DragFloat3("発生範囲 (Area)", &config_.emitArea.x, 0.1f);
@@ -53,6 +72,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::ColorEdit4("中間の色 (Mid Color)", &config_.midColor.x);
         ImGui::DragFloat("色がMidになる時間(割合)", &config_.colorMidTime, 0.01f, 0.01f, 0.99f);
         ImGui::ColorEdit4("消滅時の色 (End Color)", &config_.endColor.x);
+
 
         ImGui::Separator();
 
@@ -130,6 +150,8 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["midSize"] = config_.midSize;
     j["sizeMidTime"] = config_.sizeMidTime;
     j["softParticleFade"] = config_.softParticleFade;
+    j["sizeEaseType"] = config_.sizeEaseType;
+    j["colorEaseType"] = config_.colorEaseType;
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
     if (file.is_open()) {
@@ -177,6 +199,8 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("midSize")) config_.midSize = j["midSize"];
         if (j.contains("sizeMidTime")) config_.sizeMidTime = j["sizeMidTime"];
         if (j.contains("softParticleFade")) config_.softParticleFade = j["softParticleFade"];
+        if (j.contains("sizeEaseType")) config_.sizeEaseType = j["sizeEaseType"];
+        if (j.contains("colorEaseType")) config_.colorEaseType = j["colorEaseType"];
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);
         }

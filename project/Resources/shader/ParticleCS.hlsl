@@ -58,7 +58,260 @@ cbuffer Config : register(b0)
     float shapeRadius;
     float shapeAngle;
     float padding3;
+
+    // ===================================
+    // : カーブ（イージング）データ
+    // ===================================
+    uint sizeEaseType;
+    uint colorEaseType;
+    float2 padding4; // 8バイトの隙間埋め 
 };
+
+#define PI 3.14159265359f
+
+float EaseInSine(float t)
+{
+    return 1.0f - cos((t * PI) / 2.0f);
+}
+float EaseOutSine(float t)
+{
+    return sin((t * PI) / 2.0f);
+}
+float EaseInOutSine(float t)
+{
+    return -(cos(PI * t) - 1.0f) / 2.0f;
+}
+
+float EaseInQuad(float t)
+{
+    return t * t;
+}
+float EaseOutQuad(float t)
+{
+    return 1.0f - (1.0f - t) * (1.0f - t);
+}
+float EaseInOutQuad(float t)
+{
+    return t < 0.5f ? 2.0f * t * t : 1.0f - pow(-2.0f * t + 2.0f, 2.0f) / 2.0f;
+}
+
+float EaseInCubic(float t)
+{
+    return t * t * t;
+}
+float EaseOutCubic(float t)
+{
+    return 1.0f - pow(1.0f - t, 3.0f);
+}
+float EaseInOutCubic(float t)
+{
+    return t < 0.5f ? 4.0f * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 3.0f) / 2.0f;
+}
+
+float EaseInQuart(float t)
+{
+    return t * t * t * t;
+}
+float EaseOutQuart(float t)
+{
+    return 1.0f - pow(1.0f - t, 4.0f);
+}
+float EaseInOutQuart(float t)
+{
+    return t < 0.5f ? 8.0f * t * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 4.0f) / 2.0f;
+}
+
+float EaseInQuint(float t)
+{
+    return t * t * t * t * t;
+}
+float EaseOutQuint(float t)
+{
+    return 1.0f - pow(1.0f - t, 5.0f);
+}
+float EaseInOutQuint(float t)
+{
+    return t < 0.5f ? 16.0f * t * t * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 5.0f) / 2.0f;
+}
+
+float EaseInExpo(float t)
+{
+    return t == 0.0f ? 0.0f : pow(2.0f, 10.0f * t - 10.0f);
+}
+float EaseOutExpo(float t)
+{
+    return t == 1.0f ? 1.0f : 1.0f - pow(2.0f, -10.0f * t);
+}
+float EaseInOutExpo(float t)
+{
+    if (t == 0.0f)
+        return 0.0f;
+    if (t == 1.0f)
+        return 1.0f;
+    t *= 2.0f;
+    if (t < 1.0f)
+        return pow(2.0f, 10.0f * (t - 1.0f)) / 2.0f;
+    return (2.0f - pow(2.0f, -10.0f * (t - 1.0f))) / 2.0f;
+}
+
+float EaseInCirc(float t)
+{
+    return 1.0f - sqrt(1.0f - pow(t, 2.0f));
+}
+float EaseOutCirc(float t)
+{
+    return sqrt(1.0f - pow(t - 1.0f, 2.0f));
+}
+float EaseInOutCirc(float t)
+{
+    return t < 0.5f ? (1.0f - sqrt(1.0f - pow(2.0f * t, 2.0f))) / 2.0f : (sqrt(1.0f - pow(-2.0f * t + 2.0f, 2.0f)) + 1.0f) / 2.0f;
+}
+
+float EaseInBack(float t)
+{
+    float c1 = 1.70158f;
+    float c3 = c1 + 1.0f;
+    return c3 * t * t * t - c1 * t * t;
+}
+float EaseOutBack(float t)
+{
+    float c1 = 1.70158f;
+    float c3 = c1 + 1.0f;
+    return 1.0f + c3 * pow(t - 1.0f, 3.0f) + c1 * pow(t - 1.0f, 2.0f);
+}
+float EaseInOutBack(float t)
+{
+    float c1 = 1.70158f;
+    float c2 = c1 * 1.525f;
+    return t < 0.5f ? (pow(2.0f * t, 2.0f) * ((c2 + 1.0f) * 2.0f * t - c2)) / 2.0f : (pow(2.0f * t - 2.0f, 2.0f) * ((c2 + 1.0f) * (2.0f * t - 2.0f) + c2) + 2.0f) / 2.0f;
+}
+
+float EaseInElastic(float t)
+{
+    float c4 = (2.0f * PI) / 3.0f;
+    return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : -pow(2.0f, 10.0f * t - 10.0f) * sin((t * 10.0f - 10.75f) * c4);
+}
+float EaseOutElastic(float t)
+{
+    float c4 = (2.0f * PI) / 3.0f;
+    return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : pow(2.0f, -10.0f * t) * sin((t * 10.0f - 0.75f) * c4) + 1.0f;
+}
+float EaseInOutElastic(float t)
+{
+    float c5 = (2.0f * PI) / 4.5f;
+    return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : t < 0.5f ? -(pow(2.0f, 20.0f * t - 10.0f) * sin((20.0f * t - 11.125f) * c5)) / 2.0f : (pow(2.0f, -20.0f * t + 10.0f) * sin((20.0f * t - 11.125f) * c5)) / 2.0f + 1.0f;
+}
+
+float EaseOutBounce(float t)
+{
+    float n1 = 7.5625f;
+    float d1 = 2.75f;
+    if (t < 1.0f / d1)
+    {
+        return n1 * t * t;
+    }
+    else if (t < 2.0f / d1)
+    {
+        t -= 1.5f / d1;
+        return n1 * t * t + 0.75f;
+    }
+    else if (t < 2.5f / d1)
+    {
+        t -= 2.25f / d1;
+        return n1 * t * t + 0.9375f;
+    }
+    else
+    {
+        t -= 2.625f / d1;
+        return n1 * t * t + 0.984375f;
+    }
+}
+float EaseInBounce(float t)
+{
+    return 1.0f - EaseOutBounce(1.0f - t);
+}
+float EaseInOutBounce(float t)
+{
+    return t < 0.5f ? (1.0f - EaseOutBounce(1.0f - 2.0f * t)) / 2.0f : (1.0f + EaseOutBounce(2.0f * t - 1.0f)) / 2.0f;
+}
+
+// 指定された番号のイージングを適用する統合関数
+float ApplyEasing(uint type, float t)
+{
+    if (t <= 0.0f)
+        return 0.0f;
+    if (t >= 1.0f)
+        return 1.0f;
+
+    switch (type)
+    {
+        case 0:
+            return t;
+        case 1:
+            return EaseInSine(t);
+        case 2:
+            return EaseOutSine(t);
+        case 3:
+            return EaseInOutSine(t);
+        case 4:
+            return EaseInQuad(t);
+        case 5:
+            return EaseOutQuad(t);
+        case 6:
+            return EaseInOutQuad(t);
+        case 7:
+            return EaseInCubic(t);
+        case 8:
+            return EaseOutCubic(t);
+        case 9:
+            return EaseInOutCubic(t);
+        case 10:
+            return EaseInQuart(t);
+        case 11:
+            return EaseOutQuart(t);
+        case 12:
+            return EaseInOutQuart(t);
+        case 13:
+            return EaseInQuint(t);
+        case 14:
+            return EaseOutQuint(t);
+        case 15:
+            return EaseInOutQuint(t);
+        case 16:
+            return EaseInExpo(t);
+        case 17:
+            return EaseOutExpo(t);
+        case 18:
+            return EaseInOutExpo(t);
+        case 19:
+            return EaseInCirc(t);
+        case 20:
+            return EaseOutCirc(t);
+        case 21:
+            return EaseInOutCirc(t);
+        case 22:
+            return EaseInBack(t);
+        case 23:
+            return EaseOutBack(t);
+        case 24:
+            return EaseInOutBack(t);
+        case 25:
+            return EaseInElastic(t);
+        case 26:
+            return EaseOutElastic(t);
+        case 27:
+            return EaseInOutElastic(t);
+        case 28:
+            return EaseInBounce(t);
+        case 29:
+            return EaseOutBounce(t);
+        case 30:
+            return EaseInOutBounce(t);
+    }
+    return t;
+}
+
+
 // HLSLで超高速に乱数を生成する魔法の関数
 float rand(float2 seed)
 {
@@ -173,34 +426,38 @@ void main(uint3 DTid : SV_DispatchThreadID)
         p.position += p.velocity * deltaTime;
 
         // ========================================================
-        // ★ 魔法: 3点カーブ（時間経過の支配）
+        // ★ 魔法: 3点カーブ ＋ 31種類のイージング（時間経過の支配）
         // ========================================================
         // 0.0 (発生直後) ～ 1.0 (消滅寸前) の進行度を計算
-        float ageRatio = 1.0f - saturate(p.life / p.maxLife);
+        float ageRatio = saturate(1.0f - (p.life / p.maxLife));
         
-        // 1. サイズの3点カーブ計算
-        if (ageRatio < sizeMidTime)
+        // 1. サイズのイージングカーブ適用
+        float sizeRatio = ApplyEasing(sizeEaseType, ageRatio);
+        if (sizeRatio < sizeMidTime)
         {
             // Base -> Mid へ向かうフェーズ
-            float t = ageRatio / max(sizeMidTime, 0.001f);
+            float t = sizeRatio / max(sizeMidTime, 0.001f);
             p.scale = lerp(baseSize, midSize, t);
         }
         else
         {
             // Mid -> End へ向かうフェーズ
-            float t = (ageRatio - sizeMidTime) / max(1.0f - sizeMidTime, 0.001f);
+            float t = (sizeRatio - sizeMidTime) / max(1.0f - sizeMidTime, 0.001f);
             p.scale = lerp(midSize, endSize, t);
         }
         
-        // 2. カラー＆透明度（Alpha）の3点カーブ計算
-        if (ageRatio < colorMidTime)
+        // 2. カラー＆透明度（Alpha）のイージングカーブ適用
+        float colorRatio = ApplyEasing(colorEaseType, ageRatio);
+        if (colorRatio < colorMidTime)
         {
-            float t = ageRatio / max(colorMidTime, 0.001f);
+            // Base -> Mid へ向かうフェーズ
+            float t = colorRatio / max(colorMidTime, 0.001f);
             p.color = lerp(baseColor, midColor, t);
         }
         else
         {
-            float t = (ageRatio - colorMidTime) / max(1.0f - colorMidTime, 0.001f);
+            // Mid -> End へ向かうフェーズ
+            float t = (colorRatio - colorMidTime) / max(1.0f - colorMidTime, 0.001f);
             p.color = lerp(midColor, endColor, t);
         }
     }
