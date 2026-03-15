@@ -57,8 +57,10 @@ void VFXSequencer::Update(float deltaTime) {
                     spawnPos = e.offset; // ターゲットがいなければ絶対座標
                 }
 
+                Matrix4x4 emitMat = targetTransform_ ? targetTransform_->matWorld : Math::MakeIdentity4x4();
+
                 // 魔法の1行でエフェクト召喚！
-                GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos);
+                GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos, emitMat);
                 e.hasFired = true; // 発火済みにする
             } else {
                 allFired = false; // まだ未来に発火するイベントが残っている

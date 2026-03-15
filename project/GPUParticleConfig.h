@@ -38,4 +38,5 @@ struct GPUParticleConfig {
     float softParticleFade = 5.0f;
     int sizeEaseType = 0;  // 0:Linear, 1:EaseIn, 2:EaseOut, 3:EaseInOut
     int colorEaseType = 0;
+    Matrix4x4 emitterWorldMatrix = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
 };

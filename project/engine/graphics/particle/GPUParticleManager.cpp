@@ -107,6 +107,37 @@ void GPUParticleManager::CreateBuffer() {
 	// =========================================================
     cameraBuffer_ = dxCommon_->CreateBufferResource(sizeof(CameraData));
     cameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+
+	// =========================================================
+	// 5. 描画用のダミーバーテックスバッファの作成 (頂点シェーダーでインスタンスIDを得るためだけのもの)
+	// =========================================================
+    dummyVertexBuffer_ = dxCommon_->CreateBufferResource(64); // とりあえず64バイト
+    Vector3 dummyPos = { 0.0f, 0.0f, 0.0f };
+    void* mapped = nullptr;
+    dummyVertexBuffer_->Map(0, nullptr, &mapped);
+    memcpy(mapped, &dummyPos, sizeof(Vector3));
+    dummyVertexBuffer_->Unmap(0, nullptr);
+
+
+    // 6. ダミーボーンバッファの作成 (クラッシュ防止)
+    dummyBoneBuffer_ = dxCommon_->CreateBufferResource(sizeof(Matrix4x4));
+    Matrix4x4 identityMat = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
+    void* boneMapped = nullptr;
+    dummyBoneBuffer_->Map(0, nullptr, &boneMapped);
+    memcpy(boneMapped, &identityMat, sizeof(Matrix4x4));
+    dummyBoneBuffer_->Unmap(0, nullptr);
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC boneSrvDesc{};
+    boneSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+    boneSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    boneSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    boneSrvDesc.Buffer.FirstElement = 0;
+    boneSrvDesc.Buffer.NumElements = 1;
+    boneSrvDesc.Buffer.StructureByteStride = sizeof(Matrix4x4);
+    boneSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+    dummyBoneSrvIndex_ = SRVManager::GetInstance()->Allocate();
+    SRVManager::GetInstance()->CreateSRVforResource(dummyBoneSrvIndex_, dummyBoneBuffer_.Get(), boneSrvDesc);
 }
 
 void GPUParticleManager::CreateComputePipeline() {
@@ -119,8 +150,11 @@ void GPUParticleManager::CreateComputePipeline() {
     uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
     uavRange.NumDescriptors = 1;
     uavRange.BaseShaderRegister = 0; // u0 に割り当て
-
-    D3D12_ROOT_PARAMETER rootParams[2] = {};
+    D3D12_DESCRIPTOR_RANGE boneRange{};
+    boneRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    boneRange.NumDescriptors = 1;
+    boneRange.BaseShaderRegister = 1; // t1
+    D3D12_ROOT_PARAMETER rootParams[4] = {};
     // [0] パーティクル配列 (UAV)
     rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -130,8 +164,16 @@ void GPUParticleManager::CreateComputePipeline() {
     rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParams[1].Descriptor.ShaderRegister = 0; // b0 に割り当て
 
+	// [2] 描画用にSRVも渡しておく（Computeシェーダー内で読み取るため）
+    rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+    rootParams[2].Descriptor.ShaderRegister = 0; // t0
+
+    rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[3].DescriptorTable.pDescriptorRanges = &boneRange;
+
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = 2;
+    rsDesc.NumParameters = 4;
     rsDesc.pParameters = rootParams;
 
     Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
@@ -184,14 +226,22 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     // 1. まず裏側で、10万個のパーティクルの物理演算 (Compute) を実行する！
     // =======================================================
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
-
-    // ★ ここは「計算用」のパイプラインをセットする！
     commandList->SetPipelineState(computePipelineState_.Get());
     commandList->SetComputeRootSignature(computeRootSignature_.Get());
-
     SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 0, uavIndex_);
     commandList->SetComputeRootConstantBufferView(1, configBuffer_->GetGPUVirtualAddress());
 
+    // =======================================================
+    // ★ メッシュの頂点バッファを Compute Shader (t0) に渡す！
+    // =======================================================
+    configData_->meshVertexCount = emitterVertexBuffer_ ? emitterVertexCount_ : 1;
+    configData_->meshVertexStride = emitterVertexBuffer_ ? emitterVertexStride_ : sizeof(Vector3);
+
+    ID3D12Resource* targetVB = emitterVertexBuffer_ ? emitterVertexBuffer_ : dummyVertexBuffer_.Get();
+    // 直接GPUの仮想アドレスをセット！
+    commandList->SetComputeRootShaderResourceView(2, targetVB->GetGPUVirtualAddress());
+    uint32_t boneSrv = (emitterBoneSrvIndex_ > 0) ? emitterBoneSrvIndex_ : dummyBoneSrvIndex_;
+    SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, boneSrv);
     // 計算の号令！
     UINT groupCountX = (kMaxParticles + 255) / 256;
     commandList->Dispatch(groupCountX, 1, 1);
@@ -457,17 +507,15 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
 // ====================================================================
 // ★ ゲームシステム用: 名前と座標を渡すだけでパーティクル発生！
 // ====================================================================
-void GPUParticleManager::Emit(const std::string& presetName, const Vector3& position) {
+void GPUParticleManager::Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix) {
     auto it = presets_.find(presetName);
     if (it != presets_.end()) {
-        GPUParticleConfig config = it->second; // プリセットのコピーを作成
-        config.emitPos = position;             // 発生座標だけ上書き！
-        EmitFromConfig(config);                // 発生！
-    } else {
-        DebugConsole::GetInstance()->AddLog("Particle Preset Not Found: " + presetName);
+        GPUParticleConfig config = it->second;
+        config.emitPos = position;
+        config.emitterWorldMatrix = emitterWorldMatrix; 
+        EmitFromConfig(config);
     }
 }
-
 // ====================================================================
 // ★ エディタ＆システム共通: Configデータを元にパーティクル発生！
 // ====================================================================
@@ -502,6 +550,6 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     softParticleFade_ = config.softParticleFade;
     configData_->sizeEaseType = config.sizeEaseType;
     configData_->colorEaseType = config.colorEaseType;
-
+    configData_->emitterWorldMatrix = config.emitterWorldMatrix;
     currentParticleIndex_ = (currentParticleIndex_ + config.emitCount) % kMaxParticles;
 }

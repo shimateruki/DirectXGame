@@ -12,6 +12,7 @@ struct Particle
 };
 
 RWStructuredBuffer<Particle> particles : register(u0);
+ByteAddressBuffer emitterMesh : register(t0);
 
 cbuffer Config : register(b0)
 {
@@ -64,9 +65,16 @@ cbuffer Config : register(b0)
     // ===================================
     uint sizeEaseType;
     uint colorEaseType;
-    float2 padding4; // 8バイトの隙間埋め 
+    uint meshVertexCount; // 頂点の総数
+    uint meshVertexStride; // 1頂点あたりのバイト数 (例: sizeof(Vertex))
+    row_major matrix emitterWorldMatrix;
+    
 };
-
+struct BoneData
+{
+    row_major matrix finalMatrix;
+};
+StructuredBuffer<BoneData> boneMatrices : register(t1);
 #define PI 3.14159265359f
 
 float EaseInSine(float t)
@@ -392,6 +400,31 @@ void main(uint3 DTid : SV_DispatchThreadID)
             // 速度は Velocity の長さを基準に、ワールド方向へ飛ばす
             float speed = length(emitVelocity) + r1 * velocityVariance;
             p.velocity = worldDir * speed;
+        }
+        else if (shapeType == 3) // 🔷 Mesh (3Dモデルの表面)
+        {
+            uint vIndex = (uint) (rand(float2(index, time)) * meshVertexCount) % max(meshVertexCount, 1);
+            uint byteOffset = vIndex * meshVertexStride;
+            
+            // ★ VertexData構造体のメモリ配置通りに、座標・重み・骨番号を読み取る！
+            float3 localPos = asfloat(emitterMesh.Load3(byteOffset));
+            float4 weights = asfloat(emitterMesh.Load4(byteOffset + 48)); // オフセット48番地 (boneWeights)
+            float4 indices = asfloat(emitterMesh.Load4(byteOffset + 64)); // オフセット64番地 (boneIndices)
+            
+            // ★ スキニング計算（ボーンによる変形）
+            matrix boneMat =
+                boneMatrices[(int) indices.x].finalMatrix * weights.x +
+                boneMatrices[(int) indices.y].finalMatrix * weights.y +
+                boneMatrices[(int) indices.z].finalMatrix * weights.z +
+                boneMatrices[(int) indices.w].finalMatrix * weights.w;
+                
+            float3 skinnedPos = mul(float4(localPos, 1.0f), boneMat).xyz;
+            
+            // ★ ワールド行列で最終的な座標（スケール・回転・位置）を適用！
+            float3 worldPos = mul(float4(skinnedPos, 1.0f), emitterWorldMatrix).xyz;
+            
+            p.position = worldPos;
+            p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
         else // 🟦 Box (四角形 - デフォルト)
         {

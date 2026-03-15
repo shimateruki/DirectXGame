@@ -57,7 +57,9 @@ public:
         float padding3;
         uint32_t sizeEaseType;
         uint32_t colorEaseType;
-        float padding4[2]; // 16バイトの隙間埋め
+        uint32_t meshVertexCount;
+        uint32_t meshVertexStride;
+        Matrix4x4 emitterWorldMatrix;
     };
     enum class BlendMode {
         kAdd,   // 加算合成（光る魔法や炎）
@@ -90,12 +92,18 @@ public:
         endSize_ = endSize;
         rotSpeed_ = rotSpeed;
     }
+    void SetEmitterMesh(ID3D12Resource* vertexBuffer, uint32_t vertexCount, uint32_t vertexStride, uint32_t boneSrvIndex) {
+        emitterVertexBuffer_ = vertexBuffer;
+        emitterVertexCount_ = vertexCount;
+        emitterVertexStride_ = vertexStride;
+        emitterBoneSrvIndex_ = boneSrvIndex;
+    }
     void SetEndColor(const Vector4& endColor) { endColor_ = endColor; }
     // 起動時に全JSONを読み込んでメモリにキャッシュする
     void LoadAllPresets(const std::string& directoryPath = "Resources/json/gpu_particles/");
 
     // ゲーム側用：名前と座標を渡すだけで即座に再生！
-    void Emit(const std::string& presetName, const Vector3& position);
+    void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix);
 
     // エディタ側用：コンフィグデータを直接渡して再生！
     void EmitFromConfig(const GPUParticleConfig& config);
@@ -158,5 +166,11 @@ private:
     float rotSpeed_ = 1.0f; 
     Vector4 endColor_ = { 0.0f, 0.0f, 0.0f, 1.0f };
     std::map<std::string, GPUParticleConfig> presets_;
-
+    ID3D12Resource* emitterVertexBuffer_ = nullptr;
+    uint32_t emitterVertexCount_ = 0;
+    uint32_t emitterVertexStride_ = 0;
+    Microsoft::WRL::ComPtr<ID3D12Resource> dummyVertexBuffer_; // メッシュが無い時用のダミー
+    Microsoft::WRL::ComPtr<ID3D12Resource> dummyBoneBuffer_;
+    uint32_t dummyBoneSrvIndex_ = 0;
+    uint32_t emitterBoneSrvIndex_ = 0;
 };

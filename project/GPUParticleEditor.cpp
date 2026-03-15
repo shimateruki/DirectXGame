@@ -29,7 +29,7 @@ void GPUParticleEditor::DrawImGui() {
         const char* blendModes[] = { "加算 (光・魔法)", "半透明 (霧・煙)", "歪み (衝撃波・陽炎)" };
         ImGui::Combo("合成モード (Blend Mode)", &config_.blendModeIndex, blendModes, IM_ARRAYSIZE(blendModes));
         ImGui::Separator();
-        const char* shapeTypes[] = { "ボックス (Box)", "スフィア (Sphere)", "コーン (Cone)" };
+        const char* shapeTypes[] = { "ボックス (Box)", "スフィア (Sphere)", "コーン (Cone)", "メッシュ (Mesh)" };
         ImGui::Combo("発生形状 (Shape Type)", &config_.shapeType, shapeTypes, IM_ARRAYSIZE(shapeTypes));
 
         ImGui::DragFloat3("発生位置 (Position)", &config_.emitPos.x, 0.1f);
