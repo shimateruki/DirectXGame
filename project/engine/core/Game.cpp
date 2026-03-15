@@ -19,6 +19,7 @@
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
+    TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
     ModelManager::GetInstance()->LoadAllModels();
     sceneFactory_ = std::make_unique<SceneFactory>();
     //  SceneManager を作成して初期化

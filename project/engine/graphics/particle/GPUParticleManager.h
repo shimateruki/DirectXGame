@@ -5,6 +5,18 @@
 #include <map>        
 #include <string>      
 #include "GPUParticleConfig.h"
+#include <vector>
+#include <algorithm>
+
+
+struct AutoEmitter {
+    uint32_t id;
+    std::string presetName;
+    Vector3 position;
+    Matrix4x4 transform;
+    float timer;
+};
+
 
 /// <summary>
 /// Compute Shaderを用いてGPU上で10万個のパーティクルを制御する最強のマネージャー
@@ -60,6 +72,13 @@ public:
         uint32_t meshVertexCount;
         uint32_t meshVertexStride;
         Matrix4x4 emitterWorldMatrix;
+        Matrix4x4 viewProj;
+        Matrix4x4 inverseViewProj; // 画面座標からワールド座標を逆算する用
+        Vector2 screenSize;
+        uint32_t enableCollision;
+        float restitution;
+        float colorIntensity;
+        float padding_col[3];
     };
     enum class BlendMode {
         kAdd,   // 加算合成（光る魔法や炎）
@@ -78,7 +97,6 @@ public:
     void Update(float deltaTime);
 
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle, uint32_t depthSrvHandle = 0);
-    void Emit(const Vector3& pos, const Vector3& area, const Vector3& velocity, uint32_t count, float life, float variance, const Vector4& color);
     void SetEnvironmentParams(const Vector3& gravity, float drag, const Vector3& wind, float turbulence) {
         envGravity_ = gravity;
         envDrag_ = drag;
@@ -105,8 +123,17 @@ public:
     // ゲーム側用：名前と座標を渡すだけで即座に再生！
     void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix);
 
+    // ★ ゲーム本編用：発生頻度(Interval)に従って自動で連続発生させる！
+    uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
+    uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
+    void StopAutoEmitter(uint32_t id);     // 止めたい時用
+    void ClearAllAutoEmitters();           // シーン切り替え時などに全部消す用
     // エディタ側用：コンフィグデータを直接渡して再生！
     void EmitFromConfig(const GPUParticleConfig& config);
+    void SetCurrentTexture(const std::string& path);
+    void SetTimeScale(float scale) { timeScale_ = scale; }
+    float GetTimeScale() const { return timeScale_; }
+
 private:
     GPUParticleManager() = default;
     ~GPUParticleManager() = default;
@@ -173,4 +200,9 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> dummyBoneBuffer_;
     uint32_t dummyBoneSrvIndex_ = 0;
     uint32_t emitterBoneSrvIndex_ = 0;
+    uint32_t currentTextureHandle_ = 0;
+
+    float timeScale_ = 1.0f;
+    uint32_t nextAutoEmitterId_ = 1;
+    std::vector<AutoEmitter> autoEmitters_;
 };

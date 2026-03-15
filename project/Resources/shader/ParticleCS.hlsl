@@ -69,12 +69,21 @@ cbuffer Config : register(b0)
     uint meshVertexStride; // 1頂点あたりのバイト数 (例: sizeof(Vertex))
     row_major matrix emitterWorldMatrix;
     
+    row_major matrix viewProj;
+    row_major matrix inverseViewProj;
+    float2 screenSize;
+    uint enableCollision;
+    float restitution;
+    float colorIntensity;
+    float3 padding_col;
 };
 struct BoneData
 {
     row_major matrix finalMatrix;
 };
 StructuredBuffer<BoneData> boneMatrices : register(t1);
+Texture2D<float> depthTex : register(t2);
+SamplerState smp : register(s0);
 #define PI 3.14159265359f
 
 float EaseInSine(float t)
@@ -325,7 +334,12 @@ float rand(float2 seed)
 {
     return frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
 }
-
+float3 GetWorldPosFromDepth(float2 uv, float depth, matrix invViewProj)
+{
+    float4 ndc = float4(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, depth, 1.0f);
+    float4 worldPos = mul(ndc, invViewProj);
+    return worldPos.xyz / worldPos.w;
+}
 [numthreads(256, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
@@ -455,9 +469,70 @@ void main(uint3 DTid : SV_DispatchThreadID)
         );
         p.rotation += p.rotSpeed * deltaTime;
         p.velocity += noiseVec * turbulence * deltaTime;
-        p.velocity *= drag;
+        
+        // ========================================================
+        // ★修正1: 空気抵抗を「自然な減速」に変更！
+        // これで風(Wind)や重力が正しく効くようになります。
+        // ========================================================
+        p.velocity *= saturate(1.0f - drag * deltaTime);
+        
+        // 移動！
         p.position += p.velocity * deltaTime;
 
+        // ========================================================
+        // ★ 深度バッファ・コリジョン（地形との衝突判定＆反射）
+        // ========================================================
+        if (enableCollision > 0)
+        {
+            // 1. パーティクルの現在座標を、画面上の座標(UVと深度)に変換
+            float4 clipPos = mul(float4(p.position, 1.0f), viewProj);
+            float3 ndcPos = clipPos.xyz / clipPos.w;
+            float2 uv = ndcPos.xy * float2(0.5f, -0.5f) + 0.5f;
+
+            // 画面の範囲内かチェック
+            if (uv.x > 0.0f && uv.x < 1.0f && uv.y > 0.0f && uv.y < 1.0f && ndcPos.z < 1.0f)
+            {
+                float bgDepth = depthTex.SampleLevel(smp, uv, 0);
+                
+                // ========================================================
+                // ★修正2: すり抜け防止＆裏側ワープ防止（厚み判定）
+                // 地面より「わずかに奥(0.05f)」にいる時だけ衝突させる！
+                // ========================================================
+                if (ndcPos.z >= bgDepth && ndcPos.z < bgDepth + 0.05f && bgDepth < 1.0f)
+                {
+                    // めり込む直前の位置まで戻す
+                    p.position -= p.velocity * deltaTime;
+
+                    float2 offset = 1.0f / screenSize;
+                    float depthX = depthTex.SampleLevel(smp, uv + float2(offset.x, 0), 0);
+                    float depthY = depthTex.SampleLevel(smp, uv + float2(0, offset.y), 0);
+
+                    float3 p0 = GetWorldPosFromDepth(uv, bgDepth, inverseViewProj);
+                    float3 p1 = GetWorldPosFromDepth(uv + float2(offset.x, 0), depthX, inverseViewProj);
+                    float3 p2 = GetWorldPosFromDepth(uv + float2(0, offset.y), depthY, inverseViewProj);
+
+                    // 地面の法線（傾き）を計算
+                    float3 normal = normalize(cross(p2 - p0, p1 - p0));
+
+                    // ========================================================
+                    //  法線が裏返って地面に突き刺さるのを防止！
+                    // ========================================================
+                    if (dot(normal, p.velocity) > 0.0f)
+                    {
+                        normal = -normal;
+                    }
+
+                    // 反射！
+                    p.velocity = reflect(p.velocity, normal) * restitution;
+                    
+                    // 地面との摩擦で横滑りを抑える
+                    p.velocity.xz *= 0.8f;
+                    
+                    // 反射後の新しい座標へ
+                    p.position += p.velocity * deltaTime;
+                }
+            }
+        }
         // ========================================================
         // ★ 魔法: 3点カーブ ＋ 31種類のイージング（時間経過の支配）
         // ========================================================
@@ -493,6 +568,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
             float t = (colorRatio - colorMidTime) / max(1.0f - colorMidTime, 0.001f);
             p.color = lerp(midColor, endColor, t);
         }
+        p.color.rgb *= colorIntensity;
     }
 
     particles[index] = p;

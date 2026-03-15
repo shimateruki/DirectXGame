@@ -7,6 +7,7 @@
 #include "json.hpp"
 #include "DebugConsole.h"
 #include"WinApp.h"
+#include <TextureManager.h>
     
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -29,6 +30,7 @@ void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     // 2. Compute Shader 用のパイプライン作成
     CreateComputePipeline();
     CreateGraphicsPipeline();
+  
 }
 
 void GPUParticleManager::CreateBuffer() {
@@ -150,11 +152,17 @@ void GPUParticleManager::CreateComputePipeline() {
     uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
     uavRange.NumDescriptors = 1;
     uavRange.BaseShaderRegister = 0; // u0 に割り当て
+
     D3D12_DESCRIPTOR_RANGE boneRange{};
     boneRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     boneRange.NumDescriptors = 1;
     boneRange.BaseShaderRegister = 1; // t1
-    D3D12_ROOT_PARAMETER rootParams[4] = {};
+    // [4] 深度テクスチャ (t2)
+    D3D12_DESCRIPTOR_RANGE depthRange{};
+    depthRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    depthRange.NumDescriptors = 1;
+    depthRange.BaseShaderRegister = 2; // t2
+    D3D12_ROOT_PARAMETER rootParams[5] = {};
     // [0] パーティクル配列 (UAV)
     rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -172,9 +180,23 @@ void GPUParticleManager::CreateComputePipeline() {
     rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
     rootParams[3].DescriptorTable.pDescriptorRanges = &boneRange;
 
+    rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParams[4].DescriptorTable.NumDescriptorRanges = 1;
+    rootParams[4].DescriptorTable.pDescriptorRanges = &depthRange;
+
+    D3D12_STATIC_SAMPLER_DESC samplerDesc{};
+    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT; // 深度値は補間せず生データを使う
+    samplerDesc.ShaderRegister = 0; // s0
+
+
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = 4;
+    rsDesc.NumParameters = 5; 
     rsDesc.pParameters = rootParams;
+    rsDesc.NumStaticSamplers = 1;         
+    rsDesc.pStaticSamplers = &samplerDesc; 
 
     Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
@@ -204,31 +226,66 @@ void GPUParticleManager::CreateComputePipeline() {
 }
 
 void GPUParticleManager::Update(float deltaTime) {
-    totalTime_ += deltaTime;
-    configData_->deltaTime = deltaTime;
+    // ★ 魔法の1行：時間を歪める（スローモーション対応）
+    float scaledDeltaTime = deltaTime * timeScale_;
+
+    totalTime_ += scaledDeltaTime;
+    configData_->deltaTime = scaledDeltaTime; // GPUにもスケールされた時間を送る
     configData_->time = totalTime_;
-     configData_->gravity = envGravity_;
-     configData_->drag = envDrag_;
-     configData_->wind = envWind_;
-     configData_->turbulence = envTurbulence_;
-     configData_->baseSize = baseSize_;
-     configData_->endSize = endSize_;
-     configData_->rotSpeedVariance = rotSpeed_;
-     configData_->endColor = endColor_;
+
+    // =======================================================
+    // ★修正: 私の省略のせいで消えてしまっていたパラメータ送信処理を復元！
+    // =======================================================
+    configData_->gravity = envGravity_;
+    configData_->drag = envDrag_;
+    configData_->wind = envWind_;
+    configData_->turbulence = envTurbulence_;
+    configData_->baseSize = baseSize_;
+    configData_->endSize = endSize_;
+    configData_->rotSpeedVariance = rotSpeed_;
+    configData_->endColor = endColor_;
+
     configData_->emitCount = emitCountThisFrame_;
+
+    // =======================================================
+    // ★ オートエミッター（連続発生）の更新処理
+    // =======================================================
+    for (auto& emitter : autoEmitters_) {
+        // 保存されているプリセットの設定を読み取る
+        auto it = presets_.find(emitter.presetName);
+        if (it != presets_.end()) {
+            // エディタで「連続発生」にチェックが入っていれば実行！
+            if (it->second.isLooping) {
+                emitter.timer += scaledDeltaTime;
+                // エディタで設定した「発生間隔（Interval）」を超えたら発生！
+                if (emitter.timer >= it->second.emitInterval) {
+                    Emit(emitter.presetName, emitter.position, emitter.transform);
+                    emitter.timer = 0.0f; // タイマーリセット
+                }
+            }
+        }
+    }
 }
-
-
 void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t textureHandle, uint32_t depthSrvHandle) {
     if (!commandList) return;
 
     // =======================================================
-    // 1. まず裏側で、10万個のパーティクルの物理演算 (Compute) を実行する！
+    // 1. まず裏側で、パーティクルの物理演算 (Compute) を実行する！
     // =======================================================
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
     commandList->SetPipelineState(computePipelineState_.Get());
     commandList->SetComputeRootSignature(computeRootSignature_.Get());
     SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 0, uavIndex_);
+
+    // =======================================================
+    //  コリジョン用のカメラデータなどをCSConfigに書き込む
+    // =======================================================
+    static Math math;
+    Matrix4x4 vp = math.Multiply(viewMatrix, projectionMatrix);
+    configData_->viewProj = vp;
+    configData_->inverseViewProj = math.Inverse(vp);
+    configData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+
     commandList->SetComputeRootConstantBufferView(1, configBuffer_->GetGPUVirtualAddress());
 
     // =======================================================
@@ -238,10 +295,20 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     configData_->meshVertexStride = emitterVertexBuffer_ ? emitterVertexStride_ : sizeof(Vector3);
 
     ID3D12Resource* targetVB = emitterVertexBuffer_ ? emitterVertexBuffer_ : dummyVertexBuffer_.Get();
-    // 直接GPUの仮想アドレスをセット！
+
+ 
     commandList->SetComputeRootShaderResourceView(2, targetVB->GetGPUVirtualAddress());
+
     uint32_t boneSrv = (emitterBoneSrvIndex_ > 0) ? emitterBoneSrvIndex_ : dummyBoneSrvIndex_;
     SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, boneSrv);
+
+    // =======================================================
+    // [4] コリジョン判定用の深度テクスチャ (t2) をセット！
+    // =======================================================
+    if (depthSrvHandle > 0) {
+        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+    }
+
     // 計算の号令！
     UINT groupCountX = (kMaxParticles + 255) / 256;
     commandList->Dispatch(groupCountX, 1, 1);
@@ -252,19 +319,18 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     // =======================================================
     // 2. 計算結果を使って、画面に描画 (Graphics) する！
     // =======================================================
-    static Math math;
     Matrix4x4 billboard = math.Inverse(viewMatrix);
     billboard.m[3][0] = 0.0f; billboard.m[3][1] = 0.0f; billboard.m[3][2] = 0.0f;
 
     // --- 定数バッファの更新 ---
-    cameraData_->viewProj = math.Multiply(viewMatrix, projectionMatrix);
+    cameraData_->viewProj = vp; // Computeで計算したvpを使い回します
     cameraData_->billboardMatrix = billboard;
     cameraData_->projection = projectionMatrix;
 
-    // ★追加：ソフトパーティクルの馴染み幅をセット
+    // ソフトパーティクルの馴染み幅をセット
     cameraData_->softParticleFade = softParticleFade_;
 
-    // ★追加：ディストーション用のパラメータ（モード・画面サイズ）をセット
+    // ディストーション用のパラメータ（モード・画面サイズ）をセット
     cameraData_->blendMode = static_cast<int>(blendMode_);
     cameraData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
 
@@ -290,17 +356,19 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     // --- 各ルートパラメータ（Slot）にデータをセット ---
     // Slot 0: パーティクルデータ (StructuredBuffer)
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 0, srvIndex_);
+
     // Slot 1: カメラ定数バッファ (CBV)
     commandList->SetGraphicsRootConstantBufferView(1, cameraBuffer_->GetGPUVirtualAddress());
-    // Slot 2: パーティクル用テクスチャ (t1)
-    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, textureHandle);
+
+    uint32_t texHandleToUse = (currentTextureHandle_ > 0) ? currentTextureHandle_ : textureHandle;
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, texHandleToUse);
 
     // Slot 3: 深度テクスチャ (t2)
     if (depthSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     }
 
-    // ：Slot 4: 背景コピーテクスチャ (t3)
+    // Slot 4: 背景コピーテクスチャ (t3)
     uint32_t grabSrvHandle = dxCommon_->GetGrabSrvHandle();
     if (grabSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
@@ -361,6 +429,7 @@ void GPUParticleManager::CreateGraphicsPipeline() {
     rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
     rootParams[3].DescriptorTable.pDescriptorRanges = &srvRangeDepth;
+
     rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParams[4].DescriptorTable.NumDescriptorRanges = 1;
     rootParams[4].DescriptorTable.pDescriptorRanges = &srvRangeGrab;
@@ -496,6 +565,10 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
                 if (j.contains("softParticleFade")) config.softParticleFade = j["softParticleFade"];
                 if (j.contains("sizeEaseType")) config.sizeEaseType = j["sizeEaseType"];
                 if (j.contains("colorEaseType")) config.colorEaseType = j["colorEaseType"];
+                if(j.contains("enableCollision")) config.enableCollision = j["enableCollision"];
+                if (j.contains("restitution")) config.restitution = j["restitution"];
+                if (j.contains("colorIntensity")) config.colorIntensity = j["colorIntensity"];
+                if (j.contains("texturePath")) config.texturePath = j["texturePath"];
                 // 辞書に登録！
                 presets_[filename] = config;
                 DebugConsole::GetInstance()->AddLog("Loaded Particle Preset: " + filename);
@@ -551,5 +624,47 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
     configData_->sizeEaseType = config.sizeEaseType;
     configData_->colorEaseType = config.colorEaseType;
     configData_->emitterWorldMatrix = config.emitterWorldMatrix;
+    configData_->enableCollision = config.enableCollision;
+    configData_->restitution = config.restitution;
+    configData_->colorIntensity = config.colorIntensity;
+    SetCurrentTexture(config.texturePath);
     currentParticleIndex_ = (currentParticleIndex_ + config.emitCount) % kMaxParticles;
 }
+
+void GPUParticleManager::SetCurrentTexture(const std::string& path) {
+  
+    uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);
+
+    if (handle > 0) {
+        currentTextureHandle_ = handle;
+    }
+}
+
+uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const Vector3& position) {
+    Matrix4x4 identity = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
+    return PlayAutoEmitter(presetName, position, identity);
+}
+
+uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform) {
+    AutoEmitter em;
+    em.id = nextAutoEmitterId_++;
+    em.presetName = presetName;
+    em.position = position;
+    em.transform = transform;
+    em.timer = 0.0f;
+    autoEmitters_.push_back(em);
+
+    // 登録した瞬間にまずは1回目を出す！
+    Emit(presetName, position, transform);
+    return em.id;
+}
+
+void GPUParticleManager::StopAutoEmitter(uint32_t id) {
+    autoEmitters_.erase(std::remove_if(autoEmitters_.begin(), autoEmitters_.end(),
+        [id](const AutoEmitter& e) { return e.id == id; }), autoEmitters_.end());
+}
+
+void GPUParticleManager::ClearAllAutoEmitters() {
+    autoEmitters_.clear();
+}
+

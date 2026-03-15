@@ -1,26 +1,26 @@
 {
     "baseColor": [
-        1.0,
+        0.8996139168739319,
         0.0,
         0.0,
         1.0
     ],
     "baseSize": 1.0,
-    "blendModeIndex": 1,
+    "blendModeIndex": 0,
     "colorEaseType": 0,
-    "colorIntensity": 1.0,
+    "colorIntensity": 3.0,
     "colorMidTime": 0.20000000298023224,
     "emitArea": [
-        20.5,
-        7.699999809265137,
-        13.300000190734863
+        0.0,
+        0.0,
+        0.0
     ],
-    "emitCount": 3000,
+    "emitCount": 1000,
     "emitInterval": 0.10000000149011612,
     "emitLife": 2.0,
     "emitPos": [
         0.0,
-        18.5,
+        0.0,
         0.0
     ],
     "emitVelocity": [
@@ -28,42 +28,42 @@
         1.0,
         0.0
     ],
-    "enableCollision": 1,
+    "enableCollision": 0,
     "endColor": [
-        0.5714285373687744,
+        1.0,
+        1.0,
+        1.0,
+        0.0
+    ],
+    "endSize": 0.0,
+    "envDrag": 0.0,
+    "envGravity": [
+        0.0,
+        -9.800000190734863,
+        0.0
+    ],
+    "envTurbulence": 0.0,
+    "envWind": [
         0.0,
         0.0,
         0.0
     ],
-    "endSize": 0.0,
-    "envDrag": 0.800000011920929,
-    "envGravity": [
-        0.0,
-        -9.119999885559082,
-        0.6200000047683716
-    ],
-    "envTurbulence": 11.899999618530273,
-    "envWind": [
-        0.0,
-        -37.099998474121094,
-        -8.100000381469727
-    ],
     "isLooping": true,
     "midColor": [
-        1.0,
-        0.5,
+        0.3672872483730316,
         0.0,
+        0.37451738119125366,
         1.0
     ],
     "midSize": 2.0,
-    "restitution": 1.0,
+    "restitution": 0.5,
     "rotSpeed": 0.0,
     "shapeAngle": 30.0,
     "shapeRadius": 2.0,
-    "shapeType": 0,
+    "shapeType": 3,
     "sizeEaseType": 0,
-    "sizeMidTime": 0.20000000298023224,
+    "sizeMidTime": 0.3700000047683716,
     "softParticleFade": 5.0,
-    "texturePath": "Resources/sprite/particle.png",
-    "velocityVariance": 16.399999618530273
+    "texturePath": "Resources/sprite/Particle.png",
+    "velocityVariance": 1.0
 }

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <json.hpp> // nlohmann/json
 #include "DebugConsole.h"
+#include <TextureManager.h>
 
 using json = nlohmann::json;
 
@@ -11,19 +12,26 @@ void GPUParticleEditor::Initialize() {
 }
 
 void GPUParticleEditor::Update(float deltaTime) {
-
+    // エディタのプレビュー間隔もスローモーションに対応させる
+    float scaledDelta = deltaTime * GPUParticleManager::GetInstance()->GetTimeScale();
+    
     if (config_.isLooping) {
-        emitTimer_ += deltaTime;
+        emitTimer_ += scaledDelta;
         if (emitTimer_ >= config_.emitInterval) {
-            // これ1行で、設定データ(config_)の内容が全てManagerに伝わり発生します！
             GPUParticleManager::GetInstance()->EmitFromConfig(config_);
             emitTimer_ = 0.0f;
         }
     }
 }
-
 void GPUParticleEditor::DrawImGui() {
     ImGui::Text("--- GPUパーティクルエディタ ---");
+    if (ImGui::CollapsingHeader("システム設定 (System)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        float timeScale = GPUParticleManager::GetInstance()->GetTimeScale();
+        if (ImGui::DragFloat("全体再生速度 (Time Scale)", &timeScale, 0.05f, 0.0f, 5.0f)) {
+            GPUParticleManager::GetInstance()->SetTimeScale(timeScale);
+        }
+        ImGui::Text("※0.5でスローモーション、2.0で倍速になります");
+    }
 
     if (ImGui::CollapsingHeader("発生パラメータ (Emit Parameters)", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* blendModes[] = { "加算 (光・魔法)", "半透明 (霧・煙)", "歪み (衝撃波・陽炎)" };
@@ -31,7 +39,15 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::Separator();
         const char* shapeTypes[] = { "ボックス (Box)", "スフィア (Sphere)", "コーン (Cone)", "メッシュ (Mesh)" };
         ImGui::Combo("発生形状 (Shape Type)", &config_.shapeType, shapeTypes, IM_ARRAYSIZE(shapeTypes));
-
+        if (ImGui::CollapsingHeader("コリジョン (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            bool isCollide = config_.enableCollision != 0;
+            if (ImGui::Checkbox("地形と衝突させる", &isCollide)) {
+                config_.enableCollision = isCollide ? 1 : 0;
+            }
+            if (isCollide) {
+                ImGui::DragFloat("跳ね返り係数 (Restitution)", &config_.restitution, 0.05f, 0.0f, 1.0f);
+            }
+        }
         ImGui::DragFloat3("発生位置 (Position)", &config_.emitPos.x, 0.1f);
         const char* easeTypes[] = {
                  "0: Linear (一定)",
@@ -72,10 +88,43 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::ColorEdit4("中間の色 (Mid Color)", &config_.midColor.x);
         ImGui::DragFloat("色がMidになる時間(割合)", &config_.colorMidTime, 0.01f, 0.01f, 0.99f);
         ImGui::ColorEdit4("消滅時の色 (End Color)", &config_.endColor.x);
+        ImGui::DragFloat("発光強度 (HDR Intensity)", &config_.colorIntensity, 0.1f, 0.0f, 20.0f);
 
+        std::vector<std::string> allPaths = TextureManager::GetInstance()->GetLoadedTexturePaths();
 
-        ImGui::Separator();
+        // 絞り込んだパスを保存するためのリスト
+        static std::vector<std::string> filteredPaths;
+        filteredPaths.clear();
 
+        for (const auto& path : allPaths) {
+            // パスの中に "Resources/sprite/" が含まれているものだけを拾う！
+            if (path.find("Resources/sprite/") != std::string::npos) {
+                filteredPaths.push_back(path);
+            }
+        }
+
+        std::vector<const char*> texNames;
+        int currentIndex = 0;
+
+        for (int i = 0; i < filteredPaths.size(); ++i) {
+  
+            std::string fileName = std::filesystem::path(filteredPaths[i]).filename().string();
+
+            // ImGuiに渡すために一時的に保持（※安全のためフルパスを渡します）
+            texNames.push_back(filteredPaths[i].c_str());
+
+            if (config_.texturePath == filteredPaths[i]) {
+                currentIndex = i; // 現在選ばれている画像をハイライト
+            }
+        }
+
+        if (!texNames.empty()) {
+            if (ImGui::Combo("テクスチャ画像", &currentIndex, texNames.data(), static_cast<int>(texNames.size()))) {
+                // コンボボックスが操作されたら、パスを更新して即反映！
+                config_.texturePath = filteredPaths[currentIndex];
+                GPUParticleManager::GetInstance()->SetCurrentTexture(config_.texturePath);
+            }
+        }
         // 既存のサイズ設定も3段階に書き換える
         ImGui::DragFloat("中間の大きさ (Mid Size)", &config_.midSize, 0.1f, 0.0f, 50.0f);
         ImGui::DragFloat("サイズがMidになる時間(割合)", &config_.sizeMidTime, 0.01f, 0.01f, 0.99f);
@@ -108,18 +157,56 @@ void GPUParticleEditor::DrawImGui() {
 
     ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // ★ .h に合わせて変数名を presetNameInput_ に変更
-        ImGui::InputText("プリセット名", presetNameInput_, sizeof(presetNameInput_));
+        if (ImGui::CollapsingHeader("保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // =======================================================
+            //  フォルダ内の保存済みJSONファイルを自動取得してリスト化！
+            // =======================================================
+            std::string dirPath = "Resources/json/gpu_particles/";
+            std::vector<std::string> presetList;
+            if (std::filesystem::exists(dirPath)) {
+                for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
+                    if (entry.path().extension() == ".json") {
+                        presetList.push_back(entry.path().stem().string()); // .jsonを抜いた名前を取得
+                    }
+                }
+            }
 
-        if (ImGui::Button("保存 (Save)", ImVec2(120, 0))) {
-            Save(presetNameInput_);
+            // ImGuiのComboに渡すためのリスト作成
+            static int selectedIndex = 0;
+            std::vector<const char*> presetNamesCStr;
+            for (int i = 0; i < presetList.size(); ++i) {
+                presetNamesCStr.push_back(presetList[i].c_str());
+                // 今テキストボックスに入っている名前と一致したら、コンボボックスもそこを選択状態にする
+                if (presetList[i] == presetNameInput_) {
+                    selectedIndex = i;
+                }
+            }
+
+            // 保存済みファイルがあればコンボボックスを表示
+            if (!presetNamesCStr.empty()) {
+                if (ImGui::Combo("既存ファイル一覧", &selectedIndex, presetNamesCStr.data(), static_cast<int>(presetNamesCStr.size()))) {
+                    // リストから選んだら、その名前を下の「テキスト入力欄」に自動でコピーする！
+                    strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[selectedIndex].c_str());
+                }
+            } else {
+                ImGui::Text("※保存されたプリセットがありません");
+            }
+
+            ImGui::Separator();
+
+            // =======================================================
+            // テキスト入力による新規作成・上書き・読み込み
+            // =======================================================
+            ImGui::InputText("プリセット名", presetNameInput_, sizeof(presetNameInput_));
+
+            if (ImGui::Button("保存 (Save)", ImVec2(120, 0))) {
+                Save(presetNameInput_);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("読み込み (Load)", ImVec2(120, 0))) {
+                Load(presetNameInput_);
+            }
         }
-        ImGui::SameLine();
-        if (ImGui::Button("読み込み (Load)", ImVec2(120, 0))) {
-            Load(presetNameInput_);
-        }
-    }
 }
 
 void GPUParticleEditor::Save(const std::string& presetName) {
@@ -152,6 +239,10 @@ void GPUParticleEditor::Save(const std::string& presetName) {
     j["softParticleFade"] = config_.softParticleFade;
     j["sizeEaseType"] = config_.sizeEaseType;
     j["colorEaseType"] = config_.colorEaseType;
+    j["enableCollision"] = config_.enableCollision;
+    j["restitution"] = config_.restitution;
+    j["colorIntensity"] = config_.colorIntensity;
+    j["texturePath"] = config_.texturePath;
     std::string filepath = "Resources/json/gpu_particles/" + presetName + ".json";
     std::ofstream file(filepath);
     if (file.is_open()) {
@@ -201,6 +292,14 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("softParticleFade")) config_.softParticleFade = j["softParticleFade"];
         if (j.contains("sizeEaseType")) config_.sizeEaseType = j["sizeEaseType"];
         if (j.contains("colorEaseType")) config_.colorEaseType = j["colorEaseType"];
+        if (j.contains("enableCollision")) config_.enableCollision = j["enableCollision"];
+        if (j.contains("restitution")) config_.restitution = j["restitution"];
+        if (j.contains("colorIntensity")) config_.colorIntensity = j["colorIntensity"];
+        if (j.contains("texturePath")) {
+            config_.texturePath = j["texturePath"];
+            // 読み込んだらマネージャーにも教える
+            GPUParticleManager::GetInstance()->SetCurrentTexture(config_.texturePath);
+        }
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);
         }

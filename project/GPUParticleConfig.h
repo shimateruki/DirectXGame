@@ -23,6 +23,8 @@ struct GPUParticleConfig {
     float midSize = 2.0f;                          // 途中の大きさ
     float sizeMidTime = 0.2f;                      // 大きさがMidになるタイミング (0.0~1.0)
     float endSize = 0.0f;
+    float colorIntensity = 1.0f;
+    std::string texturePath = "Resources/sprite/Particle.png";
     float rotSpeed = 0.0f;
     int blendModeIndex = 0;
 
@@ -38,5 +40,7 @@ struct GPUParticleConfig {
     float softParticleFade = 5.0f;
     int sizeEaseType = 0;  // 0:Linear, 1:EaseIn, 2:EaseOut, 3:EaseInOut
     int colorEaseType = 0;
+    int enableCollision = 0;   // 0: 無効, 1: 有効
+    float restitution = 0.5f;  // 跳ね返り係数 (0.0=弾まない ~ 1.0=完全弾性)
     Matrix4x4 emitterWorldMatrix = { 1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f };
 };
