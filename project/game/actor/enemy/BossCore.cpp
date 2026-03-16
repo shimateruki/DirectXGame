@@ -758,11 +758,16 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     // ======================================
     else if (attackMode_ == 4) {
 
-        // --- Phase 39: 【新設】コンボ数に応じた壁の配置計算 ---
+        // --- Phase 39: コンボ数に応じた壁の配置計算 ---
         if (animPhase_ == 39) {
             blockStartPos_.clear();
             blockTargetPos_.clear();
-            float blockWidth = 12.5f;
+
+            // ==========================================
+            // ★ 修正：中心から75（全幅150）を6つで割った「25.0f」に変更！
+            // これだけで、間隔もスケールも全て自動でステージぴったりに広がります！
+            // ==========================================
+            float blockWidth = 25.0f;
 
             Vector3 bossCurrentPos = GetTranslate();
             animStartPos_ = bossCurrentPos; // 移動のスタート地点を記憶
@@ -782,30 +787,33 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     blockStartPos_.push_back(worldPos);
                 }
                 else {
-                    // 2回目以降はすでにワールド座標にいるので、そのまま現在地をスタートに！
+                    // 2回目以降はそのまま現在地をスタートに！
                     blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
                 }
 
-                // ==========================================
-                // ★ ここで何回目の攻撃かによって、壁の場所と形を変える！
-                // ==========================================
-                float offset = -(i - 2.5f) * blockWidth;
+                // 前後・左右（4連撃）の壁の場所と形をセット！
+                float offset = -(i - 2.5f) * blockWidth; // ここで25.0fが掛けられて、端から端まで自動計算されます！
                 Vector3 targetPos;
 
                 if (shotCount_ == 0) {
-                    // 【1撃目：前方から】奥(Z=75)に、X軸に並べる
+                    // 【1撃目：奥から手前へ】奥(Z=75)にセット
                     targetPos = { offset, 2.0f, 75.0f };
                     armorBlocks_[i]->SetScale({ blockWidth, 4.0f, 1.0f });
                 }
                 else if (shotCount_ == 1) {
-                    // 【2撃目：右側面から】右(X=75)に、Z軸に並べる
-                    targetPos = { 75.0f, 2.0f, offset };
-                    armorBlocks_[i]->SetScale({ 1.0f, 4.0f, blockWidth });
+                    // 【2撃目：手前から奥へ】手前(Z=-75)にセット
+                    targetPos = { offset, 2.0f, -75.0f };
+                    armorBlocks_[i]->SetScale({ blockWidth, 4.0f, 1.0f });
                 }
                 else if (shotCount_ == 2) {
-                    // 【3撃目：左側面から】左(X=-75)に、Z軸に並べる
+                    // 【3撃目：右から左へ】右(X=75)にセットし、Z軸に並べる
+                    targetPos = { 75.0f, 2.0f, offset };
+                    armorBlocks_[i]->SetScale({ 1.0f, 4.0f, blockWidth }); // 壁の向きを縦に変える！
+                }
+                else if (shotCount_ == 3) {
+                    // 【4撃目：左から右へ】左(X=-75)にセットし、Z軸に並べる
                     targetPos = { -75.0f, 2.0f, offset };
-                    armorBlocks_[i]->SetScale({ 1.0f, 4.0f, blockWidth });
+                    armorBlocks_[i]->SetScale({ 1.0f, 4.0f, blockWidth }); // 壁の向きを縦に変える！
                 }
 
                 blockTargetPos_.push_back(targetPos);
@@ -816,28 +824,33 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             animPhase_ = 40;
             animTimer_ = 0.0f;
         }
-        // --- Phase 40: ボスが上空へ移動 ＆ ブロックが壁を形成 ---
+        // --- Phase 40: ボスが上空へ先回り ＆ ブロックが壁を形成 ---
         else if (animPhase_ == 40) {
             animTimer_ += deltaTime;
-            float duration = 1.5f; // コンボ中はテンポよく1.5秒で壁を作る！
+            float duration = 1.5f; // テンポよく1.5秒で壁を作る！
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = Easing::OutExpo(t);
 
             Vector3 bossPos = GetTranslate();
 
-            // コンボに応じてボスの待機場所（上空）も変える！
+            // ボスも4つの司令塔（上空）へ先回りする！
             if (shotCount_ == 0) {
                 bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
                 bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
-                bossPos.z = Math::Lerp(animStartPos_.z, 75.0f, easeT); // 奥の上空
+                bossPos.z = Math::Lerp(animStartPos_.z, 75.0f, easeT); // 奥
             }
             else if (shotCount_ == 1) {
-                bossPos.x = Math::Lerp(animStartPos_.x, 75.0f, easeT); // 右の上空
+                bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
+                bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
+                bossPos.z = Math::Lerp(animStartPos_.z, -75.0f, easeT); // 手前
+            }
+            else if (shotCount_ == 2) {
+                bossPos.x = Math::Lerp(animStartPos_.x, 75.0f, easeT); // 右
                 bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
                 bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
             }
-            else if (shotCount_ == 2) {
-                bossPos.x = Math::Lerp(animStartPos_.x, -75.0f, easeT); // 左の上空
+            else if (shotCount_ == 3) {
+                bossPos.x = Math::Lerp(animStartPos_.x, -75.0f, easeT); // 左
                 bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
                 bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
             }
@@ -858,25 +871,28 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
-        // --- Phase 41: 壁だけがステージを大横断！ ---
+        // --- Phase 41: 壁だけがステージを往復横断！ ---
         else if (animPhase_ == 41) {
             animTimer_ += deltaTime;
-            float duration = 2.5f; // コンボなので横断速度も少し早めに！
+            float duration = 5.0f; // 横断速度
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = std::pow(t, 2.0f);
 
-            // コンボに応じて動かす軸を変える！
+            // 前後と左右で動かす軸を完璧に切り替える！
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 Vector3 blockPos = armorBlocks_[i]->GetTranslate();
 
                 if (shotCount_ == 0) {
-                    blockPos.z = Math::Lerp(75.0f, -75.0f, easeT); // 奥から手前へ
+                    blockPos.z = Math::Lerp(75.0f, -75.0f, easeT); // 奥から手前
                 }
                 else if (shotCount_ == 1) {
-                    blockPos.x = Math::Lerp(75.0f, -75.0f, easeT); // 右から左へ
+                    blockPos.z = Math::Lerp(-75.0f, 75.0f, easeT); // 手前から奥
                 }
                 else if (shotCount_ == 2) {
-                    blockPos.x = Math::Lerp(-75.0f, 75.0f, easeT); // 左から右へ
+                    blockPos.x = Math::Lerp(75.0f, -75.0f, easeT); // 右から左
+                }
+                else if (shotCount_ == 3) {
+                    blockPos.x = Math::Lerp(-75.0f, 75.0f, easeT); // 左から右
                 }
                 armorBlocks_[i]->SetTranslate(blockPos);
             }
@@ -886,21 +902,20 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
-        // --- Phase 42: 攻撃後の猶予 ＆ コンボのループ判定！ ---
+        // --- Phase 42: 攻撃後の猶予 ＆ 往復のループ判定！ ---
         else if (animPhase_ == 42) {
             animTimer_ += deltaTime;
 
             // 攻撃が終わったら 0.5秒 だけ隙を見せる
             if (animTimer_ >= 0.5f) {
-                shotCount_++; // コンボカウントを進める！
+                shotCount_++;
 
-                if (shotCount_ < 3) {
-                    // ★ まだ3回終わってないなら、準備フェーズ(39)へループ！！
-                    animPhase_ = 39;
+                // 「4回」のコンボが終わるまでループさせる！
+                if (shotCount_ < 4) {
+                    animPhase_ = 39; // まだコンボ中なら、次の準備(39)へ！
                 }
                 else {
-                    // ★ 3回終わったら、修復フェーズ(43)へ！
-                    animPhase_ = 43;
+                    animPhase_ = 43; // 4連撃が終わったら、修復フェーズ(43)へ！
                 }
                 animTimer_ = 0.0f;
             }
@@ -969,7 +984,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
-        }
+    }
 }
 
 void BossCore::UpdateFlyingBlocks (float deltaTime) {
