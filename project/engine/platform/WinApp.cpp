@@ -3,12 +3,14 @@
 #ifdef USE_IMGUI
 #include "imgui_impl_win32.h"
 #endif
+#include <DirectXCommon.h>
 
 #pragma comment(lib, "winmm.lib")
 #ifdef USE_IMGUI
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 #endif
 
+// --- WinApp.cpp ---
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 #ifdef USE_IMGUI
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
@@ -17,6 +19,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 #endif
 
     switch (msg) {
+    case WM_SIZE: // ★ウィンドウサイズが変わった
+        if (wparam != SIZE_MINIMIZED) {
+            int32_t width = LOWORD(lparam);
+            int32_t height = HIWORD(lparam);
+            WinApp::kClientWidth = width;
+            WinApp::kClientHeight = height;
+            if (DirectXCommon::GetInstance()->GetDevice()) {
+                DirectXCommon::GetInstance()->ResizeSwapChain(width, height);
+            }
+        }
+        return 0;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;

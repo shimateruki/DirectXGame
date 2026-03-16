@@ -29,6 +29,8 @@
 #include "GPUParticleEditor.h"
 #include "VFXSequencerEditor.h"
 #include "LightEditor.h"      
+#include "IconsFontAwesome5.h"
+#include"LightEditor.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -530,44 +532,66 @@ void DebugEditor::DrawHierarchy() {
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (currentScene == nullptr) return;
 
-    ImGui::Begin("Hierarchy");
-    if (ImGui::CollapsingHeader(" システム設定 (System Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    // ★ウィンドウタイトルにもアイコンを追加（###Hierarchy で内部IDを固定しレイアウト崩れを防止）
+    ImGui::Begin(ICON_FA_SITEMAP " Hierarchy###Hierarchy");
+
+    if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
         IEditable* currentObj = EditorManager::GetInstance()->GetSelectedObject();
 
         // 📷 カメラ設定
-        if (ImGui::Selectable("  カメラ設定 (Camera)", currentObj == CameraEditor::GetInstance())) {
+        if (ImGui::Selectable("  " ICON_FA_VIDEO " カメラ設定 (Camera)", currentObj == CameraEditor::GetInstance())) {
             selectedObject_ = nullptr; // 通常オブジェクトの選択は解除
             EditorManager::GetInstance()->SetSelectedObject(CameraEditor::GetInstance());
         }
+        // 💡 ライティング設定 (Light)
+        if (lightEditor_ && ImGui::Selectable("  " ICON_FA_LIGHTBULB " ライティング設定 (Lighting)", currentObj == lightEditor_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(lightEditor_);
+        }
         // ✨ ポストエフェクト
-        if (postEffectEditor_ && ImGui::Selectable("ポストエフェクト (Post Effect)", currentObj == postEffectEditor_)) {
+        if (postEffectEditor_ && ImGui::Selectable("  " ICON_FA_MAGIC " ポストエフェクト (Post Effect)", currentObj == postEffectEditor_)) {
             selectedObject_ = nullptr;
             EditorManager::GetInstance()->SetSelectedObject(postEffectEditor_);
         }
         // 🖼️ 2D UI スプライト
-        if (spriteDebugEditor_ && ImGui::Selectable("2D UI スプライト (Sprite)", currentObj == spriteDebugEditor_)) {
+        if (spriteDebugEditor_ && ImGui::Selectable("  " ICON_FA_IMAGES " 2D UI スプライト (Sprite)", currentObj == spriteDebugEditor_)) {
             selectedObject_ = nullptr;
             EditorManager::GetInstance()->SetSelectedObject(spriteDebugEditor_);
         }
         // 🎇 GPUパーティクル
-        if (gpuParticleEditor_ && ImGui::Selectable("GPUパーティクル (GPU Particle)", currentObj == gpuParticleEditor_)) {
+        if (gpuParticleEditor_ && ImGui::Selectable("  " ICON_FA_FIRE " GPUパーティクル (GPU Particle)", currentObj == gpuParticleEditor_)) {
             selectedObject_ = nullptr;
             EditorManager::GetInstance()->SetSelectedObject(gpuParticleEditor_);
         }
         // 🎬 VFXシーケンサー
-        if (vfxSequencerEditor_ && ImGui::Selectable("VFXシーケンサー (VFX Sequencer)", currentObj == vfxSequencerEditor_)) {
+        if (vfxSequencerEditor_ && ImGui::Selectable("  " ICON_FA_FILM " VFXシーケンサー (VFX Sequencer)", currentObj == vfxSequencerEditor_)) {
             selectedObject_ = nullptr;
             EditorManager::GetInstance()->SetSelectedObject(vfxSequencerEditor_);
         }
         // 💨 CPUパーティクル
-        if (particleEditor_ && ImGui::Selectable("通常パーティクル (Particle)", currentObj == particleEditor_)) {
+        if (particleEditor_ && ImGui::Selectable("  " ICON_FA_WIND " 通常パーティクル (Particle)", currentObj == particleEditor_)) {
             selectedObject_ = nullptr;
             EditorManager::GetInstance()->SetSelectedObject(particleEditor_);
         }
+        // 👻 ゴーストレコーダー
+        if (ghostRecorder_ && ImGui::Selectable("  " ICON_FA_GHOST " ゴーストレコーダー (Ghost Recorder)", currentObj == ghostRecorder_)) {
+            if (selectedObject_) {
+                ghostRecorder_->SetTarget(selectedObject_);
+            }
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_);
+        }
+        // 🎬 ゴーストディレクター
+        if (ghostDirector_ && ImGui::Selectable("  " ICON_FA_BULLHORN " ゴーストディレクター (Ghost Director)", currentObj == ghostDirector_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(ghostDirector_);
+        }
     }
+
     ImGui::Separator();
+
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
-    if (ImGui::CollapsingHeader("シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         std::string directoryPath = "Resources/json/3Dobject/";
         if (!fs::exists(directoryPath)) {
@@ -575,7 +599,7 @@ void DebugEditor::DrawHierarchy() {
         }
 
         // --- A. ファイル一覧コンボボックス ---
-        if (ImGui::BeginCombo("既存ファイル", currentSceneFilename_)) {
+        if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存ファイル", currentSceneFilename_)) {
             if (fs::exists(directoryPath)) {
                 for (const auto& entry : fs::directory_iterator(directoryPath)) {
                     if (entry.path().extension() == ".json") {
@@ -597,31 +621,33 @@ void DebugEditor::DrawHierarchy() {
         }
 
         // --- B. ファイル名入力 ---
-        ImGui::InputText("保存名 (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
+        ImGui::InputText(ICON_FA_FILE_SIGNATURE " 保存名 (.json)", currentSceneFilename_, sizeof(currentSceneFilename_));
 
         // --- C. 保存ボタン (Save Scene) ---
-        ImGui::Text("個別保存 (競合回避用):");
-        if (ImGui::Button("Playerのみ保存")) {
+        ImGui::Text(ICON_FA_FILTER " 個別保存 (競合回避用):");
+        if (ImGui::Button(ICON_FA_USER " Playerのみ保存")) {
             SaveScene(SaveMode::Player);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Enemyのみ保存")) {
+        if (ImGui::Button(ICON_FA_SKULL " Enemyのみ保存")) {
             SaveScene(SaveMode::Enemy);
         }
         ImGui::SameLine();
-        if (ImGui::Button("Objectのみ保存")) {
+        if (ImGui::Button(ICON_FA_CUBE " Objectのみ保存")) {
             SaveScene(SaveMode::Object);
         }
 
         ImGui::Separator();
-        if (ImGui::Button("シーン全体保存 (All)")) {
+        if (ImGui::Button(ICON_FA_DOWNLOAD " シーン全体保存 (All)", ImVec2(-1, 0))) {
             SaveScene(SaveMode::All);
         }
         ImGui::TextDisabled("保存先: %s", currentJsonPath.c_str());
     }
+
     ImGui::Separator();
+
     // 1. 検索バー
-    ImGui::Text("検索:");
+    ImGui::Text(ICON_FA_SEARCH " 検索:");
     ImGui::SameLine();
     ImGui::InputText("##Search", searchFilter_, sizeof(searchFilter_));
 
@@ -632,7 +658,7 @@ void DebugEditor::DrawHierarchy() {
 
     if (!filterStr.empty()) {
         // --- 検索モード ---
-        ImGui::TextColored(ImVec4(0, 1, 1, 1), "検索結果:");
+        ImGui::TextColored(ImVec4(0, 1, 1, 1), ICON_FA_SEARCH_PLUS " 検索結果:");
 
         auto& objects = currentScene->GetObjects();
         for (auto& obj : objects) {
@@ -653,12 +679,13 @@ void DebugEditor::DrawHierarchy() {
                 ImGui::PopID();
             }
         }
-    } else {
+    }
+    else {
         // --- 通常モード ---
         // ========================================================
         // 1. ドロップを受け付ける UIパーツ (ボタン) を描画
         // ========================================================
-        ImGui::Button("[ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
+        ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
 
         if (ImGui::BeginDragDropTarget()) {
 
@@ -767,7 +794,7 @@ void DebugEditor::DrawHierarchy() {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.8f, 0.7f, 0.7f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.8f, 0.8f, 0.8f));
 
-    if (ImGui::Button("透明ボックス生成 (トリガー用)", ImVec2(-1, 40))) {
+    if (ImGui::Button(ICON_FA_BOLT " 透明ボックス生成 (トリガー用)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
@@ -786,7 +813,6 @@ void DebugEditor::DrawHierarchy() {
 
             newObj->SetTranslate({ 0, 2.0f, 0 });
 
-            // ★生成した瞬間に選択してInspectorを表示
             selectedObject_ = newObj.get();
             currentScene->AddObject(std::move(newObj));
             EditorManager::GetInstance()->SetSelectedObject(this);
@@ -794,7 +820,7 @@ void DebugEditor::DrawHierarchy() {
         }
     }
 
-    if (ImGui::Button("透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
+    if (ImGui::Button(ICON_FA_SHIELD_ALT " 透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
@@ -813,7 +839,6 @@ void DebugEditor::DrawHierarchy() {
 
             newObj->SetTranslate({ 0, 2.0f, 0 });
 
-            // ★生成した瞬間に選択してInspectorを表示
             selectedObject_ = newObj.get();
             currentScene->AddObject(std::move(newObj));
             EditorManager::GetInstance()->SetSelectedObject(this);
@@ -821,7 +846,7 @@ void DebugEditor::DrawHierarchy() {
         }
     }
 
-    if (ImGui::Button("演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
+    if (ImGui::Button(ICON_FA_VIDEO " 演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
@@ -841,7 +866,6 @@ void DebugEditor::DrawHierarchy() {
             newObj->SetTranslate({ 0, 5.0f, -10.0f });
             newObj->UpdateWorldMatrix();
 
-            // ★生成した瞬間に選択してInspectorを表示
             selectedObject_ = newObj.get();
             currentScene->AddObject(std::move(newObj));
             EditorManager::GetInstance()->SetSelectedObject(this);
@@ -852,20 +876,15 @@ void DebugEditor::DrawHierarchy() {
     ImGui::PopStyleColor(3);
 
     ImGui::Dummy(ImVec2(0, 50));
-    ImGui::TextDisabled("(ここにドロップして親解除)");
+    ImGui::TextDisabled(ICON_FA_UNLINK " (ここにドロップして親解除)");
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
 
-            // ★修正3: 親を解除した時に、見た目の位置がすっ飛ばないように座標を再計算！
             if (sourceObj->GetParent() != nullptr) {
-                // 1. 今のワールド行列を保存
                 Matrix4x4 worldMat = sourceObj->GetWorldMatrix();
-
-                // 2. 親を解除
                 sourceObj->SetParent(nullptr);
 
-                // 3. ワールド行列を分解して、そのままローカル座標に突っ込む
                 Vector3 t, rDeg, s;
                 ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &t.x, &rDeg.x, &s.x);
                 sourceObj->GetTransform()->translate = t;
@@ -895,24 +914,25 @@ void DebugEditor::DrawImGui() {
 
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
 
-  
+
 
     // ---------------------------------------------------------
     // 2. オブジェクト詳細 (Inspector本体)
     // ---------------------------------------------------------
     if (selectedObject_ == nullptr) {
-        ImGui::Text("オブジェクトが選択されていません");
-        ImGui::Text("Hierarchyから選択してください");
+        ImGui::TextDisabled(ICON_FA_EXCLAMATION_CIRCLE " オブジェクトが選択されていません");
+        ImGui::TextDisabled("Hierarchyから選択してください");
         ImGui::Separator();
-        ImGui::Checkbox("コライダー枠を描画", &drawColliders_);
-    } else {
+        ImGui::Checkbox(ICON_FA_EYE " コライダー枠を描画", &drawColliders_);
+    }
+    else {
         // --- 名前表示 ---
         char nameBuffer[256];
         std::string currentName = selectedObject_->GetName();
         if (currentName.empty()) currentName = "NoName";
         strcpy_s(nameBuffer, currentName.c_str());
 
-        if (ImGui::InputText("名前", nameBuffer, sizeof(nameBuffer))) {
+        if (ImGui::InputText(ICON_FA_TAG " 名前", nameBuffer, sizeof(nameBuffer))) {
             selectedObject_->SetName(std::string(nameBuffer));
         }
         ImGui::Spacing();
@@ -920,15 +940,16 @@ void DebugEditor::DrawImGui() {
             // 編集モード中は目立つ色（オレンジ）にして警告を表示
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.4f, 0.0f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
-            if (ImGui::Button("✅ パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
+            if (ImGui::Button(ICON_FA_CHECK_CIRCLE " パス編集を完了してロックを解除 (Exit Edit Mode)", ImVec2(-1, 45))) {
                 isPathEditMode_ = false;
                 if (selectedObject_->recorder_) selectedObject_->recorder_->DeselectPin();
             }
             ImGui::PopStyleColor(2);
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠️ 現在パスを編集中です。");
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "   本体の移動・選択・削除はロックされています。");
-        } else {
-            if (ImGui::Button("✏️ パスの軌跡を編集する (Enter Path Edit Mode)", ImVec2(-1, 35))) {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " 現在パスを編集中です。");
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "    本体の移動・選択・削除はロックされています。");
+        }
+        else {
+            if (ImGui::Button(ICON_FA_PENCIL_ALT " パスの軌跡を編集する (Enter Path Edit Mode)", ImVec2(-1, 35))) {
                 isPathEditMode_ = true;
             }
         }
@@ -940,42 +961,43 @@ void DebugEditor::DrawImGui() {
         ImGui::BeginDisabled(isPathEditMode_);
         ImGui::Spacing();
 
-        if (ImGui::Button("複製 (Duplicate)")) {
+        if (ImGui::Button(ICON_FA_COPY " 複製 (Duplicate)")) {
             DuplicateSelected();
         }
         ImGui::SameLine();
-        if (ImGui::Button("単体保存 (JSON更新)")) {
+        if (ImGui::Button(ICON_FA_DOWNLOAD " 単体保存 (JSON更新)")) {
             SaveSingleObject();
         }
         ImGui::Spacing();
 
         // --- クラス名表示 ---
-        ImGui::TextDisabled("クラス: %s", selectedObject_->GetClassName().c_str());
+        ImGui::TextDisabled(ICON_FA_CUBES " クラス: %s", selectedObject_->GetClassName().c_str());
         const char* saveCategories[] = { "Object", "Player", "Enemy" };
         std::string currentCat = selectedObject_->GetSaveCategory();
         int catIndex = 0;
         if (currentCat == "Player") catIndex = 1;
         else if (currentCat == "Enemy") catIndex = 2;
 
-        if (ImGui::Combo("保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
+        if (ImGui::Combo(ICON_FA_FOLDER " 保存先カテゴリ", &catIndex, saveCategories, IM_ARRAYSIZE(saveCategories))) {
             selectedObject_->SetSaveCategory(saveCategories[catIndex]);
         }
 
         // --- 親の名前表示 ---
         if (selectedObject_->GetParent()) {
-            ImGui::TextDisabled("親: %s", selectedObject_->GetParent()->GetName().c_str());
-            if (ImGui::Button("親を解除 (Unparent)")) {
+            ImGui::TextDisabled(ICON_FA_SITEMAP " 親: %s", selectedObject_->GetParent()->GetName().c_str());
+            if (ImGui::Button(ICON_FA_UNLINK " 親を解除 (Unparent)")) {
                 selectedObject_->SetParent(nullptr);
             }
-        } else {
-            ImGui::TextDisabled("親: なし");
+        }
+        else {
+            ImGui::TextDisabled(ICON_FA_SITEMAP " 親: なし");
         }
 
         // --- Model Asset (InvisibleBoxでない場合のみ表示) ---
         if (selectedObject_->GetClassName() != "InvisibleBox") {
             ImGui::Separator();
-            ImGui::Text("モデルアセット: %s", selectedObject_->GetModelName().c_str());
-            ImGui::Button(" [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
+            ImGui::Text(ICON_FA_CUBE " モデルアセット: %s", selectedObject_->GetModelName().c_str());
+            ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして変更 ] ", ImVec2(-1, 30));
 
             if (ImGui::BeginDragDropTarget()) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
@@ -991,36 +1013,36 @@ void DebugEditor::DrawImGui() {
         // --- 可視性設定 ---
         ImGui::Separator();
         bool isVisible = selectedObject_->GetIsVisible();
-        if (ImGui::Checkbox("表示 (ゲーム内)", &isVisible)) {
+        if (ImGui::Checkbox(ICON_FA_EYE " 表示 (ゲーム内)", &isVisible)) {
             selectedObject_->SetIsVisible(isVisible);
         }
 
         // --- Transform編集 ---
         ImGui::Separator();
-        ImGui::Text("トランスフォーム (Transform)");
+        ImGui::Text(ICON_FA_ARROWS_ALT " トランスフォーム (Transform)");
         Transform* transform = selectedObject_->GetTransform();
         bool isTransformChanged = false;
 
-        if (ImGui::DragFloat3("座標 (Pos)", &transform->translate.x, 0.1f)) isTransformChanged = true;
+        if (ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 座標 (Pos)", &transform->translate.x, 0.1f)) isTransformChanged = true;
 
         Vector3 rotDeg = { ToDegrees(transform->rotate.x), ToDegrees(transform->rotate.y), ToDegrees(transform->rotate.z) };
-        if (ImGui::DragFloat3("回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
+        if (ImGui::DragFloat3(ICON_FA_SYNC " 回転 (Rot)", &rotDeg.x, 1.0f, -360.0f, 360.0f)) {
             transform->rotate = { ToRadians(rotDeg.x), ToRadians(rotDeg.y), ToRadians(rotDeg.z) };
             transform->isQuaternionMaster = false;
             isTransformChanged = true;
         }
-        if (ImGui::DragFloat3("スケール (Scale)", &transform->scale.x, 0.05f)) isTransformChanged = true;
+        if (ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール (Scale)", &transform->scale.x, 0.05f)) isTransformChanged = true;
 
- 
+
         // --- コライダー設定 ---
         ImGui::Separator();
-        if (ImGui::CollapsingHeader("コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader(ICON_FA_SHIELD_ALT " コリジョン設定 (Collision)", ImGuiTreeNodeFlags_DefaultOpen)) {
             Object3d::ColliderConfig colConfig = selectedObject_->GetColliderConfig();
             bool isColChanged = false;
 
             const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)" };
             int currentTypeIndex = (int)colConfig.type;
-            if (ImGui::Combo("形状タイプ", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
+            if (ImGui::Combo(ICON_FA_SHAPES " 形状タイプ", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
                 if (colConfig.type == ColliderType::kOBB && colConfig.size.x == 0.0f) {
                     colConfig.size = { 1.0f, 1.0f, 1.0f };
@@ -1036,7 +1058,8 @@ void DebugEditor::DrawImGui() {
                         colConfig.size.y = colConfig.size.z = colConfig.size.x;
                         isColChanged = true;
                     }
-                } else {
+                }
+                else {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
                 if (colConfig.type == ColliderType::kOBB) {
@@ -1052,7 +1075,7 @@ void DebugEditor::DrawImGui() {
 
             }
             ImGui::Separator();
-            if (ImGui::CollapsingHeader("グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;
 
                 const char* matTypes[] = {
@@ -1064,12 +1087,12 @@ void DebugEditor::DrawImGui() {
                                 "マグマ・覚醒 (Emissive)",
                                 "トゥーン調 (Cel Shaded)",
                                 "ローカルフォグ (Local Fog)",
-                             
+
                 };
                 int currentMatType = selectedObject_->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
                 if (currentMatType > 7) currentMatType = 0;
-                if (ImGui::Combo("質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
+                if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject_->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
                 }
@@ -1090,7 +1113,7 @@ void DebugEditor::DrawImGui() {
 
                 if (currentMatType == 7) {
                     ImGui::Separator();
-                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.5f, 1.0f), "--- Local Fog Settings ---");
+                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.5f, 1.0f), ICON_FA_SMOG " --- Local Fog Settings ---");
                     auto* fogData = selectedObject_->GetLocalFogData();
                     if (fogData) {
                         ImGui::ColorEdit4("Fog Color (霧の色)", &fogData->fogColor.x);
@@ -1099,21 +1122,21 @@ void DebugEditor::DrawImGui() {
                         ImGui::DragFloat("Noise Speed (揺らぐ速さ)", &fogData->noiseSpeed, 0.01f, 0.0f, 5.0f);
                         ImGui::DragFloat("Noise Scale (模様の細かさ)", &fogData->noiseScale, 0.01f, 0.0f, 5.0f);
                         ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "--- Light Scattering ---");
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), ICON_FA_SUN " --- Light Scattering ---");
                         ImGui::DragFloat("Scattering G (光の芯の強さ)", &fogData->scatteringG, 0.01f, 0.0f, 0.99f);
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
                 ImGui::Separator();
                 bool enableNormal = selectedObject_->GetEnableNormalMap();
-                if (ImGui::Checkbox("法線マップ (Normal Map) 有効化", &enableNormal)) {
+                if (ImGui::Checkbox(ICON_FA_MAP " 法線マップ (Normal Map) 有効化", &enableNormal)) {
                     selectedObject_->SetEnableNormalMap(enableNormal);
                     isGraphicsChanged = true;
                 }
 
                 ImGui::Separator();
                 bool enableEnv = selectedObject_->GetEnableEnvMap();
-                if (ImGui::Checkbox("環境マップ (IBL) 有効化", &enableEnv)) {
+                if (ImGui::Checkbox(ICON_FA_GLOBE " 環境マップ (IBL) 有効化", &enableEnv)) {
                     selectedObject_->SetEnableEnvMap(enableEnv);
                     isGraphicsChanged = true;
                 }
@@ -1160,7 +1183,7 @@ void DebugEditor::DrawImGui() {
                     std::string currentPath = selectedObject_->GetNormalMapPath();
                     const char* previewValue = currentPath.empty() ? "未設定 (クリックで選択)" : currentPath.c_str();
 
-                    if (ImGui::BeginCombo("ノーマル画像", previewValue)) {
+                    if (ImGui::BeginCombo(ICON_FA_IMAGE " ノーマル画像", previewValue)) {
                         // 検索して見つかった全画像をリストに並べる
                         for (const std::string& path : texturePaths) {
                             bool isSelected = (currentPath == path);
@@ -1183,11 +1206,11 @@ void DebugEditor::DrawImGui() {
                         ImGui::EndCombo();
                     }
 
-					// エクスプローラーから画像を新しく追加した時に、リストを再読み込みするボタン
+                    // エクスプローラーから画像を新しく追加した時に、リストを再読み込みするボタン
                     std::string currentOrmPath = selectedObject_->GetOrmMapPath();
                     const char* previewOrmValue = currentOrmPath.empty() ? "未設定 (クリックで選択)" : currentOrmPath.c_str();
 
-                    if (ImGui::BeginCombo("ORMマップ (AO/粗さ/金属)", previewOrmValue)) {
+                    if (ImGui::BeginCombo(ICON_FA_IMAGE " ORMマップ (AO/粗さ/金属)", previewOrmValue)) {
                         for (const std::string& path : texturePaths) {
                             bool isSelected = (currentOrmPath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
@@ -1206,7 +1229,7 @@ void DebugEditor::DrawImGui() {
                     std::string currentTexturePath = selectedObject_->GetTexturePath();
                     const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
 
-                    if (ImGui::BeginCombo("基本画像 (Diffuse)", previewTextureValue)) {
+                    if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse)", previewTextureValue)) {
                         for (const std::string& path : texturePaths) {
                             bool isSelected = (currentTexturePath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
@@ -1224,7 +1247,7 @@ void DebugEditor::DrawImGui() {
                     }
                     // エクスプローラーから画像を新しく追加した時に、リストを再読み込みするボタン
                     ImGui::SameLine();
-                    if (ImGui::Button("更新")) {
+                    if (ImGui::Button(ICON_FA_SYNC_ALT " 更新")) {
                         isListInitialized = false;
                     }
                 }
@@ -1232,20 +1255,20 @@ void DebugEditor::DrawImGui() {
                 const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
                 int currentBlend = static_cast<int>(selectedObject_->GetBlendMode());
 
-                if (ImGui::Combo("合成 (Blend Mode)", &currentBlend, blendModes, IM_ARRAYSIZE(blendModes))) {
+                if (ImGui::Combo(ICON_FA_ADJUST " 合成 (Blend Mode)", &currentBlend, blendModes, IM_ARRAYSIZE(blendModes))) {
                     selectedObject_->SetBlendMode(static_cast<BlendMode>(currentBlend));
                     isGraphicsChanged = true;
                 }
 
                 Vector4 color = selectedObject_->GetColor();
-                if (ImGui::ColorEdit4("色 (Color)", &color.x)) {
+                if (ImGui::ColorEdit4(ICON_FA_FILL_DRIP " 色 (Color)", &color.x)) {
                     selectedObject_->SetColor(color);
                     isGraphicsChanged = true;
                 }
             }
 
             ImGui::Separator();
-            if (ImGui::CollapsingHeader("パーティクル")) {
+            if (ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
                 const auto& paramsMap = ParticleManager::GetInstance()->GetParamsMap();
                 std::vector<const char*> itemNames;
                 int currentItemIndex = 0;
@@ -1269,7 +1292,8 @@ void DebugEditor::DrawImGui() {
                 if (ImGui::Combo("Effect Name", &currentItemIndex, itemNames.data(), (int)itemNames.size())) {
                     if (currentItemIndex == 0) {
                         selectedObject_->SetParticleName("");
-                    } else {
+                    }
+                    else {
                         selectedObject_->SetParticleName(itemNames[currentItemIndex]);
                     }
                 }
@@ -1283,13 +1307,13 @@ void DebugEditor::DrawImGui() {
             // 属性設定
             ImGui::Separator();
             uint32_t currentAttr = selectedObject_->GetCollisionAttribute();
-            DrawAttributeSelector("自分の属性 (Attribute)", &currentAttr);
+            DrawAttributeSelector(ICON_FA_TAGS " 自分の属性 (Attribute)", &currentAttr);
             if (currentAttr != selectedObject_->GetCollisionAttribute()) {
                 selectedObject_->SetCollisionAttribute(currentAttr);
             }
 
             uint32_t currentMask = selectedObject_->GetCollisionMask();
-            DrawAttributeSelector("衝突対象 (Mask)", &currentMask);
+            DrawAttributeSelector(ICON_FA_TAGS " 衝突対象 (Mask)", &currentMask);
             if (currentMask != selectedObject_->GetCollisionMask()) {
                 selectedObject_->SetCollisionMask(currentMask);
             }
@@ -1297,7 +1321,7 @@ void DebugEditor::DrawImGui() {
 
         // --- Gimmick (ID設定) ---
         ImGui::Separator();
-        if (ImGui::CollapsingHeader("ギミック設定 (Link IDs)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader(ICON_FA_LINK " ギミック設定 (Link IDs)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("イベント連携ID:");
 
             int tID = selectedObject_->GetTargetID();
@@ -1314,11 +1338,11 @@ void DebugEditor::DrawImGui() {
         }
 
 
-            // ==========================================
-            // 1. ボーンアニメーション設定
-            // ==========================================
-            ImGui::Separator();
-        ImGui::Text("【ボーンアニメーション】");
+        // ==========================================
+        // 1. ボーンアニメーション設定
+        // ==========================================
+        ImGui::Separator();
+        ImGui::Text(ICON_FA_BONE " 【ボーンアニメーション】");
 
         // アニメーション名の入力 (モデルに埋め込まれているアニメーション名)
         char animNameBuf[64];
@@ -1333,7 +1357,7 @@ void DebugEditor::DrawImGui() {
         // 2. パス移動 (GhostRecorder) 設定
         // ==========================================
         ImGui::Separator();
-        ImGui::Text("【パス移動 (GhostRecorder)】");
+        ImGui::Text(ICON_FA_GHOST " 【パス移動 (GhostRecorder)】");
 
         std::string currentRecordPreview = selectedObject_->recordPathName_.empty() ? "(なし)" : selectedObject_->recordPathName_;
 
@@ -1412,11 +1436,11 @@ void DebugEditor::DrawImGui() {
 
         // --- Game Data (Stats) ---
         ImGui::Separator();
-        if (ImGui::CollapsingHeader("ゲームデータ (Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader(ICON_FA_GAMEPAD " ゲームデータ (Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
             EventType currentType = selectedObject_->GetEventType();
             int currentItemIndex = static_cast<int>(currentType);
             const char* eventNames[] = { "なし", "ダメージ", "ワープ","中間ポイント","ゴール","ステージセレクト" };
-            if (ImGui::Combo("イベント種類", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
+            if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
                 selectedObject_->SetEventType(static_cast<EventType>(currentItemIndex));
             }
 
@@ -1437,7 +1461,7 @@ void DebugEditor::DrawImGui() {
                 }
             }
 
-            if (ImGui::Combo("Class Type", &currentClassIndex, classItems, IM_ARRAYSIZE(classItems))) {
+            if (ImGui::Combo(ICON_FA_CUBES " Class Type", &currentClassIndex, classItems, IM_ARRAYSIZE(classItems))) {
                 selectedObject_->SetClassName(classItems[currentClassIndex]);
                 if (std::string(classItems[currentClassIndex]) == "Spawner") {
                     if (selectedObject_->GetName().find("Object") != std::string::npos) {
@@ -1461,22 +1485,23 @@ void DebugEditor::DrawImGui() {
             }
 
             if (!selectedObject_->param_.has_value()) {
-                if (ImGui::Button("ステータスを追加", ImVec2(-1, 0))) {
+                if (ImGui::Button(ICON_FA_PLUS_CIRCLE " ステータスを追加", ImVec2(-1, 0))) {
                     selectedObject_->param_.emplace();
                 }
-            } else {
+            }
+            else {
                 auto& p = selectedObject_->param_.value();
                 ImGui::Text("エンティティ・ステータス:");
                 ImGui::Indent();
-                ImGui::DragFloat("HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
-                ImGui::DragFloat("Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
-                ImGui::DragFloat("速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
-                ImGui::DragFloat("重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
-                ImGui::DragFloat("ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
+                ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
+                ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
+                ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
                 ImGui::Unindent();
 
                 ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
-                if (ImGui::Button("ステータスを削除", ImVec2(-1, 0))) {
+                if (ImGui::Button(ICON_FA_TRASH_ALT " ステータスを削除", ImVec2(-1, 0))) {
                     selectedObject_->param_ = std::nullopt;
                 }
                 ImGui::PopStyleColor();
@@ -1486,14 +1511,14 @@ void DebugEditor::DrawImGui() {
         ImGui::EndDisabled();
         ImGui::Separator();
 
-        if (ImGui::Button("オブジェクト削除", ImVec2(-1, 0))) {
+        if (ImGui::Button(ICON_FA_TRASH_ALT " オブジェクト削除", ImVec2(-1, 0))) {
             DeleteSelected();
-            EditorManager::GetInstance()->ClearSelection(); 
+            EditorManager::GetInstance()->ClearSelection();
         }
 
         // --- Gizmo 操作切替 ---
         ImGui::Separator();
-        ImGui::Text("ギズモ操作モード:");
+        ImGui::Text(ICON_FA_HAND_POINTER " ギズモ操作モード:");
         static ImGuizmo::OPERATION currentOperation = ImGuizmo::TRANSLATE;
         if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
             if (ImGui::IsKeyPressed(ImGuiKey_T)) currentOperation = ImGuizmo::TRANSLATE;
@@ -1508,7 +1533,6 @@ void DebugEditor::DrawImGui() {
 #endif
 
 }
-
 // ---------------------------------------------------------------------
 //  階層構造を再帰的に描画するヘルパー関数
 // 

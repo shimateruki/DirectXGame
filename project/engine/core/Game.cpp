@@ -67,13 +67,18 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
-    debugEditor_->SetEditors(
-        postEffectEditor_.get(),
-        spriteDebugEditor_.get(),
-        particleEditor_.get(),
-        gpuParticleEditor_.get(),
-        vfxSequencerEditor_.get()
-    );
+    if (debugEditor_) {
+        debugEditor_->SetEditors(
+            postEffectEditor_.get(),
+            spriteDebugEditor_.get(),
+            particleEditor_.get(),
+            gpuParticleEditor_.get(),
+            vfxSequencerEditor_.get(),
+            ghostRecorder_.get(),   
+            ghostDirector_.get(),
+			LightEditor::GetInstance()
+        );
+    }
 
 #endif
 #ifdef  USE_IMGUI

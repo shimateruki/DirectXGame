@@ -9,6 +9,7 @@
 #include "BaseScene.h"    
 #include "InputManager.h"
 #include <filesystem>
+#include "IconsFontAwesome5.h"
 
 namespace fs = std::filesystem;
 
@@ -102,9 +103,10 @@ void SpriteDebugEditor::DrawImGui() {
     if (!currentScene) return;
 
     // -------------------------------------------------------------
-    // 1. スプライトリスト (Inspector内でスクロール可能な領域にする)
+    // 1. スプライトリスト
     // -------------------------------------------------------------
-    ImGui::Text("Sprite List");
+    ImGui::Text(ICON_FA_LIST_UL " Sprite List");
+
     // 高さを150ピクセルに固定したスクロール枠を作成
     ImGui::BeginChild("SpriteListRegion", ImVec2(0, 150), true);
 
@@ -112,7 +114,7 @@ void SpriteDebugEditor::DrawImGui() {
     int id = 0;
 
     if (sprites.empty()) {
-        ImGui::TextDisabled("スプライトがありません");
+        ImGui::TextDisabled(ICON_FA_INFO_CIRCLE " スプライトがありません");
     }
 
     for (const auto& spritePtr : sprites) {
@@ -121,15 +123,12 @@ void SpriteDebugEditor::DrawImGui() {
 
         ImGui::PushID(id++);
 
-        // 名前がなければ番号を割り当てる
-        std::string label = "Sprite " + std::to_string(id);
-        if (!sprite->GetName().empty()) {
-            label = sprite->GetName();
-        }
+        std::string label = (sprite->GetName().empty()) ? "Sprite " + std::to_string(id) : sprite->GetName();
+        // リストの各項目に画像アイコンを添える
+        std::string iconLabel = std::string(ICON_FA_IMAGE " ") + label;
 
-        // 選択状態の更新
         bool isSelected = (selectedSprite_ == sprite);
-        if (ImGui::Selectable(label.c_str(), isSelected)) {
+        if (ImGui::Selectable(iconLabel.c_str(), isSelected)) {
             selectedSprite_ = sprite;
         }
         ImGui::PopID();
@@ -142,13 +141,13 @@ void SpriteDebugEditor::DrawImGui() {
     // -------------------------------------------------------------
     // 2. ファイル管理 (File I/O)
     // -------------------------------------------------------------
-    if (ImGui::CollapsingHeader("ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string directoryPath = "Resources/json/sprite/";
         if (!std::filesystem::exists(directoryPath)) {
             std::filesystem::create_directories(directoryPath);
         }
 
-        if (ImGui::BeginCombo("既存ファイル", currentSpriteFilename_)) {
+        if (ImGui::BeginCombo(ICON_FA_HISTORY " 既存ファイル", currentSpriteFilename_)) {
             if (std::filesystem::exists(directoryPath)) {
                 for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
                     if (entry.path().extension() == ".json") {
@@ -157,24 +156,23 @@ void SpriteDebugEditor::DrawImGui() {
                         if (ImGui::Selectable(fname.c_str(), isSelected)) {
                             strcpy_s(currentSpriteFilename_, fname.c_str());
                         }
-                        if (isSelected) ImGui::SetItemDefaultFocus();
                     }
                 }
             }
             ImGui::EndCombo();
         }
 
-        ImGui::InputText("保存名 (.json)", currentSpriteFilename_, sizeof(currentSpriteFilename_));
+        ImGui::InputText(ICON_FA_FILE_SIGNATURE " 保存名 (.json)", currentSpriteFilename_, sizeof(currentSpriteFilename_));
 
-        if (ImGui::Button("レイアウト保存 (Save)")) {
+        if (ImGui::Button(ICON_FA_DOWNLOAD " レイアウト保存 (Save)")) {
             std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
             SaveSpriteLayout(fullPath);
         }
 
         ImGui::SameLine();
-        if (ImGui::Button("読み込み (Load)")) {
+        if (ImGui::Button(ICON_FA_UPLOAD " 読み込み (Load)")) {
             std::string fullPath = directoryPath + std::string(currentSpriteFilename_);
-            // LoadSpriteLayout(fullPath); // 実装済みならコメントアウト解除
+            // LoadSpriteLayout(fullPath);
         }
     }
 
@@ -185,36 +183,36 @@ void SpriteDebugEditor::DrawImGui() {
     // 3. パラメータ編集セクション
     // -------------------------------------------------------------
     if (selectedSprite_) {
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "選択中: %s", selectedSprite_->GetName().c_str());
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_EDIT " 編集: %s", selectedSprite_->GetName().c_str());
 
         Vector2 pos = selectedSprite_->GetPosition();
         Vector2 size = selectedSprite_->GetSize();
         Vector2 anchor = selectedSprite_->GetAnchorPoint();
         Vector4 color = selectedSprite_->GetColor();
 
-        if (ImGui::DragFloat2("座標 (Pos)", &pos.x, 1.0f)) {
+        if (ImGui::DragFloat2(ICON_FA_ARROWS_ALT " 座標 (Pos)", &pos.x, 1.0f)) {
             selectedSprite_->SetPosition(pos);
         }
-        if (ImGui::DragFloat2("サイズ (Size)", &size.x, 1.0f)) {
+        if (ImGui::DragFloat2(ICON_FA_EXPAND_ARROWS_ALT " サイズ (Size)", &size.x, 1.0f)) {
             selectedSprite_->SetSize(size);
         }
-        if (ImGui::DragFloat2("アンカー (Anchor)", &anchor.x, 0.01f)) {
+        if (ImGui::DragFloat2(ICON_FA_ANCHOR " アンカー (Anchor)", &anchor.x, 0.01f)) {
             selectedSprite_->SetAnchorPoint(anchor);
         }
-        if (ImGui::ColorEdit4("色 (Color)", &color.x)) {
+        if (ImGui::ColorEdit4(ICON_FA_PALETTE " 色 (Color)", &color.x)) {
             selectedSprite_->SetColor(color);
         }
 
         ImGui::Separator();
         ImGui::Dummy(ImVec2(0.0f, 10.0f));
 
-        if (ImGui::Button("選択解除 (Deselect)", ImVec2(-1, 0))) {
+        if (ImGui::Button(ICON_FA_TIMES_CIRCLE " 選択解除 (Deselect)", ImVec2(-1, 0))) {
             selectedSprite_ = nullptr;
         }
-    } else {
-        ImGui::TextDisabled("リストからスプライトを選択してください");
     }
-
+    else {
+        ImGui::TextDisabled(ICON_FA_MOUSE_POINTER " リストからスプライトを選択してください");
+    }
 #endif
 }
 

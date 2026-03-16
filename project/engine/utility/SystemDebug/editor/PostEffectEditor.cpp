@@ -3,7 +3,7 @@
 #include "json.hpp" // JSONライブラリ
 #include <fstream>
 #include <filesystem>
-
+#include "IconsFontAwesome5.h"
 using json = nlohmann::json;
 
 void PostEffectEditor::Initialize(PostEffect* postEffect) {
@@ -16,68 +16,79 @@ void PostEffectEditor::DrawImGui() {
 #ifdef USE_IMGUI
     if (!targetEffect_) return;
 
-    ImGui::Begin("Post Effect Editor");
-
     auto* params = targetEffect_->GetParams();
 
     // ==========================================================
-        // トーンマッピングのモード切り替え
-        // ==========================================================
-    ImGui::Text("Tone Mapping Mode");
+    // トーンマッピングのモード切り替え
+    // ==========================================================
+    ImGui::Text(ICON_FA_ADJUST " Tone Mapping Mode");
 
     int mode = params->enableToneMapping;
     if (ImGui::RadioButton("OFF (No ToneMap)", mode == 0)) { mode = 0; }
-    if (ImGui::RadioButton("Real (ACES - White Out)", mode == 1)) { mode = 1; }
-    if (ImGui::RadioButton("Anime (ACES - Vivid Color)", mode == 2)) { mode = 2; }
+    if (ImGui::RadioButton(ICON_FA_EYE " Real (ACES - White Out)", mode == 1)) { mode = 1; }
+    if (ImGui::RadioButton(ICON_FA_PALETTE " Anime (ACES - Vivid Color)", mode == 2)) { mode = 2; }
     params->enableToneMapping = mode;
 
     if (mode == 1) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Good for Realistic/Movie style.");
-    } else if (mode == 2) {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Good for Anime/Vivid Magic effects.");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Good for Realistic/Movie style.");
+    }
+    else if (mode == 2) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "  Good for Anime/Vivid Magic effects.");
     }
     ImGui::Separator();
 
     // ==========================================================
     // ブルームの設定
     // ==========================================================
-    ImGui::Text("Bloom Settings");
+    ImGui::Text(ICON_FA_SUN " Bloom Settings");
 
-    // 閾値の上限を少し上げておく (パーティクルだけ光らせる調整用)
-    ImGui::DragFloat("Threshold (発光の閾値)", &params->threshold, 0.01f, 0.0f, 5.0f);
-    ImGui::DragFloat("Intensity (光の強さ)", &params->bloomIntensity, 0.01f, 0.0f, 10.0f);
-    ImGui::DragFloat("Spread (ぼかしの広がり)", &params->spread, 0.1f, 0.0f, 10.0f);
-
-    ImGui::Separator();
-    ImGui::Text("Cinematic Effects");
-    ImGui::DragFloat("Vignette (周辺減光)", &params->vignetteIntensity, 0.01f, 0.0f, 5.0f);
-    ImGui::DragFloat("Chromatic Aberration (色収差)", &params->chromaticAberration, 0.001f, 0.0f, 0.1f);
-    ImGui::DragFloat("Film Grain (ノイズ)", &params->filmGrainIntensity, 0.001f, 0.0f, 0.5f);
-    ImGui::Text("Action Camera Effects");
-    ImGui::DragFloat("Radial Blur Intensity (集中線の強さ)", &params->radialIntensity, 0.01f, 0.0f, 1.0f);
-    ImGui::DragFloat("Radial Center X", &params->radialCenterX, 0.01f, 0.0f, 1.0f);
-    ImGui::DragFloat("Radial Center Y", &params->radialCenterY, 0.01f, 0.0f, 1.0f);
-    ImGui::Text("Action Game Effects");
-    ImGui::DragFloat("Damage Flash (被弾赤画面)", &params->damageFlash, 0.01f, 0.0f, 1.0f);
-    ImGui::DragFloat("Cinema Bar (黒帯)", &params->cinemaBarHeight, 0.005f, 0.0f, 0.5f);
-    ImGui::DragFloat("Wobble (波打ち)", &params->wobbleIntensity, 0.001f, 0.0f, 0.1f);
-    ImGui::Separator();
-    ImGui::Text("Retro Effects");
-    ImGui::DragFloat("Scanline (ブラウン管)", &params->scanlineIntensity, 0.01f, 0.0f, 1.0f);
-    ImGui::DragFloat("Mosaic Size (ドット絵化)", &params->mosaicSize, 1.0f, 0.0f, 64.0f);
+    ImGui::DragFloat(" Threshold (発光の閾値)", &params->threshold, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat(" Intensity (光の強さ)", &params->bloomIntensity, 0.01f, 0.0f, 10.0f);
+    ImGui::DragFloat(" Spread (ぼかしの広がり)", &params->spread, 0.1f, 0.0f, 10.0f);
 
     ImGui::Separator();
 
+    // ==========================================================
+    // シネマティック効果
+    // ==========================================================
+    ImGui::Text(ICON_FA_FILM " Cinematic Effects");
+    ImGui::DragFloat(ICON_FA_MOON " Vignette (周辺減光)", &params->vignetteIntensity, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat(ICON_FA_COINS " Chromatic Aberration (色収差)", &params->chromaticAberration, 0.001f, 0.0f, 0.1f);
+    ImGui::DragFloat(ICON_FA_BROADCAST_TOWER " Film Grain (ノイズ)", &params->filmGrainIntensity, 0.001f, 0.0f, 0.5f);
+
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_VIDEO " Action Camera Effects");
+    ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " Radial Blur (集中線の強さ)", &params->radialIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(" Radial Center X", &params->radialCenterX, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(" Radial Center Y", &params->radialCenterY, 0.01f, 0.0f, 1.0f);
+
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_GAMEPAD " Action Game Effects");
+    ImGui::DragFloat(ICON_FA_EXCLAMATION_TRIANGLE " Damage Flash (被弾赤画面)", &params->damageFlash, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(ICON_FA_WINDOW_MINIMIZE " Cinema Bar (黒帯)", &params->cinemaBarHeight, 0.005f, 0.0f, 0.5f);
+    ImGui::DragFloat(ICON_FA_WAVE_SQUARE " Wobble (波打ち)", &params->wobbleIntensity, 0.001f, 0.0f, 0.1f);
+
+    ImGui::Separator();
+
+    // ==========================================================
+    // レトロ効果
+    // ==========================================================
+    ImGui::Text(ICON_FA_TV " Retro Effects");
+    ImGui::DragFloat(ICON_FA_BARS " Scanline (ブラウン管)", &params->scanlineIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(ICON_FA_TH " Mosaic Size (ドット絵化)", &params->mosaicSize, 1.0f, 0.0f, 64.0f);
+
+    ImGui::Separator();
+
+    // ==========================================================
     // セーブ・ロードボタン
-    if (ImGui::Button("Save JSON")) {
+    // ==========================================================
+    if (ImGui::Button(ICON_FA_SAVE " Save JSON")) {
         SaveParams();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Load JSON")) {
+    if (ImGui::Button(ICON_FA_UPLOAD " Load JSON")) {
         LoadParams();
     }
-
-    ImGui::End();
 #endif
 }
 

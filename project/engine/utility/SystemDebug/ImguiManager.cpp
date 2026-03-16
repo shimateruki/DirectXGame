@@ -1,10 +1,12 @@
 #include "ImGuiManager.h"
 #include "SRVManager.h"
-
+#include "IconsFontAwesome5.h"
 ImGuiManager* ImGuiManager::GetInstance() {
     static ImGuiManager instance;
     return &instance;
 }
+
+
 
 void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     (void)winApp;
@@ -16,14 +18,10 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // ドッキング有効化
-    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // 必要に応じて有効化
 
-    // ImGuiのスタイルを設定
+    // ImGuiのスタイルを設定（隊長のこだわりのUnity Darkスタイル）
     ImGui::StyleColorsDark();
-
     ImGuiStyle& style = ImGui::GetStyle();
-
-    // --- Unity Dark風のスタイル調整 ---
     style.WindowRounding = 0.0f;
     style.ChildRounding = 0.0f;
     style.FrameRounding = 2.0f;
@@ -46,35 +44,52 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
     style.Colors[ImGuiCol_DockingPreview] = ImVec4(0.30f, 0.50f, 0.80f, 0.70f);
 
-    // フォント読み込み
+    // =================================================================
+    // 🎨 フォントとアイコンの「合体（Merge）」読み込み
+    // =================================================================
+    
+    // ① まずはメインの日本語フォントを読み込む
+    float fontSize = 18.0f;
     io.Fonts->AddFontFromFileTTF(
         "Resources/sprite/meiryo.ttc",
-        18.0f,
+        fontSize,
         nullptr,
         io.Fonts->GetGlyphRangesJapanese()
     );
 
+    // ② 次に読み込むアイコンフォントを「MergeMode」で合体させる設定にする
+    ImFontConfig config;
+    config.MergeMode = true;       // ★ここが肝！前のフォントに上書き合体する
+    config.PixelSnapH = true;
+    config.GlyphMinAdvanceX = fontSize; // アイコンの幅をフォントサイズに合わせる
+
+    // ③ アイコンの文字コード範囲を指定（IconsFontAwesome5.hで定義されている範囲）
+    static const ImWchar icon_ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+
+    // ④ アイコンフォントを読み込んで合体！
+    io.Fonts->AddFontFromFileTTF(
+        "Resources/font/fa-solid-900.ttf",
+        fontSize,
+        &config,
+        icon_ranges
+    );
+
+
     // プラットフォームのバックエンドを初期化
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 
-    // =================================================================
     // 2. DX12レンダラーの初期化 (マルチテクスチャ対応版)
-    // =================================================================
-
-    // SRVManagerからヒープを取得
     ID3D12DescriptorHeap* srvDescriptorHeap = SRVManager::GetInstance()->GetDescriptorHeap();
 
-    // ImGuiが内部でデスクリプタを確保・解放するためのコールバック関数
-
     auto AllocSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle) {
-        uint32_t index = SRVManager::GetInstance()->Allocate(); // 空きスロットを1つ確保
+        uint32_t index = SRVManager::GetInstance()->Allocate();
         *out_cpu_handle = SRVManager::GetInstance()->GetCPUDescriptorHandle(index);
         *out_gpu_handle = SRVManager::GetInstance()->GetGPUDescriptorHandle(index);
-        };
+    };
 
     auto FreeSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle) {
-  
-        };
+    
+    };
 
     ImGui_ImplDX12_InitInfo initInfo = {};
     initInfo.Device = dxCommon_->GetDevice();
@@ -84,14 +99,12 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     initInfo.SrvDescriptorHeap = srvDescriptorHeap;
 
-    // ★修正の要：Legacy設定を0にし、関数ポインタをセットする
     initInfo.LegacySingleSrvCpuDescriptor = { 0 };
     initInfo.LegacySingleSrvGpuDescriptor = { 0 };
     initInfo.SrvDescriptorAllocFn = AllocSrv;
     initInfo.SrvDescriptorFreeFn = FreeSrv;
 
     ImGui_ImplDX12_Init(&initInfo);
-
 #endif
 }
 void ImGuiManager::Finalize() {
