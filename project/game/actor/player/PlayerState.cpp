@@ -327,6 +327,7 @@ void PlayerStateIdle::Enter(Player* player)
     // ブレンド初期化
     blendTimer_ = 0.0f;
 
+    // Idle では体の向きを強制しない（攻撃開始時に回すため）
     s_bodyStartY = player->GetRotation().y;
     s_bodyTargetY = s_bodyStartY;
     s_bodyBlendActive = false;
@@ -351,6 +352,13 @@ void PlayerStateIdle::Enter(Player* player)
 
 void PlayerStateIdle::Update(Player* player)
 {
+    // 攻撃入力: Kキーで攻撃（左クリックは無効化）
+    if (player->GetInputManager()->IsKeyTriggered(DIK_K))
+    {
+        player->ChangeState(std::make_unique<PlayerStateAttack1>());
+        return;
+    }
+
     Vector3 vel = player->GetVelocity(); vel.y = 0.0f;
     float speed = Math::Length(vel);
     if (speed > 0.1f)
@@ -506,6 +514,13 @@ void PlayerStateRun::Enter(Player* player)
 
 void PlayerStateRun::Update(Player* player)
 {
+    // 攻撃入力: Kキーで攻撃（左クリックは無効化）
+    if (player->GetInputManager()->IsKeyTriggered(DIK_K))
+    {
+        player->ChangeState(std::make_unique<PlayerStateAttack1>());
+        return;
+    }
+
     Vector3 rawVel = player->GetVelocity(); Vector3 flatVel = rawVel; flatVel.y = 0.0f;
     float speed = Math::Length(flatVel);
     if (speed <= 0.1f)
@@ -728,5 +743,182 @@ void PlayerStateRun::ApplyPostUpdate(Player* player, float deltaTime)
         targetEuler.x = headDefaultRot_.x + DegToRad(-10.0f);
         Vector3 final = LerpVec(headStartRot_, targetEuler, blendEase);
         Transform* tf = headObj_->GetTransform(); tf->quaternion = Math::EulerToQuaternion(final); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix();
+    }
+}
+
+// ========================================================
+// 攻撃1段目状態 (Attack1)
+// ========================================================
+void PlayerStateAttack1::Enter(Player* player)
+{
+    DebugConsole::GetInstance()->AddLog("★ ENTER: Attack1 State");
+    animTimer_ = 0.0f;
+
+    bodyObj_ = player;
+    TryFindHead(player, headObj_);
+    TryFindArms(player, leftArmObj_, rightArmObj_);
+    TryFindFeet(player, leftFootObj_, rightFootObj_);
+
+    initializedParts_ = false;
+
+    if (bodyObj_) { bodyDefaultPos_ = bodyObj_->GetTransform()->translate; bodyDefaultRot_ = bodyObj_->GetRotation(); }
+    if (headObj_) { headDefaultPos_ = headObj_->GetTransform()->translate; headDefaultRot_ = headObj_->GetRotation(); }
+    if (rightArmObj_) { rightArmDefaultPos_ = rightArmObj_->GetTransform()->translate; rightArmDefaultRot_ = rightArmObj_->GetRotation(); }
+    if (leftArmObj_) { leftArmDefaultPos_ = leftArmObj_->GetTransform()->translate; leftArmDefaultRot_ = leftArmObj_->GetRotation(); }
+    if (rightFootObj_) { rightFootDefaultPos_ = rightFootObj_->GetTransform()->translate; rightFootDefaultRot_ = rightFootObj_->GetRotation(); }
+    if (leftFootObj_) { leftFootDefaultPos_ = leftFootObj_->GetTransform()->translate; leftFootDefaultRot_ = leftFootObj_->GetRotation(); }
+
+    initializedParts_ = true;
+
+    // 体を即時に +60deg に回す（攻撃開始のワインドアップ）
+    if (bodyObj_)
+    {
+        auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
+        Transform* btf = bodyObj_->GetTransform();
+        btf->rotate.y = DegToRad(60.0f);
+        btf->quaternion = Math::EulerToQuaternion(btf->rotate);
+        btf->isQuaternionMaster = true;
+        bodyObj_->UpdateWorldMatrix();
+
+        // Also set global blend start/target to allow any system-wide usage if needed
+        s_bodyStartY = btf->rotate.y;
+        s_bodyTargetY = DegToRad(-100.0f);
+        s_bodyBlendActive = false; // we'll drive rotation inside ApplyPose via explicit interpolation
+    }
+
+    // 最初のポーズ適用
+    ApplyPose(0.0f);
+}
+
+void PlayerStateAttack1::Update(Player* player)
+{
+    // deltaTime を取得する方法
+    // とりあえず今回は毎フレーム固定で進めるか、GamePlayScene のタイマー依存だが、
+    // IAnimationStateのシグネチャにdeltaTimeがないので、ここでは簡易的に 1/60 秒増やすか、
+    // あるいは ApplyPostUpdate 的なものがないので固定追加
+    animTimer_ += 1.0f / 60.0f;
+
+    float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
+    
+    // イーズインアウト
+    float et = EaseInOutSine(t);
+    ApplyPose(et);
+
+    if (animTimer_ >= animDuration_)
+    {
+        player->ChangeState(std::make_unique<PlayerStateIdle>());
+        return;
+    }
+}
+
+void PlayerStateAttack1::Exit(Player* player)
+{
+    DebugConsole::GetInstance()->AddLog("★ EXIT: Attack1 State");
+    
+    // 戻す
+    if (!initializedParts_) return;
+
+    if (bodyObj_) { Transform* tf = bodyObj_->GetTransform(); tf->translate = bodyDefaultPos_; tf->rotate = bodyDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix(); }
+    if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_; tf->rotate = headDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
+    if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_; tf->rotate = rightArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
+    if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = leftArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateWorldMatrix(); }
+    if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_; tf->rotate = rightFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+    if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = leftFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
+}
+
+void PlayerStateAttack1::ApplyPose(float t)
+{
+    if (!initializedParts_) return;
+
+    auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
+    auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
+        return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
+    };
+
+    // 開始ポーズ
+    Vector3 bodyStartPos{0.0f, 0.0f, 0.0f};
+    // 開始回転はモデルの保存済み値を基準にするが Y を +60deg に上書き
+    Vector3 bodyStartRot = bodyDefaultRot_;
+    bodyStartRot.y = DegToRad(60.0f);
+
+    Vector3 headStartPos{0.0f, 0.0f, 0.0f};
+    Vector3 headStartRot{0.0f, DegToRad(30.0f), 0.0f};
+
+    Vector3 rtArmStartPos{0.0f, 0.0f, 0.0f};
+    Vector3 rtArmStartRot{DegToRad(-70.0f), DegToRad(32.0f), DegToRad(-23.0f)};
+
+    // 左手: Z を大きくして体に埋まらないように調整
+    Vector3 ltArmStartPos{0.0f, 0.0f, 1.0f}; // 元 0.2 -> 1.0 (さらに外側へ)
+    Vector3 ltArmStartRot{DegToRad(-190.0f), DegToRad(45.0f), DegToRad(-2.0f)};
+
+    Vector3 rtFootStartPos{0.0f, 0.0f, 0.0f};
+    Vector3 rtFootStartRot{0.0f, 0.0f, 0.0f};
+
+    // 左足: Y を持ち上げて埋まりを防止
+    Vector3 ltFootStartPos{0.0f, 1.0f, 0.4f}; // 元 y:0.3 -> 1.0 (より上へ)
+    Vector3 ltFootStartRot{DegToRad(-72.0f), 0.0f, 0.0f};
+
+    // 終了ポーズ
+    Vector3 bodyEndPos{0.0f, 0.0f, 0.0f};
+    // 体の Y を -100deg にする（要求どおり）
+    Vector3 bodyEndRot = bodyStartRot;
+    bodyEndRot.y = DegToRad(-100.0f);
+    bodyEndRot.z = DegToRad(-36.0f);
+
+    Vector3 headEndPos{0.0f, 0.0f, 0.0f};
+    Vector3 headEndRot{DegToRad(-22.0f), DegToRad(61.0f), 0.0f};
+
+    Vector3 rtArmEndPos{0.0f, 0.0f, 0.0f};
+    Vector3 rtArmEndRot{DegToRad(-151.0f), DegToRad(-70.0f), DegToRad(57.0f)};
+
+    // 左手終了位置もZを高めに（元 0.2）
+    Vector3 ltArmEndPos{0.0f, 0.0f, 1.2f}; // 元 0.2 -> 1.2 (さらに外側へ)
+    Vector3 ltArmEndRot{DegToRad(43.0f), DegToRad(3.0f), DegToRad(-10.0f)};
+
+    Vector3 rtFootEndPos{0.0f, 0.0f, 0.0f};
+    Vector3 rtFootEndRot{DegToRad(43.0f), DegToRad(3.0f), DegToRad(-10.0f)};
+
+    // 左足終了位置: Y を上げる（元 y:0.2）
+    Vector3 ltFootEndPos{0.1f, 0.9f, -0.1f}; // 元 y:0.2 -> 0.9
+    Vector3 ltFootEndRot{DegToRad(57.0f), DegToRad(81.0f), DegToRad(-6.0f)};
+
+    // 適用
+    if (bodyObj_) {
+        Transform* tf = bodyObj_->GetTransform();
+        tf->translate = bodyDefaultPos_ + LerpVec3(bodyStartPos, bodyEndPos, t);
+        tf->rotate = LerpVec3(bodyStartRot, bodyEndRot, t); // body は Y 回転などを保持するかどうかだが、このモーション設定通りにする
+        tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix();
+    }
+    if (headObj_) {
+        Transform* tf = headObj_->GetTransform();
+        tf->translate = headDefaultPos_ + LerpVec3(headStartPos, headEndPos, t);
+        tf->rotate = LerpVec3(headStartRot, headEndRot, t);
+        tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix();
+    }
+    if (rightArmObj_) {
+        Transform* tf = rightArmObj_->GetTransform();
+        tf->translate = rightArmDefaultPos_ + LerpVec3(rtArmStartPos, rtArmEndPos, t);
+        tf->rotate = LerpVec3(rtArmStartRot, rtArmEndRot, t);
+        tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix();
+    }
+    if (leftArmObj_) {
+        Transform* tf = leftArmObj_->GetTransform();
+        // 位置アニメーションを無効化: 常にデフォルトのローカル位置を使う
+        tf->translate = leftArmDefaultPos_;
+        tf->rotate = LerpVec3(ltArmStartRot, ltArmEndRot, t);
+        tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix();
+    }
+    if (rightFootObj_) {
+        Transform* tf = rightFootObj_->GetTransform();
+        tf->translate = rightFootDefaultPos_ + LerpVec3(rtFootStartPos, rtFootEndPos, t);
+        tf->rotate = LerpVec3(rtFootStartRot, rtFootEndRot, t);
+        tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix();
+    }
+    if (leftFootObj_) {
+        Transform* tf = leftFootObj_->GetTransform();
+        // 位置アニメーションを無効化: 常にデフォルトのローカル位置を使う
+        tf->translate = leftFootDefaultPos_;
+        tf->rotate = LerpVec3(ltFootStartRot, ltFootEndRot, t);
+        tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix();
     }
 }

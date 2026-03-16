@@ -161,3 +161,39 @@ private:
     // 追加: 頭回転の開始クォータニオン（Slerp 用）
     Quaternion headExitStartQuat_{ 0.0f, 0.0f, 0.0f, 1.0f };
 };
+
+// --------------------------------------------------------
+// 攻撃1段目状態 (Attack1)
+// --------------------------------------------------------
+class PlayerStateAttack1 : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+
+private:
+    float animTimer_ = 0.0f;
+    float animDuration_ = 0.5f; // アニメーションにかける時間（調整可能）
+
+    // 各パーツ
+    Object3d* bodyObj_ = nullptr;
+    Object3d* headObj_ = nullptr;
+    Object3d* rightArmObj_ = nullptr;
+    Object3d* leftArmObj_ = nullptr;
+    Object3d* rightFootObj_ = nullptr;
+    Object3d* leftFootObj_ = nullptr;
+
+    // 退避用（元のポーズ）
+    Vector3 bodyDefaultPos_, bodyDefaultRot_;
+    Vector3 headDefaultPos_, headDefaultRot_;
+    Vector3 rightArmDefaultPos_, rightArmDefaultRot_;
+    Vector3 leftArmDefaultPos_, leftArmDefaultRot_;
+    Vector3 rightFootDefaultPos_, rightFootDefaultRot_;
+    Vector3 leftFootDefaultPos_, leftFootDefaultRot_;
+
+    bool initializedParts_ = false;
+
+    // アニメ開始・終了ポーズ用ヘルパ
+    void ApplyPose(float t);
+};
