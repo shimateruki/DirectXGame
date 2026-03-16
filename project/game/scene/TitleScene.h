@@ -32,26 +32,15 @@ public:
     TitleScene() = default;
     ~TitleScene() override = default;
 
-    /// <summary>
-    /// 初期化
-    /// </summary>
     void Initialize() override;
-
-    /// <summary>
-    /// 終了処理
-    /// </summary>
     void Finalize() override;
-
-    /// <summary>
-    /// 更新
-    /// </summary>
     void Update(float deltaTime) override;
-
-    /// <summary>
-    /// 描画
-    /// </summary>
     void Draw() override;
     void DrawUI() override;
+
+    //  シャドウマップ描画のオーバーライド
+    void DrawShadow() override;
+
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
@@ -88,7 +77,10 @@ private:
 
     uint32_t bgmHandle_ = 0;
 
-    // --- ライトリソース ---
+    // --- ライト・GPUリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
+
+    //  GPUパーティクル用画像ハンドル
+    uint32_t gpuParticleTexHandle_ = 0;
 };

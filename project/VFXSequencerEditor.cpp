@@ -40,6 +40,7 @@ void VFXSequencerEditor::RefreshFileList() {
 }
 
 void VFXSequencerEditor::DrawImGui() {
+#ifdef USE_IMGUI
     ImGui::Text(ICON_FA_FILM " --- VFXシーケンサー（複合演出）エディタ ---");
 
     if (ImGui::Button(ICON_FA_SYNC " リストを最新に更新", ImVec2(170, 20))) {
@@ -148,4 +149,5 @@ void VFXSequencerEditor::DrawImGui() {
             previewSequencer_.Load(sequenceNameInput_);
         }
     }
+#endif
 }

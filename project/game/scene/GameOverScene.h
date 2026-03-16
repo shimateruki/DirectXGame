@@ -52,6 +52,10 @@ public:
     /// </summary>
     void Draw() override;
     void DrawUI() override;
+
+    //  シャドウマップ描画のオーバーライド
+    void DrawShadow() override;
+
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
@@ -94,4 +98,7 @@ private:
     // --- ライト ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
+
+    //  GPUパーティクル用画像ハンドル
+    uint32_t gpuParticleTexHandle_ = 0;
 };

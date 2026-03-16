@@ -2388,8 +2388,9 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
 
 
 
-#ifdef USE_IMGUI
+
 void DebugEditor::DrawEnemyTypeSelector() {
+#ifdef USE_IMGUI
     if (!selectedObject_) return;
 
     // ★ 登録したい敵の名前リスト 
@@ -2435,11 +2436,13 @@ void DebugEditor::DrawEnemyTypeSelector() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
     }
+    #endif
 }
 
 
 
 void DebugEditor::DrawSpawnerSettings() {
+#ifdef USE_IMGUI
     if (!selectedObject_) return;
 
     ImGui::Separator();
@@ -2486,6 +2489,7 @@ void DebugEditor::DrawSpawnerSettings() {
     ImGui::InputInt("Max Count", &p.maxCount);
 
     ImGui::Unindent(); // インデント戻す
+#endif
 }
 
 
@@ -2493,8 +2497,10 @@ void DebugEditor::DrawSpawnerSettings() {
 // セーブ通知のトリガー
 // ========================================================================
 void DebugEditor::TriggerSaveNotification(const std::string& filename) {
+#ifdef USE_IMGUI
     saveNotificationTimer_ = 1.0f; // 1.5秒間画面に表示する
     saveNotificationMsg_ = "[ " + filename + " ] にセーブが完了しました！";
+#endif
 }
 
 
@@ -2502,6 +2508,7 @@ void DebugEditor::TriggerSaveNotification(const std::string& filename) {
 // セーブ通知の描画処理 (フラッシュ & メッセージ)
 // ========================================================================
 void DebugEditor::DrawSaveNotification() {
+#ifdef USE_IMGUI
     if (saveNotificationTimer_ <= 0.0f) return;
 
     // タイマー減算 (ImGuiのDeltaTimeを利用してフレームレート非依存に)
@@ -2537,6 +2544,7 @@ void DebugEditor::DrawSaveNotification() {
     drawList->AddText(ImGui::GetFont(), fontSize, ImVec2(textPos.x + 2, textPos.y + 2), outlineColor, text);
     // メインの文字を描画
     drawList->AddText(ImGui::GetFont(), fontSize, textPos, textColor, text);
-}
 #endif
+}
+
 

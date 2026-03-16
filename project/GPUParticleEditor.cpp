@@ -24,6 +24,7 @@ void GPUParticleEditor::Update(float deltaTime) {
     }
 }
 void GPUParticleEditor::DrawImGui() {
+#ifdef USE_IMGUI
     ImGui::Text("--- GPUパーティクルエディタ ---");
 
     // ⚙️ システム設定
@@ -200,6 +201,7 @@ void GPUParticleEditor::DrawImGui() {
             Load(presetNameInput_);
         }
     }
+#endif
 }
 
 void GPUParticleEditor::Save(const std::string& presetName) {

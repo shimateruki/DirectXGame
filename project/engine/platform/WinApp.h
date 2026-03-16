@@ -14,8 +14,8 @@ public:
     // アクセサ
     HWND GetHwnd() const { return hwnd_; }
     HINSTANCE GetHInstance() const { return hInstance_; }
-    ;
-
+    
+    static void SetCursorVisibility(bool isVisible);
 private:
     HWND hwnd_ = nullptr;
     HINSTANCE hInstance_ = nullptr;

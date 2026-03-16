@@ -89,3 +89,14 @@ bool WinApp::Update() {
     // 続ける場合はfalseを返す
     return false;
 }
+
+void WinApp::SetCursorVisibility(bool isVisible) {
+    if (isVisible) {
+        // 確実に見えるようになる(0以上になる)まで TRUE を呼ぶ
+        while (ShowCursor(TRUE) < 0);
+    }
+    else {
+        // 確実に消える(0未満になる)まで FALSE を呼ぶ
+        while (ShowCursor(FALSE) >= 0);
+    }
+}

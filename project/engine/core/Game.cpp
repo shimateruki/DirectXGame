@@ -85,6 +85,7 @@ void Game::Initialize() {
     isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
 #else
     isPlaying_ = true;  // リリース時は最初から再生
+    WinApp::SetCursorVisibility(false);
 #endif
 #ifdef USE_IMGUI
     CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
@@ -455,12 +456,22 @@ void Game::Draw() {
     // パターンB: ゲームモード (Release)
     // =================================================================
 
-
     // 1. シーンレンダリング
     dxCommon_->PreDrawRenderTexture();
 
+    // リリースビルドにもシャドウパスを追加！
+    dxCommon_->PreDrawShadow();
+    SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
+
     // ★ GPUストップウォッチ開始！
     dxCommon_->StartGpuProfile();
+
+    if (sceneManager_) {
+        sceneManager_->DrawShadow();
+    }
+    dxCommon_->PostDrawShadow();
+
+    // メイン画面の描画
     if (sceneManager_) { sceneManager_->Draw(); }
     dxCommon_->PostDrawRenderTexture();
 
@@ -509,7 +520,6 @@ void Game::Draw() {
     dxCommon_->EndGpuProfile();
 
     dxCommon_->PostDraw();
-
 #endif
 
     // CPU側のプロファイリング終了
