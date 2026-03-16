@@ -128,30 +128,30 @@ void BossCore::UpdateWeak (float deltaTime) {
     }
 }
 
-void BossCore::UpdateAnimationSequence (float deltaTime) {
+void BossCore::UpdateAnimationSequence(float deltaTime) {
 
     // ==========================================
     // ゲームが再生中(Play)でなければ、この先のアニメーション・入力処理を一切行わない！
     // ==========================================
-    if (!SceneManager::GetInstance ()->IsPlaying ()) {
+    if (!SceneManager::GetInstance()->IsPlaying()) {
         return; // 再生中でなければ操作を受け付けない
     }
 
-    InputManager *input = InputManager::GetInstance ();
+    InputManager* input = InputManager::GetInstance();
 
     // ======================================
     // フェーズ0: 入力待ち（待機）
     // ======================================
     if (animPhase_ == 0) {
-        if (input->IsKeyTriggered (DIK_1)) {
+        if (input->IsKeyTriggered(DIK_1)) {
             // モード1：形態変化からの突進
             attackMode_ = 1;
             animPhase_ = 1; // ★ 変形フェーズからスタート！
             animTimer_ = 0.0f;
 
             // --- 形態変化の準備（座標の計算と記憶） ---
-            blockStartPos_.clear ();
-            blockTargetPos_.clear ();
+            blockStartPos_.clear();
+            blockTargetPos_.clear();
 
             // ★ ここで各ブロックの【最終形態】を細かく設定します！
             struct BlockSetting {
@@ -170,24 +170,26 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 { {  3.5f,  0.0f,  0.0f }, { 0.500f, 1.000f, 0.500f }, { 0.0f, 0.0f, 0.0f } }  // 画像6 (右端の小型パーツ)
             };
 
-            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 // 移動のスタート地点を記憶
-                blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
+                blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
 
-                if (i < settings.size ()) {
+                if (i < settings.size()) {
                     // ゴール地点を記憶 (Phase 1 でここに向かって Lerp します)
-                    blockTargetPos_.push_back (settings[i].translate);
+                    blockTargetPos_.push_back(settings[i].translate);
 
                     // 大きさと回転は、変形開始と同時に適用してしまう！
-                    armorBlocks_[i]->SetScale (settings[i].scale);
-                    armorBlocks_[i]->SetRotation (settings[i].rotation);
+                    armorBlocks_[i]->SetScale(settings[i].scale);
+                    armorBlocks_[i]->SetRotation(settings[i].rotation);
                     // ★ 修正箇所1：ブロックのオイラー角(XYZ)を優先させる
-                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
-                } else {
-                    blockTargetPos_.push_back ({ 0.0f, 0.0f, 0.0f });
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+                else {
+                    blockTargetPos_.push_back({ 0.0f, 0.0f, 0.0f });
                 }
             }
-        } else if (input->IsKeyTriggered (DIK_2)) {
+        }
+        else if (input->IsKeyTriggered(DIK_2)) {
             // モード2：ブロック射撃
             attackMode_ = 2;
             animPhase_ = 10; // 射撃用フェーズへ
@@ -196,10 +198,24 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         // ==========================================
         // 3キーで「こぶし落下攻撃」を発動！
         // ==========================================
-        else if (input->IsKeyTriggered (DIK_3)) {
+        else if (input->IsKeyTriggered(DIK_3)) {
             attackMode_ = 3;
             animPhase_ = 20; // フェーズ20からスタート
             animTimer_ = 0.0f;
+        }
+        // ==========================================
+        // 4キーで「モーション4：巨大な壁の横断攻撃」を発動！
+        // ==========================================
+        else if (input->IsKeyTriggered(DIK_4)) {
+            attackMode_ = 4;
+
+            // ★ 修正：いきなり移動せず、新設する「準備フェーズ(39)」へ！
+            animPhase_ = 39;
+            animTimer_ = 0.0f;
+
+            // ★ 新規：コンボの回数を管理するために shotCount_ を再利用！
+            // 0=前方攻撃, 1=右側攻撃, 2=左側攻撃
+            shotCount_ = 0;
         }
     }
 
@@ -214,89 +230,133 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         if (animPhase_ == 1) {
             animTimer_ += deltaTime;
             float duration = 1.5f; // 1.5秒かけて変形
-            float t = std::min (animTimer_ / duration, 1.0f);
-            float easeT = Easing::OutExpo (t); // カッコよくスライドさせる
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t); // カッコよくスライドさせる
 
-            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                if (i < blockStartPos_.size () && i < blockTargetPos_.size ()) {
-                    Vector3 pos = Math::Lerp (blockStartPos_[i], blockTargetPos_[i], easeT);
-                    armorBlocks_[i]->SetTranslate (pos);
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
                 }
             }
 
             if (t >= 1.0f) {
                 animPhase_ = 2; // 変形が終わったら、突進準備(X=-50)へ！
                 animTimer_ = 0.0f;
-                animStartPos_ = GetTranslate ();
+                animStartPos_ = GetTranslate();
             }
         }
         // --- フェーズ2: 移動 (x = -50) ---
         else if (animPhase_ == 2) {
             animTimer_ += deltaTime;
             float duration = 2.5f;
-            float t = std::min (animTimer_ / duration, 1.0f);
+            float t = std::min(animTimer_ / duration, 1.0f);
 
-            Vector3 pos = GetTranslate ();
-            pos.x = Math::Lerp (animStartPos_.x, -50.0f, Easing::OutExpo (t));
-            SetTranslate (pos);
+            Vector3 pos = GetTranslate();
+            pos.x = Math::Lerp(animStartPos_.x, -50.0f, Easing::OutExpo(t));
+            SetTranslate(pos);
 
             if (t >= 1.0f) {
                 animPhase_ = 3;
                 animTimer_ = 0.0f;
-                animStartPos_ = GetTranslate ();
+                animStartPos_ = GetTranslate();
             }
         }
         // --- フェーズ3: シェイク & プレイヤー注視 ---
         else if (animPhase_ == 3) {
             animTimer_ += deltaTime;
             float duration = 3.0f;
-            float t = std::min (animTimer_ / duration, 1.0f);
+            float t = std::min(animTimer_ / duration, 1.0f);
 
             if (target_) {
-                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
-                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
-                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation({ GetRotation().x, angleY, GetRotation().z });
                 // ★ 修正箇所2：ボスの向き（オイラー角）を優先させる
-                GetTransform ()->isQuaternionMaster = false;
+                GetTransform()->isQuaternionMaster = false;
             }
 
             Vector3 pos = animStartPos_;
             float shake = 0.3f;
-            pos.x += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
-            pos.y += ((float)rand () / RAND_MAX * 2.0f - 1.0f) * shake;
-            SetTranslate (pos);
+            pos.x += ((float)rand() / RAND_MAX * 2.0f - 1.0f) * shake;
+            pos.y += ((float)rand() / RAND_MAX * 2.0f - 1.0f) * shake;
+            SetTranslate(pos);
 
             if (t >= 1.0f) {
                 animPhase_ = 4;
                 animTimer_ = 0.0f;
-                animStartPos_ = GetTranslate ();
-                if (target_) animTargetPos_ = target_->GetWorldPosition ();
+                animStartPos_ = GetTranslate();
+                if (target_) animTargetPos_ = target_->GetWorldPosition();
             }
         }
         // --- フェーズ4: 加速突進 ---
         else if (animPhase_ == 4) {
             animTimer_ += deltaTime;
             float duration = 1.5f;
-            float t = std::min (animTimer_ / duration, 1.0f);
-            float easedT = std::pow (t, 4.0f);
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easedT = std::pow(t, 4.0f);
 
-            SetTranslate (Math::Lerp (animStartPos_, animTargetPos_, easedT));
+            SetTranslate(Math::Lerp(animStartPos_, animTargetPos_, easedT));
 
-            float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
-            SetRotation ({ easedT * totalRotation, GetRotation ().y, GetRotation ().z });
+            float totalRotation = std::numbers::pi_v<float> *2.0f * 5.0f;
+            SetRotation({ easedT * totalRotation, GetRotation().y, GetRotation().z });
             // ★ 修正箇所3：ボスの突進回転（オイラー角）を優先させる
-            GetTransform ()->isQuaternionMaster = false;
+            GetTransform()->isQuaternionMaster = false;
 
             if (t >= 1.0f) {
                 animPhase_ = 5;
                 animTimer_ = 0.0f;
             }
         }
-        // --- フェーズ5: 自動リセット ---
+        // --- フェーズ5: その場でゆっくり装甲を再構成する ---
         else if (animPhase_ == 5) {
-            animPhase_ = 0;
-            attackMode_ = 0; // モードもリセット
-            animTimer_ = 0.0f;
+
+            // ==========================================
+            // ★ 修正：現在のブロックの位置を `blockStartPos_` に上書き記憶させる！
+            // ==========================================
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                }
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 3.0f; // 3秒かけてゆっくり戻る
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            // ボスの回転だけは 0 にリセット（直立姿勢へ）
+            SetRotation({ 0.0f, 0.0f, 0.0f });
+            GetTransform()->isQuaternionMaster = false;
+
+            // ブロックを元の装甲の形にゆっくり戻す
+            struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+            std::vector<DefaultSetting> defaultSettings = {
+                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
+                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
+                { { 0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
+                { { 2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
+                { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
+            };
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < defaultSettings.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], defaultSettings[i].translate, easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+                    armorBlocks_[i]->SetScale(defaultSettings[i].scale);
+                    armorBlocks_[i]->SetRotation(defaultSettings[i].rotation);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            // ★ 完全に元に戻ったら、状態をすべてクリアして待機(Idle)へ！
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
         }
     }
 
@@ -307,20 +367,20 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
 
         // --- Phase 10: X = 50.0f へ移動 ---
         if (animPhase_ == 10) {
-            if (animTimer_ == 0.0f) animStartPos_ = GetTranslate ();
+            if (animTimer_ == 0.0f) animStartPos_ = GetTranslate();
             animTimer_ += deltaTime;
-            float t = std::min (animTimer_ / 2.5f, 1.0f);
+            float t = std::min(animTimer_ / 2.5f, 1.0f);
 
-            Vector3 pos = GetTranslate ();
-            pos.x = Math::Lerp (animStartPos_.x, 50.0f, Easing::OutExpo (t));
-            SetTranslate (pos);
+            Vector3 pos = GetTranslate();
+            pos.x = Math::Lerp(animStartPos_.x, 50.0f, Easing::OutExpo(t));
+            SetTranslate(pos);
 
             // 移動中も常にプレイヤーの方を向く！
             if (target_) {
-                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
-                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
-                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
-                GetTransform ()->isQuaternionMaster = false;
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation({ GetRotation().x, angleY, GetRotation().z });
+                GetTransform()->isQuaternionMaster = false;
             }
 
             // 移動が終わったら、次の「陣形変化」の準備をする！
@@ -329,8 +389,8 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 animTimer_ = 0.0f;
 
                 // --- 射撃用の陣形データ（座標・スケール・回転） ---
-                blockStartPos_.clear ();
-                blockTargetPos_.clear ();
+                blockStartPos_.clear();
+                blockTargetPos_.clear();
 
                 struct BlockSetting {
                     Vector3 translate;
@@ -355,17 +415,18 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                     { { -2.0f, -2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }  // 下
                 };
 
-                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
 
-                    if (i < settings.size ()) {
-                        blockTargetPos_.push_back (settings[i].translate);
-                        armorBlocks_[i]->SetScale (settings[i].scale);
-                        armorBlocks_[i]->SetRotation (settings[i].rotation);
+                    if (i < settings.size()) {
+                        blockTargetPos_.push_back(settings[i].translate);
+                        armorBlocks_[i]->SetScale(settings[i].scale);
+                        armorBlocks_[i]->SetRotation(settings[i].rotation);
                         // 回転オーバーライド（クォータニオン無効化）
-                        armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
-                    } else {
-                        blockTargetPos_.push_back ({ 0.0f, 0.0f, 0.0f });
+                        armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                    }
+                    else {
+                        blockTargetPos_.push_back({ 0.0f, 0.0f, 0.0f });
                     }
                 }
             }
@@ -374,22 +435,22 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
         else if (animPhase_ == 11) {
             animTimer_ += deltaTime;
             float duration = 1.0f; // 1秒かけて陣形を変える
-            float t = std::min (animTimer_ / duration, 1.0f);
-            float easeT = Easing::OutExpo (t);
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
 
-            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                if (i < blockStartPos_.size () && i < blockTargetPos_.size ()) {
-                    Vector3 pos = Math::Lerp (blockStartPos_[i], blockTargetPos_[i], easeT);
-                    armorBlocks_[i]->SetTranslate (pos);
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
                 }
             }
 
             // 変形中も常にプレイヤーの方を向く！
             if (target_) {
-                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
-                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
-                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
-                GetTransform ()->isQuaternionMaster = false;
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation({ GetRotation().x, angleY, GetRotation().z });
+                GetTransform()->isQuaternionMaster = false;
             }
 
             // 陣形が完成したら、いよいよ射撃開始！
@@ -405,52 +466,53 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             animTimer_ += deltaTime;
 
             if (target_) {
-                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
-                float angleY = std::atan2 (toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
-                SetRotation ({ GetRotation ().x, angleY, GetRotation ().z });
-                GetTransform ()->isQuaternionMaster = false;
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+                SetRotation({ GetRotation().x, angleY, GetRotation().z });
+                GetTransform()->isQuaternionMaster = false;
             }
 
             float nextShotTime = shotCount_ * 0.5f;
 
             if (animTimer_ >= nextShotTime) {
-                int idx = (int)armorBlocks_.size () - 1 - shotCount_;
-                if (idx >= 0 && idx < armorBlocks_.size ()) {
-                    Object3d *block = armorBlocks_[idx];
+                int idx = (int)armorBlocks_.size() - 1 - shotCount_;
+                if (idx >= 0 && idx < armorBlocks_.size()) {
+                    Object3d* block = armorBlocks_[idx];
 
-                    Vector3 bossPos = GetTranslate ();
-                    float bossRotY = GetRotation ().y;
-                    Vector3 localPos = block->GetTranslate ();
+                    Vector3 bossPos = GetTranslate();
+                    float bossRotY = GetRotation().y;
+                    Vector3 localPos = block->GetTranslate();
 
                     Vector3 worldPos;
-                    worldPos.x = bossPos.x + (localPos.x * std::cos (bossRotY) + localPos.z * std::sin (bossRotY));
+                    worldPos.x = bossPos.x + (localPos.x * std::cos(bossRotY) + localPos.z * std::sin(bossRotY));
                     worldPos.y = bossPos.y + localPos.y;
-                    worldPos.z = bossPos.z + (-localPos.x * std::sin (bossRotY) + localPos.z * std::cos (bossRotY));
+                    worldPos.z = bossPos.z + (-localPos.x * std::sin(bossRotY) + localPos.z * std::cos(bossRotY));
 
-                    block->SetParent (nullptr);
-                    block->SetTranslate (worldPos);
+                    block->SetParent(nullptr);
+                    block->SetTranslate(worldPos);
 
                     // 今のブロックの回転を維持
-                    Vector3 currentRot = block->GetRotation ();
-                    block->GetTransform ()->isQuaternionMaster = false;
+                    Vector3 currentRot = block->GetRotation();
+                    block->GetTransform()->isQuaternionMaster = false;
 
                     // ==========================================
                     // ★ 修正：いきなり飛ばさず、「モード4 (頭上へ装填中)」にする！
                     // 速度(velocity)は一旦 {0,0,0} で登録します。
                     // ==========================================
-                    flyingBlocks_.push_back ({ block, {0.0f, 0.0f, 0.0f}, currentRot, 4, idx });
+                    flyingBlocks_.push_back({ block, {0.0f, 0.0f, 0.0f}, currentRot, 4, idx });
                 }
 
                 shotCount_++;
 
-                if (shotCount_ >= armorBlocks_.size ()) {
+                if (shotCount_ >= armorBlocks_.size()) {
                     animPhase_ = 13;
                     animTimer_ = 0.0f;
                 }
             }
-        } else if (animPhase_ == 13) {
+        }
+        else if (animPhase_ == 13) {
             // ★ 超重要：飛んでいるブロックが「すべて」戻ってくるまで待つ！
-            if (flyingBlocks_.empty ()) {
+            if (flyingBlocks_.empty()) {
                 animTimer_ += deltaTime;
                 if (animTimer_ >= 1.0f) { // すべて戻ってきてから1秒の隙を晒す
                     animPhase_ = 0;
@@ -482,12 +544,12 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                     { {  0.000f,  5.100f,  0.000f }, { 0.500f, 0.250f, 0.500f }, { 0.0f, 0.0f, 0.0f } }
                 };
 
-                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                    if (i < hammerSettings.size ()) {
-                        armorBlocks_[i]->SetTranslate (hammerSettings[i].translate);
-                        armorBlocks_[i]->SetScale (hammerSettings[i].scale);
-                        armorBlocks_[i]->SetRotation (hammerSettings[i].rotation);
-                        armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    if (i < hammerSettings.size()) {
+                        armorBlocks_[i]->SetTranslate(hammerSettings[i].translate);
+                        armorBlocks_[i]->SetScale(hammerSettings[i].scale);
+                        armorBlocks_[i]->SetRotation(hammerSettings[i].rotation);
+                        armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
                     }
                 }
             }
@@ -495,10 +557,10 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             animTimer_ += deltaTime;
 
             if (target_) {
-                Vector3 toPlayer = target_->GetWorldPosition () - GetWorldPosition ();
-                float angleY = std::atan2 (toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
-                SetRotation ({ 0.0f, angleY, 0.0f });
-                GetTransform ()->isQuaternionMaster = false;
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
+                SetRotation({ 0.0f, angleY, 0.0f });
+                GetTransform()->isQuaternionMaster = false;
             }
 
             // ==========================================
@@ -509,9 +571,10 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 animTimer_ = 0.0f;
 
                 if (target_) {
-                    animTargetPos_ = target_->GetWorldPosition (); // プレイヤーの現在地を記憶！
-                } else {
-                    animTargetPos_ = GetTranslate ();
+                    animTargetPos_ = target_->GetWorldPosition(); // プレイヤーの現在地を記憶！
+                }
+                else {
+                    animTargetPos_ = GetTranslate();
                 }
             }
         }
@@ -526,54 +589,56 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             float rotDuration = 3.0f; // 振りかぶるのにかける時間（元のキレをキープ！）
 
             // それぞれの進行度 (0.0 ～ 1.0) を別々に計算
-            float moveT = std::min (animTimer_ / moveDuration, 1.0f);
-            float rotT = std::min (animTimer_ / rotDuration, 1.0f);
+            float moveT = std::min(animTimer_ / moveDuration, 1.0f);
+            float rotT = std::min(animTimer_ / rotDuration, 1.0f);
 
             // ------------------------------------------
             // 1. 移動の処理（moveT を使う）
             // ------------------------------------------
             Vector3 targetPos = animTargetPos_;
-            Vector3 currentPos = GetTranslate ();
+            Vector3 currentPos = GetTranslate();
 
             Vector3 toBoss = currentPos - targetPos;
             toBoss.y = 0.0f;
-            float dist = std::sqrt (toBoss.x * toBoss.x + toBoss.z * toBoss.z);
+            float dist = std::sqrt(toBoss.x * toBoss.x + toBoss.z * toBoss.z);
             if (dist > 0.0f) { toBoss.x /= dist; toBoss.z /= dist; }
 
             Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
 
             // 瞬間移動感をなくすため、一定の速度(moveT)でヌルッと近づかせる
             float easeT = moveT;
-            currentPos.x = Math::Lerp (currentPos.x, targetHoverPos.x, easeT);
-            currentPos.y = Math::Lerp (currentPos.y, targetHoverPos.y, easeT);
-            currentPos.z = Math::Lerp (currentPos.z, targetHoverPos.z, easeT);
-            SetTranslate (currentPos);
+            currentPos.x = Math::Lerp(currentPos.x, targetHoverPos.x, easeT);
+            currentPos.y = Math::Lerp(currentPos.y, targetHoverPos.y, easeT);
+            currentPos.z = Math::Lerp(currentPos.z, targetHoverPos.z, easeT);
+            SetTranslate(currentPos);
 
             // ------------------------------------------
             // 2. 回転（振りかぶり）の処理（rotT を使う）
             // ------------------------------------------
             Vector3 toPlayer = targetPos - currentPos;
-            float angleY = std::atan2 (toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
+            float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
 
             // easeInElastic の計算も rotT を基準に行う
             float elasticT = 0.0f;
             if (rotT == 0.0f) {
                 elasticT = 0.0f;
-            } else if (rotT == 1.0f) {
+            }
+            else if (rotT == 1.0f) {
                 elasticT = 1.0f;
-            } else {
+            }
+            else {
                 float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
-                elasticT = -std::pow (2.0f, 10.0f * rotT - 10.0f) * std::sin ((rotT * 10.0f - 10.75f) * c4);
+                elasticT = -std::pow(2.0f, 10.0f * rotT - 10.0f) * std::sin((rotT * 10.0f - 10.75f) * c4);
             }
 
             // 目標の振りかぶり角度（お好みで変更可能）
             float targetTilt = -70.0f * (std::numbers::pi_v<float> / 180.0f);
 
             // elasticT を使って回転させる！
-            float tiltBack = Math::Lerp (0.0f, targetTilt, elasticT);
+            float tiltBack = Math::Lerp(0.0f, targetTilt, elasticT);
 
-            SetRotation ({ 0.0f, angleY, tiltBack });
-            GetTransform ()->isQuaternionMaster = false;
+            SetRotation({ 0.0f, angleY, tiltBack });
+            GetTransform()->isQuaternionMaster = false;
 
             // ------------------------------------------
             // 3. 次のフェーズへの移行
@@ -589,7 +654,7 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             animTimer_ += deltaTime;
 
             float smashDuration = 0.15f;
-            float t = std::min (animTimer_ / smashDuration, 1.0f);
+            float t = std::min(animTimer_ / smashDuration, 1.0f);
 
             // ==========================================
             // ★ 修正：倒れ込む方向を逆にする
@@ -600,11 +665,11 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             // 振り下ろし角度（例として 120度 まで深くめり込むように変更！）
             float endRotZ = 270.0f * (std::numbers::pi_v<float> / 180.0f);
 
-            float currentRotZ = Math::Lerp (startRotZ, endRotZ, std::pow (t, 3.0f));
-            SetRotation ({ 0.0f, GetRotation ().y, currentRotZ });
+            float currentRotZ = Math::Lerp(startRotZ, endRotZ, std::pow(t, 3.0f));
+            SetRotation({ 0.0f, GetRotation().y, currentRotZ });
 
             if (t >= 1.0f) {
-                SetRotation ({ 0.0f, GetRotation ().y, endRotZ });
+                SetRotation({ 0.0f, GetRotation().y, endRotZ });
                 animPhase_ = 23;
                 animTimer_ = 0.0f;
             }
@@ -614,44 +679,50 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
 
             // ★ 修正：Phase 23 に入った最初の1フレーム目だけ、角度を記憶する！
             if (animTimer_ == 0.0f) {
-                animStartPos_ = GetRotation (); // ボスの全回転角度を記憶
+                animStartPos_ = GetRotation(); // ボスの全回転角度を記憶
             }
 
             animTimer_ += deltaTime;
 
             if (animTimer_ >= 3.0f) {
-                animPhase_ = 24;
+                animPhase_ = 24; // ★ 修正：24へ
                 animTimer_ = 0.0f;
 
-                blockStartPos_.clear ();
-                for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                    blockStartPos_.push_back (armorBlocks_[i]->GetTranslate ());
-                }
             }
         }
         // --- Phase 24: ボスの姿勢と装甲が元の形にシュッと戻る ---
         else if (animPhase_ == 24) {
+
+            // ==========================================
+            // ★ 修正：ここでも記憶処理を上書きしてしまっていたので削除！
+            // 最初のフレームで「現在のブロックの位置」を正しく記憶させます
+            // ==========================================
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                }
+            }
+
             animTimer_ += deltaTime;
             float duration = 1.0f;
-            float t = std::min (animTimer_ / duration, 1.0f);
-            float easeT = Easing::OutExpo (t);
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
 
             // 1. ボス自身を元の高さに戻す
-            Vector3 bossPos = GetTranslate ();
-            bossPos.y = Math::Lerp (bossPos.y, 4.0f, easeT);
-            SetTranslate (bossPos);
+            Vector3 bossPos = GetTranslate();
+            bossPos.y = Math::Lerp(bossPos.y, 4.0f, easeT);
+            SetTranslate(bossPos);
 
-            // ==========================================
-            // ★ 修正：記憶した角度(animStartPos_)から、完全に 0.0f へ戻す！
-            // ==========================================
+            // 記憶した角度(animStartPos_)から、完全に 0.0f へ戻す！
             Vector3 currentRot;
-            currentRot.x = Math::Lerp (animStartPos_.x, 0.0f, easeT);
-            currentRot.y = Math::Lerp (animStartPos_.y, 0.0f, easeT);
-            currentRot.z = Math::Lerp (animStartPos_.z, 0.0f, easeT);
-            SetRotation (currentRot);
+            currentRot.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
+            currentRot.y = Math::Lerp(animStartPos_.y, 0.0f, easeT);
+            currentRot.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+            SetRotation(currentRot);
 
-            // ★ 超重要：他の回転処理（ターゲット追従など）に上書きされないよう、マスター権限を奪う！
-            GetTransform ()->isQuaternionMaster = false;
+            // 他の回転処理（ターゲット追従など）に上書きされないよう、マスター権限を奪う！
+            GetTransform()->isQuaternionMaster = false;
 
             // 3. ブロックも元の完璧な装甲の形に戻す
             struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
@@ -664,13 +735,13 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
                 { { 3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
             };
 
-            for (size_t i = 0; i < armorBlocks_.size (); ++i) {
-                if (i < blockStartPos_.size () && i < defaultSettings.size ()) {
-                    Vector3 pos = Math::Lerp (blockStartPos_[i], defaultSettings[i].translate, easeT);
-                    armorBlocks_[i]->SetTranslate (pos);
-                    armorBlocks_[i]->SetScale (defaultSettings[i].scale);
-                    armorBlocks_[i]->SetRotation (defaultSettings[i].rotation);
-                    armorBlocks_[i]->GetTransform ()->isQuaternionMaster = false;
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < defaultSettings.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], defaultSettings[i].translate, easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+                    armorBlocks_[i]->SetScale(defaultSettings[i].scale);
+                    armorBlocks_[i]->SetRotation(defaultSettings[i].rotation);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
                 }
             }
 
@@ -682,6 +753,223 @@ void BossCore::UpdateAnimationSequence (float deltaTime) {
             }
         }
     }
+    // ======================================
+    // 攻撃モード4：絶望の3連撃ギガ・ウォール！
+    // ======================================
+    else if (attackMode_ == 4) {
+
+        // --- Phase 39: 【新設】コンボ数に応じた壁の配置計算 ---
+        if (animPhase_ == 39) {
+            blockStartPos_.clear();
+            blockTargetPos_.clear();
+            float blockWidth = 12.5f;
+
+            Vector3 bossCurrentPos = GetTranslate();
+            animStartPos_ = bossCurrentPos; // 移動のスタート地点を記憶
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                // 最初の攻撃(0回目)の時だけ、親子関係を解除してワールド座標にする！
+                if (shotCount_ == 0) {
+                    Vector3 localPos = armorBlocks_[i]->GetTranslate();
+                    float bossRotY = GetRotation().y;
+                    Vector3 worldPos;
+                    worldPos.x = bossCurrentPos.x + (localPos.x * std::cos(bossRotY) + localPos.z * std::sin(bossRotY));
+                    worldPos.y = bossCurrentPos.y + localPos.y;
+                    worldPos.z = bossCurrentPos.z + (-localPos.x * std::sin(bossRotY) + localPos.z * std::cos(bossRotY));
+
+                    armorBlocks_[i]->SetParent(nullptr);
+                    armorBlocks_[i]->SetTranslate(worldPos);
+                    blockStartPos_.push_back(worldPos);
+                }
+                else {
+                    // 2回目以降はすでにワールド座標にいるので、そのまま現在地をスタートに！
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                }
+
+                // ==========================================
+                // ★ ここで何回目の攻撃かによって、壁の場所と形を変える！
+                // ==========================================
+                float offset = -(i - 2.5f) * blockWidth;
+                Vector3 targetPos;
+
+                if (shotCount_ == 0) {
+                    // 【1撃目：前方から】奥(Z=75)に、X軸に並べる
+                    targetPos = { offset, 2.0f, 75.0f };
+                    armorBlocks_[i]->SetScale({ blockWidth, 4.0f, 1.0f });
+                }
+                else if (shotCount_ == 1) {
+                    // 【2撃目：右側面から】右(X=75)に、Z軸に並べる
+                    targetPos = { 75.0f, 2.0f, offset };
+                    armorBlocks_[i]->SetScale({ 1.0f, 4.0f, blockWidth });
+                }
+                else if (shotCount_ == 2) {
+                    // 【3撃目：左側面から】左(X=-75)に、Z軸に並べる
+                    targetPos = { -75.0f, 2.0f, offset };
+                    armorBlocks_[i]->SetScale({ 1.0f, 4.0f, blockWidth });
+                }
+
+                blockTargetPos_.push_back(targetPos);
+                armorBlocks_[i]->SetRotation({ 0.0f, 0.0f, 0.0f });
+                armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+            }
+
+            animPhase_ = 40;
+            animTimer_ = 0.0f;
+        }
+        // --- Phase 40: ボスが上空へ移動 ＆ ブロックが壁を形成 ---
+        else if (animPhase_ == 40) {
+            animTimer_ += deltaTime;
+            float duration = 1.5f; // コンボ中はテンポよく1.5秒で壁を作る！
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            Vector3 bossPos = GetTranslate();
+
+            // コンボに応じてボスの待機場所（上空）も変える！
+            if (shotCount_ == 0) {
+                bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
+                bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
+                bossPos.z = Math::Lerp(animStartPos_.z, 75.0f, easeT); // 奥の上空
+            }
+            else if (shotCount_ == 1) {
+                bossPos.x = Math::Lerp(animStartPos_.x, 75.0f, easeT); // 右の上空
+                bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
+                bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+            }
+            else if (shotCount_ == 2) {
+                bossPos.x = Math::Lerp(animStartPos_.x, -75.0f, easeT); // 左の上空
+                bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT);
+                bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+            }
+            SetTranslate(bossPos);
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+                }
+            }
+
+            SetRotation({ 0.0f, 0.0f, 0.0f });
+            GetTransform()->isQuaternionMaster = false;
+
+            if (t >= 1.0f) {
+                animPhase_ = 41;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 41: 壁だけがステージを大横断！ ---
+        else if (animPhase_ == 41) {
+            animTimer_ += deltaTime;
+            float duration = 2.5f; // コンボなので横断速度も少し早めに！
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = std::pow(t, 2.0f);
+
+            // コンボに応じて動かす軸を変える！
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                Vector3 blockPos = armorBlocks_[i]->GetTranslate();
+
+                if (shotCount_ == 0) {
+                    blockPos.z = Math::Lerp(75.0f, -75.0f, easeT); // 奥から手前へ
+                }
+                else if (shotCount_ == 1) {
+                    blockPos.x = Math::Lerp(75.0f, -75.0f, easeT); // 右から左へ
+                }
+                else if (shotCount_ == 2) {
+                    blockPos.x = Math::Lerp(-75.0f, 75.0f, easeT); // 左から右へ
+                }
+                armorBlocks_[i]->SetTranslate(blockPos);
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 42;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 42: 攻撃後の猶予 ＆ コンボのループ判定！ ---
+        else if (animPhase_ == 42) {
+            animTimer_ += deltaTime;
+
+            // 攻撃が終わったら 0.5秒 だけ隙を見せる
+            if (animTimer_ >= 0.5f) {
+                shotCount_++; // コンボカウントを進める！
+
+                if (shotCount_ < 3) {
+                    // ★ まだ3回終わってないなら、準備フェーズ(39)へループ！！
+                    animPhase_ = 39;
+                }
+                else {
+                    // ★ 3回終わったら、修復フェーズ(43)へ！
+                    animPhase_ = 43;
+                }
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 43: 親子関係を復活させ、コアも元の定位置に戻る ---
+        else if (animPhase_ == 43) {
+
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                Vector3 bossPos = GetTranslate();
+                float bossRotY = GetRotation().y;
+
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    Vector3 worldPos = armorBlocks_[i]->GetTranslate();
+                    Vector3 offset = { worldPos.x - bossPos.x, worldPos.y - bossPos.y, worldPos.z - bossPos.z };
+                    Vector3 localPos;
+                    localPos.x = offset.x * std::cos(-bossRotY) + offset.z * std::sin(-bossRotY);
+                    localPos.y = offset.y;
+                    localPos.z = -offset.x * std::sin(-bossRotY) + offset.z * std::cos(-bossRotY);
+
+                    armorBlocks_[i]->SetParent(this);
+                    armorBlocks_[i]->SetTranslate(localPos);
+                    blockStartPos_.push_back(localPos);
+                }
+                animStartPos_ = bossPos;
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 3.0f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            // ボス本体を中央の定位置へ戻す！
+            Vector3 bossPos = GetTranslate();
+            bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
+            bossPos.y = Math::Lerp(animStartPos_.y, 4.0f, easeT);
+            bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+            SetTranslate(bossPos);
+
+            SetRotation({ 0.0f, 0.0f, 0.0f });
+            GetTransform()->isQuaternionMaster = false;
+
+            struct DefaultSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+            std::vector<DefaultSetting> defaultSettings = {
+                { {-3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} },
+                { {-2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.647f}, {0.0f, 0.0f, 0.0f} },
+                { {  0.000f,  1.510f, 0.000f}, {2.000f, 0.506f, 1.625f}, {0.0f, 0.0f, 0.0f} },
+                { {  0.000f, -1.504f, 0.000f}, {2.000f, 0.511f, 1.665f}, {0.0f, 0.0f, 0.0f} },
+                { {  2.000f,  0.000f, 0.000f}, {1.000f, 1.000f, 1.659f}, {0.0f, 0.0f, 0.0f} },
+                { {  3.500f,  0.000f, 0.000f}, {0.500f, 0.500f, 0.500f}, {0.0f, 0.0f, 0.0f} }
+            };
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < defaultSettings.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], defaultSettings[i].translate, easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+                    armorBlocks_[i]->SetScale(defaultSettings[i].scale);
+                    armorBlocks_[i]->SetRotation(defaultSettings[i].rotation);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
+        }
+        }
 }
 
 void BossCore::UpdateFlyingBlocks (float deltaTime) {
