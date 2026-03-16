@@ -363,6 +363,7 @@
     </None>
     <None Include="Resources\shader\PostEffect.PS.hlsl" />
     <None Include="Resources\shader\GPUParticlePS.hlsl" />
+    <None Include=".editorconflg" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shader\Object3d.VS.hlsl">

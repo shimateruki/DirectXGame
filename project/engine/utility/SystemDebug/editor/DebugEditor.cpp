@@ -1977,7 +1977,8 @@ void DebugEditor::DrawAttributeSelector(const char* label, uint32_t* attribute) 
         ImGui::CheckboxFlags("床・地形 (Ground)", &flags, 1 << 2);
         ImGui::CheckboxFlags("弾 (Bullet)", &flags, 1 << 3);
         ImGui::CheckboxFlags("トリガー (Trigger)", &flags, 1 << 4);
-
+        ImGui::CheckboxFlags("プレイヤー攻撃 (PlayerAttack)", &flags, 1 << 6);
+        ImGui::CheckboxFlags("敵攻撃 (EnemyAttack)", &flags, 1 << 7);
         // 変更を書き戻す
         *attribute = static_cast<uint32_t>(flags);
 
