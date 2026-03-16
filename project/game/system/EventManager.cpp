@@ -31,3 +31,13 @@ void EventManager::Dispatch(const BulletHitEvent& event) {
         listener(event);
     }
 }
+
+void EventManager::Subscribe(std::function<void(const DamageEvent&)> callback) {
+    damageListeners_.push_back(callback);
+}
+
+void EventManager::Dispatch(const DamageEvent& event) {
+    for (auto& listener : damageListeners_) {
+        listener(event);
+    }
+}

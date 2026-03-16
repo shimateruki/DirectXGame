@@ -98,7 +98,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 
 void BossCore::Update(float deltaTime) {
     // 1. 基本更新（行列計算など）
-    Object3d::Update(deltaTime);
+    BaseEnemy::Update(deltaTime);
 
     // ==========================================
     // ★ 新規：ゲーム再生中は待機タイマーを常に進める！
