@@ -1,4 +1,4 @@
-#include "Game.h"
+﻿#include "Game.h"
 #include "SceneManager.h" 
 #include "ImguiManager.h"
 #include "InputManager.h"
@@ -243,18 +243,17 @@ void Game::Update() {
     if (ImGui::BeginMainMenuBar()) {
         static bool prevIsPlaying = isPlaying_;
         if (isPlaying_) {
-            if (ImGui::Button("■ 停止")) isPlaying_ = false;
-            if (sceneManager_) { sceneManager_->SetIsPlaying(false); }
+            if (ImGui::Button ("■ 停止")) {
+                isPlaying_ = false;
+                if (sceneManager_) { sceneManager_->SetIsPlaying (false); }
+            }
         } else {
-            if (ImGui::Button("▶ 再生")) {
-
-                SaveAllEditors();
-
-                sceneManager_->ChangeScene(currentSceneName_);
-
+            if (ImGui::Button ("▶ 再生")) {
+                SaveAllEditors ();
+                sceneManager_->ChangeScene (currentSceneName_);
                 isPlaying_ = true;
-                if (sceneManager_) { sceneManager_->SetIsPlaying(true); }
-                CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+                if (sceneManager_) { sceneManager_->SetIsPlaying (true); }
+                CameraEditor::GetInstance ()->SetMode (CameraEditor::Mode::Game);
             }
         }
 

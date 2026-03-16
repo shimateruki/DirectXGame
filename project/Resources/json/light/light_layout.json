@@ -16,74 +16,20 @@
             -0.9682022333145142,
             -0.06966669857501984
         ],
-        "enableEnvMap": true,
-        "envIntensity": 0.257999986410141,
+        "enableFog": 0,
         "fogColor": [
             0.0,
             0.0,
             0.0
         ],
         "fogEnd": 1000.0,
+        "fogHeightMax": 5.0,
+        "fogHeightMin": -5.0,
         "fogStart": 501.0,
-        "intensity": 2.859999895095825
+        "intensity": 2.859999895095825,
+        "volumetricIntensity": 0.10000000149011612,
+        "volumetricSteps": 16
     },
-    "pointLights": [
-        {
-            "baseIntensity": 4.53000020980835,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "decay": 0.5699999928474426,
-            "intensity": 4.53000020980835,
-            "mode": 0,
-            "offset": [
-                0.0,
-                5.699999809265137,
-                0.0
-            ],
-            "position": [
-                -9.161999702453613,
-                7.48199987411499,
-                4.40500020980835
-            ],
-            "radius": 11.600000381469727,
-            "speed": 1.0
-        }
-    ],
-    "spotLights": [
-        {
-            "baseIntensity": 2.0,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "cosAngle": 0.8377092480659485,
-            "cosFalloffStart": 0.9999984502792358,
-            "decay": 0.7400000095367432,
-            "direction": [
-                0.0,
-                -1.0,
-                0.0
-            ],
-            "distance": 33.599998474121094,
-            "intensity": 2.0,
-            "mode": 0,
-            "offset": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "position": [
-                0.0,
-                10.5,
-                0.0
-            ],
-            "speed": 1.0
-        }
-    ]
+    "pointLights": [],
+    "spotLights": []
 }
