@@ -26,7 +26,11 @@ struct AlignedVector4 {
 };
 
 
-
+class PostEffectEditor;
+class SpriteDebugEditor;
+class ParticleEditor;
+class GPUParticleEditor;
+class VFXSequencerEditor;
 class DebugEditor : public IEditable {
 public:
     enum class SaveMode {
@@ -90,7 +94,19 @@ public:
 
     void TriggerSaveNotification(const std::string& filename);
     void DrawSaveNotification();
-
+    void SetEditors(
+        PostEffectEditor* postEffectEditor,
+        SpriteDebugEditor* spriteDebugEditor,
+        ParticleEditor* particleEditor,
+        GPUParticleEditor* gpuParticleEditor,
+        VFXSequencerEditor* vfxSequencerEditor)
+    {
+        postEffectEditor_ = postEffectEditor;
+        spriteDebugEditor_ = spriteDebugEditor;
+        particleEditor_ = particleEditor;
+        gpuParticleEditor_ = gpuParticleEditor;
+        vfxSequencerEditor_ = vfxSequencerEditor;
+    }
 
 private:
     void InitializePrimitiveDrawing();
@@ -175,5 +191,9 @@ private:
 
     float saveNotificationTimer_ = 0.0f;
     std::string saveNotificationMsg_ = "";
-
+    PostEffectEditor* postEffectEditor_ = nullptr;
+    SpriteDebugEditor* spriteDebugEditor_ = nullptr;
+    ParticleEditor* particleEditor_ = nullptr;
+    GPUParticleEditor* gpuParticleEditor_ = nullptr;
+    VFXSequencerEditor* vfxSequencerEditor_ = nullptr;
 };

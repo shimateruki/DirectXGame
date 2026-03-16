@@ -23,6 +23,12 @@
 #include "Transform.h"
 #include "ParticleManager.h"
 #include "EditorManager.h"
+#include "PostEffectEditor.h"
+#include "SpriteDebugEditor.h"
+#include "ParticleEditor.h"
+#include "GPUParticleEditor.h"
+#include "VFXSequencerEditor.h"
+#include "LightEditor.h"      
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -525,6 +531,41 @@ void DebugEditor::DrawHierarchy() {
     if (currentScene == nullptr) return;
 
     ImGui::Begin("Hierarchy");
+    if (ImGui::CollapsingHeader(" システム設定 (System Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        IEditable* currentObj = EditorManager::GetInstance()->GetSelectedObject();
+
+        // 📷 カメラ設定
+        if (ImGui::Selectable("  カメラ設定 (Camera)", currentObj == CameraEditor::GetInstance())) {
+            selectedObject_ = nullptr; // 通常オブジェクトの選択は解除
+            EditorManager::GetInstance()->SetSelectedObject(CameraEditor::GetInstance());
+        }
+        // ✨ ポストエフェクト
+        if (postEffectEditor_ && ImGui::Selectable("ポストエフェクト (Post Effect)", currentObj == postEffectEditor_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(postEffectEditor_);
+        }
+        // 🖼️ 2D UI スプライト
+        if (spriteDebugEditor_ && ImGui::Selectable("2D UI スプライト (Sprite)", currentObj == spriteDebugEditor_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(spriteDebugEditor_);
+        }
+        // 🎇 GPUパーティクル
+        if (gpuParticleEditor_ && ImGui::Selectable("GPUパーティクル (GPU Particle)", currentObj == gpuParticleEditor_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(gpuParticleEditor_);
+        }
+        // 🎬 VFXシーケンサー
+        if (vfxSequencerEditor_ && ImGui::Selectable("VFXシーケンサー (VFX Sequencer)", currentObj == vfxSequencerEditor_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(vfxSequencerEditor_);
+        }
+        // 💨 CPUパーティクル
+        if (particleEditor_ && ImGui::Selectable("通常パーティクル (Particle)", currentObj == particleEditor_)) {
+            selectedObject_ = nullptr;
+            EditorManager::GetInstance()->SetSelectedObject(particleEditor_);
+        }
+    }
+    ImGui::Separator();
     std::string currentJsonPath = "Resources/json/3Dobject/" + std::string(currentSceneFilename_);
     if (ImGui::CollapsingHeader("シーンファイル管理 (Scene File)", ImGuiTreeNodeFlags_DefaultOpen)) {
 

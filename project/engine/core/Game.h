@@ -59,7 +59,7 @@ private:
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;
-	bool showDebugWindows_ = false;
+	bool showDebugWindows_ = true;
 	bool showSpriteInspector_ = false;
 	bool showDebugConsole_ = false;
 	bool showCameraEditor = false;
