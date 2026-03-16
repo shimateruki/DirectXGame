@@ -267,6 +267,14 @@ static void TryFindHead(Player* player, Object3d*& headOut)
 	FindHeadInSceneByName(player, headOut);
 }
 
+static void SetSwordCollisionActive(Player* player, bool isActive) {
+	Object3d* swordObj = nullptr;
+	TryFindSword(player, swordObj);
+	if (swordObj) {
+		// trueなら敵(kEnemy)と当たる、falseなら誰とも当たらない(0)
+		swordObj->SetCollisionMask(isActive ? kEnemy : 0);
+	}
+}
 // ========================================================
 // ヘルパ: Lerp / Easing / Angle
 // ========================================================
@@ -789,7 +797,7 @@ void PlayerStateAttack1::Enter(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack1 State");
 
 	if (player) player->SetIsControlActive(false);
-
+	SetSwordCollisionActive(player, true);
 	animTimer_ = 0.0f;
 
 	bodyObj_ = player;
@@ -861,7 +869,7 @@ void PlayerStateAttack1::Exit(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack1 State");
 
 	if (player) player->SetIsControlActive(true);
-
+	
 	// 戻す
 	if (!initializedParts_) return;
 

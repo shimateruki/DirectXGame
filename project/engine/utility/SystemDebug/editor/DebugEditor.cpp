@@ -1493,8 +1493,18 @@ void DebugEditor::DrawImGui() {
                 auto& p = selectedObject_->param_.value();
                 ImGui::Text("エンティティ・ステータス:");
                 ImGui::Indent();
-                ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
-                ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
+
+             
+                ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, p.maxHp);
+
+                // ★修正2: MaxHPを変更した時の処理を追加
+                if (ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f)) {
+          
+                    if (p.hp > p.maxHp) {
+                        p.hp = p.maxHp;
+                    }
+                }
+
                 ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
                 ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
                 ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
