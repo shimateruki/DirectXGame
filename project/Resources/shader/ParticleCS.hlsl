@@ -12,6 +12,7 @@ struct Particle
 };
 
 RWStructuredBuffer<Particle> particles : register(u0);
+ByteAddressBuffer emitterMesh : register(t0);
 
 cbuffer Config : register(b0)
 {
@@ -58,13 +59,287 @@ cbuffer Config : register(b0)
     float shapeRadius;
     float shapeAngle;
     float padding3;
+
+    // ===================================
+    // : カーブ（イージング）データ
+    // ===================================
+    uint sizeEaseType;
+    uint colorEaseType;
+    uint meshVertexCount; // 頂点の総数
+    uint meshVertexStride; // 1頂点あたりのバイト数 (例: sizeof(Vertex))
+    row_major matrix emitterWorldMatrix;
+    
+    row_major matrix viewProj;
+    row_major matrix inverseViewProj;
+    float2 screenSize;
+    uint enableCollision;
+    float restitution;
+    float colorIntensity;
+    float3 padding_col;
 };
+struct BoneData
+{
+    row_major matrix finalMatrix;
+};
+StructuredBuffer<BoneData> boneMatrices : register(t1);
+Texture2D<float> depthTex : register(t2);
+SamplerState smp : register(s0);
+#define PI 3.14159265359f
+
+float EaseInSine(float t)
+{
+    return 1.0f - cos((t * PI) / 2.0f);
+}
+float EaseOutSine(float t)
+{
+    return sin((t * PI) / 2.0f);
+}
+float EaseInOutSine(float t)
+{
+    return -(cos(PI * t) - 1.0f) / 2.0f;
+}
+
+float EaseInQuad(float t)
+{
+    return t * t;
+}
+float EaseOutQuad(float t)
+{
+    return 1.0f - (1.0f - t) * (1.0f - t);
+}
+float EaseInOutQuad(float t)
+{
+    return t < 0.5f ? 2.0f * t * t : 1.0f - pow(-2.0f * t + 2.0f, 2.0f) / 2.0f;
+}
+
+float EaseInCubic(float t)
+{
+    return t * t * t;
+}
+float EaseOutCubic(float t)
+{
+    return 1.0f - pow(1.0f - t, 3.0f);
+}
+float EaseInOutCubic(float t)
+{
+    return t < 0.5f ? 4.0f * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 3.0f) / 2.0f;
+}
+
+float EaseInQuart(float t)
+{
+    return t * t * t * t;
+}
+float EaseOutQuart(float t)
+{
+    return 1.0f - pow(1.0f - t, 4.0f);
+}
+float EaseInOutQuart(float t)
+{
+    return t < 0.5f ? 8.0f * t * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 4.0f) / 2.0f;
+}
+
+float EaseInQuint(float t)
+{
+    return t * t * t * t * t;
+}
+float EaseOutQuint(float t)
+{
+    return 1.0f - pow(1.0f - t, 5.0f);
+}
+float EaseInOutQuint(float t)
+{
+    return t < 0.5f ? 16.0f * t * t * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 5.0f) / 2.0f;
+}
+
+float EaseInExpo(float t)
+{
+    return t == 0.0f ? 0.0f : pow(2.0f, 10.0f * t - 10.0f);
+}
+float EaseOutExpo(float t)
+{
+    return t == 1.0f ? 1.0f : 1.0f - pow(2.0f, -10.0f * t);
+}
+float EaseInOutExpo(float t)
+{
+    if (t == 0.0f)
+        return 0.0f;
+    if (t == 1.0f)
+        return 1.0f;
+    t *= 2.0f;
+    if (t < 1.0f)
+        return pow(2.0f, 10.0f * (t - 1.0f)) / 2.0f;
+    return (2.0f - pow(2.0f, -10.0f * (t - 1.0f))) / 2.0f;
+}
+
+float EaseInCirc(float t)
+{
+    return 1.0f - sqrt(1.0f - pow(t, 2.0f));
+}
+float EaseOutCirc(float t)
+{
+    return sqrt(1.0f - pow(t - 1.0f, 2.0f));
+}
+float EaseInOutCirc(float t)
+{
+    return t < 0.5f ? (1.0f - sqrt(1.0f - pow(2.0f * t, 2.0f))) / 2.0f : (sqrt(1.0f - pow(-2.0f * t + 2.0f, 2.0f)) + 1.0f) / 2.0f;
+}
+
+float EaseInBack(float t)
+{
+    float c1 = 1.70158f;
+    float c3 = c1 + 1.0f;
+    return c3 * t * t * t - c1 * t * t;
+}
+float EaseOutBack(float t)
+{
+    float c1 = 1.70158f;
+    float c3 = c1 + 1.0f;
+    return 1.0f + c3 * pow(t - 1.0f, 3.0f) + c1 * pow(t - 1.0f, 2.0f);
+}
+float EaseInOutBack(float t)
+{
+    float c1 = 1.70158f;
+    float c2 = c1 * 1.525f;
+    return t < 0.5f ? (pow(2.0f * t, 2.0f) * ((c2 + 1.0f) * 2.0f * t - c2)) / 2.0f : (pow(2.0f * t - 2.0f, 2.0f) * ((c2 + 1.0f) * (2.0f * t - 2.0f) + c2) + 2.0f) / 2.0f;
+}
+
+float EaseInElastic(float t)
+{
+    float c4 = (2.0f * PI) / 3.0f;
+    return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : -pow(2.0f, 10.0f * t - 10.0f) * sin((t * 10.0f - 10.75f) * c4);
+}
+float EaseOutElastic(float t)
+{
+    float c4 = (2.0f * PI) / 3.0f;
+    return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : pow(2.0f, -10.0f * t) * sin((t * 10.0f - 0.75f) * c4) + 1.0f;
+}
+float EaseInOutElastic(float t)
+{
+    float c5 = (2.0f * PI) / 4.5f;
+    return t == 0.0f ? 0.0f : t == 1.0f ? 1.0f : t < 0.5f ? -(pow(2.0f, 20.0f * t - 10.0f) * sin((20.0f * t - 11.125f) * c5)) / 2.0f : (pow(2.0f, -20.0f * t + 10.0f) * sin((20.0f * t - 11.125f) * c5)) / 2.0f + 1.0f;
+}
+
+float EaseOutBounce(float t)
+{
+    float n1 = 7.5625f;
+    float d1 = 2.75f;
+    if (t < 1.0f / d1)
+    {
+        return n1 * t * t;
+    }
+    else if (t < 2.0f / d1)
+    {
+        t -= 1.5f / d1;
+        return n1 * t * t + 0.75f;
+    }
+    else if (t < 2.5f / d1)
+    {
+        t -= 2.25f / d1;
+        return n1 * t * t + 0.9375f;
+    }
+    else
+    {
+        t -= 2.625f / d1;
+        return n1 * t * t + 0.984375f;
+    }
+}
+float EaseInBounce(float t)
+{
+    return 1.0f - EaseOutBounce(1.0f - t);
+}
+float EaseInOutBounce(float t)
+{
+    return t < 0.5f ? (1.0f - EaseOutBounce(1.0f - 2.0f * t)) / 2.0f : (1.0f + EaseOutBounce(2.0f * t - 1.0f)) / 2.0f;
+}
+
+// 指定された番号のイージングを適用する統合関数
+float ApplyEasing(uint type, float t)
+{
+    if (t <= 0.0f)
+        return 0.0f;
+    if (t >= 1.0f)
+        return 1.0f;
+
+    switch (type)
+    {
+        case 0:
+            return t;
+        case 1:
+            return EaseInSine(t);
+        case 2:
+            return EaseOutSine(t);
+        case 3:
+            return EaseInOutSine(t);
+        case 4:
+            return EaseInQuad(t);
+        case 5:
+            return EaseOutQuad(t);
+        case 6:
+            return EaseInOutQuad(t);
+        case 7:
+            return EaseInCubic(t);
+        case 8:
+            return EaseOutCubic(t);
+        case 9:
+            return EaseInOutCubic(t);
+        case 10:
+            return EaseInQuart(t);
+        case 11:
+            return EaseOutQuart(t);
+        case 12:
+            return EaseInOutQuart(t);
+        case 13:
+            return EaseInQuint(t);
+        case 14:
+            return EaseOutQuint(t);
+        case 15:
+            return EaseInOutQuint(t);
+        case 16:
+            return EaseInExpo(t);
+        case 17:
+            return EaseOutExpo(t);
+        case 18:
+            return EaseInOutExpo(t);
+        case 19:
+            return EaseInCirc(t);
+        case 20:
+            return EaseOutCirc(t);
+        case 21:
+            return EaseInOutCirc(t);
+        case 22:
+            return EaseInBack(t);
+        case 23:
+            return EaseOutBack(t);
+        case 24:
+            return EaseInOutBack(t);
+        case 25:
+            return EaseInElastic(t);
+        case 26:
+            return EaseOutElastic(t);
+        case 27:
+            return EaseInOutElastic(t);
+        case 28:
+            return EaseInBounce(t);
+        case 29:
+            return EaseOutBounce(t);
+        case 30:
+            return EaseInOutBounce(t);
+    }
+    return t;
+}
+
+
 // HLSLで超高速に乱数を生成する魔法の関数
 float rand(float2 seed)
 {
     return frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
 }
-
+float3 GetWorldPosFromDepth(float2 uv, float depth, matrix invViewProj)
+{
+    float4 ndc = float4(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, depth, 1.0f);
+    float4 worldPos = mul(ndc, invViewProj);
+    return worldPos.xyz / worldPos.w;
+}
 [numthreads(256, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
@@ -140,6 +415,31 @@ void main(uint3 DTid : SV_DispatchThreadID)
             float speed = length(emitVelocity) + r1 * velocityVariance;
             p.velocity = worldDir * speed;
         }
+        else if (shapeType == 3) // 🔷 Mesh (3Dモデルの表面)
+        {
+            uint vIndex = (uint) (rand(float2(index, time)) * meshVertexCount) % max(meshVertexCount, 1);
+            uint byteOffset = vIndex * meshVertexStride;
+            
+            // ★ VertexData構造体のメモリ配置通りに、座標・重み・骨番号を読み取る！
+            float3 localPos = asfloat(emitterMesh.Load3(byteOffset));
+            float4 weights = asfloat(emitterMesh.Load4(byteOffset + 48)); // オフセット48番地 (boneWeights)
+            float4 indices = asfloat(emitterMesh.Load4(byteOffset + 64)); // オフセット64番地 (boneIndices)
+            
+            // ★ スキニング計算（ボーンによる変形）
+            matrix boneMat =
+                boneMatrices[(int) indices.x].finalMatrix * weights.x +
+                boneMatrices[(int) indices.y].finalMatrix * weights.y +
+                boneMatrices[(int) indices.z].finalMatrix * weights.z +
+                boneMatrices[(int) indices.w].finalMatrix * weights.w;
+                
+            float3 skinnedPos = mul(float4(localPos, 1.0f), boneMat).xyz;
+            
+            // ★ ワールド行列で最終的な座標（スケール・回転・位置）を適用！
+            float3 worldPos = mul(float4(skinnedPos, 1.0f), emitterWorldMatrix).xyz;
+            
+            p.position = worldPos;
+            p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
+        }
         else // 🟦 Box (四角形 - デフォルト)
         {
             p.position = emitPos + float3(rX, rY, rZ) * emitArea;
@@ -169,40 +469,106 @@ void main(uint3 DTid : SV_DispatchThreadID)
         );
         p.rotation += p.rotSpeed * deltaTime;
         p.velocity += noiseVec * turbulence * deltaTime;
-        p.velocity *= drag;
+        
+        // ========================================================
+        // ★修正1: 空気抵抗を「自然な減速」に変更！
+        // これで風(Wind)や重力が正しく効くようになります。
+        // ========================================================
+        p.velocity *= saturate(1.0f - drag * deltaTime);
+        
+        // 移動！
         p.position += p.velocity * deltaTime;
 
         // ========================================================
-        // ★ 魔法: 3点カーブ（時間経過の支配）
+        // ★ 深度バッファ・コリジョン（地形との衝突判定＆反射）
+        // ========================================================
+        if (enableCollision > 0)
+        {
+            // 1. パーティクルの現在座標を、画面上の座標(UVと深度)に変換
+            float4 clipPos = mul(float4(p.position, 1.0f), viewProj);
+            float3 ndcPos = clipPos.xyz / clipPos.w;
+            float2 uv = ndcPos.xy * float2(0.5f, -0.5f) + 0.5f;
+
+            // 画面の範囲内かチェック
+            if (uv.x > 0.0f && uv.x < 1.0f && uv.y > 0.0f && uv.y < 1.0f && ndcPos.z < 1.0f)
+            {
+                float bgDepth = depthTex.SampleLevel(smp, uv, 0);
+                
+                // ========================================================
+                // ★修正2: すり抜け防止＆裏側ワープ防止（厚み判定）
+                // 地面より「わずかに奥(0.05f)」にいる時だけ衝突させる！
+                // ========================================================
+                if (ndcPos.z >= bgDepth && ndcPos.z < bgDepth + 0.05f && bgDepth < 1.0f)
+                {
+                    // めり込む直前の位置まで戻す
+                    p.position -= p.velocity * deltaTime;
+
+                    float2 offset = 1.0f / screenSize;
+                    float depthX = depthTex.SampleLevel(smp, uv + float2(offset.x, 0), 0);
+                    float depthY = depthTex.SampleLevel(smp, uv + float2(0, offset.y), 0);
+
+                    float3 p0 = GetWorldPosFromDepth(uv, bgDepth, inverseViewProj);
+                    float3 p1 = GetWorldPosFromDepth(uv + float2(offset.x, 0), depthX, inverseViewProj);
+                    float3 p2 = GetWorldPosFromDepth(uv + float2(0, offset.y), depthY, inverseViewProj);
+
+                    // 地面の法線（傾き）を計算
+                    float3 normal = normalize(cross(p2 - p0, p1 - p0));
+
+                    // ========================================================
+                    //  法線が裏返って地面に突き刺さるのを防止！
+                    // ========================================================
+                    if (dot(normal, p.velocity) > 0.0f)
+                    {
+                        normal = -normal;
+                    }
+
+                    // 反射！
+                    p.velocity = reflect(p.velocity, normal) * restitution;
+                    
+                    // 地面との摩擦で横滑りを抑える
+                    p.velocity.xz *= 0.8f;
+                    
+                    // 反射後の新しい座標へ
+                    p.position += p.velocity * deltaTime;
+                }
+            }
+        }
+        // ========================================================
+        // ★ 魔法: 3点カーブ ＋ 31種類のイージング（時間経過の支配）
         // ========================================================
         // 0.0 (発生直後) ～ 1.0 (消滅寸前) の進行度を計算
-        float ageRatio = 1.0f - saturate(p.life / p.maxLife);
+        float ageRatio = saturate(1.0f - (p.life / p.maxLife));
         
-        // 1. サイズの3点カーブ計算
-        if (ageRatio < sizeMidTime)
+        // 1. サイズのイージングカーブ適用
+        float sizeRatio = ApplyEasing(sizeEaseType, ageRatio);
+        if (sizeRatio < sizeMidTime)
         {
             // Base -> Mid へ向かうフェーズ
-            float t = ageRatio / max(sizeMidTime, 0.001f);
+            float t = sizeRatio / max(sizeMidTime, 0.001f);
             p.scale = lerp(baseSize, midSize, t);
         }
         else
         {
             // Mid -> End へ向かうフェーズ
-            float t = (ageRatio - sizeMidTime) / max(1.0f - sizeMidTime, 0.001f);
+            float t = (sizeRatio - sizeMidTime) / max(1.0f - sizeMidTime, 0.001f);
             p.scale = lerp(midSize, endSize, t);
         }
         
-        // 2. カラー＆透明度（Alpha）の3点カーブ計算
-        if (ageRatio < colorMidTime)
+        // 2. カラー＆透明度（Alpha）のイージングカーブ適用
+        float colorRatio = ApplyEasing(colorEaseType, ageRatio);
+        if (colorRatio < colorMidTime)
         {
-            float t = ageRatio / max(colorMidTime, 0.001f);
+            // Base -> Mid へ向かうフェーズ
+            float t = colorRatio / max(colorMidTime, 0.001f);
             p.color = lerp(baseColor, midColor, t);
         }
         else
         {
-            float t = (ageRatio - colorMidTime) / max(1.0f - colorMidTime, 0.001f);
+            // Mid -> End へ向かうフェーズ
+            float t = (colorRatio - colorMidTime) / max(1.0f - colorMidTime, 0.001f);
             p.color = lerp(midColor, endColor, t);
         }
+        p.color.rgb *= colorIntensity;
     }
 
     particles[index] = p;

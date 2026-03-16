@@ -2,12 +2,21 @@
     "events": [
         {
             "offset": [
-                -1.0,
-                0.8999999761581421,
+                0.0,
+                0.0,
                 0.0
             ],
-            "presetName": "FirePreset",
+            "presetName": "sample",
             "triggerTime": 0.0
+        },
+        {
+            "offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "presetName": "sample1",
+            "triggerTime": 2.5
         }
     ]
 }

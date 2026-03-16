@@ -21,6 +21,8 @@
 #include "GameRule.h"
 #include "CameraEditor.h"
 #include "LightEditor.h"
+#include "ParticleManager.h"
+#include "GPUParticleManager.h"
 
 void GameOverScene::Initialize() {
     // --- 1. エンジン基盤の取得 ---
@@ -50,6 +52,9 @@ void GameOverScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
+    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+    ParticleManager::GetInstance()->Initialize(particleSystem_.get());
+
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
     // --- 4. サブシステムの生成 ---
@@ -59,6 +64,11 @@ void GameOverScene::Initialize() {
     gameRule_->Initialize(this);
 
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+
+    // ★追加: GPUパーティクルの初期化
+    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+    GPUParticleManager::GetInstance()->LoadAllPresets();
+    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
     // --- 5. レベルデータの読み込み (LevelLoaderへ委譲) ---
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameOverScene.json");
@@ -105,8 +115,8 @@ void GameOverScene::Update(float deltaTime) {
 void GameOverScene::Draw() {
     // --- 一人称視点判定 ---
     bool isFirstPerson = false;
-#ifndef _DEBUG
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+#ifndef _DEBUG
     if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
         isFirstPerson = true;
     }
@@ -121,13 +131,12 @@ void GameOverScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1) continue; // 透明はスキップ
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; 
         obj->Draw(pointLightRes, spotLightRes);
     }
 
     // --- 2. 中間描画 (弾・デバッグ) ---
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
-    //if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
     LightEditor::GetInstance()->Draw3D();
 
     // --- 3. 透明描画 ---
@@ -138,6 +147,40 @@ void GameOverScene::Draw() {
         }
     }
     particleSystem_->Draw();
+
+    // =======================================================
+    // 4. ローカルフォグ (霧の箱) の描画！
+    // =======================================================
+    bool hasFog = false;
+    for (auto& obj : objects) {
+        if (obj->GetMaterialType() == 7) hasFog = true;
+    }
+
+    if (hasFog) {
+        dxCommon_->PreDrawLocalFog();
+        for (auto& obj : objects) {
+            if (obj->GetMaterialType() == 7) {
+                obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+            }
+        }
+        dxCommon_->PostDrawLocalFog();
+    }
+
+    // =======================================================
+    // 5. GPUパーティクルの描画！
+    // =======================================================
+    dxCommon_->UpdateGrabTexture();
+    dxCommon_->PreDrawLocalFog();
+    if (camera) {
+        GPUParticleManager::GetInstance()->Draw(
+            dxCommon_->GetCommandList(),
+            camera->GetViewMatrix(),
+            camera->GetProjectionMatrix(),
+            gpuParticleTexHandle_,
+            dxCommon_->GetDepthSrvHandle()
+        );
+    }
+    dxCommon_->PostDrawLocalFog();
 }
 
 // ====================================================================
@@ -148,5 +191,12 @@ void GameOverScene::DrawUI() {
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
     for (auto& sprite : sprites_) {
         sprite->Draw();
+    }
+}
+
+// ★追加: シャドウマップ描画の実装
+void GameOverScene::DrawShadow() {
+    if (objectManager_) {
+        objectManager_->DrawShadow();
     }
 }

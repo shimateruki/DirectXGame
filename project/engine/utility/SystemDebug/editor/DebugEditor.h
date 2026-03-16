@@ -8,6 +8,7 @@
 #include <deque>
 #include "Transform.h"
 #include "IEditable.h" 
+#include <GhostDirector.h>
 class Object3d;
 class DirectXCommon;
 class SceneManager;
@@ -26,7 +27,13 @@ struct AlignedVector4 {
 };
 
 
-
+class PostEffectEditor;
+class SpriteDebugEditor;
+class ParticleEditor;
+class GPUParticleEditor;
+class VFXSequencerEditor;
+class  GhostDirector;
+class LightEditor;
 class DebugEditor : public IEditable {
 public:
     enum class SaveMode {
@@ -91,6 +98,25 @@ public:
     void TriggerSaveNotification(const std::string& filename);
     void DrawSaveNotification();
 
+    void SetEditors(
+        PostEffectEditor* postEffectEditor,
+        SpriteDebugEditor* spriteDebugEditor,
+        ParticleEditor* particleEditor,
+        GPUParticleEditor* gpuParticleEditor,
+        VFXSequencerEditor* vfxSequencerEditor,
+        GhostRecorder* ghostRecorder,
+        GhostDirector* ghostDirector,
+        LightEditor* lightEditor)   
+    {
+        postEffectEditor_ = postEffectEditor;
+        spriteDebugEditor_ = spriteDebugEditor;
+        particleEditor_ = particleEditor;
+        gpuParticleEditor_ = gpuParticleEditor;
+        vfxSequencerEditor_ = vfxSequencerEditor;
+        ghostRecorder_ = ghostRecorder;
+        ghostDirector_ = ghostDirector;
+        lightEditor_ = lightEditor;   
+    }
 
 private:
     void InitializePrimitiveDrawing();
@@ -175,5 +201,12 @@ private:
 
     float saveNotificationTimer_ = 0.0f;
     std::string saveNotificationMsg_ = "";
-
+    PostEffectEditor* postEffectEditor_ = nullptr;
+    SpriteDebugEditor* spriteDebugEditor_ = nullptr;
+    ParticleEditor* particleEditor_ = nullptr;
+    GPUParticleEditor* gpuParticleEditor_ = nullptr;
+    VFXSequencerEditor* vfxSequencerEditor_ = nullptr;
+    GhostRecorder* ghostRecorder_ = nullptr;
+    GhostDirector* ghostDirector_ = nullptr;
+    LightEditor* lightEditor_ = nullptr;
 };

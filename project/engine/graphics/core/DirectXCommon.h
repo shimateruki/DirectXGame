@@ -146,6 +146,7 @@ public:
 	void PostDrawLocalFog();
 	uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
 	void UpdateGrabTexture();
+	void ResizeSwapChain(int32_t width, int32_t height);
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 

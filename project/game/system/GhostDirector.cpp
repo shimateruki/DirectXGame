@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <DebugConsole.h>
 #include "GhostRecorder.h"
-
+#include "IconsFontAwesome5.h"
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -33,23 +33,20 @@ void GhostDirector::DrawImGui() {
     // =======================================================
     // 1. 時間の更新（エディタ再生モード時のみ）
     // =======================================================
-    // エディタプレビュー中（useImguiTime_ == true）なら、ここで ImGui の時間を使って進める
-    // これにより、ゲームが一時停止していてもエディタ上では再生が可能です
     if (isPlaying_ && useImguiTime_) {
         AdvanceTime(ImGui::GetIO().DeltaTime);
     }
 
-    // ※以前ここにあった「if (isPlaying_) { playTimer_ += ... }」という
-    //   ガードなしの生出しロジックは、二重更新の原因になるため削除しました。
+    ImGui::Text(ICON_FA_FILM " --- ゴーストディレクター (Cinematic Director) ---");
 
     // =======================================================
     // 2. シナリオファイル管理
     // =======================================================
-    if (ImGui::CollapsingHeader("シナリオファイル管理", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " シナリオファイル管理", ImGuiTreeNodeFlags_DefaultOpen)) {
         std::string dirPath = "Resources/json/scenario/";
         if (!fs::exists(dirPath)) fs::create_directories(dirPath);
 
-        if (ImGui::BeginCombo("既存シナリオをロード", scenarioNameBuf_)) {
+        if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存シナリオをロード", scenarioNameBuf_)) {
             for (const auto& entry : fs::directory_iterator(dirPath)) {
                 if (entry.path().extension() == ".json") {
                     std::string fileName = entry.path().stem().string();
@@ -63,10 +60,11 @@ void GhostDirector::DrawImGui() {
             }
             ImGui::EndCombo();
         }
-        ImGui::InputText("シナリオ名", scenarioNameBuf_, sizeof(scenarioNameBuf_));
-        if (ImGui::Button("Save Scenario")) SaveScenario(scenarioNameBuf_);
+        ImGui::InputText(ICON_FA_FILE_SIGNATURE " シナリオ名", scenarioNameBuf_, sizeof(scenarioNameBuf_));
+
+        if (ImGui::Button(ICON_FA_DOWNLOAD " Save Scenario")) SaveScenario(scenarioNameBuf_);
         ImGui::SameLine();
-        if (ImGui::Button("Load Scenario")) LoadScenario(scenarioNameBuf_);
+        if (ImGui::Button(ICON_FA_UPLOAD " Load Scenario")) LoadScenario(scenarioNameBuf_);
     }
 
     ImGui::Separator();
@@ -74,8 +72,8 @@ void GhostDirector::DrawImGui() {
     // =======================================================
     // 3. トラック管理 (配役表)
     // =======================================================
-    if (ImGui::CollapsingHeader("トラック管理 (配役表)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::Button("+ トラックを追加")) {
+    if (ImGui::CollapsingHeader(ICON_FA_USERS " トラック管理 (配役表)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button(ICON_FA_PLUS_CIRCLE " + トラックを追加")) {
             tracks_.push_back(Track());
         }
 
@@ -83,9 +81,9 @@ void GhostDirector::DrawImGui() {
 
         for (int i = 0; i < static_cast<int>(tracks_.size()); ++i) {
             ImGui::PushID(i);
-            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Track %d", i + 1);
+            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_USER " Track %d", i + 1);
             ImGui::SameLine(ImGui::GetWindowWidth() - 50);
-            if (ImGui::Button("Del")) {
+            if (ImGui::Button(ICON_FA_TRASH_ALT " Del")) {
                 tracks_.erase(tracks_.begin() + i);
                 ImGui::PopID();
                 break;
@@ -95,7 +93,7 @@ void GhostDirector::DrawImGui() {
 
             // ターゲットオブジェクト選択
             std::string currentTargetName = track.target ? track.target->GetName() : track.targetName.empty() ? "(未選択)" : track.targetName + " (見つかりません)";
-            if (ImGui::BeginCombo("Target", currentTargetName.c_str())) {
+            if (ImGui::BeginCombo(ICON_FA_CROSSHAIRS " Target (役者)", currentTargetName.c_str())) {
                 if (sceneManager_ && sceneManager_->GetCurrentScene()) {
                     for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
                         bool isSelected = (track.target == obj.get());
@@ -111,7 +109,7 @@ void GhostDirector::DrawImGui() {
 
             // 録画データ（パス）選択
             std::string currentPath = track.pathFileName.empty() ? "(未選択)" : track.pathFileName;
-            if (ImGui::BeginCombo("Path Data", currentPath.c_str())) {
+            if (ImGui::BeginCombo(ICON_FA_MAP_SIGNS " Path Data (演技)", currentPath.c_str())) {
                 std::string animDirPath = "Resources/json/animation/";
                 if (fs::exists(animDirPath)) {
                     for (const auto& entry : fs::directory_iterator(animDirPath)) {
@@ -131,7 +129,7 @@ void GhostDirector::DrawImGui() {
                 ImGui::EndCombo();
             }
 
-            ImGui::SliderFloat("開始ディレイ (秒)", &track.delayTime, 0.0f, 10.0f, "%.2f sec");
+            ImGui::SliderFloat(ICON_FA_CLOCK " 開始ディレイ (秒)", &track.delayTime, 0.0f, 10.0f, "%.2f sec");
             ImGui::Separator();
             ImGui::PopID();
         }
@@ -142,7 +140,7 @@ void GhostDirector::DrawImGui() {
     // =======================================================
     // 4. タイムライン操作 (Scrub)
     // =======================================================
-    if (ImGui::CollapsingHeader("タイムライン操作 (Timeline Scrub)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_STREAM " タイムライン操作 (Timeline Scrub)", ImGuiTreeNodeFlags_DefaultOpen)) {
         float maxTime = 0.0f;
         for (const auto& track : tracks_) {
             if (track.target && track.target->recorder_) {
@@ -151,9 +149,9 @@ void GhostDirector::DrawImGui() {
             }
         }
 
-        ImGui::Text("全体の長さ: %.2f sec", maxTime);
+        ImGui::Text(ICON_FA_STOPWATCH " 全体の長さ: %.2f sec", maxTime);
 
-        bool isScrubbingChanged = ImGui::SliderFloat("シークバー", &currentScrubTime_, 0.0f, maxTime, "%.2f sec");
+        bool isScrubbingChanged = ImGui::SliderFloat("##Scrub", &currentScrubTime_, 0.0f, maxTime, "%.2f sec");
 
         if (ImGui::IsItemActivated()) {
             for (auto& track : tracks_) {
@@ -177,8 +175,7 @@ void GhostDirector::DrawImGui() {
             }
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button("先頭に戻す (Rewind)")) {
+        if (ImGui::Button(ICON_FA_BACKWARD " 先頭に戻す (Rewind)")) {
             currentScrubTime_ = 0.0f;
             for (auto& track : tracks_) {
                 if (track.target && track.target->recorder_) track.target->recorder_->EvaluateAtFrame(0);
@@ -192,29 +189,29 @@ void GhostDirector::DrawImGui() {
     // 5. 再生コントロール
     // =======================================================
     if (isPlaying_) {
-        ImGui::TextColored(ImVec4(0, 1, 0, 1), "▶ 再生中 (%sモード): %.2f sec",
+        ImGui::TextColored(ImVec4(0, 1, 0, 1), ICON_FA_PLAY_CIRCLE " ▶ 再生中 (%sモード): %.2f sec",
             useImguiTime_ ? "エディタ" : "ゲーム", playTimer_);
-    } else {
-        ImGui::TextColored(ImVec4(1, 1, 1, 1), "■ 待機中");
+    }
+    else {
+        ImGui::TextColored(ImVec4(1, 1, 1, 1), ICON_FA_STOP_CIRCLE " ■ 待機中");
     }
 
     static bool editorLoopCheck = false;
-    ImGui::Checkbox("Loop Playback", &editorLoopCheck);
+    ImGui::Checkbox(ICON_FA_REDO " Loop Playback", &editorLoopCheck);
 
     // エディタ用：ゲームが止まっていても動く
-    if (ImGui::Button("▶ エディタでプレビュー (Editor Preview)", ImVec2(-1, 40))) {
+    if (ImGui::Button(ICON_FA_PLAY " ▶ エディタでプレビュー (Editor Preview)", ImVec2(-1, 40))) {
         PlayScenario(editorLoopCheck, true);
     }
 
-    // ゲーム用：デルタタイムの影響を受ける（ボス等の挙動確認用）
-    if (ImGui::Button("▶ ゲーム内挙動テスト (Game Play Test)", ImVec2(-1, 30))) {
+    // ゲーム内挙動テスト
+    if (ImGui::Button(ICON_FA_GAMEPAD " ▶ ゲーム内挙動テスト (Game Play Test)", ImVec2(-1, 30))) {
         PlayScenario(editorLoopCheck, false);
     }
 
-    if (ImGui::Button("■ 停止 (Stop Scenario)", ImVec2(-1, 30))) {
+    if (ImGui::Button(ICON_FA_STOP " ■ 停止 (Stop Scenario)", ImVec2(-1, 30))) {
         StopScenario();
     }
-
 #endif
 }
 void GhostDirector::PlayScenario(bool isLoop, bool useImguiTime) {

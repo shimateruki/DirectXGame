@@ -31,6 +31,9 @@ public:
     void Initialize(DirectXCommon* dxCommon);
     uint32_t Load(const std::string& fileName);
     const DirectX::TexMetadata& GetMetadata(uint32_t textureHandle);
+    void LoadAllTexture(const std::string& directoryPath);
+    std::vector<std::string> GetLoadedTexturePaths() const;
+    uint32_t GetSrvHandle(const std::string& filePath);
 
 private:
     DirectXCommon* dxCommon_ = nullptr;

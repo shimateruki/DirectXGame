@@ -1020,3 +1020,57 @@ void DirectXCommon::UpdateGrabTexture() {
 	barrier2.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	commandList_->ResourceBarrier(1, &barrier2);
 }
+
+void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
+	// 1. GPUの完了を待つ (動いている最中に作り直すとクラッシュするため)
+	WaitForGPUAndReset();
+
+	// 2. 今持っているバックバッファ（swapChainResources）を一度リセットする
+	for (size_t i = 0; i < backBufferCount_; ++i) {
+		swapChainResources_[i].Reset();
+	}
+	// 深度バッファもリセット
+	depthStencilResource_.Reset();
+
+	// 3. スワップチェーン自体のサイズを変更
+	DXGI_SWAP_CHAIN_DESC1 desc{};
+	swapChain_->GetDesc1(&desc);
+	HRESULT hr = swapChain_->ResizeBuffers(
+		(UINT)backBufferCount_,
+		(UINT)width,
+		(UINT)height,
+		desc.Format,
+		desc.Flags
+	);
+	assert(SUCCEEDED(hr));
+
+	
+	for (UINT i = 0; i < backBufferCount_; ++i) {
+		hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
+		assert(SUCCEEDED(hr));
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+		rtvHandle.ptr += i * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		device_->CreateRenderTargetView(swapChainResources_[i].Get(), &rtvDesc, rtvHandle);
+	}
+
+	// 5. DSV（深度バッファ）を新しいサイズで再作成
+	depthStencilResource_ = CreateDepthStencilTextureResource(width, height);
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
+
+	// 6. ビューポートとシザー矩形も更新
+	viewport_.Width = (float)width;
+	viewport_.Height = (float)height;
+	scissorRect_.right = width;
+	scissorRect_.bottom = height;
+
+
+	CreateRenderTexture();
+}

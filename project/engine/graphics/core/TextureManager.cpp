@@ -3,7 +3,7 @@
 #include "SRVManager.h"
 #include "d3dx12.h"
 #include "DirectXCommon.h" 
-
+#include <filesystem>
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>
@@ -130,4 +130,38 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
     auto it = textureDatas_.find(textureHandle);
     assert(it != textureDatas_.end());
     return it->second.metadata;
+}
+
+void TextureManager::LoadAllTexture(const std::string& directoryPath) {
+    if (std::filesystem::exists(directoryPath)) {
+        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+            // .png と .jpg を自動ロード
+            if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
+                std::string path = entry.path().string();
+                // パスの区切り文字を / に統一（バグ防止）
+                std::replace(path.begin(), path.end(), '\\', '/');
+
+                // 隊長のLoad関数を呼ぶだけ！（内部で重複チェック＆コマンド実行してくれる）
+                Load(path);
+            }
+        }
+    }
+}
+
+std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
+    std::vector<std::string> paths;
+    // textureHandleMap_ のキー(パス)を全部集めて返す
+    for (const auto& pair : textureHandleMap_) {
+        paths.push_back(pair.first);
+    }
+    return paths;
+}
+
+uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
+    auto it = textureHandleMap_.find(filePath);
+    if (it != textureHandleMap_.end()) {
+        return it->second;
+    }
+    // 見つからなかった場合は0を返す（絶対にLoadを呼ばない！）
+    return 0;
 }

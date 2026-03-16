@@ -24,7 +24,7 @@
 #include "LevelLoader.h"
 #include "LockOnSystem.h"
 #include "GameRule.h"
-#include "ObjectManager.h" // 追加
+#include "ObjectManager.h" 
 #include "BossCore.h"
 
 #ifdef _DEBUG
@@ -57,9 +57,7 @@ void GamePlayScene::Initialize() {
 	audioPlayer_ = AudioPlayer::GetInstance();
 
 	LOG("Game Initialized!");
-	TextureManager::GetInstance()->Load("Resources/sprite/a.png");
-	TextureManager::GetInstance()->Load("Resources/sprite/b.png");
-	TextureManager::GetInstance()->Load("Resources/sprite/c.png");
+
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
 	// --- 2. 各種マネージャ初期化 ---

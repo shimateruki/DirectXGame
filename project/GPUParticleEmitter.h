@@ -1,7 +1,9 @@
 #pragma once
 #include <string>
 #include "engine/utility/math/Math.h"
-#include "Transform.h"
+
+//  前方宣言
+class Object3d;
 
 // ==========================================================
 // キャラクターや武器に取り付ける「パーティクル発生器」コンポーネント
@@ -11,8 +13,8 @@ public:
     GPUParticleEmitter() = default;
     ~GPUParticleEmitter() = default;
 
-    // 初期化：発生させるプリセット名と、追従する対象(Transform)をセット
-    void Initialize(const std::string& presetName, Transform* targetTransform = nullptr);
+
+    void Initialize(const std::string& presetName, Object3d* targetObject = nullptr);
 
     // 毎フレーム呼ぶ（自動で間隔を計って発生させる）
     void Update(float deltaTime);
@@ -31,10 +33,10 @@ public:
 
 private:
     std::string presetName_ = "";
-    Transform* targetTransform_ = nullptr; // 追従する対象（剣の先やプレイヤー本体など）
-    Vector3 offset_ = { 0.0f, 0.0f, 0.0f }; // 追従対象からのズレ
+    Object3d* targetObject_ = nullptr; // ★ 修正: Object3dへのポインタを保持する
+    Vector3 offset_ = { 0.0f, 0.0f, 0.0f };
 
     bool isPlaying_ = false;
     float emitTimer_ = 0.0f;
-    float emitInterval_ = 0.1f; // デフォルトの発生間隔（0.1秒ごと）
+    float emitInterval_ = 0.1f;
 };

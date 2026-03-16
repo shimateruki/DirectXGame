@@ -19,6 +19,7 @@
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
+    TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
     ModelManager::GetInstance()->LoadAllModels();
     sceneFactory_ = std::make_unique<SceneFactory>();
     //  SceneManager を作成して初期化
@@ -66,19 +67,33 @@ void Game::Initialize() {
     if (auto currentScene = sceneManager_->GetCurrentScene()) {
         currentScene->SetDebugEditor(debugEditor_.get());
     }
-
+    if (debugEditor_) {
+        debugEditor_->SetEditors(
+            postEffectEditor_.get(),
+            spriteDebugEditor_.get(),
+            particleEditor_.get(),
+            gpuParticleEditor_.get(),
+            vfxSequencerEditor_.get(),
+            ghostRecorder_.get(),   
+            ghostDirector_.get(),
+			LightEditor::GetInstance()
+        );
+    }
 
 #endif
 #ifdef  USE_IMGUI
     isPlaying_ = false; // デバッグ時は停止状態（エディタ操作）から
 #else
     isPlaying_ = true;  // リリース時は最初から再生
+    WinApp::SetCursorVisibility(false);
 #endif
 #ifdef USE_IMGUI
     CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
 #endif
     CameraEditor::GetInstance()->Initialize();
+ 
     dxCommon_->CreateRenderTexture();
+
 
 }
 
@@ -177,8 +192,8 @@ void Game::Update() {
             if (spriteDebugEditor_) {
                 float localX = mPos.x - imageScreenPos.x;
                 float localY = mPos.y - imageScreenPos.y;
-                float gameResW =float( WinApp::kClientWidth);
-                float gameResH =float( WinApp::kClientHeight);
+                float gameResW = float(WinApp::kClientWidth);
+                float gameResH = float(WinApp::kClientHeight);
                 Vector2 spriteLocalPos = { localX * (gameResW / displaySize.x), localY * (gameResH / displaySize.y) };
 
                 spriteDebugEditor_->Update(spriteLocalPos, isHovered);
@@ -187,7 +202,6 @@ void Game::Update() {
 
             // --- C. ゴーストレコーダー連携 ---
             if (ghostRecorder_ && !isPlaying_) {
-           
                 if (EditorManager::GetInstance()->GetSelectedObject() == ghostRecorder_.get()) {
                     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
                     if (camera) {
@@ -201,7 +215,6 @@ void Game::Update() {
             }
 
             if (ghostDirector_ && !isPlaying_) {
-                // EditorManagerでDirectorが選択されている時だけ全員のパスを描画！
                 if (EditorManager::GetInstance()->GetSelectedObject() == ghostDirector_.get()) {
                     Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
                     if (camera) {
@@ -255,52 +268,8 @@ void Game::Update() {
             ImGui::MenuItem("Hierarchy / Inspector 表示", NULL, &showDebugWindows_);
             ImGui::Separator();
 
-            // =========================================================
-            // ★ 各エディタを Inspector に呼び出すためのボタン！
-            // =========================================================
-            ImGui::TextDisabled("Inspectorに表示:");
-            if (ImGui::MenuItem("スプライトエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(spriteDebugEditor_.get());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("パーティクルエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(particleEditor_.get());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("カメラエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(CameraEditor::GetInstance());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("ライティングエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(LightEditor::GetInstance());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("ポストエフェクトエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(postEffectEditor_.get());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("ゴーストレコーダー (パス生成)")) {
-                EditorManager::GetInstance()->SetSelectedObject(ghostRecorder_.get());
-                if (debugEditor_ && debugEditor_->GetSelectedObject3D()) {
-                    ghostRecorder_->SetTarget(debugEditor_->GetSelectedObject3D());
-                }
+          
 
-                showDebugWindows_ = true;
-            }
-            if(ImGui::MenuItem("ゴーストディレクター (シナリオ管理)")) {
-                EditorManager::GetInstance()->SetSelectedObject(ghostDirector_.get());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("GPUパーティクルエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(gpuParticleEditor_.get());
-                showDebugWindows_ = true;
-            }
-            if (ImGui::MenuItem("VFXシーケンサーエディタ")) {
-                EditorManager::GetInstance()->SetSelectedObject(vfxSequencerEditor_.get());
-                showDebugWindows_ = true;
-            }
-
-            ImGui::Separator();
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
             ImGui::MenuItem("ステータス", NULL, &showTimeController_);
             ImGui::MenuItem("ボスロジックデバッグ", NULL, &showBossDebug_);
@@ -332,6 +301,7 @@ void Game::Update() {
     if (vfxSequencerEditor_) {
         vfxSequencerEditor_->Update(deltaTime);
     }
+
     // -------------------------------------------------------------------------
     // 4. エディタ描画の総仕上げ！
     // -------------------------------------------------------------------------
@@ -359,20 +329,24 @@ void Game::Update() {
         ImGui::ProgressBar(dxCommon_->GetGpuDrawTimeMs() / 16.66f, ImVec2(0.f, 0.f));
         ImGui::End();
     }
-  
+
     // ギズモ操作中はカメラ入力をオフにする
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }
 #endif
+
     // ↓ 計測開始
     auto startUpdate = std::chrono::high_resolution_clock::now();
+
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     GPUParticleManager::GetInstance()->Update(deltaTime);
     postEffect_->GetParams()->time += deltaTime;
+
     if (sceneManager_) {
         sceneManager_->SetIsPlaying(isPlaying_);
     }
+
     // ↓ 計測終了
     auto endUpdate = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float, std::milli> updateDuration = endUpdate - startUpdate;
@@ -380,7 +354,6 @@ void Game::Update() {
     updateTimeHistory_[timeHistoryIndex_] = sceneUpdateTimeMs_;
     timeHistoryIndex_ = (timeHistoryIndex_ + 1) % 120;
 }
-
 
 void Game::Draw() {
     // ★ 前フレームのGPUの計測結果を読み取る
@@ -482,12 +455,22 @@ void Game::Draw() {
     // パターンB: ゲームモード (Release)
     // =================================================================
 
-
     // 1. シーンレンダリング
     dxCommon_->PreDrawRenderTexture();
 
+    // リリースビルドにもシャドウパスを追加！
+    dxCommon_->PreDrawShadow();
+    SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
+
     // ★ GPUストップウォッチ開始！
     dxCommon_->StartGpuProfile();
+
+    if (sceneManager_) {
+        sceneManager_->DrawShadow();
+    }
+    dxCommon_->PostDrawShadow();
+
+    // メイン画面の描画
     if (sceneManager_) { sceneManager_->Draw(); }
     dxCommon_->PostDrawRenderTexture();
 
@@ -536,7 +519,6 @@ void Game::Draw() {
     dxCommon_->EndGpuProfile();
 
     dxCommon_->PostDraw();
-
 #endif
 
     // CPU側のプロファイリング終了

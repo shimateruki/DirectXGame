@@ -7,7 +7,7 @@
 #include <cmath>
 #include <filesystem> 
 #include <DebugConsole.h>
-
+#include "IconsFontAwesome5.h"
 using json = nlohmann::json;
 namespace fs = std::filesystem; // 短縮用
 
@@ -246,33 +246,35 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetTarget(newTarget);
 }
+
 void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
+    ImGui::Text(ICON_FA_VIDEO " --- カメラエディタ (Camera Editor) ---");
+
     // ---------------------------------------------------------
     // 1. ファイル管理セクション
     // ---------------------------------------------------------
-    if (ImGui::CollapsingHeader("ファイル管理 (File Manager)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File Manager)", ImGuiTreeNodeFlags_DefaultOpen)) {
         static int currentItem = -1;
-        if (ImGui::BeginCombo("ファイル選択", "Choose from list...")) {
-            for (int i = 0; i < fileList_.size(); i++) {
+        if (ImGui::BeginCombo(ICON_FA_HISTORY " ファイル選択", "Choose from list...")) {
+            for (int i = 0; i < (int)fileList_.size(); i++) {
                 bool isSelected = (currentItem == i);
                 if (ImGui::Selectable(fileList_[i].c_str(), isSelected)) {
                     currentItem = i;
-                    std::string selectedName = fileList_[i];
-                    strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), selectedName.c_str());
+                    strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), fileList_[i].c_str());
                 }
                 if (isSelected) ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
 
-        ImGui::InputText("ファイル名(.json)", fileNameBuffer_, sizeof(fileNameBuffer_));
+        ImGui::InputText(ICON_FA_FILE_SIGNATURE " ファイル名(.json)", fileNameBuffer_, sizeof(fileNameBuffer_));
 
-        if (ImGui::Button("ロード")) LoadSettings();
+        if (ImGui::Button(ICON_FA_UPLOAD " ロード")) LoadSettings();
         ImGui::SameLine();
-        if (ImGui::Button("セーブ")) SaveSettings();
+        if (ImGui::Button(ICON_FA_DOWNLOAD " セーブ")) SaveSettings();
         ImGui::SameLine();
-        if (ImGui::Button("更新")) RefreshFileList();
+        if (ImGui::Button(ICON_FA_SYNC " 更新")) RefreshFileList();
     }
 
     ImGui::Separator();
@@ -283,7 +285,7 @@ void CameraEditor::DrawImGui() {
     // ---------------------------------------------------------
     const char* modeNames[] = { "ゲームカメラ (Game)", "自由カメラ (Editor)" };
     int currentModeInt = static_cast<int>(settings_.currentMode);
-    if (ImGui::Combo("メインモード", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
+    if (ImGui::Combo(ICON_FA_COGS " メインモード", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
         settings_.currentMode = static_cast<Mode>(currentModeInt);
     }
 
@@ -294,7 +296,7 @@ void CameraEditor::DrawImGui() {
     // ---------------------------------------------------------
     if (settings_.currentMode == Mode::Game) {
         // --- Game Mode 設定 ---
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "カメラ挙動設定 (Game)");
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_GAMEPAD " カメラ挙動設定 (Game)");
 
         const char* followModeNames[] = {
             "固定 (Fixed)",
@@ -305,48 +307,49 @@ void CameraEditor::DrawImGui() {
             "定点注視 (FixedPoint)"
         };
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
-        if (ImGui::Combo("View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
+        if (ImGui::Combo(ICON_FA_EYE " View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
             settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
             settings_.gameFollowMode == Camera::FollowMode::kFixed) {
-            ImGui::DragFloat("距離 (Distance)", &settings_.distance, 0.1f, 1.0f, 100.0f);
-            ImGui::DragFloat("高さ (Height)", &settings_.height, 0.1f, 0.0f, 50.0f);
-            ImGui::DragFloat3("角度 (X/Y/Z)", &settings_.angle.x, 0.1f, -180.0f, 180.0f);
+            ImGui::DragFloat(ICON_FA_ARROWS_ALT " 距離 (Distance)", &settings_.distance, 0.1f, 1.0f, 100.0f);
+            ImGui::DragFloat(ICON_FA_ARROWS_ALT_V " 高さ (Height)", &settings_.height, 0.1f, 0.0f, 50.0f);
+            ImGui::DragFloat3(ICON_FA_SYNC " 角度 (X/Y/Z)", &settings_.angle.x, 0.1f, -180.0f, 180.0f);
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
             ImGui::Separator();
-            ImGui::Text("周回設定");
-            ImGui::DragFloat("半径 (Radius)", &settings_.orbitRadius, 0.1f, 1.0f, 100.0f);
-            ImGui::DragFloat("高さ (Height)", &settings_.orbitHeight, 0.1f, -10.0f, 50.0f);
-            ImGui::DragFloat("回転速度 (Speed)", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
+            ImGui::Text(ICON_FA_REDO " 周回設定");
+            ImGui::DragFloat(" 半径 (Radius)", &settings_.orbitRadius, 0.1f, 1.0f, 100.0f);
+            ImGui::DragFloat(" 高さ (Height)", &settings_.orbitHeight, 0.1f, -10.0f, 50.0f);
+            ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 回転速度 (Speed)", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kFixedPoint) {
             ImGui::Separator();
-            ImGui::Text("定点カメラ設定");
-            ImGui::DragFloat3("カメラ座標", &settings_.fixedPointPos.x, 0.1f);
-            if (ImGui::Button("現在のカメラ位置をセット")) {
+            ImGui::Text(ICON_FA_MAP_MARKER_ALT " 定点カメラ設定");
+            ImGui::DragFloat3(" カメラ座標", &settings_.fixedPointPos.x, 0.1f);
+            if (ImGui::Button(ICON_FA_CROSSHAIRS " 現在のカメラ位置をセット")) {
                 Camera* cam = CameraManager::GetInstance()->GetMainCamera();
                 if (cam) settings_.fixedPointPos = cam->GetEye();
             }
         }
-    } else {
+    }
+    else {
         // --- Editor Mode 設定 ---
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "自由操作設定 (Editor)");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), ICON_FA_MOUSE_POINTER " 自由操作設定 (Editor)");
         ImGui::TextDisabled("右クリック押下 + WASD で移動\nQ/E で上下移動 | Shift でブースト");
 
         ImGui::Spacing();
-        ImGui::SliderFloat("移動速度", &settings_.moveSpeed, 0.1f, 5.0f);
-        ImGui::SliderFloat("加速速度", &settings_.boostSpeed, 1.0f, 10.0f);
-        ImGui::SliderFloat("マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
+        ImGui::SliderFloat(ICON_FA_TACHOMETER_ALT " 移動速度", &settings_.moveSpeed, 0.1f, 5.0f);
+        ImGui::SliderFloat(ICON_FA_FAST_FORWARD " 加速速度", &settings_.boostSpeed, 1.0f, 10.0f);
+        ImGui::SliderFloat(ICON_FA_MOUSE " マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
 
         Camera* camera = CameraManager::GetInstance()->GetMainCamera();
         if (camera) {
             Vector3 pos = camera->GetEye();
-            ImGui::TextDisabled("現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+            ImGui::TextDisabled(ICON_FA_LOCATION_ARROW " 現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
         }
     }
 #endif

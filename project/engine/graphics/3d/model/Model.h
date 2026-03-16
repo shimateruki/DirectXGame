@@ -140,6 +140,7 @@ public: // メンバ関数
     Vector3 GetCenter() const { return center_; }
     void ApplyAnimation(const Animation& animation, float time);
     const Animation* GetAnimation(const std::string& name) const;
+    uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
 private: // 内部処理関数
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);
@@ -173,5 +174,6 @@ private: // メンバ変数
     // --- ボーンバッファ関連 ---
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
     BoneForGPU* boneMappedData_ = nullptr;
-    uint32_t boneSrvIndex_ = 0; // ★追加: ボーン情報SRVのインデックス
+    uint32_t boneSrvIndex_ = 0; //  ボーン情報SRVのインデックス
+
 };
