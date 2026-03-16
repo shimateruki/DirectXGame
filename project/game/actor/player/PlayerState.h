@@ -57,7 +57,7 @@ private:
     // --- 頭の管理 ---
     Object3d* headObj_ = nullptr;
     Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
-    Vector3 headStartRot_{ 0.0f,0.0f,0.0f };
+    Vector3 headStartRot_{ 0.0f, 0.0f, 0.0f };
     bool headSaved_ = false;
 
     // アニメーションの共通時間管理
@@ -187,6 +187,7 @@ private:
     // 退避用（元のポーズ）
     Vector3 bodyDefaultPos_, bodyDefaultRot_;
     Vector3 headDefaultPos_, headDefaultRot_;
+    Vector3 headStartRot_;
     Vector3 rightArmDefaultPos_, rightArmDefaultRot_;
     Vector3 leftArmDefaultPos_, leftArmDefaultRot_;
     Vector3 rightFootDefaultPos_, rightFootDefaultRot_;
