@@ -261,6 +261,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="VFXSequencerEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".editorconflg" />
     <None Include=".github\copilot-instructions.md" />
     <None Include="DUMPS\2025-0422-1117.dmp" />
     <None Include="externals\assimp\include\assimp\color4.inl" />

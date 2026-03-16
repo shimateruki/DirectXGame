@@ -10,7 +10,11 @@ enum CollisionAttribute : uint32_t {
     kAttributePlayerBullet = 1 << 3,
 	kTrigger = 1 << 4, // トリガー 
 	kMapBlock = 1 << 5, // ボスが吸収可能なブロック
+    kPlayerAttack = 1 << 6, // プレイヤーの近接攻撃（剣など）
+    kEnemyAttack = 1 << 7, // 敵の近接攻撃
 };
+
+
 
 // 地形属性をまとめたマスク 
 const uint32_t kAllGround = kGround;

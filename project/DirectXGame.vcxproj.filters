@@ -363,6 +363,7 @@
     </None>
     <None Include="Resources\shader\PostEffect.PS.hlsl" />
     <None Include="Resources\shader\GPUParticlePS.hlsl" />
+    <None Include=".editorconflg" />
     <None Include=".github\copilot-instructions.md" />
   </ItemGroup>
   <ItemGroup>
