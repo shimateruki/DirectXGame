@@ -361,7 +361,15 @@ void PlayerStateIdle::Update(Player* player)
 	// 攻撃入力: Kキーで攻撃（左クリックは無効化）
 	if (player->GetInputManager()->IsKeyTriggered(DIK_K))
 	{
-		player->ChangeState(std::make_unique<PlayerStateAttack1>());
+		// pending フラグがセットされていれば 2 段目を出す（フラグは消費される）
+		if (player->ConsumePendingAttack2())
+		{
+			player->ChangeState(std::make_unique<PlayerStateAttack2>());
+		}
+		else
+		{
+			player->ChangeState(std::make_unique<PlayerStateAttack1>());
+		}
 		return;
 	}
 
@@ -851,8 +859,10 @@ void PlayerStateAttack1::Update(Player* player)
 
 	if (animTimer_ >= animDuration_)
 	{
-		// 変更: Idle に戻すのではなく Attack2 に遷移する
-		player->ChangeState(std::make_unique<PlayerStateAttack2>());
+		// 自動で Attack2 に遷移せず、次のクリックで Attack2 を出すためのフラグをセットする
+		if (player) player->SetPendingAttack2(true);
+		// Idle に戻してプレイヤーの入力を待つ（Exit() がコントロールを再有効化する）
+		player->ChangeState(std::make_unique<PlayerStateIdle>());
 		return;
 	}
 }
