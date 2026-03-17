@@ -1176,8 +1176,18 @@ void PlayerStateAttack2::ApplyPose(float t)
 
 	// --- 終了ポーズ ---
 	// Body end
+	// 変更: Y 回転をプレイヤーの向き（bodyDefaultRot_.y）に対する相対値で指定して、向いている方向で攻撃が出るようにする
 	Vector3 bodyEndPos{ 0.0f, 0.0f, 0.0f };
-	Vector3 bodyEndRot{ DegToRad(0.0f), DegToRad(420.0f), DegToRad(40.0f) };
+	Vector3 bodyEndRot{ DegToRad(0.0f), DegToRad(0.0f), DegToRad(40.0f) };
+	if (bodyObj_)
+	{
+		// bodyDefaultRot_.y を基準に 420deg 回す（相対指定）
+		bodyEndRot.y = bodyDefaultRot_.y + DegToRad(420.0f);
+	}
+	else
+	{
+		bodyEndRot.y = DegToRad(420.0f);
+	}
 
 	// Head end
 	Vector3 headEndPos{ 0.0f, 0.0f, 0.0f };
