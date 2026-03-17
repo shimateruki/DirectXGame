@@ -15,6 +15,7 @@
 #include"ModelManager.h"
 #include "GhostDirector.h"
 #include"BossCore.h"
+#include <IconsFontAwesome5.h>
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -127,8 +128,8 @@ void Game::Update() {
     ImGuizmo::BeginFrame();
 
     // -------------------------------------------------------------------------
-    // 1. Unity風の初期レイアウト（ドッキング）自動構築
-    // -------------------------------------------------------------------------
+        // 1. Unity風の初期レイアウト（ドッキング）自動構築
+        // -------------------------------------------------------------------------
     ImGuiID dockspace_id = ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
     static bool first_time = true;
@@ -141,13 +142,24 @@ void Game::Update() {
         ImGuiID dock_main_id = dockspace_id;
         ImGuiID dock_left_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.22f, nullptr, &dock_main_id);
         ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
+
+        // ★修正: 下部パネルを作成 (高さ30%)
         ImGuiID dock_bottom_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
 
-        ImGui::DockBuilderDockWindow("Hierarchy", dock_left_id);
-        ImGui::DockBuilderDockWindow("Inspector", dock_right_id); // ★右側はこれ1つだけ！
+        ImGuiID dock_bottom_left_id = ImGui::DockBuilderSplitNode(dock_bottom_id, ImGuiDir_Left, 0.60f, nullptr, &dock_bottom_id);
+        ImGuiID dock_bottom_right_id = dock_bottom_id; // 残りが右側になる
 
-        ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_id);
-        ImGui::DockBuilderDockWindow("デバッグログ", dock_bottom_id);
+        // 各ウィンドウをドッキング
+        ImGui::DockBuilderDockWindow("Hierarchy", dock_left_id);
+        ImGui::DockBuilderDockWindow("Inspector", dock_right_id);
+
+        // ★下部・左側にアセットを配置
+        ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_left_id);
+
+
+        ImGui::DockBuilderDockWindow("Debug Console", dock_bottom_right_id);
+        ImGui::DockBuilderDockWindow("ステータス", dock_bottom_right_id);
+
         ImGui::DockBuilderDockWindow("Game View", dock_main_id);
 
         ImGui::DockBuilderFinish(dockspace_id);
@@ -283,6 +295,12 @@ void Game::Update() {
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("ヘルプ")) {
+            if (ImGui::MenuItem(ICON_FA_BOOK " エンジン説明書")) {
+                engineManualWindow_.Open();
+            }
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
 #endif
@@ -329,7 +347,7 @@ void Game::Update() {
         ImGui::ProgressBar(dxCommon_->GetGpuDrawTimeMs() / 16.66f, ImVec2(0.f, 0.f));
         ImGui::End();
     }
-
+    engineManualWindow_.Draw();
     // ギズモ操作中はカメラ入力をオフにする
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }

@@ -7,6 +7,8 @@
 #include "json.hpp"
 #include "DebugConsole.h"
 #include"WinApp.h"
+#include "RootSignatureBuilder.h"
+#include "GraphicsPipelineBuilder.h"
 #include <TextureManager.h>
     
 using json = nlohmann::json;
@@ -148,75 +150,41 @@ void GPUParticleManager::CreateComputePipeline() {
     // =========================================================
     // 1. ルートシグネチャ (Compute用) の作成
     // =========================================================
-    D3D12_DESCRIPTOR_RANGE uavRange{};
-    uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    uavRange.NumDescriptors = 1;
-    uavRange.BaseShaderRegister = 0; // u0 に割り当て
+    RootSignatureBuilder rsBuilder;
 
-    D3D12_DESCRIPTOR_RANGE boneRange{};
-    boneRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    boneRange.NumDescriptors = 1;
-    boneRange.BaseShaderRegister = 1; // t1
-    // [4] 深度テクスチャ (t2)
-    D3D12_DESCRIPTOR_RANGE depthRange{};
-    depthRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    depthRange.NumDescriptors = 1;
-    depthRange.BaseShaderRegister = 2; // t2
-    D3D12_ROOT_PARAMETER rootParams[5] = {};
-    // [0] パーティクル配列 (UAV)
-    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[0].DescriptorTable.pDescriptorRanges = &uavRange;
+    // [0] u0: パーティクル配列 (UAVテーブル)
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-    // [1] 時間データ (CBV)
-    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[1].Descriptor.ShaderRegister = 0; // b0 に割り当て
+    // [1] b0: 時間データ (CBV)
+    rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-	// [2] 描画用にSRVも渡しておく（Computeシェーダー内で読み取るため）
-    rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-    rootParams[2].Descriptor.ShaderRegister = 0; // t0
+    // [2] t0: 描画用SRV (※テーブルではなく直接指定のインラインSRV！)
+    rsBuilder.AddSRV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-    rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[3].DescriptorTable.pDescriptorRanges = &boneRange;
+    // [3] t1: ボーン情報 (SRVテーブル)
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-    rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[4].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[4].DescriptorTable.pDescriptorRanges = &depthRange;
+    // [4] t2: 深度テクスチャ (SRVテーブル)
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-    D3D12_STATIC_SAMPLER_DESC samplerDesc{};
-    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT; // 深度値は補間せず生データを使う
-    samplerDesc.ShaderRegister = 0; // s0
+    // s0: サンプラー (Clamp, Point補間)
+    rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_ALL, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
-
-    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = 5; 
-    rsDesc.pParameters = rootParams;
-    rsDesc.NumStaticSamplers = 1;         
-    rsDesc.pStaticSamplers = &samplerDesc; 
-
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-    HRESULT hr = D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signatureBlob, &errorBlob);
-    if (FAILED(hr)) {
-        OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-        assert(false);
-    }
-    device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&computeRootSignature_));
+    // ビルド実行！
+    rsBuilder.Build(device, computeRootSignature_.GetAddressOf());
 
     // =========================================================
     // 2. Compute Shader のコンパイルと PSO の作成
     // =========================================================
     Microsoft::WRL::ComPtr<ID3DBlob> csBlob;
-    hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &csBlob, &errorBlob);
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+    HRESULT hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &csBlob, &errorBlob);
     if (FAILED(hr)) {
         OutputDebugStringA((char*)errorBlob->GetBufferPointer());
         assert(false);
     }
 
+    // コンピュート用PSOは元々設定項目が少ないので、そのまま直接設定します
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = computeRootSignature_.Get();
     psoDesc.CS = { csBlob->GetBufferPointer(), csBlob->GetBufferSize() };
@@ -234,7 +202,7 @@ void GPUParticleManager::Update(float deltaTime) {
     configData_->time = totalTime_;
 
     // =======================================================
-    // ★修正: 私の省略のせいで消えてしまっていたパラメータ送信処理を復元！
+    //  私の省略のせいで消えてしまっていたパラメータ送信処理を復元！
     // =======================================================
     configData_->gravity = envGravity_;
     configData_->drag = envDrag_;
@@ -385,129 +353,64 @@ void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matr
     toUAV.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     commandList->ResourceBarrier(1, &toUAV);
 }
-
 void GPUParticleManager::CreateGraphicsPipeline() {
     auto device = dxCommon_->GetDevice();
 
     // =========================================================
     // 1. ルートシグネチャ (Graphics用) の作成
     // =========================================================
-    D3D12_DESCRIPTOR_RANGE srvRangeParticle{};
-    srvRangeParticle.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeParticle.NumDescriptors = 1;
-    srvRangeParticle.BaseShaderRegister = 0; // t0: パーティクル配列
+    RootSignatureBuilder rsBuilder;
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture{};
-    srvRangeTexture.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeTexture.NumDescriptors = 1;
-    srvRangeTexture.BaseShaderRegister = 1; // t1: テクスチャ
-	// 深度テクスチャ用のSRVも追加
-    D3D12_DESCRIPTOR_RANGE srvRangeDepth{};
-    srvRangeDepth.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeDepth.NumDescriptors = 1;
-    srvRangeDepth.BaseShaderRegister = 2; // t2: 深度テクスチ
-    D3D12_DESCRIPTOR_RANGE srvRangeGrab{};
-    srvRangeGrab.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeGrab.NumDescriptors = 1;
-    srvRangeGrab.BaseShaderRegister = 3; // ★ t3: 背景コピー
+    // [0] t0: パーティクル配列
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
+    // [1] b0: カメラ定数バッファ
+    rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+    // [2] t1: テクスチャ
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
+    // [3] t2: 深度テクスチャ
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
+    // [4] t3: 背景コピー
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
 
-    D3D12_ROOT_PARAMETER rootParams[5] = {};
-    // [0] パーティクル配列 (t0)
-    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[0].DescriptorTable.pDescriptorRanges = &srvRangeParticle;
-
-    // [1] カメラ定数バッファ (b0)
-    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[1].Descriptor.ShaderRegister = 0;
-
-    // [2] テクスチャ (t1)
-    rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[2].DescriptorTable.pDescriptorRanges = &srvRangeTexture;
-	// [3] 深度テクスチャ (t2)
-    rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[3].DescriptorTable.pDescriptorRanges = &srvRangeDepth;
-
-    rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[4].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[4].DescriptorTable.pDescriptorRanges = &srvRangeGrab;
     // 静的サンプラー (s0: テクスチャのピクセル補間用)
-    D3D12_STATIC_SAMPLER_DESC samplerDesc{};
-    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    samplerDesc.ShaderRegister = 0;
-    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 
-    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = 5;
-    rsDesc.pParameters = rootParams;
-    rsDesc.NumStaticSamplers = 1;
-    rsDesc.pStaticSamplers = &samplerDesc;
-    rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-    D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signatureBlob, &errorBlob);
-    device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&graphicsRootSignature_));
+    rsBuilder.Build(device, graphicsRootSignature_.GetAddressOf());
 
     // =========================================================
     // 2. PSO の作成 (共通設定)
     // =========================================================
-    Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticleVS.hlsl", L"vs_6_0");
-    Microsoft::WRL::ComPtr<IDxcBlob> psBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticlePS.hlsl", L"ps_6_0");
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-    psoDesc.pRootSignature = graphicsRootSignature_.Get();
-    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    auto vsBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticleVS.hlsl", L"vs_6_0");
+    auto psBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticlePS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(graphicsRootSignature_.Get());
+
+    // 頂点レイアウトはシェーダー側で生成するので空っぽ(nullptr, 0)
+    psoBuilder.SetInputLayout(nullptr, 0);
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
 
     // ラスタライザ (両面描画)
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
     // 深度テスト (奥のものは描画しないが、パーティクル自体は深度を書き込まない)
-    psoDesc.DepthStencilState.DepthEnable = FALSE; // TRUE から FALSE に変更！
-    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
-    // 頂点レイアウト (シェーダー側で生成するので空っぽでOK)
-    psoDesc.InputLayout.pInputElementDescs = nullptr;
-    psoDesc.InputLayout.NumElements = 0;
-
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-    psoDesc.SampleDesc.Count = 1;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+    // レンダーターゲット設定 (DSVはUNKNOWN)
+    DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
+    psoBuilder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
 
     // =========================================================
-    // ★ PSO 1: 加算合成 (Additive) - 光、炎、魔法用
-    // =========================================================
-    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
-    psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_ONE; // ここが ONE だと加算合成
-    psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-    psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-    psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-    psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-
-    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineStateAdd_));
-    assert(SUCCEEDED(hr));
+      // ★ PSO 1: 加算合成 (Additive) - 光、炎、魔法用
+      // =========================================================
+    psoBuilder.SetBlendMode(::BlendMode::kAdd);
+    psoBuilder.Build(device, graphicsPipelineStateAdd_.GetAddressOf());
 
     // =========================================================
     // ★ PSO 2: 半透明合成 (Alpha Blend) - 霧、黒煙、砂埃用
     // =========================================================
-    // DestBlend を INV_SRC_ALPHA に変えるだけで、背景を透かす「半透明（アルファブレンド）」になる！
-    psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-    psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
-
-    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineStateAlpha_));
-    assert(SUCCEEDED(hr));
+    psoBuilder.SetBlendMode(::BlendMode::kNormal);
+    psoBuilder.Build(device, graphicsPipelineStateAlpha_.GetAddressOf());
 }
 
 // ====================================================================

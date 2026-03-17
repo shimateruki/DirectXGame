@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <deque> 
 #include <mutex>
 #ifdef USE_IMGUI
 #include "imgui.h"
@@ -9,24 +9,12 @@
 
 class DebugConsole {
 public:
-    // シングルトン取得
     static DebugConsole* GetInstance();
-
-    // 初期化
     void Initialize();
-
-    // 終了処理
     void Finalize();
 
-
-    // 1. 既存互換用 (文字列のみ受け取る) -> デフォルトで Info 扱い、または文字列内のタグで色判定
     void AddLog(const std::string& log);
-
-    // 2. 高機能版 (レベル指定あり) -> 色分け対応
     void AddLog(LogLevel level, const std::string& log);
-
-
-    // ImGui描画 (名前は DrawImGui のまま)
     void DrawImGui();
 
 private:
@@ -35,19 +23,22 @@ private:
     DebugConsole(const DebugConsole&) = delete;
     DebugConsole& operator=(const DebugConsole&) = delete;
 
-    // ログデータ構造体 (色情報を持たせるために拡張)
     struct LogEntry {
         std::string message;
         LogLevel level;
     };
 
-    std::vector<LogEntry> logs_; // 文字列だけではなく構造体で管理
-    std::mutex logMutex_;        // 排他制御用
+    std::deque<LogEntry> logs_;  
+    std::mutex logMutex_;
 
-    // UI制御用フラグ
     bool scrollToBottom_ = true;
     bool autoScroll_ = true;
 #ifdef USE_IMGUI
-    ImGuiTextFilter filter_;     // 検索フィルタ
+    ImGuiTextFilter filter_;
+
+    // ★追加: ログレベルの表示ON/OFFフラグ
+    bool showInfo_ = true;
+    bool showWarn_ = true;
+    bool showError_ = true;
 #endif
 };

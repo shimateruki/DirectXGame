@@ -1,4 +1,6 @@
 #include "Object3dCommon.h"
+#include "RootSignatureBuilder.h"
+#include "GraphicsPipelineBuilder.h" 
 #include <cassert>
 
 #pragma comment(lib, "d3d12.lib")
@@ -26,352 +28,140 @@ void Object3dCommon::SetPipelineState(BlendMode blendMode) {
     commandList->SetPipelineState(graphicsPipelineStates_[static_cast<size_t>(blendMode)].Get());
 }
 
+
+
 void Object3dCommon::CreateRootSignature() {
-    ID3D12Device* device = dxCommon_->GetDevice();
-    D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
-    descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    RootSignatureBuilder builder;
 
     // =================================================================
-    // 1. ディスクリプタレンジの設定 (テクスチャ用 t0 と ボーン用 t1)
+    // 1. ルートパラメータの設定 (順番は元の配列[0]～[12]と完全一致させています)
     // =================================================================
-
-    // テクスチャ用 (t0)
-    D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
-    descriptorRange[0].BaseShaderRegister = 0; // t0
-    descriptorRange[0].NumDescriptors = 1;
-    descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-    // ボーン行列用 (t1) - StructuredBuffer
-    D3D12_DESCRIPTOR_RANGE descriptorRangeBone[1] = {};
-    descriptorRangeBone[0].BaseShaderRegister = 1; // t1
-    descriptorRangeBone[0].NumDescriptors = 1;
-    descriptorRangeBone[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRangeBone[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-
-    // ==========================================
-    //  環境マップ用 (t2) - TextureCube
-    // ==========================================
-    D3D12_DESCRIPTOR_RANGE descriptorRangeEnvMap[1] = {};
-    descriptorRangeEnvMap[0].BaseShaderRegister = 2; // t2
-    descriptorRangeEnvMap[0].NumDescriptors = 1;
-    descriptorRangeEnvMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRangeEnvMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-    D3D12_DESCRIPTOR_RANGE descriptorRangeNormalMap[1] = {};
-    descriptorRangeNormalMap[0].BaseShaderRegister = 3; // t3
-    descriptorRangeNormalMap[0].NumDescriptors = 1;
-    descriptorRangeNormalMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRangeNormalMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-    D3D12_DESCRIPTOR_RANGE descriptorRangeOrmMap[1] = {};
-    descriptorRangeOrmMap[0].BaseShaderRegister = 4; // t4
-    descriptorRangeOrmMap[0].NumDescriptors = 1;
-    descriptorRangeOrmMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRangeOrmMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-    D3D12_DESCRIPTOR_RANGE descriptorRangeShadowMap[1] = {};
-    descriptorRangeShadowMap[0].BaseShaderRegister = 5; // t5 (影マップ用)
-    descriptorRangeShadowMap[0].NumDescriptors = 1;
-    descriptorRangeShadowMap[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRangeShadowMap[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-    // =================================================================
-    // 2. ルートパラメータの設定
-    // =================================================================
-    D3D12_ROOT_PARAMETER rootParameters[13] = {};
 
     // [0] Material (CBV b0 - Pixel)
-    rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[0].Descriptor.ShaderRegister = 0;
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
     // [1] TransformationMatrix (CBV b0 - Vertex)
-    rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-    rootParameters[1].Descriptor.ShaderRegister = 0;
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-    // [2] Texture (DescriptorTable t0)
-    rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
-    rootParameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+    // [2] Texture (DescriptorTable t0 - Pixel)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [3] DirectionalLight (CBV b1)
-    rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[3].Descriptor.ShaderRegister = 1;
+    // [3] DirectionalLight (CBV b1 - Pixel)
+    builder.AddCBV(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [4] Camera (CBV b2)
-    rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[4].Descriptor.ShaderRegister = 2;
+    // [4] Camera (CBV b2 - Pixel)
+    builder.AddCBV(2, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [5] PointLight (CBV b3)
-    rootParameters[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[5].Descriptor.ShaderRegister = 3;
+    // [5] PointLight (CBV b3 - Pixel)
+    builder.AddCBV(3, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [6] SpotLight (CBV b4)
-    rootParameters[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[6].Descriptor.ShaderRegister = 4;
+    // [6] SpotLight (CBV b4 - Pixel)
+    builder.AddCBV(4, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
     // [7] Skinning Matrix (DescriptorTable t1 - Vertex)
-    rootParameters[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使用
-    rootParameters[7].DescriptorTable.pDescriptorRanges = descriptorRangeBone;
-    rootParameters[7].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeBone);
-    // ==========================================
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
     // [8] Environment Map (DescriptorTable t2 - Pixel)
-    // ==========================================
-    rootParameters[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // ピクセルシェーダーで使用
-    rootParameters[8].DescriptorTable.pDescriptorRanges = descriptorRangeEnvMap;
-    rootParameters[8].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeEnvMap);
-	// ==========================================
-	// [9] Normal Map (DescriptorTable t3 - Pixel)
-	// ==========================================
-    rootParameters[9].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[9].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[9].DescriptorTable.pDescriptorRanges = descriptorRangeNormalMap;
-    rootParameters[9].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeNormalMap);
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    rootParameters[10].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[10].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[10].DescriptorTable.pDescriptorRanges = descriptorRangeOrmMap;
-    rootParameters[10].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeOrmMap);
+    // [9] Normal Map (DescriptorTable t3 - Pixel)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [11] Shadow WVP (CBV b1 - VertexShader用)
-    rootParameters[11].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[11].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-    rootParameters[11].Descriptor.ShaderRegister = 1; // b1
+    // [10] ORM Map (DescriptorTable t4 - Pixel)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [12] Shadow Map (DescriptorTable t5 - PixelShader用)
-    rootParameters[12].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[12].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParameters[12].DescriptorTable.pDescriptorRanges = descriptorRangeShadowMap;
-    rootParameters[12].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeShadowMap);
+    // [11] Shadow WVP (CBV b1 - Vertex)
+    builder.AddCBV(1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-    descriptionRootSignature.pParameters = rootParameters;
-    descriptionRootSignature.NumParameters = _countof(rootParameters);
+    // [12] Shadow Map (DescriptorTable t5 - Pixel)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    D3D12_STATIC_SAMPLER_DESC staticSamplers[2] = {};
-    staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-    staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX;
-    staticSamplers[0].ShaderRegister = 0;
-    staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    // =================================================================
+    // 2. サンプラーの設定 (s0, s1)
+    // =================================================================
 
-    staticSamplers[1].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT; // 影はくっきり判定させる
-    staticSamplers[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER; // 範囲外は境界色を使用
-    staticSamplers[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-    staticSamplers[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-    staticSamplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-    staticSamplers[1].MaxLOD = D3D12_FLOAT32_MAX;
-    staticSamplers[1].ShaderRegister = 1; // s1
-    staticSamplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    // 境界色は「真っ白（深度1.0 = 一番遠い＝影にならない）」に設定
-    staticSamplers[1].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-    descriptionRootSignature.pStaticSamplers = staticSamplers;
-    descriptionRootSignature.NumStaticSamplers = _countof(staticSamplers);
+    // s0: テクスチャ用の標準サンプラー (リニア補間、ラップ)
+    builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob = nullptr;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
-    HRESULT hr = D3D12SerializeRootSignature(&descriptionRootSignature, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
-    if (FAILED(hr)) {
-        if (errorBlob) {
-            OutputDebugStringA(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
-        }
-        assert(false);
-    }
-    hr = device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature_));
-    assert(SUCCEEDED(hr));
+    // s1: 影マップ用の特殊サンプラー (くっきり判定、範囲外は真っ白)
+    D3D12_STATIC_SAMPLER_DESC shadowSampler{};
+    shadowSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+    shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    shadowSampler.MaxLOD = D3D12_FLOAT32_MAX;
+    shadowSampler.ShaderRegister = 1; // s1
+    shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    builder.AddStaticSamplerCustom(shadowSampler);
+
+    // =================================================================
+    // 3. ビルド実行
+    // =================================================================
+    builder.Build(dxCommon_->GetDevice(), rootSignature_.GetAddressOf());
 }
 
 void Object3dCommon::CreatePipelineStates() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
-    // =========================================================
-    // 1. 入力レイアウト (Input Layout)
-    // =========================================================
-    D3D12_INPUT_ELEMENT_DESC inputElementDescs[6] = {};
-    inputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[2] = { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[3] = { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[4] = { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    inputElementDescs[5] = { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = { inputElementDescs, _countof(inputElementDescs) };
+    // 1. 入力レイアウトの定義
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
 
-    // =========================================================
     // 2. シェーダーのコンパイル
-    // =========================================================
-    Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob = dxCommon_->CompileShader(L"Resources/shader/Object3d.VS.hlsl", L"vs_6_0");
-    Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob = dxCommon_->CompileShader(L"Resources/shader/Object3d.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Object3d.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Object3d.PS.hlsl", L"ps_6_0");
 
     // =========================================================
-    // 3. ラスタライザ設定
+    // 【通常描画用 PSO (ブレンドモード6種類)】
     // =========================================================
-    D3D12_RASTERIZER_DESC rasterizerDesc{};
-    // ★重要: 通常は BACK (裏面削除) にしておきます。
-    // ガラス玉の「裏側の反射」まで厳密に見せたい場合のみ NONE ですが、
-    // 描画順序の問題が出るため、最初は BACK 推奨です。
-    rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK; 
-    rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+    GraphicsPipelineBuilder builder;
+    builder.SetRootSignature(rootSignature_.Get());
+    builder.SetInputLayout(inputLayout, _countof(inputLayout));
+    builder.SetShaders(vsBlob.Get(), psBlob.Get());
+    builder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
 
-    // =========================================================
-    // 4. デプスステンシル設定 (基本設定)
-    // =========================================================
-    D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
-    depthStencilDesc.DepthEnable = true;
-    depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL; // デフォルトは書き込みON
-    depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    // レンダーターゲットと深度の設定 (HDR用 16bit Float + Depth 24bit)
+    DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
+    builder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    builder.SetDepthStencilState(true);
 
-    // =========================================================
-    // 5. PSO共通設定
-    // =========================================================
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-    psoDesc.pRootSignature = rootSignature_.Get();
-    psoDesc.InputLayout = inputLayoutDesc;
-    psoDesc.VS = { vertexShaderBlob->GetBufferPointer(), vertexShaderBlob->GetBufferSize() };
-    psoDesc.PS = { pixelShaderBlob->GetBufferPointer(), pixelShaderBlob->GetBufferSize() };
-    psoDesc.RasterizerState = rasterizerDesc;
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.SampleDesc.Count = 1;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    // ※ DepthStencilState と BlendState はループ内で個別に設定する
-
-    // =========================================================
-    // 6. ブレンドモードごとのPSO生成ループ
-    // =========================================================
+    // ブレンドモードごとにPSOを生成
     for (size_t i = 0; i < static_cast<size_t>(BlendMode::kCountOfBlendMode); ++i) {
         BlendMode mode = static_cast<BlendMode>(i);
-        
-        D3D12_BLEND_DESC blendDesc{};
-        blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-        // ★重要: デプス設定をコピーして、モードごとに書き換える準備をする
-        D3D12_DEPTH_STENCIL_DESC currentDepthDesc = depthStencilDesc;
-
-        switch (mode) {
-        case BlendMode::kNone:
-            // 【通常描画 (不透明)】
-            blendDesc.RenderTarget[0].BlendEnable = FALSE;
-            // ★重要: 不透明物はZバッファに書き込む (ALL)
-            currentDepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-            break;
-
-        case BlendMode::kNormal:
-            // 【半透明描画 (ガラスなど)】
-            blendDesc.RenderTarget[0].BlendEnable = TRUE;
-            blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-            blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-            blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-            
-            currentDepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-            break;
-
-        case BlendMode::kAdd:
-            // 【加算合成】
-            blendDesc.RenderTarget[0].BlendEnable = TRUE;
-            blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-            blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-            
-            // 加算も書き込みOFF推奨
-            currentDepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-            break;
-
-        case BlendMode::kSubtract:
-            // 【減算合成】
-            blendDesc.RenderTarget[0].BlendEnable = TRUE;
-            blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-            blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
-            blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-            
-            currentDepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-            break;
-
-        case BlendMode::kMultiply:
-            // 【乗算合成】
-            blendDesc.RenderTarget[0].BlendEnable = TRUE;
-            blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_ZERO;
-            blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_SRC_COLOR;
-            blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-            
-            currentDepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-            break;
-
-        case BlendMode::kScreen:
-            // 【スクリーン合成】
-            blendDesc.RenderTarget[0].BlendEnable = TRUE;
-            blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_INV_DEST_COLOR;
-            blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-            blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-            blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-            
-            currentDepthDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-            break;
-        }
-
-        // 決定した設定をPSO記述子にセット
-        psoDesc.BlendState = blendDesc;
-        psoDesc.DepthStencilState = currentDepthDesc; // ★ここが重要
-
-        HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&graphicsPipelineStates_[i]));
-        assert(SUCCEEDED(hr));
+        // ★ builder側でBlendStateとDepthWriteMaskを自動で良しなに設定してくれる！
+        builder.SetBlendMode(mode);
+        builder.Build(device, graphicsPipelineStates_[i].GetAddressOf());
     }
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowDesc{};
-    shadowDesc.pRootSignature = shadowRootSignature_.Get();
-    shadowDesc.InputLayout = inputLayoutDesc; // 頂点レイアウトは通常と同じ
 
+    // =========================================================
+    // 【影描画用 (シャドウマップ) PSO】
+    // =========================================================
+    auto shadowVsBlob = dxCommon_->CompileShader(L"Resources/shader/Shadow.VS.hlsl", L"vs_6_0");
 
-    Microsoft::WRL::ComPtr<IDxcBlob> shadowVsBlob = dxCommon_->CompileShader(L"Resources/shader/Shadow.VS.hlsl", L"vs_6_0");
-    shadowDesc.VS = { shadowVsBlob->GetBufferPointer(), shadowVsBlob->GetBufferSize() };
+    GraphicsPipelineBuilder shadowBuilder;
+    shadowBuilder.SetRootSignature(shadowRootSignature_.Get());
+    shadowBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
 
-    // ★超重要: ピクセルシェーダーは不要！（深度だけ書き込むため）
-    shadowDesc.PS = { nullptr, 0 };
+    // ★ 影なのでピクセルシェーダーは不要！
+    shadowBuilder.SetShaders(shadowVsBlob.Get(), nullptr);
+    shadowBuilder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
 
-    // ★修正1: rasterizerDefault -> rasterizerDesc (上で定義した変数を使う)
-    shadowDesc.RasterizerState = rasterizerDesc;
-    // 影のギザギザノイズ（シャドウアクネ）を防ぐ魔法の数値
-    shadowDesc.RasterizerState.DepthBias = 10000;
-    shadowDesc.RasterizerState.DepthBiasClamp = 0.0f;
-    shadowDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
+    // ★ 影のギザギザノイズ（シャドウアクネ）を防ぐ設定を一撃で！
+    shadowBuilder.SetDepthBias(10000, 0.0f, 1.0f);
+    shadowBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ALL);
 
-    // ★修正2: currentDepthDesc -> depthStencilDesc (上で定義したベース設定を使う)
-    shadowDesc.DepthStencilState = depthStencilDesc;
+    // ★ 書き込み先はRTVなし(0個)、深度は 32bit Float
+    shadowBuilder.SetRenderTargets(0, nullptr, DXGI_FORMAT_D32_FLOAT);
 
-    // ★修正3: blendDesc -> ダミーの空設定を作る (PSが無いので何でもOK)
-    D3D12_BLEND_DESC dummyBlend{};
-    shadowDesc.BlendState = dummyBlend;
-    shadowDesc.NumRenderTargets = 0;
-    shadowDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT; // デプスバッファのフォーマット
-    shadowDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    shadowDesc.SampleDesc.Count = 1;
-    shadowDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    HRESULT hrShadow = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&shadowDesc, IID_PPV_ARGS(&shadowPipelineState_));
-    assert(SUCCEEDED(hrShadow));
+    shadowBuilder.Build(device, shadowPipelineState_.GetAddressOf());
 }
 
 void Object3dCommon::SetShadowPipelineState() {
@@ -386,110 +176,47 @@ void Object3dCommon::SetShadowGraphicsCommand() {
 }
 
 void Object3dCommon::CreateShadowRootSignature() {
-    ID3D12Device* device = dxCommon_->GetDevice();
+    RootSignatureBuilder builder;
 
-    // ★ 影に必要なのは「WVP行列」と「ボーン情報」の2つだけ！
-    D3D12_ROOT_PARAMETER rootParams[2] = {};
 
-    // [0] WVP行列 (b0)
-    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[0].Descriptor.ShaderRegister = 0; // b0
-    rootParams[0].Descriptor.RegisterSpace = 0;
-    rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    // [0] WVP行列 (CBV b0 - VertexShader用)
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-    // [1] ボーン情報 (t0)
-    D3D12_DESCRIPTOR_RANGE boneRange{};
-    boneRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    boneRange.NumDescriptors = 1;
-    boneRange.BaseShaderRegister = 0; // t0
-    boneRange.RegisterSpace = 0;
-    boneRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    // [1] ボーン情報 (DescriptorTable t0 - VertexShader用)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[1].DescriptorTable.pDescriptorRanges = &boneRange;
-    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = _countof(rootParams);
-    rsDesc.pParameters = rootParams;
-    rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-    HRESULT hr = D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signatureBlob, &errorBlob);
-    if (FAILED(hr)) {
-        assert(false);
-    }
-    device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&shadowRootSignature_));
+    // ビルド実行
+    builder.Build(dxCommon_->GetDevice(), shadowRootSignature_.GetAddressOf());
 }
-
-
 void Object3dCommon::CreateLocalFogPipeline() {
     auto device = dxCommon_->GetDevice();
 
-    // --- 1. ルートシグネチャの作成 ---
-    D3D12_DESCRIPTOR_RANGE srvRange{};
-    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRange.NumDescriptors = 1;
-    srvRange.BaseShaderRegister = 0; // t0 (デプスバッファ)
+    // =================================================================
+    // 1. ルートシグネチャの作成
+    // =================================================================
+    RootSignatureBuilder rsBuilder;
 
-    //  ボーン情報が上書きしてくる用のダミー領域 (t1)
-    D3D12_DESCRIPTOR_RANGE boneRange{};
-    boneRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    boneRange.NumDescriptors = 1;
-    boneRange.BaseShaderRegister = 1; // t1
-
-    D3D12_ROOT_PARAMETER rootParams[4] = {};
-
-    // [0] b0: WVP行列 (Model::DrawShadow と一致)
-    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[0].Descriptor.ShaderRegister = 0;
-    rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    // [0] b0: WVP行列 (Model::DrawShadow と一致させる)
+    rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 
     // [1] t1: ボーン情報 (Model::DrawShadow がここに書き込んでくるので空けておく！)
-    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[1].DescriptorTable.pDescriptorRanges = &boneRange;
-    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-    // [2] t0: デプステクスチャ (ピクセルシェーダー用。1番から2番へ引っ越し！)
-    rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
-    rootParams[2].DescriptorTable.pDescriptorRanges = &srvRange;
-    rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    // [2] t0: デプステクスチャ (ピクセルシェーダー用)
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [3] b1: ローカルフォグ設定 (2番から3番へ引っ越し！)
-    rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[3].Descriptor.ShaderRegister = 1;
-    rootParams[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    // [3] b1: ローカルフォグ設定
+    rsBuilder.AddCBV(1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    D3D12_STATIC_SAMPLER_DESC sampler{};
-    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-    sampler.ShaderRegister = 0;
-    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    // s0: テクスチャサンプラー (Clamp設定)
+    rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
-    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-    rsDesc.NumParameters = _countof(rootParams);
-    rsDesc.pParameters = rootParams;
-    rsDesc.NumStaticSamplers = 1;
-    rsDesc.pStaticSamplers = &sampler;
-    rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    rsBuilder.Build(device, localFogRootSignature_.GetAddressOf());
 
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob, errorBlob;
-    D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1_0, &signatureBlob, &errorBlob);
-    device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&localFogRootSignature_));
-
-    // --- 2. PSOの作成 ---
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/LocalFog.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/LocalFog.PS.hlsl", L"ps_6_0");
-
-    // 頂点レイアウト (Object3dのものと完全に合わせる)
-    D3D12_INPUT_ELEMENT_DESC inputElementDescs[] = {
+    // =================================================================
+    // 2. PSOの作成
+    // =================================================================
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -498,35 +225,28 @@ void Object3dCommon::CreateLocalFogPipeline() {
         { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-    psoDesc.pRootSignature = localFogRootSignature_.Get();
-    psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/LocalFog.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/LocalFog.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(localFogRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
 
     // ★重要: カメラが箱の中に入っても見えるように、表面をカリングして裏面を描く！
-psoDesc.RasterizerState = { D3D12_FILL_MODE_SOLID, D3D12_CULL_MODE_FRONT };
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID);
 
-    // 半透明合成設定
-    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.BlendState.RenderTarget[0].BlendEnable = TRUE;
-    psoDesc.BlendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    psoDesc.BlendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-    psoDesc.BlendState.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-    psoDesc.BlendState.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-    psoDesc.BlendState.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-    psoDesc.BlendState.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-    psoDesc.DepthStencilState.DepthEnable = FALSE;
-    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-    psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoDesc.SampleDesc.Count = 1;
+    // 半透明合成設定 (BlendMode::kNormal と同じ設定を流用)
+    psoBuilder.SetBlendMode(BlendMode::kNormal);
 
-    device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&localFogPipelineState_));
+    // ★重要: フォグはZテスト不要＆Zバッファへの書き込みもしないので上書きしてOFFにする
+    psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO);
+
+    // レンダーターゲット (デプスバッファは使わないので DSVFormat は UNKNOWN にする)
+    DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
+    psoBuilder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
+
+    psoBuilder.Build(device, localFogPipelineState_.GetAddressOf());
 }
 
 void Object3dCommon::SetLocalFogGraphicsCommand() {

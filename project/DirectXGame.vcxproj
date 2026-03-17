@@ -103,7 +103,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;DD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -155,6 +155,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
@@ -257,6 +258,13 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp" />
     <ClCompile Include="GPUParticleEditor.cpp" />
     <ClCompile Include="GPUParticleEmitter.cpp" />
+    <ClCompile Include="GraphicsPipelineBuilder.cpp" />
+    <ClCompile Include="HierarchyWindow.cpp" />
+    <ClCompile Include="InspectorWindow.cpp" />
+    <ClCompile Include="PrimitiveDrawer.cpp" />
+    <ClCompile Include="ProjectWindow.cpp" />
+    <ClCompile Include="RootSignatureBuilder.cpp" />
+    <ClCompile Include="SceneSerializer.cpp" />
     <ClCompile Include="VFXSequencer.cpp" />
     <ClCompile Include="VFXSequencerEditor.cpp" />
   </ItemGroup>
@@ -349,6 +357,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EditorCommon.h" />
+    <ClInclude Include="EngineManualWindow.h" />
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
@@ -616,6 +626,14 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="GPUParticleConfig.h" />
     <ClInclude Include="GPUParticleEditor.h" />
     <ClInclude Include="GPUParticleEmitter.h" />
+    <ClInclude Include="GraphicsPipelineBuilder.h" />
+    <ClInclude Include="HierarchyWindow.h" />
+    <ClInclude Include="InspectorWindow.h" />
+    <ClInclude Include="PrimitiveDrawer.h" />
+    <ClInclude Include="ProjectWindow.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="RootSignatureBuilder.h" />
+    <ClInclude Include="SceneSerializer.h" />
     <ClInclude Include="VFXSequencer.h" />
     <ClInclude Include="VFXSequencerEditor.h" />
   </ItemGroup>
@@ -626,6 +644,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DirectXGame.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

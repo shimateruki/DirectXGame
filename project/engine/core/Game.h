@@ -20,7 +20,7 @@
 #include <PostEffectEditor.h>
 #include "GhostDirector.h"
 #include "GPUParticleEditor.h"
-
+#include "EngineManualWindow.h"
 
 
 class Game : public Framework {
@@ -57,14 +57,15 @@ private:
 	std::unique_ptr<GhostDirector> ghostDirector_;
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
+	EngineManualWindow engineManualWindow_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;
 	bool showDebugWindows_ = true;
 	bool showSpriteInspector_ = false;
-	bool showDebugConsole_ = false;
+	bool showDebugConsole_ = true;
 	bool showCameraEditor = false;
 	bool showGhostRecorder_ = false;
-	bool showTimeController_ = false;
+	bool showTimeController_ = true;
 	bool showPostEffectEditor_ = false; 
 	bool showBossDebug_ = false;
 	ImVec2 lastGameViewSize_ = { 0, 0 };
