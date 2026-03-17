@@ -68,6 +68,10 @@ public:
     bool IsLockingOn() const { return isLockingOn_; }
     void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
 
+    // --- コンボ：次のクリックで2段目を出すためのフラグ操作 ---
+    void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
+    bool ConsumePendingAttack2() { bool v = pendingAttack2_; pendingAttack2_ = false; return v; }
+
     // --- 各種パラメータ取得 ---
     InputManager* GetInputManager() { return inputManager_; }
 
@@ -99,6 +103,9 @@ private:
     // --- プレイヤー状態フラグ ---
     bool isLockingOn_ = false;       // 敵をロックオンしているか
     bool isControlActive_ = true;    // 入力を受け付ける状態か（デモシーン等で制限用）
+
+    // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
+    bool pendingAttack2_ = false;
 
     // --- 無敵関連 ---
     bool isInvincible_ = false;
