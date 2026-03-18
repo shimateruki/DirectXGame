@@ -3,6 +3,7 @@
 #include "DebugConsole.h"
 #include "BaseScene.h"
 #include "Event.h" 
+#include "Player.h"
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
@@ -62,6 +63,13 @@ void GameRule::Initialize(BaseScene* scene) {
 
 // ▼ 汎用ダメージ関数 
 void GameRule::ApplyDamage(Object3d* target, float damage) {
+    if (target->GetClassName() == "Player") {
+        Player* player = static_cast<Player*>(target);
+        // 被弾無敵（赤色）または回避ダッシュ（青色）中ならダメージを無効化！
+        if (player->IsInvincible()) {
+            return;
+        }
+    }
     if (target->param_.has_value()) {
         target->param_->hp -= damage;
 
