@@ -34,16 +34,28 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
 void Player::Update(float deltaTime)
 {
-    // 時間が進んでいる（ポーズ中ではない）時だけ、操作やアニメーションを更新する
+    // 時間が進んでいる（ポーズ中ではない）時だけ、操作やアニメーションを更新
     if (deltaTime > 0.0f)
     {
-        // 1. 移動制御の更新 (Strategy)
+        // 1. 無敵タイマーの管理 (ダメージ被弾時)
+        if (damageCooldownTimer_ > 0.0f)
+        {
+            damageCooldownTimer_ -= deltaTime;
+            if (damageCooldownTimer_ <= 0.0f)
+            {
+                damageCooldownTimer_ = 0.0f;
+                // ★重要: 被弾無敵フラグのみを解除 (赤色が消える)
+                SetDamageInvincible(false);
+            }
+        }
+
+        // 2. 移動制御の更新 (Strategy Pattern)
         if (isControlActive_ && mover_)
         {
             mover_->Update(deltaTime);
         }
 
-        // 2. アニメーション・状態の更新 (State)
+        // 3. アニメーション・状態の更新 (State Pattern)
         if (state_)
         {
             state_->Update(this);
@@ -54,19 +66,21 @@ void Player::Update(float deltaTime)
         }
     }
 
-    // 3. 親クラスの更新 (物理挙動・行列計算など)
+    // 4. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
     Character::Update(deltaTime);
 
-    // --- アプリ層での最終上書き（モデルアニメ適用後に頭を上書き） ---
-    if (state_)
+    // =======================================================
+    // 5. モデルアニメ適用後の最終上書き処理 (PostUpdate)
+    // =======================================================
+    if (state_ && deltaTime > 0.0f)
     {
-        // Idle ステートなら頭上書き処理を呼ぶ（他ステートも同様に拡張可）
+        // Idleステートなら待機時の微細な動きを適用
         if (auto idle = dynamic_cast<PlayerStateIdle*>(state_.get()))
         {
             idle->ApplyPostUpdate(this, deltaTime);
         }
-        // Run ステートなら走りの後処理（腕・足の振り等）を呼ぶ
-        if (auto run = dynamic_cast<PlayerStateRun*>(state_.get()))
+        // Runステートなら走りに合わせた腕や脚の制御を適用
+        else if (auto run = dynamic_cast<PlayerStateRun*>(state_.get()))
         {
             run->ApplyPostUpdate(this, deltaTime);
         }
@@ -95,9 +109,10 @@ bool Player::OnCollision(Object3d* other)
     // ① まずプレイヤー本体の当たり判定を計算
     CollisionInfo info = CheckCollision(other);
 
-    // ② ★追加: 子オブジェクト（パーツ）の当たり判定も全てチェックする
+    // ② 子オブジェクト（パーツ）の当たり判定も全てチェックする
     for (Object3d* child : GetChildren())
     {
+        if (!child) continue;
         CollisionInfo childInfo = child->CheckCollision(other);
         if (childInfo.isColliding)
         {
@@ -116,30 +131,50 @@ bool Player::OnCollision(Object3d* other)
         return false;
     }
 
-    // 無敵時: ダメージ通知は行わないが物理押し戻しは適用（壁との衝突は処理）
-    if (isInvincible_)
-    {
-        if (attribute & kAllSolid)
-        { // ※ kMapBlock などソリッド属性のマクロに合わせてください
-            ApplyPhysicsCollision(info, attribute);
-        }
-        return true;
-    }
-
-    // イベントの発行 (ゲームルールやUIへの通知)
-    PlayerHitEvent event;
-    event.me = this;
-    event.hitObject = other;
-    event.normal = info.normal;
-    EventManager::GetInstance()->Dispatch(event);
-
-    // 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
+    // =======================================================
+    // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
+    // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
+    // =======================================================
     if (attribute & kAllSolid)
     {
-        ApplyPhysicsCollision(info, attribute); // ここで親の座標が押し上げられ、落下速度もリセットされる
+        ApplyPhysicsCollision(info, attribute);
     }
 
-    return true; // 衝突処理完了
+    // =======================================================
+    // 2. ダメージ処理 (敵の攻撃に当たった時)
+    // =======================================================
+    // 属性が「kEnemyAttack」の時のみダメージ判定を行います。
+    if (attribute & kEnemyAttack)
+    {
+        // タイマーと「総合的な無敵状態」の両方をチェック
+        if (damageCooldownTimer_ <= 0.0f && !IsInvincible())
+        {
+            // ダメージイベントを発行（GameRule.cpp で HP 減少等が処理されます）
+            DamageEvent dmgEvent;
+            dmgEvent.target = this;
+            dmgEvent.attacker = other;
+            dmgEvent.damageAmount = 20.0f;
+            EventManager::GetInstance()->Dispatch(dmgEvent);
+
+            // 無敵時間をセット
+            damageCooldownTimer_ = 1.5f;
+
+            // ★重要: ダメージ用の無敵フラグのみを立てる (赤色になる)
+            SetDamageInvincible(true);
+        }
+    }
+
+    // =======================================================
+    // 3. ギミック・汎用イベントの発行
+    // =======================================================
+    // ワープやスイッチなど、ダメージ以外の判定のために通知します。
+    PlayerHitEvent hitEvent;
+    hitEvent.me = this;
+    hitEvent.hitObject = other;
+    hitEvent.normal = info.normal;
+    EventManager::GetInstance()->Dispatch(hitEvent);
+
+    return true;
 }
 // =================================================================
 // 移動制御 (Strategy Pattern)
@@ -192,41 +227,29 @@ void Player::PlayAnimation(const std::string& animName, bool loop)
 // =======================================================
 // 無敵関連の実装
 // =======================================================
-void Player::SetInvincible(bool inv)
-{
-    if (inv == isInvincible_) return;
+void Player::SetDamageInvincible(bool inv) {
+    isDamageInvincible_ = inv;
+    UpdateColor(); // 状態が変わったら色を更新
+}
 
-    if (inv)
-    {
-        // 無敵開始: 現在の色を保存し、青にする（本体）
-        savedColor_ = GetColor();
-        SetColor({ 0.0f, 0.0f, 1.0f, 1.0f });
+void Player::SetDashInvincible(bool inv) {
+    isDashInvincible_ = inv;
+    UpdateColor(); // 状態が変わったら色を更新
+}
 
-        // 子パーツの色も保存して青にする
-        childSavedColors_.clear();
-        for (Object3d* child : GetChildren())
-        {
-            if (!child) continue;
-            childSavedColors_[child] = child->GetColor();
-            child->SetColor({ 0.0f, 0.0f, 1.0f, 1.0f });
-        }
+void Player::UpdateColor() {
+    Vector4 targetColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
 
-        isInvincible_ = true;
+    if (isDamageInvincible_) {
+        targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ★ ダメージ中は最優先で「赤」！
     }
-    else
-    {
-        // 無敵終了: 本体色を復元
-        SetColor(savedColor_);
+    else if (isDashInvincible_) {
+        targetColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // ★ 回避中は「青」！
+    }
 
-        // 子パーツの色を復元
-        for (auto& kv : childSavedColors_)
-        {
-            Object3d* child = kv.first;
-            if (!child) continue;
-            child->SetColor(kv.second);
-        }
-        childSavedColors_.clear();
-
-        isInvincible_ = false;
+    // 本体と子パーツの色を一括変更
+    SetColor(targetColor);
+    for (Object3d* child : GetChildren()) {
+        if (child) child->SetColor(targetColor);
     }
 }

@@ -84,12 +84,14 @@ public:
     {
         return param_.has_value() ? param_->speed : 0.5f;
     }
+    // ==================================================
+        // 無敵フレーム (Invincibility) 管理
+        // ==================================================
+    void SetDamageInvincible(bool inv); // ダメージ被弾時のフラグ
+    void SetDashInvincible(bool inv);   // 回避ダッシュ時のフラグ
 
-    // ==================================================
-    // 無敵フレーム (Invincibility) 管理
-    // ==================================================
-    void SetInvincible(bool inv);
-    bool IsInvincible() const { return isInvincible_; }
+    // どっちか一つでもtrueなら無敵として扱う
+    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
 
 private:
     // --- 内部コンポーネント ---
@@ -113,4 +115,8 @@ private:
 
     // 子パーツの色を保存しておくマップ（無敵解除時に復元）
     std::unordered_map<Object3d*, Vector4> childSavedColors_;
+    float damageCooldownTimer_ = 0.0f;
+    bool isDamageInvincible_ = false;
+    bool isDashInvincible_ = false;
+    void UpdateColor();
 };

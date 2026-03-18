@@ -32,12 +32,11 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 	// デフォルト戦略
 	strategy_ = std::make_unique<MoveStrategy3D>();
 }
-
 void PlayerMover::Update(float deltaTime)
 {
 	if (!player_ || !inputManager_ || !strategy_) return;
 
-	// --- クールダウンタイマー更新（先に処理） ---
+	// --- 1. クールダウンタイマー更新 ---
 	if (dashCooldownTimer_ > 0.0f)
 	{
 		dashCooldownTimer_ -= deltaTime;
@@ -48,13 +47,13 @@ void PlayerMover::Update(float deltaTime)
 		}
 	}
 
-	// 1. 現在の速度を取得 (Characterによる重力計算済み)
+	// 2. 現在の速度を取得 (Characterによる重力計算済み)
 	Vector3 velocity = player_->GetVelocity();
 
-	// 2. 入力移動ベクトルの計算
+	// 3. 入力移動ベクトルの計算
 	Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
-	// ダッシュ開始判定: Shift 押下（トリガー）かつ移動入力ありかつダッシュ可能であること
+	// --- 4. ダッシュ（回避）開始判定 ---
 	bool shiftTriggered = inputManager_->IsKeyTriggered(DIK_LSHIFT) || inputManager_->IsKeyTriggered(DIK_RSHIFT);
 	bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
@@ -70,56 +69,63 @@ void PlayerMover::Update(float deltaTime)
 			isDashing_ = true;
 			dashTimer_ = dashDuration_;
 
-			// クールタイムは開始と同時にカウントダウンを始める（これで連続回避を防止）
+			// クールタイム管理
 			dashAvailable_ = false;
 			dashCooldownTimer_ = dashCooldown_;
 
-			// 無敵付与（ダッシュ中のみ）
+			// =======================================================
+			// ★ 重要：回避用の無敵フラグのみを立てる！
+			// =======================================================
 			if (player_)
 			{
-				player_->SetInvincible(true);
+				player_->SetDashInvincible(true);
 			}
 
-			// 子パーツの当たりを一時的に無効化する（元の属性は保存しておく）
+			// 子パーツの当たり判定を一時保存して無効化
 			childOriginalAttributes_.clear();
 			for (Object3d* child : player_->GetChildren())
 			{
 				if (!child) continue;
 				uint32_t orig = child->GetCollisionAttribute();
 				childOriginalAttributes_.emplace(child, orig);
-				child->SetCollisionAttribute(0); // 完全に無効化（必要ならビットマスクで調整）
+				child->SetCollisionAttribute(0);
 			}
 
-			// エフェクト（任意）
+			// ダッシュエフェクト
 			if (particleSystem_)
 			{
 				Vector3 pos = player_->GetWorldPosition();
 				pos.y -= 1.0f;
 				particleSystem_->SpawnParticles(
 					pos, 6, 1.0f, &dashDirection_, 20.0f,
-					{ 1,0.8f,0.2f,1 }, { 1,0.8f,0.2f,0 }, 0.1f, 0.4f, 0.6f, 0.05f
+					{ 1, 0.8f, 0.2f, 1 }, { 1, 0.8f, 0.2f, 0 }, 0.1f, 0.4f, 0.6f, 0.05f
 				);
 			}
 		}
 	}
 
-	// ★重要: X, Z (移動) は上書きし、Y (重力) は維持する
+	// --- 5. 速度の決定（ダッシュ中 or 通常移動） ---
 	if (isDashing_)
 	{
-		// ダッシュ中は指定速度で override
+		// ダッシュ中は入力に関わらず前方へ固定速度
 		velocity.x = dashDirection_.x * dashSpeed_;
 		velocity.z = dashDirection_.z * dashSpeed_;
 
-		// ダッシュタイマー更新
+		// タイマー更新
 		dashTimer_ -= deltaTime;
 		if (dashTimer_ <= 0.0f)
 		{
 			isDashing_ = false;
-			// 無敵解除（ダッシュ終了時）
+
+			// =======================================================
+			// ★ 重要：回避用の無敵フラグのみを下ろす！
+			// これでダメージ中の赤色が勝手に消えることはなくなります
+			// =======================================================
 			if (player_)
 			{
-				player_->SetInvincible(false);
+				player_->SetDashInvincible(false);
 			}
+
 			// 子パーツの衝突属性を復元
 			for (auto& kv : childOriginalAttributes_)
 			{
@@ -137,46 +143,37 @@ void PlayerMover::Update(float deltaTime)
 		velocity.z = inputMove.z;
 	}
 
-	// 3. 回転処理 (移動入力がある場合のみ) - 滑らかに補間する
+	// --- 6. 回転処理（滑らかな向き変更） ---
 	if (!player_->IsLockingOn())
 	{
 		if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f)
 		{
 			float targetAngle = std::atan2(velocity.x, velocity.z);
-
-			// 現在のY角度
 			float currentY = player_->GetRotation().y;
 
-			// 差分を [-PI,PI] に正規化
 			auto NormalizeAngle = [](float a)
 				{
-					while (a > 3.14159265358979323846f) a -= 2.0f * 3.14159265358979323846f;
-					while (a < -3.14159265358979323846f) a += 2.0f * 3.14159265358979323846f;
+					while (a > 3.1415926535f) a -= 6.2831853071f;
+					while (a < -3.1415926535f) a += 6.2831853071f;
 					return a;
 				};
 			float diff = NormalizeAngle(targetAngle - currentY);
 
-			// 滑らかさ係数（大きいほど速く追従） - 必要なら値を調整
-			const float turnSpeed = 12.0f; // [rad/s] 実用的な値
-			// 指数的減衰で補間（フレームレートに依存しづらい）
+			const float turnSpeed = 12.0f;
 			float alpha = 1.0f - std::expf(-turnSpeed * deltaTime);
 
 			float newY = currentY + diff * alpha;
-			newY = NormalizeAngle(newY);
-
-			player_->SetRotationY(newY);
+			player_->SetRotationY(NormalizeAngle(newY));
 		}
 	}
 
-	// 4. ジャンプ処理
+	// --- 7. ジャンプ処理 ---
 	if (player_->IsGrounded())
 	{
 		if (inputManager_->IsKeyTriggered(DIK_SPACE))
 		{
-			// ★修正: Player(Editor)の設定値を使用
 			velocity.y = player_->GetJumpPower();
 
-			// エフェクト
 			if (particleSystem_)
 			{
 				Vector3 footPos = player_->GetWorldPosition();
@@ -189,7 +186,7 @@ void PlayerMover::Update(float deltaTime)
 		}
 	}
 
-	// 5. 結果を適用
+	// --- 8. 最終的な速度をセット ---
 	player_->SetVelocity(velocity);
 }
 
