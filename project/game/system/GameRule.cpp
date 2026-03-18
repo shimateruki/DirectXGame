@@ -77,9 +77,9 @@ void GameRule::ApplyDamage(Object3d* target, float damage) {
 
         if (target->param_->hp <= 0.0f) {
             DebugConsole::GetInstance()->AddLog(target->GetName() + " を撃破！");
-            if (scene_) {
+         /*   if (scene_) {
                 scene_->RequestRemoveObject(target);
-            }
+            }*/
         }
     }
 }

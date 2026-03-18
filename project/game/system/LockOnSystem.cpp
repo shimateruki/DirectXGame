@@ -8,6 +8,7 @@
 
 // 定義 (kEnemy) のために必要ならインクルード
 #include "BaseEnemy.h" // もし属性チェックで必要なら
+#include <DebugConsole.h>
 
 LockOnSystem::LockOnSystem() {
     inputManager_ = nullptr;
@@ -22,11 +23,10 @@ LockOnSystem::~LockOnSystem() {
 void LockOnSystem::Initialize(InputManager* inputManager) {
     inputManager_ = inputManager;
 }
-
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
 
-    // (1) Zキー入力処理
+    // (1) 0キー(Zキー等)入力処理
     if (inputManager_->IsKeyTriggered(DIK_0)) {
         isLockingOn_ = !isLockingOn_;
 
@@ -36,6 +36,9 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             if (!lockOnTarget_) {
                 isLockingOn_ = false; // 見つからなかったら解除
             }
+            else {
+                lostSightTimer_ = 0.0f; // ★ 新規ロックオン時はタイマーをリセット
+            }
         }
 
         if (!isLockingOn_) {
@@ -44,9 +47,15 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             camera->SyncRotationToCurrentView();
             camera->SetLockOnTarget(nullptr);
             camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モード
+            lostSightTimer_ = 0.0f; // ★ 手動解除時も念のためリセット
         }
 
-        player->SetLockOn(isLockingOn_); // プレイヤーに通知
+        // =========================================================
+        // ★修正：無限回転バグの原因！プレイヤーに「ロックオン中」だと教えない！
+        // これにより、MoveStrategy3D は通常時と同じように
+        // 「カメラが向いている方向」を基準に真っ直ぐ移動してくれます。
+        // =========================================================
+        // player->SetLockOn(isLockingOn_); // ← コメントアウト！！
     }
 
     // (2) ロックオン中の挙動
@@ -54,25 +63,58 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
         // ターゲットが消えた(死亡など)場合の安全対策
         if (!lockOnTarget_) {
             isLockingOn_ = false;
-            player->SetLockOn(false);
+            // player->SetLockOn(false); // ← ここも念のためコメントアウト！！
             camera->SetFollowMode(Camera::FollowMode::kAimable);
             return;
+        }
+
+        // ========================================================
+        // ★ 壁による視線切れチェック (モンハン・ダクソ方式)
+        // ========================================================
+        Vector3 playerPos = player->GetWorldPosition();
+        Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
+
+        // 足元だと地面をすってしまうので、胸の高さ(Y+1.0f)からレイを飛ばす
+        Vector3 rayStart = { playerPos.x, playerPos.y + 1.0f, playerPos.z };
+        Vector3 rayEnd = { enemyPos.x, enemyPos.y + 1.0f, enemyPos.z };
+        Vector3 toEnemy = { rayEnd.x - rayStart.x, rayEnd.y - rayStart.y, rayEnd.z - rayStart.z };
+
+        float dist = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.y * toEnemy.y + toEnemy.z * toEnemy.z);
+        if (dist > 0.0f) {
+            Vector3 dir = { toEnemy.x / dist, toEnemy.y / dist, toEnemy.z / dist };
+
+            // 障害物があるかチェック (第4引数の 1 は kGround などの壁属性)
+            RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, dir, dist, 1);
+
+            if (hit.isHit) {
+                // 壁に遮られたらタイマーを進める (約60FPS想定で 0.016f ずつ加算)
+                lostSightTimer_ += 0.016f;
+
+                // 1.5秒間、壁に隠れ続けたら強制的にロックオン解除！
+                if (lostSightTimer_ >= 1.5f) {
+                    isLockingOn_ = false;
+                    lockOnTarget_ = nullptr;
+                    // player->SetLockOn(false); // ← 視線切れ解除時もコメントアウト！！
+                    camera->SyncRotationToCurrentView(); // 今のカメラの向きを維持
+                    camera->SetLockOnTarget(nullptr);
+                    camera->SetFollowMode(Camera::FollowMode::kAimable);
+                    lostSightTimer_ = 0.0f;
+
+                    DebugConsole::GetInstance()->AddLog("LockOn Lost: Target behind wall.");
+                    return; // 今フレームの処理はここで終了
+                }
+            }
+            else {
+                // 見えているならタイマーをリセット（一瞬でも見えれば回復する）
+                lostSightTimer_ = 0.0f;
+            }
         }
 
         // カメラ設定 (毎フレーム更新)
         camera->SetFollowMode(Camera::FollowMode::kLockOn);
         camera->SetLockOnTarget(lockOnTarget_);
-
-        // プレイヤーの向き制御 (Y軸だけ敵に向ける)
-        Vector3 playerPos = player->GetWorldPosition();
-        Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
-        Vector3 toEnemy = enemyPos - playerPos;
-
-        static Math math;
-        player->SetRotationY(std::atan2(toEnemy.x, toEnemy.z));
     }
 }
-
 Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     static Math math;
     if (!player || !camera) return nullptr;
@@ -81,14 +123,35 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     float maxDot = -2.0f; // 内積の初期値
 
     Vector3 playerPos = player->GetWorldPosition();
-    Vector3 cameraForward = math.Normalize(camera->GetTargetPoint() - camera->GetEye());
 
+    // =======================================================
+    // ★ 修正1：カメラの「上下の角度（Y軸）」を無視して平面の向きだけで判定！
+    // =======================================================
+    Vector3 cameraForward = camera->GetTargetPoint() - camera->GetEye();
+    cameraForward.y = 0.0f; // 高さを無視
+    float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.z * cameraForward.z);
+    if (cfLen > 0.001f) {
+        cameraForward.x /= cfLen;
+        cameraForward.z /= cfLen;
+    }
+    else {
+        cameraForward = { 0.0f, 0.0f, 1.0f };
+    }
 
     const uint32_t kTargetAttribute = 2; // kEnemy (例)
 
     for (const auto& obj : objects) {
         // 敵属性を持ち、かつ自分自身でないもの
         if (!(obj->GetCollisionAttribute() & kTargetAttribute) || obj.get() == player) {
+            continue;
+        }
+
+        // =======================================================
+        // ★ 修正2：0,0,0付近に吸われる元凶「ブロック」を除外する！
+        // 名前の中に "Block" や "block" が入っている場合は無視します。
+        // =======================================================
+        std::string name = obj->GetName();
+        if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) {
             continue;
         }
 
@@ -99,16 +162,29 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         // 距離チェック
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
 
-        Vector3 toEnemyNormalized = toEnemy / distance;
-        float dot = math.Dot(cameraForward, toEnemyNormalized);
+        // =======================================================
+        // ★ 修正3：敵への方向も「上下（Y軸）」を無視して平面で判定！
+        // =======================================================
+        Vector3 toEnemy2D = toEnemy;
+        toEnemy2D.y = 0.0f; // 高さを無視
+        float teLen = std::sqrt(toEnemy2D.x * toEnemy2D.x + toEnemy2D.z * toEnemy2D.z);
+        if (teLen > 0.001f) {
+            toEnemy2D.x /= teLen;
+            toEnemy2D.z /= teLen;
+        }
 
-        // 視界チェック (正面に近いほど優先)
-        if (dot > kMinLockOnDot_ && dot > maxDot) {
+        // 平面同士で角度チェック！これでカメラが見下ろしていても完璧に判定できる
+        float dot = math.Dot(cameraForward, toEnemy2D);
+
+        // 視界チェック (0.0f で画面前方180度をOKにする超・快適仕様！)
+        if (dot > 0.0f && dot > maxDot) {
 
             // レイキャストによる遮蔽物チェック
+            // ※壁チェックのレイ(光線)を飛ばす時は、ちゃんと上下も含めた「本当の方向」に飛ばす！
+            Vector3 toEnemyNormalized = toEnemy / distance;
             RaycastHit hit = CollisionManager::GetInstance()->Raycast(
                 playerPos,          // 開始点
-                toEnemyNormalized,  // 方向
+                toEnemyNormalized,  // 本当の3D方向
                 distance,           // 最大距離
                 1                   // kGround (例: 地面・壁属性)
             );
