@@ -212,30 +212,41 @@ void BossCore::ChangeState(State nextState) {
         }
     }
 
-    if (!director_) return;
-
-    // 状態移行に合わせて、ディレクターの再生シナリオを切り替える
+    // ==========================================
+    // ★ 修正：状態移行に合わせて、攻撃アニメーションをスタート！
+    // ==========================================
     switch (state_) {
     case State::Idle:
-        //director_->LoadScenario("boss_attack_1");
-        //director_->PlayScenario(false, false);
+        // 待機状態に入った瞬間にタイマーをリセット（ここから2秒数え始めます）
+        animTimer_ = 0.0f;
         break;
 
     case State::Attack: {
-        // ランダムな攻撃パターンを選択 (1〜10)
-        int nextAttack = rand() % 10 + 1;
-        std::string attackName = "boss_attack_" + std::to_string(nextAttack);
+        // ランダムな攻撃パターンを選択 (1〜4)
+        int nextAttack = rand() % 4 + 1;
 
-        // TODO: 攻撃シナリオの実装が完了したらコメントアウトを外す
-        // director_->LoadScenario(attackName);
-        // director_->PlayScenario();
+        // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
+        attackMode_ = nextAttack;
+        animTimer_ = 0.0f;
+        shotCount_ = 0; // コンボや射撃カウントもリセット
+
+        if (attackMode_ == 1) {
+            animPhase_ = 1;
+        }
+        else if (attackMode_ == 2) {
+            animPhase_ = 10;
+        }
+        else if (attackMode_ == 3) {
+            animPhase_ = 20;
+        }
+        else if (attackMode_ == 4) {
+            animPhase_ = 39;
+        }
         break;
     }
 
     case State::Weak:
-        // TODO: 弱点露出シナリオの実装が完了したらコメントアウトを外す
-        // director_->LoadScenario("boss_weak");
-        // director_->PlayScenario();
+        animTimer_ = 0.0f;
         break;
     }
 }
@@ -244,33 +255,26 @@ void BossCore::ChangeState(State nextState) {
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
-    // 待機シナリオが終了したら、攻撃ステートへ移行
-    //if (director_ && director_->IsFinished()) {
-    //    ChangeState(State::Attack);
-    //}
+    // ==========================================
+    // ★ 修正：一定時間待機したら、攻撃ステートへ自動で移行！
+    // ==========================================
+    animTimer_ += deltaTime;
+
+    // 例：2.0秒待機したら攻撃へ（タイクラーさんのお好みで秒数は調整してください！）
+    if (animTimer_ >= 2.0f) {
+        ChangeState(State::Attack);
+    }
 }
 
 void BossCore::UpdateAttack(float deltaTime) {
-    if (!director_) return;
+    // ==========================================
+    // ★ 修正：アニメーションの終了を監視する！
+    // UpdateAnimationSequence() の中で攻撃が完了すると attackMode_ が 0 に戻るのを利用。
+    // ==========================================
 
-    // シナリオ内で発生したイベント(トリガー)を取得
-    ActiveEvent eventInfo = director_->GetActiveEvent();
-
-    if (eventInfo.id != 0 && eventInfo.targetObject) {
-        // イベント発生元のワールド座標を取得 (弾やエフェクトの発生位置として使用)
-        Vector3 spawnPos = eventInfo.targetObject->GetWorldPosition();
-
-        if (eventInfo.id == 1) {
-            // イベントID 1 の処理 (例: 斬撃エフェクト生成など)
-        }
-        else if (eventInfo.id == 2) {
-            // イベントID 2 の処理 (例: 飛び道具の発射など)
-        }
-    }
-
-    // 攻撃シナリオが終了したら、弱点露出ステートへ移行
-    if (director_->IsFinished()) {
-        ChangeState(State::Weak);
+    // 攻撃が完全に終了して待機状態(0)に戻ったら、Idleステートへ移行！
+    if (attackMode_ == 0) {
+        ChangeState(State::Idle);
     }
 }
 
@@ -315,6 +319,7 @@ void BossCore::UpdateWeak(float deltaTime) {
         ChangeState(State::Idle);
     }
 }
+
 void BossCore::UpdateAnimationSequence(float deltaTime) {
 
     // ==========================================
@@ -323,19 +328,15 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     if (!SceneManager::GetInstance()->IsPlaying()) {
         return; // 再生中でなければ操作を受け付けない
     }
-    if(state_ == State::Weak) {
+    if (state_ == State::Weak) {
         return;
     }
-    InputManager* input = InputManager::GetInstance();
 
     // ======================================
-    // フェーズ0: 入力待ち（待機）
+    // フェーズ0: 待機（Idleステート中）
     // ======================================
     if (animPhase_ == 0) {
-
-        // ==========================================
-        // ★ 修正：待機中は常にブロックを周回軌道に乗せる！
-        // ==========================================
+        // 待機中は常にブロックをランダムスケールの周回軌道に乗せる！
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             OrbitData orbit = GetIdleOrbit(i);
             armorBlocks_[i]->SetTranslate(orbit.pos);
@@ -344,45 +345,43 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
         }
 
-        if (input->IsKeyTriggered(DIK_1)) {
-            // モード1：形態変化からの突進
-            attackMode_ = 1;
-            animPhase_ = 1; // ★ 変形フェーズからスタート！
-            animTimer_ = 0.0f;
-            ChangeState(State::Attack);
-            // --- 形態変化の準備（座標の計算と記憶） ---
+        // ★ 自動ループ化に伴い、キー入力は全削除！
+        // 攻撃のトリガーは ChangeState(State::Attack) が自動で行います。
+        return;
+    }
+
+    // ======================================
+    // 攻撃モード1：形態変化 ＆ 突進 (Phase 1 ~ 5)
+    // ======================================
+    if (attackMode_ == 1) {
+
+        // ★ 自動化の追加：Phase 1 に入った「最初の1フレーム」だけ準備を行う！
+        if (animPhase_ == 1 && animTimer_ == 0.0f) {
             blockStartPos_.clear();
             blockTargetPos_.clear();
 
-            // ★ ここで各ブロックの【最終形態】を細かく設定します！
             struct BlockSetting {
-                Vector3 translate; // コアからのローカル座標 (目的地)
-                Vector3 scale;     // 大きさ
-                Vector3 rotation;  // 回転（ラジアン）
+                Vector3 translate;
+                Vector3 scale;
+                Vector3 rotation;
             };
 
             std::vector<BlockSetting> settings = {
-                // { { 座標X, 座標Y, 座標Z }, { スケールX, スケールY, スケールZ }, { 回転X, 回転Y, 回転Z } }
-                { { -3.3f,  0.0f,  0.0f }, { 0.300f, 0.500f, 0.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像1 (左端の小型パーツ)
-                { { -2.0f,  0.0f,  0.0f }, { 1.035f, 1.000f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像2 (左側の厚みのあるパーツ)
-                { {  0.0f,  1.5f,  0.0f }, { 2.000f, 0.506f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像3 (頭上の平たいパーツ)
-                { {  0.0f, -1.5f,  0.0f }, { 2.000f, 0.511f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像4 (足元の平たいパーツ)
-                { {  2.5f,  0.0f,  0.0f }, { 0.500f, 3.000f, 1.500f }, { 0.0f, 0.0f, 0.0f } }, // 画像5 (右側の縦長パーツ)
-                { {  3.5f,  0.0f,  0.0f }, { 0.500f, 1.000f, 0.500f }, { 0.0f, 0.0f, 0.0f } }  // 画像6 (右端の小型パーツ)
+                { { -3.3f,  0.0f,  0.0f }, { 0.300f, 0.500f, 0.500f }, { 0.0f, 0.0f, 0.0f } },
+                { { -2.0f,  0.0f,  0.0f }, { 1.035f, 1.000f, 1.500f }, { 0.0f, 0.0f, 0.0f } },
+                { {  0.0f,  1.5f,  0.0f }, { 2.000f, 0.506f, 1.500f }, { 0.0f, 0.0f, 0.0f } },
+                { {  0.0f, -1.5f,  0.0f }, { 2.000f, 0.511f, 1.500f }, { 0.0f, 0.0f, 0.0f } },
+                { {  2.5f,  0.0f,  0.0f }, { 0.500f, 3.000f, 1.500f }, { 0.0f, 0.0f, 0.0f } },
+                { {  3.5f,  0.0f,  0.0f }, { 0.500f, 1.000f, 0.500f }, { 0.0f, 0.0f, 0.0f } }
             };
 
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-                // 移動のスタート地点を記憶
                 blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
 
                 if (i < settings.size()) {
-                    // ゴール地点を記憶 (Phase 1 でここに向かって Lerp します)
                     blockTargetPos_.push_back(settings[i].translate);
-
-                    // 大きさと回転は、変形開始と同時に適用してしまう！
                     armorBlocks_[i]->SetScale(settings[i].scale);
                     armorBlocks_[i]->SetRotation(settings[i].rotation);
-                    // ★ 修正箇所1：ブロックのオイラー角(XYZ)を優先させる
                     armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
                 }
                 else {
@@ -390,47 +389,13 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 }
             }
         }
-        else if (input->IsKeyTriggered(DIK_2)) {
-            // モード2：ブロック射撃
-            attackMode_ = 2;
-            animPhase_ = 10; // 射撃用フェーズへ
-            animTimer_ = 0.0f;
-            ChangeState(State::Attack);
-        }
-        // ==========================================
-        // 3キーで「こぶし落下攻撃」を発動！
-        // ==========================================
-        else if (input->IsKeyTriggered(DIK_3)) {
-            attackMode_ = 3;
-            animPhase_ = 20; // フェーズ20からスタート
-            animTimer_ = 0.0f;
-            ChangeState(State::Attack);
-        }
-        // ==========================================
-        // 4キーで「モーション4：巨大な壁の横断攻撃」を発動！
-        // ==========================================
-        else if (input->IsKeyTriggered(DIK_4)) {
-            attackMode_ = 4;
-            animPhase_ = 39;
-            animTimer_ = 0.0f;
-            shotCount_ = 0;
-            ChangeState(State::Attack);
-        }
-    }
-
-    if (animPhase_ == 0) return;
-
-    // ======================================
-    // 攻撃モード1：形態変化 ＆ 突進 (Phase 1 ~ 5)
-    // ======================================
-    if (attackMode_ == 1) {
 
         // --- フェーズ1: 形態変化（ブロックがカシャッと合体する） ---
         if (animPhase_ == 1) {
             animTimer_ += deltaTime;
-            float duration = 1.5f; // 1.5秒かけて変形
+            float duration = 1.5f;
             float t = std::min(animTimer_ / duration, 1.0f);
-            float easeT = Easing::OutExpo(t); // カッコよくスライドさせる
+            float easeT = Easing::OutExpo(t);
 
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
@@ -440,7 +405,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             }
 
             if (t >= 1.0f) {
-                animPhase_ = 2; // 変形が終わったら、突進準備(X=-50)へ！
+                animPhase_ = 2;
                 animTimer_ = 0.0f;
                 animStartPos_ = GetTranslate();
             }
@@ -516,17 +481,13 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             }
 
             animTimer_ += deltaTime;
-            float duration = 3.0f; // 3秒かけてゆっくり戻る
+            float duration = 3.0f;
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = Easing::OutExpo(t);
 
-            // ボスの回転だけは 0 にリセット（直立姿勢へ）
             SetRotation({ 0.0f, 0.0f, 0.0f });
             GetTransform()->isQuaternionMaster = false;
 
-            // ==========================================
-            // ★ 修正：固定位置ではなく、常に動き続ける軌道(GetIdleOrbit)にLerpする！
-            // ==========================================
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 if (i < blockStartPos_.size()) {
                     OrbitData orbit = GetIdleOrbit(i);
@@ -538,11 +499,11 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 }
             }
 
+            // 完全に復帰したら攻撃終了！
             if (t >= 1.0f) {
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
-                ChangeState(State::Idle);
             }
         }
     }
@@ -562,7 +523,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             pos.x = Math::Lerp(animStartPos_.x, 50.0f, Easing::OutExpo(t));
             SetTranslate(pos);
 
-            // 移動中も常にプレイヤーの方を向く！
             if (target_) {
                 Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
                 float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
@@ -570,7 +530,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 GetTransform()->isQuaternionMaster = false;
             }
 
-            // 移動が終わったら、次の「陣形変化」の準備をする！
             if (t >= 1.0f) {
                 animPhase_ = 11;
                 animTimer_ = 0.0f;
@@ -587,12 +546,12 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 float turnY = std::numbers::pi_v<float> / 2.0f;
 
                 std::vector<BlockSetting> settings = {
-                    { { -2.0f,  2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 上
-                    { { -2.0f,  1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 左上
-                    { { -2.0f,  1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 右上
-                    { { -2.0f, -1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 左下
-                    { { -2.0f, -1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }, // 右下
-                    { { -2.0f, -2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }  // 下
+                    { { -2.0f,  2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
+                    { { -2.0f,  1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
+                    { { -2.0f,  1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
+                    { { -2.0f, -1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
+                    { { -2.0f, -1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
+                    { { -2.0f, -2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }
                 };
 
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
@@ -610,10 +569,10 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 }
             }
         }
-        // --- Phase 11: 射撃陣形へスライド移動（カシャッ！） ---
+        // --- Phase 11: 射撃陣形へスライド移動 ---
         else if (animPhase_ == 11) {
             animTimer_ += deltaTime;
-            float duration = 1.0f; // 1秒かけて陣形を変える
+            float duration = 1.0f;
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = Easing::OutExpo(t);
 
@@ -632,7 +591,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             }
 
             if (t >= 1.0f) {
-                animPhase_ = 12; // 射撃フェーズへ
+                animPhase_ = 12;
                 animTimer_ = 0.0f;
                 shotCount_ = 0;
                 shotInterval_ = 0.0f;
@@ -683,9 +642,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             }
         }
         else if (animPhase_ == 13) {
-            // ==========================================
-            // ★ 修正：戻ってきたブロックから順に待機軌道に乗せる！
-            // ==========================================
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 bool isFlying = false;
                 for (auto& fb : flyingBlocks_) {
@@ -702,11 +658,10 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
 
             if (flyingBlocks_.empty()) {
                 animTimer_ += deltaTime;
-                if (animTimer_ >= 1.0f) { // すべて戻ってきてから1秒の隙を晒す
+                if (animTimer_ >= 1.0f) {
                     animPhase_ = 0;
                     attackMode_ = 0;
                     animTimer_ = 0.0f;
-                    ChangeState(State::Idle);
                 }
             }
         }
@@ -756,14 +711,14 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animTimer_ = 0.0f;
 
                 if (target_) {
-                    animTargetPos_ = target_->GetWorldPosition(); // プレイヤーの現在地を記憶！
+                    animTargetPos_ = target_->GetWorldPosition();
                 }
                 else {
                     animTargetPos_ = GetTranslate();
                 }
             }
         }
-        // --- Phase 21: ロックオンした位置（記憶した座標）へ移動 ＆ 振りかぶる！ ---
+        // --- Phase 21: ロックオンした位置へ移動 ＆ 振りかぶる！ ---
         else if (animPhase_ == 21) {
             animTimer_ += deltaTime;
 
@@ -838,7 +793,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         else if (animPhase_ == 23) {
 
             if (animTimer_ == 0.0f) {
-                animStartPos_ = GetRotation(); // ボスの全回転角度を記憶
+                animStartPos_ = GetRotation();
             }
 
             animTimer_ += deltaTime;
@@ -875,9 +830,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
 
             GetTransform()->isQuaternionMaster = false;
 
-            // ==========================================
-            // ★ 修正：固定位置ではなく、常に動き続ける軌道(GetIdleOrbit)にLerpする！
-            // ==========================================
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 if (i < blockStartPos_.size()) {
                     OrbitData orbit = GetIdleOrbit(i);
@@ -893,7 +845,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
-                ChangeState(State::Idle);
             }
         }
     }
@@ -913,7 +864,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             animStartPos_ = bossCurrentPos; // 移動のスタート地点を記憶
 
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-                // 最初の攻撃(0回目)の時だけ、親子関係を解除してワールド座標にする！
                 if (shotCount_ == 0) {
                     Vector3 localPos = armorBlocks_[i]->GetTranslate();
                     float bossRotY = GetRotation().y;
@@ -927,7 +877,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     blockStartPos_.push_back(worldPos);
                 }
                 else {
-                    // 2回目以降はそのまま現在地をスタートに！
                     blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
                 }
 
@@ -1008,7 +957,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         // --- Phase 41: 壁だけがステージを往復横断！ ---
         else if (animPhase_ == 41) {
             animTimer_ += deltaTime;
-            float duration = 5.0f; // 横断速度
+            float duration = 5.0f;
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = std::pow(t, 2.0f);
 
@@ -1016,16 +965,16 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 Vector3 blockPos = armorBlocks_[i]->GetTranslate();
 
                 if (shotCount_ == 0) {
-                    blockPos.z = Math::Lerp(150.0f, -150.0f, easeT); // 奥から手前
+                    blockPos.z = Math::Lerp(150.0f, -150.0f, easeT);
                 }
                 else if (shotCount_ == 1) {
-                    blockPos.z = Math::Lerp(-150.0f, 150.0f, easeT); // 手前から奥
+                    blockPos.z = Math::Lerp(-150.0f, 150.0f, easeT);
                 }
                 else if (shotCount_ == 2) {
-                    blockPos.x = Math::Lerp(150.0f, -150.0f, easeT); // 右から左
+                    blockPos.x = Math::Lerp(150.0f, -150.0f, easeT);
                 }
                 else if (shotCount_ == 3) {
-                    blockPos.x = Math::Lerp(-150.0f, 150.0f, easeT); // 左から右
+                    blockPos.x = Math::Lerp(-150.0f, 150.0f, easeT);
                 }
                 armorBlocks_[i]->SetTranslate(blockPos);
             }
@@ -1088,9 +1037,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             SetRotation({ 0.0f, 0.0f, 0.0f });
             GetTransform()->isQuaternionMaster = false;
 
-            // ==========================================
-            // ★ 修正：固定位置ではなく、常に動き続ける軌道(GetIdleOrbit)にLerpする！
-            // ==========================================
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 if (i < blockStartPos_.size()) {
                     OrbitData orbit = GetIdleOrbit(i);
@@ -1106,7 +1052,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
-                ChangeState(State::Idle);
             }
         }
     }
