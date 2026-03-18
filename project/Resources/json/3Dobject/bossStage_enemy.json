@@ -134,10 +134,10 @@
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.1,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -154,7 +154,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_Block1",
@@ -162,7 +162,7 @@
             "ormMapPath": "",
             "parentName": "Enemy_BossCore",
             "position": [
-                -2.0,
+                -1.9410762786865234,
                 0.0,
                 0.0
             ],
@@ -182,7 +182,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.8,
             "saveCategory": "Enemy",
             "scale": [
                 1.0,
@@ -225,10 +225,10 @@
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.1,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -245,7 +245,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_Block2",
@@ -273,7 +273,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.8,
             "saveCategory": "Enemy",
             "scale": [
                 0.5,
@@ -316,10 +316,10 @@
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.1,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -336,7 +336,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_Block3",
@@ -364,7 +364,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.8,
             "saveCategory": "Enemy",
             "scale": [
                 0.9999998807907104,
@@ -407,10 +407,10 @@
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.1,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -427,7 +427,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_Block4",
@@ -455,7 +455,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.8,
             "saveCategory": "Enemy",
             "scale": [
                 0.5,
@@ -498,10 +498,10 @@
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.1,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -518,7 +518,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_Block5",
@@ -546,7 +546,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.8,
             "saveCategory": "Enemy",
             "scale": [
                 2.0,
@@ -589,10 +589,10 @@
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.1,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -609,7 +609,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6,
             "modelName": "block",
             "myEventID": -1,
             "name": "Enemy_Block6",
@@ -637,7 +637,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.8,
             "saveCategory": "Enemy",
             "scale": [
                 2.0,
