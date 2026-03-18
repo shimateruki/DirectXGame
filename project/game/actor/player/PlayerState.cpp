@@ -923,43 +923,17 @@ void PlayerStateAttack1::Update(Player* player)
 
 	// 通常アニメーション部分
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
+
 	// イーズインアウト
 	float et = EaseInOutSine(t);
 	ApplyPose(et);
 
-	// アニメ本体が終了したか
 	if (animTimer_ >= animDuration_)
 	{
-		// まず、2段目へ繋げる入力があれば即遷移（従来通り）
-		if (player && player->ConsumePendingAttack2())
-		{
-			player->ChangeState(std::make_unique<PlayerStateAttack2>());
-			return;
-		}
-
-		// 予約がない場合: ここで即 Idle に戻すのではなく、まず「余韻（linger）」フェーズへ入る
-		if (!lingerActive_)
-		{
-			// linger を開始してアニメ終了ポーズを保持する
-			lingerActive_ = true;
-			lingerTimer_ = 0.0f;
-			// animTimer_ を終了時間に固定（安全のため）
-			animTimer_ = animDuration_;
-			// この時点では剣は引き続き有効（SetSwordActive は Enter で true、Exit で false）
-			return;
-		}
-
-		// すでに lingerActive_ ならタイマーを進める
-		lingerTimer_ += 1.0f / 60.0f;
-		if (lingerTimer_ >= lingerDuration_)
-		{
-			// 余韻終了：コンボウィンドウを開始して Idle に戻す
-			if (player) player->StartComboWindow(0.5f);
-			player->ChangeState(std::make_unique<PlayerStateIdle>());
-			return;
-		}
-
-		// linger 中は姿勢をそのまま保持するためそれ以上の処理は行わない
+		// 自動で Attack2 に遷移せず、次のクリックで Attack2 を出すためのフラグをセットする
+		if (player) player->SetPendingAttack2(true);
+		// Idle に戻してプレイヤーの入力を待つ（Exit() がコントロールを再有効化する）
+		player->ChangeState(std::make_unique<PlayerStateIdle>());
 		return;
 	}
 }
@@ -972,10 +946,6 @@ void PlayerStateAttack1::Exit(Player* player)
 	SetSwordActive(player, false);
 	// 戻す
 	if (!initializedParts_) return;
-
-	// 余韻関連をクリア
-	lingerActive_ = false;
-	lingerTimer_ = 0.0f;
 
 	if (bodyObj_) { Transform* tf = bodyObj_->GetTransform(); tf->translate = bodyDefaultPos_; tf->rotate = bodyDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix(); }
 	if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_; tf->rotate = headDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }

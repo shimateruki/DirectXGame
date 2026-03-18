@@ -181,12 +181,7 @@ public:
 
 private:
     float animTimer_ = 0.0f;
-    float animDuration_ = 0.3f; // アニメーションにかける時間
-
-    // linger（余韻）フェーズ
-    float lingerTimer_ = 0.0f;
-    float lingerDuration_ = 0.15f; // 余韻の長さ（秒）
-    bool lingerActive_ = false;
+    float animDuration_ = 0.35f; // アニメーションにかける時間
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;
@@ -197,13 +192,19 @@ private:
     Object3d* leftFootObj_ = nullptr;
 
     // 退避用（元のポーズ）
-    Vector3 bodyDefaultPos_, bodyDefaultRot_;
-    Vector3 headDefaultPos_, headDefaultRot_;
-    Vector3 headStartRot_;
-    Vector3 rightArmDefaultPos_, rightArmDefaultRot_;
-    Vector3 leftArmDefaultPos_, leftArmDefaultRot_;
-    Vector3 rightFootDefaultPos_, rightFootDefaultRot_;
-    Vector3 leftFootDefaultPos_, leftFootDefaultRot_;
+    Vector3 bodyDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 bodyDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headStartRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
 
     bool initializedParts_ = false;
 
@@ -226,7 +227,7 @@ public:
 
 private:
     float animTimer_ = 0.0f;
-    float animDuration_ = 0.5f;
+    float animDuration_ = 0.4f;
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;
@@ -237,13 +238,19 @@ private:
     Object3d* leftFootObj_ = nullptr;
 
     // 退避用（元のポーズ）
-    Vector3 bodyDefaultPos_, bodyDefaultRot_;
-    Vector3 headDefaultPos_, headDefaultRot_;
-    Vector3 headStartRot_;
-    Vector3 rightArmDefaultPos_, rightArmDefaultRot_;
-    Vector3 leftArmDefaultPos_, leftArmDefaultRot_;
-    Vector3 rightFootDefaultPos_, rightFootDefaultRot_;
-    Vector3 leftFootDefaultPos_, leftFootDefaultRot_;
+    Vector3 bodyDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 bodyDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headStartRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
 
     bool initializedParts_ = false;
 
