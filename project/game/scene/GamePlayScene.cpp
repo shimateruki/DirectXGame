@@ -26,6 +26,7 @@
 #include "GameRule.h"
 #include "ObjectManager.h" 
 #include "BossCore.h"
+#include "MapBlock.h"
 
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -191,12 +192,34 @@ void GamePlayScene::Update(float deltaTime) {
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
-	for (auto &obj : objectManager_->GetObjects ()) {
-		if (obj->GetName () == "Enemy_BossCore") {
-			// エンジンのスキップ処理を無視して、強制的に毎フレーム叩き起こす！
-			obj->Update (deltaTime);
-		}
-	}
+    Object3d* bossCore = nullptr;
+    for (auto &obj : objectManager_->GetObjects ()) {
+        if (obj->GetName () == "Enemy_BossCore") {
+            bossCore = obj.get();
+            // エンジンのスキップ処理を無視して、強制的に毎フレーム叩き起こす！
+            obj->Update (deltaTime);
+        }
+    }
+
+    // --- 領域検索形 吸収デバッグ ---
+    if (inputManager_->IsKeyTriggered(DIK_O) && bossCore) {
+        Vector3 bossPos = bossCore->GetTranslate();
+        float absorbRadiusSq = 30.0f * 30.0f; // 半径30m以内を検索
+
+        for (auto& obj : objectManager_->GetObjects()) {
+            if (obj->GetClassName() == "MapBlock") {
+                Vector3 blockPos = obj->GetTranslate();
+                float distSq = (blockPos.x - bossPos.x)*(blockPos.x - bossPos.x) +
+                               (blockPos.y - bossPos.y)*(blockPos.y - bossPos.y) +
+                               (blockPos.z - bossPos.z)*(blockPos.z - bossPos.z);
+                if (distSq <= absorbRadiusSq) {
+                    MapBlock* mb = static_cast<MapBlock*>(obj.get());
+                    mb->OnAbsorbed(bossCore);
+                }
+            }
+        }
+    }
+
 
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
 	//GPUParticleManager::GetInstance()->Emit(
