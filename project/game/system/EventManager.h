@@ -29,7 +29,15 @@ public:
     /// </summary>
     void Dispatch(const BulletHitEvent& event);
 
+    /// <summary>
+    /// DamageEvent のリスナー（購読者）を登録する
+    /// </summary>
+    void Subscribe(std::function<void(const DamageEvent&)> callback);
 
+    /// <summary>
+    /// DamageEvent を発行（ディスパッチ）する
+    /// </summary>
+    void Dispatch(const DamageEvent& event);
 
 private:
     EventManager() = default;
@@ -42,4 +50,5 @@ private:
     std::list<std::function<void(const PlayerHitEvent&)>> playerHitListeners_;
 
     std::list<std::function<void(const BulletHitEvent&)>> bulletHitListeners_;
+    std::list<std::function<void(const DamageEvent&)>> damageListeners_;
 };

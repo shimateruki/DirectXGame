@@ -20,4 +20,7 @@ public:
 
 protected:
     Object3d* target_ = nullptr; // 追いかける対象（プレイヤー）
+    float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ無敵タイマー
+    float colorResetTimer_ = 0.0f;     // 赤色から元に戻すためのタイマー
+    Vector4 defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 元の色を記憶
 };
