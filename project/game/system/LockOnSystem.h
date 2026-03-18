@@ -52,5 +52,6 @@ private:
 
 	// 定数パラメータ
 	const float kMaxLockOnDistance_ = 50.0f; // 届く距離
-	const float kMinLockOnDot_ = 0.5f;		 // 視界の広さ (1.0で真正面のみ)
+	const float kMinLockOnDot_ = 0.0f;
+	float lostSightTimer_ = 0.0f;
 };

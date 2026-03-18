@@ -21,7 +21,7 @@ void Camera::ConfigFixedPoint(const Vector3& position) {
 }
 
 void Camera::UpdateProjectionMatrix() {
-  
+
     static Math math;
 
     // 現在のパラメータを使ってプロジェクション行列を再計算
@@ -51,7 +51,9 @@ void Camera::Initialize() {
 
 void Camera::Update() {
     static Math math;
-
+    auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
+        return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
+        };
     // -----------------------------------------------------------------
     //  ゲーム内カメラ挙動
     // -----------------------------------------------------------------
@@ -63,9 +65,17 @@ void Camera::Update() {
         Vector3 targetPos = playerPos;
         targetPos.y += aimHeight_;
 
-        // ロックオン時は敵を見る
         if (followMode_ == FollowMode::kLockOn && targetObject_) {
-            targetPos = targetObject_->GetWorldPosition();
+            Vector3 enemyPos = targetObject_->GetWorldPosition();
+
+            // プレイヤー側の基準点を少し下げる（足元ではなく胸のあたり）
+            Vector3 playerFocus = playerPos;
+            playerFocus.y += aimHeight_ * 0.5f;
+
+            // プレイヤーと敵の「ちょうど真ん中」を注視する
+            targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.5f;
+            targetPos.y = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.5f;
+            targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.5f;
         }
         // 一人称は目の高さ調整として Height を使う
         else if (followMode_ == FollowMode::kFirstPerson) {
@@ -79,16 +89,55 @@ void Camera::Update() {
         float toRad = 3.14159265f / 180.0f;
 
         switch (followMode_) {
+ 
         case FollowMode::kLockOn:
+        { 
+
+            // ★距離と高さに応じた「自動ズームアウト」を適用！
             if (targetObject_) {
-                Matrix4x4 rotateMat = math.MakeRotateYMatrix(followObject_->GetRotation().y);
-                Vector3 rotatedOffset = math.TransformNormal(lockOnOffset_, rotateMat);
+                Vector3 enemyPos = targetObject_->GetWorldPosition();
+                Vector3 toEnemy = enemyPos - playerPos;
+
+                float distanceXZ = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.z * toEnemy.z);
+                float heightDiff = std::max(0.0f, enemyPos.y - playerPos.y);
+
+                float zoom = std::max(0.0f, distanceXZ - 10.0f) * 0.3f;
+                zoom += heightDiff * 0.8f;
+                zoom = std::min(zoom, 25.0f);
+
+                Vector3 dynamicOffset = lockOnOffset_;
+                dynamicOffset.z -= zoom;
+                dynamicOffset.y += zoom * 0.4f;
+
+                // 敵の方向（角度）を計算
+                float angleToEnemy = std::atan2(toEnemy.x, toEnemy.z);
+
+                // =======================================================
+                // ★修正: カメラが「一瞬で」敵の背後に回るのをやめて、「滑らかに」追従させる！
+                // =======================================================
+                auto NormalizeAngle = [](float a) {
+                    while (a > 3.1415926535f) a -= 6.2831853071f;
+                    while (a < -3.1415926535f) a += 6.2831853071f;
+                    return a;
+                    };
+
+                float diff = NormalizeAngle(angleToEnemy - rotation_.y);
+
+                // 0.08f くらいの値で、ゆっくりカメラを向かせる（追従速度）
+                // ※この数値を小さくするほどカメラがゆっくり敵を追いかけます
+                rotation_.y += diff * 0.08f;
+
+                // その滑らかな角度を使ってカメラの配置場所を計算する
+                Matrix4x4 rotateMat = math.MakeRotateYMatrix(rotation_.y);
+                Vector3 rotatedOffset = math.TransformNormal(dynamicOffset, rotateMat);
                 desiredEye = playerPos + rotatedOffset;
-            } else {
+
+            }
+            else {
                 followMode_ = FollowMode::kAimable;
             }
-            break;
-
+			break;
+        }
         case FollowMode::kAimable:
         {
 
@@ -156,13 +205,26 @@ void Camera::Update() {
             target_ = targetPos;
             break;
         }
+        if (!isCameraInitialized_) {
+            smoothTarget_ = target_;
+            smoothEye_ = desiredEye;
+            isCameraInitialized_ = true;
+        }
 
+        // 現在のカメラ位置から、目的のカメラ位置(desired)へ 10% ずつ滑らかに移動する！
+        smoothTarget_ = LerpVec3(smoothTarget_, target_, 0.1f);
+        smoothEye_ = LerpVec3(smoothEye_, desiredEye, 0.1f);
+
+        // 補間された滑らかな座標を上書きして、その後の壁判定に渡す！
+        target_ = smoothTarget_;
+        desiredEye = smoothEye_;
         // -----------------------------------------------------------------
         // (C) 壁めり込み防止 & 位置の確定
         // -----------------------------------------------------------------
         if (isEyeFrozen_) {
             // フリーズ中は更新しない
-        } else {
+        }
+        else {
             // 通常時の処理 (Raycast & 位置更新)
             if (followMode_ != FollowMode::kFirstPerson) {
                 Vector3 toEye = desiredEye - target_;
@@ -175,21 +237,49 @@ void Camera::Update() {
                         target_, direction, dist, kGround
                     );
                     if (hit.isHit) {
-                        const float kEpsilon = 0.2f;
+                        const float kEpsilon = 0.8f;
                         eye_ = hit.hitPoint - (direction * kEpsilon);
-                    } else {
+                    }
+                    else {
                         eye_ = desiredEye;
                     }
-                } else {
+                }
+                else {
                     eye_ = desiredEye;
                 }
-            } else {
+            }
+            else {
                 // 一人称視点はRaycastしない
                 eye_ = desiredEye;
             }
         }
     }
+    if (followObject_) {
+        // カメラ(eye_)とプレイヤーの距離を計算
+        Vector3 playerPos = followObject_->GetWorldPosition();
+        Vector3 toPlayer = playerPos - eye_;
+        float camToPlayerDist = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y + toPlayer.z * toPlayer.z);
 
+        // 距離が 3.0f 以下になったら透け始め、1.0f で完全に透明(0.0f)になる計算
+        float alpha = 1.0f;
+        if (camToPlayerDist < 3.0f) {
+            alpha = std::max(0.0f, (camToPlayerDist - 1.0f) / 2.0f);
+        }
+
+        // =======================================================
+        // ★修正: 「元の色」を取得して、アルファ値(W)だけを書き換える！
+        // これでダメージ中の赤色が上書きされなくなります。
+        // =======================================================
+        Vector4 pColor = followObject_->GetColor();
+        followObject_->SetColor({ pColor.x, pColor.y, pColor.z, alpha });
+
+        for (Object3d* child : followObject_->GetChildren()) {
+            if (child) {
+                Vector4 cColor = child->GetColor();
+                child->SetColor({ cColor.x, cColor.y, cColor.z, alpha });
+            }
+        }
+    }
     // 行列更新
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
@@ -239,9 +329,11 @@ void Camera::SyncRotationToCurrentView() {
     Vector3 targetPos;
     if (targetObject_) {
         targetPos = targetObject_->GetWorldPosition();
-    } else if (followObject_) {
+    }
+    else if (followObject_) {
         targetPos = followObject_->GetWorldPosition();
-    } else {
+    }
+    else {
         targetPos = target_;
     }
 
@@ -249,7 +341,8 @@ void Camera::SyncRotationToCurrentView() {
     Vector3 forward = targetPos - eye_;
     if (math.Length(forward) < 0.001f) {
         forward = { 0.0f, 0.0f, 1.0f };
-    } else {
+    }
+    else {
         forward = math.Normalize(forward);
     }
 

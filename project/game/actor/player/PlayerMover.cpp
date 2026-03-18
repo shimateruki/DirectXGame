@@ -144,8 +144,7 @@ void PlayerMover::Update(float deltaTime)
 	}
 
 	// --- 6. 回転処理（滑らかな向き変更） ---
-	if (!player_->IsLockingOn())
-	{
+
 		if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f)
 		{
 			float targetAngle = std::atan2(velocity.x, velocity.z);
@@ -164,7 +163,7 @@ void PlayerMover::Update(float deltaTime)
 
 			float newY = currentY + diff * alpha;
 			player_->SetRotationY(NormalizeAngle(newY));
-		}
+		
 	}
 
 	// --- 7. ジャンプ処理 ---

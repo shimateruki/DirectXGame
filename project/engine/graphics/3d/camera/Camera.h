@@ -185,5 +185,7 @@ private:
     float orbitSpeed_ = 0.005f;
     float orbitAngle_ = 0.0f;
     Vector3 fixedPointPos_ = { 0.0f, 5.0f, -10.0f };
-
+    Vector3 smoothTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 smoothEye_ = { 0.0f, 0.0f, 0.0f };
+    bool isCameraInitialized_ = false;
 };
