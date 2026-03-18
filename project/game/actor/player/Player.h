@@ -72,6 +72,15 @@ public:
     void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
     bool ConsumePendingAttack2() { bool v = pendingAttack2_; pendingAttack2_ = false; return v; }
 
+    // コンボ「時間窓」API
+    void StartComboWindow(float duration);
+    bool IsComboWindowActive() const;
+
+    // --- 入力バッファ（Run→Attack 遷移での踏み逃がし防止） ---
+    void RecordAttackInput(float duration);               // 攻撃入力を短時間バッファする
+    void MarkAttackBufferUsedForStateStart();             // そのバッファを「遷移開始で使われた」とマークする
+    bool ConsumeBufferedAttackInput();                    // バッファに未使用の入力があれば消費して true を返す
+
     // --- 各種パラメータ取得 ---
     InputManager* GetInputManager() { return inputManager_; }
 
@@ -108,6 +117,14 @@ private:
 
     // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
     bool pendingAttack2_ = false;
+
+    // --- コンボ時間窓 ---
+    float comboWindowTimer_ = 0.0f; // >0 の間、次の攻撃入力は 2 段目に変換される
+
+    // --- 攻撃入力バッファ（Run→Attack の踏み逃がし防止） ---
+    bool attackInputBuffered_ = false;               // バッファに入力があるか
+    bool attackBufferUsedForStateStart_ = false;    // 「そのバッファが遷移開始で使われた」フラグ
+    float attackInputBufferTimer_ = 0.0f;           // バッファの残り時間（秒）
 
     // --- 無敵関連 ---
     bool isInvincible_ = false;
