@@ -98,4 +98,6 @@ private:
     std::vector<Vector3> blockTargetPos_;
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
+
+    bool s_isTimeStopped_ = false;
 };

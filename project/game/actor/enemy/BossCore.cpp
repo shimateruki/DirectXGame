@@ -5,6 +5,8 @@
 #include "DebugConsole.h"
 #include <cmath>
 #include <numbers>
+#include <ctime>   // ★ 新規追加：時間を使うため
+#include <cstdlib> // ★ 新規追加：乱数を使うため
 
 // =================================================================
 // ★ 新規：待機アニメーション用のタイマーと軌道計算関数
@@ -102,6 +104,12 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     // 親クラス(BaseEnemy)の初期化
     BaseEnemy::Initialize(common, modelName);
 
+    // ==========================================
+    // ★ 新規：乱数の「種（シード）」を現在時刻で設定！
+    // これを呼ぶことで、毎回違う行動パターンになります！
+    // ==========================================
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
     // 演出・攻撃パターン管理用ディレクターの生成
     director_ = std::make_unique<GhostDirector>();
     if (sceneManager_) {
@@ -110,12 +118,43 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
+    // ==========================================
+    // ★ 魔法の1行：ボスの全体スピード倍率！
+    // 以前の「2回Update」と同じ速度を再現するため、ボスの時間だけを2倍速で進める！
+    // ==========================================
+    deltaTime *= 2.0f;
+
+    // ==========================================
+    // 0キーで時間停止（ザ・ワールド）機能！
+    // ==========================================
+    InputManager* input = InputManager::GetInstance();
+
+    if (input->IsKeyTriggered(DIK_1)) {
+        s_isTimeStopped_ = !s_isTimeStopped_; // 押すたびに切り替え
+
+        if (s_isTimeStopped_) {
+            DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
+        }
+        else {
+            DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
+        }
+    }
+
+    // ★ 魔法の処理：時間停止中は、このフレームの経過時間を「0秒」に偽装する！
+    if (s_isTimeStopped_) {
+        deltaTime = 0.0f;
+    }
+
+    // ------------------------------------------
+    // ここから下は今までの Update と全く同じです
+    // ------------------------------------------
     float preTimer = colorResetTimer_;
+
     // 1. 基本更新（行列計算など）
     BaseEnemy::Update(deltaTime);
-    if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
 
-        // ① 先ほど作った関数で、腕の先などにある剣を確実に見つける！
+    if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
+        // ① 腕の先などにある剣を確実に見つける！
         Object3d* weapon = FindWeaponRecursive(target_);
 
         // ② 振られている剣を見つけたら、ブロックとの当たり判定をチェック！
@@ -123,8 +162,7 @@ void BossCore::Update(float deltaTime) {
             for (Object3d* block : armorBlocks_) {
                 if (!block) continue;
 
-                // ★超重要：待機中のブロックは「壁(kGround)」になっているので、
-                // マスク設定で弾かれないように一瞬だけ判定を全開放(0xFFFFFFFF)する！
+                // 待機中のブロックは「壁(kGround)」になっているので、一瞬だけ判定を全開放
                 uint32_t originalMask = block->GetCollisionMask();
                 block->SetCollisionMask(0xFFFFFFFF);
 
@@ -134,45 +172,35 @@ void BossCore::Update(float deltaTime) {
                 block->SetCollisionMask(originalMask);
 
                 if (info.isColliding) {
-                    // 当たった！！
                     TakeBarrierDamage(10.0f); // バリアに10ダメージ！
-                    break; // 1フレームに多段ヒットしないように抜ける
+                    break;
                 }
             }
         }
     }
 
- 
-    // ==========================================
     // ブロックの色を元に戻す処理
-    // ==========================================
     if (preTimer > 0.0f && colorResetTimer_ <= 0.0f) {
         for (Object3d* block : armorBlocks_) {
-            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白に戻す
+            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         }
     }
 
-    // ★ 新規：ゲーム再生中は待機タイマーを常に進める！
-    // ==========================================
+    // ゲーム再生中は待機タイマーを常に進める
     if (SceneManager::GetInstance()->IsPlaying()) {
-        s_globalIdleTimer += deltaTime;
+        s_globalIdleTimer += deltaTime; // ★ deltaTimeが0ならタイマーも止まる！
     }
 
-    // ==========================================
-    // ★ 飛んでいるブロックの更新
-    // ==========================================
-    UpdateFlyingBlocks(deltaTime);
+    // 飛んでいるブロックの更新
+    UpdateFlyingBlocks(deltaTime); // ★ 弾も空中でピタッと止まる！
 
-    // ★ 3. アニメーションシーケンスを優先実行
-    UpdateAnimationSequence(deltaTime);
+    // アニメーションシーケンスを優先実行
+    UpdateAnimationSequence(deltaTime); // ★ アニメーションも現在位置で完全フリーズ！
 
-    // 【重要】アニメーション実行中（Phase 1～3）は、
-    // 下の既存ステート（Idle/Attackなど）を走らせないようにガードをかける！
     if (animPhase_ != 0 && animPhase_ != 4) {
         return;
     }
 
-    // 4. 通常のステート更新（アニメーション中以外に動く）
     if (isFirstFrame_) {
         ChangeState(State::Idle);
         isFirstFrame_ = false;
