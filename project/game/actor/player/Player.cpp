@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "Player.h"
 #include "Model.h"
 #include "CollisionConfig.h"
@@ -7,6 +8,7 @@
 #include "IMoveStrategy.h"
 #include "PlayerState.h"
 #include <DebugConsole.h>
+#include <algorithm>
 
 // =================================================================
 // 初期化・更新・描画
@@ -34,6 +36,25 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
 void Player::Update(float deltaTime)
 {
+    // コンボ時間窓の更新（常に減算）
+    if (deltaTime > 0.0f && comboWindowTimer_ > 0.0f)
+    {
+        comboWindowTimer_ -= deltaTime;
+        if (comboWindowTimer_ <= 0.0f) comboWindowTimer_ = 0.0f;
+    }
+
+    // 攻撃入力バッファの更新（常に減算）
+    if (deltaTime > 0.0f && attackInputBufferTimer_ > 0.0f)
+    {
+        attackInputBufferTimer_ -= deltaTime;
+        if (attackInputBufferTimer_ <= 0.0f)
+        {
+            attackInputBufferTimer_ = 0.0f;
+            attackInputBuffered_ = false;
+            attackBufferUsedForStateStart_ = false;
+        }
+    }
+
     // 時間が進んでいる（ポーズ中ではない）時だけ、操作やアニメーションを更新
     if (deltaTime > 0.0f)
     {
@@ -252,4 +273,45 @@ void Player::UpdateColor() {
     for (Object3d* child : GetChildren()) {
         if (child) child->SetColor(targetColor);
     }
+}
+
+// =======================================================
+// コンボ時間窓 API 実装
+// =======================================================
+void Player::StartComboWindow(float duration)
+{
+    comboWindowTimer_ = std::max(0.0f, duration);
+}
+
+bool Player::IsComboWindowActive() const
+{
+    return comboWindowTimer_ > 0.0f;
+}
+
+// =======================================================
+// 攻撃入力バッファ API 実装
+// =======================================================
+void Player::RecordAttackInput(float duration)
+{
+    attackInputBuffered_ = true;
+    attackInputBufferTimer_ = std::max(0.0f, duration);
+    attackBufferUsedForStateStart_ = false;
+}
+
+void Player::MarkAttackBufferUsedForStateStart()
+{
+    if (attackInputBuffered_) attackBufferUsedForStateStart_ = true;
+}
+
+bool Player::ConsumeBufferedAttackInput()
+{
+    if (attackInputBuffered_ && !attackBufferUsedForStateStart_)
+    {
+        // consume
+        attackInputBuffered_ = false;
+        attackInputBufferTimer_ = 0.0f;
+        attackBufferUsedForStateStart_ = false;
+        return true;
+    }
+    return false;
 }

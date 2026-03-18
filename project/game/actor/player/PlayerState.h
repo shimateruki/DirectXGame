@@ -11,12 +11,13 @@ class Object3d;
 class PlayerStateIdle : public IAnimationState
 {
 public:
+	// 状態開始時に呼ばれる関数
     void Enter(Player* player) override;
-
+	// 状態更新時に呼ばれる関数
     void Update(Player* player) override;
-
+	// 状態終了時に呼ばれる関数
     void Exit(Player* player) override;
-
+	// フレーム後処理（実時間 deltaTime が必要な分離メソッド）
     void ApplyPostUpdate(Player* player, float deltaTime);
 
 private:
@@ -82,8 +83,11 @@ private:
 class PlayerStateRun : public IAnimationState
 {
 public:
+	// 状態開始時に呼ばれる関数
     void Enter(Player* player) override;
+	// 状態更新時に呼ばれる関数
     void Update(Player* player) override;
+	// 状態終了時に呼ばれる関数
     void Exit(Player* player) override;
 
     // フレーム後処理（実時間 deltaTime が必要な分離メソッド）
@@ -168,13 +172,21 @@ private:
 class PlayerStateAttack1 : public IAnimationState
 {
 public:
+	//　アニメーションの開始の関数。
     void Enter(Player* player) override;
+	// アニメーションの更新の関数
     void Update(Player* player) override;
+	//　Exit 時に Idle の開始ポーズに戻すようにする関数
     void Exit(Player* player) override;
 
 private:
     float animTimer_ = 0.0f;
     float animDuration_ = 0.3f; // アニメーションにかける時間
+
+    // linger（余韻）フェーズ
+    float lingerTimer_ = 0.0f;
+    float lingerDuration_ = 0.15f; // 余韻の長さ（秒）
+    bool lingerActive_ = false;
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;
@@ -205,8 +217,11 @@ private:
 class PlayerStateAttack2 : public IAnimationState
 {
 public:
+	// アニメーションの開始の関数。
     void Enter(Player* player) override;
+	// アニメーションの更新の関数
     void Update(Player* player) override;
+	// Exit 時に Idle の開始ポーズに戻すようにする関数
     void Exit(Player* player) override;
 
 private:
