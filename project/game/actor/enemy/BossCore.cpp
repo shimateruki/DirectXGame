@@ -198,10 +198,17 @@ void BossCore::ChangeState(State nextState) {
     // ① コア本体の属性を切り替え
     SetCollisionAttribute(targetAttribute);
 
-    // ② ★追加：周りのブロックたちの属性も全部一緒に切り替える！
+    if (state_ == State::Attack) {
+        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    }
+
+    // ② ：周りのブロックたちの属性も全部一緒に切り替える！
     for (Object3d* block : armorBlocks_) {
         if (block) {
             block->SetCollisionAttribute(targetAttribute);
+            if (state_ == State::Attack) {
+                block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            }
         }
     }
 
@@ -316,7 +323,9 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     if (!SceneManager::GetInstance()->IsPlaying()) {
         return; // 再生中でなければ操作を受け付けない
     }
-
+    if(state_ == State::Weak) {
+        return;
+    }
     InputManager* input = InputManager::GetInstance();
 
     // ======================================
