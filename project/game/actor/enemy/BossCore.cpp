@@ -1,12 +1,12 @@
 ﻿#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
-#include "easing.h" // 追加
+#include "easing.h"
 #include "DebugConsole.h"
 #include <cmath>
 #include <numbers>
-#include <ctime>   // ★ 新規追加：時間を使うため
-#include <cstdlib> // ★ 新規追加：乱数を使うため
+#include <ctime>
+#include <cstdlib>
 
 // =================================================================
 // ★ 新規：待機アニメーション用のタイマーと軌道計算関数
@@ -114,6 +114,27 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     director_ = std::make_unique<GhostDirector>();
     if (sceneManager_) {
         director_->Initialize(sceneManager_);
+    }
+
+    bool isFound = false;
+    for (Object3d* child : GetChildren()) {
+        // ★ まず、ボスが認識している「子供の名前」をすべてログに出す！
+        DebugConsole::GetInstance()->AddLog("子パーツ発見: " + child->GetName());
+
+        if (child->GetName() == "WarningArea") {
+            warningArea_ = child;
+            warningArea_->SetParent(nullptr); // 親子関係を解除
+            warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+
+            isFound = true;
+            DebugConsole::GetInstance()->AddLog("🟢 WarningArea の取得に成功しました！");
+            break;
+        }
+    }
+
+    // もし見つからなかったら明確に警告を出す！
+    if (!isFound) {
+        DebugConsole::GetInstance()->AddLog("❌ WarningArea が見つかりませんでした！");
     }
 }
 
@@ -699,7 +720,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     // ======================================
     else if (attackMode_ == 3) {
 
-        // --- Phase 20: 瞬時にハンマー形態へ変形
+        // --- Phase 20: 瞬時にハンマー形態へ変形 ---
         if (animPhase_ == 20) {
             if (animTimer_ == 0.0f) {
                 struct HammerSetting {
@@ -744,6 +765,15 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 else {
                     animTargetPos_ = GetTranslate();
                 }
+
+                // ==========================================
+                // ★ 追加：ロックオンした瞬間に、足元に予兆エリアをセット！
+                // ==========================================
+                if (warningArea_) {
+                    // プレイヤーの足元(Y=0.01f)に設置して、地面とのチラつきを防ぐ
+                    warningArea_->SetTranslate({ animTargetPos_.x, 0.01f, animTargetPos_.z });
+                    warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は0
+                }
             }
         }
         // --- Phase 21: ロックオンした位置へ移動 ＆ 振りかぶる！ ---
@@ -755,6 +785,17 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
 
             float moveT = std::min(animTimer_ / moveDuration, 1.0f);
             float rotT = std::min(animTimer_ / rotDuration, 1.0f);
+
+            // ==========================================
+            // ★ 追加：ボスの移動に合わせて、予兆エリアを徐々にデカくする！
+            // ==========================================
+            if (warningArea_) {
+                // 最大半径を 12.0f とした場合（お好みで調整してください）
+                float currentScale = Math::Lerp(0.0f, 12.0f, moveT);
+
+                // XとZ（半径）だけを広げる。板モデルならYは1.0fのままでOK！
+                warningArea_->SetScale({ currentScale, 1.0f, currentScale });
+            }
 
             Vector3 targetPos = animTargetPos_;
             Vector3 currentPos = GetTranslate();
@@ -800,6 +841,14 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         }
         // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
         else if (animPhase_ == 22) {
+
+            // ==========================================
+            // ★ 追加：振り下ろした瞬間に、予兆エリアを消す！
+            // ==========================================
+            if (animTimer_ == 0.0f && warningArea_) {
+                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
+            }
+
             animTimer_ += deltaTime;
 
             float smashDuration = 0.15f;
@@ -833,7 +882,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         }
         // --- Phase 24: 待機軌道に向かって復帰する ---
         else if (animPhase_ == 24) {
-
+            // (ここは今までと全く同じなので省略せずにそのまま残します)
             if (animTimer_ == 0.0f) {
                 blockStartPos_.clear();
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
