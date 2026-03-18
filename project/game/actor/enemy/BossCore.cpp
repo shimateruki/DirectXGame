@@ -79,6 +79,19 @@ namespace {
 
         return data;
     }
+    Object3d* FindWeaponRecursive(Object3d* node) {
+        if (!node) return nullptr;
+        // 自分が kPlayerAttack(凶器) なら見つけた！
+        if (node->GetCollisionAttribute() & kPlayerAttack) {
+            return node;
+        }
+        // 見つからなければ子パーツの中を再帰的に探す
+        for (Object3d* child : node->GetChildren()) {
+            Object3d* result = FindWeaponRecursive(child);
+            if (result) return result;
+        }
+        return nullptr;
+    }
 }
 
 // =================================================================
@@ -97,10 +110,48 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
+    float preTimer = colorResetTimer_;
     // 1. 基本更新（行列計算など）
     BaseEnemy::Update(deltaTime);
+    if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
 
+        // ① 先ほど作った関数で、腕の先などにある剣を確実に見つける！
+        Object3d* weapon = FindWeaponRecursive(target_);
+
+        // ② 振られている剣を見つけたら、ブロックとの当たり判定をチェック！
+        if (weapon) {
+            for (Object3d* block : armorBlocks_) {
+                if (!block) continue;
+
+                // ★超重要：待機中のブロックは「壁(kGround)」になっているので、
+                // マスク設定で弾かれないように一瞬だけ判定を全開放(0xFFFFFFFF)する！
+                uint32_t originalMask = block->GetCollisionMask();
+                block->SetCollisionMask(0xFFFFFFFF);
+
+                CollisionInfo info = block->CheckCollision(weapon);
+
+                // 判定が終わったらすぐに元のマスクに戻す
+                block->SetCollisionMask(originalMask);
+
+                if (info.isColliding) {
+                    // 当たった！！
+                    TakeBarrierDamage(10.0f); // バリアに10ダメージ！
+                    break; // 1フレームに多段ヒットしないように抜ける
+                }
+            }
+        }
+    }
+
+ 
     // ==========================================
+    // ブロックの色を元に戻す処理
+    // ==========================================
+    if (preTimer > 0.0f && colorResetTimer_ <= 0.0f) {
+        for (Object3d* block : armorBlocks_) {
+            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白に戻す
+        }
+    }
+
     // ★ 新規：ゲーム再生中は待機タイマーを常に進める！
     // ==========================================
     if (SceneManager::GetInstance()->IsPlaying()) {
@@ -141,6 +192,19 @@ void BossCore::Update(float deltaTime) {
 void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
+    // 現在のステートに応じた属性を決定する
+    uint32_t targetAttribute = (state_ == State::Attack) ? kEnemyAttack : kEnemy;
+
+    // ① コア本体の属性を切り替え
+    SetCollisionAttribute(targetAttribute);
+
+    // ② ★追加：周りのブロックたちの属性も全部一緒に切り替える！
+    for (Object3d* block : armorBlocks_) {
+        if (block) {
+            block->SetCollisionAttribute(targetAttribute);
+        }
+    }
+
     if (!director_) return;
 
     // 状態移行に合わせて、ディレクターの再生シナリオを切り替える
@@ -168,16 +232,15 @@ void BossCore::ChangeState(State nextState) {
         break;
     }
 }
-
 // =================================================================
 // 各ステートの個別更新処理
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
     // 待機シナリオが終了したら、攻撃ステートへ移行
-    if (director_ && director_->IsFinished()) {
-        ChangeState(State::Attack);
-    }
+    //if (director_ && director_->IsFinished()) {
+    //    ChangeState(State::Attack);
+    //}
 }
 
 void BossCore::UpdateAttack(float deltaTime) {
@@ -205,12 +268,46 @@ void BossCore::UpdateAttack(float deltaTime) {
 }
 
 void BossCore::UpdateWeak(float deltaTime) {
-    // 弱点露出シナリオが終了したら、待機ステートへ戻る
-    if (director_ && director_->IsFinished()) {
+    animTimer_ += deltaTime;
+
+    // ==========================================
+    // 演出1：機能停止して小刻みに震える（プルプル）
+    // ==========================================
+    // sin波を使って、高速で小刻みに揺らす
+    float shakeX = std::sin(animTimer_ * 50.0f) * 0.05f;
+    float shakeZ = std::cos(animTimer_ * 45.0f) * 0.05f;
+    SetRotation({ shakeX, GetRotation().y, shakeZ });
+    GetTransform()->isQuaternionMaster = false;
+
+    // ==========================================
+    // 演出2：全体の色を暗くして「ショートした」感を出す
+    // ==========================================
+    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // コアをダークグレーに
+    for (Object3d* block : armorBlocks_) {
+        if (block) {
+            block->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // ブロックもダークグレーに
+        }
+    }
+
+    // ==========================================
+    // 3秒経過で復帰（再起動）
+    // ==========================================
+    if (animTimer_ >= 3.0f) {
+        animTimer_ = 0.0f;
+
+        // 姿勢を真っ直ぐに戻す
+        SetRotation({ 0.0f, GetRotation().y, 0.0f });
+
+        // 色を元の白(再起動)に戻す
+        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        for (Object3d* block : armorBlocks_) {
+            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        }
+
+        // 待機状態(Idle)へ戻る
         ChangeState(State::Idle);
     }
 }
-
 void BossCore::UpdateAnimationSequence(float deltaTime) {
 
     // ==========================================
@@ -243,7 +340,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             attackMode_ = 1;
             animPhase_ = 1; // ★ 変形フェーズからスタート！
             animTimer_ = 0.0f;
-
+            ChangeState(State::Attack);
             // --- 形態変化の準備（座標の計算と記憶） ---
             blockStartPos_.clear();
             blockTargetPos_.clear();
@@ -289,6 +386,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             attackMode_ = 2;
             animPhase_ = 10; // 射撃用フェーズへ
             animTimer_ = 0.0f;
+            ChangeState(State::Attack);
         }
         // ==========================================
         // 3キーで「こぶし落下攻撃」を発動！
@@ -297,6 +395,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             attackMode_ = 3;
             animPhase_ = 20; // フェーズ20からスタート
             animTimer_ = 0.0f;
+            ChangeState(State::Attack);
         }
         // ==========================================
         // 4キーで「モーション4：巨大な壁の横断攻撃」を発動！
@@ -306,6 +405,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             animPhase_ = 39;
             animTimer_ = 0.0f;
             shotCount_ = 0;
+            ChangeState(State::Attack);
         }
     }
 
@@ -433,6 +533,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
+                ChangeState(State::Idle);
             }
         }
     }
@@ -596,6 +697,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     animPhase_ = 0;
                     attackMode_ = 0;
                     animTimer_ = 0.0f;
+                    ChangeState(State::Idle);
                 }
             }
         }
@@ -782,6 +884,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
+                ChangeState(State::Idle);
             }
         }
     }
@@ -994,6 +1097,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 0;
                 attackMode_ = 0;
                 animTimer_ = 0.0f;
+                ChangeState(State::Idle);
             }
         }
     }
@@ -1167,5 +1271,65 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
         else {
             ++it;
         }
+    }
+}
+
+
+// ==========================================
+// バリアのダメージ＆スタン(ダウン)処理
+// ==========================================
+void BossCore::TakeBarrierDamage(float damage) {
+    barrierHp_ -= damage;
+
+    // デバッグコンソールに分かりやすく残りHPを表示！
+    DebugConsole::GetInstance()->AddLog("【HIT!】 Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " + std::to_string(maxBarrierHp_));
+
+    // 無敵タイマーと色リセットタイマーをセット
+    damageCooldownTimer_ = 0.5f;
+    colorResetTimer_ = 0.15f;
+
+    // 全ブロックを赤く光らせてダメージを受けた感を出す！
+    for (Object3d* block : armorBlocks_) {
+        if (block) block->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+    }
+
+    if (barrierHp_ <= 0.0f) {
+        DebugConsole::GetInstance()->AddLog("★☆ Barrier BROKEN! Boss is STUNNED! ☆★");
+        barrierHp_ = maxBarrierHp_; // 復帰後のためにリセットしておく
+
+        // どんな攻撃アニメーション中だろうと強制中断させる！
+        animPhase_ = 0;
+        attackMode_ = 0;
+        animTimer_ = 0.0f;
+        shotCount_ = 0; // ★念のためこれもリセット
+
+        // =======================================
+        // ★修正：全てのブロックを強制的にボスの周りにワープさせる！（置いてけぼり完全防止）
+        // ==========================================
+        // ① 飛んでいるブロックのリストを完全に消去して「飛ぶのをやめさせる」
+        flyingBlocks_.clear();
+
+        // ② 全ブロックの親をボスに戻し、瞬時に待機軌道(Orbit)へセットする！
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            Object3d* block = armorBlocks_[i];
+            if (block) {
+                // 親をボス本体に戻す（射撃や壁攻撃で外れていたのを強制修復！）
+                block->SetParent(this);
+
+                // 待機軌道の定位置を計算して、瞬時にそこにスナップさせる！
+                OrbitData orbit = GetIdleOrbit(i);
+                block->SetTranslate(orbit.pos);
+                block->SetScale(orbit.scale);
+                block->SetRotation(orbit.rot);
+                block->GetTransform()->isQuaternionMaster = false;
+            }
+        }
+
+        // ③ ボス本体の回転などもまっすぐにリセットしておく
+        SetRotation({ 0.0f, 0.0f, 0.0f });
+        GetTransform()->isQuaternionMaster = false;
+
+        // ダウン状態(Weak)へ強制移行！
+        ChangeState(State::Weak);
     }
 }

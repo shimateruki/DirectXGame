@@ -61,6 +61,7 @@ void GamePlayScene::Initialize() {
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
 	// --- 2. 各種マネージャ初期化 ---
+	EventManager::GetInstance()->ClearAllListeners();
 	CameraManager::GetInstance()->Initialize();
 	CameraManager::GetInstance()->SetInputManager(inputManager_);
 

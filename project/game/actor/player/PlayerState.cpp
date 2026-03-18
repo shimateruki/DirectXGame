@@ -51,6 +51,8 @@ static void FindFeetRecursive(Object3d* node, Object3d*& leftOut, Object3d*& rig
 	}
 }
 
+
+
 // ========================================================
 // シーン検索（名前ベース）
 // ========================================================
@@ -218,6 +220,7 @@ static void FindSwordInSceneByName(Player* player, Object3d*& swordOut)
 		}
 	}
 }
+
 static void TryFindSword(Player* player, Object3d*& swordOut)
 {
 	if (!player) return;
@@ -225,7 +228,17 @@ static void TryFindSword(Player* player, Object3d*& swordOut)
 	if (swordOut) return;
 	FindSwordInSceneByName(player, swordOut);
 }
+static void SetSwordActive(Player* player, bool isActive)
+{
+	Object3d* swordObj = nullptr;
+	// ★最強の探索関数を使って、確実に剣を見つけ出す！
+	TryFindSword(player, swordObj);
 
+	if (swordObj) {
+		// 見つけたら、ONなら「kPlayerAttack」、OFFなら「0 (無害)」にする
+		swordObj->SetCollisionAttribute(isActive ? kPlayerAttack : 0);
+	}
+}
 static void FindHeadRecursive(Object3d* node, Object3d*& headOut)
 {
 	if (!node) return;
@@ -319,6 +332,7 @@ static float s_bodyTargetY = 0.0f;
 // ========================================================
 void PlayerStateIdle::Enter(Player* player)
 {
+	SetSwordActive(player, false);
 	player->PlayAnimation("Idle", false);
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Idle State (searching feet/arms/sword/head)");
 
@@ -508,6 +522,7 @@ void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime)
 // ========================================================
 void PlayerStateRun::Enter(Player* player)
 {
+	SetSwordActive(player, false);
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Run State (custom procedural pose)");
 
 	bodyObj_ = player; bodySaved_ = false;
@@ -805,7 +820,7 @@ void PlayerStateAttack1::Enter(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack1 State");
 
 	if (player) player->SetIsControlActive(false);
-	SetSwordCollisionActive(player, true);
+	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 
 	bodyObj_ = player;
@@ -880,7 +895,7 @@ void PlayerStateAttack1::Exit(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack1 State");
 
 	if (player) player->SetIsControlActive(true);
-	
+	SetSwordActive(player, false);
 	// 戻す
 	if (!initializedParts_) return;
 
@@ -1002,10 +1017,12 @@ void PlayerStateAttack1::ApplyPose(float t)
 // ========================================================
 void PlayerStateAttack2::Enter(Player* player)
 {
+
+
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack2 State");
 
 	if (player) player->SetIsControlActive(false);
-
+	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 
 	bodyObj_ = player;
@@ -1136,7 +1153,7 @@ void PlayerStateAttack2::Exit(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack2 State");
 
 	if (player) player->SetIsControlActive(true);
-
+	SetSwordActive(player, false);
 	if (!initializedParts_) return;
 
 	// 戻す（保存したデフォルトに復帰）
