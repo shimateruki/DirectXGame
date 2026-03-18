@@ -97,7 +97,7 @@ void Object3d::UpdateParticle() {
 
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!isVisible_) return;
-#ifdef NDEBUG // "Release" ビルドの時だけ有効になるマクロ
+#ifdef DD // "Release" ビルドの時だけ有効になるマクロ
     if (className_ == "CinematicCamera") {
         return; // 何も描画せずに帰る（門前払い）
     }

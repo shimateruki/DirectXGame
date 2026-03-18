@@ -1,6 +1,8 @@
 #include "PostEffect.h"
 #include "SRVManager.h"
 #include"WinApp.h"
+#include "RootSignatureBuilder.h"
+#include "GraphicsPipelineBuilder.h"
 #include <cassert>
 
 void PostEffect::Initialize(DirectXCommon* dxCommon) {
@@ -50,151 +52,104 @@ void PostEffect::CreateMesh() {
 }
 
 void PostEffect::CreateRootSignature() {
-    ID3D12Device* device = dxCommon_->GetDevice();
+    RootSignatureBuilder builder;
 
-    // t0 用 (メイン画像)
-    D3D12_DESCRIPTOR_RANGE descriptorRange0[1] = {};
-    descriptorRange0[0].BaseShaderRegister = 0; // t0
-    descriptorRange0[0].NumDescriptors = 1;
-    descriptorRange0[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRange0[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    // =================================================================
+    // 1. ルートパラメータの設定
+    // =================================================================
 
-    // ★追加：t1 用 (LUT画像)
-    D3D12_DESCRIPTOR_RANGE descriptorRange1[1] = {};
-    descriptorRange1[0].BaseShaderRegister = 1; // t1
-    descriptorRange1[0].NumDescriptors = 1;
-    descriptorRange1[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRange1[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    // [0] 定数バッファ (CBV b0 - PixelShader用)
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // ★配列のサイズを 2 から 3 に変更！
-    D3D12_ROOT_PARAMETER rootParams[3] = {};
+    // [1] メイン画像 (DescriptorTable t0 - PixelShader用)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [0] CBV (定数バッファ b0)
-    rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParams[0].Descriptor.ShaderRegister = 0;
+    // [2] LUT画像 (DescriptorTable t1 - PixelShader用)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    // [1] t0 (メイン画像)
-    rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParams[1].DescriptorTable.pDescriptorRanges = descriptorRange0;
-    rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+    // =================================================================
+    // 2. サンプラーの設定
+    // =================================================================
 
-    // [2] t1 (LUT画像) ★追加
-    rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootParams[2].DescriptorTable.pDescriptorRanges = descriptorRange1;
-    rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+    // s0: テクスチャサンプラー (リニア補間、クランプ - PixelShader用)
+    builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
-    // サンプラー (画像の色を拾う設定)
-    D3D12_STATIC_SAMPLER_DESC samplerDesc{};
-    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    samplerDesc.ShaderRegister = 0; // s0
-    samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
-    rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    rootSignatureDesc.pParameters = rootParams;
-    rootSignatureDesc.NumParameters = _countof(rootParams); // 自動で 3 になる
-    rootSignatureDesc.pStaticSamplers = &samplerDesc;
-    rootSignatureDesc.NumStaticSamplers = 1;
-
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob, errorBlob;
-    HRESULT hr = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
-    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
-
-    hr = device->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature_));
-    assert(SUCCEEDED(hr));
+    // =================================================================
+    // 3. ビルド実行
+    // =================================================================
+    builder.Build(dxCommon_->GetDevice(), rootSignature_.GetAddressOf());
 }
+
 void PostEffect::CreatePipelineState() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
     // ★ VSは1つ、PSは用途に合わせて5つコンパイルする！
-    Microsoft::WRL::ComPtr<IDxcBlob> vsBlob = dxCommon_->CompileShader(L"Resources/shader/PostEffect.VS.hlsl", L"vs_6_0", L"main");
-    Microsoft::WRL::ComPtr<IDxcBlob> psCopy = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainCopy");
-    Microsoft::WRL::ComPtr<IDxcBlob> psExtract = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainExtract");
-    Microsoft::WRL::ComPtr<IDxcBlob> psDownsample = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainDownsample");
-    Microsoft::WRL::ComPtr<IDxcBlob> psAdd = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainAdd");
-    Microsoft::WRL::ComPtr<IDxcBlob> psComposite = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainComposite");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/PostEffect.VS.hlsl", L"vs_6_0", L"main");
+    auto psCopy = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainCopy");
+    auto psExtract = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainExtract");
+    auto psDownsample = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainDownsample");
+    auto psAdd = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainAdd");
+    auto psComposite = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainComposite");
 
-    D3D12_INPUT_ELEMENT_DESC inputElementDescs[] = {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
+    // ==========================================================
     // --- 共通設定 ---
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-    psoDesc.pRootSignature = rootSignature_.Get();
-    psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.DepthStencilState.DepthEnable = FALSE;
-    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.SampleDesc.Count = 1;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+    // ==========================================================
+    GraphicsPipelineBuilder builder;
+    builder.SetRootSignature(rootSignature_.Get());
+    builder.SetInputLayout(inputLayout, _countof(inputLayout));
 
-    // 基本はアルファブレンド（不透明描画）
-    D3D12_RENDER_TARGET_BLEND_DESC defaultBlend{};
-    defaultBlend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.BlendState.RenderTarget[0] = defaultBlend;
+    // カリングなし、Zテストなし
+    builder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
+    builder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO);
+
+    // HDR出力 (16bit Float)
+    DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
+    builder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
+
+    // 基本はブレンドなし（不透明描画/上書き）
+    builder.SetBlendMode(::BlendMode::kNone);
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pso;
 
     // ==========================================================
     // [PSO 0] Copy用 (HDR出力)
     // ==========================================================
-    psoDesc.PS = { psCopy->GetBufferPointer(), psCopy->GetBufferSize() };
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)); assert(SUCCEEDED(hr));
+    builder.SetShaders(vsBlob.Get(), psCopy.Get());
+    builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 
     // ==========================================================
     // [PSO 1] トーンマップ・最終合成用 (SDR出力)
     // ==========================================================
-    psoDesc.PS = { psComposite->GetBufferPointer(), psComposite->GetBufferSize() };
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)); assert(SUCCEEDED(hr));
+    builder.SetShaders(vsBlob.Get(), psComposite.Get());
+    builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 
     // ==========================================================
     // [PSO 2] 抽出用 (HDR出力)
     // ==========================================================
-    psoDesc.PS = { psExtract->GetBufferPointer(), psExtract->GetBufferSize() };
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)); assert(SUCCEEDED(hr));
+    builder.SetShaders(vsBlob.Get(), psExtract.Get());
+    builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 
     // ==========================================================
     // [PSO 3] 縮小ブラー用 (HDR出力)
     // ==========================================================
-    psoDesc.PS = { psDownsample->GetBufferPointer(), psDownsample->GetBufferSize() };
-    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)); assert(SUCCEEDED(hr));
+    builder.SetShaders(vsBlob.Get(), psDownsample.Get());
+    builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 
     // ==========================================================
-    // [PSO 4] 加算合成用 (HDR出力 / ★ブレンドモードを加算にする)
+    // [PSO 4] 加算合成用 (HDR出力)
     // ==========================================================
-    psoDesc.PS = { psAdd->GetBufferPointer(), psAdd->GetBufferSize() };
-
-    // 加算ブレンド設定 (元の色 + 新しい色)
-    D3D12_RENDER_TARGET_BLEND_DESC addBlend{};
-    addBlend.BlendEnable = TRUE;
-    addBlend.SrcBlend = D3D12_BLEND_ONE;
-    addBlend.DestBlend = D3D12_BLEND_ONE; // ここがONEなので加算される！
-    addBlend.BlendOp = D3D12_BLEND_OP_ADD;
-    addBlend.SrcBlendAlpha = D3D12_BLEND_ONE;
-    addBlend.DestBlendAlpha = D3D12_BLEND_ZERO;
-    addBlend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-    addBlend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.BlendState.RenderTarget[0] = addBlend;
-
-    hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)); assert(SUCCEEDED(hr));
+    builder.SetShaders(vsBlob.Get(), psAdd.Get());
+    builder.SetBlendMode(::BlendMode::kAdd); 
+    builder.Build(device, pso.ReleaseAndGetAddressOf());
     pipelineStates_.push_back(pso);
 }
 

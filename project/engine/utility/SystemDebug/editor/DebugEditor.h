@@ -1,102 +1,111 @@
 #pragma once
+
+// ========================================================================
+// Includes
+// ========================================================================
 #include <d3d12.h> 
 #include <wrl.h>   
 #include <vector>  
-#include "engine/utility/math/Math.h"
 #include <string> 
-#include "BaseScene.h"
 #include <deque>
+#include <memory>
+
+#include "engine/utility/math/Math.h"
+#include "BaseScene.h"
 #include "Transform.h"
 #include "IEditable.h" 
-#include <GhostDirector.h>
+
+// --- サブモジュール群 ---
+#include "HierarchyWindow.h"
+#include "ProjectWindow.h"
+#include "InspectorWindow.h"
+#include "EditorCommon.h"
+#include "SceneSerializer.h"
+#include "PrimitiveDrawer.h"
+#include "GhostDirector.h"
+
+// ========================================================================
+// 前方宣言 (Forward Declarations)
+// ========================================================================
 class Object3d;
 class DirectXCommon;
 class SceneManager;
-
-
-struct AlignedMatrix4x4 {
-    Matrix4x4 matrix;
-    // 256バイト (sizeof(Matrix4x4)=64)
-    char padding[256 - sizeof(Matrix4x4)];
-};
-
-struct AlignedVector4 {
-    Vector4 vector;
-    // 256バイト (sizeof(Vector4)=16)
-    char padding[256 - sizeof(Vector4)];
-};
-
-
+class GhostRecorder;
 class PostEffectEditor;
 class SpriteDebugEditor;
 class ParticleEditor;
 class GPUParticleEditor;
 class VFXSequencerEditor;
-class  GhostDirector;
 class LightEditor;
+
+
+// ========================================================================
+// DebugEditor クラス
+// 役割: エディタのメイン制御、各種ウィンドウの統括、シーンへの干渉を行う
+// ========================================================================
 class DebugEditor : public IEditable {
-public:
-    enum class SaveMode {
-        All,
-        Player,
-        Enemy,
-        Object
-    };
-
+    friend class HierarchyWindow; // ゲッター経由に移行済みですが、互換性のため残置
 
 public:
+    // --------------------------------------------------------------------
+    // ライフサイクル (Lifecycle)
+    // --------------------------------------------------------------------
     void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
     void Update();
     void Finalize();
+
+    // --------------------------------------------------------------------
+    // 描画関連 (Rendering)
+    // --------------------------------------------------------------------
     void DrawDebug(ID3D12GraphicsCommandList* commandList);
-    void DrawProjectWindow();
-    void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);
+    void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
-    // ビットフラグ編集用のヘルパー関数
-    void DrawAttributeSelector(const char* label, uint32_t* attribute);
-    void DrawHierarchyNode(Object3d* obj);
-
-    void SaveScene(SaveMode mode = SaveMode::All);
-    void SaveSingleObject();      // 単体保存 (Ctrl + Shift + S)
-    void DuplicateSelected();     // 複製 (Ctrl + C)
-    void DeleteSelected();        // 削除 (Delete)
-    void PerformUndo();
-    void PerformRedo();
-    void DrawEnemyTypeSelector();
-    void DrawHierarchy();
-
-
-    //  右パネル（Inspectorがこの関数を呼ぶ）
+    // IEditableの実装: Inspector等に描画されるUI
     void DrawImGui() override;
-
-    //  Inspector上部のタイトル
     std::string GetName() override {
         return selectedObject_ ? selectedObject_->GetName() + " (Object3D)" : "Scene Settings";
     }
-    void DrawSpawnerSettings();
 
+    // --------------------------------------------------------------------
+    // ウィンドウ個別描画 (Windows)
+    // --------------------------------------------------------------------
+    void DrawProjectWindow();
+    void DrawHierarchy();
 
-    void DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    // --------------------------------------------------------------------
+    // シーン操作・ファイル管理 (File Management)
+    // --------------------------------------------------------------------
+    void SaveScene(SaveMode mode = SaveMode::All);
+    void SaveSingleObject();      // 単体保存
+    void TriggerSaveNotification(const std::string& filename);
+    void DrawSaveNotification();
+
+    // --------------------------------------------------------------------
+    // オブジェクト編集機能 (Edit Operations)
+    // --------------------------------------------------------------------
+    void DuplicateSelected();     // 複製
+    void DeleteSelected();        // 削除
+    void PerformUndo();           // 元に戻す
+    void PerformRedo();           // やり直し
+
+    // --------------------------------------------------------------------
+    // セッター (Setters)
+    // --------------------------------------------------------------------
     void SetGameViewRegion(const Vector2& offset, const Vector2& size) {
         gameViewOffset_ = offset;
         gameViewSize_ = size;
     }
-
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
     void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
-    Object3d* GetSelectedObject3D() const { return selectedObject_; }
     void SetSceneFilename(const std::string& filepath) {
         std::string name = filepath;
         size_t pos = name.find_last_of("/\\");
-        if (pos != std::string::npos) {
-            name = name.substr(pos + 1);
-        }
-        // エディターのバッファにセット
+        if (pos != std::string::npos) name = name.substr(pos + 1);
         strcpy_s(currentSceneFilename_, sizeof(currentSceneFilename_), name.c_str());
     }
-
-    void TriggerSaveNotification(const std::string& filename);
-    void DrawSaveNotification();
+    void SetSelectedObject(Object3d* obj) { selectedObject_ = obj; }
+    void SetPreviewObject(std::unique_ptr<Object3d> obj) { previewObject_ = std::move(obj); }
+    void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
 
     void SetEditors(
         PostEffectEditor* postEffectEditor,
@@ -106,7 +115,7 @@ public:
         VFXSequencerEditor* vfxSequencerEditor,
         GhostRecorder* ghostRecorder,
         GhostDirector* ghostDirector,
-        LightEditor* lightEditor)   
+        LightEditor* lightEditor)
     {
         postEffectEditor_ = postEffectEditor;
         spriteDebugEditor_ = spriteDebugEditor;
@@ -115,92 +124,98 @@ public:
         vfxSequencerEditor_ = vfxSequencerEditor;
         ghostRecorder_ = ghostRecorder;
         ghostDirector_ = ghostDirector;
-        lightEditor_ = lightEditor;   
+        lightEditor_ = lightEditor;
     }
 
+    // --------------------------------------------------------------------
+    // ゲッター (Getters)
+    // --------------------------------------------------------------------
+    Object3d* GetSelectedObject3D() const { return selectedObject_; }
+    Object3d* GetSelectedObject() const { return selectedObject_; }
+    SceneManager* GetSceneManager() const { return sceneManager_; }
+
+    LightEditor* GetLightEditor() const { return lightEditor_; }
+    PostEffectEditor* GetPostEffectEditor() const { return postEffectEditor_; }
+    SpriteDebugEditor* GetSpriteDebugEditor() const { return spriteDebugEditor_; }
+    GPUParticleEditor* GetGPUParticleEditor() const { return gpuParticleEditor_; }
+    VFXSequencerEditor* GetVFXSequencerEditor() const { return vfxSequencerEditor_; }
+    ParticleEditor* GetParticleEditor() const { return particleEditor_; }
+    GhostRecorder* GetGhostRecorder() const { return ghostRecorder_; }
+    GhostDirector* GetGhostDirector() const { return ghostDirector_; }
+
+    char* GetCurrentSceneFilenameBuffer() { return currentSceneFilename_; }
+    size_t GetSceneFilenameBufferSize() const { return sizeof(currentSceneFilename_); }
+    char* GetSearchFilterBuffer() { return searchFilter_; }
+    size_t GetSearchFilterBufferSize() const { return sizeof(searchFilter_); }
+
+    bool* GetDrawCollidersPtr() { return &drawColliders_; }
+    bool GetIsPathEditMode() const { return isPathEditMode_; }
+
 private:
-    void InitializePrimitiveDrawing();
-    void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
+    // --------------------------------------------------------------------
+    // 内部ヘルパー (Internal Helpers)
+    // --------------------------------------------------------------------
+    Ray ScreenPointToRay(const Vector2& mousePos);
     bool IntersectRayPlane(const Ray& ray, Vector3& intersectOut);
-
-
-
-
+    Vector3 WorldToScreen(const Vector3& worldPos);
+    void Draw3DIcons();
 private:
-    SceneManager* sceneManager_ = nullptr;
-    Object3d* selectedObject_ = nullptr;
-    DirectXCommon* dxCommon_ = nullptr;
+    // ====================================================================
+    // メンバ変数
+    // ====================================================================
 
-    bool drawColliders_ = true;
-    /// <summary>
-    /// 最後に Update を実行したシーン
-    /// </summary>
+    // --- コアシステムへの参照 ---
+    SceneManager* sceneManager_ = nullptr;
+    DirectXCommon* dxCommon_ = nullptr;
+    Math math_;
+
+    // --- エディタの状態・データ ---
+    Object3d* selectedObject_ = nullptr;
+    std::unique_ptr<Object3d> previewObject_ = nullptr;
     BaseScene* lastUpdatedScene_ = nullptr;
 
-    // 同時に描画するコライダーの最大数
-    static const int kMaxInstances = 2048;
+    bool drawColliders_ = true;
+    bool isPathEditMode_ = false;
 
-    // --- プリミティブ描画リソース ---
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> primitiveRootSignature_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> primitivePipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> cubeVertexBuffer_;
-    D3D12_VERTEX_BUFFER_VIEW cubeVertexBufferView_{};
-    Microsoft::WRL::ComPtr<ID3D12Resource> cubeIndexBuffer_;
-    D3D12_INDEX_BUFFER_VIEW cubeIndexBufferView_{};
-    Microsoft::WRL::ComPtr<ID3D12Resource> primitiveWVPBuffer_;
-    AlignedMatrix4x4* primitiveWVPData_ = nullptr;
-    Microsoft::WRL::ComPtr<ID3D12Resource> primitiveColorBuffer_;
-    AlignedVector4* primitiveColorData_ = nullptr;
-    // モデル名一覧
-    std::vector<std::string> modelNames_;
-    // ImGui のリストボックスで選択されているインデックス
-    int selectedModelIndex_ = 0;
+    // --- ファイル関連 ---
     char currentSceneFilename_[128] = "scene_layout.json";
+    char searchFilter_[128] = "";
+    std::vector<std::string> modelNames_;
     std::vector<std::string> sceneFiles_;
-
-    char searchFilter_[128] = ""; // 検索文字用バッファ
-
-    //  Undoシステム用構造体 
-    struct TransformCommand {
-        Object3d* target;        // 操作したオブジェクト
-        Transform oldTf; // 変更前の状態
-        Transform newTf; // 変更後の状態
-    };
-
-    // 履歴スタック (最大50件くらい保存)
-    std::deque<TransformCommand> undoStack_;
-
-    // 編集中の一時保存用 (ドラッグ開始時の状態)
-    // ★修正: Object3d::Transform -> Transform
-    Transform tempTransformStart_;
-    bool isDraggingTransform_ = false;
-
-    bool isGridSnapEnabled_ = false; // スナップするかどうか
-    float snapValue_ = 1.0f;         // スナップする単位 (1mごと)
-
-    // Undo/Redo用スタック
-    std::deque<TransformCommand> redoStack_; // 進む履歴
-
-    Math math_;
-    std::unique_ptr<Object3d> previewObject_ = nullptr;
-    //  スクリーン座標(マウス位置)からレイを作成する関数
-    Ray ScreenPointToRay(const Vector2& mousePos);
-    bool wasPreviewActive_ = false;    // 配置モード切り替え検知用
-    int previousCameraMode_ = 0;       // カメラモード保存用
-
-
+    int selectedModelIndex_ = 0;
     std::string currentPreviewModelName_ = "";
     char presetNameBuffer_[64] = "";
 
-    Vector2 gameViewMousePos_ = { 0, 0 }; // ローカルマウス座標
-    Vector2 gameViewSize_ = { 1266, 530 }; // GameViewのサイズ
-    Vector2 gameViewOffset_ = { 0, 0 };   // GameViewの絶対座標
+    // --- GameView領域 (レイキャスト用) ---
+    Vector2 gameViewMousePos_ = { 0, 0 };
+    Vector2 gameViewSize_ = { 1266, 530 };
+    Vector2 gameViewOffset_ = { 0, 0 };
     bool isGameViewHovered_ = false;
 
-    bool isPathEditMode_ = false;
+    // --- Undo/Redo システム ---
+    struct TransformCommand {
+        Object3d* target;
+        Transform oldTf;
+        Transform newTf;
+    };
+    std::deque<TransformCommand> undoStack_;
+    std::deque<TransformCommand> redoStack_;
+    Transform tempTransformStart_;
+    bool isDraggingTransform_ = false;
 
+    // --- スナップ機能 ---
+    bool isGridSnapEnabled_ = false;
+    float snapValue_ = 1.0f;
+
+    // --- カメラ制御・プレビューフラグ ---
+    bool wasPreviewActive_ = false;
+    int previousCameraMode_ = 0;
+
+    // --- 通知UI用 ---
     float saveNotificationTimer_ = 0.0f;
     std::string saveNotificationMsg_ = "";
+
+    // --- 各種サブエディタへのポインタ ---
     PostEffectEditor* postEffectEditor_ = nullptr;
     SpriteDebugEditor* spriteDebugEditor_ = nullptr;
     ParticleEditor* particleEditor_ = nullptr;
@@ -209,4 +224,11 @@ private:
     GhostRecorder* ghostRecorder_ = nullptr;
     GhostDirector* ghostDirector_ = nullptr;
     LightEditor* lightEditor_ = nullptr;
+
+    // --- ウィンドウ・サブモジュール インスタンス ---
+    HierarchyWindow hierarchyWindow_;
+    ProjectWindow projectWindow_;
+    InspectorWindow inspectorWindow_;
+    SceneSerializer serializer_;
+    PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
 };

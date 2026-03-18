@@ -131,12 +131,38 @@ float4 main(VSOutput input) : SV_TARGET
     edge = smoothstep(0.0f, 1.0f, edge);
     fogAmount *= edge;
 
-    // 9. ノイズでモヤモヤさせる (時間経過で上に昇る)
+// =======================================================
+    // 9. ノイズでモヤモヤさせる (フワッとした霧への最適化)
+    // =======================================================
     float3 midWorldPos = (startWorldPos + endWorldPos) * 0.5f;
-    float3 noisePos = midWorldPos * noiseScale + float3(0, time * noiseSpeed, 0);
-    float n = noise3D(noisePos) * 0.5f + noise3D(noisePos * 2.0f) * 0.25f;
-    float noiseFactor = lerp(0.3f, 1.0f, n);
-    fogAmount *= noiseFactor;
+
+    // --- ノイズ1（ベースのゆっくりした大きなモヤ） ---
+    float3 pos1 = midWorldPos * noiseScale;
+    pos1.x += time * noiseSpeed;
+    pos1.z += time * (noiseSpeed * 0.3f);
+    float n1 = noise3D(pos1);
+
+    // --- ノイズ2（少し速く流れる細かいディテール） ---
+    // ※スケールを2倍にして細かくし、少し逆向きに流す
+    float3 pos2 = midWorldPos * (noiseScale * 2.0f);
+    pos2.x -= time * (noiseSpeed * 1.2f);
+    pos2.z -= time * (noiseSpeed * 0.5f);
+    float n2 = noise3D(pos2);
+
+    // ★修正1：掛け算(流体)をやめて、純粋な足し算(FBM:フラクタルノイズ)にする！
+    // 60%の大きなモヤと、40%の細かいモヤを足し合わせる
+    float n = n1 * 0.6f + n2 * 0.4f;
+    
+    // ★追加2：上に行くほどスッと消える「高さフェード (Height Falloff)」
+    // ローカル座標のYは -0.5(底) ～ 0.5(天井) なので、天井付近でアルファを削る
+    float heightFade = saturate((0.5f - midLocalPos.y) / max(edgeFade, 0.001f));
+    heightFade = smoothstep(0.0f, 1.0f, heightFade);
+
+    // 最終的なノイズ係数 (0.1 ~ 1.0 の間で揺らす)
+    float noiseFactor = lerp(0.1f, 1.0f, n);
+    
+    // 全てを掛け合わせる
+    fogAmount *= noiseFactor * heightFade;
     
 // 視線の向き
     float3 viewDirWorld = normalize(endWorldPos - cameraPos);
