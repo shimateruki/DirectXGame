@@ -35,7 +35,10 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 void PlayerMover::Update(float deltaTime)
 {
 	if (!player_ || !inputManager_ || !strategy_) return;
-
+	if (player_->param_.has_value() && player_->param_->hp <= 0.0f) {
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f }); // ピタッと止める
+		return;
+	}
 	// --- 1. クールダウンタイマー更新 ---
 	if (dashCooldownTimer_ > 0.0f)
 	{
