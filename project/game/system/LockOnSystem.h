@@ -51,7 +51,7 @@ private:
 	bool isLockingOn_ = false;		   // ロックオン中フラグ
 
 	// 定数パラメータ
-	const float kMaxLockOnDistance_ = 50.0f; // 届く距離
+	const float kMaxLockOnDistance_ = 500.0f; // 届く距離
 	const float kMinLockOnDot_ = 0.0f;
 	float lostSightTimer_ = 0.0f;
 };
