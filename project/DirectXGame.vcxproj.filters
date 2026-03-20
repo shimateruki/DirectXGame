@@ -306,40 +306,40 @@
     <ClCompile Include="game\actor\MapBlock.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="GPUParticleEditor.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\GPUParticleEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="GPUParticleEmitter.cpp">
+    <ClCompile Include="engine\graphics\particle\GPUParticleEmitter.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="VFXSequencer.cpp">
+    <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="VFXSequencerEditor.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="RootSignatureBuilder.cpp">
+    <ClCompile Include="engine\graphics\core\RootSignatureBuilder.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="GraphicsPipelineBuilder.cpp">
+    <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="HierarchyWindow.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\HierarchyWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="ProjectWindow.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\ProjectWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="InspectorWindow.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\InspectorWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="SceneSerializer.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\SceneSerializer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="PrimitiveDrawer.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="EngineManualWindow.cpp">
+    <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1191,52 +1191,52 @@
     <ClInclude Include="game\actor\MapBlock.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="GPUParticleEditor.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\GPUParticleEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="GPUParticleConfig.h">
+    <ClInclude Include="engine\graphics\particle\GPUParticleConfig.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="GPUParticleEmitter.h">
+    <ClInclude Include="engine\graphics\particle\GPUParticleEmitter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="VFXSequencer.h">
+    <ClInclude Include="engine\graphics\particle\VFXSequencer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="VFXSequencerEditor.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="RootSignatureBuilder.h">
+    <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="GraphicsPipelineBuilder.h">
+    <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="HierarchyWindow.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\HierarchyWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="ProjectWindow.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="InspectorWindow.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\InspectorWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="SceneSerializer.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="EditorCommon.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="PrimitiveDrawer.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="EngineManualWindow.h">
+    <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
