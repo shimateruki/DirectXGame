@@ -26,7 +26,7 @@
 #include "GameRule.h"
 #include "ObjectManager.h" 
 #include "BossCore.h"
-
+#include"WinApp.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -89,7 +89,11 @@ void GamePlayScene::Initialize() {
 
 	lockOnSystem_ = std::make_unique<LockOnSystem>();
 	lockOnSystem_->Initialize(inputManager_);
-
+	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png"); 
+	lockOnSprite_ = std::make_unique<Sprite>();
+	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
+	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
@@ -171,6 +175,96 @@ void GamePlayScene::Update(float deltaTime) {
 	// --- ロックオン & カメラ制御 ---
 	lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
 	CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
+	// =================================================================
+	// ロックオンアイコンの 2.5D 追従計算 (World To Screen)
+	// =================================================================
+	Object3d* target = lockOnSystem_->GetTarget();
+	if (target && lockOnSystem_->IsLockingOn()) {
+		isDrawLockOn_ = true;
+
+		// ① ターゲットの3D座標を取得（コアの中心だとめり込むので、少し上にオフセットをかけると綺麗です！）
+		Vector3 targetWorldPos = target->GetWorldPosition();
+		targetWorldPos.y += 1.0f; // ★ 敵の高さに合わせて調整！
+
+		// ② カメラのビュー行列とプロジェクション行列を掛け合わせる
+		Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
+		// ③ ワールド座標 → クリップ座標 (W除算) の計算
+		float w = targetWorldPos.x * viewProj.m[0][3] + targetWorldPos.y * viewProj.m[1][3] + targetWorldPos.z * viewProj.m[2][3] + viewProj.m[3][3];
+
+		Object3d* target = lockOnSystem_->GetTarget();
+		if (target && lockOnSystem_->IsLockingOn()) {
+			isDrawLockOn_ = true;
+
+			// =======================================================
+			// ★修正1：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
+			// =======================================================
+			AABB aabb = target->GetAABB();
+
+			// ① ターゲットの「真の中心座標」を計算
+			Vector3 targetCenter;
+			targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
+			targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
+			targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
+
+			// ※もし「中心より少し上（胸や頭のあたり）」に表示したい場合は、
+			// targetCenter.y += (aabb.max.y - aabb.min.y) * 0.2f; などを足してください！
+
+			// ② カメラのビュー行列とプロジェクション行列を掛け合わせる
+			Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
+			// ③ ワールド座標(中心) → クリップ座標 (W除算) の計算
+			float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] + targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
+
+			// カメラの後ろ（画面外）にいる時は表示しない
+			if (w > 0.001f) {
+				Vector3 ndc;
+				ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
+				ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
+
+				float screenWidth = WinApp::kClientWidth;
+				float screenHeight = WinApp::kClientHeight;
+
+				float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
+				float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+
+				lockOnSprite_->SetPosition({ screenX, screenY });
+
+				// =======================================================
+				// ★修正2：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+				// =======================================================
+				// オブジェクトの最大サイズ（幅、高さ、奥行きのうち一番大きいもの）を計算
+				float objSizeX = aabb.max.x - aabb.min.x;
+				float objSizeY = aabb.max.y - aabb.min.y;
+				float objSizeZ = aabb.max.z - aabb.min.z;
+				float maxObjSize = std::max({ objSizeX, objSizeY, objSizeZ });
+
+				// オブジェクトの大きさに比例したベースサイズを作る（倍率の 25.0f は好みで調整！）
+				// これにより、巨大ボスにはデカい枠が、雑魚敵には小さな枠が出ます
+				float baseSize = maxObjSize * 25.0f;
+
+				// 距離(w)に応じた遠近感のスケール計算
+				float distanceScale = 20.0f / w;
+
+				// 最終的なサイズ（画面を覆い尽くしたり、点になったりするのを防ぐ制限）
+				float finalSize = baseSize * distanceScale;
+				finalSize = std::max(32.0f, std::min(finalSize, 256.0f)); // 32px ～ 256px の間に制限
+
+				lockOnSprite_->SetSize({ finalSize, finalSize });
+				// =======================================================
+
+				// （おまけ）ロックオンアイコンを毎フレーム少し回転させると超カッコよくなります
+				float currentRot = lockOnSprite_->GetRotation();
+				lockOnSprite_->SetRotation(currentRot + 2.0f * deltaTime);
+
+				lockOnSprite_->Update();
+			}
+			else {
+				isDrawLockOn_ = false;
+			}
+		}
+	}
+
 
 	// 自由カメラモード以外の操作
 	if (!CameraEditor::GetInstance()->IsEditorMode()) {
@@ -210,12 +304,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
-	//ImGui::Begin("Shadow Map Debug");
-	//// ハンドルからGPUアドレスを取得して表示
-	//auto gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(DirectXCommon::GetInstance()->GetShadowMapSrvHandle());
-	//// 200x200 のサイズで画像を表示
-	//ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(200, 200));
-	//ImGui::End();
+
 }
 
 
@@ -309,6 +398,9 @@ void GamePlayScene::DrawUI() {
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) {
 		sprite->Draw();
+	}
+	if (isDrawLockOn_ && lockOnSprite_) {
+		lockOnSprite_->Draw();
 	}
 }
 
