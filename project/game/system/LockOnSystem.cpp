@@ -50,12 +50,6 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             lostSightTimer_ = 0.0f; // ★ 手動解除時も念のためリセット
         }
 
-        // =========================================================
-        // ★修正：無限回転バグの原因！プレイヤーに「ロックオン中」だと教えない！
-        // これにより、MoveStrategy3D は通常時と同じように
-        // 「カメラが向いている方向」を基準に真っ直ぐ移動してくれます。
-        // =========================================================
-        // player->SetLockOn(isLockingOn_); // ← コメントアウト！！
     }
 
     // (2) ロックオン中の挙動
@@ -124,9 +118,9 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
 
     Vector3 playerPos = player->GetWorldPosition();
 
-    // =======================================================
-    // ★ 修正1：カメラの「上下の角度（Y軸）」を無視して平面の向きだけで判定！
-    // =======================================================
+    // -----------------------------------------------------------------
+    //  (A) カメラの前方ベクトルを計算（上下のY軸を無視して平面で扱う）
+    // -----------------------------------------------------------------
     Vector3 cameraForward = camera->GetTargetPoint() - camera->GetEye();
     cameraForward.y = 0.0f; // 高さを無視
     float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.z * cameraForward.z);
@@ -141,46 +135,65 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     const uint32_t kTargetAttribute = 2; // kEnemy (例)
 
     for (const auto& obj : objects) {
-        // 敵属性を持ち、かつ自分自身でないもの
-        if (!(obj->GetCollisionAttribute() & kTargetAttribute) || obj.get() == player) {
+        // 1. 敵属性を持たないものは除外
+        if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
             continue;
         }
 
-        // =======================================================
-        // ★ 修正2：0,0,0付近に吸われる元凶「ブロック」を除外する！
-        // 名前の中に "Block" や "block" が入っている場合は無視します。
-        // =======================================================
+        // -----------------------------------------------------------------
+        //  (B) 自分自身、および「自分の子パーツ(武器や手足など)」を完全に除外
+        //  ※これでロックオン解除時に自分をターゲットしてしまうバグが消滅します！
+        // -----------------------------------------------------------------
+        bool isPlayerPart = false;
+        Object3d* current = obj.get();
+        while (current) {
+            if (current == player) {
+                isPlayerPart = true;
+                break;
+            }
+            current = current->GetParent(); // 親を辿ってプレイヤーかチェック
+        }
+        if (isPlayerPart) {
+            continue;
+        }
+
+        // -----------------------------------------------------------------
+        //  (C) 0,0,0付近に吸われる元凶「ブロック」を除外
+        // -----------------------------------------------------------------
         std::string name = obj->GetName();
         if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) {
             continue;
         }
 
+        // -----------------------------------------------------------------
+        //  (D) 距離と角度のチェック（Y軸を無視した2D判定）
+        // -----------------------------------------------------------------
         Vector3 enemyPos = obj->GetWorldPosition();
         Vector3 toEnemy = enemyPos - playerPos;
         float distance = math.Length(toEnemy);
 
-        // 距離チェック
+        // 距離が遠すぎる、または近すぎる場合は除外
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
 
-        // =======================================================
-        // ★ 修正3：敵への方向も「上下（Y軸）」を無視して平面で判定！
-        // =======================================================
+        // 敵への方向を平面(2D)にする
         Vector3 toEnemy2D = toEnemy;
-        toEnemy2D.y = 0.0f; // 高さを無視
+        toEnemy2D.y = 0.0f;
         float teLen = std::sqrt(toEnemy2D.x * toEnemy2D.x + toEnemy2D.z * toEnemy2D.z);
         if (teLen > 0.001f) {
             toEnemy2D.x /= teLen;
             toEnemy2D.z /= teLen;
         }
 
-        // 平面同士で角度チェック！これでカメラが見下ろしていても完璧に判定できる
+        // 平面同士の内積（角度チェック）
         float dot = math.Dot(cameraForward, toEnemy2D);
 
-        // 視界チェック (0.0f で画面前方180度をOKにする超・快適仕様！)
+        // 画面前方180度(dot > 0.0f)にいて、かつ一番画面中央(maxDot)に近いものを探す
         if (dot > 0.0f && dot > maxDot) {
 
-            // レイキャストによる遮蔽物チェック
-            // ※壁チェックのレイ(光線)を飛ばす時は、ちゃんと上下も含めた「本当の方向」に飛ばす！
+            // -----------------------------------------------------------------
+            //  (E) 遮蔽物（壁）チェック
+            // -----------------------------------------------------------------
+            // ※壁チェックのレイ(光線)は、上下も含めた「本当の3D方向」に飛ばす
             Vector3 toEnemyNormalized = toEnemy / distance;
             RaycastHit hit = CollisionManager::GetInstance()->Raycast(
                 playerPos,          // 開始点
@@ -189,7 +202,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
                 1                   // kGround (例: 地面・壁属性)
             );
 
-            // 間に壁がなければ採用
+            // 間に壁がなければ、最も良いターゲットとして更新
             if (!hit.isHit) {
                 maxDot = dot;
                 bestTarget = obj.get();
