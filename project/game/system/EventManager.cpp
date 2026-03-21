@@ -41,3 +41,9 @@ void EventManager::Dispatch(const DamageEvent& event) {
         listener(event);
     }
 }
+
+void EventManager::ClearAllListeners() {
+    playerHitListeners_.clear();
+    bulletHitListeners_.clear();
+    damageListeners_.clear();
+}

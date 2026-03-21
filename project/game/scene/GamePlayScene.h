@@ -105,4 +105,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
     MeshRenderer::SpotLight* spotLightData_ = nullptr;
     uint32_t gpuParticleTexHandle_ = 0;
+    std::unique_ptr<Sprite> lockOnSprite_;
+    bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
 };
