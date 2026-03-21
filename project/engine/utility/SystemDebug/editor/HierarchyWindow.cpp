@@ -60,9 +60,7 @@ void HierarchyWindow::Draw() {
         if (editor_->GetPostEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " ポストエフェクト (Post Effect)", currentObj == editor_->GetPostEffectEditor())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetPostEffectEditor());
         }
-        if (editor_->GetSpriteDebugEditor() && ImGui::Selectable("  " ICON_FA_IMAGES " 2D UI スプライト (Sprite)", currentObj == editor_->GetSpriteDebugEditor())) {
-            editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetSpriteDebugEditor());
-        }
+  
         if (editor_->GetGPUParticleEditor() && ImGui::Selectable("  " ICON_FA_FIRE " GPUパーティクル (GPU Particle)", currentObj == editor_->GetGPUParticleEditor())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGPUParticleEditor());
         }

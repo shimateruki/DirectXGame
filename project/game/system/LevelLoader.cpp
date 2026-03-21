@@ -449,6 +449,15 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     if (spriteData.contains("position")) targetSprite->SetPosition({ spriteData["position"][0], spriteData["position"][1] });
                     if (spriteData.contains("size")) targetSprite->SetSize({ spriteData["size"][0], spriteData["size"][1] });
                     if (spriteData.contains("anchor")) targetSprite->SetAnchorPoint({ spriteData["anchor"][0], spriteData["anchor"][1] });
+                    if (spriteData.contains("color")) {
+                        Vector4 currentColor = targetSprite->GetColor();
+                        targetSprite->SetColor({
+                            spriteData["color"][0], // R
+                            spriteData["color"][1], // G
+                            spriteData["color"][2], // B
+                            currentColor.w          // A (現在の透明度を維持)
+                            });
+                    }
                     targetSprite->Update();
                 }
             }

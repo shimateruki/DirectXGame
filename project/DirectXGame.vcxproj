@@ -155,7 +155,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="EngineManualWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
@@ -256,17 +256,17 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\actor\player\PlayerState.cpp" />
     <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp" />
-    <ClCompile Include="GPUParticleEditor.cpp" />
-    <ClCompile Include="GPUParticleEmitter.cpp" />
-    <ClCompile Include="GraphicsPipelineBuilder.cpp" />
-    <ClCompile Include="HierarchyWindow.cpp" />
-    <ClCompile Include="InspectorWindow.cpp" />
-    <ClCompile Include="PrimitiveDrawer.cpp" />
-    <ClCompile Include="ProjectWindow.cpp" />
-    <ClCompile Include="RootSignatureBuilder.cpp" />
-    <ClCompile Include="SceneSerializer.cpp" />
-    <ClCompile Include="VFXSequencer.cpp" />
-    <ClCompile Include="VFXSequencerEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\GPUParticleEditor.cpp" />
+    <ClCompile Include="engine\graphics\particle\GPUParticleEmitter.cpp" />
+    <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\HierarchyWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\InspectorWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\ProjectWindow.cpp" />
+    <ClCompile Include="engine\graphics\core\RootSignatureBuilder.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\SceneSerializer.cpp" />
+    <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -358,8 +358,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EditorCommon.h" />
-    <ClInclude Include="EngineManualWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h" />
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
@@ -624,19 +624,19 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\graphics\postprocess\PostEffect.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\PostEffectEditor.h" />
     <ClInclude Include="engine\component\Transform.h" />
-    <ClInclude Include="GPUParticleConfig.h" />
-    <ClInclude Include="GPUParticleEditor.h" />
-    <ClInclude Include="GPUParticleEmitter.h" />
-    <ClInclude Include="GraphicsPipelineBuilder.h" />
-    <ClInclude Include="HierarchyWindow.h" />
-    <ClInclude Include="InspectorWindow.h" />
-    <ClInclude Include="PrimitiveDrawer.h" />
-    <ClInclude Include="ProjectWindow.h" />
+    <ClInclude Include="engine\graphics\particle\GPUParticleConfig.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\GPUParticleEditor.h" />
+    <ClInclude Include="engine\graphics\particle\GPUParticleEmitter.h" />
+    <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\HierarchyWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\InspectorWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="RootSignatureBuilder.h" />
-    <ClInclude Include="SceneSerializer.h" />
-    <ClInclude Include="VFXSequencer.h" />
-    <ClInclude Include="VFXSequencerEditor.h" />
+    <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />
+    <ClInclude Include="engine\graphics\particle\VFXSequencer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
