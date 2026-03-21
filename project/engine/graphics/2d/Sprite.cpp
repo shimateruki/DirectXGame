@@ -139,6 +139,7 @@ void Sprite::Update() {
 /// </summary>
 void Sprite::Draw() {
 	assert(common_);
+	if (!isVisible_) return;
 	ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
 
 	common_->SetPipeline(commandList);
