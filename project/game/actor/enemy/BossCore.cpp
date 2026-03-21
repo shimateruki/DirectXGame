@@ -116,26 +116,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
         director_->Initialize(sceneManager_);
     }
 
-    bool isFound = false;
-    for (Object3d* child : GetChildren()) {
-        // ★ まず、ボスが認識している「子供の名前」をすべてログに出す！
-        DebugConsole::GetInstance()->AddLog("子パーツ発見: " + child->GetName());
-
-        if (child->GetName() == "WarningArea") {
-            warningArea_ = child;
-            warningArea_->SetParent(nullptr); // 親子関係を解除
-            warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
-
-            isFound = true;
-            DebugConsole::GetInstance()->AddLog("🟢 WarningArea の取得に成功しました！");
-            break;
-        }
-    }
-
-    // もし見つからなかったら明確に警告を出す！
-    if (!isFound) {
-        DebugConsole::GetInstance()->AddLog("❌ WarningArea が見つかりませんでした！");
-    }
+    
 }
 
 void BossCore::Update(float deltaTime) {
@@ -222,7 +203,48 @@ void BossCore::Update(float deltaTime) {
         return;
     }
 
+    // ==========================================
+     // 4. 通常のステート更新（アニメーション中以外に動く）
+     // ==========================================
     if (isFirstFrame_) {
+        // ① まず、子供たちの中から WarningArea を見つけ出す！
+        for (Object3d* child : GetChildren()) {
+            if (child->GetName() == "WarningArea") {
+                warningArea_ = child;
+                warningArea_->SetParent(nullptr); // 親子関係を解除
+                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+
+                // ==========================================
+                // WarningArea の当たり判定を完全に処刑する（幽霊化）！！
+                // ==========================================
+                warningArea_->SetCollisionAttribute(0); // 自分の属性を「無し(0)」にする！
+                warningArea_->SetCollisionMask(0);      // ぶつかる相手を「無し(0)」にする！
+
+                // ==========================================
+                // 絶対に斜めにならないよう、角度を完全に平ら(0,0,0)に強制リセット！
+                // ==========================================
+                warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
+                warningArea_->GetTransform()->isQuaternionMaster = false;
+
+                // ==========================================
+                // ② 見つけたら、装甲ブロックのリスト（armorBlocks_）から完全に追放（はく奪）する！
+                // ==========================================
+                for (auto it = armorBlocks_.begin(); it != armorBlocks_.end(); ) {
+                    if (*it == warningArea_) {
+                        it = armorBlocks_.erase(it); // リストから消去！
+                    }
+                    else {
+                        ++it;
+                    }
+                }
+
+                DebugConsole::GetInstance()->AddLog("🟢 WarningArea を取得し、リストからはく奪しました！");
+                break;
+            }
+        }
+
+        // ③ リストから「はく奪」した【後】に、状態をIdleに切り替える！
+        // （これでWarningAreaは ChangeState の属性上書きに巻き込まれません！）
         ChangeState(State::Idle);
         isFirstFrame_ = false;
     }
@@ -262,7 +284,7 @@ void BossCore::ChangeState(State nextState) {
     }
 
     // ==========================================
-    // ★ 修正：状態移行に合わせて、攻撃アニメーションをスタート！
+    // 状態移行に合わせて、攻撃アニメーションをスタート！
     // ==========================================
     switch (state_) {
     case State::Idle:
@@ -273,6 +295,7 @@ void BossCore::ChangeState(State nextState) {
     case State::Attack: {
         // ランダムな攻撃パターンを選択 (1〜4)
         int nextAttack = rand() % 4 + 1;
+        //int nextAttack = 3;
 
         // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
         attackMode_ = nextAttack;
@@ -723,10 +746,10 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         // --- Phase 20: 瞬時にハンマー形態へ変形 ---
         if (animPhase_ == 20) {
             if (animTimer_ == 0.0f) {
+                // ... (ハンマー変形の hammerSettings 処理はそのまま) ...
                 struct HammerSetting {
                     Vector3 translate; Vector3 scale; Vector3 rotation;
                 };
-
                 std::vector<HammerSetting> hammerSettings = {
                     { {  0.000f,  4.000f,  0.000f }, { 1.500f, 1.000f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
                     { {  2.000f,  4.000f,  0.000f }, { 0.700f, 1.500f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
@@ -735,7 +758,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     { {  0.000f, -1.800f, -0.002f }, { 0.500f, 0.500f, 0.800f }, { 0.0f, 0.0f, 0.0f } },
                     { {  0.000f,  5.100f,  0.000f }, { 0.500f, 0.250f, 0.500f }, { 0.0f, 0.0f, 0.0f } }
                 };
-
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                     if (i < hammerSettings.size()) {
                         armorBlocks_[i]->SetTranslate(hammerSettings[i].translate);
@@ -759,20 +781,23 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 21;
                 animTimer_ = 0.0f;
 
-                if (target_) {
-                    animTargetPos_ = target_->GetWorldPosition();
-                }
-                else {
-                    animTargetPos_ = GetTranslate();
-                }
+                if (target_) { animTargetPos_ = target_->GetWorldPosition(); }
+                else { animTargetPos_ = GetTranslate(); }
 
-                // ==========================================
-                // ★ 追加：ロックオンした瞬間に、足元に予兆エリアをセット！
-                // ==========================================
                 if (warningArea_) {
-                    // プレイヤーの足元(Y=0.01f)に設置して、地面とのチラつきを防ぐ
-                    warningArea_->SetTranslate({ animTargetPos_.x, 0.01f, animTargetPos_.z });
-                    warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は0
+                    // 高さをプレイヤーと同じ（2m）にし、位置を1m浮かせて地面に接地させる
+                    if (armorBlocks_.size() > 1 && armorBlocks_[1]) {
+                        Vector3 block2Scale = armorBlocks_[1]->GetScale();
+                        warningArea_->SetScale({ block2Scale.x, 2.0f, block2Scale.z }); // 高さ2.0f
+                    }
+                    warningArea_->SetTranslate({ animTargetPos_.x, 1.0f, animTargetPos_.z }); // 中心を1.0fにする
+
+                    float finalRotY = GetRotation().y + (std::numbers::pi_v<float> / 2.0f);
+                    warningArea_->SetRotation({ 0.0f, finalRotY, 0.0f });
+                    warningArea_->GetTransform()->isQuaternionMaster = false;
+
+                    // 透明度を薄く（0.3f）してスタート
+                    warningArea_->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f });
                 }
             }
         }
@@ -781,56 +806,39 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             animTimer_ += deltaTime;
 
             float moveDuration = 4.5f;
-            float rotDuration = 3.0f;
-
             float moveT = std::min(animTimer_ / moveDuration, 1.0f);
-            float rotT = std::min(animTimer_ / rotDuration, 1.0f);
 
-            // ==========================================
-            // ★ 追加：ボスの移動に合わせて、予兆エリアを徐々にデカくする！
-            // ==========================================
             if (warningArea_) {
-                // 最大半径を 12.0f とした場合（お好みで調整してください）
-                float currentScale = Math::Lerp(0.0f, 12.0f, moveT);
-
-                // XとZ（半径）だけを広げる。板モデルならYは1.0fのままでOK！
-                warningArea_->SetScale({ currentScale, 1.0f, currentScale });
+                // ★ 修正3：薄い透明度(0.3f)を維持したまま、黄色から赤へ
+                float currentGreen = Math::Lerp(1.0f, 0.0f, moveT);
+                warningArea_->SetColor({ 1.0f, currentGreen, 0.0f, 0.9f });
             }
 
+            // ... (移動処理と回転処理は今のまま) ...
             Vector3 targetPos = animTargetPos_;
             Vector3 currentPos = GetTranslate();
-
             Vector3 toBoss = currentPos - targetPos;
             toBoss.y = 0.0f;
             float dist = std::sqrt(toBoss.x * toBoss.x + toBoss.z * toBoss.z);
             if (dist > 0.0f) { toBoss.x /= dist; toBoss.z /= dist; }
-
             Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
-
             float easeT = moveT;
             currentPos.x = Math::Lerp(currentPos.x, targetHoverPos.x, easeT);
             currentPos.y = Math::Lerp(currentPos.y, targetHoverPos.y, easeT);
             currentPos.z = Math::Lerp(currentPos.z, targetHoverPos.z, easeT);
             SetTranslate(currentPos);
-
+            float rotT = std::min(animTimer_ / 3.0f, 1.0f);
             Vector3 toPlayer = targetPos - currentPos;
             float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
-
             float elasticT = 0.0f;
-            if (rotT == 0.0f) {
-                elasticT = 0.0f;
-            }
-            else if (rotT == 1.0f) {
-                elasticT = 1.0f;
-            }
+            if (rotT == 0.0f) elasticT = 0.0f;
+            else if (rotT == 1.0f) elasticT = 1.0f;
             else {
                 float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
                 elasticT = -std::pow(2.0f, 10.0f * rotT - 10.0f) * std::sin((rotT * 10.0f - 10.75f) * c4);
             }
-
             float targetTilt = -70.0f * (std::numbers::pi_v<float> / 180.0f);
             float tiltBack = Math::Lerp(0.0f, targetTilt, elasticT);
-
             SetRotation({ 0.0f, angleY, tiltBack });
             GetTransform()->isQuaternionMaster = false;
 
@@ -841,27 +849,23 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         }
         // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
         else if (animPhase_ == 22) {
-
-            // ==========================================
-            // ★ 追加：振り下ろした瞬間に、予兆エリアを消す！
-            // ==========================================
-            if (animTimer_ == 0.0f && warningArea_) {
-                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
-            }
-
             animTimer_ += deltaTime;
-
             float smashDuration = 0.15f;
             float t = std::min(animTimer_ / smashDuration, 1.0f);
 
+            if (warningArea_) {
+                // ★ 修正4：振り下ろし中も薄い赤(0.3f)で表示し続ける
+                warningArea_->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+            }
+
             float startRotZ = -70.0f * (std::numbers::pi_v<float> / 180.0f);
             float endRotZ = 270.0f * (std::numbers::pi_v<float> / 180.0f);
-
             float currentRotZ = Math::Lerp(startRotZ, endRotZ, std::pow(t, 3.0f));
             SetRotation({ 0.0f, GetRotation().y, currentRotZ });
 
             if (t >= 1.0f) {
                 SetRotation({ 0.0f, GetRotation().y, endRotZ });
+                if (warningArea_) { warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); }
                 animPhase_ = 23;
                 animTimer_ = 0.0f;
             }
