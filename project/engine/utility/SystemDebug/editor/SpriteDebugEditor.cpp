@@ -339,7 +339,7 @@ void SpriteDebugEditor::DrawInspectorWindow() {
         ImGui::Separator();
 
         // 名前編集
-        char nameBuffer[256];
+        char nameBuffer[256] = { 0 };
         strcpy_s(nameBuffer, selectedSprite_->GetName().c_str());
         if (ImGui::InputText(ICON_FA_PEN " 名前 (Name)", nameBuffer, sizeof(nameBuffer))) {
             selectedSprite_->SetName(nameBuffer);
