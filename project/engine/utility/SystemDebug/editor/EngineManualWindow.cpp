@@ -31,7 +31,8 @@ void EngineManualWindow::Draw() {
             ICON_FA_MAGIC " 通常パーティクル",
             ICON_FA_IMAGE " ポストエフェクト",
             ICON_FA_STAR " VFXシーケンサー (必殺技)",
-            ICON_FA_BULLHORN " シネマティック監督 (GhostDirector)"
+            ICON_FA_BULLHORN " シネマティック監督 (GhostDirector)",
+            ICON_FA_IMAGES " 2D UIエディタ (Sprite)"
         };
 
         for (int i = 0; i < IM_ARRAYSIZE(topics); i++) {
@@ -740,6 +741,68 @@ void EngineManualWindow::Draw() {
                         "}"
                     );
                 }
+            }
+            break;
+        case 14:
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), ICON_FA_IMAGES " [ 2D UIエディタ (Sprite Editor) ]");
+            ImGui::Separator();
+            ImGui::TextWrapped(
+                "ゲームのUI（HPバー、ミニマップ、ボタン等）を配置するための専用エディタです。\n"
+                "Hierarchy, Inspector, Assetsの3つのウィンドウを使い、Unityライクな操作感でサクサク配置できます。"
+            );
+            ImGui::Spacing();
+
+            if (ImGui::CollapsingHeader(ICON_FA_MOUSE_POINTER " 直感的な配置とショートカット", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::BulletText("ドラッグ移動 : マウスで直感的にスプライトを移動できます。");
+                ImGui::BulletText("スナップ移動 : 【Shiftキー】を押しながらドラッグすると、10ピクセル単位でピタッと整列します。");
+                ImGui::Spacing();
+
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "◆ キーボードによる微調整 (Nudge)");
+                ImGui::BulletText("【矢印キー】で1ピクセルずつ座標を微調整できます。（Shiftキー同時押しで5ピクセル）");
+                ImGui::Spacing();
+
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "◆ 複製と削除");
+                ImGui::BulletText("【Ctrl + C】または【Ctrl + D】で選択中のUIをポンッと複製できます。");
+                ImGui::BulletText("【Deleteキー】でサクッと削除可能です。");
+            }
+
+            if (ImGui::CollapsingHeader(ICON_FA_IMAGE " ドラッグ＆ドロップ (画像の生成と差し替え)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::TextWrapped("Sprite Assets ウィンドウ(下パネル)から画像を掴んでドラッグします。");
+                ImGui::BulletText("空きスペースにドロップ : 新しいスプライトとして生成されます。");
+                ImGui::BulletText("Inspectorの「テクスチャ変更」にドロップ : 位置やサイズはそのままに、画像だけを差し替えます。");
+            }
+
+            if (ImGui::CollapsingHeader(ICON_FA_CROSSHAIRS " 最強機能：クイック配置 (Quick Snap)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::TextWrapped(
+                    "解像度が変わってもレイアウトが崩れないUIを作るための必須機能です。\n"
+                    "Inspectorの3x3のボタン（↖ ⬆ ↗ など）を押すだけで、画面端への「座標設定」と「アンカー設定」が同時に完璧に行われます。"
+                );
+            }
+
+            if (ImGui::CollapsingHeader(ICON_FA_LOCK " 誤操作防止と描画順 (Zオーダー)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::BulletText("鍵アイコン (Lock) : クリック・ドラッグを無効化します。背景画像など、間違って動かしたくない物に便利です。");
+                ImGui::BulletText("目玉アイコン (Hide) : 編集時に邪魔なUIを一時的に隠します（保存データには影響しません）。");
+                ImGui::BulletText("前面へ / 背面へ : UI同士の重なり順（Zオーダー）をボタン一つで入れ替えられます。");
+            }
+
+            if (ImGui::CollapsingHeader(ICON_FA_CODE " C++側からの読み込みと色の変更", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::TextWrapped("作成したUIレイアウト(JSON)は、シーン初期化時にロードします。透明度はJSONに保存されないため、フェードイン等のプログラムと競合しません！");
+
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+                ImGui::BeginChild("CodeBlockSprite", ImVec2(0, 150), true);
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 0.5f, 1.0f), "// 例：シーンの Initialize() 内で呼び出す");
+                ImGui::TextUnformatted(
+                    "// 1. JSONから一括ロード (透明度は上書きされません)\n"
+                    "levelLoader_->LoadSpriteLayout(this, \"Resources/json/sprite/boss_ui.json\");\n"
+                    "\n"
+                    "// 2. ゲージ等の長さをプログラムから操作する例\n"
+                    "Sprite* hpBar = GetSpriteByName(\"BossHpBar_Red\");\n"
+                    "if (hpBar) {\n"
+                    "    hpBar->SetSize({ maxHpBarSize * (currentHp / maxHp), hpBar->GetSize().y });\n"
+                    "}"
+                );
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
             }
             break;
         }

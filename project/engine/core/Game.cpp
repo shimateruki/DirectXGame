@@ -149,9 +149,19 @@ void Game::Update() {
         ImGuiID dock_bottom_left_id = ImGui::DockBuilderSplitNode(dock_bottom_id, ImGuiDir_Left, 0.60f, nullptr, &dock_bottom_id);
         ImGuiID dock_bottom_right_id = dock_bottom_id; // 残りが右側になる
 
-        // 各ウィンドウをドッキング
         ImGui::DockBuilderDockWindow("Hierarchy", dock_left_id);
+        // ★追加: 3D用と同じ "dock_left_id" に入れることで自動的にタブ化される！
+        ImGui::DockBuilderDockWindow(ICON_FA_LIST_UL " Sprite Hierarchy", dock_left_id);
+
         ImGui::DockBuilderDockWindow("Inspector", dock_right_id);
+        // ★追加: 3D用と同じ "dock_right_id" に入れることで自動的にタブ化される！
+        ImGui::DockBuilderDockWindow(ICON_FA_INFO_CIRCLE " Sprite Inspector", dock_right_id);
+
+        // ★下部・左側にアセットを配置
+        ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_left_id);
+        // ★追加: 3D用と同じ "dock_bottom_left_id" に入れることで自動的にタブ化される！
+        ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dock_bottom_left_id);
+    
 
         // ★下部・左側にアセットを配置
         ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_left_id);
@@ -329,6 +339,11 @@ void Game::Update() {
 
         // ② 右パネル (Inspector) の描画
         EditorManager::GetInstance()->DrawInspector();
+        if (spriteDebugEditor_) {
+            spriteDebugEditor_->DrawHierarchyWindow();
+            spriteDebugEditor_->DrawInspectorWindow();
+            spriteDebugEditor_->DrawProjectWindow();
+        }
     }
 
     // 独立したウィンドウ (ログとステータス)

@@ -81,10 +81,15 @@ public: // メンバ関数
 		textureLeftTop_ = texLeftTop;
 		textureSize_ = texSize;
 	}
+
 	/// <summary>
 /// 現在設定されているテクスチャハンドルを取得
 /// </summary>
 	uint32_t GetTextureHandle() const { return textureHandle_; }
+	void SetTextureHandle(uint32_t textureHandle) {
+		textureHandle_ = textureHandle;
+		 AdjustTextureSize(); 
+	}
 	static uint32_t LoadTexture(const std::string& fileName);
 	// <summary>
 	/// アニメーションの設定
@@ -114,7 +119,10 @@ public: // メンバ関数
 	/// アニメーションを停止
 	/// </summary>
 	void Stop();
-
+	bool IsVisible() const { return isVisible_; }
+	void SetVisible(bool isVisible) { isVisible_ = isVisible; }
+	bool IsLocked() const { return isLocked_; }
+	void SetLocked(bool isLocked) { isLocked_ = isLocked; }
 private: // メンバ変数
 	SpriteCommon* common_ = nullptr;
 	DirectXCommon* dxCommon_ = nullptr;
@@ -164,6 +172,6 @@ private: // メンバ変数
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_ = nullptr;
 	TransformationMatrix* wvpData_ = nullptr;
-
-
+	bool isVisible_ = true; // デフォルトは表示
+	bool isLocked_ = false; // デフォルトは操作可能（アンロック）
 };
