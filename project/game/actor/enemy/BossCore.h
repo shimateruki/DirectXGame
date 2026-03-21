@@ -100,4 +100,7 @@ private:
     float maxBarrierHp_ = 100.0f;
 
     bool s_isTimeStopped_ = false;
+
+    // エディターで作った予兆エリアを参照するためのポインタ
+    Object3d* warningArea_ = nullptr;
 };
