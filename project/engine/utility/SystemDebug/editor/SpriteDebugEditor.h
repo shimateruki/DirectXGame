@@ -34,7 +34,9 @@ public:
 
     // ギズモ操作中など、エディタがマウス入力を占有しているか
     bool IsMouseBusy() const;
-
+    void DrawHierarchyWindow();
+    void DrawInspectorWindow();
+    void DrawProjectWindow();
 private:
     // レイアウト保存
     void SaveSpriteLayout(const std::string& filename);
