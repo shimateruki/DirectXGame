@@ -472,6 +472,9 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 	// --- 4. パスの軌跡(ライン)を描画 ＆ ラインクリック判定 ---
 	const int samples = 60;
 	ImVec2 prevScreenPos = WorldToScreen(LocalToWorld(allPos[0]));
+
+	float bestHitT = 0.0f; //  線上で一番近かった割合(t)を保存する
+
 	for (int i = 1; i <= samples; ++i) {
 		float t = (float)i / (float)samples;
 		Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : [&]() { float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
@@ -485,6 +488,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 					minLineDist = dist;
 					float midT = (t + (float)(i - 1) / samples) * 0.5f;
 					hitSegmentIndex = (int)(midT * (allPos.size() - 1));
+					bestHitT = midT; //  ここで割合を保存！
 				}
 			}
 		}
@@ -607,42 +611,64 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 			if (anchor_) {
 				currentBase = { anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x, anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y, anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z };
 			}
-			float planeHeight = currentBase.y;
 
-			if (std::abs(rayDir.y) > 0.0001f) {
-				float hitT = (planeHeight - rayOrigin.y) / rayDir.y;
-				if (hitT > 0.0f) {
-					Vector3 hitPos = { rayOrigin.x + rayDir.x * hitT, planeHeight, rayOrigin.z + rayDir.z * hitT };
-					Vector3 localPos = { hitPos.x - drawOffset.x, hitPos.y - drawOffset.y, hitPos.z - drawOffset.z };
+			// =========================================================
+			// ★ 修正: 水平面(床)との交差ではなく、「直前の点と同じカメラからの距離」に配置する！
+			// =========================================================
+			// 1. 基準点（最後に打ったWaypoint、またはStart位置）のワールド座標を取得
+			Vector3 refPos = currentBase;
+			if (!genParams_.waypoints.empty()) {
+				refPos = { genParams_.waypoints.back().pos.x + drawOffset.x, genParams_.waypoints.back().pos.y + drawOffset.y, genParams_.waypoints.back().pos.z + drawOffset.z };
+			}
+			else {
+				refPos = { genParams_.startPos.x + drawOffset.x, genParams_.startPos.y + drawOffset.y, genParams_.startPos.z + drawOffset.z };
+			}
 
-					SaveHistory();
+			// 2. カメラ(rayOrigin)から基準点までの「距離」を計算する
+			float diffX = refPos.x - rayOrigin.x;
+			float diffY = refPos.y - rayOrigin.y;
+			float diffZ = refPos.z - rayOrigin.z;
+			float distToRef = std::sqrt(diffX * diffX + diffY * diffY + diffZ * diffZ);
 
-					GenerationParams::Waypoint wp;
-					wp.pos = localPos;
-					wp.scale = target_->GetScale();
-					wp.eventID = 0;
-					wp.waitTime = 0.0f;
-					wp.durationToNext = 1.0f;
-					wp.easingToNext = 0;
+			// 3. マウスクリックしたレイの方向に、その距離だけ進んだ場所を新しい点とする！
+			Vector3 hitPos = { rayOrigin.x + rayDir.x * distToRef, rayOrigin.y + rayDir.y * distToRef, rayOrigin.z + rayDir.z * distToRef };
+			Vector3 localPos = { hitPos.x - drawOffset.x, hitPos.y - drawOffset.y, hitPos.z - drawOffset.z };
 
-					if (hitSegmentIndex != -1) {
-						wp.rot = (hitSegmentIndex == 0) ? genParams_.startRot : genParams_.waypoints[hitSegmentIndex - 1].rot;
-						int insertIdx = std::min(hitSegmentIndex, (int)genParams_.waypoints.size());
-						genParams_.waypoints.insert(genParams_.waypoints.begin() + insertIdx, wp);
-						selectedPinType_ = SelectedPinType::Waypoint;
-						selectedWaypointIndex_ = insertIdx;
-						DebugConsole::GetInstance()->AddLog("Waypoint Inserted! (Index: " + std::to_string(insertIdx) + ")");
-					}
-					else {
-						wp.rot = genParams_.waypoints.empty() ? genParams_.startRot : genParams_.waypoints.back().rot;
-						genParams_.waypoints.push_back(wp);
-						selectedPinType_ = SelectedPinType::Waypoint;
-						selectedWaypointIndex_ = static_cast<int>(genParams_.waypoints.size()) - 1;
-						DebugConsole::GetInstance()->AddLog("Waypoint Added to End!");
-					}
-				}
+			SaveHistory();
+
+			GenerationParams::Waypoint wp;
+			wp.scale = target_->GetScale();
+			wp.eventID = 0;
+			wp.waitTime = 0.0f;
+			wp.durationToNext = 1.0f;
+			wp.easingToNext = 0;
+
+			if (hitSegmentIndex != -1) {
+				// 線の上をクリックした場合は、軌道上の3D座標を直接使う
+				Vector3 onPathPos = genParams_.useSpline ? GetSplinePoint(allPos, bestHitT, false) :
+					[&]() { float p = bestHitT * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; } return Lerp(allPos[idx], allPos[idx + 1], lt); }();
+
+				wp.pos = { onPathPos.x - drawOffset.x, onPathPos.y - drawOffset.y, onPathPos.z - drawOffset.z };
+				wp.rot = (hitSegmentIndex == 0) ? genParams_.startRot : genParams_.waypoints[hitSegmentIndex - 1].rot;
+				int insertIdx = std::min(hitSegmentIndex, (int)genParams_.waypoints.size());
+				genParams_.waypoints.insert(genParams_.waypoints.begin() + insertIdx, wp);
+				selectedPinType_ = SelectedPinType::Waypoint;
+				selectedWaypointIndex_ = insertIdx;
+				DebugConsole::GetInstance()->AddLog("Waypoint Inserted on Path!");
+			}
+			else {
+				// 何もない空間をクリックした場合は、同じカメラ距離(深度)の空間に追加
+				wp.pos = localPos;
+				wp.rot = genParams_.waypoints.empty() ? genParams_.startRot : genParams_.waypoints.back().rot;
+				genParams_.waypoints.push_back(wp);
+				selectedPinType_ = SelectedPinType::Waypoint;
+				selectedWaypointIndex_ = static_cast<int>(genParams_.waypoints.size()) - 1;
+				DebugConsole::GetInstance()->AddLog("Waypoint Added at Camera Depth!");
 			}
 		}
+	
+			
+		
 		else {
 			selectedPinType_ = SelectedPinType::None;
 			selectedWaypointIndex_ = -1;

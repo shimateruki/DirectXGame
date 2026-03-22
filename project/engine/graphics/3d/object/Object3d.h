@@ -193,7 +193,8 @@ public:
     GhostRecorder* recorder_ = nullptr;
     void SetSaveCategory(const std::string& category) { saveCategory_ = category; }
     std::string GetSaveCategory() const { return saveCategory_; }
-
+    bool GetIsLocked() const { return isLocked_; }
+    void SetIsLocked(bool locked) { isLocked_ = locked; }
 protected:
     Object3dCommon* common_ = nullptr;
     std::string name_ = "Object";
@@ -218,4 +219,5 @@ protected:
     std::string particleName_ = ""; // JSONファイル名
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
     std::string saveCategory_ = "Object";
+    bool isLocked_ = false;
 };
