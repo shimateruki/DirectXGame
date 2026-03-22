@@ -80,6 +80,7 @@ void DebugEditor::Update() {
         SetSceneFilename(currentLoadedName);
         s_lastSyncedSceneFilename = currentLoadedName;
     }
+    CameraEditor::GetInstance()->SetGameViewHovered(isGameViewHovered_);
     // 選択対象が「DebugEditor自身」である間は、以前選んだオブジェクトを保持し続ける
     if (current != nullptr && current != this) {
         Object3d* obj = dynamic_cast<Object3d*>(current);
@@ -172,6 +173,9 @@ void DebugEditor::Update() {
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_C)) DuplicateSelected();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Z)) PerformUndo();
             if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_Y)) PerformRedo();
+            if (input->IsKeyTriggered(DIK_END)) {
+                DropToFloor();
+            }
   /*          if ((input->IsKeyPressed(DIK_LCONTROL)) && input->IsKeyTriggered(DIK_S)) SaveScene();*/
             if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
                 Vector3 targetPos = { selectedObject_->GetWorldMatrix().m[3][0],
@@ -196,6 +200,7 @@ void DebugEditor::Update() {
 
                 for (auto& obj : objects) {
                     if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
+                    if (!obj->GetIsVisible() || obj->GetIsLocked()) continue;
                     Matrix4x4 wm = obj->GetWorldMatrix();
                     Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
                     Vector3 ws = obj->GetTransform()->scale;
@@ -215,7 +220,7 @@ void DebugEditor::Update() {
             // =====================================================
             // ★完全版: パス編集モードじゃない時だけ、オブジェクトのGizmoを出す！
             // =====================================================
-            if (!isPathEditMode_) {
+            if (!isPathEditMode_ && !selectedObject_->GetIsLocked()) {
                 static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
                 if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
                 if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
@@ -304,20 +309,20 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     for (const auto& obj : objects) {
         if (!obj) continue;
-
+        if (!obj->GetIsVisible()) continue;
         // インスタンス描画の上限チェック
         if (instanceCount >= kMaxDrawLimit) break;
 
         ColliderType type = obj->GetColliderType();
-        bool isInvisible = !obj->GetIsVisible();
+        bool isInvisibleObj = (obj->GetClassName() == "InvisibleBox");
 
         // --- 描画判定 ---
         // コライダーがなく、かつ「見える物体（モデルあり）」ならデバッグ線は不要
-        if (type == ColliderType::kNone && !isInvisible) continue;
+        if (type == ColliderType::kNone && !isInvisibleObj) continue;
 
         // コライダー表示OFF設定の時、「見える物体」のコライダーは消すが、
         // 「見えない物体(透明な壁など)」は編集用に表示したままにする
-        if (!drawColliders_ && !isInvisible) continue;
+        if (!drawColliders_ && !isInvisibleObj) continue;
 
         // --- 行列計算 (サイズと位置) ---
         Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
@@ -365,7 +370,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
         // --- 色の決定 ---
         Vector4 color;
-        if (isInvisible) {
+        if (isInvisibleObj) { // ★修正: isInvisible ではなく isInvisibleObj を使う
             // 見えないオブジェクトは「紫」固定
             color = { 0.6f, 0.0f, 0.8f, 1.0f };
         }
@@ -498,20 +503,83 @@ void DebugEditor::SaveSingleObject() {
     TriggerSaveNotification(std::string(currentSceneFilename_));
 }
 
-// 複製
+// 複製 (スマート・コピペ版)
 void DebugEditor::DuplicateSelected() {
     if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
 
-    // 1. 完全なクローンを作成 (Object3d::Clone または Character::Clone が呼ばれる)
+    // 1. 完全なクローンを作成
     std::unique_ptr<Object3d> newObj = selectedObject_->Clone();
 
     // 2. 名前変更
     static int duplicateCount = 0;
     newObj->SetName(selectedObject_->GetName() + "_Copy" + std::to_string(duplicateCount++));
 
-    // 3. 位置ずらし
-    // ★修正: GetTransform() -> translate
-    newObj->GetTransform()->translate.x += 2.0f;
+    // =========================================================
+    // ★追加: マウスカーソルの位置(レイキャスト)を計算してペースト！
+    // =========================================================
+    Math math;
+    Ray ray = ScreenPointToRay(gameViewMousePos_);
+    Vector3 finalPos = { 0, 0, 0 };
+    bool found = false;
+
+    // A. まず、他のオブジェクトの表面にマウスポインタが乗っているか判定
+    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+    RayResult best; best.isHit = false; best.distance = 1e5f;
+    for (auto& obj : objects) {
+        // 自分自身、カーソル、非表示のものは無視
+        if (obj.get() == selectedObject_ || obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+
+        Matrix4x4 wm = obj->GetWorldMatrix();
+        Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
+        Vector3 ws = obj->GetTransform()->scale;
+        RayResult tmp;
+        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
+            if (tmp.distance < best.distance) best = tmp;
+        }
+    }
+
+    if (best.isHit) {
+        // オブジェクトに当たった場合、その表面に置く（めり込まないように高さを足す）
+        finalPos = best.point;
+        finalPos.y += newObj->GetTransform()->scale.y;
+        found = true;
+    }
+    else {
+        // 1. コピー元（選択中）のワールド座標を取得
+        Matrix4x4 sourceWm = selectedObject_->GetWorldMatrix();
+        Vector3 sourcePos = { sourceWm.m[3][0], sourceWm.m[3][1], sourceWm.m[3][2] };
+
+        // 2. カメラ位置(ray.origin)からコピー元までの距離を計算
+        float diffX = sourcePos.x - ray.origin.x;
+        float diffY = sourcePos.y - ray.origin.y;
+        float diffZ = sourcePos.z - ray.origin.z;
+        float distToRef = std::sqrt(diffX * diffX + diffY * diffY + diffZ * diffZ);
+
+        // 3. マウスクリックしたレイの方向に、その距離だけ進んだ場所を新しい点とする
+        Vector3 rayDir = math.Normalize(ray.diff);
+        finalPos = { ray.origin.x + rayDir.x * distToRef,
+                     ray.origin.y + rayDir.y * distToRef,
+                     ray.origin.z + rayDir.z * distToRef };
+        found = true;
+    }
+  
+
+    // C. 座標の最終決定
+    if (found) {
+        // グリッドスナップがONなら、その位置でスナップさせる
+        if (isGridSnapEnabled_) {
+            finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
+            finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
+        }
+        newObj->GetTransform()->translate = finalPos;
+        DebugConsole::GetInstance()->AddLog("Smart Pasted at Mouse Cursor!");
+    }
+    else {
+        // カーソルが空を向いていた等でレイが当たらなかった場合の救済措置（今まで通り横にずらす）
+        newObj->GetTransform()->translate.x += 2.0f;
+        DebugConsole::GetInstance()->AddLog("Pasted at offset (Ray missed).");
+    }
+    // =========================================================
 
     // 行列更新
     newObj->UpdateWorldMatrix();
@@ -520,12 +588,9 @@ void DebugEditor::DuplicateSelected() {
     Object3d* ptr = newObj.get();
     sceneManager_->GetCurrentScene()->AddObject(std::move(newObj));
 
-    // 5. 選択切り替え
+    // 5. 選択を新しい方に切り替え
     selectedObject_ = ptr;
-
-   
 }
-
 // 削除
 void DebugEditor::DeleteSelected() {
     if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
@@ -772,6 +837,7 @@ void DebugEditor::Draw3DIcons() {
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     for (const auto& obj : objects) {
+        if (!obj->GetIsVisible()) continue;
         std::string className = obj->GetClassName();
         const char* iconStr = nullptr;
         ImU32 iconColor = IM_COL32(255, 255, 255, 200); // デフォルト白（半透明）
@@ -825,4 +891,85 @@ void DebugEditor::Draw3DIcons() {
         }
     }
 #endif
+}
+
+// ==========================================
+//  一発・床ピタッ！ (接地機能)
+// ==========================================
+void DebugEditor::DropToFloor() {
+    if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
+
+    Math math;
+    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
+    // 1. 現在のワールド座標を取得
+    Matrix4x4 wm = selectedObject_->GetWorldMatrix();
+    Vector3 currentPos = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
+
+    // 2. 真下に向かってレイ(光線)を飛ばす
+    Ray ray;
+    ray.origin = currentPos;
+    ray.diff = { 0.0f, -1000.0f, 0.0f }; // 下方向へ1000メートル
+
+    RayResult bestHit;
+    bestHit.isHit = false;
+    bestHit.distance = 1e5f;
+
+    // 3. めり込み防止のための「足元までのオフセット(高さの半分)」を計算
+    float yOffset = 0.0f;
+    ColliderType type = selectedObject_->GetColliderType();
+    if (type == ColliderType::kAABB || type == ColliderType::kOBB) {
+        yOffset = selectedObject_->GetColliderConfig().size.y;
+    }
+    else if (type == ColliderType::kSphere) {
+        yOffset = selectedObject_->GetColliderConfig().size.x; // 球体はXを半径としている想定
+    }
+    else {
+        // コライダーが無い場合はスケールのYを基準にする
+        yOffset = selectedObject_->GetTransform()->scale.y;
+    }
+
+    // 4. 真下にある足場（他のオブジェクト）を探す
+    for (auto& obj : objects) {
+        if (obj.get() == selectedObject_) continue; // 自分自身は無視
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line") continue;
+        if (!obj->GetIsVisible()) continue; // 非表示オブジェクトはすり抜ける
+
+        Matrix4x4 targetWm = obj->GetWorldMatrix();
+        Vector3 wp = { targetWm.m[3][0], targetWm.m[3][1], targetWm.m[3][2] };
+        Vector3 ws = obj->GetTransform()->scale;
+
+        RayResult tmp;
+        // AABBで簡易的に衝突判定
+        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
+            if (tmp.distance < bestHit.distance) {
+                bestHit = tmp;
+            }
+        }
+    }
+
+    // 5. Undo(Ctrl+Z) 用に移動前の状態を保存
+    TransformCommand cmd;
+    cmd.target = selectedObject_;
+    cmd.oldTf = *selectedObject_->GetTransform();
+
+    // 6. 実際の移動処理
+    if (bestHit.isHit) {
+        // 真下にオブジェクトがあった場合、その表面に乗る
+        selectedObject_->GetTransform()->translate.y = bestHit.point.y + yOffset;
+        DebugConsole::GetInstance()->AddLog("Dropped to Object!");
+    }
+    else {
+        // 真下に何もない場合は、Y=0 の床に乗る
+        selectedObject_->GetTransform()->translate.y = yOffset;
+        DebugConsole::GetInstance()->AddLog("Dropped to Floor (Y=0)!");
+    }
+
+    // 7. Undo履歴の登録と行列更新
+    cmd.newTf = *selectedObject_->GetTransform();
+    undoStack_.push_back(cmd);
+    redoStack_.clear();
+
+    selectedObject_->UpdateLocalMatrix();
+    selectedObject_->UpdateWorldMatrix();
 }
