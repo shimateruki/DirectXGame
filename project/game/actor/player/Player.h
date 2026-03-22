@@ -101,7 +101,8 @@ public:
 
     // どっちか一つでもtrueなら無敵として扱う
     bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
-
+    float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
+    float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先

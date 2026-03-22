@@ -61,12 +61,12 @@
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 54.0,
-                "hp": 74.0,
+                "hp": 100.0,
                 "interval": 3.0,
                 "jumpPower": 30.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 48.0,
+                "maxHp": 100.0,
                 "speed": 7.099999904632568
             },
             "parentName": "",

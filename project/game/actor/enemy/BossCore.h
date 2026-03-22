@@ -40,7 +40,12 @@ public:
         block->SetCollisionMask(kPlayer);
     }
 
+    float GetHp() const { return param_.has_value() ? param_->hp : 1000.0f; }
+    float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 1000.0f; }
 
+    // バリアHP
+    float GetBarrierHp() const { return barrierHp_; }
+    float GetMaxBarrierHp() const { return maxBarrierHp_; }
 private:
     // 飛んでいるブロックを管理するための構造体
     struct FlyingBlock {

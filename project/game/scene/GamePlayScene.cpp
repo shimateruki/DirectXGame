@@ -106,10 +106,31 @@ void GamePlayScene::Initialize() {
 	levelLoader_ = std::make_unique<LevelLoader>();
 	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
 	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
-
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
+
+
+
+	// --- スプライトの中から探索
+	for (auto& sprite : sprites_) {
+		if (sprite->GetName() == "playerHpBar") {
+			playerHpBarSprite_ = sprite.get();
+			playerHpBarMaxWidth_ = sprite->GetSize().x; // 元の長さを記憶！
+		}
+	}
+	for (auto& sprite : sprites_) {
+		if (sprite->GetName() == "bossrHpBar") {
+			bossHpBarSprite_ = sprite.get();
+			bossHpBarMaxWidth_ = sprite->GetSize().x;
+		}
+		else if (sprite->GetName() == "bariaHp.png") {
+			barrierHpBarSprite_ = sprite.get();
+			barrierHpBarMaxWidth_ = sprite->GetSize().x;
+		}
+	}
+
+
 
 	// ★ 1. まず objectManager からオブジェクトのリストを取得する！
 	auto &objects = objectManager_->GetObjects ();
@@ -125,7 +146,7 @@ void GamePlayScene::Initialize() {
 			newBoss->Initialize (object3dCommon_.get (), oldAddress->GetModelName ());
 			newBoss->CopyFrom (oldAddress); // 座標などをコピー
 			newBoss->SetTarget (player_);
-
+			this->boss_ = newBoss.get();
 			BossCore *newAddress = newBoss.get ();
 
 			// ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
@@ -149,6 +170,7 @@ void GamePlayScene::Initialize() {
 			*it = std::move (newBoss);
 			break;
 		}
+		
 	}
 
 	dxCommon_->FlushCommandQueue(false);
@@ -180,12 +202,11 @@ void GamePlayScene::Update(float deltaTime) {
 	// =================================================================
 	Object3d* target = lockOnSystem_->GetTarget();
 
-	// ★ ここを1つにまとめました！
 	if (target && lockOnSystem_->IsLockingOn()) {
 		isDrawLockOn_ = true;
 
 		// =======================================================
-		// ★修正1：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
+		// ：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
 		// =======================================================
 		AABB aabb = target->GetAABB();
 
@@ -216,7 +237,7 @@ void GamePlayScene::Update(float deltaTime) {
 			lockOnSprite_->SetPosition({ screenX, screenY });
 
 			// =======================================================
-			// ★修正2：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+			// ：オブジェクトの大きさに応じたアイコンサイズの自動調整！
 			// =======================================================
 			float objSizeX = aabb.max.x - aabb.min.x;
 			float objSizeY = aabb.max.y - aabb.min.y;
@@ -243,7 +264,7 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 	else {
 		// =======================================================
-		// ★ 一番重要：ロックオンしていない時は確実に表示をオフにする！
+		// ロックオンしていない時は確実に表示をオフにする！
 		// =======================================================
 		isDrawLockOn_ = false;
 	}
@@ -286,7 +307,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
-
+	UpdateUI();
 }
 
 
@@ -391,5 +412,34 @@ void GamePlayScene::DrawShadow() {
 	if (objectManager_) {
 
 		objectManager_->DrawShadow();
+	}
+}
+
+void GamePlayScene::UpdateUI() {
+	// 1. プレイヤーのHP同期
+	if (player_ && playerHpBarSprite_) {
+		float currentHp = player_->GetHp();
+		float maxHp = player_->GetMaxHp();
+
+		// 割合を計算 (0.0f ～ 1.0f の間に制限してエラーを防ぐ)
+		float hpRatio = std::clamp(currentHp / maxHp, 0.0f, 1.0f);
+
+		// スプライトの幅を更新
+		Vector2 newSize = playerHpBarSprite_->GetSize();
+		newSize.x = playerHpBarMaxWidth_ * hpRatio;
+		playerHpBarSprite_->SetSize(newSize);
+	}
+	if (boss_) {
+		// A. メインHPバーの同期
+		if (bossHpBarSprite_) {
+			float hpRatio = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
+			bossHpBarSprite_->SetSize({ bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y });
+		}
+
+		// B. バリアHPバーの同期
+		if (barrierHpBarSprite_) {
+			float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
+			barrierHpBarSprite_->SetSize({ barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });
+		}
 	}
 }

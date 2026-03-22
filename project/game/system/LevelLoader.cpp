@@ -441,6 +441,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     auto newSprite = std::make_unique<Sprite>();
                     newSprite->Initialize(spriteCommon, handle);
                     newSprite->SetName(name);
+                    newSprite->SetTextureName(textureFile);
                     targetSprite = newSprite.get();
                     sprites.push_back(std::move(newSprite));
                 }
