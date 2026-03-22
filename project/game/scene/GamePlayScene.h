@@ -29,7 +29,7 @@ class SceneManager;
 class LevelLoader;
 class LockOnSystem;
 class GameRule;
-
+class BossCore;
 
 
 /// <summary>
@@ -43,6 +43,7 @@ public:
     void Initialize() override;
     void Finalize() override;
     void Update(float deltaTime) override;
+    void UpdateUI();
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
@@ -107,4 +108,17 @@ private:
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<Sprite> lockOnSprite_;
     bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
+	//sprite変数
+    Sprite* playerHpBarSprite_ = nullptr;
+    float playerHpBarMaxWidth_ = 0.0f; // 100%の時の長さ
+    // =================================================
+    //  ボスUI同期用のポインタと変数を保持
+    // =================================================
+    BossCore* boss_ = nullptr;
+
+    Sprite* bossHpBarSprite_ = nullptr;    // メインHPバー
+    float bossHpBarMaxWidth_ = 0.0f;
+
+    Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
+    float barrierHpBarMaxWidth_ = 0.0f;
 };

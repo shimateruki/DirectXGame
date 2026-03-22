@@ -191,22 +191,32 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         if (dot > 0.0f && dot > maxDot) {
 
             // -----------------------------------------------------------------
-            //  (E) 遮蔽物（壁）チェック
-            // -----------------------------------------------------------------
-            // ※壁チェックのレイ(光線)は、上下も含めた「本当の3D方向」に飛ばす
-            Vector3 toEnemyNormalized = toEnemy / distance;
-            RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                playerPos,          // 開始点
-                toEnemyNormalized,  // 本当の3D方向
-                distance,           // 最大距離
-                1                   // kGround (例: 地面・壁属性)
-            );
+              //  (E) 遮蔽物（壁）チェック
+              // -----------------------------------------------------------------
+              // ★修正: 足元から撃つと床の凹凸で誤爆するので、胸の高さ(Y+1.0f)から撃つ！
+            Vector3 rayStart = { playerPos.x, playerPos.y + 1.0f, playerPos.z };
+            Vector3 rayEnd = { enemyPos.x, enemyPos.y + 1.0f, enemyPos.z };
+            Vector3 toEnemy3D = { rayEnd.x - rayStart.x, rayEnd.y - rayStart.y, rayEnd.z - rayStart.z };
 
-            // 間に壁がなければ、最も良いターゲットとして更新
-            if (!hit.isHit) {
-                maxDot = dot;
-                bestTarget = obj.get();
+            float trueDist = std::sqrt(toEnemy3D.x * toEnemy3D.x + toEnemy3D.y * toEnemy3D.y + toEnemy3D.z * toEnemy3D.z);
+
+            if (trueDist > 0.0f) {
+                Vector3 toEnemyNormalized = { toEnemy3D.x / trueDist, toEnemy3D.y / trueDist, toEnemy3D.z / trueDist };
+
+                RaycastHit hit = CollisionManager::GetInstance()->Raycast(
+                    rayStart,           // ★修正: 胸の高さから開始
+                    toEnemyNormalized,  // ★修正: 敵の胸に向かって飛ばす
+                    trueDist,           // 最大距離
+                    1                   // kGround (例: 地面・壁属性)
+                );
+
+                // 間に壁がなければ、最も良いターゲットとして更新
+                if (!hit.isHit) {
+                    maxDot = dot;
+                    bestTarget = obj.get();
+                }
             }
+
         }
     }
 
