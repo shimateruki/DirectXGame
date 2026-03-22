@@ -30,7 +30,7 @@ public:
 
     // キューブの描画
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
-
+    void DrawWireSphere(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 private:
     DirectXCommon* dxCommon_ = nullptr;
     static const int kMaxInstances = 2048;
@@ -46,4 +46,8 @@ private:
     AlignedMatrix4x4* primitiveWVPData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> primitiveColorBuffer_;
     AlignedVector4* primitiveColorData_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> sphereVertexBuffer_;
+    D3D12_VERTEX_BUFFER_VIEW sphereVertexBufferView_{};
+    Microsoft::WRL::ComPtr<ID3D12Resource> sphereIndexBuffer_;
+    D3D12_INDEX_BUFFER_VIEW sphereIndexBufferView_{};
 };

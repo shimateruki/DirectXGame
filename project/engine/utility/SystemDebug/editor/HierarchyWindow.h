@@ -18,6 +18,8 @@ public:
 private:
     // 階層の再帰描画処理
     void DrawHierarchyNode(Object3d* obj);
-
+    bool HasMatchingCategory(Object3d* obj);
     DebugEditor* editor_ = nullptr; // 本体へのアクセス権
+    int currentCategoryFilter_ = 0; // 0: All, 1: Player, 2: Enemy, 3: Object
+
 };

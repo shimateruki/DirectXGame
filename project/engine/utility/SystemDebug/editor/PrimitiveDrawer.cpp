@@ -54,12 +54,45 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     cubeIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cubeIdx)); cubeIndexBufferView_ = { cubeIndexBuffer_->GetGPUVirtualAddress(), sizeof(cubeIdx), DXGI_FORMAT_R32_UINT };
     void* ibData; hr = cubeIndexBuffer_->Map(0, nullptr, &ibData); assert(SUCCEEDED(hr)); memcpy(ibData, cubeIdx, sizeof(cubeIdx)); cubeIndexBuffer_->Unmap(0, nullptr);
 
-    primitiveWVPBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedMatrix4x4) * kMaxInstances);
-    hr = primitiveWVPBuffer_->Map(0, nullptr, (void**)&primitiveWVPData_);
-    assert(SUCCEEDED(hr));
-
     primitiveColorBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedVector4) * kMaxInstances);
     hr = primitiveColorBuffer_->Map(0, nullptr, (void**)&primitiveColorData_);
+    assert(SUCCEEDED(hr));
+    const int kSegments = 36; // 16角形で円を作る
+    Vector4 sphereVerts[kSegments * 3];
+    uint32_t sphereIdx[kSegments * 6];
+
+    for (int i = 0; i < kSegments; ++i) {
+        float theta = (2.0f * 3.14159265f * i) / kSegments;
+        float cosT = std::cos(theta) * 0.5f; // 半径0.5の基準球
+        float sinT = std::sin(theta) * 0.5f;
+
+        // XY平面, YZ平面, ZX平面 の3つの円を作る
+        sphereVerts[i] = { cosT, sinT, 0.0f, 1.0f };
+        sphereVerts[kSegments + i] = { 0.0f, cosT, sinT, 1.0f };
+        sphereVerts[kSegments * 2 + i] = { sinT, 0.0f, cosT, 1.0f };
+
+        // インデックス結線
+        sphereIdx[i * 2] = i;
+        sphereIdx[i * 2 + 1] = (i + 1) % kSegments;
+
+        sphereIdx[kSegments * 2 + i * 2] = kSegments + i;
+        sphereIdx[kSegments * 2 + i * 2 + 1] = kSegments + ((i + 1) % kSegments);
+
+        sphereIdx[kSegments * 4 + i * 2] = kSegments * 2 + i;
+        sphereIdx[kSegments * 4 + i * 2 + 1] = kSegments * 2 + ((i + 1) % kSegments);
+    }
+    sphereVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(sphereVerts));
+    sphereVertexBufferView_ = { sphereVertexBuffer_->GetGPUVirtualAddress(), sizeof(sphereVerts), sizeof(Vector4) };
+    void* svbData; hr = sphereVertexBuffer_->Map(0, nullptr, &svbData); assert(SUCCEEDED(hr));
+    memcpy(svbData, sphereVerts, sizeof(sphereVerts)); sphereVertexBuffer_->Unmap(0, nullptr);
+
+    sphereIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(sphereIdx));
+    sphereIndexBufferView_ = { sphereIndexBuffer_->GetGPUVirtualAddress(), sizeof(sphereIdx), DXGI_FORMAT_R32_UINT };
+    void* sibData; hr = sphereIndexBuffer_->Map(0, nullptr, &sibData); assert(SUCCEEDED(hr));
+    memcpy(sibData, sphereIdx, sizeof(sphereIdx)); sphereIndexBuffer_->Unmap(0, nullptr);
+
+    primitiveWVPBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedMatrix4x4) * kMaxInstances);
+    hr = primitiveWVPBuffer_->Map(0, nullptr, (void**)&primitiveWVPData_);
     assert(SUCCEEDED(hr));
 }
 
@@ -92,4 +125,31 @@ void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
 
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
+}
+
+void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
+    Math math; const Camera* camera = CameraManager::GetInstance()->GetMainCamera(); if (!camera) return;
+
+    primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
+
+    Vector4 opaqueColor = color;
+    opaqueColor.w = 1.0f;
+    primitiveColorData_[instanceIndex].vector = opaqueColor;
+
+    D3D12_GPU_VIRTUAL_ADDRESS wvpGpuAddress = primitiveWVPBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedMatrix4x4));
+    D3D12_GPU_VIRTUAL_ADDRESS colorGpuAddress = primitiveColorBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedVector4));
+
+    commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
+    commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
+
+    // ★球体専用のバッファをセットして描画
+    commandList->IASetVertexBuffers(0, 1, &sphereVertexBufferView_);
+    commandList->IASetIndexBuffer(&sphereIndexBufferView_);
+
+    // 16分割 * 3平面 * 2(線分) = 96 インデックス
+    commandList->DrawIndexedInstanced(216, 1, 0, 0, 0);
+
+    // ★他の描画（DrawWireCube）に影響が出ないようにキューブ用に戻しておく
+    commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
+    commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 }

@@ -87,7 +87,7 @@ public:
     void DeleteSelected();        // 削除
     void PerformUndo();           // 元に戻す
     void PerformRedo();           // やり直し
-
+    void DropToFloor();
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------
@@ -231,4 +231,5 @@ private:
     InspectorWindow inspectorWindow_;
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
+
 };
