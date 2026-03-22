@@ -154,79 +154,87 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     right.y = 0.0f;
     right.z = -std::sin(rotation.y);
 
-    // ★追加: 上ベクトル (前方と右の外積で、カメラから見た「本当の上」を計算)
+    // 上ベクトル (前方と右の外積で、カメラから見た「本当の上」を計算)
     up.x = forward.y * right.z - forward.z * right.y;
     up.y = forward.z * right.x - forward.x * right.z;
     up.z = forward.x * right.y - forward.y * right.x;
 
     // ----------------------------------------------------------
-    // 3. 移動処理
+    // 3. 移動・ズーム処理
     // ----------------------------------------------------------
     Vector3 moveVelocity = { 0, 0, 0 };
 
-    // Shiftキーで加速
-    float speed = (input->IsKeyPressed(DIK_LSHIFT) || input->IsKeyPressed(DIK_RSHIFT))
-        ? settings_.boostSpeed
-        : settings_.moveSpeed;
+    // ==========================================================
+    // ★ GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
+    // ==========================================================
+    if (isGameViewHovered_ || input->IsMouseButtonPressed(1)) {
 
-    // ★ W/S: カメラの「向いている方向」へ前進・後退 (Unity/Unreal風)
-    if (input->IsKeyPressed(DIK_W)) {
-        moveVelocity.x += forward.x * speed;
-        moveVelocity.y += forward.y * speed;
-        moveVelocity.z += forward.z * speed;
-    }
-    if (input->IsKeyPressed(DIK_S)) {
-        moveVelocity.x -= forward.x * speed;
-        moveVelocity.y -= forward.y * speed;
-        moveVelocity.z -= forward.z * speed;
-    }
+        // Shiftキーで加速
+        float speed = (input->IsKeyPressed(DIK_LSHIFT) || input->IsKeyPressed(DIK_RSHIFT))
+            ? settings_.boostSpeed
+            : settings_.moveSpeed;
 
-    // ★ A/D: カメラの左右へ平行移動
-    if (input->IsKeyPressed(DIK_D)) {
-        moveVelocity.x += right.x * speed;
-        moveVelocity.y += right.y * speed;
-        moveVelocity.z += right.z * speed;
-    }
-    if (input->IsKeyPressed(DIK_A)) {
-        moveVelocity.x -= right.x * speed;
-        moveVelocity.y -= right.y * speed;
-        moveVelocity.z -= right.z * speed;
-    }
+        // ★ W/S: カメラの「向いている方向」へ前進・後退
+        if (input->IsKeyPressed(DIK_W)) {
+            moveVelocity.x += forward.x * speed;
+            moveVelocity.y += forward.y * speed;
+            moveVelocity.z += forward.z * speed;
+        }
+        if (input->IsKeyPressed(DIK_S)) {
+            moveVelocity.x -= forward.x * speed;
+            moveVelocity.y -= forward.y * speed;
+            moveVelocity.z -= forward.z * speed;
+        }
 
-    // ★ Q/E: 空間の上下へ移動 (Unity/Unreal共通のショートカット)
-    if (input->IsKeyPressed(DIK_E)) {
-        moveVelocity.y += speed; // Eで上昇
-    }
-    if (input->IsKeyPressed(DIK_Q)) {
-        moveVelocity.y -= speed; // Qで下降
+        // ★ A/D: カメラの左右へ平行移動
+        if (input->IsKeyPressed(DIK_D)) {
+            moveVelocity.x += right.x * speed;
+            moveVelocity.y += right.y * speed;
+            moveVelocity.z += right.z * speed;
+        }
+        if (input->IsKeyPressed(DIK_A)) {
+            moveVelocity.x -= right.x * speed;
+            moveVelocity.y -= right.y * speed;
+            moveVelocity.z -= right.z * speed;
+        }
+
+        // ★ Q/E: 空間の上下へ移動
+        if (input->IsKeyPressed(DIK_E)) {
+            moveVelocity.y += speed; // Eで上昇
+        }
+        if (input->IsKeyPressed(DIK_Q)) {
+            moveVelocity.y -= speed; // Qで下降
+        }
+
+        // ★ ホイール回転: ズーム移動
+        float wheelDelta = input->GetMouseWheelDelta();
+        if (wheelDelta != 0.0f) {
+            float wheelDir = (wheelDelta > 0.0f) ? 1.0f : -1.0f;
+            float zoomSpeed = speed * 3.0f;
+
+            moveVelocity.x += forward.x * zoomSpeed * wheelDir;
+            moveVelocity.y += forward.y * zoomSpeed * wheelDir;
+            moveVelocity.z += forward.z * zoomSpeed * wheelDir;
+        }
     }
 
     // ★ 中クリック (ホイール押し込み) : パン(平行)移動
-    // 視点を変えずに、カメラをそのまま上下左右にスライドさせます
-    if (input->IsMouseButtonPressed(2)) { // 2 = Middle Click
-        Vector2 mouseDelta = input->GetMouseMoveDelta();
-        float panSpeed = settings_.moveSpeed * 0.1f; // マウスの動きに対して少しマイルドに調整
+    // これもGameViewホバー中か、すでに中クリックを押している時だけ許可
+    if (isGameViewHovered_ || input->IsMouseButtonPressed(2)) {
+        if (input->IsMouseButtonPressed(2)) { // 2 = Middle Click
+            Vector2 mouseDelta = input->GetMouseMoveDelta();
+            float panSpeed = settings_.moveSpeed * 0.1f;
 
-        // X移動: マウスの動きと逆方向に右ベクトルを使って移動
-        moveVelocity.x -= right.x * mouseDelta.x * panSpeed;
-        moveVelocity.y -= right.y * mouseDelta.x * panSpeed;
-        moveVelocity.z -= right.z * mouseDelta.x * panSpeed;
+            // X移動: マウスの動きと逆方向に右ベクトルを使って移動
+            moveVelocity.x -= right.x * mouseDelta.x * panSpeed;
+            moveVelocity.y -= right.y * mouseDelta.x * panSpeed;
+            moveVelocity.z -= right.z * mouseDelta.x * panSpeed;
 
-        // Y移動: マウスの動きに合わせて上ベクトルを使って移動
-        moveVelocity.x += up.x * mouseDelta.y * panSpeed;
-        moveVelocity.y += up.y * mouseDelta.y * panSpeed;
-        moveVelocity.z += up.z * mouseDelta.y * panSpeed;
-    }
-
-    // ★ ホイール回転: ズーム移動 (維持)
-    float wheelDelta = input->GetMouseWheelDelta();
-    if (wheelDelta != 0.0f) {
-        float wheelDir = (wheelDelta > 0.0f) ? 1.0f : -1.0f;
-        float zoomSpeed = speed * 3.0f;
-
-        moveVelocity.x += forward.x * zoomSpeed * wheelDir;
-        moveVelocity.y += forward.y * zoomSpeed * wheelDir;
-        moveVelocity.z += forward.z * zoomSpeed * wheelDir;
+            // Y移動: マウスの動きに合わせて上ベクトルを使って移動
+            moveVelocity.x += up.x * mouseDelta.y * panSpeed;
+            moveVelocity.y += up.y * mouseDelta.y * panSpeed;
+            moveVelocity.z += up.z * mouseDelta.y * panSpeed;
+        }
     }
 
     // 座標更新
@@ -246,7 +254,6 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetTarget(newTarget);
 }
-
 void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_VIDEO " --- カメラエディタ (Camera Editor) ---");

@@ -336,43 +336,62 @@ MeshRenderer::LocalFogData* Object3d::GetLocalFogData() {
 
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
+
+    // 1. 基本設定・識別子
+    this->name_ = other->name_;
+    this->className_ = other->className_;
     this->saveCategory_ = other->saveCategory_;
+    this->enemyType_ = other->enemyType_;
+    this->isVisible_ = other->isVisible_;
+    this->isLocked_ = other->isLocked_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
     }
-    this->name_ = other->name_;
 
-    // ★Transform構造体を丸ごとコピーするため、quaternion や isQuaternionMaster も自動的にコピーされます
+    // 2. Transform構造体 (位置・回転・クォータニオン・スケールを完全コピー)
     this->transform_ = other->transform_;
 
-    // Colliderコピー
+    // 3. Collider ＆ 衝突属性
     if (collider_ && other->collider_) {
         this->SetColliderConfig(other->GetColliderConfig());
         this->SetCollisionAttribute(other->GetCollisionAttribute());
         this->SetCollisionMask(other->GetCollisionMask());
     }
 
-    // MeshRenderer設定コピー
+    // 4. イベント関連
+    this->eventType_ = other->eventType_;
+    this->SetTargetID(other->GetTargetID());
+    this->SetEventID(other->GetEventID());
+
+    // 5. Stats (Param)
+    this->param_ = other->param_;
+
+    // 6. MeshRenderer (グラフィックス・マテリアル・PBR設定)
     if (meshRenderer_ && other->meshRenderer_) {
+        this->SetColor(other->GetColor());
         this->SetBlendMode(other->GetBlendMode());
         this->SetMaterialType(other->GetMaterialType());
-        this->SetColor(other->GetColor());
+
+        // ★追加: 金属度と粗さ
+        this->SetMetallic(other->GetMetallic());
+        this->SetRoughness(other->GetRoughness());
+
+        // テクスチャ・マップ群
+        this->SetEnableNormalMap(other->GetEnableNormalMap());
         this->SetNormalMap(other->GetNormalMapPath());
         this->SetOrmMap(other->GetOrmMapPath());
         this->SetTexture(other->GetTexturePath());
+
+        // 環境マップ
+        this->SetEnableEnvMap(other->GetEnableEnvMap());
+        this->SetEnvIntensity(other->GetEnvIntensity());
     }
 
-    this->className_ = other->className_;
-    this->isVisible_ = other->isVisible_;
-    this->eventType_ = other->eventType_;
-    this->enemyType_ = other->enemyType_;
-    this->param_ = other->param_;
-
-    // ★ボーンアニメーションのコピー
+    // 7. アニメーション
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
 
-    // ★GhostRecorder用のコピー
+    // 8. レコーダー (Ghost)
     this->recordPathName_ = other->recordPathName_;
     this->isRecordLoop_ = other->isRecordLoop_;
     this->isRecordRelative_ = other->isRecordRelative_;
@@ -382,128 +401,208 @@ void Object3d::CopyFrom(const Object3d* other) {
         bool isCinematic = (this->className_ == "CinematicCamera");
         this->recorder_->Play(this->recordPathName_, this->isRecordLoop_, this->isRecordRelative_, isCinematic);
     }
+
+    // 9. ローカルフォグ (もし両方にフォグデータがあれば構造体ごとコピー)
+    auto myFog = this->GetLocalFogData();
+    auto otherFog = const_cast<Object3d*>(other)->GetLocalFogData();
+    if (myFog && otherFog) {
+        *myFog = *otherFog;
+    }
 }
-
 json Object3d::ExportToJson() {
-    json j;
-    j["name"] = name_;
-    j["modelName"] = GetModelName();
+    json d;
 
-    j["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
-    j["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
+    // 1. 基本設定
+    d["name"] = name_;
+    d["modelName"] = GetModelName();
+    d["type"] = className_;
+    d["saveCategory"] = saveCategory_;
+    d["enemyType"] = enemyType_;
+    d["isVisible"] = isVisible_;
+    d["isLocked"] = isLocked_;
 
-    // ★追加: クォータニオンの完全な値を保存
-    j["quaternion"] = { transform_.quaternion.x, transform_.quaternion.y, transform_.quaternion.z, transform_.quaternion.w };
+    // 2. Transform
+    d["translate"] = { transform_.translate.x, transform_.translate.y, transform_.translate.z };
+    d["scale"] = { transform_.scale.x, transform_.scale.y, transform_.scale.z };
+    d["rotate"] = { transform_.rotate.x, transform_.rotate.y, transform_.rotate.z };
+    d["quaternion"] = { transform_.quaternion.x, transform_.quaternion.y, transform_.quaternion.z, transform_.quaternion.w };
 
+    // 3. Collider ＆ 衝突属性
     if (collider_) {
-        const auto& config = collider_->GetConfig();
-        j["collider"] = {
-            {"type", static_cast<int>(config.type)},
-            {"size", { config.size.x, config.size.y, config.size.z }},
-            {"center", { config.center.x, config.center.y, config.center.z }},
-            { "rotation", { config.rotation.x, config.rotation.y, config.rotation.z } }
-        };
+        const auto& c = collider_->GetConfig();
+        d["collider"]["type"] = static_cast<int>(c.type);
+        d["collider"]["size"] = { c.size.x, c.size.y, c.size.z };
+        d["collider"]["center"] = { c.center.x, c.center.y, c.center.z };
+        d["collider"]["rotation"] = { c.rotation.x, c.rotation.y, c.rotation.z };
+    }
+    d["collisionAttribute"] = GetCollisionAttribute();
+    d["collisionMask"] = GetCollisionMask();
+
+    // 4. イベント関連
+    d["eventType"] = static_cast<int>(eventType_);
+     d["targetID"] = GetTargetID();
+     d["myEventID"] = GetEventID();
+
+    // 5. Stats (Param)
+    if (param_.has_value()) {
+        auto& p = param_.value();
+        d["param"]["hp"] = p.hp;
+        d["param"]["maxHp"] = p.maxHp;
+        d["param"]["speed"] = p.speed;
+        d["param"]["gravity"] = p.gravity;
+        d["param"]["jumpPower"] = p.jumpPower;
+        d["param"]["maxFallSpeed"] = p.maxFallSpeed;
+        d["param"]["enemyType"] = p.enemyType;
+        d["param"]["interval"] = p.interval;
+        d["param"]["maxCount"] = p.maxCount;
     }
 
-    // ★ボーンアニメとレコーダーのパスを分けて保存
-    j["animation"] = {
-        {"animName", animName_},
-        {"isAnimLoop", isAnimLoop_}
-    };
-    j["recorder"] = {
-        {"recordPathName", recordPathName_},
-        {"isRecordLoop", isRecordLoop_},
-        {"isRecordRelative", isRecordRelative_}
-    };
+    // 6. グラフィックス・マテリアル
+    Vector4 col = GetColor();
+    d["color"] = { col.x, col.y, col.z, col.w };
+    d["blendMode"] = static_cast<int>(GetBlendMode());
+    d["materialType"] = GetMaterialType();
 
-    j["eventType"] = static_cast<int>(eventType_);
-    j["enemyType"] = enemyType_;
+    // ★追加: 金属度と粗さ
+    d["metallic"] = GetMetallic();
+    d["roughness"] = GetRoughness();
 
-    j["blendMode"] = static_cast<int>(GetBlendMode());
-    j["materialType"] = GetMaterialType();
-    j["ormMapPath"] = GetOrmMapPath();
-    j["texturePath"] = GetTexturePath();
-    j["saveCategory"] = saveCategory_;
-    return j;
+    d["enableNormalMap"] = GetEnableNormalMap();
+    d["normalMapPath"] = GetNormalMapPath();
+    d["ormMapPath"] = GetOrmMapPath();
+    d["texturePath"] = GetTexturePath();
+    d["enableEnvMap"] = GetEnableEnvMap();
+    d["envIntensity"] = GetEnvIntensity();
+
+    // 7. アニメーション
+    d["animation"]["animName"] = animName_;
+    d["animation"]["isAnimLoop"] = isAnimLoop_;
+
+    // 8. レコーダー (Ghost)
+    d["recorder"]["recordPathName"] = recordPathName_;
+    d["recorder"]["isRecordLoop"] = isRecordLoop_;
+    d["recorder"]["isRecordRelative"] = isRecordRelative_;
+
+    // 9. ローカルフォグ
+    if (auto* fogData = GetLocalFogData()) {
+        d["localFog"]["color"] = { fogData->fogColor.x, fogData->fogColor.y, fogData->fogColor.z, fogData->fogColor.w };
+        d["localFog"]["density"] = fogData->fogDensity;
+        d["localFog"]["edgeFade"] = fogData->edgeFade;
+        d["localFog"]["noiseSpeed"] = fogData->noiseSpeed;
+        d["localFog"]["noiseScale"] = fogData->noiseScale;
+        d["localFog"]["scatteringG"] = fogData->scatteringG;
+        d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
+    }
+
+    return d;
 }
 
 void Object3d::ImportFromJson(const json& j) {
-    if (j.contains("modelName")) {
-        SetModel(j["modelName"].get<std::string>());
-    }
+    // 1. 基本設定
+    if (j.contains("modelName")) SetModel(j["modelName"].get<std::string>());
+    if (j.contains("type")) className_ = j["type"];
+    if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
+    if (j.contains("enemyType")) enemyType_ = j["enemyType"];
+    if (j.contains("isVisible")) isVisible_ = j["isVisible"];
+    if (j.contains("isLocked")) isLocked_ = j["isLocked"];
 
+    // 2. Transform
+    if (j.contains("translate")) transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
     if (j.contains("scale")) transform_.scale = { j["scale"][0], j["scale"][1], j["scale"][2] };
 
-    // ★追加: クォータニオンのデータがあれば最優先で読み込む！
     if (j.contains("quaternion")) {
-        transform_.quaternion.x = j["quaternion"][0];
-        transform_.quaternion.y = j["quaternion"][1];
-        transform_.quaternion.z = j["quaternion"][2];
-        transform_.quaternion.w = j["quaternion"][3];
-        transform_.isQuaternionMaster = true; // クォータニオン優先モード
-
-        if (j.contains("rotate")) {
-            transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
-        }
+        transform_.quaternion = { j["quaternion"][0], j["quaternion"][1], j["quaternion"][2], j["quaternion"][3] };
+        transform_.isQuaternionMaster = true;
+        if (j.contains("rotate")) transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
     }
-    // 古いセーブデータ（オイラー角しかない場合）の互換性対応
     else if (j.contains("rotate")) {
         transform_.rotate = { j["rotate"][0], j["rotate"][1], j["rotate"][2] };
-        transform_.isQuaternionMaster = false; // UpdateMatrix時にクォータニオンを生成させる
+        transform_.isQuaternionMaster = false;
     }
-
     transform_.UpdateMatrix();
 
+    // 3. Collider ＆ 衝突属性
     if (j.contains("collider") && collider_) {
         const auto& col = j["collider"];
         ColliderConfig config = collider_->GetConfig();
-
         if (col.contains("type")) config.type = static_cast<ColliderType>(col["type"]);
         if (col.contains("size")) config.size = { col["size"][0], col["size"][1], col["size"][2] };
         if (col.contains("center")) config.center = { col["center"][0], col["center"][1], col["center"][2] };
         if (col.contains("rotation")) config.rotation = { col["rotation"][0], col["rotation"][1], col["rotation"][2] };
-
         collider_->SetConfig(config);
     }
+    if (j.contains("collisionAttribute")) SetCollisionAttribute(j["collisionAttribute"]);
+    if (j.contains("collisionMask")) SetCollisionMask(j["collisionMask"]);
 
-    // ★ボーンアニメの読み込み
+    // 4. イベント関連
+    if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
+     if (j.contains("targetID")) SetTargetID(j["targetID"]);
+     if (j.contains("myEventID")) SetEventID(j["myEventID"]);
+
+    // 5. Stats (Param)
+    if (j.contains("param")) {
+        EntityParameter p;
+        const auto& jp = j["param"];
+        if (jp.contains("hp")) p.hp = jp["hp"];
+        if (jp.contains("maxHp")) p.maxHp = jp["maxHp"];
+        if (jp.contains("speed")) p.speed = jp["speed"];
+        if (jp.contains("gravity")) p.gravity = jp["gravity"];
+        if (jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
+        if (jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
+        if (jp.contains("enemyType")) p.enemyType = jp["enemyType"];
+        if (jp.contains("interval")) p.interval = jp["interval"];
+        if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
+        param_ = p;
+    }
+
+    // 6. グラフィックス・マテリアル
+    if (j.contains("color")) SetColor({ j["color"][0], j["color"][1], j["color"][2], j["color"][3] });
+    if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
+    if (j.contains("materialType")) SetMaterialType(j["materialType"]);
+
+    // ★追加: 金属度と粗さ
+    if (j.contains("metallic")) SetMetallic(j["metallic"].get<float>());
+    if (j.contains("roughness")) SetRoughness(j["roughness"].get<float>());
+
+    if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"]);
+    if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"]);
+    if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"]);
+    if (j.contains("texturePath")) SetTexture(j["texturePath"]);
+    if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
+    if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
+
+    // 7. アニメーション
     if (j.contains("animation")) {
         const auto& anim = j["animation"];
         if (anim.contains("animName")) animName_ = anim["animName"];
         if (anim.contains("isAnimLoop")) isAnimLoop_ = anim["isAnimLoop"];
-
-        // （互換性用）過去のデータにパスが含まれていた場合の救済
-        if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"];
-        if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"];
+        if (anim.contains("recordPathName")) recordPathName_ = anim["recordPathName"]; // 互換性
+        if (anim.contains("isAnimRelative")) isRecordRelative_ = anim["isAnimRelative"]; // 互換性
     }
 
-    // ★GhostRecorderのパスデータ読み込み
+    // 8. レコーダー (Ghost)
     if (j.contains("recorder")) {
         const auto& rec = j["recorder"];
         if (rec.contains("recordPathName")) recordPathName_ = rec["recordPathName"];
         if (rec.contains("isRecordLoop")) isRecordLoop_ = rec["isRecordLoop"];
         if (rec.contains("isRecordRelative")) isRecordRelative_ = rec["isRecordRelative"];
     }
-
-    // パスデータがあれば再生準備
     if (recorder_ && !recordPathName_.empty()) {
-        bool isCinematic = (this->GetClassName() == "CinematicCamera");
-        recorder_->Play(
-            recordPathName_,
-            isRecordLoop_,
-            isRecordRelative_,
-            isCinematic
-        );
+        bool isCinematic = (className_ == "CinematicCamera");
+        recorder_->Play(recordPathName_, isRecordLoop_, isRecordRelative_, isCinematic);
     }
 
-    if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
-    if (j.contains("enemyType")) enemyType_ = j["enemyType"];
-
-    if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
-    if (j.contains("materialType")) SetMaterialType(j["materialType"]);
-    if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"].get<bool>());
-    if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"].get<std::string>());
-    if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"].get<std::string>());
-    if (j.contains("texturePath")) SetTexture(j["texturePath"].get<std::string>());
-    if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"].get<std::string>();
+    // 9. ローカルフォグ
+    if (j.contains("localFog")) {
+        if (auto* fogData = GetLocalFogData()) {
+            const auto& jf = j["localFog"];
+            if (jf.contains("color")) fogData->fogColor = { jf["color"][0], jf["color"][1], jf["color"][2], jf["color"][3] };
+            if (jf.contains("density")) fogData->fogDensity = jf["density"];
+            if (jf.contains("edgeFade")) fogData->edgeFade = jf["edgeFade"];
+            if (jf.contains("noiseSpeed")) fogData->noiseSpeed = jf["noiseSpeed"];
+            if (jf.contains("noiseScale")) fogData->noiseScale = jf["noiseScale"];
+            if (jf.contains("scatteringG")) fogData->scatteringG = jf["scatteringG"];
+            if (jf.contains("scatteringIntensity")) fogData->scatteringIntensity = jf["scatteringIntensity"];
+        }
+    }
 }

@@ -115,13 +115,29 @@ void HierarchyWindow::Draw() {
     }
 
     ImGui::Separator();
+    ImGui::Separator();
+
+    // =======================================================
+    //  検索バーとカテゴリフィルタを横に並べて表示！
+    // =======================================================
     ImGui::Text(ICON_FA_SEARCH " 検索:");
     ImGui::SameLine();
+    ImGui::PushItemWidth(120.0f); // 検索バーの幅
     ImGui::InputText("##Search", editor_->GetSearchFilterBuffer(), editor_->GetSearchFilterBufferSize());
+    ImGui::PopItemWidth();
+
+    ImGui::SameLine();
+    ImGui::Text(ICON_FA_FILTER " 分類:");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(100.0f); // フィルタの幅
+    const char* filterNames[] = { "All", "Player", "Enemy", "Object" };
+    ImGui::Combo("##CategoryFilter", &currentCategoryFilter_, filterNames, IM_ARRAYSIZE(filterNames));
+    ImGui::PopItemWidth();
     ImGui::Separator();
 
     std::string filterStr = editor_->GetSearchFilterBuffer();
     std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(), ::tolower);
+
 
     if (!filterStr.empty()) {
         ImGui::TextColored(ImVec4(0, 1, 1, 1), ICON_FA_SEARCH_PLUS " 検索結果:");
@@ -131,7 +147,12 @@ void HierarchyWindow::Draw() {
             if (name.empty()) continue;
             std::string nameLower = name;
             std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-
+            if (currentCategoryFilter_ != 0) {
+                std::string cat = obj->GetSaveCategory();
+                if (currentCategoryFilter_ == 1 && cat != "Player") continue;
+                if (currentCategoryFilter_ == 2 && cat != "Enemy") continue;
+                if (currentCategoryFilter_ == 3 && cat != "Object") continue;
+            }
             if (nameLower.find(filterStr) != std::string::npos) {
                 bool isSelected = (editor_->GetSelectedObject() == obj.get());
                 ImGui::PushID(obj.get());
@@ -204,7 +225,7 @@ void HierarchyWindow::Draw() {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common); newObj->SetModel(nullptr); newObj->SetIsVisible(false); newObj->SetClassName("InvisibleBox"); newObj->SetName("Trigger_Box");
+            newObj->Initialize(common); newObj->SetModel(nullptr); newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("Trigger_Box");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionAttribute::kTrigger); newObj->SetTranslate({ 0, 2.0f, 0 });
             editor_->SetSelectedObject(newObj.get()); currentScene->AddObject(std::move(newObj)); EditorManager::GetInstance()->SetSelectedObject(editor_);
@@ -214,7 +235,7 @@ void HierarchyWindow::Draw() {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common); newObj->SetModel(nullptr); newObj->SetIsVisible(false); newObj->SetClassName("InvisibleBox"); newObj->SetName("collision_Box");
+            newObj->Initialize(common); newObj->SetModel(nullptr);newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("collision_Box");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionAttribute::kGround); newObj->SetTranslate({ 0, 2.0f, 0 });
             editor_->SetSelectedObject(newObj.get()); currentScene->AddObject(std::move(newObj)); EditorManager::GetInstance()->SetSelectedObject(editor_);
@@ -257,6 +278,11 @@ void HierarchyWindow::Draw() {
 void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
 #ifdef USE_IMGUI
     if (!obj) return;
+    if (!HasMatchingCategory(obj)) return;
+    //  IDの衝突を防ぐためにPushIDを使用
+    ImGui::PushID(obj);
+
+    //  AllowItemOverlapを追加して、ツリーと同じ行にボタンを押せるようにする
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
     if (editor_->GetSelectedObject() == obj) node_flags |= ImGuiTreeNodeFlags_Selected;
 
@@ -264,13 +290,16 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
     if (name.empty()) name = "NoName";
     if (obj->GetClassName() == "InvisibleBox") name = "[Trigger] " + name;
 
+    // 左側にツリーノードを描画
     bool node_open = ImGui::TreeNodeEx((void*)obj, node_flags, name.c_str());
 
+    // アイテムがクリックされたら選択状態にする
     if (ImGui::IsItemClicked()) {
         editor_->SetSelectedObject(obj);
         EditorManager::GetInstance()->SetSelectedObject(editor_);
     }
 
+    // --- ドラッグ＆ドロップ処理 ---
     if (ImGui::BeginDragDropSource()) {
         ImGui::SetDragDropPayload("HIERARCHY_OBJ", &obj, sizeof(Object3d*));
         ImGui::Text("Move %s", name.c_str());
@@ -286,6 +315,31 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         ImGui::EndDragDropTarget();
     }
 
+    // ==========================================================
+    //  右端に目玉と南京錠のアイコンを配置する
+    // ==========================================================
+    ImGui::SameLine(ImGui::GetWindowWidth() - 75.0f); // 右端から75pxの位置に寄せる
+
+    // 1. 表示・非表示トグル (目のアイコン)
+    bool isVisible = obj->GetIsVisible();
+    const char* eyeIcon = isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
+    if (!isVisible) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // 非表示時はグレーアウト
+    if (ImGui::Button(eyeIcon)) {
+        obj->SetIsVisible(!isVisible);
+    }
+    if (!isVisible) ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+
+    // 2. ロックトグル (南京錠アイコン)
+    bool isLocked = obj->GetIsLocked();
+    const char* lockIcon = isLocked ? ICON_FA_LOCK : ICON_FA_UNLOCK;
+    if (isLocked) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f)); // ロック時は赤色
+    if (ImGui::Button(lockIcon)) {
+        obj->SetIsLocked(!isLocked);
+    }
+    if (isLocked) ImGui::PopStyleColor();
+
     if (node_open) {
         if (editor_->GetSceneManager() && editor_->GetSceneManager()->GetCurrentScene()) {
             auto& allObjs = editor_->GetSceneManager()->GetCurrentScene()->GetObjects();
@@ -295,5 +349,24 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         }
         ImGui::TreePop();
     }
+
+    ImGui::PopID(); // PushIDの解除
 #endif
+}
+
+bool HierarchyWindow::HasMatchingCategory(Object3d* obj) {
+    if (currentCategoryFilter_ == 0) return true; // Allなら無条件でパス
+    if (!obj) return false;
+
+    std::string cat = obj->GetSaveCategory();
+    if (currentCategoryFilter_ == 1 && cat == "Player") return true;
+    if (currentCategoryFilter_ == 2 && cat == "Enemy") return true;
+    if (currentCategoryFilter_ == 3 && cat == "Object") return true;
+
+    // 子要素も再帰的にチェック（親がObjectでも子がEnemyなら表示を許可する！）
+    for (Object3d* child : obj->GetChildren()) {
+        if (HasMatchingCategory(child)) return true;
+    }
+
+    return false;
 }

@@ -56,6 +56,7 @@ public:
     void SetMode(Mode mode);
     Mode GetMode() const { return settings_.currentMode; }
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
+    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
 
 private:
     void UpdateFreeCamera(Camera* camera);
@@ -71,4 +72,5 @@ private:
 
     const std::string kDirectoryPath_ = "Resources/json/camera/";
     std::vector<std::string> fileList_;
+    bool isGameViewHovered_ = false;
 };
