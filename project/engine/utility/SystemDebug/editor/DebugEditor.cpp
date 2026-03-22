@@ -382,7 +382,12 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         // =========================================================
         // ★ PrimitiveDrawer で描画実行！
         // =========================================================
-        primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+        if (type == ColliderType::kSphere) {
+            primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+        }
+        else {
+            primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+        }
         instanceCount++;
     }
 
@@ -438,7 +443,12 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             // =========================================================
             // ★ PrimitiveDrawer で弾も描画実行！
             // =========================================================
-            primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+            if (type == ColliderType::kSphere) {
+                primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+            }
+            else {
+                primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+            }
             instanceCount++;
         }
     }
