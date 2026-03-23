@@ -361,42 +361,42 @@ void BossCore::UpdateAttack(float deltaTime) {
 void BossCore::UpdateWeak(float deltaTime) {
     animTimer_ += deltaTime;
 
-    // ==========================================
-    // 演出1：機能停止して小刻みに震える（プルプル）
-    // ==========================================
-    // sin波を使って、高速で小刻みに揺らす
+    // --- 演出1：ボス本体のシェイク ---
     float shakeX = std::sin(animTimer_ * 50.0f) * 0.05f;
     float shakeZ = std::cos(animTimer_ * 45.0f) * 0.05f;
     SetRotation({ shakeX, GetRotation().y, shakeZ });
-    GetTransform()->isQuaternionMaster = false;
+
+    // --- 演出2：全体の色を暗くする ---
+    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
 
     // ==========================================
-    // 演出2：全体の色を暗くして「ショートした」感を出す
+    // ★ 追加：ブロックをバラバラに弾け飛ばすアニメーション！
     // ==========================================
-    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // コアをダークグレーに
-    for (Object3d* block : armorBlocks_) {
-        if (block) {
-            block->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // ブロックもダークグレーに
+    float scatterDuration = 0.8f; // 0.8秒かけて弾け飛ぶ
+    float t = std::min(animTimer_ / scatterDuration, 1.0f);
+    float easeT = Easing::OutExpo(t); // 「バッ！」と広がる動き
+
+    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+        if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+            // スタート位置からランダムな目標位置へ補間
+            Vector3 currentPos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+            armorBlocks_[i]->SetTranslate(currentPos);
+
+            // スタン中っぽく、各ブロックを適当な方向にゆっくり回転させ続ける
+            Vector3 rot = armorBlocks_[i]->GetRotation();
+            rot.x += 1.0f * deltaTime;
+            rot.y += 1.5f * deltaTime;
+            armorBlocks_[i]->SetRotation(rot);
+            armorBlocks_[i]->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // ブロックも暗くする
         }
     }
 
-    // ==========================================
-    // 3秒経過で復帰（再起動）
-    // ==========================================
-    if (animTimer_ >= 3.0f) {
+    // --- 3秒経過で復帰 ---
+    if (animTimer_ >= 10.0f) {
         animTimer_ = 0.0f;
-
-        // 姿勢を真っ直ぐに戻す
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
-
-        // 色を元の白(再起動)に戻す
         SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        for (Object3d* block : armorBlocks_) {
-            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        }
-
-        // 待機状態(Idle)へ戻る
-        ChangeState(State::Idle);
+        ChangeState(State::Idle); // ここで各ブロックは IdleOrbit に戻るようになります
     }
 }
 
@@ -1337,42 +1337,44 @@ void BossCore::TakeBarrierDamage(float damage) {
     }
 
     if (barrierHp_ <= 0.0f) {
-        DebugConsole::GetInstance()->AddLog("★☆ Barrier BROKEN! Boss is STUNNED! ☆★");
-        barrierHp_ = maxBarrierHp_; // 復帰後のためにリセットしておく
+        DebugConsole::GetInstance()->AddLog("★☆ Barrier BROKEN! ☆★");
+        barrierHp_ = maxBarrierHp_;
 
-        // どんな攻撃アニメーション中だろうと強制中断させる！
         animPhase_ = 0;
         attackMode_ = 0;
         animTimer_ = 0.0f;
-        shotCount_ = 0; // ★念のためこれもリセット
 
-        // =======================================
-        // ★修正：全てのブロックを強制的にボスの周りにワープさせる！（置いてけぼり完全防止）
-        // ==========================================
-        // ① 飛んでいるブロックのリストを完全に消去して「飛ぶのをやめさせる」
+        // ① 弾けている最中のブロック（射撃中など）を全て停止させる
         flyingBlocks_.clear();
 
-        // ② 全ブロックの親をボスに戻し、瞬時に待機軌道(Orbit)へセットする！
+        // ② 拡散用のデータを準備する
+        blockStartPos_.clear();
+        blockTargetPos_.clear();
+
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             Object3d* block = armorBlocks_[i];
             if (block) {
-                // 親をボス本体に戻す（射撃や壁攻撃で外れていたのを強制修復！）
+                // 親子関係は維持したまま（ローカル座標で計算）
                 block->SetParent(this);
 
-                // 待機軌道の定位置を計算して、瞬時にそこにスナップさせる！
-                OrbitData orbit = GetIdleOrbit(i);
-                block->SetTranslate(orbit.pos);
-                block->SetScale(orbit.scale);
-                block->SetRotation(orbit.rot);
-                block->GetTransform()->isQuaternionMaster = false;
+                // 現在の位置をスタート地点として保存
+                blockStartPos_.push_back(block->GetTranslate());
+
+                // 弾け飛ぶ方向をランダムに決定（半径 10.0f 〜 15.0f の範囲）
+                float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
+                float distance = 10.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
+                float height = ((static_cast<float>(rand()) / RAND_MAX) * 10.0f) - 5.0f; // 上下にもばらけさせる
+
+                Vector3 scatterPos = {
+                    std::cos(angle) * distance,
+                    height,
+                    std::sin(angle) * distance
+                };
+                blockTargetPos_.push_back(scatterPos);
             }
         }
 
-        // ③ ボス本体の回転などもまっすぐにリセットしておく
-        SetRotation({ 0.0f, 0.0f, 0.0f });
-        GetTransform()->isQuaternionMaster = false;
-
-        // ダウン状態(Weak)へ強制移行！
+        SetRotation({ 0.0f, GetRotation().y, 0.0f });
         ChangeState(State::Weak);
     }
 }
