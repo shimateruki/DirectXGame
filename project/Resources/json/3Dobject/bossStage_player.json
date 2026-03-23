@@ -67,7 +67,7 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 1000.0,
-                "speed": 7.099999904632568
+                "speed": 15.0
             },
             "parentName": "",
             "position": [
