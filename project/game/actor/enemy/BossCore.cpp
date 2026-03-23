@@ -124,7 +124,7 @@ void BossCore::Update(float deltaTime) {
     // ★ 魔法の1行：ボスの全体スピード倍率！
     // 以前の「2回Update」と同じ速度を再現するため、ボスの時間だけを2倍速で進める！
     // ==========================================
-    deltaTime *= 2.0f;
+    deltaTime *= 1.5f;
 
     // ==========================================
     // 0キーで時間停止（ザ・ワールド）機能！
@@ -294,8 +294,16 @@ void BossCore::ChangeState(State nextState) {
 
     case State::Attack: {
         // ランダムな攻撃パターンを選択 (1〜4)
-        int nextAttack = rand() % 4 + 1;
+        //int nextAttack = rand() % 4 + 1;
+        // 特定の攻撃にする
         //int nextAttack = 3;
+        // 順番に攻撃する。
+        static int nextAttackPattern=0;
+        int nextAttack = nextAttackPattern;
+        nextAttackPattern++;
+        if (nextAttackPattern > 4) {
+            nextAttackPattern = 1; // 4番の次は1番に戻る
+        }
 
         // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
         attackMode_ = nextAttack;
