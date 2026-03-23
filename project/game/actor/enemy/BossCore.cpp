@@ -1399,25 +1399,20 @@ void BossCore::TakeBarrierDamage(float damage) {
 
 
 
-// =================================================================
-// 衝突判定（ダメージ管理）
-// =================================================================
 bool BossCore::OnCollision(Object3d* other) {
-    // ダウン状態(Weak)じゃない時は、プレイヤーの本体への直接攻撃を完全に無効化する！
-    if (state_ != State::Weak) {
-        uint32_t attribute = other->GetCollisionAttribute();
+    uint32_t attribute = other->GetCollisionAttribute();
 
-        // プレイヤーの剣(kPlayerAttack)が当たった場合
-        if (attribute & kPlayerAttack) {
-            CollisionInfo info = CheckCollision(other);
-            if (info.isColliding) {
-                // 衝突した(壁として剣を弾く)判定にはするが、BaseEnemyのダメージ処理はスキップ！
-                return true;
-            }
+    // プレイヤーの剣(kPlayerAttack)が当たった場合は、衝突判定を確認して
+    // BaseEnemy のダメージ処理に委譲する（＝剣でダメージを受ける）
+    if (attribute & kPlayerAttack) {
+        CollisionInfo info = CheckCollision(other);
+        if (!info.isColliding) {
             return false;
         }
+        // ここで BaseEnemy::OnCollision を呼ぶことで DamageEvent 発行など既存の処理を再利用
+        return BaseEnemy::OnCollision(other);
     }
 
-    // ダウン中(Weak)の時や、その他の衝突なら、通常通りBaseEnemyのダメージ処理を行う！
+    // それ以外は従来通り BaseEnemy に委譲
     return BaseEnemy::OnCollision(other);
 }
