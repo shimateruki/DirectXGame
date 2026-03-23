@@ -22,6 +22,7 @@
 #include "GPUParticleEditor.h"
 #include "EngineManualWindow.h"
 
+class WinApp;
 
 class Game : public Framework {
 public:

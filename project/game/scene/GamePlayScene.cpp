@@ -273,17 +273,24 @@ void GamePlayScene::Update(float deltaTime) {
 	if (!CameraEditor::GetInstance()->IsEditorMode()) {
 		Camera::FollowMode currentMode = camera->GetFollowMode();
 
-		// 右クリック回転
 		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+
+#ifdef USE_IMGUI
+			// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」のみ回転
 			if (inputManager_->IsMouseButtonPressed(1)) {
-				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
 				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
 					camera->AddRotation(mouseDelta);
 				}
 			}
+#else
+			// ★ Release環境限定: 右クリック不要！マウスを動かすだけで回転する
+			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+				camera->AddRotation(mouseDelta);
+			}
+#endif
 		}
 	}
-
 	// --- 全体更新 ---
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
@@ -316,11 +323,26 @@ void GamePlayScene::Draw() {
 	bool isFirstPerson = false;
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 #ifndef _DEBUG
-	
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
 #endif
+
+	// =========================================================
+	// ★ 追加: カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
+	// =========================================================
+	if (!isFirstPerson && player_ && camera) {
+		Vector3 pPos = player_->GetWorldPosition();
+		pPos.y += 1.0f; // プレイヤーの胸の高さを基準にする
+		Vector3 cPos = camera->GetEye();
+		Vector3 toCam = { cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z };
+		float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
+
+		// 距離が 3.0m 未満なら、プレイヤーを完全に消す！
+		if (dist < 3.0f) {
+			isFirstPerson = true;
+		}
+	}
 
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
@@ -330,7 +352,19 @@ void GamePlayScene::Draw() {
 
 	// --- 1. 不透明描画 ---
 	for (auto& obj : objects) {
-		if (isFirstPerson && obj.get() == player_) continue;
+		// =========================================================
+		// ★ 修正: プレイヤー本体だけでなく「子パーツ（緑のブロック等）」も巻き込んで消す！
+		// =========================================================
+		bool isPlayerPart = false;
+		if (isFirstPerson) {
+			Object3d* current = obj.get();
+			while (current) {
+				if (current == player_) { isPlayerPart = true; break; }
+				current = current->GetParent();
+			}
+		}
+		if (isPlayerPart) continue; // プレイヤーの一部なら描画をスキップ！
+
 		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
@@ -342,12 +376,23 @@ void GamePlayScene::Draw() {
 
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
-		if (isFirstPerson && obj.get() == player_) continue;
+		// ここでも同じくプレイヤー関連をスキップ
+		bool isPlayerPart = false;
+		if (isFirstPerson) {
+			Object3d* current = obj.get();
+			while (current) {
+				if (current == player_) { isPlayerPart = true; break; }
+				current = current->GetParent();
+			}
+		}
+		if (isPlayerPart) continue;
+
 		if (obj->GetMaterialType() == 1) { // 透明のみ描画
 			obj->Draw(pointLightRes, spotLightRes);
 		}
 	}
 	particleSystem_->Draw();
+
 	// =======================================================
 	// 4. ローカルフォグ (霧の箱) の描画！
 	// =======================================================
@@ -357,30 +402,21 @@ void GamePlayScene::Draw() {
 	}
 
 	if (hasFog) {
-		// ★ 描画の直前に「読み込みモード」へ切り替え！
 		dxCommon_->PreDrawLocalFog();
-
 		for (auto& obj : objects) {
 			if (obj->GetMaterialType() == 7) {
 				obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
 			}
 		}
-
-		// ★ 描き終わったら安全のために「書き込みモード」へ戻す！
 		dxCommon_->PostDrawLocalFog();
 	}
 
 	// =======================================================
-	// : GPUパーティクルの描画！
+	// 5. GPUパーティクルの描画！
 	// =======================================================
-
-//  空間の歪みのために、不透明オブジェクトまで描画し終えた「今の画面」をコピー！
 	dxCommon_->UpdateGrabTexture();
-
-	// 深度バッファを「読み取りモード」へ切り替え（ソフトパーティクル用）
 	dxCommon_->PreDrawLocalFog();
 
-	// ビュー・プロジェクション行列と、深度テクスチャを渡して描画実行！
 	GPUParticleManager::GetInstance()->Draw(
 		dxCommon_->GetCommandList(),
 		camera->GetViewMatrix(),
@@ -389,10 +425,8 @@ void GamePlayScene::Draw() {
 		dxCommon_->GetDepthSrvHandle()
 	);
 
-	// ★ 描き終わったら安全のために「書き込みモード(DSVあり)」に戻す！
 	dxCommon_->PostDrawLocalFog();
 }
-
 // ====================================================================
 // UI描画専用の関数
 // ====================================================================

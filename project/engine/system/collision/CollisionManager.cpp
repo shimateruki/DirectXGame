@@ -264,9 +264,28 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
 
     // 【簡易版】登録されている全てのオブジェクトをチェック
     for (Object3d* object : objects_) {
-        if (object->GetClassName() == "Player") {
+
+        // =========================================================
+        // ★ 修正: プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
+        // 壁（レイキャストの障害物）として扱わないように完全に除外する！
+        // =========================================================
+        bool isPlayerPart = false;
+        Object3d* current = object;
+        while (current) {
+            // クラス名が "Player"、または名前(Name)に "Player" が含まれていたら除外
+            if (current->GetClassName() == "Player" ||
+                current->GetName().find("Player") != std::string::npos) {
+                isPlayerPart = true;
+                break;
+            }
+            current = current->GetParent();
+        }
+
+        // プレイヤーの一部だったら、このオブジェクトへのレイキャストはスキップ！
+        if (isPlayerPart) {
             continue;
         }
+
         // (1) マスク判定 (指定した対象か？)
         if (!((object->GetCollisionAttribute()) & mask)) {
             continue; // 対象外 
@@ -277,7 +296,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
             continue; // 球 や判定なし は（まだ）無視
         }
 
-        AABB aabb = object->GetAABB(); 
+        AABB aabb = object->GetAABB();
 
         // (3) 交差判定
         float distance = IntersectRayAABB(start, direction, aabb);
