@@ -136,10 +136,13 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     const uint32_t kTargetAttribute = 2; // kEnemy (例)
 
     for (const auto& obj : objects) {
-        // 1. 敵属性を持たないものは除外
         if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
-            continue;
+            // 名前に "BossCore" が含まれていない場合のみ除外する（ボスはスルーして判定を続ける）
+            if (obj->GetName().find("BossCore") == std::string::npos) {
+                continue;
+            }
         }
+        
 
         // 2. 自分自身、および「自分の子パーツ(武器や手足など)」を除外
         bool isPlayerPart = false;
