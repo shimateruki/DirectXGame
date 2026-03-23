@@ -259,24 +259,46 @@ void BossCore::Update(float deltaTime) {
 // =================================================================
 // ステート(状態)管理
 // =================================================================
-
 void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
-    // 現在のステートに応じた属性を決定する
-    uint32_t targetAttribute = (state_ == State::Attack) ? kEnemyAttack : kEnemy;
+    // =======================================================
+    // ★ 修正：コア本体とブロックの属性設定！
+    // =======================================================
+    uint32_t coreAttribute;
+    if (state_ == State::Attack) {
+        // 攻撃中：触れるとダメージ ＋ 絶対すり抜けない壁
+        coreAttribute = kEnemyAttack | kGround;
+    }
+    else if (state_ == State::Weak) {
+        // ダウン中：剣で殴れる ＋ 絶対すり抜けない壁
+        coreAttribute = kEnemy | kGround;
+    }
+    else {
+        // 待機中：ただの壁（体当たりしてもノーダメージ）
+        coreAttribute = kGround;
+    }
 
-    // ① コア本体の属性を切り替え
-    SetCollisionAttribute(targetAttribute);
+    // ① コア本体の属性を設定し、さらに「全ての子パーツ」にも属性を同期させる！
+    // これにより、コアの見た目メッシュなどの子パーツに触れてもダメージを受けなくなります。
+    SetCollisionAttribute(coreAttribute);
+    for (Object3d* child : GetChildren()) {
+        if (child) {
+            child->SetCollisionAttribute(coreAttribute);
+        }
+    }
 
     if (state_ == State::Attack) {
         SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     }
 
-    // ② ：周りのブロックたちの属性も全部一緒に切り替える！
+    // ② 周りのブロックの属性（攻撃中は「敵の攻撃＋壁」、それ以外は「ただの壁」）
+    // 装甲ブロックは上で子パーツとしても処理されますが、念のためここで確実に上書きします。
+    uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+
     for (Object3d* block : armorBlocks_) {
         if (block) {
-            block->SetCollisionAttribute(targetAttribute);
+            block->SetCollisionAttribute(blockAttribute);
             if (state_ == State::Attack) {
                 block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             }
@@ -293,12 +315,8 @@ void BossCore::ChangeState(State nextState) {
         break;
 
     case State::Attack: {
-        // ランダムな攻撃パターンを選択 (1〜4)
-        //int nextAttack = rand() % 4 + 1;
-        // 特定の攻撃にする
-        //int nextAttack = 3;
         // 順番に攻撃する。
-        static int nextAttackPattern=0;
+        static int nextAttackPattern = 0;
         int nextAttack = nextAttackPattern;
         nextAttackPattern++;
         if (nextAttackPattern > 4) {
@@ -1375,4 +1393,29 @@ void BossCore::TakeBarrierDamage(float damage) {
         // ダウン状態(Weak)へ強制移行！
         ChangeState(State::Weak);
     }
+}
+
+
+
+// =================================================================
+// 衝突判定（ダメージ管理）
+// =================================================================
+bool BossCore::OnCollision(Object3d* other) {
+    // ダウン状態(Weak)じゃない時は、プレイヤーの本体への直接攻撃を完全に無効化する！
+    if (state_ != State::Weak) {
+        uint32_t attribute = other->GetCollisionAttribute();
+
+        // プレイヤーの剣(kPlayerAttack)が当たった場合
+        if (attribute & kPlayerAttack) {
+            CollisionInfo info = CheckCollision(other);
+            if (info.isColliding) {
+                // 衝突した(壁として剣を弾く)判定にはするが、BaseEnemyのダメージ処理はスキップ！
+                return true;
+            }
+            return false;
+        }
+    }
+
+    // ダウン中(Weak)の時や、その他の衝突なら、通常通りBaseEnemyのダメージ処理を行う！
+    return BaseEnemy::OnCollision(other);
 }

@@ -23,7 +23,7 @@ public:
     // ==================================================
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
-
+    bool OnCollision(Object3d* other) override;
 #ifdef USE_IMGUI
     void DrawImGui();
 #endif
