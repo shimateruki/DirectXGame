@@ -28,7 +28,7 @@ void Game::Initialize() {
     // =========================================================
     //  ローカル設定を見て開始シーンを決める
     // =========================================================
-    std::string startScene = "TITLE"; // デフォルト
+    std::string startScene = "GAMEPLAY"; // デフォルト
 
 #ifdef USE_IMGUI
     std::string lastScene = sceneManager_->LoadLastSceneName();
@@ -87,6 +87,9 @@ void Game::Initialize() {
 #else
     isPlaying_ = true;  // リリース時は最初から再生
     WinApp::SetCursorVisibility(false);
+	winApp_->SetCursorClipping(true);
+    winApp_->SetCursorLocked(true);
+    CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 #endif
 #ifdef USE_IMGUI
     CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
@@ -122,7 +125,10 @@ void Game::Finalize() {
 
 void Game::Update() {
     InputManager::GetInstance()->Update();
-
+    if (InputManager::GetInstance()->IsKeyTriggered(DIK_ESCAPE)) {
+        PostQuitMessage(0); // Windowsに「アプリを終了して！」とメッセージを送る
+        return;             // 今回のフレームの更新はここで打ち切る
+    }
 #ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();

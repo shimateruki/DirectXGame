@@ -241,29 +241,38 @@ void Camera::Update() {
             }
         }
 
+
         // -----------------------------------------------------------------
-        //  (D) プレイヤーが画面を埋め尽くす問題の解決（近距離フェード）
-        // -----------------------------------------------------------------
+             //  (D) プレイヤーが画面を埋め尽くす問題の解決（近距離フェード）
+             // -----------------------------------------------------------------
+             // ★修正1：足元ではなく、カメラが見ている「胸・頭の高さ」で距離を計算する！
         Vector3 playerPosForDist = followObject_->GetWorldPosition();
+        playerPosForDist.y += aimHeight_ * 0.5f; // 足元ではなく中心付近を基準にする
+
         Vector3 toPlayer = playerPosForDist - eye_;
         float camToPlayerDist = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y + toPlayer.z * toPlayer.z);
 
         float alpha = 1.0f;
-        if (camToPlayerDist < 1.5f) {
-            alpha = std::max(0.0f, (camToPlayerDist - 0.5f) / 1.0f);
+        // ★修正2：フェードし始める距離を 1.5m から 3.5m くらいに大きく広げる！
+        if (camToPlayerDist < 3.5f) {
+            // 3.5m以下から徐々に透明になり、1.0m以下で完全に透明(0.0)になる
+            alpha = std::max(0.0f, (camToPlayerDist - 1.0f) / 2.5f);
         }
 
         Vector4 pColor = followObject_->GetColor();
         followObject_->SetColor({ pColor.x, pColor.y, pColor.z, alpha });
 
+        // もし Object3d に MaterialType を切り替える関数があれば、透明度に応じて切り替えるのがベストです！
+        // followObject_->SetMaterialType(alpha < 1.0f ? 1 : 0);
+
         for (Object3d* child : followObject_->GetChildren()) {
             if (child) {
                 Vector4 cColor = child->GetColor();
                 child->SetColor({ cColor.x, cColor.y, cColor.z, alpha });
+                // child->SetMaterialType(alpha < 1.0f ? 1 : 0);
             }
         }
     }
-
     // -----------------------------------------------------------------
     //  行列更新
     // -----------------------------------------------------------------
