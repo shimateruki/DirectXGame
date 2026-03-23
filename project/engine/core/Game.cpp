@@ -40,6 +40,24 @@ void Game::Initialize() {
     // 初期化 
     sceneManager_->Initialize(sceneFactory_.get(), startScene);
     //  lastTime_ を「起動時」の時間で初期化
+
+    // =========================================================
+    // 天球（Skydome）の値をプログラムで上書きする！
+    // =========================================================
+    if (auto currentScene = sceneManager_->GetCurrentScene()) {
+        // シーン内の全オブジェクトをループして天球を探す
+        for (auto& obj : currentScene->GetObjects()) {
+            if (obj && obj->GetName() == "Skydome") { // エディターでの名前に合わせてください
+
+                obj->SetSelectedLighting(0);
+
+                DebugConsole::GetInstance()->AddLog("🌌 Skydome settings have been overwritten!");
+                break; // 見つかったらループ終了
+            }
+        }
+    }
+
+
     lastTime_ = std::chrono::high_resolution_clock::now();
     postEffect_ = std::make_unique<PostEffect>();
     postEffect_->Initialize(dxCommon_);
