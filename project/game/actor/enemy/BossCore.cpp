@@ -1222,14 +1222,19 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
 
                 animStartRot_ = GetRotation();
 
+                // ==========================================
+                 // ★ 修正：Block4とBlock5の Z軸回転 を 90度（pi/2）にする！
+                 // ==========================================
+                float rotZ90 = std::numbers::pi_v<float> / 2.0f; // 90度のラジアン値
+
                 struct BlockSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
                 std::vector<BlockSetting> settings = {
-                    { { -5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block1(足)
-                    { {  0.0f,  21.5f,  6.0f }, { 10.0f, 10.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block2(頭)
-                    { {  0.0f,  -3.5f,  6.0f }, {  8.0f, 15.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block3(胴体)
-                    { { 15.0f,   0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block4(右腕)
-                    { { -15.0f,  0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block5(左腕)
-                    { {  5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }  // Block6(足)
+                    { { -5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block1(足)
+                    { {  0.0f,  21.5f,  6.0f }, { 10.0f, 10.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block2(頭)
+                    { {  0.0f,  -3.5f,  6.0f }, {  8.0f, 15.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block3(胴体)
+                    { { 11.0f,   0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block4(右腕) ★Z回転
+                    { { -11.0f,  0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block5(左腕) ★Z回転
+                    { {  5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }    // Block6(足)
                 };
 
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
@@ -1362,7 +1367,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         // --- Phase 53: 前にぶっ倒れて叩き潰す！ ---
         else if (animPhase_ == 53) {
             animTimer_ += deltaTime;
-            float duration = 0.75f;
+            float duration = 2.0f;
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = std::pow(t, 3.0f);
 
@@ -1396,6 +1401,49 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             newPos.y = pivotWorldPos.y - rotLocalY;
             newPos.z = pivotWorldPos.z - dirZ * rotLocalZ;
             SetTranslate(newPos);
+
+            // ==========================================
+            // 右腕と左腕で「回転する方向」を逆にして、外側を通す！
+            // ==========================================
+            float startArmAngle = std::numbers::pi_v<float> / 2.0f;  // 90度（気を付け）
+            float armOffset45 = std::numbers::pi_v<float> / 4.0f;   // ★追加：45度のラジアン
+
+            // ① 右腕（Block4）は 270度(真上)の手前、225度に向かって「反時計回り（外回り）」
+            // 3pi/2 (270度) - pi/4 (45度) = 225度
+            float targetArmAngleRight = (3.0f * std::numbers::pi_v<float> / 2.0f) - armOffset45;
+            float currentArmAngleRight = Math::Lerp(startArmAngle, targetArmAngleRight, easeT);
+
+            // ② 左腕（Block5）は -90度(真上)の手前、-45度に向かって「時計回り（外回り）」
+            // -pi/2 (-90度) + pi/4 (45度) = -45度
+            float targetArmAngleLeft = (-std::numbers::pi_v<float> / 2.0f) + armOffset45;
+            float currentArmAngleLeft = Math::Lerp(startArmAngle, targetArmAngleLeft, easeT);
+
+            float armHalfLength = 3.5f; // 腕の長さ(Scale.x = 7.0)の半分
+            float shoulderY = 3.5f;     // 肩の高さ（中心0.0 + 半分3.5）
+
+            // 右腕 (Block4: index 3)
+            if (armorBlocks_.size() > 3 && armorBlocks_[3]) {
+                Vector3 pos = armorBlocks_[3]->GetTranslate();
+                // 右腕用の角度(currentArmAngleRight)で計算
+                pos.x = 11.0f - armHalfLength * std::cos(currentArmAngleRight);
+                pos.y = shoulderY - armHalfLength * std::sin(currentArmAngleRight);
+
+                armorBlocks_[3]->SetTranslate(pos);
+                armorBlocks_[3]->SetRotation({ 0.0f, 0.0f, currentArmAngleRight });
+                armorBlocks_[3]->GetTransform()->isQuaternionMaster = false;
+            }
+
+            // 左腕 (Block5: index 4)
+            if (armorBlocks_.size() > 4 && armorBlocks_[4]) {
+                Vector3 pos = armorBlocks_[4]->GetTranslate();
+                // 左腕用の角度(currentArmAngleLeft)で計算
+                pos.x = -11.0f - armHalfLength * std::cos(currentArmAngleLeft);
+                pos.y = shoulderY - armHalfLength * std::sin(currentArmAngleLeft);
+
+                armorBlocks_[4]->SetTranslate(pos);
+                armorBlocks_[4]->SetRotation({ 0.0f, 0.0f, currentArmAngleLeft });
+                armorBlocks_[4]->GetTransform()->isQuaternionMaster = false;
+            }
 
             if (warningArea_) warningArea_->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
 

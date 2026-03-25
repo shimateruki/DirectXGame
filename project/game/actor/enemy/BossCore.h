@@ -104,6 +104,13 @@ private:
     std::vector<Vector3> blockTargetPos_;
     std::vector<Vector3> blockStartScale_;
     std::vector<Vector3> blockTargetScale_;
+
+    // ==========================================
+    // Phase 50「気を付け」ポーズ遷移用のメモ
+    // ==========================================
+    std::vector<Vector3> attentionStartPos_;
+    std::vector<Vector3> attentionStartScale_;
+    std::vector<Vector3> attentionStartRot_;
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
 
