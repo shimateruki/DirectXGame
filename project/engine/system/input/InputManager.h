@@ -3,10 +3,11 @@
 #include <windows.h>  
 #include "engine/utility/math/Math.h"
 #include <Xinput.h>
-
+#include "KeyConfig.h"
 #define SDL_MAIN_HANDLED // SDLにメイン関数を任せない宣言
 #include <SDL.h>
-
+#include <vector>
+#include <cstdint>
 #pragma comment(lib, "dinput8.lib") 
 #pragma comment(lib, "xinput.lib")  
 #pragma comment(lib, "dxguid.lib")  
@@ -109,6 +110,16 @@ public:
     bool IsGamepadButtonTriggered(WORD button) const;
     bool IsGamepadMode() const { return isGamepadMode_; }
     Vector2 GetLeftStick() const;
+    /// <summary>
+    /// 現在押されているすべてのキーコードを取得する (キーコンフィグ用)
+    /// </summary>
+    /// <returns>押されているキーコードのリスト</returns>
+    std::vector<uint8_t> GetPressedKeys() const;
+    WORD GetPressedGamepadButton() const;
+    int GetPressedMouseButton() const;
+    bool IsActionPressed(const std::string& actionName) const;
+    bool IsActionTriggered(const std::string& actionName) const;
+    bool IsActionReleased(const std::string& actionName) const;
 private:
     InputManager() = default;
     ~InputManager() = default;

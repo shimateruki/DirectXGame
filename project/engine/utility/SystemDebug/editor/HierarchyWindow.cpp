@@ -19,6 +19,7 @@
 #include "ModelManager.h"
 #include "DebugConsole.h"
 #include "PresetManager.h"
+#include "KeyConfig.h"
 #include "json.hpp"
 #include <filesystem>
 #include <algorithm> // std::transform用
@@ -60,7 +61,10 @@ void HierarchyWindow::Draw() {
         if (editor_->GetPostEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " ポストエフェクト (Post Effect)", currentObj == editor_->GetPostEffectEditor())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetPostEffectEditor());
         }
-  
+        if (ImGui::Selectable("  " ICON_FA_KEYBOARD " キーコンフィグ (Key Config)", currentObj == KeyConfig::GetInstance())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(KeyConfig::GetInstance());
+        }
         if (editor_->GetGPUParticleEditor() && ImGui::Selectable("  " ICON_FA_FIRE " GPUパーティクル (GPU Particle)", currentObj == editor_->GetGPUParticleEditor())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGPUParticleEditor());
         }
