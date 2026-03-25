@@ -1,0 +1,37 @@
+{
+    "Attack": {
+        "key": 44,
+        "mouse": -1,
+        "pad": 0
+    },
+    "Backward": {
+        "key": 31,
+        "mouse": -1,
+        "pad": 0
+    },
+    "Dash": {
+        "key": 42,
+        "mouse": -1,
+        "pad": 0
+    },
+    "Forward": {
+        "key": 17,
+        "mouse": -1,
+        "pad": 0
+    },
+    "Jump": {
+        "key": 57,
+        "mouse": -1,
+        "pad": 0
+    },
+    "Left": {
+        "key": 30,
+        "mouse": -1,
+        "pad": 0
+    },
+    "Right": {
+        "key": 32,
+        "mouse": -1,
+        "pad": 0
+    }
+}

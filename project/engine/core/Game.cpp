@@ -15,6 +15,7 @@
 #include"ModelManager.h"
 #include "GhostDirector.h"
 #include"BossCore.h"
+#include "KeyConfig.h"
 #include <IconsFontAwesome5.h>
 
 void Game::Initialize() {
@@ -66,6 +67,7 @@ void Game::Initialize() {
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
     postEffectEditor_->Initialize(postEffect_.get());
 #ifdef USE_IMGUI
+    KeyConfig::GetInstance()->Initialize();
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
     ghostRecorder_ = std::make_unique<GhostRecorder>();
