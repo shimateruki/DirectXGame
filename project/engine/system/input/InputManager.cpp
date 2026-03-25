@@ -490,3 +490,93 @@ Vector2 InputManager::GetLeftStick() const {
 
     return { 0.0f, 0.0f };
 }
+
+// 現在押されている全キーのリストを取得する
+std::vector<uint8_t> InputManager::GetPressedKeys() const {
+    std::vector<uint8_t> pressedKeys;
+
+    // 0〜255の全キーコードを走査
+    for (int i = 0; i < 256; ++i) {
+        if (keyState[i] & 0x80) { // 押されていたら
+            pressedKeys.push_back(static_cast<uint8_t>(i));
+        }
+    }
+
+    return pressedKeys;
+}
+
+// 現在押されているゲームパッドのボタンを取得する
+WORD InputManager::GetPressedGamepadButton() const {
+    // XInputのボタンはビットマスクなので、代表的なものを順番にチェックする
+    const WORD buttons[] = {
+        XINPUT_GAMEPAD_A, XINPUT_GAMEPAD_B, XINPUT_GAMEPAD_X, XINPUT_GAMEPAD_Y,
+        XINPUT_GAMEPAD_RIGHT_SHOULDER, XINPUT_GAMEPAD_LEFT_SHOULDER,
+        XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, XINPUT_GAMEPAD_DPAD_RIGHT,
+        XINPUT_GAMEPAD_START, XINPUT_GAMEPAD_BACK,
+        XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB
+    };
+
+    for (WORD btn : buttons) {
+        if (gamepadState.Gamepad.wButtons & btn) {
+            return btn;
+        }
+    }
+    return 0; // 何も押されていない
+}
+// 現在押されているマウスボタンを取得する
+int InputManager::GetPressedMouseButton() const {
+    for (int i = 0; i < 4; ++i) { // 標準的な4ボタンをチェック
+        if (mouseState.rgbButtons[i] & 0x80) {
+            return i;
+        }
+    }
+    return -1; // 何も押されていない
+}
+bool InputManager::IsActionPressed(const std::string& actionName) const {
+    const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
+    if (!data) return false;
+
+    // ① キーボード判定
+    if (data->keyCode != 0 && IsKeyPressed(static_cast<BYTE>(data->keyCode))) return true;
+
+    // ② マウス判定 
+    if (data->mouseButton != -1 && IsMouseButtonPressed(data->mouseButton)) return true;
+
+    // ③ パッド判定
+    if (data->padCode != 0 && IsGamepadButtonPressed(data->padCode)) return true;
+
+    return false;
+}
+
+// アクションが「押された瞬間か」の判定
+bool InputManager::IsActionTriggered(const std::string& actionName) const {
+    const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
+    if (!data) return false;
+
+    // ① キーボード判定
+    if (data->keyCode != 0 && IsKeyTriggered(static_cast<BYTE>(data->keyCode))) return true;
+
+    // ② マウス判定 
+    if (data->mouseButton != -1 && IsMouseButtonTriggered(data->mouseButton)) return true;
+
+    // ③ パッド判定
+    if (data->padCode != 0 && IsGamepadButtonTriggered(data->padCode)) return true;
+
+    return false;
+}
+
+bool InputManager::IsActionReleased(const std::string& actionName) const {
+    const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
+    if (!data) return false;
+
+    // ① キーボード
+    if (data->keyCode != 0 && !(keyState[data->keyCode] & 0x80) && (prevKeyState[data->keyCode] & 0x80)) return true;
+
+    // ② マウス (離した判定)
+    if (data->mouseButton != -1 && IsMouseButtonReleased(data->mouseButton)) return true;
+
+    // ③ パッド (離した判定：wButtonsのビットが落ちた瞬間)
+    if (data->padCode != 0 && !(gamepadState.Gamepad.wButtons & data->padCode) && (prevGamepadState.Gamepad.wButtons & data->padCode)) return true;
+
+    return false;
+}

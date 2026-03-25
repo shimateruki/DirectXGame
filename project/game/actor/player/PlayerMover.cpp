@@ -171,12 +171,13 @@ void PlayerMover::Update(float deltaTime)
 	// 4. ジャンプ処理
 	if (player_->IsGrounded())
 	{
-		if (inputManager_->IsKeyTriggered(DIK_SPACE))
+	
+		if (inputManager_->IsActionTriggered("Jump"))
 		{
-			// ★修正: Player(Editor)の設定値を使用
+			// Player(Editor)の設定値を使用
 			velocity.y = player_->GetJumpPower();
 
-			// エフェクト
+			// エフェクト（ここは元のまま）
 			if (particleSystem_)
 			{
 				Vector3 footPos = player_->GetWorldPosition();
