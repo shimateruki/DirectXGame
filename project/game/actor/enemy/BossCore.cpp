@@ -94,6 +94,16 @@ namespace {
         }
         return nullptr;
     }
+    float EaseOutElasticMario(float t) {
+        if (t == 0.0f) return 0.0f;
+        if (t == 1.0f) return 1.0f;
+
+        // バウンドの周期と強度
+        float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
+
+        // 減衰するサイン波： std::pow(2.0f, -10.0f * t) で徐々に振動を小さくする
+        return std::pow(2.0f, -10.0f * t) * std::sin((t * 10.0f - 0.75f) * c4) + 1.0f;
+    }
 }
 
 // =================================================================
@@ -319,9 +329,10 @@ void BossCore::ChangeState(State nextState) {
         static int nextAttackPattern = 0;
         int nextAttack = nextAttackPattern;
         nextAttackPattern++;
-        if (nextAttackPattern > 4) {
+        if (nextAttackPattern > 5) {
             nextAttackPattern = 1; // 4番の次は1番に戻る
         }
+        nextAttackPattern = 5;
 
         // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
         attackMode_ = nextAttack;
@@ -339,6 +350,9 @@ void BossCore::ChangeState(State nextState) {
         }
         else if (attackMode_ == 4) {
             animPhase_ = 39;
+        }
+        else if (attackMode_ == 5) {
+            animPhase_ = 50;
         }
         break;
     }
@@ -1150,6 +1164,320 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
                     armorBlocks_[i]->SetTranslate(pos);
                     armorBlocks_[i]->SetScale(orbit.scale);
+                    armorBlocks_[i]->SetRotation(orbit.rot);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
+        }
+    }// ======================================
+    // 攻撃モード5：人型になって倒れてくる！ (Phase 50 ~ 55)
+    // ======================================
+    else if (attackMode_ == 5) {
+
+        // --- Phase 50: ボスコアが画面の端（X = -50）まで行く ---
+        if (animPhase_ == 50) {
+            if (animTimer_ == 0.0f) {
+                animStartPos_ = GetTranslate();
+            }
+            animTimer_ += deltaTime;
+            float duration = 2.0f; // 2秒かけて移動
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            Vector3 pos = GetTranslate();
+            pos.x = Math::Lerp(animStartPos_.x, -50.0f, easeT); // 左端へ
+
+            pos.y = Math::Lerp(animStartPos_.y, 24.0f, easeT);
+            SetTranslate(pos);
+
+            if (target_) {
+                // ==========================================
+                // ★ 修正：プレイヤーを向く角度に「std::numbers::pi_v<float>」(180度)を足す！
+                // ==========================================
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) + std::numbers::pi_v<float>;
+
+                SetRotation({ GetRotation().x, angleY, GetRotation().z });
+                GetTransform()->isQuaternionMaster = false;
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 51;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 51: ボスのブロックが人型に変形する ---
+        else if (animPhase_ == 51) {
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                blockTargetPos_.clear();
+                blockStartScale_.clear();
+                blockTargetScale_.clear(); // ★追加
+
+                animStartRot_ = GetRotation();
+
+                struct BlockSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+                std::vector<BlockSetting> settings = {
+                    { { -5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block1(足)
+                    { {  0.0f,  21.5f,  6.0f }, { 10.0f, 10.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block2(頭)
+                    { {  0.0f,  -3.5f,  6.0f }, {  8.0f, 15.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block3(胴体)
+                    { { 15.0f,   0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block4(右腕)
+                    { { -15.0f,  0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }, // Block5(左腕)
+                    { {  5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }  // Block6(足)
+                };
+
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    armorBlocks_[i]->SetParent(this);
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // ★追加
+
+                    if (i < settings.size()) {
+                        blockTargetPos_.push_back(settings[i].translate);
+                        blockTargetScale_.push_back(settings[i].scale); // ★追加
+                        armorBlocks_[i]->SetRotation(settings[i].rotation);
+                        armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                    }
+                    else {
+                        blockTargetPos_.push_back({ 0.0f, 0.0f, 0.0f });
+                        blockTargetScale_.push_back({ 0.0f, 0.0f, 0.0f });
+                    }
+                }
+
+                if (warningArea_) {
+                    warningArea_->SetTranslate({ 0.0f, -0.5f, 6.0f });
+                    warningArea_->SetScale({ 35.0f, 55.0f, 5.0f });
+                    warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
+                    warningArea_->GetTransform()->isQuaternionMaster = false;
+                    warningArea_->SetColor({ 1.0f, 1.0f, 0.0f, 0.5f });
+                }
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 1.5f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            // ==========================================
+            // ★ 修正：コアはそのままに、ブロック全体を 0.2倍 に圧縮！
+            // ==========================================
+            float currentOverallScale = Math::Lerp(1.0f, 0.2f, easeT);
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+                    // 目標の座標もスケールも、圧縮率(0.2倍)をかける！
+                    Vector3 targetP = {
+                        blockTargetPos_[i].x * 0.2f,
+                        blockTargetPos_[i].y * 0.2f,
+                        blockTargetPos_[i].z * 0.2f
+                    };
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], targetP, easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+
+                    Vector3 targetS = {
+                        blockTargetScale_[i].x * 0.2f,
+                        blockTargetScale_[i].y * 0.2f,
+                        blockTargetScale_[i].z * 0.2f
+                    };
+                    Vector3 scale = Math::Lerp(blockStartScale_[i], targetS, easeT);
+                    armorBlocks_[i]->SetScale(scale);
+                }
+            }
+
+            // コアの回転演出
+            float spinCount = 3.0f;
+            float totalAngle = spinCount * 2.0f * std::numbers::pi_v<float>;
+            Vector3 rot = GetRotation();
+            rot.y = animStartRot_.y - totalAngle * (1.0f - easeT);
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            if (t >= 1.0f) {
+                animPhase_ = 52;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 52: 倒れる前のタメ（予兆が赤くなる ＆ 巨大化！） ---
+        else if (animPhase_ == 52) {
+            animTimer_ += deltaTime;
+            float duration = 1.0f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+
+            if (warningArea_) {
+                float currentGreen = Math::Lerp(1.0f, 0.0f, t);
+                warningArea_->SetColor({ 1.0f, currentGreen, 0.0f, 0.5f });
+            }
+
+            // ==========================================
+            // イージングを廃止し、コマ送りで大きさを切り替える！
+            // ==========================================
+            float currentOverallScale = 1.0f;
+
+            if (t < 0.15f) {
+                currentOverallScale = 0.2f; // 小さいまま力を溜める
+            }
+            else if (t < 0.3f) {
+                currentOverallScale = 1.2f; // バッ！と少し大きめに膨らむ
+            }
+            else if (t < 0.45f) {
+                currentOverallScale = 0.5f; // また縮む
+            }
+            else if (t < 0.6f) {
+                currentOverallScale = 1.1f; // また膨らむ
+            }
+            else if (t < 0.75f) {
+                currentOverallScale = 0.8f; // ちょい縮む
+            }
+            else {
+                currentOverallScale = 1.0f; // 1.0倍(完全体)に定着！
+            }
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockTargetPos_.size()) {
+                    Vector3 pos = { blockTargetPos_[i].x * currentOverallScale, blockTargetPos_[i].y * currentOverallScale, blockTargetPos_[i].z * currentOverallScale };
+                    armorBlocks_[i]->SetTranslate(pos);
+
+                    Vector3 scale = { blockTargetScale_[i].x * currentOverallScale, blockTargetScale_[i].y * currentOverallScale, blockTargetScale_[i].z * currentOverallScale };
+                    armorBlocks_[i]->SetScale(scale);
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 53;
+                animTimer_ = 0.0f;
+                animStartRot_ = GetRotation();
+                animStartPos_ = GetTranslate();
+            }
+        }
+        // --- Phase 53: 前にぶっ倒れて叩き潰す！ ---
+        else if (animPhase_ == 53) {
+            animTimer_ += deltaTime;
+            float duration = 0.5f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = std::pow(t, 3.0f);
+
+            // ==========================================
+            // 全体が1.0倍なので、つま先の距離(ピボット)も1.5倍！
+            // ==========================================
+            float overallScale = 1.0f;
+            float pivotY = -24.5f * overallScale;
+            float pivotZ = 8.5f * overallScale;
+
+            float currentRotX = Math::Lerp(animStartRot_.x, -90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
+
+            Vector3 rot = animStartRot_;
+            rot.x = currentRotX;
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            float dirX = std::sin(animStartRot_.y);
+            float dirZ = std::cos(animStartRot_.y);
+
+            Vector3 pivotWorldPos;
+            pivotWorldPos.x = animStartPos_.x + dirX * pivotZ;
+            pivotWorldPos.y = animStartPos_.y + pivotY;
+            pivotWorldPos.z = animStartPos_.z + dirZ * pivotZ;
+
+            float rotLocalY = pivotY * std::cos(currentRotX) - pivotZ * std::sin(currentRotX);
+            float rotLocalZ = pivotY * std::sin(currentRotX) + pivotZ * std::cos(currentRotX);
+
+            Vector3 newPos;
+            newPos.x = pivotWorldPos.x - dirX * rotLocalZ;
+            newPos.y = pivotWorldPos.y - rotLocalY;
+            newPos.z = pivotWorldPos.z - dirZ * rotLocalZ;
+            SetTranslate(newPos);
+
+            if (warningArea_) warningArea_->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+
+            if (t >= 1.0f) {
+                if (warningArea_) warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
+                animPhase_ = 54;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 54: 倒れたまま待機（攻撃チャンス） ---
+        else if (animPhase_ == 54) {
+            animTimer_ += deltaTime;
+            if (animTimer_ >= 3.0f) {
+                animPhase_ = 55;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 55: 起き上がって復帰 ---
+        else if (animPhase_ == 55) {
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                blockStartScale_.clear(); // ★追加
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // ★追加
+                }
+                animStartRot_ = GetRotation();
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 1.5f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::InOutSine(t);
+
+            // 起き上がりのピボットも 1.0倍 で計算
+            float overallScale = 1.0f;
+            float pivotY = -24.5f * overallScale;
+            float pivotZ = 8.5f * overallScale;
+            float dirX = std::sin(animStartRot_.y);
+            float dirZ = std::cos(animStartRot_.y);
+
+            float startRotLocalY = pivotY * std::cos(animStartRot_.x) - pivotZ * std::sin(animStartRot_.x);
+            float startRotLocalZ = pivotY * std::sin(animStartRot_.x) + pivotZ * std::cos(animStartRot_.x);
+            Vector3 startToeWorld = {
+                animStartPos_.x + dirX * startRotLocalZ,
+                animStartPos_.y + startRotLocalY,
+                animStartPos_.z + dirZ * startRotLocalZ
+            };
+
+            Vector3 targetToeWorld = {
+                0.0f + dirX * pivotZ,
+                4.0f + pivotY,
+                0.0f + dirZ * pivotZ
+            };
+
+            Vector3 currentToeWorld = {
+                Math::Lerp(startToeWorld.x, targetToeWorld.x, easeT),
+                Math::Lerp(startToeWorld.y, targetToeWorld.y, easeT),
+                Math::Lerp(startToeWorld.z, targetToeWorld.z, easeT)
+            };
+
+            float currentRotX = Math::Lerp(animStartRot_.x, 0.0f, easeT);
+            Vector3 rot = animStartRot_;
+            rot.x = currentRotX;
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            float currentRotLocalY = pivotY * std::cos(currentRotX) - pivotZ * std::sin(currentRotX);
+            float currentRotLocalZ = pivotY * std::sin(currentRotX) + pivotZ * std::cos(currentRotX);
+
+            Vector3 newPos = {
+                currentToeWorld.x - dirX * currentRotLocalZ,
+                currentToeWorld.y - currentRotLocalY,
+                currentToeWorld.z - dirZ * currentRotLocalZ
+            };
+            SetTranslate(newPos);
+
+            // ブロックを元の待機軌道に戻す（スケールも元通りに！）
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size()) {
+                    OrbitData orbit = GetIdleOrbit(i);
+                    Vector3 bPos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+                    armorBlocks_[i]->SetTranslate(bPos);
+
+                    Vector3 bScale = Math::Lerp(blockStartScale_[i], orbit.scale, easeT); // ★追加：スケールも戻す
+                    armorBlocks_[i]->SetScale(bScale);
+
                     armorBlocks_[i]->SetRotation(orbit.rot);
                     armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
                 }
