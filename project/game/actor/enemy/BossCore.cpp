@@ -126,7 +126,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
         director_->Initialize(sceneManager_);
     }
 
-    
+    originalColor_ = GetColor();
 }
 
 void BossCore::Update(float deltaTime) {
@@ -217,6 +217,7 @@ void BossCore::Update(float deltaTime) {
      // 4. 通常のステート更新（アニメーション中以外に動く）
      // ==========================================
     if (isFirstFrame_) {
+        originalColor_ = GetColor();
         // ① まず、子供たちの中から WarningArea を見つけ出す！
         for (Object3d* child : GetChildren()) {
             if (child->GetName() == "WarningArea") {
@@ -299,7 +300,7 @@ void BossCore::ChangeState(State nextState) {
     }
 
     if (state_ == State::Attack) {
-        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        SetColor(originalColor_);
     }
 
     // ② 周りのブロックの属性（攻撃中は「敵の攻撃＋壁」、それ以外は「ただの壁」）
@@ -332,7 +333,7 @@ void BossCore::ChangeState(State nextState) {
         if (nextAttackPattern > 5) {
             nextAttackPattern = 1; // 4番の次は1番に戻る
         }
-        nextAttackPattern = 5;
+        //nextAttackPattern = 5;
 
         // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
         attackMode_ = nextAttack;
@@ -427,7 +428,7 @@ void BossCore::UpdateWeak(float deltaTime) {
     if (animTimer_ >= 10.0f) {
         animTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
-        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        SetColor(originalColor_);
         ChangeState(State::Idle); // ここで各ブロックは IdleOrbit に戻るようになります
     }
 }

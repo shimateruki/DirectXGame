@@ -118,4 +118,6 @@ private:
 
     // エディターで作った予兆エリアを参照するためのポインタ
     Object3d* warningArea_ = nullptr;
+
+    Vector4 originalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 };
