@@ -28,4 +28,5 @@ enum class EventType {
     None = 0,       // 何もなし
     Damage,         // 触れるとダメージ
     Warp,
+	Movie_Bridge,   // 映像イベント（橋が落ちる）
 };

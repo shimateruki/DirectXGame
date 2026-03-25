@@ -194,95 +194,155 @@ void GamePlayScene::Update(float deltaTime) {
 
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-	// --- ロックオン & カメラ制御 ---
-	lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
-	CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
 	// =================================================================
-	// ロックオンアイコンの 2.5D 追従計算 (World To Screen)
+	// ムービーの制御
 	// =================================================================
-	Object3d* target = lockOnSystem_->GetTarget();
+	if (movieState_ == MovieState::kBridgeDrop) {
+		movieTimer_ += deltaTime;
 
-	if (target && lockOnSystem_->IsLockingOn()) {
-		isDrawLockOn_ = true;
+		// カメラ制御は GhostRecorder に任せるため、ブロックの崩落演出のみ実行する
+		if (movieTimer_ > 1.5f) {
+                // まず親の当たり判定を無効化する（プレイヤーが落ちるように）
+                for (auto& obj : objectManager_->GetObjects()) {
+                    if (obj->GetName() == "Bridge_Block_Front") {
+                        obj->SetCollisionAttribute(0);
+                    }
+                }
 
-		// =======================================================
-		// ：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
-		// =======================================================
-		AABB aabb = target->GetAABB();
+				for (auto& obj : objectManager_->GetObjects()) {
+					if (obj->GetName() == "Bridge_Block_Center") {
+						Transform* trans = obj->GetTransform();
+						trans->translate.y -= 20.0f * deltaTime;
+						trans->rotate.x -= 1.0f * deltaTime; // 自然な傾き（下へ折れ曲がる）
+						trans->isQuaternionMaster = false;
+						obj->UpdateWorldMatrix();
+					} else if (movieTimer_ > 2.0f && obj->GetName() == "Bridge_Block_Back") {
+                        // 少し遅れて奥のブロックもさらに崩れる
+                        Transform* trans = obj->GetTransform();
+						trans->translate.y -= 32.0f * deltaTime;
+						trans->rotate.x -= 1.8f * deltaTime; // さらに折れ曲がる
+						trans->isQuaternionMaster = false;
+						obj->UpdateWorldMatrix();
+                    } else if (movieTimer_ > 2.5f && obj->GetName() == "Bridge_Block_Front") {
+                        // 最後に手前の親ブロックごと崩落する
+                        Transform* trans = obj->GetTransform();
+                        trans->translate.y -= 48.0f * deltaTime;
+                        trans->rotate.x += 0.6f * deltaTime; 
+                        trans->isQuaternionMaster = false;
+                        obj->UpdateWorldMatrix();
+                    }
+				}
+			}
 
-		// ① ターゲットの「真の中心座標」を計算
-		Vector3 targetCenter;
-		targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
-		targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
-		targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
+			// ムービー終了判定
+            // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
+			if (movieTimer_ >= 5.5f) {
+				for (auto& obj : objectManager_->GetObjects()) {
+					if (obj->GetName() == "Bridge_Block_Center") {
+						obj->SetIsVisible(false);
+					}
+					if (obj->GetName() == "Bridge_Block_Back") {
+						obj->SetIsVisible(false);
+					}
+					if (obj->GetName() == "Bridge_Block_Front") {
+						obj->SetIsVisible(false);
+					}
+				}
+				movieState_ = MovieState::kNone;
+			}
 
-		// ② カメラのビュー行列とプロジェクション行列を掛け合わせる
-		Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
+	}
 
-		// ③ ワールド座標(中心) → クリップ座標 (W除算) の計算
-		float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] + targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
+		// --- ロックオン & カメラ制御 ---
+		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
+		CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
+		// =================================================================
+		// ロックオンアイコンの 2.5D 追従計算 (World To Screen)
+		// =================================================================
+		Object3d* target = lockOnSystem_->GetTarget();
 
-		// カメラの後ろ（画面外）にいる時は表示しない
-		if (w > 0.001f) {
-			Vector3 ndc;
-			ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
-			ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
-
-			float screenWidth = WinApp::kClientWidth;
-			float screenHeight = WinApp::kClientHeight;
-
-			float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
-			float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
-
-			lockOnSprite_->SetPosition({ screenX, screenY });
+		if (target && lockOnSystem_->IsLockingOn()) {
+			isDrawLockOn_ = true;
 
 			// =======================================================
-			// ：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+			// ：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
 			// =======================================================
-			float objSizeX = aabb.max.x - aabb.min.x;
-			float objSizeY = aabb.max.y - aabb.min.y;
-			float objSizeZ = aabb.max.z - aabb.min.z;
-			float maxObjSize = std::max({ objSizeX, objSizeY, objSizeZ });
+			AABB aabb = target->GetAABB();
 
-			float baseSize = maxObjSize * 25.0f;
-			float distanceScale = 20.0f / w;
+			// ① ターゲットの「真の中心座標」を計算
+			Vector3 targetCenter;
+			targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
+			targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
+			targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
 
-			float finalSize = baseSize * distanceScale;
-			finalSize = std::max(32.0f, std::min(finalSize, 256.0f));
+			// ② カメラのビュー行列とプロジェクション行列を掛け合わせる
+			Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
 
-			lockOnSprite_->SetSize({ finalSize, finalSize });
+			// ③ ワールド座標(中心) → クリップ座標 (W除算) の計算
+			float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] + targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
-			// （おまけ）ロックオンアイコンを毎フレーム少し回転させると超カッコよくなります
-			float currentRot = lockOnSprite_->GetRotation();
-			lockOnSprite_->SetRotation(currentRot + 2.0f * deltaTime);
+			// カメラの後ろ（画面外）にいる時は表示しない
+			if (w > 0.001f) {
+				Vector3 ndc;
+				ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
+				ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
 
-			lockOnSprite_->Update();
+				float screenWidth = WinApp::kClientWidth;
+				float screenHeight = WinApp::kClientHeight;
+
+				float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
+				float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+
+				lockOnSprite_->SetPosition({ screenX, screenY });
+
+				// =======================================================
+				// ：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+				// =======================================================
+				float objSizeX = aabb.max.x - aabb.min.x;
+				float objSizeY = aabb.max.y - aabb.min.y;
+				float objSizeZ = aabb.max.z - aabb.min.z;
+				float maxObjSize = std::max({ objSizeX, objSizeY, objSizeZ });
+
+				float baseSize = maxObjSize * 25.0f;
+				float distanceScale = 20.0f / w;
+
+				float finalSize = baseSize * distanceScale;
+				finalSize = std::max(32.0f, std::min(finalSize, 256.0f));
+
+				lockOnSprite_->SetSize({ finalSize, finalSize });
+
+				// （おまけ）ロックオンアイコンを毎フレーム少し回転させると超カッコよくなります
+				float currentRot = lockOnSprite_->GetRotation();
+				lockOnSprite_->SetRotation(currentRot + 2.0f * deltaTime);
+
+				lockOnSprite_->Update();
+			}
+			else {
+				isDrawLockOn_ = false; // カメラの裏にいる時は消す
+			}
 		}
 		else {
-			isDrawLockOn_ = false; // カメラの裏にいる時は消す
+			// =======================================================
+			// ロックオンしていない時は確実に表示をオフにする！
+			// =======================================================
+			isDrawLockOn_ = false;
 		}
-	}
-	else {
-		// =======================================================
-		// ロックオンしていない時は確実に表示をオフにする！
-		// =======================================================
-		isDrawLockOn_ = false;
-	}
 
-	// 自由カメラモード以外の操作
-	if (!CameraEditor::GetInstance()->IsEditorMode()) {
-		Camera::FollowMode currentMode = camera->GetFollowMode();
+		// 自由カメラモード以外の操作
+		if (!CameraEditor::GetInstance()->IsEditorMode()) {
+			Camera::FollowMode currentMode = camera->GetFollowMode();
 
-		// 右クリック回転
-		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
-			if (inputManager_->IsMouseButtonPressed(1)) {
-				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-					camera->AddRotation(mouseDelta);
+			// 右クリック回転
+			if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+				if (inputManager_->IsMouseButtonPressed(1)) {
+					Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+					if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+						camera->AddRotation(mouseDelta);
+					}
 				}
 			}
 		}
-	}
 
 	// --- 全体更新 ---
 	CameraManager::GetInstance()->Update();
@@ -440,6 +500,25 @@ void GamePlayScene::UpdateUI() {
 		if (barrierHpBarSprite_) {
 			float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
 			barrierHpBarSprite_->SetSize({ barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });
+		}
+	}
+}
+
+void GamePlayScene::StartBridgeDropMovie() {
+	if (movieState_ != MovieState::kNone || hasBridgeDropped_) return;
+	
+	movieState_ = MovieState::kBridgeDrop;
+	movieTimer_ = 0.0f;
+    hasBridgeDropped_ = true;
+
+	// CinematicCamera を探してムービーを再生する
+	for (auto& obj : objectManager_->GetObjects()) {
+		if (obj->GetName() == "Cinematic_Camera_Bridge") {
+			if (obj->recorder_) {
+                // Play(fileName, loop, isRelative, isCinematic)
+				obj->recorder_->Play("bridge_movie", false, false, true);
+			}
+			break;
 		}
 	}
 }

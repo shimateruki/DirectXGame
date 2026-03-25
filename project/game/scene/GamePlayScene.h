@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "BaseScene.h" 
 #include "Object3dCommon.h"
 #include "SpriteCommon.h"
@@ -48,6 +48,9 @@ public:
     void DrawUI() override;
     void DrawShadow() override;
 
+    // --- ムービーイベント ---
+    void StartBridgeDropMovie();
+
     // --- BaseScene インターフェース実装 ---
 
     // オブジェクト管理は ObjectManager に委譲
@@ -70,6 +73,17 @@ public:
 
 private:
 
+
+private:
+    enum class MovieState {
+        kNone,
+        kBridgeDrop
+    };
+    MovieState movieState_ = MovieState::kNone;
+    float movieTimer_ = 0.0f;
+    Vector3 movieStartCameraEye_;
+    Vector3 movieStartCameraTarget_;
+    bool hasBridgeDropped_ = false;
 
 private:
     // --- エンジンシステムへのポインタ ---
