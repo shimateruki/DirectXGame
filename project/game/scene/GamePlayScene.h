@@ -68,6 +68,8 @@ public:
     void SetPlayer(Player* player) override { player_ = player; }
 
 
+
+
 private:
 
 
@@ -121,4 +123,33 @@ private:
 
     Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
     float barrierHpBarMaxWidth_ = 0.0f;
+
+    enum class GameOverMenuIndex {
+        Restart,
+        Title,
+        Max
+    };
+    int currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Restart;
+    bool isGameOverUiReady_ = false; // テキストのフェードインが完了したか
+
+    Sprite* gameOverTextSprite_ = nullptr;
+    Sprite* restartTextSprite_ = nullptr;
+    Sprite* titleTextSprite_ = nullptr;
+
+    // =======================================================
+    // ポーズ画面用
+    // =======================================================
+    bool isPaused_ = false; // ポーズ中かどうか
+
+    enum class PauseMenuIndex {
+        Restart,
+        Title,
+        Max
+    };
+    int currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
+
+    Sprite* poseBackSprite_ = nullptr;
+    Sprite* poseTextSprite_ = nullptr;
+    Sprite* restartPoseTextSprite_ = nullptr;
+    Sprite* titleTextPoseSprite_ = nullptr;
 };
