@@ -24,18 +24,18 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                1.0,
-                1.0,
+                0.0,
+                0.5945944786071777,
                 1.0,
                 1.0
             ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableEnvMap": true,
+            "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 1.034999966621399,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -51,13 +51,13 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 0,
+            "materialType": 2,
             "metallic": 0.0,
-            "modelName": "sphere.gltf",
+            "modelName": "enemy_core",
             "myEventID": -1,
             "name": "Enemy_BossCore",
-            "normalMapPath": "Resources/sprite/b.png",
-            "ormMapPath": "Resources/sprite/c.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 0.0,
@@ -99,7 +99,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/a.png",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -126,7 +126,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -217,7 +217,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -308,7 +308,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -399,7 +399,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -490,7 +490,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -581,7 +581,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 2,
+            "collisionAttribute": 4,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -706,7 +706,7 @@
             "name": "WarningArea",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
+            "parentName": "",
             "position": [
                 -3.7701148986816406,
                 5.241372108459473,
@@ -731,9 +731,9 @@
             "roughness": 0.5,
             "saveCategory": "Enemy",
             "scale": [
-                1.649999976158142,
-                2.200000047683716,
-                0.6499999761581421
+                0.0,
+                0.0,
+                0.0
             ],
             "targetID": -1,
             "texturePath": "",

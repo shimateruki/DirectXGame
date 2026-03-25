@@ -80,6 +80,7 @@ private:
     float animTimer_ = 0.0f;
     Vector3 animStartPos_ = { 0,0,0 };
     Vector3 animTargetPos_ = { 0,0,0 };
+    Vector3 animStartRot_ = { 0,0,0 };
     bool wasPlaying_ = false;
 
     int attackMode_ = 0;         // 0:待機, 1:突進攻撃, 2:ブロック射撃
@@ -101,6 +102,15 @@ private:
     // 形態変化アニメーション用の座標メモ
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
+    std::vector<Vector3> blockStartScale_;
+    std::vector<Vector3> blockTargetScale_;
+
+    // ==========================================
+    // Phase 50「気を付け」ポーズ遷移用のメモ
+    // ==========================================
+    std::vector<Vector3> attentionStartPos_;
+    std::vector<Vector3> attentionStartScale_;
+    std::vector<Vector3> attentionStartRot_;
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
 
