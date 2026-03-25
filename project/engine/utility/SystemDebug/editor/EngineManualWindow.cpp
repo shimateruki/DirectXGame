@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "IconsFontAwesome5.h"
 
+
 void EngineManualWindow::Draw() {
 #ifdef USE_IMGUI
     if (!isOpen_) return;
@@ -24,15 +25,19 @@ void EngineManualWindow::Draw() {
             ICON_FA_CODE " シーンの初期化・実装例",
             ICON_FA_CUBE " オブジェクトの取得と連携",
             ICON_FA_BOLT " トリガーイベントの作り方",
-            ICON_FA_VIDEO " カメラ設定",            
-            ICON_FA_FILM " 録画機能 (GhostRecorder)", 
+            ICON_FA_VIDEO " カメラ設定",
+            ICON_FA_FILM " 録画機能 (GhostRecorder)",
             ICON_FA_FIRE " GPUパーティクルの使い方",
             ICON_FA_LIGHTBULB " ライトと環境設定",
             ICON_FA_MAGIC " 通常パーティクル",
             ICON_FA_IMAGE " ポストエフェクト",
             ICON_FA_STAR " VFXシーケンサー (必殺技)",
             ICON_FA_BULLHORN " シネマティック監督 (GhostDirector)",
-            ICON_FA_IMAGES " 2D UIエディタ (Sprite)"
+            ICON_FA_IMAGES " 2D UIエディタ (Sprite)",
+            // ===============================================
+            // ★追加: 15番目の項目としてキーコンフィグを追加！
+            // ===============================================
+            ICON_FA_GAMEPAD " キーコンフィグ (Input)"
         };
 
         for (int i = 0; i < IM_ARRAYSIZE(topics); i++) {
@@ -53,6 +58,7 @@ void EngineManualWindow::Draw() {
         ImGui::BeginChild("RightPane", ImVec2(0, 0), true);
 
         switch (selectedIndex_) {
+            // ... (case 0 から case 14 までは元のコードそのまま) ...
         case 0: // はじめに
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ エンジン説明書へようこそ ]");
             ImGui::Separator();
@@ -306,7 +312,7 @@ void EngineManualWindow::Draw() {
             break;
 
         case 6: // カメラと録画
-           ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), ICON_FA_VIDEO " [ カメラ設定 (Camera Editor) ]");
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), ICON_FA_VIDEO " [ カメラ設定 (Camera Editor) ]");
             ImGui::Separator();
             ImGui::TextWrapped(
                 "ゲーム中のプレイヤー追従カメラの設定や、エディタ編集時の自由カメラの操作を行います。\n"
@@ -369,7 +375,7 @@ void EngineManualWindow::Draw() {
                 ImGui::PopStyleColor();
             }
             break;
-		case 7:
+        case 7:
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), ICON_FA_FILM " [ 録画とパス生成 (GhostRecorder) ]");
             ImGui::Separator();
             ImGui::TextWrapped(
@@ -803,6 +809,57 @@ void EngineManualWindow::Draw() {
                 );
                 ImGui::EndChild();
                 ImGui::PopStyleColor();
+            }
+            break;
+
+            // ==========================================================
+            // ★追加: 15番目の項目 (Key Config) のコンテンツ
+            // ==========================================================
+        case 15:
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), ICON_FA_GAMEPAD " [ キーコンフィグ (Key Configuration) ]");
+            ImGui::Separator();
+            ImGui::TextWrapped(
+                "ゲーム内の操作(移動、ジャンプ、攻撃など)をハードコードせず、「アクション名」として抽象化し、\n"
+                "キーボード・マウス・ゲームパッドの割り当てをエディタ上で自由に変更・一元管理できるシステムです。"
+            );
+            ImGui::Spacing();
+
+            if (ImGui::CollapsingHeader(ICON_FA_EDIT " 1. エディタでの設定方法", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::BulletText("Hierarchyの「システム設定」から「キーコンフィグ」を選択して開きます。");
+                ImGui::BulletText("【新規アクションの追加】に「Jump」や「Attack」などの任意の名前を入力し追加します。");
+                ImGui::BulletText("追加された行のボタンを押して、キーボード/マウス、パッドの各ボタンを割り当てます。");
+                ImGui::BulletText("最後に【セーブ】を押すと、Resources/json/key/keyconfig.json に保存されます。");
+            }
+
+            if (ImGui::CollapsingHeader(ICON_FA_CODE " 2. C++側からの判定 (InputManager)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::TextWrapped("プログラムからは DIK_SPACE などの直接指定ではなく、アクション名を使って判定します。");
+                ImGui::Spacing();
+                ImGui::BulletText("IsActionPressed(\"アクション名\") : 押し続けている間ずっと true (移動などに)");
+                ImGui::BulletText("IsActionTriggered(\"アクション名\") : 押した瞬間の1フレームだけ true (ジャンプなどに)");
+                ImGui::BulletText("IsActionReleased(\"アクション名\") : 離した瞬間の1フレームだけ true (タメ攻撃などに)");
+
+                ImGui::Spacing();
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+                ImGui::BeginChild("CodeBlockKeyConfig", ImVec2(0, 180), true);
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 0.5f, 1.0f), "// 例: Playerのアクション処理");
+                ImGui::TextUnformatted(
+                    "InputManager* input = InputManager::GetInstance();\n"
+                    "\n"
+                    "// エディタ側で設定されたキー・マウス・パッドのいずれかが押されたら反応する\n"
+                    "if (input->IsActionTriggered(\"Jump\")) {\n"
+                    "    velocity.y = jumpPower;\n"
+                    "}\n"
+                    "\n"
+                    "if (input->IsActionPressed(\"Forward\")) {\n"
+                    "    // 前進処理\n"
+                    "}"
+                );
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+
+                if (ImGui::Button(ICON_FA_COPY " コードをコピー##KeyConfig")) {
+                    ImGui::SetClipboardText("if (InputManager::GetInstance()->IsActionTriggered(\"Jump\")) {\n    // 処理\n}");
+                }
             }
             break;
         }
