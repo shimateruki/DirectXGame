@@ -1305,7 +1305,11 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         // --- Phase 52: 倒れる前のタメ（予兆が赤くなる ＆ 巨大化！） ---
         else if (animPhase_ == 52) {
             animTimer_ += deltaTime;
-            float duration = 1.0f;
+
+            // ==========================================
+            // 倒れるまでの「合計のタメ時間」をここで長くする！（例：2.5秒）
+            // ==========================================
+            float duration = 2.5f;
             float t = std::min(animTimer_ / duration, 1.0f);
 
             if (warningArea_) {
@@ -1313,28 +1317,29 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 warningArea_->SetColor({ 1.0f, currentGreen, 0.0f, 0.5f });
             }
 
-            // ==========================================
-            // イージングを廃止し、コマ送りで大きさを切り替える！
-            // ==========================================
             float currentOverallScale = 1.0f;
 
-            if (t < 0.15f) {
+            // ==========================================
+            // 't' ではなく 'animTimer_'（絶対時間）を使う！
+            // ==========================================
+            if (animTimer_ < 0.15f) {
                 currentOverallScale = 0.2f; // 小さいまま力を溜める
             }
-            else if (t < 0.3f) {
+            else if (animTimer_ < 0.3f) {
                 currentOverallScale = 1.2f; // バッ！と少し大きめに膨らむ
             }
-            else if (t < 0.45f) {
+            else if (animTimer_ < 0.45f) {
                 currentOverallScale = 0.5f; // また縮む
             }
-            else if (t < 0.6f) {
+            else if (animTimer_ < 0.6f) {
                 currentOverallScale = 1.1f; // また膨らむ
             }
-            else if (t < 0.75f) {
+            else if (animTimer_ < 0.75f) {
                 currentOverallScale = 0.8f; // ちょい縮む
             }
             else {
-                currentOverallScale = 1.0f; // 1.0倍(完全体)に定着！
+                // ★ animTimer_ が 0.75秒を超えたら、duration(2.5秒)が終わるまでずっと1.0倍で静止！
+                currentOverallScale = 1.0f;
             }
 
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
@@ -1353,11 +1358,11 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animStartRot_ = GetRotation();
                 animStartPos_ = GetTranslate();
             }
-        }
+            }
         // --- Phase 53: 前にぶっ倒れて叩き潰す！ ---
         else if (animPhase_ == 53) {
             animTimer_ += deltaTime;
-            float duration = 0.5f;
+            float duration = 0.75f;
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = std::pow(t, 3.0f);
 
