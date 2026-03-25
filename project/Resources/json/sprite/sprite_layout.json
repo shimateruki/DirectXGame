@@ -125,6 +125,153 @@
                 9.0
             ],
             "texture": "white.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "name": "poseBack.png",
+            "position": [
+                768.0,
+                396.5
+            ],
+            "size": [
+                1901.0,
+                821.0
+            ],
+            "texture": "white.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "GameOverText.png",
+            "position": [
+                860.5714721679688,
+                311.05389404296875
+            ],
+            "size": [
+                600.0,
+                128.0
+            ],
+            "texture": "GameOverText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "restartText.png",
+            "position": [
+                800.5714721679688,
+                477.448974609375
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "restartText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                1.0
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "titleText.png",
+            "position": [
+                786.857177734375,
+                556.1493530273438
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "titleText.png"
+        },
+        {
+            "anchor": [
+                1.0,
+                0.0
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "poseText.png",
+            "position": [
+                1597.7142333984375,
+                1.4990558624267578
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "poseText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "restartPoseText.png",
+            "position": [
+                768.0,
+                396.5
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "restartText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                1.0
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "titleTextPose.png",
+            "position": [
+                788.5714111328125,
+                544.1569213867188
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "titleText.png"
         }
     ]
 }

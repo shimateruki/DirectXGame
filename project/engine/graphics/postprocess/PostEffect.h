@@ -12,6 +12,10 @@ class DirectXCommon;
 /// </summary>
 class PostEffect {
 public:
+    static PostEffect* GetInstance() {
+        static PostEffect instance;
+        return &instance;
+    }
     // 定数バッファ用構造体 (16バイト境界に準拠)
     struct Params {
         // --- Bloom ---
@@ -41,9 +45,10 @@ public:
         // --- Retro ---
         float scanlineIntensity = 0.0f;     // ブラウン管走査線
         float mosaicSize = 0.0f;            // ピクセルモザイクサイズ
+        float dangerVignette = 0.0f;
+        float blackout = 0.0f;
         float padding1 = 0.0f;
-        float padding2 = 0.0f;
-        float padding3 = 0.0f;
+ 
     };
 
     // 初期化: 各パス用のリソースとPSOを生成
