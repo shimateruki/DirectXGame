@@ -72,6 +72,15 @@ public:
     void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
     bool ConsumePendingAttack2() { bool v = pendingAttack2_; pendingAttack2_ = false; return v; }
 
+    // コンボ「時間窓」API
+    void StartComboWindow(float duration);
+    bool IsComboWindowActive() const;
+
+    // --- 入力バッファ（Run→Attack 遷移での踏み逃がし防止） ---
+    void RecordAttackInput(float duration);               // 攻撃入力を短時間バッファする
+    void MarkAttackBufferUsedForStateStart();             // そのバッファを「遷移開始で使われた」とマークする
+    bool ConsumeBufferedAttackInput();                    // バッファに未使用の入力があれば消費して true を返す
+
     // --- 各種パラメータ取得 ---
     InputManager* GetInputManager() { return inputManager_; }
 
@@ -84,12 +93,14 @@ public:
     {
         return param_.has_value() ? param_->speed : 0.5f;
     }
+    // ==================================================
+        // 無敵フレーム (Invincibility) 管理
+        // ==================================================
+    void SetDamageInvincible(bool inv); // ダメージ被弾時のフラグ
+    void SetDashInvincible(bool inv);   // 回避ダッシュ時のフラグ
 
-    // ==================================================
-    // 無敵フレーム (Invincibility) 管理
-    // ==================================================
-    void SetInvincible(bool inv);
-    bool IsInvincible() const { return isInvincible_; }
+    // どっちか一つでもtrueなら無敵として扱う
+    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
 
 private:
     // --- 内部コンポーネント ---
@@ -107,10 +118,22 @@ private:
     // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
     bool pendingAttack2_ = false;
 
+    // --- コンボ時間窓 ---
+    float comboWindowTimer_ = 0.0f; // >0 の間、次の攻撃入力は 2 段目に変換される
+
+    // --- 攻撃入力バッファ（Run→Attack の踏み逃がし防止） ---
+    bool attackInputBuffered_ = false;               // バッファに入力があるか
+    bool attackBufferUsedForStateStart_ = false;    // 「そのバッファが遷移開始で使われた」フラグ
+    float attackInputBufferTimer_ = 0.0f;           // バッファの残り時間（秒）
+
     // --- 無敵関連 ---
     bool isInvincible_ = false;
     Vector4 savedColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 無敵解除時に戻す色
 
     // 子パーツの色を保存しておくマップ（無敵解除時に復元）
     std::unordered_map<Object3d*, Vector4> childSavedColors_;
+    float damageCooldownTimer_ = 0.0f;
+    bool isDamageInvincible_ = false;
+    bool isDashInvincible_ = false;
+    void UpdateColor();
 };

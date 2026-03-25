@@ -51,6 +51,8 @@ static void FindFeetRecursive(Object3d* node, Object3d*& leftOut, Object3d*& rig
 	}
 }
 
+
+
 // ========================================================
 // シーン検索（名前ベース）
 // ========================================================
@@ -84,6 +86,7 @@ static void FindFeetInSceneByName(Player* player, Object3d*& leftOut, Object3d*&
 	}
 
 	// プレイヤー名プレフィックスを使って探す補助
+	if (!player) return;
 	std::string playerName = ToLower(player->GetName());
 	if (!playerName.empty())
 	{
@@ -160,6 +163,7 @@ static void FindArmsInSceneByName(Player* player, Object3d*& leftArmOut, Object3
 		if (leftArmOut && rightArmOut) return;
 	}
 
+	if (!player) return;
 	std::string playerName = ToLower(player->GetName());
 	if (!playerName.empty())
 	{
@@ -218,6 +222,7 @@ static void FindSwordInSceneByName(Player* player, Object3d*& swordOut)
 		}
 	}
 }
+
 static void TryFindSword(Player* player, Object3d*& swordOut)
 {
 	if (!player) return;
@@ -225,7 +230,17 @@ static void TryFindSword(Player* player, Object3d*& swordOut)
 	if (swordOut) return;
 	FindSwordInSceneByName(player, swordOut);
 }
+static void SetSwordActive(Player* player, bool isActive)
+{
+	Object3d* swordObj = nullptr;
+	// ★最強の探索関数を使って、確実に剣を見つけ出す！
+	TryFindSword(player, swordObj);
 
+	if (swordObj) {
+		// 見つけたら、ONなら「kPlayerAttack」、OFFなら「0 (無害)」にする
+		swordObj->SetCollisionAttribute(isActive ? kPlayerAttack : 0);
+	}
+}
 static void FindHeadRecursive(Object3d* node, Object3d*& headOut)
 {
 	if (!node) return;
@@ -319,6 +334,9 @@ static float s_bodyTargetY = 0.0f;
 // ========================================================
 void PlayerStateIdle::Enter(Player* player)
 {
+	if (!player) return;
+
+	SetSwordActive(player, false);
 	player->PlayAnimation("Idle", false);
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Idle State (searching feet/arms/sword/head)");
 
@@ -366,17 +384,26 @@ void PlayerStateIdle::Enter(Player* player)
 
 void PlayerStateIdle::Update(Player* player)
 {
-	// 攻撃入力: Kキーで攻撃（左クリックは無効化）
-	if (player->GetInputManager()->IsKeyTriggered(DIK_K))
+	if (!player) return; // safety: player を逆参照する箇所があるため最初にチェック
+
+	// 攻撃入力: Kキーまたは左クリックで攻撃
+	InputManager* im = player ? player->GetInputManager() : nullptr;
+	bool attackTriggered = im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0));
+	if (attackTriggered)
 	{
 		// pending フラグがセットされていれば 2 段目を出す（フラグは消費される）
-		if (player->ConsumePendingAttack2())
+		if ((player && player->ConsumePendingAttack2()) || (player && player->IsComboWindowActive()))
 		{
 			player->ChangeState(std::make_unique<PlayerStateAttack2>());
 		}
 		else
 		{
-			player->ChangeState(std::make_unique<PlayerStateAttack1>());
+			if (player)
+			{
+				player->RecordAttackInput(0.15f);           // バッファ時間は 0.15 秒（調整可）
+				player->MarkAttackBufferUsedForStateStart(); // このバッファは状態開始のための入力に使われた
+				player->ChangeState(std::make_unique<PlayerStateAttack1>());
+			}
 		}
 		return;
 	}
@@ -420,6 +447,7 @@ void PlayerStateIdle::Exit(Player* player)
 
 void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime)
 {
+	if (!player) return;
 	if (deltaTime <= 0.0f) return;
 
 	// ブレンド更新
@@ -508,6 +536,9 @@ void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime)
 // ========================================================
 void PlayerStateRun::Enter(Player* player)
 {
+	if (!player) return;
+
+	SetSwordActive(player, false);
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Run State (custom procedural pose)");
 
 	bodyObj_ = player; bodySaved_ = false;
@@ -528,13 +559,13 @@ void PlayerStateRun::Enter(Player* player)
 		headStartRot_ = htf->rotate;
 		headSaved_ = true;
 	}
-	
+
 	if (rightArmObj_) { rightArmDefaultPos_ = rightArmObj_->GetTransform()->translate; rightArmDefaultRot_ = rightArmObj_->GetRotation(); rightArmStartRot_ = rightArmDefaultRot_; rightArmSaved_ = true; }
-	
+
 	if (leftArmObj_) { leftArmDefaultPos_ = leftArmObj_->GetTransform()->translate; leftArmDefaultRot_ = leftArmObj_->GetRotation(); leftArmStartRot_ = leftArmDefaultRot_; leftArmSaved_ = true; }
-	
+
 	if (rightFootObj_) { rightFootDefaultPos_ = rightFootObj_->GetTransform()->translate; rightFootDefaultRot_ = rightFootObj_->GetRotation(); rightFootStartRot_ = rightFootDefaultRot_; rightFootSaved_ = true; }
-	
+
 	if (leftFootObj_) { leftFootDefaultPos_ = leftFootObj_->GetTransform()->translate; leftFootDefaultRot_ = leftFootObj_->GetRotation(); leftFootStartRot_ = leftFootDefaultRot_; leftFootSaved_ = true; }
 
 	// ブレンド初期化
@@ -554,9 +585,20 @@ void PlayerStateRun::Enter(Player* player)
 
 void PlayerStateRun::Update(Player* player)
 {
-	// 攻撃入力: Kキーで攻撃（左クリックは無効化）
-	if (player->GetInputManager()->IsKeyTriggered(DIK_K))
+	if (!player) return; // safety: player を逆参照しているため最初にチェック
+
+	// 攻撃入力: Kキーで攻撃（左クリックも有効化）
+	InputManager* im = player ? player->GetInputManager() : nullptr;
+	bool attackTriggered = im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0));
+	if (attackTriggered)
 	{
+		// Run から Attack1 へ遷移する際に入力バッファを記録し、
+		// その入力は遷移開始のために使われたものとしてマークする（Attack1 はそれを pending にしない）
+		if (player)
+		{
+			player->RecordAttackInput(0.15f);
+			player->MarkAttackBufferUsedForStateStart();
+		}
 		player->ChangeState(std::make_unique<PlayerStateAttack1>());
 		return;
 	}
@@ -662,6 +704,7 @@ void PlayerStateRun::Exit(Player* player)
 
 void PlayerStateRun::ApplyPostUpdate(Player* player, float deltaTime)
 {
+	if (!player) return; // ★追加
 	if (deltaTime <= 0.0f) return;
 
 	animTimer_ += deltaTime;
@@ -805,7 +848,7 @@ void PlayerStateAttack1::Enter(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack1 State");
 
 	if (player) player->SetIsControlActive(false);
-	SetSwordCollisionActive(player, true);
+	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 
 	bodyObj_ = player;
@@ -857,8 +900,28 @@ void PlayerStateAttack1::Enter(Player* player)
 
 void PlayerStateAttack1::Update(Player* player)
 {
+	if (!player) return; // ★追加
+
+	// フレーム固定で更新している既存スタイルに合わせる（1/60）
 	animTimer_ += 1.0f / 60.0f;
 
+	// バッファ消費チェック（既存挙動）
+	if (player && player->ConsumeBufferedAttackInput())
+	{
+		player->SetPendingAttack2(true);
+	}
+
+	// 攻撃中にクリックまたは K で 2 段目を予約できるようにする（従来の動作）
+	if (player)
+	{
+		InputManager* im = player->GetInputManager();
+		if (im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0)))
+		{
+			player->SetPendingAttack2(true);
+		}
+	}
+
+	// 通常アニメーション部分
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
 
 	// イーズインアウト
@@ -880,16 +943,16 @@ void PlayerStateAttack1::Exit(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack1 State");
 
 	if (player) player->SetIsControlActive(true);
-	
+	SetSwordActive(player, false);
 	// 戻す
 	if (!initializedParts_) return;
 
 	if (bodyObj_) { Transform* tf = bodyObj_->GetTransform(); tf->translate = bodyDefaultPos_; tf->rotate = bodyDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix(); }
 	if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_; tf->rotate = headDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
 	if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_; tf->rotate = rightArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
-	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = leftArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateWorldMatrix(); }
+	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = leftArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix(); }
 	if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_; tf->rotate = rightFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
-	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = leftFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
+	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = leftFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix(); }
 }
 
 void PlayerStateAttack1::ApplyPose(float t)
@@ -906,7 +969,7 @@ void PlayerStateAttack1::ApplyPose(float t)
 	Vector3 bodyStartRot = bodyDefaultRot_;
 	// 変更点: Y 回転をデフォルト向きに対する相対値で設定
 	bodyStartRot.y = bodyDefaultRot_.y + DegToRad(60.0f);
-	
+
 	// 頭:  開始はデフォルトの位置
 	Vector3 headStartPos{ 0.0f, 0.0f, 0.0f };
 	Vector3 headStartRot{ 0.0f, 0.0f, 0.0f };
@@ -966,7 +1029,7 @@ void PlayerStateAttack1::ApplyPose(float t)
 		tf->rotate = LerpVec3(headStartRot_, headEndRot, t);
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix();
 	}
-	
+
 	if (rightArmObj_) {
 		Transform* tf = rightArmObj_->GetTransform();
 		tf->translate = rightArmDefaultPos_ + LerpVec3(rtArmStartPos, rtArmEndPos, t);
@@ -980,14 +1043,14 @@ void PlayerStateAttack1::ApplyPose(float t)
 		tf->rotate = LerpVec3(ltArmStartRot, ltArmEndRot, t);
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix();
 	}
-	
+
 	if (rightFootObj_) {
 		Transform* tf = rightFootObj_->GetTransform();
 		tf->translate = rightFootDefaultPos_ + LerpVec3(rtFootStartPos, rtFootEndPos, t);
 		tf->rotate = LerpVec3(rtFootStartRot, rtFootEndRot, t);
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix();
 	}
-	
+
 	if (leftFootObj_) {
 		Transform* tf = leftFootObj_->GetTransform();
 		// 位置アニメーションを無効化: 常にデフォルトのローカル位置を使う
@@ -1002,10 +1065,12 @@ void PlayerStateAttack1::ApplyPose(float t)
 // ========================================================
 void PlayerStateAttack2::Enter(Player* player)
 {
+	if (!player) return; // ★追加
+
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack2 State");
 
 	if (player) player->SetIsControlActive(false);
-
+	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 
 	bodyObj_ = player;
@@ -1119,6 +1184,8 @@ void PlayerStateAttack2::Enter(Player* player)
 
 void PlayerStateAttack2::Update(Player* player)
 {
+	if (!player) return; // ★追加
+
 	animTimer_ += 1.0f / 60.0f;
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
 	float et = EaseInOutSine(t);
@@ -1136,7 +1203,7 @@ void PlayerStateAttack2::Exit(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack2 State");
 
 	if (player) player->SetIsControlActive(true);
-
+	SetSwordActive(player, false);
 	if (!initializedParts_) return;
 
 	// 戻す（保存したデフォルトに復帰）
@@ -1155,32 +1222,35 @@ void PlayerStateAttack2::ApplyPose(float t)
 	auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
 	auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
 		return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
-	};
+		};
 
 	// --- 開始ポーズ ---
 	// Body start: bodyDefaultRot_.y + (-100deg), z = -36deg (Enterで設定)
 	Vector3 bodyStartPos{ 0.0f, 0.0f, 0.0f };
-	Vector3 bodyStartRot = bodyObj_ ? bodyObj_->GetTransform()->rotate : Vector3{0,0,0};
+	Vector3 bodyStartRot = bodyDefaultRot_;
+	// 変更点: Y 回転をプレイヤーの向き（bodyDefaultRot_.y）に対する相対値で指定して、向いている方向で攻撃が出るようにする
+	float baseY = bodyDefaultRot_.y;
+	bodyStartRot.y = baseY + DegToRad(60.0f);
 
 	// Head start: Enterで設定済み
 	Vector3 headStartPos{ 0.0f, 0.0f, 0.0f };
-	Vector3 headStartRot = headObj_ ? headObj_->GetTransform()->rotate : Vector3{0,0,0};
+	Vector3 headStartRot = headObj_ ? headObj_->GetTransform()->rotate : Vector3{ 0,0,0 };
 
 	// Right arm start: Enterで設定済み
-	Vector3 rtArmStartPos = rightArmObj_ ? rightArmObj_->GetTransform()->translate : Vector3{0,0,0};
-	Vector3 rtArmStartRot = rightArmObj_ ? rightArmObj_->GetTransform()->rotate : Vector3{0,0,0};
+	Vector3 rtArmStartPos = rightArmObj_ ? rightArmObj_->GetTransform()->translate : Vector3{ 0,0,0 };
+	Vector3 rtArmStartRot = rightArmObj_ ? rightArmObj_->GetTransform()->rotate : Vector3{ 0,0,0 };
 
 	// Left arm start: Enter で設定した Attack1 終点相当
-	Vector3 ltArmStartPos = leftArmObj_ ? leftArmObj_->GetTransform()->translate : Vector3{0,0,0};
-	Vector3 ltArmStartRot = leftArmObj_ ? leftArmObj_->GetTransform()->rotate : Vector3{0,0,0};
+	Vector3 ltArmStartPos = leftArmObj_ ? leftArmObj_->GetTransform()->translate : Vector3{ 0,0,0 };
+	Vector3 ltArmStartRot = leftArmObj_ ? leftArmObj_->GetTransform()->rotate : Vector3{ 0,0,0 };
 
 	// Right foot start
-	Vector3 rtFootStartPos = rightFootObj_ ? rightFootObj_->GetTransform()->translate : Vector3{0,0,0};
-	Vector3 rtFootStartRot = rightFootObj_ ? rightFootObj_->GetTransform()->rotate : Vector3{0,0,0};
+	Vector3 rtFootStartPos = rightFootObj_ ? rightFootObj_->GetTransform()->translate : Vector3{ 0,0,0 };
+	Vector3 rtFootStartRot = rightFootObj_ ? rightFootObj_->GetTransform()->rotate : Vector3{ 0,0,0 };
 
 	// Left foot start
-	Vector3 ltFootStartPos = leftFootObj_ ? leftFootObj_->GetTransform()->translate : Vector3{0,0,0};
-	Vector3 ltFootStartRot = leftFootObj_ ? leftFootObj_->GetTransform()->rotate : Vector3{0,0,0};
+	Vector3 ltFootStartPos = leftFootObj_ ? leftFootObj_->GetTransform()->translate : Vector3{ 0,0,0 };
+	Vector3 ltFootStartRot = leftFootObj_ ? leftFootObj_->GetTransform()->rotate : Vector3{ 0,0,0 };
 
 	// --- 終了ポーズ ---
 	// Body end
@@ -1206,7 +1276,7 @@ void PlayerStateAttack2::ApplyPose(float t)
 	Vector3 rtArmEndRot{ DegToRad(0.0f), DegToRad(40.0f), DegToRad(57.0f) };
 
 	// Left arm end
-	Vector3 ltArmEndPos{ DegToRad(-0.1f), DegToRad(-0.2f), 0.0f }; 
+	Vector3 ltArmEndPos{ DegToRad(-0.1f), DegToRad(-0.2f), 0.0f };
 	ltArmEndPos = Vector3{ -0.1f, -0.2f, 0.0f };
 	Vector3 ltArmEndRot{ DegToRad(0.0f), DegToRad(25.0f), DegToRad(-35.0f) };
 

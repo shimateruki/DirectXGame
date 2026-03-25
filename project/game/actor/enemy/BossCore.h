@@ -34,7 +34,11 @@ public:
     void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
 
     // パーツ(ブロック)を登録する関数
-    void AddArmorBlock (Object3d *block) { armorBlocks_.push_back (block); }
+    void AddArmorBlock (Object3d *block) { 
+        armorBlocks_.push_back (block);
+        block->SetCollisionAttribute(kEnemyAttack);
+        block->SetCollisionMask(kPlayer);
+    }
 
 
 private:
@@ -65,7 +69,7 @@ private:
 
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks (float deltaTime);
-
+    void TakeBarrierDamage(float damage);
     // static だった変数をメンバ変数に移動
     int animPhase_ = 0;
     float animTimer_ = 0.0f;
@@ -92,4 +96,8 @@ private:
     // 形態変化アニメーション用の座標メモ
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
+    float barrierHp_ = 100.0f;
+    float maxBarrierHp_ = 100.0f;
+
+    bool s_isTimeStopped_ = false;
 };

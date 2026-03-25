@@ -11,12 +11,13 @@ class Object3d;
 class PlayerStateIdle : public IAnimationState
 {
 public:
+	// 状態開始時に呼ばれる関数
     void Enter(Player* player) override;
-
+	// 状態更新時に呼ばれる関数
     void Update(Player* player) override;
-
+	// 状態終了時に呼ばれる関数
     void Exit(Player* player) override;
-
+	// フレーム後処理（実時間 deltaTime が必要な分離メソッド）
     void ApplyPostUpdate(Player* player, float deltaTime);
 
 private:
@@ -82,8 +83,11 @@ private:
 class PlayerStateRun : public IAnimationState
 {
 public:
+	// 状態開始時に呼ばれる関数
     void Enter(Player* player) override;
+	// 状態更新時に呼ばれる関数
     void Update(Player* player) override;
+	// 状態終了時に呼ばれる関数
     void Exit(Player* player) override;
 
     // フレーム後処理（実時間 deltaTime が必要な分離メソッド）
@@ -168,13 +172,16 @@ private:
 class PlayerStateAttack1 : public IAnimationState
 {
 public:
+	//　アニメーションの開始の関数。
     void Enter(Player* player) override;
+	// アニメーションの更新の関数
     void Update(Player* player) override;
+	//　Exit 時に Idle の開始ポーズに戻すようにする関数
     void Exit(Player* player) override;
 
 private:
     float animTimer_ = 0.0f;
-    float animDuration_ = 0.3f; // アニメーションにかける時間
+    float animDuration_ = 0.35f; // アニメーションにかける時間
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;
@@ -185,13 +192,19 @@ private:
     Object3d* leftFootObj_ = nullptr;
 
     // 退避用（元のポーズ）
-    Vector3 bodyDefaultPos_, bodyDefaultRot_;
-    Vector3 headDefaultPos_, headDefaultRot_;
-    Vector3 headStartRot_;
-    Vector3 rightArmDefaultPos_, rightArmDefaultRot_;
-    Vector3 leftArmDefaultPos_, leftArmDefaultRot_;
-    Vector3 rightFootDefaultPos_, rightFootDefaultRot_;
-    Vector3 leftFootDefaultPos_, leftFootDefaultRot_;
+    Vector3 bodyDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 bodyDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headStartRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
 
     bool initializedParts_ = false;
 
@@ -205,13 +218,16 @@ private:
 class PlayerStateAttack2 : public IAnimationState
 {
 public:
+	// アニメーションの開始の関数。
     void Enter(Player* player) override;
+	// アニメーションの更新の関数
     void Update(Player* player) override;
+	// Exit 時に Idle の開始ポーズに戻すようにする関数
     void Exit(Player* player) override;
 
 private:
     float animTimer_ = 0.0f;
-    float animDuration_ = 0.5f;
+    float animDuration_ = 0.4f;
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;
@@ -222,13 +238,19 @@ private:
     Object3d* leftFootObj_ = nullptr;
 
     // 退避用（元のポーズ）
-    Vector3 bodyDefaultPos_, bodyDefaultRot_;
-    Vector3 headDefaultPos_, headDefaultRot_;
-    Vector3 headStartRot_;
-    Vector3 rightArmDefaultPos_, rightArmDefaultRot_;
-    Vector3 leftArmDefaultPos_, leftArmDefaultRot_;
-    Vector3 rightFootDefaultPos_, rightFootDefaultRot_;
-    Vector3 leftFootDefaultPos_, leftFootDefaultRot_;
+    Vector3 bodyDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 bodyDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headStartRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftArmDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 rightFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultPos_{ 0.0f, 0.0f, 0.0f };
+    Vector3 leftFootDefaultRot_{ 0.0f, 0.0f, 0.0f };
 
     bool initializedParts_ = false;
 
