@@ -37,6 +37,13 @@ public:
     void DrawHierarchyWindow();
     void DrawInspectorWindow();
     void DrawProjectWindow();
+    void SetSpriteFilename(const std::string& filepath) {
+        std::string name = filepath;
+        // パスからファイル名だけを抜き出す
+        size_t pos = name.find_last_of("/\\");
+        if (pos != std::string::npos) name = name.substr(pos + 1);
+        strcpy_s(currentSpriteFilename_, sizeof(currentSpriteFilename_), name.c_str());
+    }
 private:
     // レイアウト保存
     void SaveSpriteLayout(const std::string& filename);

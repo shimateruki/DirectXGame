@@ -3,32 +3,65 @@
         {
             "anchor": [
                 0.5,
-                0.5
+                0.0
             ],
-            "name": "MonsterBall",
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "title.png",
             "position": [
-                306.0,
-                545.0
+                800.5714111328125,
+                151.40452575683594
             ],
             "size": [
-                100.0,
-                100.0
-            ]
+                300.0,
+                54.0
+            ],
+            "texture": "title.png"
         },
         {
             "anchor": [
                 0.5,
                 0.5
             ],
-            "name": "Sprite",
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "gameStartText.png",
             "position": [
-                640.0,
-                360.0
+                903.4285888671875,
+                570.390380859375
             ],
             "size": [
-                64.0,
-                64.0
-            ]
+                600.0,
+                240.0
+            ],
+            "texture": "gameStartText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                1.0
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "name": "setting.png",
+            "position": [
+                846.8571166992188,
+                629.60302734375
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "setting.png"
         }
     ]
 }
