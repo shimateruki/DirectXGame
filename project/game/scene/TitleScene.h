@@ -54,6 +54,7 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
+
 private:
     // --- システムポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -81,6 +82,20 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
+
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
+
+    // メニューの選択肢
+    enum class MenuIndex {
+        GameStart,
+        Setting,
+        Max // 項目数を取るためのダミー
+    };
+
+    int currentMenuIndex_ = (int)MenuIndex::GameStart; // 現在の選択番号
+
+    // スプライトのポインタを保持しておく
+    Sprite* startTextSprite_ = nullptr;
+    Sprite* settingTextSprite_ = nullptr;
 };

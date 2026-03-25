@@ -48,7 +48,16 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
         selectedSprite_ = nullptr;
         isMovingX_ = false;
         isMovingY_ = false;
+        strcpy_s(currentSpriteFilename_, sizeof(currentSpriteFilename_), "Please_Select_Or_Set.json");
         lastUpdatedScene_ = currentScene;
+    }
+    static std::string s_lastSyncedSpriteFilename = "";
+    std::string currentLoadedName = currentScene->GetLoadedSpriteFilename();
+
+    // 読み込み名が変わった瞬間だけ、エディタにセットする！
+    if (!currentLoadedName.empty() && s_lastSyncedSpriteFilename != currentLoadedName) {
+        SetSpriteFilename(currentLoadedName);
+        s_lastSyncedSpriteFilename = currentLoadedName;
     }
     if (selectedSprite_ != nullptr) {
         // 文字入力中（名前の変更中など）でなければショートカットを許可

@@ -76,8 +76,13 @@ public:
     void SetLoadedFilename(const std::string& name) { loadedFilename_ = name; }
     std::string GetLoadedFilename() const { return loadedFilename_; }
     virtual void DrawShadow() {}
+    Sprite* GetSpriteByName(const std::string& name);
+    // ==================================================
+    void SetLoadedSpriteFilename(const std::string& name) { loadedSpriteFilename_ = name; }
+    std::string GetLoadedSpriteFilename() const { return loadedSpriteFilename_; }
 protected:
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
     std::string loadedFilename_ = "scene_layout.json";
+    std::string loadedSpriteFilename_ = "sprite_layout.json";
 };
