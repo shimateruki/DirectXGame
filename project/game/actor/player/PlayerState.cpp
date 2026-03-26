@@ -1883,9 +1883,7 @@ void PlayerStateDash::Enter(Player* player)
 	if (!player) return;
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Dash State (Slide Step)");
 
-	// ★大修正：ここにあった SetIsControlActive(false) を削除！
-	// PlayerMover を動かし続けて、爆速のダッシュ移動をさせます。
-
+	// PlayerMover を動かし続ける（入力制御は Mover 側）
 	SetSwordActive(player, false);
 	animTimer_ = 0.0f;
 	bodyObj_ = player; // bodyObj_ は Root（プレイヤー自身）
@@ -1904,6 +1902,12 @@ void PlayerStateDash::Enter(Player* player)
 
 	initializedParts_ = true;
 	ApplyPose(0.0f);
+
+	// スピン初期化（開始角度を保存し、1回転分の目標角度を設定）
+	if (spinEnabled_ && bodyObj_) {
+		spinStartX_ = bodyObj_->GetRotation().x;
+		spinTargetX_ = spinStartX_ + spinTotalRad_;
+	}
 }
 
 void PlayerStateDash::Update(Player* player)
@@ -1922,13 +1926,12 @@ void PlayerStateDash::Update(Player* player)
 
 void PlayerStateDash::Exit(Player* player)
 {
-	// ★大修正：ここにあった SetIsControlActive(true) も削除！
 	if (!initializedParts_) return;
 
-	// 回転(Rotate)だけをデフォルトの姿勢に戻す
+	// 回転(Rotate)だけをデフォルトの姿勢に戻す（Mover が管理する Y は触らない）
 	if (bodyObj_) {
 		Transform* tf = bodyObj_->GetTransform();
-		tf->rotate.x = 0.0f; tf->rotate.z = 0.0f; // Moverが管理するY回転は維持！
+		tf->rotate.x = 0.0f; tf->rotate.z = 0.0f; // Y は Mover が管理するため基本は触らない
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
 		tf->isQuaternionMaster = true;
 		bodyObj_->UpdateWorldMatrix();
@@ -1938,6 +1941,13 @@ void PlayerStateDash::Exit(Player* player)
 	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->rotate = leftArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateWorldMatrix(); }
 	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->rotate = leftFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
 	if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->rotate = rightFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+
+	// スピンが有効なら、見た目の X を確実に開始角度に戻す（360度回って元の向きに揃える）
+	if (player && spinEnabled_) {
+		Vector3 r = player->GetRotation();
+		r.x = spinStartX_;
+		player->SetRotation(r);
+	}
 }
 
 void PlayerStateDash::ApplyPose(float t)
@@ -1949,31 +1959,26 @@ void PlayerStateDash::ApplyPose(float t)
 		};
 	auto EaseOutCubic = [](float x) { return 1.0f - std::pow(1.0f - x, 3.0f); };
 
-	// ★超重要: PlayerMover が決定した「現在の向いている方向(Y)」を絶対死守する！
+	// 現在の移動向き（Mover が決定した Y）を取得
 	float currentY = bodyObj_->GetRotation().y;
 
-	// --- [Pose 1] スライド姿勢 (空気抵抗で腕が後ろに流れ、前傾姿勢になる) ---
-	Vector3 bodyRot1 = { DegToRad(25.0f), currentY, 0.0f }; // 体を前に倒す(前傾)
-	Vector3 headRot1 = { DegToRad(-20.0f), 0.0f, 0.0f };    // 顔は前を睨む
-
-	Vector3 rtArmRot1 = { DegToRad(50.0f), DegToRad(10.0f), DegToRad(10.0f) };  // 腕を後ろに流す
+	// --- ポーズ定義 ---
+	Vector3 bodyRot1 = { DegToRad(25.0f), currentY, 0.0f };
+	Vector3 headRot1 = { DegToRad(-20.0f), 0.0f, 0.0f };
+	Vector3 rtArmRot1 = { DegToRad(50.0f), DegToRad(10.0f), DegToRad(10.0f) };
 	Vector3 ltArmRot1 = { DegToRad(50.0f), DegToRad(-10.0f), DegToRad(-10.0f) };
-
-	// 足を前後に開いてスライドボードに乗るようなポーズ！
 	Vector3 ltFootRot1 = { DegToRad(-20.0f), 0.0f, 0.0f };
 	Vector3 rtFootRot1 = { DegToRad(20.0f), 0.0f, 0.0f };
 
-	// --- [Pose 2] ブレーキ (体を少し起こして踏ん張る) ---
-	Vector3 bodyRot2 = { DegToRad(-5.0f), currentY, 0.0f }; // 体を後ろに反らす
+	Vector3 bodyRot2 = { DegToRad(-5.0f), currentY, 0.0f };
 	Vector3 headRot2 = { DegToRad(5.0f), 0.0f, 0.0f };
-	Vector3 rtArmRot2 = { DegToRad(-10.0f), 0.0f, 0.0f }; // 反動で少し腕が前へ
+	Vector3 rtArmRot2 = { DegToRad(-10.0f), 0.0f, 0.0f };
 	Vector3 ltArmRot2 = { DegToRad(-10.0f), 0.0f, 0.0f };
 	Vector3 ltFootRot2 = { DegToRad(0.0f), 0.0f, 0.0f };
 	Vector3 rtFootRot2 = { DegToRad(0.0f), 0.0f, 0.0f };
 
 	Vector3 curBodyRot, curHeadRot, curRtArmRot, curLtArmRot, curLtFootRot, curRtFootRot;
 
-	// ダッシュ継続時間の0.2秒(全体0.35秒の約57%)をスライド姿勢にする
 	float t1 = 0.57f;
 	if (t <= t1) {
 		float localT = EaseOutCubic(t / t1);
@@ -1994,17 +1999,29 @@ void PlayerStateDash::ApplyPose(float t)
 		curRtFootRot = LerpVec3(rtFootRot1, rtFootRot2, localT);
 	}
 
-	// =======================================================
-	// ★ 魔法: 座標(Translate)は一切上書きせず、回転(Rotate)だけを更新！
-	// =======================================================
+	// 回転のみ適用（座標は上書きしない）
 	if (bodyObj_) {
 		Transform* tf = bodyObj_->GetTransform();
-		curBodyRot.y = currentY; // Moverが計算したYを上書き防止
+
+		// スピン処理（animTimer_ と animDuration_ に基づくイーズ）
+		if (spinEnabled_) {
+			float spinT = (animDuration_ > 1e-6f) ? std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f) : 1.0f;
+			float spinEase = EaseOutCubic(spinT);
+			// 完全な 360° 回転を表現するため、正規化は使わず単純に加算
+			float spinX = spinStartX_ + spinTotalRad_ * spinEase;
+			curBodyRot.x = spinX;
+		}
+		else {
+			// Mover が計算した X を上書きしない（通常は Mover は Y を管理）
+			curBodyRot.x = bodyObj_->GetRotation().x;
+		}
+
 		tf->rotate = curBodyRot;
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
 		tf->isQuaternionMaster = true;
 		bodyObj_->UpdateWorldMatrix();
 	}
+
 	if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->rotate = curHeadRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
 	if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->rotate = curRtArmRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
 	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->rotate = curLtArmRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateWorldMatrix(); }
