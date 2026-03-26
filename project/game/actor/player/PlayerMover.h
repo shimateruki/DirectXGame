@@ -48,7 +48,7 @@ private:
 
 	// --- ダッシュ回避関連 ---
 	bool isDashing_ = false;
-	float dashSpeed_ = 30.0f;       // ダッシュ速度
+	float dashSpeed_ = 120.0f;       // ダッシュ速度
 	float dashDuration_ = 0.20f;    // ダッシュ継続時間（秒）
 	float dashTimer_ = 0.0f;        // 残りダッシュ時間
 	float dashCooldown_ = 1.0f;     // ダッシュクールダウン（秒）

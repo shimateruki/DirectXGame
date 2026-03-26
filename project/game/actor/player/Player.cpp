@@ -120,12 +120,10 @@ void Player::Update(float deltaTime)
 
         if (postParams) {
             if (hp <= 0.0f) {
-                // ---------------------------------------------------
-                // 💀 死亡時 (意識が遠のく黒い点滅 - バイオハザード風)
-                // ---------------------------------------------------
-                if (!isDead) { // 継承元の isDead を使用
-                    isDead = true;
+                if (!dynamic_cast<PlayerStateDead*>(state_.get())) {
+                    isDead = true; // 念のためフラグは立てておく
                     deathTimer_ = 0.0f;
+                    ChangeState(std::make_unique<PlayerStateDead>());
                     DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡演出開始");
                 }
 
