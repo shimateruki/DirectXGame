@@ -175,7 +175,7 @@ std::string KeyConfig::GetPadName(WORD padCode) const {
 // =================================================================
 void KeyConfig::DrawImGui() {
 
-
+#ifdef USE_IMGUI
     // ---------------------------------------------------------
     // 1. セーブ＆ロード ボタン
     // ---------------------------------------------------------
@@ -353,6 +353,7 @@ void KeyConfig::DrawImGui() {
             }
         }
     }
+#endif
 }
 
 const BindData* KeyConfig::GetBindData(const std::string& actionName) const {
