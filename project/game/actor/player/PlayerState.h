@@ -310,21 +310,27 @@ private:
     Object3d* headObj_ = nullptr;
     Object3d* rightArmObj_ = nullptr;
     Object3d* leftArmObj_ = nullptr;
-    // ★追加: 足のID管理
+    // 足のID管理
     Object3d* leftFootObj_ = nullptr;
     Object3d* rightFootObj_ = nullptr;
 
-    // ★追加: デフォルト回転などを退避
+    // デフォルト回転などを退避
     Vector3 bodyDefaultPos_{}; Vector3 bodyDefaultRot_{}; Vector3 bodyStartRot_{};
     Vector3 headDefaultPos_{}; Vector3 headDefaultRot_{}; Vector3 headStartRot_{};
     Vector3 rightArmDefaultPos_{}; Vector3 rightArmDefaultRot_{}; Vector3 rtArmStartRot_{};
     Vector3 leftArmDefaultPos_{}; Vector3 leftArmDefaultRot_{}; Vector3 ltArmStartRot_{};
-    // ★追加: 足のデフォルト回転などを退避
+    // 足のデフォルト回転などを退避
     Vector3 rightFootDefaultPos_{}; Vector3 rightFootDefaultRot_{}; Vector3 rtFootStartRot_{};
     Vector3 leftFootDefaultPos_{}; Vector3 leftFootDefaultRot_{}; Vector3 ltFootStartRot_{};
 
     bool initializedParts_ = false;
     void ApplyPose(float t);
+
+    // --- 回避でのスピン制御 (X軸スピン) ---
+    bool spinEnabled_ = true;                                     // 回避でスピンさせるかどうか
+    float spinTotalRad_ = 2.0f * 3.14159265358979323846f;         // 1回転（ラジアン）
+    float spinStartX_ = 0.0f;                                     // Enter 時の X 開始角度 (ラジアン)
+    float spinTargetX_ = 0.0f;                                    // Enter 時の目標角度 (start + 2π)
 };
 
 // --------------------------------------------------------
