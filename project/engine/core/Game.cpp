@@ -66,10 +66,11 @@ void Game::Initialize() {
 
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
     postEffectEditor_->Initialize(PostEffect::GetInstance());
-
-
-#ifdef USE_IMGUI
+  
     KeyConfig::GetInstance()->Initialize();
+#ifdef USE_IMGUI
+
+    postEffectEditor_->Initialize(postEffect_.get());
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
     ghostRecorder_ = std::make_unique<GhostRecorder>();
