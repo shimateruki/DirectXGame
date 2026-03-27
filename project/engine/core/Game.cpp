@@ -65,9 +65,12 @@ void Game::Initialize() {
     uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle.png");
     postEffect_->SetLUTTexture(lutHandle);
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
-    postEffectEditor_->Initialize(postEffect_.get());
-#ifdef USE_IMGUI
+    postEffectEditor_->Initialize(PostEffect::GetInstance());
+
     KeyConfig::GetInstance()->Initialize();
+#ifdef USE_IMGUI
+
+    postEffectEditor_->Initialize(postEffect_.get());
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
     ghostRecorder_ = std::make_unique<GhostRecorder>();
