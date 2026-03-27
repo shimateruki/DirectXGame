@@ -31,9 +31,10 @@ cbuffer PostEffectParams : register(b0)
     
     float scanlineIntensity;
     float mosaicSize;
+    float dangerVignette;
+    float blackout;
     float padding1;
-    float padding2;
-    float padding3; // 16バイト境界合わせ
+
 };
 
 Texture2D<float4> lutTex : register(t1);
@@ -189,12 +190,31 @@ float4 mainComposite(PSInput input) : SV_TARGET
         float3 lutColor = ApplyLUT(finalColor.rgb);
         finalColor.rgb = lerp(finalColor.rgb, lutColor, lutIntensity);
     }
-
+    if (dangerVignette > 0.0)
+    {
+        // 1. 画面端に行くほど値が大きくなるマスクを作る
+        // dot(dir, dir)は中心で0.0、四隅で0.5になるので2倍して調整
+        float edgeMask = saturate(dot(dir, dir) * 2.0);
+        
+        // 2. timeを使ってドクン…ドクン…という鼓動(サイン波)を作る
+        // sin関数を使って0.4 ~ 1.0の間で脈打たせる
+        float pulse = 0.4 + 0.6 * saturate(sin(time * 5.0));
+        
+        // 3. 少しドス黒い血のような赤色を定義
+        float3 bloodColor = float3(0.8, 0.0, 0.0);
+        
+        // 4. 元の映像に、血の色をブレンドする
+        finalColor.rgb = lerp(finalColor.rgb, bloodColor, edgeMask * dangerVignette * pulse);
+    }
     // Vignette & Film Grain
     float v = 1.0 - dot(dir, dir) * vignetteIntensity;
     finalColor.rgb *= saturate(v);
     finalColor.rgb -= rand(uv + time) * filmGrainIntensity;
-
+    if (blackout > 0.0)
+    {
+        // 画面全体を黒に近づける（1.0 で完全な漆黒になる）
+        finalColor.rgb *= (1.0 - saturate(blackout));
+    }
     // Scanline (ブラウン管)
     if (scanlineIntensity > 0.0)
     {

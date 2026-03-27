@@ -7,6 +7,7 @@
 #include "CameraManager.h"
 #include "IMoveStrategy.h"
 #include "PlayerState.h"
+#include "PostEffect.h"
 #include <DebugConsole.h>
 #include <algorithm>
 
@@ -106,6 +107,89 @@ void Player::Update(float deltaTime)
             run->ApplyPostUpdate(this, deltaTime);
         }
     }
+    // =======================================================
+        // 6. ★ 瀕死・死亡エフェクト (Danger Vignette & Blackout) ★
+        // =======================================================
+    float hp = GetHp();
+    float maxHp = GetMaxHp();
+
+    if (maxHp > 0.0f) {
+        float hpRatio = hp / maxHp;
+
+        PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+
+        if (postParams) {
+            if (hp <= 0.0f) {
+                if (!dynamic_cast<PlayerStateDead*>(state_.get())) {
+                    isDead = true; // 念のためフラグは立てておく
+                    deathTimer_ = 0.0f;
+                    ChangeState(std::make_unique<PlayerStateDead>());
+                    DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡演出開始");
+                }
+
+                deathTimer_ += deltaTime;
+
+                // 赤枠の濃さは固定し、視界の邪魔をしない
+                postParams->dangerVignette = 0.8f;
+
+                // ★ 追加: 最初の3.5秒だけ点滅させる
+                if (deathTimer_ <= 3.5f) {
+                    // ===================================================
+                    // 🖤 最初の3.5秒：鋭く不規則な黒の点滅 (Blackout Pulse)
+                    // ===================================================
+                    float t = deathTimer_;
+                    float pulse1 = std::pow(std::max(0.0f, std::sin(t * 2.5f)), 16.0f);
+                    float pulse2 = std::pow(std::max(0.0f, std::sin(t * 2.5f - 0.4f)), 16.0f);
+                    float mask = std::sin(t * 1.3f) * 0.5f + 0.5f;
+                    float blink = pulse1 + (pulse2 * mask);
+                    postParams->blackout = std::min(blink * 0.85f, 0.85f);
+                }
+                else {
+                    // ===================================================
+                    // 🖤 3.5秒後：意識が完全に途絶え、薄暗いまま固定
+                    // ===================================================
+                    // GameOverテキストが見えるように 0.6f 程度の暗さに滑らかに落ち着かせる
+                    postParams->blackout = std::min(postParams->blackout + (deltaTime * 0.5f), 0.6f);
+                }
+
+                // 画面の邪魔になる歪みやフラッシュは全てオフ
+                postParams->wobbleIntensity = 0.0f;
+                postParams->damageFlash = 0.0f;
+                postParams->filmGrainIntensity = 0.03f;
+            }
+            else if (hpRatio <= 0.2f) {
+                // ---------------------------------------------------
+                // ⚠️ 瀕死時 (20%以下)
+                // ---------------------------------------------------
+                isDead = false;
+                deathTimer_ = 0.0f;
+
+                float dangerLevel = 1.0f - (hpRatio / 0.2f);
+                postParams->dangerVignette = dangerLevel * 1.5f;
+
+                // 生きている間は黒点滅させない
+                postParams->blackout = 0.0f;
+
+                postParams->wobbleIntensity = 0.0f;
+                postParams->damageFlash = 0.0f;
+                postParams->filmGrainIntensity = 0.03f;
+            }
+            else {
+                // ---------------------------------------------------
+                // 🟢 安全圏内
+                // ---------------------------------------------------
+                isDead = false;
+                deathTimer_ = 0.0f;
+
+                postParams->dangerVignette = 0.0f;
+                postParams->blackout = 0.0f; // リセット
+                postParams->wobbleIntensity = 0.0f;
+                postParams->damageFlash = 0.0f;
+                postParams->filmGrainIntensity = 0.03f;
+            }
+        }
+    }
+
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {

@@ -60,13 +60,13 @@ void Game::Initialize() {
 
 
     lastTime_ = std::chrono::high_resolution_clock::now();
-    postEffect_ = std::make_unique<PostEffect>();
-    postEffect_->Initialize(dxCommon_);
+    PostEffect::GetInstance()->Initialize(dxCommon_);
     uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle.png");
-    postEffect_->SetLUTTexture(lutHandle);
+    PostEffect::GetInstance()->SetLUTTexture(lutHandle);
+
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
     postEffectEditor_->Initialize(PostEffect::GetInstance());
-
+  
     KeyConfig::GetInstance()->Initialize();
 #ifdef USE_IMGUI
 
@@ -223,7 +223,7 @@ void Game::Update() {
         ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();
 
         if (displaySize.x > 0 && displaySize.y > 0) {
-            uint32_t texHandle = postEffect_->GetSRVHandle(1);
+            uint32_t texHandle = PostEffect::GetInstance()->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
 
@@ -403,7 +403,7 @@ void Game::Update() {
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     GPUParticleManager::GetInstance()->Update(deltaTime);
-    postEffect_->GetParams()->time += deltaTime;
+    PostEffect::GetInstance()->GetParams()->time += deltaTime;
 
     if (sceneManager_) {
         sceneManager_->SetIsPlaying(isPlaying_);
@@ -418,6 +418,7 @@ void Game::Update() {
 }
 
 void Game::Draw() {
+    PostEffect* postEffect_ = PostEffect::GetInstance();
     // ★ 前フレームのGPUの計測結果を読み取る
     dxCommon_->ReadGpuProfile();
 
