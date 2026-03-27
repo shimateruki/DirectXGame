@@ -1972,7 +1972,7 @@
             "parentName": "",
             "position": [
                 0.0,
-                21.046096801757812,
+                21.046096801757813,
                 -177.6199951171875
             ],
             "quaternion": [
@@ -2154,7 +2154,7 @@
             "position": [
                 0.0,
                 7.0,
-                -72.0
+                -70.0
             ],
             "quaternion": [
                 0.0,
@@ -2169,7 +2169,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -2183,279 +2183,279 @@
             "texturePath": "",
             "type": "InvisibleBox"
         },
-      {
-        "animation": {
-          "animName": "",
-          "isAnimLoop": true
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.20000000298023224,
+                    -2.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0800000429153442,
+                    3.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 3,
+            "color": [
+                1.0,
+                0.9411764740943909,
+                0.9411764740943909,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Bridge_Block_Front",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                2.200000047683716,
+                -88.0
+            ],
+            "quaternion": [
+                0.12186934798955917,
+                0.0,
+                0.0,
+                0.9925461411476135
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.24434608221054077,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                20.0,
+                1.0,
+                14.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
         },
-        "blendMode": 0,
-        "collider": {
-          "center": [
-            0.0,
-            0.20000000298023224,
-            -2.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "size": [
-            1.0,
-            1.0800000429153442,
-            3.0
-          ],
-          "type": 3
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9411764740943909,
+                1.0,
+                0.9411764740943909,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Bridge_Block_Center",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                8.9738130569458,
+                -115.16828155517578
+            ],
+            "quaternion": [
+                0.12186934798955917,
+                0.0,
+                0.0,
+                0.9925461411476135
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.24434608221054077,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                20.0,
+                1.0,
+                14.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
         },
-        "collisionAttribute": 4,
-        "collisionMask": 3,
-        "color": [
-          1.0,
-          0.9411764740943909,
-          0.9411764740943909,
-          1.0
-        ],
-        "enableEnvMap": false,
-        "enableNormalMap": false,
-        "enemyType": "",
-        "envIntensity": 1.0,
-        "eventID": 0,
-        "localFog": {
-          "color": [
-            0.20000000298023224,
-            0.800000011920929,
-            0.5,
-            1.0
-          ],
-          "density": 0.5,
-          "edgeFade": 0.0,
-          "noiseScale": 0.0,
-          "noiseSpeed": 0.0,
-          "scatteringG": 0.0,
-          "scatteringIntensity": 0.0
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                0.9411764740943909,
+                0.9411764740943909,
+                1.0,
+                1.0
+            ],
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Bridge_Block_Back",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                15.747625350952148,
+                -142.33656311035156
+            ],
+            "quaternion": [
+                0.12186934798955917,
+                0.0,
+                0.0,
+                0.9925461411476135
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.24434608221054077,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                20.0,
+                1.0,
+                14.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
         },
-        "materialType": 0,
-        "metallic": 0.0,
-        "modelName": "block",
-        "myEventID": -1,
-        "name": "Bridge_Block_Front",
-        "normalMapPath": "",
-        "ormMapPath": "",
-        "parentName": "",
-        "position": [
-          0.0,
-          2.200000047683716,
-          -88.0
-        ],
-        "quaternion": [
-          0.12186934798955917,
-          0.0,
-          0.0,
-          0.9925461411476135
-        ],
-        "recorder": {
-          "isRecordLoop": false,
-          "isRecordRelative": false,
-          "recordPathName": ""
-        },
-        "rotation": [
-          0.24434608221054077,
-          -0.0,
-          0.0
-        ],
-        "roughness": 0.5,
-        "saveCategory": "Object",
-        "scale": [
-          20.0,
-          1.0,
-          14.0
-        ],
-        "targetID": -1,
-        "texturePath": "",
-        "type": "Model"
-      },
-      {
-        "animation": {
-          "animName": "",
-          "isAnimLoop": true
-        },
-        "blendMode": 0,
-        "collider": {
-          "center": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "size": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "type": 0
-        },
-        "collisionAttribute": 0,
-        "collisionMask": 0,
-        "color": [
-          0.9411764740943909,
-          1.0,
-          0.9411764740943909,
-          1.0
-        ],
-        "enableEnvMap": false,
-        "enableNormalMap": false,
-        "enemyType": "",
-        "envIntensity": 1.0,
-        "eventID": 0,
-        "localFog": {
-          "color": [
-            0.20000000298023224,
-            0.800000011920929,
-            0.5,
-            1.0
-          ],
-          "density": 0.5,
-          "edgeFade": 0.0,
-          "noiseScale": 0.0,
-          "noiseSpeed": 0.0,
-          "scatteringG": 0.0,
-          "scatteringIntensity": 0.0
-        },
-        "materialType": 0,
-        "metallic": 0.0,
-        "modelName": "block",
-        "myEventID": -1,
-        "name": "Bridge_Block_Center",
-        "normalMapPath": "",
-        "ormMapPath": "",
-        "parentName": "Bridge_Block_Back",
-        "position": [
-          0.0,
-          0.0,
-          2.0
-        ],
-        "quaternion": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ],
-        "recorder": {
-          "isRecordLoop": false,
-          "isRecordRelative": false,
-          "recordPathName": ""
-        },
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "roughness": 0.5,
-        "saveCategory": "Object",
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ],
-        "targetID": -1,
-        "texturePath": "",
-        "type": "Model"
-      },
-      {
-        "animation": {
-          "animName": "",
-          "isAnimLoop": true
-        },
-        "blendMode": 0,
-        "collider": {
-          "center": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "size": [
-            1.0,
-            1.0,
-            1.0
-          ],
-          "type": 0
-        },
-        "collisionAttribute": 0,
-        "collisionMask": 0,
-        "color": [
-          0.9411764740943909,
-          0.9411764740943909,
-          1.0,
-          1.0
-        ],
-        "enableEnvMap": false,
-        "enableNormalMap": false,
-        "enemyType": "",
-        "envIntensity": 1.0,
-        "eventID": 0,
-        "localFog": {
-          "color": [
-            0.20000000298023224,
-            0.800000011920929,
-            0.5,
-            1.0
-          ],
-          "density": 0.5,
-          "edgeFade": 0.0,
-          "noiseScale": 0.0,
-          "noiseSpeed": 0.0,
-          "scatteringG": 0.0,
-          "scatteringIntensity": 0.0
-        },
-        "materialType": 0,
-        "metallic": 0.0,
-        "modelName": "block",
-        "myEventID": -1,
-        "name": "Bridge_Block_Back",
-        "normalMapPath": "",
-        "ormMapPath": "",
-        "parentName": "Bridge_Block_Front",
-        "position": [
-          0.0,
-          0.0,
-          -4.0
-        ],
-        "quaternion": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
-        ],
-        "recorder": {
-          "isRecordLoop": false,
-          "isRecordRelative": false,
-          "recordPathName": ""
-        },
-        "rotation": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "roughness": 0.5,
-        "saveCategory": "Object",
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ],
-        "targetID": -1,
-        "texturePath": "",
-        "type": "Model"
-      },
         {
             "animation": {
                 "animName": "",
