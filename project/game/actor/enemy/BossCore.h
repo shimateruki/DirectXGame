@@ -120,4 +120,7 @@ private:
     Object3d* warningArea_ = nullptr;
 
     Vector4 originalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    // 攻撃モード6のレーザービーム用円柱オブジェクト
+    std::vector<std::unique_ptr<Object3d>> laserBeams_;
 };

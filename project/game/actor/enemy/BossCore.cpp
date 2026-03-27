@@ -127,6 +127,19 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     }
 
     originalColor_ = GetColor();
+
+    // ==========================================
+    // レーザー用の円柱モデルを6本生成しておく
+    // ==========================================
+    for (int i = 0; i < 6; ++i) {
+        auto beam = std::make_unique<Object3d>();
+        beam->Initialize(common_);         // エンジンの共通データで初期化
+        beam->SetModel("cylinder");        // ※円柱モデルのファイル名に合わせてください！
+        beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+        beam->SetCollisionAttribute(0);    // 当たり判定なし
+        beam->SetCollisionMask(0);
+        laserBeams_.push_back(std::move(beam));
+    }
 }
 
 void BossCore::Update(float deltaTime) {
@@ -1548,9 +1561,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         }
     }
     // ======================================
-    // 攻撃モード6：中央へ移動 ＆ 全方位回転レーザー陣形！ (Phase 60 ~ 62)
-    // ======================================
-    // ======================================
     // 攻撃モード6：中央移動 → 回転タメ → 回転変形 → 0.5秒停止 → レーザー！ (Phase 60 ~ 65)
     // ======================================
     else if (attackMode_ == 6) {
@@ -1559,7 +1569,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         // ★ 回転スピードの調整用変数
         // ==========================================
         float maxSpinSpeed = 8.0f;  // タメ・変形中の大回転トップスピード！
-        float fireSpinSpeed = 0.5f; // レーザー発射中の少し落ち着いた回転スピード
+        float fireSpinSpeed = 0.3f; // レーザー発射中の少し落ち着いた回転スピード
 
         // --- Phase 60: まずはコアが中央(0,0)へスゥーッと移動する ---
         if (animPhase_ == 60) {
@@ -1575,7 +1585,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             // コア本体をステージ中央 (X=0, Y=4.0, Z=0) へ移動
             Vector3 corePos = GetTranslate();
             corePos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
-            corePos.y = Math::Lerp(animStartPos_.y, 4.0f, easeT);
+            corePos.y = Math::Lerp(animStartPos_.y, 2.0f, easeT);
             corePos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
             SetTranslate(corePos);
 
@@ -1693,50 +1703,110 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
-        // --- Phase 63: ★新規！陣形完了後、0.5秒間完全に沈黙する！（嵐の前の静けさ） ---
+        // --- Phase 63: 陣形完了後、0.5秒間完全に沈黙する！（嵐の前の静けさ ＋ 予兆レーザー） ---
         else if (animPhase_ == 63) {
+            if (animTimer_ == 0.0f) {
+                for (Object3d* block : armorBlocks_) {
+                    if (!block) continue;
+                    for (Object3d* child : block->GetChildren()) {
+                        if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+
+                            // ==========================================
+                            // ★ 修正：Y軸を長さ(80.0f)にして、XZを極細(0.1f)にする！
+                            // ==========================================
+                            child->SetScale({ 0.1f, 80.0f, 0.1f });
+
+                            // ==========================================
+                            // ★ 修正：円柱をX軸に90度（pi/2）倒して、正面に向ける！
+                            // ==========================================
+                            float rotX90 = std::numbers::pi_v<float> / 2.0f;
+                            child->SetRotation({ rotX90, 0.0f, 0.0f });
+                            child->GetTransform()->isQuaternionMaster = false;
+
+                            child->SetColor({ 1.0f, 0.0f, 0.0f, 0.5f }); // 半透明の赤
+                            child->SetCollisionAttribute(0); // 当たり判定なし
+                        }
+                    }
+                }
+            }
+
             animTimer_ += deltaTime;
 
-            // 実時間で 0.5秒間ストップ (0.5 * 1.5 = 0.75f)
-            float stopDuration = 1.5f;
-
-            // ※ ここでは一切 rot.y を足さないため、ピタッと完全に停止します！
+            // ★ 修正：実時間で 0.5秒間ストップ (0.5 * 1.5 = 0.75f) に直しました！
+            float stopDuration = 0.75f;
 
             if (animTimer_ >= stopDuration) {
                 animPhase_ = 64;
                 animTimer_ = 0.0f;
             }
-        }
-        // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！（予定） ---
-        else if (animPhase_ == 64) {
-            animTimer_ += deltaTime;
-
-            // 実時間で5.0秒間レーザーを撃ち続ける (5.0 * 1.5 = 7.5f)
-            float spinDuration = 7.5f;
-
-            // 回転スピードをレーザー用の速度（fireSpinSpeed: 0.5f）に切り替えて回し続ける
-            Vector3 rot = GetRotation();
-            rot.y += fireSpinSpeed * deltaTime;
-            SetRotation(rot);
-            GetTransform()->isQuaternionMaster = false;
-
-            // ==========================================
-            // ★ 次回、ここにビーム（パーティクル）の発生処理を書きます！
-            // ==========================================
-
-            if (animTimer_ >= spinDuration) {
-                animPhase_ = 65; // 復帰フェーズへ
-                animTimer_ = 0.0f;
-                animStartRot_ = GetRotation();
-
-                blockStartPos_.clear();
-                blockStartScale_.clear();
-                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
-                    blockStartScale_.push_back(armorBlocks_[i]->GetScale());
-                }
             }
-        }
+            // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
+        else if (animPhase_ == 64) {
+                animTimer_ += deltaTime;
+
+                // 実時間で5.0秒間レーザーを撃ち続ける (5.0 * 1.5 = 7.5f)
+                float spinDuration = 7.5f;
+
+                // 回転スピードをレーザー用の速度（fireSpinSpeed: 0.5f）に切り替えて回し続ける
+                Vector3 rot = GetRotation();
+                rot.y += fireSpinSpeed * deltaTime;
+                SetRotation(rot);
+                GetTransform()->isQuaternionMaster = false;
+
+                // ==========================================
+                // ★ 追加：ビームを一気に極太にして、当たり判定を付ける！
+                // ==========================================
+                float expandTime = 0.2f; // 0.2秒で極太になる
+                float t = std::min(animTimer_ / expandTime, 1.0f);
+
+                // 太さを 0.1 から 3.0 へ一気に膨張させる
+                float beamThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
+
+                for (Object3d* block : armorBlocks_) {
+                    if (!block) continue;
+                    for (Object3d* child : block->GetChildren()) {
+                        if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+
+                            // ==========================================
+                            // ★ 修正：長さのY軸は80.0fに固定し、XZ（太さ）を極太にする！
+                            // ==========================================
+                            child->SetScale({ beamThickness, 80.0f, beamThickness });
+
+                            // ※回転（Rotation）はPhase 63で倒したままなので、ここでは設定しなくてOKです！
+
+                            child->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 濃い赤
+                            child->SetCollisionAttribute(kEnemyAttack);  // ★触れたらダメージ！
+                        }
+                    }
+                }
+
+                // 撃ち終わったら消して復帰！
+                if (animTimer_ >= spinDuration) {
+                    animPhase_ = 65; // 復帰フェーズへ
+                    animTimer_ = 0.0f;
+                    animStartRot_ = GetRotation();
+
+                    // ==========================================
+                    // ★ 追加：ビームを消して、当たり判定も消す
+                    // ==========================================
+                    for (Object3d* block : armorBlocks_) {
+                        if (!block) continue;
+                        for (Object3d* child : block->GetChildren()) {
+                            if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+                                child->SetScale({ 0.0f, 0.0f, 0.0f }); // 見えなくする
+                                child->SetCollisionAttribute(0);       // 当たり判定を消す
+                            }
+                        }
+                    }
+
+                    blockStartPos_.clear();
+                    blockStartScale_.clear();
+                    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                        blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                        blockStartScale_.push_back(armorBlocks_[i]->GetScale());
+                    }
+                }
+                }
         // --- Phase 65: 回転を止め、待機状態のバラバラ軌道へ復帰する ---
         else if (animPhase_ == 65) {
             animTimer_ += deltaTime;
