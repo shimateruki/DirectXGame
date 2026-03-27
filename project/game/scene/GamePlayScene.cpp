@@ -322,7 +322,7 @@ void GamePlayScene::Update(float deltaTime) {
 				for (auto& obj : objectManager_->GetObjects()) {
 					if (obj->GetName() == "Bridge_Block_Center") {
 						Transform* trans = obj->GetTransform();
-						trans->translate.y -= 20.0f * deltaTime;
+						trans->translate.y -= 26.0f * deltaTime;
 						trans->rotate.x -= 1.0f * deltaTime; // 自然な傾き（下へ折れ曲がる）
 						trans->isQuaternionMaster = false;
 						obj->UpdateWorldMatrix();
@@ -330,7 +330,7 @@ void GamePlayScene::Update(float deltaTime) {
                         // 少し遅れて奥のブロックもさらに崩れる
                         Transform* trans = obj->GetTransform();
 						trans->translate.y -= 32.0f * deltaTime;
-						trans->rotate.x -= 1.8f * deltaTime; // さらに折れ曲がる
+						trans->rotate.x += 1.8f * deltaTime; // 折れ曲がる
 						trans->isQuaternionMaster = false;
 						obj->UpdateWorldMatrix();
                     } else if (movieTimer_ > 2.5f && obj->GetName() == "Bridge_Block_Front") {
