@@ -70,7 +70,7 @@ void Game::Initialize() {
     KeyConfig::GetInstance()->Initialize();
 #ifdef USE_IMGUI
 
-    postEffectEditor_->Initialize(postEffect_.get());
+    postEffectEditor_->Initialize(PostEffect::GetInstance());
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
     ghostRecorder_ = std::make_unique<GhostRecorder>();
