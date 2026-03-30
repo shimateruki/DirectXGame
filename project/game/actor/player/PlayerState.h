@@ -389,7 +389,7 @@ private:
     bool isPlunging_ = false;
     bool isLanded_ = false;
     float recoveryTimer_ = 0.0f;
-    float recoveryDuration_ = 0.5f;
+    float recoveryDuration_ = 0.2f;
 
     Object3d* bodyObj_ = nullptr;
     Object3d* headObj_ = nullptr;
@@ -398,14 +398,29 @@ private:
     Object3d* rightFootObj_ = nullptr;
     Object3d* leftFootObj_ = nullptr;
     Object3d* swordObj_ = nullptr;
-    Vector3 swordDefaultRot_{};
-    Vector3 bodyDefaultRot_{};
-    Vector3 headDefaultRot_{};
-    Vector3 rightArmDefaultRot_{};
-    Vector3 leftArmDefaultRot_{};
-    Vector3 rightFootDefaultRot_{};
-    Vector3 leftFootDefaultRot_{};
 
+    Vector3 bodyDefaultPos_{};
+    Vector3 bodyDefaultRot_{};
+    Vector3 headDefaultPos_{};
+    Vector3 headDefaultRot_{};
+    Vector3 rightArmDefaultPos_{};
+    Vector3 rightArmDefaultRot_{};
+    Vector3 leftArmDefaultPos_{};
+    Vector3 leftArmDefaultRot_{};
+    Vector3 rightFootDefaultPos_{};
+    Vector3 rightFootDefaultRot_{};
+    Vector3 leftFootDefaultPos_{};
+    Vector3 leftFootDefaultRot_{};
+    Vector3 swordDefaultRot_{};
+
+    // ローカルのデフォルト座標（剣の Transform.translate）
+    Vector3 swordDefaultLocalPos_{ 0.0f, 0.0f, 0.0f };
+    // ワールドのデフォルト座標（GetWorldPosition）
+    Vector3 swordDefaultWorldPos_{ 0.0f, 0.0f, 0.0f };
+    // ワールド回転も保存しておく（Exitでワールド→ローカル変換に使う）
+    Vector3 swordDefaultWorldRot_{ 0.0f, 0.0f, 0.0f };
+
+    bool swordSaved_ = false;
     bool initializedParts_ = false;
     void ApplyPose(Player* player);
 };
