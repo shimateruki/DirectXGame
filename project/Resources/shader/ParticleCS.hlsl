@@ -440,6 +440,35 @@ void main(uint3 DTid : SV_DispatchThreadID)
             p.position = worldPos;
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
+        else if (shapeType == 4)
+        {
+            // 0.0 ～ 2PI (約6.28) のランダムな角度を生成
+            float theta = rand(float2(index, time)) * 6.28318f;
+            
+            // ハートの基本数式 (カージオイドの応用)
+            float hx = 16.0f * pow(sin(theta), 3.0f);
+            float hy = 13.0f * cos(theta) - 5.0f * cos(2.0f * theta) - 2.0f * cos(3.0f * theta) - cos(4.0f * theta);
+            
+            // 大きさを shapeRadius で調整 (計算結果が大きめなので 0.05 を掛けて丁度よくする)
+            hx *= 0.05f * shapeRadius;
+            hy *= 0.05f * shapeRadius;
+            
+            // C++側で「厚み」と「線の太さ」として設定した emitArea を使う
+            float thickness = emitArea.x;
+            float lineThickness = emitArea.y;
+            
+            // 既に上で計算されている乱数(rX, rY, rZ)を使って、少し散らばらせる
+            float noiseX = rX * lineThickness;
+            float noiseY = rY * lineThickness;
+            float noiseZ = rZ * thickness; // Z軸(奥行き)には厚みを適用
+            
+            // 最終的な座標を決定 (ハートの形 ＋ ノイズ散らばり)
+            p.position = emitPos + float3(hx + noiseX, hy + noiseY, noiseZ);
+            
+            // 速度は上に昇る基本Velocity ＋ ランダムな散らばり
+            p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
+        }
+    
         else // 🟦 Box (四角形 - デフォルト)
         {
             p.position = emitPos + float3(rX, rY, rZ) * emitArea;

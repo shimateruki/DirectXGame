@@ -88,7 +88,7 @@ public: // メンバ関数
 	uint32_t GetTextureHandle() const { return textureHandle_; }
 	void SetTextureHandle(uint32_t textureHandle) {
 		textureHandle_ = textureHandle;
-		 AdjustTextureSize(); 
+		/* AdjustTextureSize(); */
 	}
 	static uint32_t LoadTexture(const std::string& fileName);
 	// <summary>
@@ -123,6 +123,8 @@ public: // メンバ関数
 	void SetVisible(bool isVisible) { isVisible_ = isVisible; }
 	bool IsLocked() const { return isLocked_; }
 	void SetLocked(bool isLocked) { isLocked_ = isLocked; }
+	const std::string& GetTextureName() const { return textureName_; }
+	void SetTextureName(const std::string& name) { textureName_ = name; }
 private: // メンバ変数
 	SpriteCommon* common_ = nullptr;
 	DirectXCommon* dxCommon_ = nullptr;
@@ -174,4 +176,5 @@ private: // メンバ変数
 	TransformationMatrix* wvpData_ = nullptr;
 	bool isVisible_ = true; // デフォルトは表示
 	bool isLocked_ = false; // デフォルトは操作可能（アンロック）
+	std::string textureName_ = "";
 };

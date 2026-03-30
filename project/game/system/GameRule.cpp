@@ -4,6 +4,7 @@
 #include "BaseScene.h"
 #include "Event.h" 
 #include "Player.h"
+#include "GamePlayScene.h"
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
@@ -37,6 +38,14 @@ void GameRule::Initialize(BaseScene* scene) {
 
         case EventType::Damage:
             ApplyDamage(whoHit, 10.0f);
+            break;
+
+        case EventType::Movie_Bridge:
+            if (scene_) {
+                if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
+                    gps->StartBridgeDropMovie();
+                }
+            }
             break;
 
         case EventType::None:

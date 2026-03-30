@@ -37,10 +37,9 @@ void Character::Update(float deltaTime) {
 }
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    // 生存している場合のみ描画
-    if (!isDead) {
+
         Object3d::Draw(pointLightResource, spotLightResource);
-    }
+    
 }
 
 // =================================================================

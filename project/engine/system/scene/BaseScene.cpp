@@ -30,3 +30,14 @@ Object3d* BaseScene::FindObjectByEventID(int eventID) {
     }
     return nullptr;
 }
+
+// 名前からスプライトを取得する
+Sprite* BaseScene::GetSpriteByName(const std::string& name) {
+    auto& sprites = GetSprites();
+    for (auto& sprite : sprites) {
+        if (sprite && sprite->GetName() == name) {
+            return sprite.get();
+        }
+    }
+    return nullptr; // 見つからなかった場合
+}

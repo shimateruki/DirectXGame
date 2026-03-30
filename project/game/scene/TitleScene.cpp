@@ -66,19 +66,12 @@ void TitleScene::Initialize() {
 
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-    // ★追加: GPUパーティクルの初期化
+    //  GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets();
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
-    // --- 5. 固定スプライトの生成 (コードベースの生成) ---
-    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
-    auto monsterBallSprite = std::make_unique<Sprite>();
-    monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
-    monsterBallSprite->SetPosition({ 200.0f, 360.0f });
-    monsterBallSprite->SetSize({ 100.0f, 100.0f });
-    monsterBallSprite->SetName("MonsterBall");
-    sprites_.push_back(std::move(monsterBallSprite));
+
 
     // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/titleScene.json");
@@ -87,6 +80,9 @@ void TitleScene::Initialize() {
     LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile("title_camera.json");
+    
+    startTextSprite_ = GetSpriteByName("gameStartText.png");
+    settingTextSprite_ = GetSpriteByName("setting.png");
 
     dxCommon_->FlushCommandQueue(false);
 }
@@ -104,6 +100,50 @@ void TitleScene::Finalize() {
 }
 
 void TitleScene::Update(float deltaTime) {
+
+    // -------------------------------------------------
+    // 1. 入力によるメニューの上下移動
+    // -------------------------------------------------
+    InputManager* input = InputManager::GetInstance();
+
+    // （KeyConfigを実装済みなら "Up" や "Down" などのアクション名に置き換えてください！）
+    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+        currentMenuIndex_--;
+        if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1; // 一番上なら一番下へループ
+    }
+    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+        currentMenuIndex_++;
+        if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0; // 一番下なら一番上へループ
+    }
+
+    // -------------------------------------------------
+    // 2. 選択中のメニューをハイライト(色を変える)
+    // -------------------------------------------------
+    Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f }; // 非選択時は少し暗くする
+    Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 選択時は明るく白！
+
+    if (startTextSprite_) {
+        startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
+    }
+    if (settingTextSprite_) {
+        settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+    }
+
+    // -------------------------------------------------
+    // 3. 決定ボタンでシーン遷移
+    // -------------------------------------------------
+    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+        if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
+            // ゲーム開始！
+            SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+        }
+        else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
+            // 設定画面へ！(まだシーンがない場合は一旦ログを出すだけにしておきます)
+            DebugConsole::GetInstance()->AddLog("【Title】設定画面へ移行します！");
+            // SceneManager::GetInstance()->ChangeScene("SETTING"); 
+        }
+    }
+
     // 常に実行されるマネージャ更新
     LightEditor::GetInstance()->Update();
     CameraManager::GetInstance()->Update();

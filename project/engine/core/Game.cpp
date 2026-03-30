@@ -29,7 +29,7 @@ void Game::Initialize() {
     // =========================================================
     //  ローカル設定を見て開始シーンを決める
     // =========================================================
-    std::string startScene = "TITLE"; // デフォルト
+    std::string startScene = "GAMEPLAY"; // デフォルト
 
 #ifdef USE_IMGUI
     std::string lastScene = sceneManager_->LoadLastSceneName();
@@ -41,15 +41,36 @@ void Game::Initialize() {
     // 初期化 
     sceneManager_->Initialize(sceneFactory_.get(), startScene);
     //  lastTime_ を「起動時」の時間で初期化
+
+    // =========================================================
+    // 天球（Skydome）の値をプログラムで上書きする！
+    // =========================================================
+    if (auto currentScene = sceneManager_->GetCurrentScene()) {
+        // シーン内の全オブジェクトをループして天球を探す
+        for (auto& obj : currentScene->GetObjects()) {
+            if (obj && obj->GetName() == "Skydome") { // エディターでの名前に合わせてください
+
+                obj->SetSelectedLighting(0);
+
+                DebugConsole::GetInstance()->AddLog("🌌 Skydome settings have been overwritten!");
+                break; // 見つかったらループ終了
+            }
+        }
+    }
+
+
     lastTime_ = std::chrono::high_resolution_clock::now();
-    postEffect_ = std::make_unique<PostEffect>();
-    postEffect_->Initialize(dxCommon_);
+    PostEffect::GetInstance()->Initialize(dxCommon_);
     uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle.png");
-    postEffect_->SetLUTTexture(lutHandle);
+    PostEffect::GetInstance()->SetLUTTexture(lutHandle);
+
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
-    postEffectEditor_->Initialize(postEffect_.get());
-#ifdef USE_IMGUI
+    postEffectEditor_->Initialize(PostEffect::GetInstance());
+  
     KeyConfig::GetInstance()->Initialize();
+#ifdef USE_IMGUI
+
+    postEffectEditor_->Initialize(PostEffect::GetInstance());
     spriteDebugEditor_ = std::make_unique<SpriteDebugEditor>();
     spriteDebugEditor_->Initialize(sceneManager_.get(), InputManager::GetInstance());
     ghostRecorder_ = std::make_unique<GhostRecorder>();
@@ -92,6 +113,9 @@ void Game::Initialize() {
 #else
     isPlaying_ = true;  // リリース時は最初から再生
     WinApp::SetCursorVisibility(false);
+	winApp_->SetCursorClipping(true);
+    winApp_->SetCursorLocked(true);
+    CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 #endif
 #ifdef USE_IMGUI
     CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
@@ -127,7 +151,10 @@ void Game::Finalize() {
 
 void Game::Update() {
     InputManager::GetInstance()->Update();
-
+    if (InputManager::GetInstance()->IsKeyTriggered(DIK_ESCAPE)) {
+        PostQuitMessage(0); // Windowsに「アプリを終了して！」とメッセージを送る
+        return;             // 今回のフレームの更新はここで打ち切る
+    }
 #ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
@@ -199,7 +226,7 @@ void Game::Update() {
         ImVec2 imageScreenPos = ImGui::GetCursorScreenPos();
 
         if (displaySize.x > 0 && displaySize.y > 0) {
-            uint32_t texHandle = postEffect_->GetSRVHandle(1);
+            uint32_t texHandle = PostEffect::GetInstance()->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
 
@@ -381,7 +408,7 @@ void Game::Update() {
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     GPUParticleManager::GetInstance()->Update(deltaTime);
-    postEffect_->GetParams()->time += deltaTime;
+    PostEffect::GetInstance()->GetParams()->time += deltaTime;
 
     if (sceneManager_) {
         sceneManager_->SetIsPlaying(isPlaying_);
@@ -396,6 +423,7 @@ void Game::Update() {
 }
 
 void Game::Draw() {
+    PostEffect* postEffect_ = PostEffect::GetInstance();
     // ★ 前フレームのGPUの計測結果を読み取る
     dxCommon_->ReadGpuProfile();
 

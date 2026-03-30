@@ -68,20 +68,36 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             camera->SetFollowMode(settings_.gameFollowMode);
             InputManager* input = InputManager::GetInstance();
 
-            // ★追加: ジャイロ入力があるかチェック
+            // =========================================================
+            // 入力状態のチェック
+            // =========================================================
+            // マウスの移動量チェック
+            Vector2 mouseDelta = input->GetMouseMoveDelta();
+            bool isMouseMoving = (std::abs(mouseDelta.x) > 0.0f || std::abs(mouseDelta.y) > 0.0f);
+
+            // ジャイロ入力チェック (感度 0.05f)
             Vector3 gyro = input->GetGyroscope();
-            // 感度は 0.05f くらいでOK
             bool isGyroActive = (std::abs(gyro.x) > 0.05f || std::abs(gyro.y) > 0.05f || std::abs(gyro.z) > 0.05f);
 
-            // 操作中判定 (ジャイロも含める！)
+            // =========================================================
+            // 操作中判定（環境による分岐）
+            // =========================================================
+#ifdef USE_IMGUI
+            // ★ Debug/Develop環境：エディタ操作の誤爆を防ぐため、右クリック中のみ操作中とみなす
             bool isControllingCamera = input->IsMouseButtonPressed(1) ||
+#else
+            // ★ Release環境：右クリック不要！マウスを動かしただけでも操作中とみなす
+            bool isControllingCamera = input->IsMouseButtonPressed(1) || isMouseMoving ||
+#endif
                 (std::abs(input->GetRightStick().x) > 0.1f) ||
                 (std::abs(input->GetRightStick().y) > 0.1f) ||
                 isGyroActive;
 
-
+            // =========================================================
+            // カメラの値の反映処理
+            // =========================================================
             if (isControllingCamera) {
-                // A. 操作中： カメラの値を Editor に逆反映 (Read)
+                // 操作中： カメラの値を Editor に逆反映 (Read)
                 // カメラには書き込まない！
                 if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
                     settings_.gameFollowMode == Camera::FollowMode::kFirstPerson) {
@@ -93,9 +109,9 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
                     settings_.angle.y = currentRot.y * toDeg;
                     settings_.angle.z = currentRot.z * toDeg;
                 }
-
-            } else {
-
+            }
+            else {
+                // 操作していない時だけ、設定値をカメラに流し込む
                 camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
             }
 
@@ -108,12 +124,12 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             camera->SetOrbitParams(settings_.orbitRadius, settings_.orbitHeight, settings_.orbitSpeed);
         }
 
-    } else {
+    }
+    else {
         camera->SetFollowTarget(nullptr);
         UpdateFreeCamera(camera);
     }
 }
-
 void CameraEditor::UpdateFreeCamera(Camera* camera) {
     InputManager* input = InputManager::GetInstance();
 

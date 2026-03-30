@@ -23,6 +23,7 @@
 #include "EngineManualWindow.h"
 #include"MeshEffectEditor.h"
 
+class WinApp;
 
 class Game : public Framework {
 public:
@@ -42,7 +43,6 @@ private:
 	float timeScale_ = 1.0f;
 	bool isPlaying_ = false;
 	std::string currentSceneName_;
-	std::unique_ptr<PostEffect> postEffect_; 
 	std::unique_ptr<PostEffectEditor> postEffectEditor_;
 	float sceneUpdateTimeMs_ = 0.0f;
 	float sceneDrawTimeMs_ = 0.0f;

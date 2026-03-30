@@ -19,6 +19,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 #endif
 
     switch (msg) {
+    case WM_ACTIVATE:
+        if (LOWORD(wparam) == WA_INACTIVE) {
+            ClipCursor(nullptr); // 解放
+        }
+        break;
     case WM_SIZE: // ★ウィンドウサイズが変わった
         if (wparam != SIZE_MINIMIZED) {
             int32_t width = LOWORD(lparam);
@@ -85,7 +90,24 @@ bool WinApp::Update() {
     if (msg.message == WM_QUIT) {
         return true;
     }
+    if (isCursorLocked_) {
+        // 他のアプリ（ブラウザ等）を操作している時にマウスが奪われないよう、
+        // 自分のゲーム画面がアクティブ（最前面）の時だけ固定する！
+        if (GetActiveWindow() == hwnd_) {
+            RECT clientRect;
+            GetClientRect(hwnd_, &clientRect);
 
+            // クライアント領域（描画エリア）のド真ん中を計算
+            POINT center = {
+                (clientRect.right - clientRect.left) / 2,
+                (clientRect.bottom - clientRect.top) / 2
+            };
+
+            // モニター全体の座標系に変換して、そこにマウスを強制テレポート！
+            ClientToScreen(hwnd_, &center);
+            SetCursorPos(center.x, center.y);
+        }
+    }
     // 続ける場合はfalseを返す
     return false;
 }
@@ -99,4 +121,36 @@ void WinApp::SetCursorVisibility(bool isVisible) {
         // 確実に消える(0未満になる)まで FALSE を呼ぶ
         while (ShowCursor(FALSE) >= 0);
     }
+}
+
+
+void WinApp::SetCursorClipping(bool isClipping) {
+    isCursorClipping_ = isClipping;
+    if (isClipping) {
+        // ウィンドウのクライアント領域（描画エリア）を取得
+        RECT rect;
+        GetClientRect(hwnd_, &rect);
+
+        // 画面全体（モニター）の座標系に変換
+        POINT topLeft = { rect.left, rect.top };
+        POINT bottomRight = { rect.right, rect.bottom };
+        ClientToScreen(hwnd_, &topLeft);
+        ClientToScreen(hwnd_, &bottomRight);
+
+        rect.left = topLeft.x;
+        rect.top = topLeft.y;
+        rect.right = bottomRight.x;
+        rect.bottom = bottomRight.y;
+
+        // カーソルを指定範囲に監禁！
+        ClipCursor(&rect);
+    }
+    else {
+        // 監禁を解除！
+        ClipCursor(nullptr);
+    }
+}
+
+void WinApp::SetCursorLocked(bool isLocked) {
+    isCursorLocked_ = isLocked;
 }
