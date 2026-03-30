@@ -26,7 +26,7 @@
 #include "GameRule.h"
 #include "ObjectManager.h" 
 #include "BossCore.h"
-
+#include"WinApp.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -61,6 +61,7 @@ void GamePlayScene::Initialize() {
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
 	// --- 2. 各種マネージャ初期化 ---
+	EventManager::GetInstance()->ClearAllListeners();
 	CameraManager::GetInstance()->Initialize();
 	CameraManager::GetInstance()->SetInputManager(inputManager_);
 
@@ -88,7 +89,11 @@ void GamePlayScene::Initialize() {
 
 	lockOnSystem_ = std::make_unique<LockOnSystem>();
 	lockOnSystem_->Initialize(inputManager_);
-
+	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png"); 
+	lockOnSprite_ = std::make_unique<Sprite>();
+	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
+	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
@@ -170,6 +175,78 @@ void GamePlayScene::Update(float deltaTime) {
 	// --- ロックオン & カメラ制御 ---
 	lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
 	CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
+	// =================================================================
+	// ロックオンアイコンの 2.5D 追従計算 (World To Screen)
+	// =================================================================
+	Object3d* target = lockOnSystem_->GetTarget();
+
+	// ★ ここを1つにまとめました！
+	if (target && lockOnSystem_->IsLockingOn()) {
+		isDrawLockOn_ = true;
+
+		// =======================================================
+		// ★修正1：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
+		// =======================================================
+		AABB aabb = target->GetAABB();
+
+		// ① ターゲットの「真の中心座標」を計算
+		Vector3 targetCenter;
+		targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
+		targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
+		targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
+
+		// ② カメラのビュー行列とプロジェクション行列を掛け合わせる
+		Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
+		// ③ ワールド座標(中心) → クリップ座標 (W除算) の計算
+		float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] + targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
+
+		// カメラの後ろ（画面外）にいる時は表示しない
+		if (w > 0.001f) {
+			Vector3 ndc;
+			ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
+			ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
+
+			float screenWidth = WinApp::kClientWidth;
+			float screenHeight = WinApp::kClientHeight;
+
+			float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
+			float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+
+			lockOnSprite_->SetPosition({ screenX, screenY });
+
+			// =======================================================
+			// ★修正2：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+			// =======================================================
+			float objSizeX = aabb.max.x - aabb.min.x;
+			float objSizeY = aabb.max.y - aabb.min.y;
+			float objSizeZ = aabb.max.z - aabb.min.z;
+			float maxObjSize = std::max({ objSizeX, objSizeY, objSizeZ });
+
+			float baseSize = maxObjSize * 25.0f;
+			float distanceScale = 20.0f / w;
+
+			float finalSize = baseSize * distanceScale;
+			finalSize = std::max(32.0f, std::min(finalSize, 256.0f));
+
+			lockOnSprite_->SetSize({ finalSize, finalSize });
+
+			// （おまけ）ロックオンアイコンを毎フレーム少し回転させると超カッコよくなります
+			float currentRot = lockOnSprite_->GetRotation();
+			lockOnSprite_->SetRotation(currentRot + 2.0f * deltaTime);
+
+			lockOnSprite_->Update();
+		}
+		else {
+			isDrawLockOn_ = false; // カメラの裏にいる時は消す
+		}
+	}
+	else {
+		// =======================================================
+		// ★ 一番重要：ロックオンしていない時は確実に表示をオフにする！
+		// =======================================================
+		isDrawLockOn_ = false;
+	}
 
 	// 自由カメラモード以外の操作
 	if (!CameraEditor::GetInstance()->IsEditorMode()) {
@@ -191,13 +268,6 @@ void GamePlayScene::Update(float deltaTime) {
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
-	for (auto &obj : objectManager_->GetObjects ()) {
-		if (obj->GetName () == "Enemy_BossCore") {
-			// エンジンのスキップ処理を無視して、強制的に毎フレーム叩き起こす！
-			obj->Update (deltaTime);
-		}
-	}
-
 	// 例：座標(0, 5, 0) から、上方向(0, 10, 0) に向けて毎フレーム500個噴き出す
 	//GPUParticleManager::GetInstance()->Emit(
 	//	{ 0.0f, 5.0f, 0.0f },  // 発生座標
@@ -216,12 +286,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
-	//ImGui::Begin("Shadow Map Debug");
-	//// ハンドルからGPUアドレスを取得して表示
-	//auto gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(DirectXCommon::GetInstance()->GetShadowMapSrvHandle());
-	//// 200x200 のサイズで画像を表示
-	//ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(200, 200));
-	//ImGui::End();
+
 }
 
 
@@ -315,6 +380,9 @@ void GamePlayScene::DrawUI() {
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) {
 		sprite->Draw();
+	}
+	if (isDrawLockOn_ && lockOnSprite_) {
+		lockOnSprite_->Draw();
 	}
 }
 

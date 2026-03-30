@@ -38,7 +38,7 @@ public:
     /// DamageEvent を発行（ディスパッチ）する
     /// </summary>
     void Dispatch(const DamageEvent& event);
-
+    void ClearAllListeners();
 private:
     EventManager() = default;
     ~EventManager() = default;
