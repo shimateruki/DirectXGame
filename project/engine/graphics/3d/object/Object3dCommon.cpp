@@ -261,11 +261,12 @@ void Object3dCommon::SetLocalFogGraphicsCommand() {
 // ==========================================================
 //  エフェクト用コマンドのセット
 // ==========================================================
-void Object3dCommon::SetEffectGraphicsCommand() {
+void Object3dCommon::SetEffectGraphicsCommand(BlendMode blendMode) {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(effectRootSignature_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    commandList->SetPipelineState(effectPipelineState_.Get());
+    // 指定されたブレンドモードのPSOをセット
+    commandList->SetPipelineState(effectPipelineStates_[static_cast<size_t>(blendMode)].Get());
 }
 
 // ==========================================================
@@ -307,7 +308,7 @@ void Object3dCommon::CreateEffectRootSignature() {
     );
 }
 // ==========================================================
-// ★ エフェクト用パイプラインの構築
+// ★ エフェクト用パイプラインの構築 (ブレンドモード全対応版)
 // ==========================================================
 void Object3dCommon::CreateEffectPipeline() {
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
@@ -318,7 +319,6 @@ void Object3dCommon::CreateEffectPipeline() {
          { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
          { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
-
 
     // シェーダーのコンパイル (前回作成した軽量シェーダー)
     auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Effect3d.VS.hlsl", L"vs_6_0");
@@ -332,17 +332,22 @@ void Object3dCommon::CreateEffectPipeline() {
     // ★超重要: 斬撃の裏側が消えないように CULL_MODE_NONE にする！
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
-    // ★超重要: 自ら発光するエネルギー表現のため、加算合成 (kAdd) を指定！
-    // 隊長のビルダーなら、これで自動的にZバッファ書き込み(DepthWriteMask)もZEROになります
-    psoBuilder.SetBlendMode(BlendMode::kAdd);
-
     // Zテスト(奥にあるものは隠れる)は有効にしておく
+    // ※エフェクトなのでZバッファへの書き込みはしない(ZERO)
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO);
 
     // レンダーターゲットの設定
     DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
-    // ビルド実行
-    psoBuilder.Build(dxCommon_->GetDevice(), &effectPipelineState_);
+
+    for (size_t i = 0; i < static_cast<size_t>(BlendMode::kCountOfBlendMode); ++i) {
+        BlendMode mode = static_cast<BlendMode>(i);
+
+        // ビルダーに現在のループのブレンドモードをセット
+        psoBuilder.SetBlendMode(mode);
+
+        // 配列の該当インデックスにPSOをビルドして保存
+        psoBuilder.Build(dxCommon_->GetDevice(), effectPipelineStates_[i].GetAddressOf());
+    }
 }

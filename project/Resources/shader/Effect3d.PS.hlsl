@@ -105,9 +105,26 @@ float4 main(VertexOutput input) : SV_TARGET
     if (baseNoiseValue < dissolveFade)
         discard;
 
-    // 4. マスク計算
-    float alphaMask = pow(saturate(input.uv.y), abs(edgeFadeStrength) + 0.01f);
-    float distMask = sin(saturate(input.uv.y) * 3.14159f);
+// --------------------------------------------------------
+    // 4. マスク計算 (★ここを「斬撃の形」に書き換える！)
+    // --------------------------------------------------------
+    
+    // ① 尻尾のフェード（X軸：弧の長さ）
+    // 先端(0.0)は濃く、尻尾(1.0)に向かってスッと消えるグラデーション
+    float trailMask = smoothstep(1.0f, 0.0f, input.uv.x);
+    // もし向きが逆（尻尾が太くなる）なら、 smoothstep(0.0f, 1.0f, input.uv.x) に変えてください！
+
+    // ② 刃の鋭さ（Y軸：太さ）
+    // sin波を使って「中心が1.0、両端が0.0」になる丸みを作り、それを累乗して鋭く尖らせる
+    float widthMask = sin(saturate(input.uv.y) * 3.14159f);
+    widthMask = pow(widthMask, abs(edgeFadeStrength) + 1.0f); // edgeFadeStrengthで鋭さを調整
+
+    // ③ 合成
+    // 読み込んだノイズの形 × 尻尾フェード × 刃の鋭さ
+    float alphaMask = baseNoiseValue * trailMask * widthMask;
+    
+    // 歪み用のマスク（縁が四角く歪むのを防ぐ）
+    float distMask = widthMask;
 
     // 5. 発光カラーの計算 (カラーランプ切り替え)
     float3 baseColor = color.rgb;

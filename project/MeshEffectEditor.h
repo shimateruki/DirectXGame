@@ -63,6 +63,7 @@ private:
 
     char editRampTexturePath_[256] = "";
     int currentRampTextureIndex_ = -1;
+    int currentBlendModeIndex_ = 2;
 
     void SaveToJson();
     void LoadFromJson();

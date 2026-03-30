@@ -61,12 +61,15 @@ public:
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }
     void SetEnableColorRamp(bool enable) { materialData_->enableColorRamp = enable ? 1 : 0; }
     void SetEnableNoiseTexture(bool enable) { materialData_->enableNoiseTexture = enable ? 1 : 0; }
+    void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
+    BlendMode GetBlendMode() const { return blendMode_; }
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
     EffectMaterial* materialData_ = nullptr;
 
     void CreateMaterialBuffer(ID3D12Device* device);
+    BlendMode blendMode_ = BlendMode::kAdd;
     float currentTime_ = 0.0f;
     float lifetime_ = 1.0f;
     bool isPlaying_ = false;

@@ -116,7 +116,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     DebugConsole::GetInstance()->AddLog(LogLevel::Info, "  3: Success! Ready to draw mesh.");
     // 1. エフェクト専用パイプラインへの切り替え
-    common_->SetEffectGraphicsCommand();
+    common_->SetEffectGraphicsCommand(blendMode_);
 
     // =======================================================
     // 2. ルートパラメータのセット (必ず定義通りの4つをセットする！)

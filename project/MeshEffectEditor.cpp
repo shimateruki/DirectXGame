@@ -77,6 +77,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         }
     }
     if (previewEffect_) {
+        previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
         // ★ 毎フレーム新しいパラメータを送る
         previewEffect_->SetStartScale(editStartScale_);
         previewEffect_->SetEndScale(editEndScale_);
@@ -150,11 +151,11 @@ void MeshEffectEditor::DrawImGui() {
 #ifdef USE_IMGUI
     if (!previewEffect_) return;
 
-    // ウィンドウの横幅を取得（ボタンなどを画面幅ぴったりに合わせるため）
+    // ウィンドウの横幅を取得
     float availWidth = ImGui::GetContentRegionAvail().x;
 
     // ==========================================
-    // 1. プレビュー操作（最頻出なので一番上に固定）
+    // 1. エフェクト再生コントロール
     // ==========================================
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
     if (ImGui::Button("PLAY EFFECT (ATTACK!)", ImVec2(availWidth, 40))) {
@@ -170,12 +171,47 @@ void MeshEffectEditor::DrawImGui() {
 
     ImGui::Spacing();
     ImGui::Separator();
+
+    // ==========================================
+    // 2. ブレンドモード設定
+    // ==========================================
+    const char* blendModeNames[] = { "None", "Normal (半透明)", "Add (加算発光)", "Subtract (減算)", "Multiply (乗算)", "Screen" };
+    if (ImGui::Combo("Blend Mode", &currentBlendModeIndex_, blendModeNames, IM_ARRAYSIZE(blendModeNames))) {
+        previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
+    }
+
     ImGui::Spacing();
 
     // ==========================================
-    // 2. リソース設定
+    // 3. リソース設定 (メッシュ・テクスチャ)
     // ==========================================
     if (ImGui::CollapsingHeader("Resources", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        // --- 共通のテクスチャ選択ヘルパー (ラムダ式) ---
+        auto TextureCombo = [&](const char* label, int& currentIndex, char* targetPath, auto callback) {
+            const char* previewName = (currentIndex >= 0 && currentIndex < (int)textureFileList_.size())
+                ? textureFileList_[currentIndex].c_str() : "None";
+
+            if (ImGui::BeginCombo(label, previewName)) {
+                // 「なし」の選択
+                if (ImGui::Selectable("None", currentIndex == -1)) {
+                    currentIndex = -1;
+                    targetPath[0] = '\0';
+                    callback("");
+                }
+                // リストから選択
+                for (int i = 0; i < (int)textureFileList_.size(); ++i) {
+                    if (ImGui::Selectable(textureFileList_[i].c_str(), currentIndex == i)) {
+                        currentIndex = i;
+                        std::string fullPath = "Resources/sprite/" + textureFileList_[i];
+                        strncpy_s(targetPath, 256, fullPath.c_str(), _TRUNCATE);
+                        callback(fullPath);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            };
+
         // --- メッシュ選択 ---
         std::vector<std::string> modelNames = ModelManager::GetInstance()->GetLoadedModelNames();
         if (ImGui::BeginCombo("Select Mesh", editModelName_)) {
@@ -185,130 +221,87 @@ void MeshEffectEditor::DrawImGui() {
                     strncpy_s(editModelName_, name.c_str(), sizeof(editModelName_) - 1);
                     previewEffect_->SetModel(editModelName_);
                 }
-                if (isSelected) ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
 
-        // --- ① テクスチャ選択 ---
-        if (!textureFileList_.empty()) {
-            const char* currentTexName = (currentTextureIndex_ >= 0) ? textureFileList_[currentTextureIndex_].c_str() : "None";
-            if (ImGui::BeginCombo("Texture", currentTexName)) {
-                for (int i = 0; i < textureFileList_.size(); ++i) {
-                    bool isSelected = (currentTextureIndex_ == i);
-                    if (ImGui::Selectable(textureFileList_[i].c_str(), isSelected)) {
-                        currentTextureIndex_ = i;
-                        std::string fullPath = "Resources/sprite/" + textureFileList_[i];
-                        strncpy_s(editTexturePath_, fullPath.c_str(), sizeof(editTexturePath_) - 1);
-                        if (auto renderer = previewEffect_->GetMeshRenderer()) {
-                            renderer->SetTexture(editTexturePath_);
-                        }
-                    }
-                    if (isSelected) ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
+        ImGui::Separator();
+
+        // --- ① メインテクスチャ (t0) ---
+        TextureCombo("Main Texture", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
+            if (auto renderer = previewEffect_->GetMeshRenderer()) {
+                renderer->SetTexture(path);
             }
-        }
-        else {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "No texture found in Resources/sprite/");
-        }
+            });
 
-        // --- ② ノイズテクスチャ選択 ---
-        const char* currentNoiseTexName = (currentNoiseTextureIndex_ >= 0) ? textureFileList_[currentNoiseTextureIndex_].c_str() : "None";
-        if (ImGui::BeginCombo("Noise Texture", currentNoiseTexName)) {
-            for (int i = 0; i < textureFileList_.size(); ++i) {
-                bool isSelected = (currentNoiseTextureIndex_ == i);
-                if (ImGui::Selectable(textureFileList_[i].c_str(), isSelected)) {
-                    currentNoiseTextureIndex_ = i;
-                    std::string fullPath = "Resources/sprite/" + textureFileList_[i];
-                    strncpy_s(editNoiseTexturePath_, fullPath.c_str(), sizeof(editNoiseTexturePath_) - 1);
+        // --- ② ノイズテクスチャ (t2) ---
+        TextureCombo("Noise Texture", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
+            uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
+            previewEffect_->SetNoiseTexture(handle);
+            });
 
-                    // 選択されたら即座にプレビューに反映
-                    uint32_t texHandle = TextureManager::GetInstance()->Load(editNoiseTexturePath_);
-                    previewEffect_->SetNoiseTexture(texHandle);
-                }
-                if (isSelected) ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
-
-       auto TextureCombo = [&](const char* label, int& currentIndex, char* targetPath, auto callback) {
-        const char* previewName = (currentIndex >= 0 && currentIndex < (int)textureFileList_.size())
-            ? textureFileList_[currentIndex].c_str() : "None";
-
-        if (ImGui::BeginCombo(label, previewName)) {
-            // =======================================================
-            // ★追加：テクスチャを「なし (None)」に戻す機能
-            if (ImGui::Selectable("None", currentIndex == -1)) {
-                currentIndex = -1;
-                targetPath[0] = '\0'; // パスを空にする
-                callback("");         // 空文字を渡す
-            }
-            // =======================================================
-
-            for (int i = 0; i < (int)textureFileList_.size(); ++i) {
-                if (ImGui::Selectable(textureFileList_[i].c_str(), currentIndex == i)) {
-                    currentIndex = i;
-                    std::string fullPath = "Resources/sprite/" + textureFileList_[i];
-                    strncpy_s(targetPath, 256, fullPath.c_str(), _TRUNCATE);
-                    callback(fullPath);
-                }
-            }
-            ImGui::EndCombo();
-        }
-    };
+        // --- ③ カラーランプ (t3) ---
+        TextureCombo("Color Ramp", currentRampTextureIndex_, editRampTexturePath_, [&](const std::string& path) {
+            uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
+            previewEffect_->SetRampTexture(handle);
+            });
     }
 
     // ==========================================
-    // 3. 配置（トランスフォーム）
+    // 4. 配置設定 (Transform)
     // ==========================================
     if (ImGui::CollapsingHeader("Base Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::DragFloat3("Position", &editPosition_.x, 0.1f);
         ImGui::DragFloat3("Rotation", &editRotation_.x, 0.01f);
-        // ※固定Scaleはアニメーションで上書きされるため廃止しました
     }
 
     // ==========================================
-    // 4. アニメーション（Scale & Color）
+    // 5. アニメーション設定
     // ==========================================
     if (ImGui::CollapsingHeader("Animation (Start -> End)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::SliderFloat("Lifetime (sec)", &editLifetime_, 0.05f, 3.0f);
 
-        ImGui::Spacing();
         ImGui::Text("[ Scale ]");
         ImGui::DragFloat3("Start Scale", &editStartScale_.x, 0.1f);
         ImGui::DragFloat3("End Scale", &editEndScale_.x, 0.1f);
 
         ImGui::Spacing();
+
         ImGui::Text("[ Color ]");
         ImGui::ColorEdit4("Start Color", &editStartColor_.x);
         ImGui::ColorEdit4("End Color", &editEndColor_.x);
     }
 
     // ==========================================
-    // 5. シェーダーパラメータ
+    // 6. シェーダーパラメータ
     // ==========================================
     if (ImGui::CollapsingHeader("Shader Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::SliderFloat2("Scroll Speed", &editScrollSpeed_.x, -10.0f, 10.0f);
-        ImGui::SliderFloat("Intensity (HDR)", &editIntensity_, 0.0f, 10.0f);
+        // Scroll Speed: ドラッグによる微調整に対応
+        ImGui::DragFloat2("Scroll Speed", &editScrollSpeed_.x, 0.01f);
+
+        // Intensity: HDR発光強度 (負の値を防止)
+        ImGui::DragFloat("Intensity (HDR)", &editIntensity_, 0.01f, 0.0f, 100.0f);
+
+        ImGui::Separator();
+
+        ImGui::Text("[ Distortion (背景歪み) ]");
+        ImGui::Checkbox("Enable Grab Distortion", &editEnableDistortion_);
+        ImGui::SliderFloat("Dist Strength", &editDistortionStrength_, 0.0f, 0.2f);
+        ImGui::SliderFloat("Dist Speed", &editDistortionSpeed_, 0.0f, 50.0f);
+
+        ImGui::Spacing();
+
+        ImGui::Text("[ Edge Fade (形状削り出し) ]");
+        // 刃の鋭さを調整
+        ImGui::SliderFloat("Fade Strength", &editEdgeFadeStrength_, 1.0f, 10.0f);
     }
-    ImGui::Text("[ Distortion (波打ち) ]");
-    ImGui::Checkbox("Enable Grab Distortion (背景歪み)", &editEnableDistortion_);
-    ImGui::SliderFloat("Dist Strength", &editDistortionStrength_, 0.0f, 0.2f); // 0.05くらいが自然です
-    ImGui::SliderFloat("Dist Speed", &editDistortionSpeed_, 0.0f, 50.0f);     // 15.0くらいが標準
 
-    ImGui::Spacing();
-    ImGui::Text("[ Edge Fade (外側の透明化) ]");
-
-    // 1.0f で削りなし、10.0f でほぼ消滅
-    ImGui::SliderFloat("Fade Strength", &editEdgeFadeStrength_, 1.0f, 10.0f);
     // ==========================================
-    // 6. 保存と読み込み
+    // 7. 保存と読み込み
     // ==========================================
     if (ImGui::CollapsingHeader("Save & Load")) {
         ImGui::InputText("File Name", saveFileName_, sizeof(saveFileName_));
 
-        // 2つのボタンを画面幅の半分ずつで横並びに配置
         float halfWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
         if (ImGui::Button("Save JSON", ImVec2(halfWidth, 0))) {
             SaveToJson();
@@ -320,7 +313,6 @@ void MeshEffectEditor::DrawImGui() {
     }
 #endif
 }
-
 // ==========================================
 // JSON 保存処理
 // ==========================================
@@ -354,6 +346,7 @@ void MeshEffectEditor::SaveToJson() {
     j["DistortionSpeed"] = editDistortionSpeed_;
     j["EdgeFadeStrength"] = editEdgeFadeStrength_;
     j["EnableDistortion"] = editEnableDistortion_;
+    j["BlendMode"] = currentBlendModeIndex_;
     std::ofstream file(saveFileName_);
     if (file.is_open()) {
         file << j.dump(4); // 4インデントで綺麗に出力
@@ -471,7 +464,9 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("DistortionSpeed")) editDistortionSpeed_ = j["DistortionSpeed"];
     if (j.contains("EdgeFadeStrength")) editEdgeFadeStrength_ = j["EdgeFadeStrength"];
     if (j.contains("EnableDistortion")) editEnableDistortion_ = j["EnableDistortion"];
-
+    if (j.contains("BlendMode")) {
+        currentBlendModeIndex_ = j["BlendMode"];
+    }
     // ★読み込み完了後、新しい設定値でエフェクトを最初から再生し直す
     previewEffect_->Play(editLifetime_);
     SyncTextureIndices();
