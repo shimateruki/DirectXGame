@@ -51,8 +51,6 @@ static void FindFeetRecursive(Object3d* node, Object3d*& leftOut, Object3d*& rig
 	}
 }
 
-
-
 // ========================================================
 // シーン検索（名前ベース）
 // ========================================================
@@ -303,6 +301,7 @@ static Vector3 LerpVec(const Vector3& a, const Vector3& b, float t)
 {
 	return { a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
 }
+
 static float EaseInOutSine(float t)
 {
 	const float pi = 3.14159265358979323846f;
@@ -315,6 +314,7 @@ static float EaseSinToSmooth(float s)
 	float e = EaseInOutSine(u);
 	return e * 2.0f - 1.0f;
 }
+
 static float NormalizeAngle(float a)
 {
 	const float PI = 3.14159265358979323846f;
@@ -322,6 +322,7 @@ static float NormalizeAngle(float a)
 	while (a < -PI) a += 2.0f * PI;
 	return a;
 }
+
 static float LerpAngle(float a, float b, float t)
 {
 	float diff = NormalizeAngle(b - a);
@@ -334,6 +335,24 @@ static float LerpAngle(float a, float b, float t)
 static bool s_bodyBlendActive = false;
 static float s_bodyStartY = 0.0f;
 static float s_bodyTargetY = 0.0f;
+static Vector3 s_bodyStartRotVec = { 0,0,0 };
+static Vector3 s_bodyTargetRotVec = { 0,0,0 };
+
+// ========================================================
+// グローバル: 待機状態での足・腕・剣・頭のブレンド管理
+// ========================================================
+static struct PendingIdleBlend {
+	bool active = false;
+	float blendDuration = 0.35f;
+	bool leftFoot = false, rightFoot = false, leftArm = false, rightArm = false, head = false, body = false;
+	Vector3 leftFootStart{}, leftFootTarget{};
+	Vector3 rightFootStart{}, rightFootTarget{};
+	Vector3 leftArmStart{}, leftArmTarget{};
+	Vector3 rightArmStart{}, rightArmTarget{};
+	Vector3 headStart{}, headTarget{};
+	// 変更点: body は Y のみではなくフル回転を保持
+	Vector3 bodyStart{}, bodyTarget{};
+} s_pendingIdleBlend;
 
 // ========================================================
 // 待機状態 (Idle)
@@ -366,45 +385,83 @@ void PlayerStateIdle::Enter(Player* player)
 
 	TryFindFeet(player, leftFootObj_, rightFootObj_);
 	if (leftFootObj_) {
-		leftFootDefaultRot_ = leftFootObj_->GetRotation();
-		leftFootStartRot_ = leftFootDefaultRot_;
+		if (s_pendingIdleBlend.active && s_pendingIdleBlend.leftFoot) {
+			// Attack1 が渡した start/target を使ってブレンドする
+			leftFootDefaultRot_ = s_pendingIdleBlend.leftFootTarget;
+			leftFootStartRot_ = s_pendingIdleBlend.leftFootStart;
+		}
+		else {
+			// 通常の初期化（現在オブジェクトの回転をデフォルトに）
+			leftFootDefaultRot_ = leftFootObj_->GetRotation();
+			leftFootStartRot_ = leftFootDefaultRot_;
+		}
 		leftFootSaved_ = true;
 	}
 
 	if (rightFootObj_) {
-		rightFootDefaultRot_ = rightFootObj_->GetRotation();
-		rightFootStartRot_ = rightFootDefaultRot_;
+		if (s_pendingIdleBlend.active && s_pendingIdleBlend.rightFoot) {
+			rightFootDefaultRot_ = s_pendingIdleBlend.rightFootTarget;
+			rightFootStartRot_ = s_pendingIdleBlend.rightFootStart;
+		}
+		else {
+			rightFootDefaultRot_ = rightFootObj_->GetRotation();
+			rightFootStartRot_ = rightFootDefaultRot_;
+		}
 		rightFootSaved_ = true;
 	}
 
+	// --- 腕 ---
 	TryFindArms(player, leftArmObj_, rightArmObj_);
 	if (leftArmObj_) {
-		leftArmDefaultRot_ = leftArmObj_->GetRotation();
-		leftArmStartRot_ = leftArmDefaultRot_;
+		if (s_pendingIdleBlend.active && s_pendingIdleBlend.leftArm) {
+			leftArmDefaultRot_ = s_pendingIdleBlend.leftArmTarget;
+			leftArmStartRot_ = s_pendingIdleBlend.leftArmStart;
+		}
+		else {
+			leftArmDefaultRot_ = leftArmObj_->GetRotation();
+			leftArmStartRot_ = leftArmDefaultRot_;
+		}
 		leftArmSaved_ = true;
 	}
-
+	
 	if (rightArmObj_) {
-		rightArmDefaultRot_ = rightArmObj_->GetRotation();
-		rightArmStartRot_ = rightArmDefaultRot_;
+		if (s_pendingIdleBlend.active && s_pendingIdleBlend.rightArm) {
+			rightArmDefaultRot_ = s_pendingIdleBlend.rightArmTarget;
+			rightArmStartRot_ = s_pendingIdleBlend.rightArmStart;
+		}
+		else {
+			rightArmDefaultRot_ = rightArmObj_->GetRotation();
+			rightArmStartRot_ = rightArmDefaultRot_;
+		}
 		rightArmSaved_ = true;
 	}
 
-	TryFindSword(player, swordObj_);
-	if (swordObj_) {
-		swordDefaultLocalPos_ = swordObj_->GetTransform()->translate;
-		swordDefaultWorldPos_ = swordObj_->GetWorldPosition();
-		swordSaved_ = true;
-	}
-
+	// --- 頭 ---
 	TryFindHead(player, headObj_);
 	if (headObj_) {
-		// ここで headStartRot_ は「実際に現在使われている Transform->rotate（クォータニオンに基づく）」を使う
-		Transform* htf = headObj_->GetTransform();
-		headDefaultRot_ = headObj_->GetRotation();
-		headStartRot_ = htf->rotate;
+		if (s_pendingIdleBlend.active && s_pendingIdleBlend.head) {
+			headDefaultRot_ = s_pendingIdleBlend.headTarget;
+			headStartRot_ = s_pendingIdleBlend.headStart;
+		}
+		else {
+			Transform* htf = headObj_->GetTransform();
+			headDefaultRot_ = headObj_->GetRotation();
+			headStartRot_ = htf->rotate;
+		}
 		headSaved_ = true;
 	}
+
+	// --- 体 Y のブレンド有効化 ---
+	if (s_pendingIdleBlend.active && s_pendingIdleBlend.body) {
+		s_bodyStartRotVec = s_pendingIdleBlend.bodyStart;
+		s_bodyTargetRotVec = s_pendingIdleBlend.bodyTarget;
+		s_bodyBlendActive = true;
+		blendTimer_ = 0.0f;
+		blendDuration_ = s_pendingIdleBlend.blendDuration;
+	}
+
+	// 使用後は Pending をクリアしておく
+	s_pendingIdleBlend.active = false;
 
 	animTimer_ = 0.0f;
 	footStage_ = 0;
@@ -503,6 +560,14 @@ void PlayerStateIdle::Update(Player* player)
 
 void PlayerStateIdle::Exit(Player* player)
 {
+	// ブレンド中に Idle を途切れさせてしまうケース対策：
+	// もし Idle 側の「体ブレンド」がアクティブなまま離脱するなら、
+	// 目標回転を即時適用して攻撃ポーズが残らないようにする。
+	if (s_bodyBlendActive && player) {
+		player->SetRotation(s_bodyTargetRotVec);
+		s_bodyBlendActive = false;
+	}
+
 	// 元に戻す
 	if (leftFootObj_) {
 		Transform* tf = leftFootObj_->GetTransform();
@@ -652,8 +717,9 @@ void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime)
 	{
 		float bodyBlendT = (blendDuration_ > 1e-6f) ? std::clamp(blendTimer_ / blendDuration_, 0.0f, 1.0f) : 1.0f;
 		float bodyEase = EaseInOutSine(bodyBlendT);
-		float newY = LerpAngle(s_bodyStartY, s_bodyTargetY, bodyEase);
-		player->SetRotationY(newY); // SetRotationY は quaternion 更新する
+		// フル回転を線形補間（イーズ適用）
+		Vector3 newRot = LerpVec(s_bodyStartRotVec, s_bodyTargetRotVec, bodyEase);
+		player->SetRotation(newRot); // Quaternion も更新される
 		if (bodyBlendT >= 1.0f) s_bodyBlendActive = false;
 	}
 }
@@ -1200,59 +1266,51 @@ void PlayerStateAttack1::Exit(Player* player)
 
 	if (player) player->SetIsControlActive(true);
 	SetSwordActive(player, false);
-	// 戻す
+
+	// 既に初期化されていなければ何もしない
 	if (!initializedParts_) return;
 
+	// --- 補間情報を保管 (Idle 側でこれを拾ってブレンド開始) ---
+	s_pendingIdleBlend.active = true;
+	// 補間を少し遅めにして自然なイーズにする
+	s_pendingIdleBlend.blendDuration = 0.35f;
+
 	if (bodyObj_) {
-		Transform* tf = bodyObj_->GetTransform();
-		tf->translate = bodyDefaultPos_;
-		tf->rotate = bodyDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix();
+		s_pendingIdleBlend.body = true;
+		// 現在の Transform 側の回転を開始値として保存（X/Y/Z）
+		s_pendingIdleBlend.bodyStart = bodyObj_->GetTransform()->rotate;
+		// 目標は保存してあるデフォルト回転（bodyDefaultRot_）
+		s_pendingIdleBlend.bodyTarget = bodyDefaultRot_;
 	}
 
 	if (headObj_) {
-		Transform* tf = headObj_->GetTransform();
-		tf->translate = headDefaultPos_; tf->rotate = headDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix();
+		s_pendingIdleBlend.head = true;
+		s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate; // 現在の回転（攻撃終了ポーズ）
+		s_pendingIdleBlend.headTarget = headDefaultRot_; // Attack1 が保存しているデフォルト
 	}
 
 	if (rightArmObj_) {
-		Transform* tf = rightArmObj_->GetTransform();
-		tf->translate = rightArmDefaultPos_;
-		tf->rotate = rightArmDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true;
-		rightArmObj_->UpdateWorldMatrix();
+		s_pendingIdleBlend.rightArm = true;
+		s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
+		s_pendingIdleBlend.rightArmTarget = rightArmDefaultRot_;
 	}
 
 	if (leftArmObj_) {
-		Transform* tf = leftArmObj_->GetTransform();
-		tf->translate = leftArmDefaultPos_;
-		tf->rotate = leftArmDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix();
-		leftArmObj_->UpdateWorldMatrix();
+		s_pendingIdleBlend.leftArm = true;
+		s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
+		s_pendingIdleBlend.leftArmTarget = leftArmDefaultRot_;
 	}
 
 	if (rightFootObj_) {
-		Transform* tf = rightFootObj_->GetTransform();
-		tf->translate = rightFootDefaultPos_;
-		tf->rotate = rightFootDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true;
-		rightFootObj_->UpdateWorldMatrix();
+		s_pendingIdleBlend.rightFoot = true;
+		s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
+		s_pendingIdleBlend.rightFootTarget = rightFootDefaultRot_;
 	}
 
 	if (leftFootObj_) {
-		Transform* tf = leftFootObj_->GetTransform();
-		tf->translate = leftFootDefaultPos_;
-		tf->rotate = leftFootDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true;
-		leftFootObj_->UpdateLocalMatrix();
-		leftFootObj_->UpdateWorldMatrix();
+		s_pendingIdleBlend.leftFoot = true;
+		s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
+		s_pendingIdleBlend.leftFootTarget = leftFootDefaultRot_;
 	}
 }
 
