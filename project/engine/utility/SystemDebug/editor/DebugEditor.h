@@ -24,6 +24,7 @@
 #include "PrimitiveDrawer.h"
 #include "GhostDirector.h"
 
+
 // ========================================================================
 // 前方宣言 (Forward Declarations)
 // ========================================================================
@@ -37,7 +38,7 @@ class ParticleEditor;
 class GPUParticleEditor;
 class VFXSequencerEditor;
 class LightEditor;
-
+class MeshEffectEditor;
 
 // ========================================================================
 // DebugEditor クラス
@@ -115,7 +116,8 @@ public:
         VFXSequencerEditor* vfxSequencerEditor,
         GhostRecorder* ghostRecorder,
         GhostDirector* ghostDirector,
-        LightEditor* lightEditor)
+        LightEditor* lightEditor,
+        MeshEffectEditor* meshEffectEditor) 
     {
         postEffectEditor_ = postEffectEditor;
         spriteDebugEditor_ = spriteDebugEditor;
@@ -125,8 +127,8 @@ public:
         ghostRecorder_ = ghostRecorder;
         ghostDirector_ = ghostDirector;
         lightEditor_ = lightEditor;
+        meshEffectEditor_ = meshEffectEditor; 
     }
-
     // --------------------------------------------------------------------
     // ゲッター (Getters)
     // --------------------------------------------------------------------
@@ -150,6 +152,9 @@ public:
 
     bool* GetDrawCollidersPtr() { return &drawColliders_; }
     bool GetIsPathEditMode() const { return isPathEditMode_; }
+
+    MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
+    void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
 
 private:
     // --------------------------------------------------------------------
@@ -231,5 +236,5 @@ private:
     InspectorWindow inspectorWindow_;
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
-
+    MeshEffectEditor* meshEffectEditor_ = nullptr;
 };

@@ -14,6 +14,8 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreateShadowRootSignature();
     CreatePipelineStates();
     CreateLocalFogPipeline();
+    CreateEffectRootSignature();
+    CreateEffectPipeline();
 
 }
 
@@ -254,4 +256,98 @@ void Object3dCommon::SetLocalFogGraphicsCommand() {
     commandList->SetGraphicsRootSignature(localFogRootSignature_.Get());
     commandList->SetPipelineState(localFogPipelineState_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+// ==========================================================
+//  エフェクト用コマンドのセット
+// ==========================================================
+void Object3dCommon::SetEffectGraphicsCommand(BlendMode blendMode) {
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(effectRootSignature_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    // 指定されたブレンドモードのPSOをセット
+    commandList->SetPipelineState(effectPipelineStates_[static_cast<size_t>(blendMode)].Get());
+}
+
+// ==========================================================
+//  エフェクト用ルートシグネチャの構築
+// ==========================================================
+void Object3dCommon::CreateEffectRootSignature() {
+    RootSignatureBuilder builder;
+
+    // パラメータ0: CBV (b0, 頂点シェーダー用) -> ViewProjection
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    // パラメータ1: CBV (b1, 頂点シェーダー用) -> WorldTransform
+    builder.AddCBV(1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+    // パラメータ2: CBV (b0, ピクセルシェーダー用) -> EffectMaterial (色・UVスクロール時間など)
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    // パラメータ3: DescriptorTable (t0, ピクセルシェーダー用) -> エフェクト用メインテクスチャ
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    // パラメータ4: DescriptorTable (t1, ピクセルシェーダー用) -> 背景Grabテクスチャ
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    // =========================================================
+    //  パラメータ5: DescriptorTable (t2, ピクセルシェーダー用) -> ノイズテクスチャ
+    // =========================================================
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    // サンプラー (s0, ピクセルシェーダー用)
+    // デフォルト引数で MIN_MAG_MIP_LINEAR と WRAP が設定されるので指定はレジスタ番号だけでOK！
+    builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    // ビルド実行 (頂点レイアウトを使用するフラグを立てる)
+    builder.Build(
+        dxCommon_->GetDevice(),
+        &effectRootSignature_,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+    );
+}
+// ==========================================================
+// ★ エフェクト用パイプラインの構築 (ブレンドモード全対応版)
+// ==========================================================
+void Object3dCommon::CreateEffectPipeline() {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+         { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+         { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+         { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+         { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // シェーダーのコンパイル (前回作成した軽量シェーダー)
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Effect3d.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Effect3d.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(effectRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+
+    // ★超重要: 斬撃の裏側が消えないように CULL_MODE_NONE にする！
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
+
+    // Zテスト(奥にあるものは隠れる)は有効にしておく
+    // ※エフェクトなのでZバッファへの書き込みはしない(ZERO)
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO);
+
+    // レンダーターゲットの設定
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+
+
+    for (size_t i = 0; i < static_cast<size_t>(BlendMode::kCountOfBlendMode); ++i) {
+        BlendMode mode = static_cast<BlendMode>(i);
+
+        // ビルダーに現在のループのブレンドモードをセット
+        psoBuilder.SetBlendMode(mode);
+
+        // 配列の該当インデックスにPSOをビルドして保存
+        psoBuilder.Build(dxCommon_->GetDevice(), effectPipelineStates_[i].GetAddressOf());
+    }
 }

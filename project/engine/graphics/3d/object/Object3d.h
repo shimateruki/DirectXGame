@@ -70,8 +70,10 @@ public:
 
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
-    void SetRotation(const Vector3& rotate) { transform_.rotate = rotate; }
-    void SetRotationY(float y) { transform_.rotate.y = y; }
+    void SetRotation(const Vector3& rotate) { transform_.rotate = rotate; transform_.isQuaternionMaster = false;
+    }
+    void SetRotationY(float y) { transform_.rotate.y = y; transform_.isQuaternionMaster = false;
+    }
 
     void SetParent(Object3d* parent);
     Object3d* GetParent() const { return parent_; }

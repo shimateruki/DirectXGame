@@ -174,7 +174,6 @@ std::string KeyConfig::GetPadName(WORD padCode) const {
 // エディタ画面の描画（Inspectorに表示されるUI）
 // =================================================================
 void KeyConfig::DrawImGui() {
-
 #ifdef USE_IMGUI
     // ---------------------------------------------------------
     // 1. セーブ＆ロード ボタン

@@ -539,3 +539,16 @@ void Model::DrawShadow(ID3D12Resource* wvpResource) {
         commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
     }
 }
+
+void Model::DrawMeshOnly() {
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+    // メッシュごとに頂点バッファだけをセットして描画
+    for (const auto& mesh : modelData_.meshes) {
+        // 頂点バッファをセット
+        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+
+        // インデックスバッファを使わない純粋な描画（DrawInstanced）
+        commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
+    }
+}
