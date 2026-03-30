@@ -500,6 +500,7 @@ void PlayerStateIdle::Update(Player* player)
 		}
 	}
 }
+
 void PlayerStateIdle::Exit(Player* player)
 {
 	// 元に戻す
@@ -835,6 +836,7 @@ void PlayerStateRun::Update(Player* player)
 		return;
 	}
 }
+
 void PlayerStateRun::Exit(Player* player)
 {
 	DebugConsole::GetInstance()->AddLog("EXIT: Run State - restore defaults");
@@ -1158,10 +1160,36 @@ void PlayerStateAttack1::Update(Player* player)
 
 	if (animTimer_ >= animDuration_)
 	{
-		// 自動で Attack2 に遷移せず、次のクリックで Attack2 を出すためのフラグをセットする
-		if (player) player->SetPendingAttack2(true);
-		// Idle に戻してプレイヤーの入力を待つ（Exit() がコントロールを再有効化する）
-		player->ChangeState(std::make_unique<PlayerStateIdle>());
+		// 変更点:
+		// Attack1 のアニメが終わったとき、Pending フラグ（またはコンボ時間窓）があれば
+		// 一度 Idle に戻さず直接 Attack2 に遷移するようにする。
+		bool goAttack2 = false;
+		if (player)
+		{
+			// まずコンボ時間窓が有効ならそのまま 2 段目へ
+			if (player->IsComboWindowActive())
+			{
+				goAttack2 = true;
+			}
+			else
+			{
+				// pending フラグが立っていれば消費して true (直接遷移)
+				if (player->ConsumePendingAttack2())
+				{
+					goAttack2 = true;
+				}
+			}
+		}
+
+		if (goAttack2)
+		{
+			player->ChangeState(std::make_unique<PlayerStateAttack2>());
+		}
+		else
+		{
+			// 予約が無ければ従来通り Idle に戻す
+			player->ChangeState(std::make_unique<PlayerStateIdle>());
+		}
 		return;
 	}
 }
@@ -1492,6 +1520,7 @@ void PlayerStateAttack2::Update(Player* player)
 		return;
 	}
 }
+
 void PlayerStateAttack2::Exit(Player* player)
 {
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack2 State");
@@ -1703,6 +1732,7 @@ void PlayerStateAttack2::ApplyPose(float t)
 		leftFootObj_->UpdateWorldMatrix();
 	}
 }
+
 // ========================================================
 // 攻撃3段目状態 (Attack3 - 突き攻撃) 実装
 // ========================================================
