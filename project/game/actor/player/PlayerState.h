@@ -424,3 +424,51 @@ private:
     bool initializedParts_ = false;
     void ApplyPose(Player* player);
 };
+
+// --------------------------------------------------------
+// ジャンプ状態 (Jump)
+// --------------------------------------------------------
+class PlayerStateJump : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+
+private:
+    // 各パーツ
+    Object3d* bodyObj_ = nullptr;
+    Object3d* headObj_ = nullptr;
+    Object3d* rightArmObj_ = nullptr;
+    Object3d* leftArmObj_ = nullptr;
+    Object3d* rightFootObj_ = nullptr;
+    Object3d* leftFootObj_ = nullptr;
+    Object3d* swordObj_ = nullptr;
+
+    // 退避用（元のポーズ）
+    Vector3 bodyDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 headDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 rightArmDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 leftArmDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 rightFootDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 leftFootDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 swordDefaultLocalPos_{ 0.0f,0.0f,0.0f };
+
+    // 保存：head のローカル開始回転（復元用）
+    Vector3 headStartRot_{ 0.0f,0.0f,0.0f };
+
+    bool initializedParts_ = false;
+
+    // ジャンプポーズ（ラジアン）
+    Vector3 bodyJumpRot_{ 0.0f, 0.0f, 0.0f };
+    Vector3 headJumpRot_{ -15.0f * 3.14159265f / 180.0f, 0.0f, 0.0f };
+    Vector3 rightArmJumpRot_{ 0.0f, 0.0f, 10.0f * 3.14159265f / 180.0f };
+    Vector3 leftArmJumpRot_{ 0.0f, 0.0f, -10.0f * 3.14159265f / 180.0f };
+    Vector3 rightFootJumpRot_{ 30.0f * 3.14159265f / 180.0f, 0.0f, 0.0f };
+    Vector3 leftFootJumpRot_{ 30.0f * 3.14159265f / 180.0f, 0.0f, 0.0f };
+
+    // 頂点検出とブレンド管理
+    bool apexReached_ = false;
+    float blendTimer_ = 0.0f;
+    float blendDuration_ = 0.35f; // 頂点から着地までのブレンド近似時間
+};

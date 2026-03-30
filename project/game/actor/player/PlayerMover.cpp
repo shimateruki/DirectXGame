@@ -9,30 +9,32 @@
 #include <PlayerState.h>
 
 PlayerMover::PlayerMover() {}
+
 PlayerMover::~PlayerMover()
 {
-	// 念のためデストラクタでも子の衝突属性を復元する
-	if (player_)
-	{
-		for (auto& kv : childOriginalAttributes_)
-		{
-			Object3d* child = kv.first;
-			uint32_t attr = kv.second;
-			if (child) child->SetCollisionAttribute(attr);
-		}
-		childOriginalAttributes_.clear();
-	}
+    // 念のためデストラクタでも子の衝突属性を復帰する
+    if (player_)
+    {
+        for (auto& kv : childOriginalAttributes_)
+        {
+            Object3d* child = kv.first;
+            uint32_t attr = kv.second;
+            if (child) child->SetCollisionAttribute(attr);
+        }
+        childOriginalAttributes_.clear();
+    }
 }
 
 void PlayerMover::Initialize(Player* player, InputManager* inputManager, ParticleSystem* particleSystem)
 {
-	player_ = player;
-	inputManager_ = inputManager;
-	particleSystem_ = particleSystem;
+    player_ = player;
+    inputManager_ = inputManager;
+    particleSystem_ = particleSystem;
 
-	// デフォルト戦略
-	strategy_ = std::make_unique<MoveStrategy3D>();
+    // デフォルト戦略
+    strategy_ = std::make_unique<MoveStrategy3D>();
 }
+
 void PlayerMover::Update(float deltaTime)
 {
     if (!player_ || !inputManager_ || !strategy_) return;
@@ -55,13 +57,13 @@ void PlayerMover::Update(float deltaTime)
         }
     }
 
-    // --- 2. 現在の速度を取得 (Characterクラスの重力計算済み) ---
+    // --- 2. 現在の速度を取得 (Character クラスの重力計算等は別) ---
     Vector3 velocity = player_->GetVelocity();
 
     // --- 3. 入力に基づく移動ベクトルの計算 ---
     Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
-    // --- 4. ダッシュ（回避）開始判定 ---
+    // --- 4. ダッシュ(回避)開始判定 ---
     bool shiftTriggered = inputManager_->IsKeyTriggered(DIK_LSHIFT) || inputManager_->IsKeyTriggered(DIK_RSHIFT);
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
@@ -70,26 +72,26 @@ void PlayerMover::Update(float deltaTime)
         float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
         if (len > 0.001f)
         {
-            // ダッシュ方向とタイマーの初期化
+            // ダッシュ方向とタイマー初期化
             dashDirection_.x = inputMove.x / len;
             dashDirection_.y = 0.0f;
             dashDirection_.z = inputMove.z / len;
             isDashing_ = true;
             dashTimer_ = dashDuration_;
 
-            // クールタイムの開始
+            // クールタイム開始
             dashAvailable_ = false;
             dashCooldownTimer_ = dashCooldown_;
 
             if (player_)
             {
-                // 回避専用の無敵フラグをON
+                // 回避専用の無敵フラグを ON
                 player_->SetDashInvincible(true);
-                // ダッシュアニメーションへ強制遷移 (攻撃キャンセルもここで行う)
+                // ダッシュアニメーションへ強制遷移
                 player_->ChangeState(std::make_unique<PlayerStateDash>());
             }
 
-            // 子パーツ(剣など)の当たり判定を一時保存して無効化（すり抜け回避用）
+            // 子パーツの衝突属性を一時退避して無効化
             childOriginalAttributes_.clear();
             for (Object3d* child : player_->GetChildren())
             {
@@ -99,7 +101,7 @@ void PlayerMover::Update(float deltaTime)
                 child->SetCollisionAttribute(0);
             }
 
-            // ダッシュ開始時の土煙エフェクト
+            // パーティクル（エフェクト）
             if (particleSystem_)
             {
                 Vector3 pos = player_->GetWorldPosition();
@@ -113,11 +115,10 @@ void PlayerMover::Update(float deltaTime)
         }
     }
 
-    // --- 5. 速度の決定（ダッシュ中 or 通常移動） ---
+    // --- 5. 速度の決定 (ダッシュ中 or 通常) ---
     if (isDashing_)
     {
-        // ダッシュ中は等速ではなく、後半にかけて急ブレーキをかける(tRatioの2乗)
-        float tRatio = dashTimer_ / dashDuration_; // 1.0 から 0.0 に減少
+        float tRatio = dashTimer_ / dashDuration_; // 1.0 -> 0.0
         float currentSpeed = dashSpeed_ * (tRatio * tRatio);
 
         velocity.x = dashDirection_.x * currentSpeed;
@@ -127,14 +128,13 @@ void PlayerMover::Update(float deltaTime)
         dashTimer_ -= deltaTime;
         if (dashTimer_ <= 0.0f)
         {
-            // ダッシュ終了時の処理
             isDashing_ = false;
 
             if (player_) {
                 player_->SetDashInvincible(false); // 無敵解除
             }
 
-            // 子パーツの当たり判定を復元
+            // 子パーツの衝突属性を復元
             for (auto& kv : childOriginalAttributes_)
             {
                 Object3d* child = kv.first;
@@ -146,18 +146,17 @@ void PlayerMover::Update(float deltaTime)
     }
     else
     {
-        // 通常時はキー入力の移動をそのまま適用
+        // 通常時はキー入力による移動をそのまま適用
         velocity.x = inputMove.x;
         velocity.z = inputMove.z;
     }
 
-    // --- 6. 回転処理（移動方向へ滑らかに振り向く） ---
+    // --- 6. 回転処理 (移動方向へ滑らかに向ける) ---
     if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f)
     {
         float targetAngle = std::atan2(velocity.x, velocity.z);
         float currentY = player_->GetRotation().y;
 
-        // 角度を -π ～ π の範囲に正規化するラムダ式
         auto NormalizeAngle = [](float a) {
             while (a > 3.1415926535f) a -= 6.2831853071f;
             while (a < -3.1415926535f) a += 6.2831853071f;
@@ -166,7 +165,6 @@ void PlayerMover::Update(float deltaTime)
 
         float diff = NormalizeAngle(targetAngle - currentY);
 
-        // 振り向きスピードを計算して適用
         const float turnSpeed = 12.0f;
         float alpha = 1.0f - std::expf(-turnSpeed * deltaTime);
         float newY = currentY + diff * alpha;
@@ -192,13 +190,39 @@ void PlayerMover::Update(float deltaTime)
                     0.2f, 0.5f, 1.0f, 0.1f
                 );
             }
+
+            // 水平方向の速度を「プレイヤーの向き」に合わせる
+            // - 移動入力があればその方向を優先して速度を与える（正規化して moveSpeed を乗算）
+            // - 無入力ならプレイヤーの向き（Y回転）に沿って moveSpeed を与える
+            if (hasMoveInput)
+            {
+                float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
+                if (len > 0.001f)
+                {
+                    float s = player_->GetMoveSpeed() / len;
+                    velocity.x = inputMove.x * s;
+                    velocity.z = inputMove.z * s;
+                }
+            }
+            else
+            {
+                float yaw = player_->GetRotation().y;
+                velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
+                velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
+            }
+
+            // 追加: ジャンプ専用アニメーション状態へ遷移
+            if (player_) {
+                player_->ChangeState(std::make_unique<PlayerStateJump>());
+            }
         }
     }
 
-    // --- 8. 最終的な速度をプレイヤーに適用 ---
+    // --- 8. 最終的な速度をプレイヤーへ適用 ---
     player_->SetVelocity(velocity);
 }
+
 void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy)
 {
-	strategy_ = std::move(strategy);
+    strategy_ = std::move(strategy);
 }
