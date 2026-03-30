@@ -229,48 +229,50 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
      // 4. 通常のステート更新（アニメーション中以外に動く）
      // ==========================================
-    if (isFirstFrame_) {
-        originalColor_ = GetColor();
-        // ① まず、子供たちの中から WarningArea を見つけ出す！
-        for (Object3d* child : GetChildren()) {
-            if (child->GetName() == "WarningArea") {
-                warningArea_ = child;
-                warningArea_->SetParent(nullptr); // 親子関係を解除
-                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+    if (SceneManager::GetInstance()->IsPlaying()) {
+        if (isFirstFrame_) {
+            originalColor_ = GetColor();
+            // ① まず、子供たちの中から WarningArea を見つけ出す！
+            for (Object3d* child : GetChildren()) {
+                if (child->GetName() == "WarningArea") {
+                    warningArea_ = child;
+                    warningArea_->SetParent(nullptr); // 親子関係を解除
+                    warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
 
-                // ==========================================
-                // WarningArea の当たり判定を完全に処刑する（幽霊化）！！
-                // ==========================================
-                warningArea_->SetCollisionAttribute(0); // 自分の属性を「無し(0)」にする！
-                warningArea_->SetCollisionMask(0);      // ぶつかる相手を「無し(0)」にする！
+                    // ==========================================
+                    // WarningArea の当たり判定を完全に処刑する（幽霊化）！！
+                    // ==========================================
+                    warningArea_->SetCollisionAttribute(0); // 自分の属性を「無し(0)」にする！
+                    warningArea_->SetCollisionMask(0);      // ぶつかる相手を「無し(0)」にする！
 
-                // ==========================================
-                // 絶対に斜めにならないよう、角度を完全に平ら(0,0,0)に強制リセット！
-                // ==========================================
-                warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
-                warningArea_->GetTransform()->isQuaternionMaster = false;
+                    // ==========================================
+                    // 絶対に斜めにならないよう、角度を完全に平ら(0,0,0)に強制リセット！
+                    // ==========================================
+                    warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
+                    warningArea_->GetTransform()->isQuaternionMaster = false;
 
-                // ==========================================
-                // ② 見つけたら、装甲ブロックのリスト（armorBlocks_）から完全に追放（はく奪）する！
-                // ==========================================
-                for (auto it = armorBlocks_.begin(); it != armorBlocks_.end(); ) {
-                    if (*it == warningArea_) {
-                        it = armorBlocks_.erase(it); // リストから消去！
+                    // ==========================================
+                    // ② 見つけたら、装甲ブロックのリスト（armorBlocks_）から完全に追放（はく奪）する！
+                    // ==========================================
+                    for (auto it = armorBlocks_.begin(); it != armorBlocks_.end(); ) {
+                        if (*it == warningArea_) {
+                            it = armorBlocks_.erase(it); // リストから消去！
+                        }
+                        else {
+                            ++it;
+                        }
                     }
-                    else {
-                        ++it;
-                    }
+
+                    DebugConsole::GetInstance()->AddLog("🟢 WarningArea を取得し、リストからはく奪しました！");
+                    break;
                 }
-
-                DebugConsole::GetInstance()->AddLog("🟢 WarningArea を取得し、リストからはく奪しました！");
-                break;
             }
-        }
 
-        // ③ リストから「はく奪」した【後】に、状態をIdleに切り替える！
-        // （これでWarningAreaは ChangeState の属性上書きに巻き込まれません！）
-        ChangeState(State::Idle);
-        isFirstFrame_ = false;
+            // ③ リストから「はく奪」した【後】に、状態をIdleに切り替える！
+            // （これでWarningAreaは ChangeState の属性上書きに巻き込まれません！）
+            ChangeState(State::Idle);
+            isFirstFrame_ = false;
+        }
     }
 
     switch (state_) {
