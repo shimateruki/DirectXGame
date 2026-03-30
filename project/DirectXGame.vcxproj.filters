@@ -345,6 +345,12 @@
     <ClCompile Include="KeyConfig.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="EffectObject3d.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshEffectEditor.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\shader\Object3d.hlsli">
@@ -409,6 +415,8 @@
     <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
     <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
     <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
+    <FxCompile Include="Resources\shader\Effect3d.VS.hlsl" />
+    <FxCompile Include="Resources\shader\Effect3d.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\system\audio\AudioPlayer.h">
@@ -1243,6 +1251,12 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="KeyConfig.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectObject3d.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshEffectEditor.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

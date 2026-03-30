@@ -1,0 +1,50 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "DistortionSpeed": 15.449000358581543,
+    "DistortionStrength": 0.05299999937415123,
+    "EdgeFadeStrength": 4.033999919891357,
+    "EnableDistortion": true,
+    "EndColor": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+    ],
+    "EndScale": [
+        6.0,
+        6.0,
+        6.0
+    ],
+    "Intensity": 4.0,
+    "Lifetime": 0.8790000081062317,
+    "ModelName": "Semicircle.gltf",
+    "NoiseTexturePath": "Resources/sprite/image3.png",
+    "Position": [
+        0.800000011920929,
+        2.9000000953674316,
+        0.699999988079071
+    ],
+    "RampTexturePath": "Resources/sprite/color.png",
+    "Rotation": [
+        0.05999999865889549,
+        5.5,
+        -0.5799999833106995
+    ],
+    "ScrollSpeed": [
+        3.2909998893737793,
+        0.0
+    ],
+    "StartColor": [
+        1.0,
+        0.0,
+        0.0,
+        1.0
+    ],
+    "StartScale": [
+        5.0,
+        5.0,
+        5.0
+    ],
+    "TexturePath": "Resources/sprite/image3.png"
+}
