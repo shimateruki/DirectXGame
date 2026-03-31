@@ -1249,11 +1249,99 @@ void PlayerStateAttack1::Update(Player* player)
 
 		if (goAttack2)
 		{
+			// Attack1 から直接 Attack2 に遷移する場合でも
+			// 「元の待機デフォルト」を保持するために Pending を作成しておく
+			if (initializedParts_)
+			{
+				s_pendingIdleBlend.active = true;
+				s_pendingIdleBlend.blendDuration = 0.35f;
+
+				if (bodyObj_) {
+					s_pendingIdleBlend.body = true;
+					s_pendingIdleBlend.bodyStart = player->GetRotation();
+					s_pendingIdleBlend.bodyTarget = bodyDefaultRot_;
+				}
+
+				if (headObj_) {
+					s_pendingIdleBlend.head = true;
+					s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.headTarget = headDefaultRot_;
+				}
+
+				if (rightArmObj_) {
+					s_pendingIdleBlend.rightArm = true;
+					s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.rightArmTarget = rightArmDefaultRot_;
+				}
+
+				if (leftArmObj_) {
+					s_pendingIdleBlend.leftArm = true;
+					s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.leftArmTarget = leftArmDefaultRot_;
+				}
+
+				if (rightFootObj_) {
+					s_pendingIdleBlend.rightFoot = true;
+					s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.rightFootTarget = rightFootDefaultRot_;
+				}
+
+				if (leftFootObj_) {
+					s_pendingIdleBlend.leftFoot = true;
+					s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.leftFootTarget = leftFootDefaultRot_;
+				}
+			}
+
 			player->ChangeState(std::make_unique<PlayerStateAttack2>());
 		}
 		else
 		{
 			// 予約が無ければ従来通り Idle に戻す
+			// Idle に戻す直前に Pending 補間データを作成する（Exit ではなく遷移決定局所で作る）
+			if (initializedParts_)
+			{
+				s_pendingIdleBlend.active = true;
+				s_pendingIdleBlend.blendDuration = 0.35f;
+
+				if (bodyObj_) {
+					s_pendingIdleBlend.body = true;
+					// 修正: 表示中のワールド回転を開始値として使う（Transform->rotate ではなく Player の回転）
+					s_pendingIdleBlend.bodyStart = player->GetRotation();
+					s_pendingIdleBlend.bodyTarget = bodyDefaultRot_;
+				}
+
+				if (headObj_) {
+					s_pendingIdleBlend.head = true;
+					s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.headTarget = headDefaultRot_;
+				}
+
+				if (rightArmObj_) {
+					s_pendingIdleBlend.rightArm = true;
+					s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.rightArmTarget = rightArmDefaultRot_;
+				}
+
+				if (leftArmObj_) {
+					s_pendingIdleBlend.leftArm = true;
+					s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.leftArmTarget = leftArmDefaultRot_;
+				}
+
+				if (rightFootObj_) {
+					s_pendingIdleBlend.rightFoot = true;
+					s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.rightFootTarget = rightFootDefaultRot_;
+				}
+
+				if (leftFootObj_) {
+					s_pendingIdleBlend.leftFoot = true;
+					s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.leftFootTarget = leftFootDefaultRot_;
+				}
+			}
+
 			player->ChangeState(std::make_unique<PlayerStateIdle>());
 		}
 		return;
@@ -1270,48 +1358,7 @@ void PlayerStateAttack1::Exit(Player* player)
 	// 既に初期化されていなければ何もしない
 	if (!initializedParts_) return;
 
-	// --- 補間情報を保管 (Idle 側でこれを拾ってブレンド開始) ---
-	s_pendingIdleBlend.active = true;
-	// 補間を少し遅めにして自然なイーズにする
-	s_pendingIdleBlend.blendDuration = 0.35f;
-
-	if (bodyObj_) {
-		s_pendingIdleBlend.body = true;
-		// 現在の Transform 側の回転を開始値として保存（X/Y/Z）
-		s_pendingIdleBlend.bodyStart = bodyObj_->GetTransform()->rotate;
-		// 目標は保存してあるデフォルト回転（bodyDefaultRot_）
-		s_pendingIdleBlend.bodyTarget = bodyDefaultRot_;
-	}
-
-	if (headObj_) {
-		s_pendingIdleBlend.head = true;
-		s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate; // 現在の回転（攻撃終了ポーズ）
-		s_pendingIdleBlend.headTarget = headDefaultRot_; // Attack1 が保存しているデフォルト
-	}
-
-	if (rightArmObj_) {
-		s_pendingIdleBlend.rightArm = true;
-		s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
-		s_pendingIdleBlend.rightArmTarget = rightArmDefaultRot_;
-	}
-
-	if (leftArmObj_) {
-		s_pendingIdleBlend.leftArm = true;
-		s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
-		s_pendingIdleBlend.leftArmTarget = leftArmDefaultRot_;
-	}
-
-	if (rightFootObj_) {
-		s_pendingIdleBlend.rightFoot = true;
-		s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
-		s_pendingIdleBlend.rightFootTarget = rightFootDefaultRot_;
-	}
-
-	if (leftFootObj_) {
-		s_pendingIdleBlend.leftFoot = true;
-		s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
-		s_pendingIdleBlend.leftFootTarget = leftFootDefaultRot_;
-	}
+	// ここでは補間の Pending を作らない。Idle に遷移する直前（Update 内）で限定的に作るようにした。
 }
 
 void PlayerStateAttack1::ApplyPose(float t)
@@ -1551,28 +1598,86 @@ void PlayerStateAttack2::Update(Player* player)
 {
 	if (!player) return;
 
-	// ============================================
-	// ★追加: 攻撃中に入力があれば 3段目 を予約！
-	// ============================================
+	// 入力で3段目予約
 	InputManager* im = player->GetInputManager();
 	if (im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0))) {
-		player->SetPendingAttack2(true); // 変数名は2のまま流用でOK
+		player->SetPendingAttack2(true);
+		DebugConsole::GetInstance()->AddLog("Attack2: input detected -> pending Attack3 set");
 	}
 
+	// 固定フレームでタイマー更新（既存スタイル）
 	animTimer_ += 1.0f / 60.0f;
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
 	float et = EaseInOutSine(t);
 	ApplyPose(et);
 
+	// 到達判定
 	if (animTimer_ >= animDuration_)
 	{
-		// ============================================
-		// ★修正: 予約があればAttack3へ！なければIdleへ
-		// ============================================
+		DebugConsole::GetInstance()->AddLog("Attack2: anim finished (animTimer_=" + std::to_string(animTimer_) + ", animDuration_=" + std::to_string(animDuration_) + ")");
+
+		// 予約があればAttack3へ
 		if (player->ConsumePendingAttack2()) {
+			DebugConsole::GetInstance()->AddLog("Attack2: ConsumePendingAttack2() == true -> Change to Attack3");
 			player->ChangeState(std::make_unique<PlayerStateAttack3>());
 		}
 		else {
+			DebugConsole::GetInstance()->AddLog("Attack2: no pending -> prepare s_pendingIdleBlend and Change to Idle");
+			if (initializedParts_)
+			{
+				if (!s_pendingIdleBlend.active)
+				{
+					s_pendingIdleBlend.active = true;
+					s_pendingIdleBlend.blendDuration = 0.35f;
+
+					if (bodyObj_) {
+						s_pendingIdleBlend.body = true;
+						s_pendingIdleBlend.bodyStart = player->GetRotation();
+						s_pendingIdleBlend.bodyTarget = bodyDefaultRot_;
+					}
+
+					if (headObj_) {
+						s_pendingIdleBlend.head = true;
+						s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate;
+						s_pendingIdleBlend.headTarget = headDefaultRot_;
+					}
+
+					if (rightArmObj_) {
+						s_pendingIdleBlend.rightArm = true;
+						s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
+						s_pendingIdleBlend.rightArmTarget = rightArmDefaultRot_;
+					}
+
+					if (leftArmObj_) {
+						s_pendingIdleBlend.leftArm = true;
+						s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
+						s_pendingIdleBlend.leftArmTarget = leftArmDefaultRot_;
+					}
+
+					if (rightFootObj_) {
+						s_pendingIdleBlend.rightFoot = true;
+						s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
+						s_pendingIdleBlend.rightFootTarget = rightFootDefaultRot_;
+					}
+
+					if (leftFootObj_) {
+						s_pendingIdleBlend.leftFoot = true;
+						s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
+						s_pendingIdleBlend.leftFootTarget = leftFootDefaultRot_;
+					}
+				}
+				else
+				{
+					// 既に pending が存在する（Attack1 が設定済み）場合は
+					// target を上書きせず start 値だけ最新の表示状態に更新する
+					if (bodyObj_) s_pendingIdleBlend.bodyStart = player->GetRotation();
+					if (headObj_) s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate;
+					if (rightArmObj_) s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
+					if (leftArmObj_) s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
+					if (rightFootObj_) s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
+					if (leftFootObj_) s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
+				}
+			}
 			player->ChangeState(std::make_unique<PlayerStateIdle>());
 		}
 		return;
@@ -1587,6 +1692,7 @@ void PlayerStateAttack2::Exit(Player* player)
 	SetSwordActive(player, false);
 	if (!initializedParts_) return;
 
+	// 補間は Exit では作らない（Idle へ遷移する直前の Update で作成する）。
 	// 戻す（保存したデフォルトに復帰）
 	if (bodyObj_) {
 		Transform* tf = bodyObj_->GetTransform();
@@ -1631,17 +1737,17 @@ void PlayerStateAttack2::Exit(Player* player)
 		tf->translate = rightFootDefaultPos_;
 		tf->rotate = rightFootDefaultRot_;
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
-		tf->isQuaternionMaster = true; 
+		tf->isQuaternionMaster = true;
 		rightFootObj_->UpdateWorldMatrix();
 	}
 
-	if (leftFootObj_) { 
-		Transform* tf = leftFootObj_->GetTransform(); 
-		tf->translate = leftFootDefaultPos_; 
+	if (leftFootObj_) {
+		Transform* tf = leftFootObj_->GetTransform();
+		tf->translate = leftFootDefaultPos_;
 		tf->rotate = leftFootDefaultRot_;
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); 
+		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
 		tf->isQuaternionMaster = true;
-		leftFootObj_->UpdateLocalMatrix(); 
+		leftFootObj_->UpdateLocalMatrix();
 		leftFootObj_->UpdateWorldMatrix();
 	}
 }
