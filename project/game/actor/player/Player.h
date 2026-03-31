@@ -104,6 +104,14 @@ public:
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
+
+    // ==================================================
+    // 追加: ジャンプ判定フラグ（落下攻撃を出せるか）
+    // ジャンプ状態に入ったときに true にし、着地または落下攻撃開始で false にする
+    // ==================================================
+    void SetHasJumped(bool v) { hasJumped_ = v; }
+    bool HasJumped() const { return hasJumped_; }
+
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先
@@ -138,5 +146,9 @@ private:
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
     float deathTimer_ = 0.0f;    // 死亡してからの経過時間
+
+    // --- ジャンプ判定フラグ ---
+    bool hasJumped_ = false;
+
     void UpdateColor();
 };

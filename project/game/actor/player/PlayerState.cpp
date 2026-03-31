@@ -419,10 +419,12 @@ void PlayerStateIdle::Update(Player* player)
 
 	if (attackTriggered)
 	{
-	
 		bool isAirborne = !player->IsGrounded() || std::abs(player->GetVelocity().y) > 0.5f;
-		if (isAirborne)
+		// 変更: 空中判定だけで落下攻撃に飛ばさない。ジャンプから来ている場合のみ許可する
+		if (isAirborne && player->HasJumped())
 		{
+			// フラグを消費して二重発動を防ぐ
+			player->SetHasJumped(false);
 			player->ChangeState(std::make_unique<PlayerStatePlungeAttack>());
 			return;
 		}
@@ -500,6 +502,7 @@ void PlayerStateIdle::Update(Player* player)
 		}
 	}
 }
+
 void PlayerStateIdle::Exit(Player* player)
 {
 	// 元に戻す
@@ -781,8 +784,10 @@ void PlayerStateRun::Update(Player* player)
 	{
 		// ★最優先: 空中判定（移動ジャンプ中なら絶対に落下攻撃を出す）
 		bool isAirborne = !player->IsGrounded() || std::abs(player->GetVelocity().y) > 0.5f;
-		if (isAirborne)
+		// 変更: 空中であっても「ジャンプからの空中」でない限り落下攻撃に遷移しない
+		if (isAirborne && player->HasJumped())
 		{
+			player->SetHasJumped(false);
 			player->ChangeState(std::make_unique<PlayerStatePlungeAttack>());
 			return;
 		}
@@ -835,11 +840,12 @@ void PlayerStateRun::Update(Player* player)
 		return;
 	}
 }
+
 void PlayerStateRun::Exit(Player* player)
 {
 	DebugConsole::GetInstance()->AddLog("EXIT: Run State - restore defaults");
 
-	// 体: x軸（前後の傾き）だけデフォルトに戻す。Y（向き）は維持する。
+	// 体: x軸（前後の傾き）だけデフォルトに戻す。
 	if (bodyObj_ && bodySaved_)
 	{
 		Transform* tf = bodyObj_->GetTransform();
@@ -1492,6 +1498,7 @@ void PlayerStateAttack2::Update(Player* player)
 		return;
 	}
 }
+
 void PlayerStateAttack2::Exit(Player* player)
 {
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack2 State");
@@ -1703,6 +1710,7 @@ void PlayerStateAttack2::ApplyPose(float t)
 		leftFootObj_->UpdateWorldMatrix();
 	}
 }
+
 // ========================================================
 // 攻撃3段目状態 (Attack3 - 突き攻撃) 実装
 // ========================================================
@@ -2245,6 +2253,9 @@ void PlayerStatePlungeAttack::Enter(Player* player)
 	if (!player) return;
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Plunge Attack (Genshin Greatsword Style)");
 
+	// 追加: Plunge を開始する際に「ジャンプフラグ」を消費しておく（安全側）
+	player->SetHasJumped(false);
+
 	SetSwordActive(player, true);
 	isPlunging_ = false;
 	isLanded_ = false;
@@ -2670,6 +2681,9 @@ void PlayerStateJump::Enter(Player* player)
 	apexReached_ = false;
 	blendTimer_ = 0.0f;
 
+	// 追加: ジャンプ開始を通知（これがないと落下攻撃を出せない）
+	player->SetHasJumped(true);
+
 	// 頭
 	if (bodyObj_)
 	{
@@ -2924,4 +2938,7 @@ void PlayerStateJump::Exit(Player* player)
 		tf->translate = swordDefaultLocalPos_;
 		swordObj_->UpdateLocalMatrix(); swordObj_->UpdateWorldMatrix();
 	}
+
+	// ジャンプ終了（着地）したのでジャンプフラグをクリア
+	if (player) player->SetHasJumped(false);
 }
