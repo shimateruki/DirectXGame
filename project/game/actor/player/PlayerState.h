@@ -472,3 +472,36 @@ private:
     float blendTimer_ = 0.0f;
     float blendDuration_ = 0.35f; // 頂点から着地までのブレンド近似時間
 };
+
+// --------------------------------------------------------
+// 被弾・吹っ飛び状態 (Damage / Knockback)
+// --------------------------------------------------------
+class PlayerStateDamage : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+
+private:
+    float animTimer_ = 0.0f;
+    float recoveryDuration_ = 0.6f; // 着地してからの起き上がり時間（秒）
+    bool isLanded_ = false;
+
+    Object3d* bodyObj_ = nullptr;
+    Object3d* headObj_ = nullptr;
+    Object3d* rightArmObj_ = nullptr;
+    Object3d* leftArmObj_ = nullptr;
+    Object3d* rightFootObj_ = nullptr;
+    Object3d* leftFootObj_ = nullptr;
+
+    Vector3 bodyDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 headDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 rightArmDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 leftArmDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 rightFootDefaultRot_{ 0.0f,0.0f,0.0f };
+    Vector3 leftFootDefaultRot_{ 0.0f,0.0f,0.0f };
+
+    bool initializedParts_ = false;
+    void ApplyPose(Player* player, float t);
+};

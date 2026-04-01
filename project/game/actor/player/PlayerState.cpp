@@ -1901,159 +1901,231 @@ void PlayerStateAttack2::ApplyPose(float t)
 // ========================================================
 void PlayerStateAttack3::Enter(Player* player)
 {
-    if (!player) return;
-    DebugConsole::GetInstance()->AddLog("★ ENTER: Attack3 State (Thrust!)");
+	if (!player) return;
+	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack3 State (Thrust!)");
 
-    player->SetIsControlActive(false);
-    SetSwordActive(player, true);
-    animTimer_ = 0.0f;
-    bodyObj_ = player;
+	player->SetIsControlActive(false);
+	SetSwordActive(player, true);
+	animTimer_ = 0.0f;
+	bodyObj_ = player;
 
-    TryFindHead(player, headObj_); TryFindArms(player, leftArmObj_, rightArmObj_); TryFindFeet(player, leftFootObj_, rightFootObj_);
-    initializedParts_ = false;
+	TryFindHead(player, headObj_); TryFindArms(player, leftArmObj_, rightArmObj_); TryFindFeet(player, leftFootObj_, rightFootObj_);
+	initializedParts_ = false;
 
-    // ★変更：Enter時に「今のポーズ（Attack2の終わりのポーズ）」をStartRotとして正確に記録する！
-    if (bodyObj_) { bodyDefaultPos_ = bodyObj_->GetTransform()->translate; bodyDefaultRot_ = bodyObj_->GetRotation(); bodyStartRot_ = bodyObj_->GetTransform()->rotate; }
-    if (headObj_) { Transform* tf = headObj_->GetTransform(); headDefaultPos_ = tf->translate; headDefaultRot_ = headObj_->GetRotation(); headStartRot_ = tf->rotate; }
-    if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); rightArmDefaultPos_ = tf->translate; rightArmDefaultRot_ = rightArmObj_->GetRotation(); rtArmStartRot_ = tf->rotate; }
-    if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); leftArmDefaultPos_ = tf->translate; leftArmDefaultRot_ = leftArmObj_->GetRotation(); ltArmStartRot_ = tf->rotate; }
-    if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); rightFootDefaultPos_ = tf->translate; rightFootDefaultRot_ = rightFootObj_->GetRotation(); rtFootStartRot_ = tf->rotate; }
-    if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); leftFootDefaultPos_ = tf->translate; leftFootDefaultRot_ = leftFootObj_->GetRotation(); ltFootStartRot_ = tf->rotate; }
+	// 1. 位置情報と、戻るべき「本当の正面(待機)の角度」を取得
+	if (bodyObj_) { bodyDefaultPos_ = bodyObj_->GetTransform()->translate; }
+	if (headObj_) { headDefaultPos_ = headObj_->GetTransform()->translate; }
+	if (rightArmObj_) { rightArmDefaultPos_ = rightArmObj_->GetTransform()->translate; }
+	if (leftArmObj_) { leftArmDefaultPos_ = leftArmObj_->GetTransform()->translate; }
+	if (rightFootObj_) { rightFootDefaultPos_ = rightFootObj_->GetTransform()->translate; }
+	if (leftFootObj_) { leftFootDefaultPos_ = leftFootObj_->GetTransform()->translate; }
 
-    initializedParts_ = true;
-    ApplyPose(0.0f);
+	float frontY = bodyObj_ ? bodyObj_->GetRotation().y : 0.0f;
+
+	if (s_pendingIdleBlend.active) {
+		if (bodyObj_) bodyDefaultRot_ = Vector3{ 0.0f, s_pendingIdleBlend.bodyTarget.y, 0.0f };
+		if (headObj_) headDefaultRot_ = s_pendingIdleBlend.headTarget;
+		if (rightArmObj_) rightArmDefaultRot_ = s_pendingIdleBlend.rightArmTarget;
+		if (leftArmObj_) leftArmDefaultRot_ = s_pendingIdleBlend.leftArmTarget;
+		if (rightFootObj_) rightFootDefaultRot_ = s_pendingIdleBlend.rightFootTarget;
+		if (leftFootObj_) leftFootDefaultRot_ = s_pendingIdleBlend.leftFootTarget;
+		frontY = bodyDefaultRot_.y;
+	}
+	else {
+		if (bodyObj_) bodyDefaultRot_ = Vector3{ 0.0f, frontY, 0.0f };
+		if (headObj_) headDefaultRot_ = headObj_->GetRotation();
+		if (rightArmObj_) rightArmDefaultRot_ = rightArmObj_->GetRotation();
+		if (leftArmObj_) leftArmDefaultRot_ = leftArmObj_->GetRotation();
+		if (rightFootObj_) rightFootDefaultRot_ = rightFootObj_->GetRotation();
+		if (leftFootObj_) leftFootDefaultRot_ = leftFootObj_->GetRotation();
+	}
+
+	// 2. ★超重要：Attack2をいじらずに瞬間移動を直すため、Attack2の「最後のポーズ」を手動で開始ポーズにする！
+	auto DegToRad = [](float d) { return d * 3.1415926535f / 180.0f; };
+	bodyStartRot_ = { 0.0f, frontY, DegToRad(40.0f) };
+	headStartRot_ = { DegToRad(-20.0f), DegToRad(-57.0f), DegToRad(-11.0f) };
+	rtArmStartRot_ = { DegToRad(0.0f), DegToRad(40.0f), DegToRad(57.0f) };
+	ltArmStartRot_ = { DegToRad(0.0f), DegToRad(25.0f), DegToRad(-35.0f) };
+	rtFootStartRot_ = { DegToRad(0.0f), DegToRad(0.0f), DegToRad(0.0f) };
+	ltFootStartRot_ = { DegToRad(-20.0f), DegToRad(-52.0f), DegToRad(-1.0f) };
+
+	s_pendingIdleBlend.active = false;
+
+	initializedParts_ = true;
+	ApplyPose(0.0f);
 }
-
 void PlayerStateAttack3::Update(Player* player)
 {
-    if (!player) return;
-    animTimer_ += 1.0f / 60.0f;
-    float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
-    ApplyPose(t);
+	if (!player) return;
+	animTimer_ += 1.0f / 60.0f;
+	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
+	ApplyPose(t);
 
-    if (animTimer_ >= animDuration_)
-    {
-        player->ChangeState(std::make_unique<PlayerStateIdle>());
-        return;
-    }
+	if (animTimer_ >= animDuration_)
+	{
+		//  Idleに戻る際の滑らかな補間（ブレンド）を設定する
+		if (initializedParts_)
+		{
+			if (!s_pendingIdleBlend.active)
+			{
+				s_pendingIdleBlend.active = true;
+				s_pendingIdleBlend.blendDuration = 0.35f;
+
+				if (bodyObj_) {
+					s_pendingIdleBlend.body = true;
+					s_pendingIdleBlend.bodyStart = player->GetRotation();
+					s_pendingIdleBlend.bodyTarget = bodyDefaultRot_;
+				}
+				if (headObj_) {
+					s_pendingIdleBlend.head = true;
+					s_pendingIdleBlend.headStart = headObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.headTarget = headDefaultRot_;
+				}
+				if (rightArmObj_) {
+					s_pendingIdleBlend.rightArm = true;
+					s_pendingIdleBlend.rightArmStart = rightArmObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.rightArmTarget = rightArmDefaultRot_;
+				}
+				if (leftArmObj_) {
+					s_pendingIdleBlend.leftArm = true;
+					s_pendingIdleBlend.leftArmStart = leftArmObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.leftArmTarget = leftArmDefaultRot_;
+				}
+				if (rightFootObj_) {
+					s_pendingIdleBlend.rightFoot = true;
+					s_pendingIdleBlend.rightFootStart = rightFootObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.rightFootTarget = rightFootDefaultRot_;
+				}
+				if (leftFootObj_) {
+					s_pendingIdleBlend.leftFoot = true;
+					s_pendingIdleBlend.leftFootStart = leftFootObj_->GetTransform()->rotate;
+					s_pendingIdleBlend.leftFootTarget = leftFootDefaultRot_;
+				}
+			}
+		}
+
+		player->ChangeState(std::make_unique<PlayerStateIdle>());
+		return;
+	}
 }
 
 void PlayerStateAttack3::Exit(Player* player)
 {
-    DebugConsole::GetInstance()->AddLog("★ EXIT: Attack3 State");
-    if (player) player->SetIsControlActive(true);
-    SetSwordActive(player, false);
-    if (!initializedParts_) return;
+	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack3 State");
+	if (player) player->SetIsControlActive(true);
+	SetSwordActive(player, false);
 
-    if (bodyObj_) { Transform* tf = bodyObj_->GetTransform(); tf->translate = bodyDefaultPos_; tf->rotate = bodyDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix(); }
-    if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_; tf->rotate = headDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
-    if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_; tf->rotate = rightArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateLocalMatrix(); rightArmObj_->UpdateWorldMatrix(); }
-    if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = leftArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix(); }
-    if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_; tf->rotate = rightFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateLocalMatrix(); rightFootObj_->UpdateWorldMatrix(); }
-    if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = leftFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix(); }
-}
-
-void PlayerStateAttack3::ApplyPose(float t)
-{
 	if (!initializedParts_) return;
-	auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
-	auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
-		return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
-		};
+
+	if (bodyObj_) {
+		Transform* tf = bodyObj_->GetTransform();
+		tf->translate = bodyDefaultPos_;
+		bodyObj_->UpdateWorldMatrix();
+	}
+}
+void PlayerStateAttack3::ApplyPose(float t) {
+	if (!initializedParts_) return;
+
+	auto DegToRad = [](float d) { return d * 3.1415926535f / 180.0f; };
+	auto EaseOutExpo = [](float x) { return x == 1.0f ? 1.0f : 1.0f - std::pow(2.0f, -10.0f * x); };
 	auto EaseInOutSine = [](float x) { return -(std::cos(3.14159265f * x) - 1.0f) / 2.0f; };
-	auto EaseOutCubic = [](float x) { return 1.0f - std::pow(1.0f - x, 3.0f); };
 
-	float baseY = bodyDefaultRot_.y;
+	float baseYRad = bodyDefaultRot_.y;
 
 	// =========================================================
-	// 1. 各キーフレーム（ポーズ）の定義
+	// 腕の回転
 	// =========================================================
+	Vector3 rtArmRot1 = { DegToRad(-10.0f), DegToRad(50.0f), DegToRad(60.0f) }; // タメ
+	Vector3 rtArmRot2 = { DegToRad(-10.0f), DegToRad(-10.0f), DegToRad(30.0f) }; // 突き
+	Vector3 rtArmRot3 = rightArmDefaultRot_;   // ★完全に待機ポーズに戻す！
 
-	// --- [Pose 1] タメ ---
-	Vector3 bodyPos1 = { 0.0f, -0.2f, -0.5f };
-	Vector3 bodyRot1 = bodyStartRot_;
-	bodyRot1.y += DegToRad(45.0f);
-	bodyRot1.z = DegToRad(10.0f);
+	Vector3 ltArmRot1 = ltArmStartRot_;        // 左腕はそのまま維持
+	Vector3 ltArmRot2 = ltArmStartRot_;        // 維持
+	Vector3 ltArmRot3 = leftArmDefaultRot_;    // ★左腕も一緒に待機ポーズに戻す！
 
-	Vector3 headRot1 = { DegToRad(-10.0f), DegToRad(-45.0f), 0.0f };
-	Vector3 rtArmRot1 = { DegToRad(45.0f), DegToRad(45.0f), DegToRad(0.0f) };
-	Vector3 ltArmRot1 = { DegToRad(30.0f), 0.0f, DegToRad(-20.0f) };
+	// =========================================================
+	// 体の動き
+	// =========================================================
+	Vector3 bodyPos1 = { 0.0f, -0.4f, -0.5f }; // タメ
+	Vector3 bodyRot1 = { DegToRad(15.0f), baseYRad, 0.0f };
+
+	Vector3 bodyPos2 = { 0.0f, -0.3f, 1.5f }; // 突き
+	Vector3 bodyRot2 = { DegToRad(25.0f), baseYRad, 0.0f };
+
+	Vector3 bodyPos3 = { 0.0f, 0.0f, 0.0f }; // 戻り：元の位置へ
+	Vector3 bodyRot3 = bodyDefaultRot_;      // ★完全に待機ポーズに戻す！
+
+	// =========================================================
+	// 足の動き
+	// =========================================================
+	Vector3 rtFootRot1 = { DegToRad(-10.0f), 0.0f, 0.0f };
 	Vector3 ltFootRot1 = { DegToRad(-10.0f), 0.0f, 0.0f };
-	Vector3 rtFootRot1 = { DegToRad(-20.0f), 0.0f, 0.0f };
 
-	// --- [Pose 2] 突き ---
-	Vector3 bodyPos2 = { 0.0f, -0.2f, 2.0f };
-	Vector3 bodyRot2 = bodyDefaultRot_;
-	bodyRot2.y = bodyDefaultRot_.y + DegToRad(360.0f);
-	bodyRot2.x = DegToRad(20.0f);
+	Vector3 rtFootRot2 = { DegToRad(-35.0f), 0.0f, 0.0f }; // 踏ん張る
+	Vector3 ltFootRot2 = { DegToRad(35.0f), 0.0f, 0.0f };
 
-	Vector3 headRot2 = { DegToRad(-20.0f), DegToRad(10.0f), 0.0f };
-	Vector3 rtArmRot2 = { DegToRad(-20.0f), DegToRad(0.0f), DegToRad(0.0f) };
-	Vector3 ltArmRot2 = { DegToRad(60.0f), 0.0f, DegToRad(20.0f) };
-	Vector3 ltFootRot2 = { DegToRad(-40.0f), 0.0f, 0.0f };
-	Vector3 rtFootRot2 = { DegToRad(30.0f), 0.0f, 0.0f };
-
-	// --- [Pose 3] 戻し (★修正：瞬間移動を防ぐため、完全に元の待機ポーズに戻す) ---
-	Vector3 bodyPos3 = { 0.0f, 0.0f, 0.0f };
-	Vector3 bodyRot3 = bodyDefaultRot_;
-	bodyRot3.y = bodyDefaultRot_.y + DegToRad(360.0f);
-
-	Vector3 headRot3 = headDefaultRot_;
-
-	// 各パーツを「Enter時に保存した待機ポーズ(Default)」に設定する
-	Vector3 rtArmRot3 = rightArmDefaultRot_;
-	Vector3 ltArmRot3 = leftArmDefaultRot_;
-	Vector3 ltFootRot3 = leftFootDefaultRot_;
-	Vector3 rtFootRot3 = rightFootDefaultRot_;
+	Vector3 rtFootRot3 = rightFootDefaultRot_; // ★完全に待機ポーズに戻す！
+	Vector3 ltFootRot3 = leftFootDefaultRot_;  // ★完全に待機ポーズに戻す！
 
 	// =========================================================
-	// 2. 4段階のタイムライン計算
+	// 頭の動き
 	// =========================================================
-	Vector3 curBodyPos, curBodyRot, curHeadRot, curRtArmRot, curLtArmRot, curLtFootRot, curRtFootRot;
+	Vector3 headRot1 = { DegToRad(0.0f), 0.0f, 0.0f };
+	Vector3 headRot2 = { DegToRad(-10.0f), 0.0f, 0.0f };
+	Vector3 headRot3 = headDefaultRot_; // ★完全に待機ポーズに戻す！
 
-	float t1 = 0.25f; // タメ
-	float t2 = 0.45f; // 突き
-	float t3 = 0.65f; // 余韻
+	// =========================================================
+	// 補間計算（3段階）
+	// =========================================================
+	Vector3 curBodyPos, curBodyRot, curRtArmRot, curLtArmRot, curHeadRot;
+	Vector3 curRtFootRot, curLtFootRot;
 
-	if (t <= t1) {
-		float localT = EaseInOutSine(t / t1);
-		curBodyPos = LerpVec3(Vector3{ 0,0,0 }, bodyPos1, localT); curBodyRot = LerpVec3(bodyStartRot_, bodyRot1, localT); curHeadRot = LerpVec3(headStartRot_, headRot1, localT);
-		curRtArmRot = LerpVec3(rtArmStartRot_, rtArmRot1, localT); curLtArmRot = LerpVec3(ltArmStartRot_, ltArmRot1, localT);
-		curLtFootRot = LerpVec3(ltFootStartRot_, ltFootRot1, localT); curRtFootRot = LerpVec3(rtFootStartRot_, rtFootRot1, localT);
+	if (t < 0.2f) {
+		// ① タメ
+		float nT = t / 0.2f;
+		curBodyPos = LerpVec(Vector3{ 0,0,0 }, bodyPos1, nT);
+		curBodyRot = LerpVec(bodyStartRot_, bodyRot1, nT);
+		curRtArmRot = LerpVec(rtArmStartRot_, rtArmRot1, nT);
+		curLtArmRot = LerpVec(ltArmStartRot_, ltArmRot1, nT);
+		curHeadRot = LerpVec(headStartRot_, headRot1, nT);
+
+		curRtFootRot = LerpVec(Vector3{ 0,0,0 }, rtFootRot1, nT);
+		curLtFootRot = LerpVec(Vector3{ 0,0,0 }, ltFootRot1, nT);
 	}
-	else if (t <= t2) {
-		float localT = EaseOutCubic((t - t1) / (t2 - t1));
-		curBodyPos = LerpVec3(bodyPos1, bodyPos2, localT); curBodyRot = LerpVec3(bodyRot1, bodyRot2, localT); curHeadRot = LerpVec3(headRot1, headRot2, localT);
-		curRtArmRot = LerpVec3(rtArmRot1, rtArmRot2, localT); curLtArmRot = LerpVec3(ltArmRot1, ltArmRot2, localT);
-		curLtFootRot = LerpVec3(ltFootRot1, ltFootRot2, localT); curRtFootRot = LerpVec3(rtFootRot1, rtFootRot2, localT);
-	}
-	else if (t <= t3) {
-		curBodyPos = bodyPos2; curBodyRot = bodyRot2; curHeadRot = headRot2;
-		curRtArmRot = rtArmRot2; curLtArmRot = ltArmRot2;
-		curLtFootRot = ltFootRot2; curRtFootRot = rtFootRot2;
+	else if (t < 0.6f) {
+		// ② 突き
+		float nT = (t - 0.2f) / 0.4f;
+		float easeT = EaseOutExpo(nT);
+		curBodyPos = LerpVec(bodyPos1, bodyPos2, easeT);
+		curBodyRot = LerpVec(bodyRot1, bodyRot2, easeT);
+		curRtArmRot = LerpVec(rtArmRot1, rtArmRot2, easeT);
+		curLtArmRot = LerpVec(ltArmRot1, ltArmRot2, easeT);
+		curHeadRot = LerpVec(headRot1, headRot2, easeT);
+
+		curRtFootRot = LerpVec(rtFootRot1, rtFootRot2, easeT);
+		curLtFootRot = LerpVec(ltFootRot1, ltFootRot2, easeT);
 	}
 	else {
-		float localT = EaseInOutSine((t - t3) / (1.0f - t3));
-		curBodyPos = LerpVec3(bodyPos2, bodyPos3, localT); curBodyRot = LerpVec3(bodyRot2, bodyRot3, localT); curHeadRot = LerpVec3(headRot2, headRot3, localT);
-		curRtArmRot = LerpVec3(rtArmRot2, rtArmRot3, localT); curLtArmRot = LerpVec3(ltArmRot2, ltArmRot3, localT);
-		curLtFootRot = LerpVec3(ltFootRot2, ltFootRot3, localT); curRtFootRot = LerpVec3(rtFootRot2, rtFootRot3, localT);
+		// ③ 待機ポーズへ完全に戻る
+		float nT = (t - 0.6f) / 0.4f;
+		float easeT = EaseInOutSine(nT);
+		curBodyPos = LerpVec(bodyPos2, bodyPos3, easeT);
+		curBodyRot = LerpVec(bodyRot2, bodyRot3, easeT);
+		curRtArmRot = LerpVec(rtArmRot2, rtArmRot3, easeT);
+		curLtArmRot = LerpVec(ltArmRot2, ltArmRot3, easeT);
+		curHeadRot = LerpVec(headRot2, headRot3, easeT);
+
+		curRtFootRot = LerpVec(rtFootRot2, rtFootRot3, easeT);
+		curLtFootRot = LerpVec(ltFootRot2, ltFootRot3, easeT);
 	}
 
 	// =========================================================
-	// 3. 補間適用
+	// 反映
 	// =========================================================
 	if (bodyObj_) {
 		Transform* tf = bodyObj_->GetTransform();
-
-		// ★修正: プレイヤーが向いている方向(baseY)に合わせて、踏み込みベクトルを回転させる
-		float s = std::sin(baseY);
-		float c = std::cos(baseY);
-		Vector3 worldOffset;
-		worldOffset.x = curBodyPos.x * c + curBodyPos.z * s;
-		worldOffset.y = curBodyPos.y;
-		worldOffset.z = -curBodyPos.x * s + curBodyPos.z * c;
-
-		tf->translate = bodyDefaultPos_ + worldOffset;
+		float s = std::sin(baseYRad); float c = std::cos(baseYRad);
+		tf->translate = bodyDefaultPos_ + Vector3{ curBodyPos.x * c + curBodyPos.z * s, curBodyPos.y, -curBodyPos.x * s + curBodyPos.z * c };
 
 		tf->rotate = curBodyRot;
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
@@ -2061,14 +2133,46 @@ void PlayerStateAttack3::ApplyPose(float t)
 		bodyObj_->UpdateWorldMatrix();
 	}
 
-	if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->rotate = curHeadRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
-	if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_; tf->rotate = curRtArmRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateLocalMatrix(); rightArmObj_->UpdateWorldMatrix(); }
-	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = curLtArmRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix(); }
-	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = curLtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix(); }
-	if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_; tf->rotate = curRtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateLocalMatrix(); rightFootObj_->UpdateWorldMatrix(); }
-}
+	if (rightArmObj_) {
+		Transform* tf = rightArmObj_->GetTransform();
+		tf->rotate = curRtArmRot;
+		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
+		tf->isQuaternionMaster = true;
+		rightArmObj_->UpdateWorldMatrix();
+	}
 
-// ========================================================
+	// ★左腕の反映を追加しました！
+	if (leftArmObj_) {
+		Transform* tf = leftArmObj_->GetTransform();
+		tf->rotate = curLtArmRot;
+		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
+		tf->isQuaternionMaster = true;
+		leftArmObj_->UpdateWorldMatrix();
+	}
+
+	if (headObj_) {
+		Transform* tf = headObj_->GetTransform();
+		tf->rotate = curHeadRot;
+		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
+		tf->isQuaternionMaster = true;
+		headObj_->UpdateWorldMatrix();
+	}
+
+	if (rightFootObj_) {
+		Transform* tf = rightFootObj_->GetTransform();
+		tf->rotate = curRtFootRot;
+		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
+		tf->isQuaternionMaster = true;
+		rightFootObj_->UpdateWorldMatrix();
+	}
+	if (leftFootObj_) {
+		Transform* tf = leftFootObj_->GetTransform();
+		tf->rotate = curLtFootRot;
+		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
+		tf->isQuaternionMaster = true;
+		leftFootObj_->UpdateWorldMatrix();
+	}
+}
 // 回避ダッシュ状態 (Dash) 実装
 // ========================================================
 void PlayerStateDash::Enter(Player* player)
@@ -3123,4 +3227,165 @@ void PlayerStateJump::Exit(Player* player)
 		tf->translate = swordDefaultLocalPos_;
 		swordObj_->UpdateLocalMatrix(); swordObj_->UpdateWorldMatrix();
 	}
+}
+
+// ========================================================
+// 被弾・吹っ飛び状態 (Damage / Knockback) 実装
+// ========================================================
+void PlayerStateDamage::Enter(Player* player)
+{
+	if (!player) return;
+	DebugConsole::GetInstance()->AddLog("★ ENTER: Damage State (Knockback & Spin!)");
+
+	// 操作不能にし、剣の当たり判定を消す
+	player->SetIsControlActive(false);
+	SetSwordActive(player, false);
+	isLanded_ = false;
+	animTimer_ = 0.0f;
+	bodyObj_ = player;
+
+	TryFindHead(player, headObj_); TryFindArms(player, leftArmObj_, rightArmObj_); TryFindFeet(player, leftFootObj_, rightFootObj_);
+	initializedParts_ = false;
+
+	// =======================================================
+	// ★修正ポイント1：ねじれたポーズを記憶しないように強制リセット！
+	// 攻撃中に被弾しても、戻るべき「デフォルト姿勢(0,0,0)」を強制的に指定します。
+	// =======================================================
+	float currentY = bodyObj_ ? bodyObj_->GetRotation().y : 0.0f;
+	if (bodyObj_) bodyDefaultRot_ = Vector3{ 0.0f, currentY, 0.0f }; // 体の向き(Y)だけは維持
+	headDefaultRot_ = { 0.0f, 0.0f, 0.0f };
+	rightArmDefaultRot_ = { 0.0f, 0.0f, 0.0f };
+	leftArmDefaultRot_ = { 0.0f, 0.0f, 0.0f };
+	rightFootDefaultRot_ = { 0.0f, 0.0f, 0.0f };
+	leftFootDefaultRot_ = { 0.0f, 0.0f, 0.0f };
+
+	// =======================================================
+	// ★修正ポイント2：攻撃の補間予約（バケツリレー）を完全に消去！
+	// =======================================================
+	s_pendingIdleBlend.active = false;
+
+	initializedParts_ = true;
+
+	// =======================================================
+	// ★修正ポイント3：ノックバックの勢いを抑える
+	// =======================================================
+	float yaw = currentY;
+	float knockbackSpeed = 6.0f; // 15.0f -> 6.0f (後ろに飛ぶ勢いを抑制)
+	float knockupSpeed = 7.0f;   // 12.0f -> 7.0f (すぐ着地するように高さを抑制)
+
+	Vector3 vel;
+	vel.x = -std::sin(yaw) * knockbackSpeed;
+	vel.z = -std::cos(yaw) * knockbackSpeed;
+	vel.y = knockupSpeed;
+	player->SetVelocity(vel);
+
+	ApplyPose(player, 0.0f);
+}
+
+void PlayerStateDamage::Update(Player* player)
+{
+	if (!player) return;
+	const float dt = 1.0f / 60.0f;
+	animTimer_ += dt;
+
+	if (!isLanded_) {
+		// 空中：落ちてきて地面に触れたら着地フェーズへ
+		if (player->GetVelocity().y <= 0.0f && player->IsGrounded()) {
+			isLanded_ = true;
+			animTimer_ = 0.0f; // 着地からのタイマーにリセット
+			DebugConsole::GetInstance()->AddLog("Damage: Landed! Recovering...");
+		}
+	}
+	else {
+		// 着地後：起き上がり時間が過ぎたら待機状態に戻る
+		if (animTimer_ >= recoveryDuration_) {
+			player->ChangeState(std::make_unique<PlayerStateIdle>());
+			return;
+		}
+	}
+
+	ApplyPose(player, animTimer_);
+}
+
+void PlayerStateDamage::Exit(Player* player)
+{
+	if (player) player->SetIsControlActive(true);
+	if (!initializedParts_) return;
+
+	// 全パーツを確実にデフォルトに戻す
+	if (bodyObj_) { Transform* tf = bodyObj_->GetTransform(); tf->rotate = bodyDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix(); }
+	if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->rotate = headDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
+	if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->rotate = rightArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
+	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->rotate = leftArmDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateWorldMatrix(); }
+	if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->rotate = rightFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->rotate = leftFootDefaultRot_; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
+}
+
+void PlayerStateDamage::ApplyPose(Player* player, float t)
+{
+	if (!initializedParts_) return;
+	auto DegToRad = [](float d) { return d * 3.1415926535f / 180.0f; };
+	auto LerpVec = [](const Vector3& a, const Vector3& b, float t) {
+		return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
+		};
+	// 起き上がり用の滑らかなイージング
+	auto EaseOutCubic = [](float x) { return 1.0f - std::pow(1.0f - x, 3.0f); };
+
+	Vector3 curBodyRot = bodyDefaultRot_;
+	Vector3 curHeadRot = headDefaultRot_;
+	Vector3 curRtArmRot = rightArmDefaultRot_;
+	Vector3 curLtArmRot = leftArmDefaultRot_;
+	Vector3 curRtFootRot = rightFootDefaultRot_;
+	Vector3 curLtFootRot = leftFootDefaultRot_;
+
+	if (!isLanded_) {
+		// ===============================================
+		// ① 空中フェーズ：バンザイしながら後ろにキリモミ回転！
+		// ===============================================
+		// 時間経過でマイナス方向（後ろ）に回し続ける。1秒間に約2回転。
+		float spinX = -t * DegToRad(720.0f);
+		curBodyRot.x = bodyDefaultRot_.x + spinX;
+
+		// のけぞり＆バンザイポーズ
+		curHeadRot.x = headDefaultRot_.x + DegToRad(-30.0f);   // 上を向く
+		curRtArmRot.x = rightArmDefaultRot_.x + DegToRad(-150.0f); // 腕を後ろに振り上げる
+		curRtArmRot.z = rightArmDefaultRot_.z + DegToRad(45.0f);   // 腕を開く
+		curLtArmRot.x = leftArmDefaultRot_.x + DegToRad(-150.0f);
+		curLtArmRot.z = leftArmDefaultRot_.z + DegToRad(-45.0f);
+
+		// 足はバタバタさせる（少し前に投げ出す）
+		curRtFootRot.x = rightFootDefaultRot_.x + DegToRad(-45.0f);
+		curLtFootRot.x = leftFootDefaultRot_.x + DegToRad(-45.0f);
+	}
+	else {
+		// ===============================================
+		// ② 着地フェーズ：ダンッと膝をついてからスッと起き上がる
+		// ===============================================
+		float nT = std::clamp(t / recoveryDuration_, 0.0f, 1.0f);
+		float easeT = EaseOutCubic(nT);
+
+		// 着地した瞬間の「膝をついたような」ダメージポーズ
+		Vector3 landBodyRot = bodyDefaultRot_ + Vector3{ DegToRad(40.0f), 0.0f, 0.0f }; // 体を前に倒す
+		Vector3 landHeadRot = headDefaultRot_ + Vector3{ DegToRad(-20.0f), 0.0f, 0.0f }; // 顔は少し上げる
+		Vector3 landRtArmRot = rightArmDefaultRot_ + Vector3{ DegToRad(20.0f), 0.0f, 0.0f };
+		Vector3 landLtArmRot = leftArmDefaultRot_ + Vector3{ DegToRad(20.0f), 0.0f, 0.0f };
+		Vector3 landRtFootRot = rightFootDefaultRot_ + Vector3{ DegToRad(-40.0f), 0.0f, 0.0f }; // 膝を曲げる
+		Vector3 landLtFootRot = leftFootDefaultRot_ + Vector3{ DegToRad(-40.0f), 0.0f, 0.0f };
+
+		// ダメージポーズから、通常の直立（DefaultRot）へ滑らかに戻る
+		curBodyRot = LerpVec(landBodyRot, bodyDefaultRot_, easeT);
+		curHeadRot = LerpVec(landHeadRot, headDefaultRot_, easeT);
+		curRtArmRot = LerpVec(landRtArmRot, rightArmDefaultRot_, easeT);
+		curLtArmRot = LerpVec(landLtArmRot, leftArmDefaultRot_, easeT);
+		curRtFootRot = LerpVec(landRtFootRot, rightFootDefaultRot_, easeT);
+		curLtFootRot = LerpVec(landLtFootRot, leftFootDefaultRot_, easeT);
+	}
+
+	// 各パーツに適用
+	if (bodyObj_) { Transform* tf = bodyObj_->GetTransform(); tf->rotate = curBodyRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix(); }
+	if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->rotate = curHeadRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
+	if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->rotate = curRtArmRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
+	if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->rotate = curLtArmRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateWorldMatrix(); }
+	if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->rotate = curRtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->rotate = curLtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
 }
