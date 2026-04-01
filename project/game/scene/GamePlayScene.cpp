@@ -149,7 +149,9 @@ void GamePlayScene::Initialize() {
 			barrierHpBarMaxWidth_ = sprite->GetSize().x;
 		}
 	}
-
+	timeAttackUI_ = std::make_unique<TimeAttackUI>();
+	timeAttackUI_->Initialize(spriteCommon_.get());
+	timeAttackUI_->Start(); // とりあえずシーン開始と同時に計測スタート！
 	// =======================================================
 	// ポーズ用UIの取得と初期化 (最初は透明にして隠す)
 	// =======================================================
@@ -553,6 +555,9 @@ void GamePlayScene::Update(float deltaTime) {
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	MeshEffectManager::GetInstance()->Update(deltaTime);
+	if (timeAttackUI_) {
+		timeAttackUI_->Update(deltaTime);
+	}
 	UpdateUI();
 }
 
@@ -677,6 +682,9 @@ void GamePlayScene::DrawUI() {
 	}
 	if (isDrawLockOn_ && lockOnSprite_) {
 		lockOnSprite_->Draw();
+	}
+	if (timeAttackUI_) {
+		timeAttackUI_->Draw();
 	}
 }
 
