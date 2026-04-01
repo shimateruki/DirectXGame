@@ -117,7 +117,7 @@ void BossCore::Update(float deltaTime) {
         }
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     if (SceneManager::GetInstance()->IsPlaying()) {
         int triggerAttack = 0;
         if (input->IsKeyTriggered(DIK_1)) triggerAttack = 1;
@@ -182,8 +182,12 @@ void BossCore::Update(float deltaTime) {
     if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
         Object3d* weapon = FindWeaponRecursive(target_);
         if (weapon) {
-            for (Object3d* block : armorBlocks_) {
-                if (!block) continue;
+            // ブロックの「番号」を知る必要があるので、for(size_t i...) に変更！
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                Object3d* block = armorBlocks_[i];
+
+                // ブロックが無いか、すでに壊れていたらスキップ！
+                if (!block || blockBroken_[i]) continue;
 
                 uint32_t originalMask = block->GetCollisionMask();
                 block->SetCollisionMask(0xFFFFFFFF);
@@ -191,7 +195,17 @@ void BossCore::Update(float deltaTime) {
                 block->SetCollisionMask(originalMask);
 
                 if (info.isColliding) {
-                    TakeBarrierDamage(10.0f);
+                    // ==========================================
+                    // ★ 修正：ダメージと一緒に「当たったブロック」を渡す！
+                    // ==========================================
+                    TakeBarrierDamage(10.0f, block);
+
+                    blockHps_[i] -= 10.0f;
+
+                    if (blockHps_[i] <= 0.0f) {
+                        blockBroken_[i] = true;
+                        DebugConsole::GetInstance()->AddLog("【BREAK】 ブロック " + std::to_string(i) + " が破壊された！！💥");
+                    }
                     break;
                 }
             }
@@ -269,6 +283,16 @@ void BossCore::Update(float deltaTime) {
         case State::Weak:
             UpdateWeak(deltaTime);
             break;
+        }
+    }
+    // ==========================================
+    // ★ 魔法の処理：破壊されたブロックの強制消去！
+    // 攻撃クラスが勝手にスケールを戻しても、フレームの最後で絶対に消し去る！
+    // ==========================================
+    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+        if (blockBroken_[i] && armorBlocks_[i]) {
+            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f }); // 完全に隠す
+            armorBlocks_[i]->SetCollisionAttribute(0);       // 当たり判定も消す
         }
     }
 }
@@ -561,7 +585,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
 }
 
 
-void BossCore::TakeBarrierDamage(float damage) {
+void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     barrierHp_ -= damage;
 
     DebugConsole::GetInstance()->AddLog("【HIT!】 Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " + std::to_string(maxBarrierHp_));
@@ -569,8 +593,11 @@ void BossCore::TakeBarrierDamage(float damage) {
     damageCooldownTimer_ = 0.5f;
     colorResetTimer_ = 0.15f;
 
-    for (Object3d* block : armorBlocks_) {
-        if (block) block->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+    // ==========================================
+    // 全部ではなく、当たったブロックだけを赤くする！
+    // ==========================================
+    if (hitBlock) {
+        hitBlock->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
     }
 
     if (barrierHp_ <= 0.0f) {
