@@ -21,9 +21,9 @@ public:
         float padding1;
         Vector2 screenSize;
         int enableDistortion; // 0: 加算/通常, 1: 背景歪みモード
-        int enableColorRamp;  // ★新規追加：カラーランプ有効フラグ
-        int enableNoiseTexture; // ★新規追加：ノイズテクスチャ有効フラグ
-        float padding2;         // ★サイズ合わせのためのパディング
+        int enableColorRamp;  //カラーランプ有効フラグ
+        int enableNoiseTexture; //ノイズテクスチャ有効フラグ
+        int enableReveal;
     };
 
     // 初期化・更新・描画
@@ -63,11 +63,20 @@ public:
     void SetEnableNoiseTexture(bool enable) { materialData_->enableNoiseTexture = enable ? 1 : 0; }
     void SetBlendMode(BlendMode mode) { blendMode_ = mode; }
     BlendMode GetBlendMode() const { return blendMode_; }
+    void SetEnableReveal(bool enable) { materialData_->enableReveal = enable ? 1 : 0; }
+    void SetEasingType(int type) { easingType_ = type; }
+    int GetEasingType() const { return easingType_; }
+
+    void SetTargetObject(Object3d* target) { targetObject_ = target; }
+    void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
+    Object3d* GetTargetObject() const { return targetObject_; }
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
     EffectMaterial* materialData_ = nullptr;
-
+    Object3d* targetObject_ = nullptr;
+    Vector3 offsetPos_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 offsetRot_ = { 0.0f, 0.0f, 0.0f };
     void CreateMaterialBuffer(ID3D12Device* device);
     BlendMode blendMode_ = BlendMode::kAdd;
     float currentTime_ = 0.0f;
@@ -79,5 +88,5 @@ private:
     Vector3 endScale_ = { 1.0f, 1.0f, 1.0f };
     Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-
+    int easingType_ = 0; // デフォルトは 0 (Linear)
 };

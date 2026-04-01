@@ -1,17 +1,18 @@
 #include "VFXSequencer.h"
 #include "GPUParticleManager.h"
+#include "MeshEffectManager.h"
 #include <fstream>
 #include <json.hpp>
 #include "DebugConsole.h"
 using json = nlohmann::json;
-void VFXSequencer::Initialize(Transform* targetTransform) {
-    targetTransform_ = targetTransform;
+void VFXSequencer::Initialize(Object3d* targetObject) {
+    targetObject_ = targetObject;
     events_.clear();
     Reset();
 }
-
-void VFXSequencer::AddEvent(const std::string& presetName, float triggerTime, const Vector3& offset) {
-    events_.push_back({ presetName, triggerTime, offset, false });
+void VFXSequencer::AddEvent(VFXEventType type, const std::string& presetName, float triggerTime, const Vector3& offset) {
+    // 構造体の順番に合わせて { type, presetName, triggerTime, offset, hasFired } とする
+    events_.push_back({ type, presetName, triggerTime, offset, false });
 }
 
 void VFXSequencer::Play() {
@@ -30,52 +31,45 @@ void VFXSequencer::Reset() {
         e.hasFired = false; // 全イベントを未発火に戻す
     }
 }
-
 void VFXSequencer::Update(float deltaTime) {
     if (!isPlaying_) return;
-
     currentTime_ += deltaTime;
     bool allFired = true;
 
     for (auto& e : events_) {
-        // まだ発火していないイベントかチェック
         if (!e.hasFired) {
-            // 指定した時間を過ぎたら発火！
             if (currentTime_ >= e.triggerTime) {
-                Vector3 spawnPos = { 0, 0, 0 };
-
-                if (targetTransform_) {
-                    Matrix4x4 worldMat = targetTransform_->matWorld;
-                    Math math;
-                    // オフセットをキャラクターの向きに合わせて回転
-                    Vector3 worldOffset = math.TransformNormal(e.offset, worldMat);
-
-                    spawnPos.x = worldMat.m[3][0] + worldOffset.x;
-                    spawnPos.y = worldMat.m[3][1] + worldOffset.y;
-                    spawnPos.z = worldMat.m[3][2] + worldOffset.z;
-                } else {
-                    spawnPos = e.offset; // ターゲットがいなければ絶対座標
+                if (e.type == VFXEventType::GPUParticle) {
+                    // --- ① パーティクルの発生処理 ---
+                    Vector3 spawnPos = e.offset;
+                    Matrix4x4 emitMat = Math::MakeIdentity4x4();
+                    if (targetObject_) {
+                        Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
+                        spawnPos = Math::TransformNormal(e.offset, worldMat);
+                        spawnPos.x += worldMat.m[3][0];
+                        spawnPos.y += worldMat.m[3][1];
+                        spawnPos.z += worldMat.m[3][2];
+                        emitMat = worldMat;
+                    }
+                    GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos, emitMat);
                 }
+                else if (e.type == VFXEventType::MeshEffect) {
+                    // --- ② メッシュエフェクトの発生処理 ---
+                    std::string path = "Resources/json/effect/" + e.presetName + ".json";
 
-                Matrix4x4 emitMat = targetTransform_ ? targetTransform_->matWorld : Math::MakeIdentity4x4();
-
-                // 魔法の1行でエフェクト召喚！
-                GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos, emitMat);
-                e.hasFired = true; // 発火済みにする
-            } else {
-                allFired = false; // まだ未来に発火するイベントが残っている
+                    // ★修正: 引数の targetObject_ を削除！
+                    // エフェクト側(JSON)で設定された TargetName に完全に任せます
+                    MeshEffectManager::GetInstance()->SpawnEffect(path);
+                }
+                e.hasFired = true;
+            }
+            else {
+                allFired = false;
             }
         }
     }
-
-    // 全てのイベントを撃ち終わったら自動で停止する
-    if (allFired) {
-        isPlaying_ = false;
-    }
+    if (allFired) isPlaying_ = false;
 }
-
-
-
 // ==========================================================
 //  タイムラインをJSONに保存
 // ==========================================================
@@ -85,6 +79,7 @@ void VFXSequencer::Save(const std::string& sequenceName) {
 
     for (const auto& e : events_) {
         json eventJson;
+        eventJson["type"] = static_cast<int>(e.type);
         eventJson["presetName"] = e.presetName;
         eventJson["triggerTime"] = e.triggerTime;
         eventJson["offset"] = { e.offset.x, e.offset.y, e.offset.z };
@@ -122,6 +117,12 @@ void VFXSequencer::Load(const std::string& sequenceName) {
         if (j.contains("events") && j["events"].is_array()) {
             for (const auto& eventJson : j["events"]) {
                 VFXEvent e;
+                if (eventJson.contains("type")) {
+                    e.type = static_cast<VFXEventType>(eventJson["type"].get<int>());
+                }
+                else {
+                    e.type = VFXEventType::GPUParticle;
+                }
                 if (eventJson.contains("presetName")) e.presetName = eventJson["presetName"];
                 if (eventJson.contains("triggerTime")) e.triggerTime = eventJson["triggerTime"];
                 if (eventJson.contains("offset")) {

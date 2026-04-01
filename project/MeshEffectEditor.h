@@ -1,6 +1,7 @@
 #pragma once
 #include "IEditable.h"
 #include "EffectObject3d.h"
+#include "Object3d.h"
 #include <memory>
 #include <string>
 #include <vector>  
@@ -21,15 +22,20 @@ public:
 
     std::string GetName() override { return "Mesh Effect Editor"; }
     EffectObject3d* GetPreviewEffect() const { return previewEffect_.get(); }
+
 private:
     void RefreshTextureList();
     void SyncTextureIndices();
+    void RefreshJsonFileList();
+    void SaveToJson();
+    void LoadFromJson();
 private:
     // ★ SceneManager を保持しておく
     SceneManager* sceneManager_ = nullptr;
     BaseScene* lastScene_ = nullptr;
     std::unique_ptr<EffectObject3d> previewEffect_;
     std::vector<std::string> textureFileList_;
+    Object3d* targetObject_ = nullptr;
     int currentTextureIndex_ = 0; // 現在選択されているテクスチャのインデックス
 
     Vector3 editPosition_ = { 0.0f, 0.0f, 0.0f };
@@ -64,7 +70,8 @@ private:
     char editRampTexturePath_[256] = "";
     int currentRampTextureIndex_ = -1;
     int currentBlendModeIndex_ = 2;
-
-    void SaveToJson();
-    void LoadFromJson();
+    bool editEnableReveal_ = true;
+    std::vector<std::string> jsonFileList_;
+    int currentJsonIndex_ = -1; // -1は「新規作成」扱い
+    int editEasingType_ = 0;
 };

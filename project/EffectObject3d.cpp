@@ -1,9 +1,25 @@
 #include "EffectObject3d.h"
 #include "SRVManager.h"
 #include"Winapp.h"
+#include "Easing.h"
 #include <cassert>
 #include <DebugConsole.h>
-
+float ApplyEasing1(int type, float t) {
+    switch (type) {
+    case 0: return Easing::Linear(t);
+    case 1: return Easing::InSine(t);    case 2: return Easing::OutSine(t);    case 3: return Easing::InOutSine(t);
+    case 4: return Easing::InQuad(t);    case 5: return Easing::OutQuad(t);    case 6: return Easing::InOutQuad(t);
+    case 7: return Easing::InCubic(t);   case 8: return Easing::OutCubic(t);   case 9: return Easing::InOutCubic(t);
+    case 10: return Easing::InQuart(t);  case 11: return Easing::OutQuart(t);  case 12: return Easing::InOutQuart(t);
+    case 13: return Easing::InQuint(t);  case 14: return Easing::OutQuint(t);  case 15: return Easing::InOutQuint(t);
+    case 16: return Easing::InExpo(t);   case 17: return Easing::OutExpo(t);   case 18: return Easing::InOutExpo(t);
+    case 19: return Easing::InCirc(t);   case 20: return Easing::OutCirc(t);   case 21: return Easing::InOutCirc(t);
+    case 22: return Easing::InBack(t);   case 23: return Easing::OutBack(t);   case 24: return Easing::InOutBack(t);
+    case 25: return Easing::InElastic(t);case 26: return Easing::OutElastic(t);case 27: return Easing::InOutElastic(t);
+    case 28: return Easing::InBounce(t); case 29: return Easing::OutBounce(t); case 30: return Easing::InOutBounce(t);
+    default: return Easing::Linear(t);
+    }
+}
 void EffectObject3d::Initialize(Object3dCommon* common) {
     // 親クラスの初期化
     Object3d::Initialize(common);
@@ -62,16 +78,19 @@ void EffectObject3d::Update(float deltaTime) {
     // ========================================================
     // ★ 緩急（イージング）の適用
     // ========================================================
-    float easeProgress = progress;
-    
+    // エディタで選んだ easingType_ を使って進行度を曲げる！
+    float easeProgress = ApplyEasing1(easingType_, progress);
+
     // ========================================================
     // ★ アニメーションの適用
     // ========================================================
-    // ① 軌跡を伸ばす
+    // ① 軌跡を伸ばす (Reveal)
     materialData_->revealProgress = easeProgress;
 
-    // ② ディゾルブ
-    materialData_->dissolveFade = std::clamp((progress - 0.5f) * 2.0f, 0.0f, 1.0f);
+    // ② ディゾルブ (後半50%から消え始める処理にもイージングを乗せる)
+    materialData_->dissolveFade = std::clamp((easeProgress - 0.5f) * 2.0f, 0.0f, 1.0f);
+
+    // 画面サイズの更新（歪み用）
     materialData_->screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
 
     // ========================================================
@@ -82,6 +101,7 @@ void EffectObject3d::Update(float deltaTime) {
     currentScale.y = std::lerp(startScale_.y, endScale_.y, easeProgress);
     currentScale.z = std::lerp(startScale_.z, endScale_.z, easeProgress);
     SetScale(currentScale); // 親クラス(Object3d)のスケールセット関数を呼ぶ
+
     Vector4 currentColor;
     currentColor.x = std::lerp(startColor_.x, endColor_.x, easeProgress);
     currentColor.y = std::lerp(startColor_.y, endColor_.y, easeProgress);
@@ -89,9 +109,6 @@ void EffectObject3d::Update(float deltaTime) {
     currentColor.w = std::lerp(startColor_.w, endColor_.w, easeProgress);
     SetColor(currentColor);
 
-    // ディゾルブ（侵食）の進行度もGPUに送る
-    materialData_->revealProgress = easeProgress;
-    materialData_->dissolveFade = std::clamp((progress - 0.5f) * 2.0f, 0.0f, 1.0f);
     // 寿命が来たら再生終了
     if (progress >= 1.0f) {
         isPlaying_ = false;
@@ -100,8 +117,6 @@ void EffectObject3d::Update(float deltaTime) {
     // 親のTransform更新（行列計算）を最後に呼ぶ
     Object3d::Update(deltaTime);
 }
-
-
 
 void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     DebugConsole::GetInstance()->AddLog("  2: EffectObject3d::Draw() is Called!");
