@@ -329,6 +329,16 @@ static float LerpAngle(float a, float b, float t)
 	return a + diff * t;
 }
 
+static Vector3 LerpEuler(const Vector3& a, const Vector3& b, float t)
+{
+	// X/Z は線形、Y は角度補間（最短回転）を使う
+	return Vector3{
+		a.x + (b.x - a.x) * t,
+		LerpAngle(a.y, b.y, t),
+		a.z + (b.z - a.z) * t
+	};
+}
+
 // ========================================================
 // グローバル: 待機状態での体の向きブレンド管理
 // ========================================================
@@ -423,7 +433,7 @@ void PlayerStateIdle::Enter(Player* player)
 		}
 		leftArmSaved_ = true;
 	}
-	
+
 	if (rightArmObj_) {
 		if (s_pendingIdleBlend.active && s_pendingIdleBlend.rightArm) {
 			rightArmDefaultRot_ = s_pendingIdleBlend.rightArmTarget;
@@ -476,14 +486,6 @@ void PlayerStateIdle::Update(Player* player)
 
 	if (attackTriggered)
 	{
-	
-		bool isAirborne = !player->IsGrounded() || std::abs(player->GetVelocity().y) > 0.5f;
-		if (isAirborne)
-		{
-			player->ChangeState(std::make_unique<PlayerStatePlungeAttack>());
-			return;
-		}
-
 		// --- 地上攻撃の処理  ---
 		if ((player && player->ConsumePendingAttack2()) || (player && player->IsComboWindowActive()))
 		{
@@ -717,8 +719,13 @@ void PlayerStateIdle::ApplyPostUpdate(Player* player, float deltaTime)
 	{
 		float bodyBlendT = (blendDuration_ > 1e-6f) ? std::clamp(blendTimer_ / blendDuration_, 0.0f, 1.0f) : 1.0f;
 		float bodyEase = EaseInOutSine(bodyBlendT);
-		// フル回転を線形補間（イーズ適用）
-		Vector3 newRot = LerpVec(s_bodyStartRotVec, s_bodyTargetRotVec, bodyEase);
+		// Y成分は角度補間で正規化して最短回転を使う（420degのような大きな値で遠回りする問題を回避）
+		Vector3 newRot;
+		// X/Z は線形補間でよい
+		newRot.x = s_bodyStartRotVec.x + (s_bodyTargetRotVec.x - s_bodyStartRotVec.x) * bodyEase;
+		newRot.z = s_bodyStartRotVec.z + (s_bodyTargetRotVec.z - s_bodyStartRotVec.z) * bodyEase;
+		// Y は LerpAngle を利用して角度差を正規化する
+		newRot.y = LerpAngle(s_bodyStartRotVec.y, s_bodyTargetRotVec.y, bodyEase);
 		player->SetRotation(newRot); // Quaternion も更新される
 		if (bodyBlendT >= 1.0f) s_bodyBlendActive = false;
 	}
@@ -846,14 +853,6 @@ void PlayerStateRun::Update(Player* player)
 
 	if (attackTriggered)
 	{
-		// ★最優先: 空中判定（移動ジャンプ中なら絶対に落下攻撃を出す）
-		bool isAirborne = !player->IsGrounded() || std::abs(player->GetVelocity().y) > 0.5f;
-		if (isAirborne)
-		{
-			player->ChangeState(std::make_unique<PlayerStatePlungeAttack>());
-			return;
-		}
-
 		// --- 地上攻撃の処理 ---
 		if ((player && player->ConsumePendingAttack2()) || (player && player->IsComboWindowActive()))
 		{
@@ -1797,11 +1796,11 @@ void PlayerStateAttack2::ApplyPose(float t)
 	if (bodyObj_)
 	{
 		// bodyDefaultRot_.y を基準に 420deg 回す（相対指定）
-		bodyEndRot.y = bodyDefaultRot_.y + DegToRad(420.0f);
+		bodyEndRot.y = bodyDefaultRot_.y + DegToRad(540.0f);
 	}
 	else
 	{
-		bodyEndRot.y = DegToRad(420.0f);
+		bodyEndRot.y = DegToRad(540.0f);
 	}
 
 	// Head end
@@ -2929,10 +2928,16 @@ void PlayerStateJump::Update(Player* player)
 	// 先に攻撃入力チェック：空中で攻撃されたら落下攻撃へ遷移
 	InputManager* im = player->GetInputManager();
 	bool attackTriggered = im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0));
+
 	if (attackTriggered && !player->IsGrounded())
 	{
-		player->ChangeState(std::make_unique<PlayerStatePlungeAttack>());
-		return;
+		if (apexReached_)
+		{
+			// 頂点に到達している場合のみ落下攻撃に遷移
+			player->ChangeState(std::make_unique<PlayerStatePlungeAttack>());
+			return;
+		}
+		// 頂点に達していない場合は入力を無視（または将来的にバッファ化の追加可）
 	}
 
 	// フレーム固定ステップ（既存の他の Update と同様の扱い）

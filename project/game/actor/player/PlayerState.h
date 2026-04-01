@@ -227,7 +227,7 @@ public:
 
 private:
     float animTimer_ = 0.0f;
-    float animDuration_ = 0.4f;
+    float animDuration_ = 0.5f;
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;
