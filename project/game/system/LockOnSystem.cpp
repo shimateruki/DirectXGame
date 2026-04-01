@@ -27,7 +27,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
     if (!inputManager_ || !camera || !player) return;
 
     // (1) 0キー(Zキー等)入力処理
-    if (inputManager_->IsKeyTriggered(DIK_0)) {
+    if (inputManager_->IsKeyTriggered(DIK_R)) {
         isLockingOn_ = !isLockingOn_;
 
         if (isLockingOn_) {
@@ -114,18 +114,19 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     if (!player || !camera) return nullptr;
 
     Object3d* bestTarget = nullptr;
-    float maxDot = -2.0f; // 内積の初期値
+    float minDistance = kMaxLockOnDistance_ + 1.0f;
 
     Vector3 playerPos = player->GetWorldPosition();
+    Vector3 cameraEye = camera->GetEye();
 
-    // -----------------------------------------------------------------
-    //  (A) カメラの前方ベクトルを計算（上下のY軸を無視して平面で扱う）
-    // -----------------------------------------------------------------
-    Vector3 cameraForward = camera->GetTargetPoint() - camera->GetEye();
-    cameraForward.y = 0.0f; // 高さを無視
-    float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.z * cameraForward.z);
+    // ========================================================
+    // ★ 修正1: Y軸を無視せず、カメラの「本当の3Dの向き」を計算！
+    // ========================================================
+    Vector3 cameraForward = camera->GetTargetPoint() - cameraEye;
+    float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.y * cameraForward.y + cameraForward.z * cameraForward.z);
     if (cfLen > 0.001f) {
         cameraForward.x /= cfLen;
+        cameraForward.y /= cfLen;
         cameraForward.z /= cfLen;
     }
     else {
@@ -135,77 +136,87 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     const uint32_t kTargetAttribute = 2; // kEnemy (例)
 
     for (const auto& obj : objects) {
-        // 1. 敵属性を持たないものは除外
         if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
-            continue;
+            // 名前に "BossCore" が含まれていない場合のみ除外する（ボスはスルーして判定を続ける）
+            if (obj->GetName().find("BossCore") == std::string::npos) {
+                continue;
+            }
         }
+        
 
-        // -----------------------------------------------------------------
-        //  (B) 自分自身、および「自分の子パーツ(武器や手足など)」を完全に除外
-        //  ※これでロックオン解除時に自分をターゲットしてしまうバグが消滅します！
-        // -----------------------------------------------------------------
+        // 2. 自分自身、および「自分の子パーツ(武器や手足など)」を除外
         bool isPlayerPart = false;
         Object3d* current = obj.get();
         while (current) {
-            if (current == player) {
-                isPlayerPart = true;
-                break;
-            }
-            current = current->GetParent(); // 親を辿ってプレイヤーかチェック
+            if (current == player) { isPlayerPart = true; break; }
+            current = current->GetParent();
         }
-        if (isPlayerPart) {
-            continue;
-        }
+        if (isPlayerPart) continue;
 
-        // -----------------------------------------------------------------
-        //  (C) 0,0,0付近に吸われる元凶「ブロック」を除外
-        // -----------------------------------------------------------------
+        // 3. ブロックなど無関係なものを除外
         std::string name = obj->GetName();
-        if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) {
-            continue;
-        }
+        if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) continue;
 
         // -----------------------------------------------------------------
-        //  (D) 距離と角度のチェック（Y軸を無視した2D判定）
+        //  (D) 距離と角度のチェック（完全3D化！）
         // -----------------------------------------------------------------
         Vector3 enemyPos = obj->GetWorldPosition();
-        Vector3 toEnemy = enemyPos - playerPos;
-        float distance = math.Length(toEnemy);
 
-        // 距離が遠すぎる、または近すぎる場合は除外
+        // プレイヤーからの距離（ロックオン可能距離の判定などに使う）
+        Vector3 toEnemyFromPlayer = enemyPos - playerPos;
+        float distance = math.Length(toEnemyFromPlayer);
+
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
 
-        // 敵への方向を平面(2D)にする
-        Vector3 toEnemy2D = toEnemy;
-        toEnemy2D.y = 0.0f;
-        float teLen = std::sqrt(toEnemy2D.x * toEnemy2D.x + toEnemy2D.z * toEnemy2D.z);
-        if (teLen > 0.001f) {
-            toEnemy2D.x /= teLen;
-            toEnemy2D.z /= teLen;
+        // ========================================================
+        // ★ 修正2: 「プレイヤーから」ではなく、「カメラから」敵への方向を計算！
+        // これにより『画面の中に敵が映っているか』を正確に判定できます。
+        // ========================================================
+        Vector3 toEnemyFromCam = enemyPos - cameraEye;
+        float teCamLen = std::sqrt(toEnemyFromCam.x * toEnemyFromCam.x + toEnemyFromCam.y * toEnemyFromCam.y + toEnemyFromCam.z * toEnemyFromCam.z);
+        if (teCamLen > 0.001f) {
+            toEnemyFromCam.x /= teCamLen;
+            toEnemyFromCam.y /= teCamLen;
+            toEnemyFromCam.z /= teCamLen;
         }
 
-        // 平面同士の内積（角度チェック）
-        float dot = math.Dot(cameraForward, toEnemy2D);
+        // カメラの向きと、敵への方向の3D内積（画面に入っているかチェック）
+        float dot = math.Dot(cameraForward, toEnemyFromCam);
 
-        // 画面前方180度(dot > 0.0f)にいて、かつ一番画面中央(maxDot)に近いものを探す
-        if (dot > 0.0f && dot > maxDot) {
+        // ========================================================
+        // ★ 修正3: カメラの視野内(dot > -0.2f)にいて、一番近い敵を探す！
+        // ========================================================
+        if (dot > -0.2f && distance < minDistance) {
 
-            // -----------------------------------------------------------------
-            //  (E) 遮蔽物（壁）チェック
-            // -----------------------------------------------------------------
-            // ※壁チェックのレイ(光線)は、上下も含めた「本当の3D方向」に飛ばす
-            Vector3 toEnemyNormalized = toEnemy / distance;
-            RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                playerPos,          // 開始点
-                toEnemyNormalized,  // 本当の3D方向
-                distance,           // 最大距離
-                1                   // kGround (例: 地面・壁属性)
-            );
-
-            // 間に壁がなければ、最も良いターゲットとして更新
-            if (!hit.isHit) {
-                maxDot = dot;
+            // 15m以内なら壁を無視して確定（激甘判定）
+            if (distance < 15.0f) {
+                minDistance = distance;
                 bestTarget = obj.get();
+                continue;
+            }
+
+            // 15m以上の遠距離なら壁チェック（レイを1.5mの高さから撃つ）
+            Vector3 rayStart = { playerPos.x, playerPos.y + 1.5f, playerPos.z };
+            Vector3 rayEnd = { enemyPos.x, enemyPos.y + 1.5f, enemyPos.z };
+            Vector3 toEnemy3D = { rayEnd.x - rayStart.x, rayEnd.y - rayStart.y, rayEnd.z - rayStart.z };
+
+            float trueDist = std::sqrt(toEnemy3D.x * toEnemy3D.x + toEnemy3D.y * toEnemy3D.y + toEnemy3D.z * toEnemy3D.z);
+
+            if (trueDist > 0.0f) {
+                Vector3 toEnemyNormalized = { toEnemy3D.x / trueDist, toEnemy3D.y / trueDist, toEnemy3D.z / trueDist };
+
+                RaycastHit hit = CollisionManager::GetInstance()->Raycast(
+                    rayStart,
+                    toEnemyNormalized,
+                    trueDist,
+                    1
+                );
+
+                // 間に壁がなければ、最も良いターゲットとして更新
+                if (!hit.isHit) {
+                    minDistance = distance;
+                    bestTarget = obj.get();
+                }
             }
         }
     }

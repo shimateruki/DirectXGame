@@ -76,7 +76,9 @@ void PostEffectEditor::DrawImGui() {
     ImGui::Text(ICON_FA_TV " Retro Effects");
     ImGui::DragFloat(ICON_FA_BARS " Scanline (ブラウン管)", &params->scanlineIntensity, 0.01f, 0.0f, 1.0f);
     ImGui::DragFloat(ICON_FA_TH " Mosaic Size (ドット絵化)", &params->mosaicSize, 1.0f, 0.0f, 64.0f);
-
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_HEARTBEAT " Danger / Health Effects");
+    ImGui::DragFloat(" Danger Vignette (瀕死赤枠)", &params->dangerVignette, 0.01f, 0.0f, 2.0f);
     ImGui::Separator();
 
     // ==========================================================

@@ -1,12 +1,12 @@
 ﻿#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
-#include "easing.h" // 追加
+#include "easing.h"
 #include "DebugConsole.h"
 #include <cmath>
 #include <numbers>
-#include <ctime>   // ★ 新規追加：時間を使うため
-#include <cstdlib> // ★ 新規追加：乱数を使うため
+#include <ctime>
+#include <cstdlib>
 
 // =================================================================
 // ★ 新規：待機アニメーション用のタイマーと軌道計算関数
@@ -94,6 +94,16 @@ namespace {
         }
         return nullptr;
     }
+    float EaseOutElasticMario(float t) {
+        if (t == 0.0f) return 0.0f;
+        if (t == 1.0f) return 1.0f;
+
+        // バウンドの周期と強度
+        float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
+
+        // 減衰するサイン波： std::pow(2.0f, -10.0f * t) で徐々に振動を小さくする
+        return std::pow(2.0f, -10.0f * t) * std::sin((t * 10.0f - 0.75f) * c4) + 1.0f;
+    }
 }
 
 // =================================================================
@@ -115,6 +125,21 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     if (sceneManager_) {
         director_->Initialize(sceneManager_);
     }
+
+    originalColor_ = GetColor();
+
+    // ==========================================
+    // レーザー用の円柱モデルを6本生成しておく
+    // ==========================================
+    for (int i = 0; i < 6; ++i) {
+        auto beam = std::make_unique<Object3d>();
+        beam->Initialize(common_);         // エンジンの共通データで初期化
+        beam->SetModel("cylinder");        // ※円柱モデルのファイル名に合わせてください！
+        beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+        beam->SetCollisionAttribute(0);    // 当たり判定なし
+        beam->SetCollisionMask(0);
+        laserBeams_.push_back(std::move(beam));
+    }
 }
 
 void BossCore::Update(float deltaTime) {
@@ -122,7 +147,7 @@ void BossCore::Update(float deltaTime) {
     // ★ 魔法の1行：ボスの全体スピード倍率！
     // 以前の「2回Update」と同じ速度を再現するため、ボスの時間だけを2倍速で進める！
     // ==========================================
-    deltaTime *= 2.0f;
+    deltaTime *= 1.5f;
 
     // ==========================================
     // 0キーで時間停止（ザ・ワールド）機能！
@@ -201,7 +226,49 @@ void BossCore::Update(float deltaTime) {
         return;
     }
 
+    // ==========================================
+     // 4. 通常のステート更新（アニメーション中以外に動く）
+     // ==========================================
     if (isFirstFrame_) {
+        originalColor_ = GetColor();
+        // ① まず、子供たちの中から WarningArea を見つけ出す！
+        for (Object3d* child : GetChildren()) {
+            if (child->GetName() == "WarningArea") {
+                warningArea_ = child;
+                warningArea_->SetParent(nullptr); // 親子関係を解除
+                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
+
+                // ==========================================
+                // WarningArea の当たり判定を完全に処刑する（幽霊化）！！
+                // ==========================================
+                warningArea_->SetCollisionAttribute(0); // 自分の属性を「無し(0)」にする！
+                warningArea_->SetCollisionMask(0);      // ぶつかる相手を「無し(0)」にする！
+
+                // ==========================================
+                // 絶対に斜めにならないよう、角度を完全に平ら(0,0,0)に強制リセット！
+                // ==========================================
+                warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
+                warningArea_->GetTransform()->isQuaternionMaster = false;
+
+                // ==========================================
+                // ② 見つけたら、装甲ブロックのリスト（armorBlocks_）から完全に追放（はく奪）する！
+                // ==========================================
+                for (auto it = armorBlocks_.begin(); it != armorBlocks_.end(); ) {
+                    if (*it == warningArea_) {
+                        it = armorBlocks_.erase(it); // リストから消去！
+                    }
+                    else {
+                        ++it;
+                    }
+                }
+
+                DebugConsole::GetInstance()->AddLog("🟢 WarningArea を取得し、リストからはく奪しました！");
+                break;
+            }
+        }
+
+        // ③ リストから「はく奪」した【後】に、状態をIdleに切り替える！
+        // （これでWarningAreaは ChangeState の属性上書きに巻き込まれません！）
         ChangeState(State::Idle);
         isFirstFrame_ = false;
     }
@@ -216,24 +283,46 @@ void BossCore::Update(float deltaTime) {
 // =================================================================
 // ステート(状態)管理
 // =================================================================
-
 void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
-    // 現在のステートに応じた属性を決定する
-    uint32_t targetAttribute = (state_ == State::Attack) ? kEnemyAttack : kEnemy;
-
-    // ① コア本体の属性を切り替え
-    SetCollisionAttribute(targetAttribute);
-
+    // =======================================================
+    // ★ 修正：コア本体とブロックの属性設定！
+    // =======================================================
+    uint32_t coreAttribute;
     if (state_ == State::Attack) {
-        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        // 攻撃中：触れるとダメージ ＋ 絶対すり抜けない壁
+        coreAttribute = kEnemyAttack | kGround;
+    }
+    else if (state_ == State::Weak) {
+        // ダウン中：剣で殴れる ＋ 絶対すり抜けない壁
+        coreAttribute = kEnemy | kGround;
+    }
+    else {
+        // 待機中：ただの壁（体当たりしてもノーダメージ）
+        coreAttribute = kGround;
     }
 
-    // ② ：周りのブロックたちの属性も全部一緒に切り替える！
+    // ① コア本体の属性を設定し、さらに「全ての子パーツ」にも属性を同期させる！
+    // これにより、コアの見た目メッシュなどの子パーツに触れてもダメージを受けなくなります。
+    SetCollisionAttribute(coreAttribute);
+    for (Object3d* child : GetChildren()) {
+        if (child) {
+            child->SetCollisionAttribute(coreAttribute);
+        }
+    }
+
+    if (state_ == State::Attack) {
+        SetColor(originalColor_);
+    }
+
+    // ② 周りのブロックの属性（攻撃中は「敵の攻撃＋壁」、それ以外は「ただの壁」）
+    // 装甲ブロックは上で子パーツとしても処理されますが、念のためここで確実に上書きします。
+    uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+
     for (Object3d* block : armorBlocks_) {
         if (block) {
-            block->SetCollisionAttribute(targetAttribute);
+            block->SetCollisionAttribute(blockAttribute);
             if (state_ == State::Attack) {
                 block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             }
@@ -241,7 +330,7 @@ void BossCore::ChangeState(State nextState) {
     }
 
     // ==========================================
-    // ★ 修正：状態移行に合わせて、攻撃アニメーションをスタート！
+    // 状態移行に合わせて、攻撃アニメーションをスタート！
     // ==========================================
     switch (state_) {
     case State::Idle:
@@ -250,8 +339,14 @@ void BossCore::ChangeState(State nextState) {
         break;
 
     case State::Attack: {
-        // ランダムな攻撃パターンを選択 (1〜4)
-        int nextAttack = rand() % 4 + 1;
+        // 順番に攻撃する。
+        static int nextAttackPattern = 0;
+        int nextAttack = nextAttackPattern;
+        nextAttackPattern++;
+        if (nextAttackPattern > 6) {
+            nextAttackPattern = 1; // 4番の次は1番に戻る
+        }
+        nextAttackPattern = 6;
 
         // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
         attackMode_ = nextAttack;
@@ -269,6 +364,12 @@ void BossCore::ChangeState(State nextState) {
         }
         else if (attackMode_ == 4) {
             animPhase_ = 39;
+        }
+        else if (attackMode_ == 5) {
+            animPhase_ = 50;
+        }
+        else if (attackMode_ == 6) {
+            animPhase_ = 60; 
         }
         break;
     }
@@ -309,42 +410,42 @@ void BossCore::UpdateAttack(float deltaTime) {
 void BossCore::UpdateWeak(float deltaTime) {
     animTimer_ += deltaTime;
 
-    // ==========================================
-    // 演出1：機能停止して小刻みに震える（プルプル）
-    // ==========================================
-    // sin波を使って、高速で小刻みに揺らす
+    // --- 演出1：ボス本体のシェイク ---
     float shakeX = std::sin(animTimer_ * 50.0f) * 0.05f;
     float shakeZ = std::cos(animTimer_ * 45.0f) * 0.05f;
     SetRotation({ shakeX, GetRotation().y, shakeZ });
-    GetTransform()->isQuaternionMaster = false;
+
+    // --- 演出2：全体の色を暗くする ---
+    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
 
     // ==========================================
-    // 演出2：全体の色を暗くして「ショートした」感を出す
+    // ★ 追加：ブロックをバラバラに弾け飛ばすアニメーション！
     // ==========================================
-    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // コアをダークグレーに
-    for (Object3d* block : armorBlocks_) {
-        if (block) {
-            block->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // ブロックもダークグレーに
+    float scatterDuration = 0.8f; // 0.8秒かけて弾け飛ぶ
+    float t = std::min(animTimer_ / scatterDuration, 1.0f);
+    float easeT = Easing::OutExpo(t); // 「バッ！」と広がる動き
+
+    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+        if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+            // スタート位置からランダムな目標位置へ補間
+            Vector3 currentPos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+            armorBlocks_[i]->SetTranslate(currentPos);
+
+            // スタン中っぽく、各ブロックを適当な方向にゆっくり回転させ続ける
+            Vector3 rot = armorBlocks_[i]->GetRotation();
+            rot.x += 1.0f * deltaTime;
+            rot.y += 1.5f * deltaTime;
+            armorBlocks_[i]->SetRotation(rot);
+            armorBlocks_[i]->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // ブロックも暗くする
         }
     }
 
-    // ==========================================
-    // 3秒経過で復帰（再起動）
-    // ==========================================
-    if (animTimer_ >= 3.0f) {
+    // --- 3秒経過で復帰 ---
+    if (animTimer_ >= 10.0f) {
         animTimer_ = 0.0f;
-
-        // 姿勢を真っ直ぐに戻す
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
-
-        // 色を元の白(再起動)に戻す
-        SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        for (Object3d* block : armorBlocks_) {
-            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        }
-
-        // 待機状態(Idle)へ戻る
-        ChangeState(State::Idle);
+        SetColor(originalColor_);
+        ChangeState(State::Idle); // ここで各ブロックは IdleOrbit に戻るようになります
     }
 }
 
@@ -699,13 +800,13 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     // ======================================
     else if (attackMode_ == 3) {
 
-        // --- Phase 20: 瞬時にハンマー形態へ変形
+        // --- Phase 20: 瞬時にハンマー形態へ変形 ---
         if (animPhase_ == 20) {
             if (animTimer_ == 0.0f) {
+                // ... (ハンマー変形の hammerSettings 処理はそのまま) ...
                 struct HammerSetting {
                     Vector3 translate; Vector3 scale; Vector3 rotation;
                 };
-
                 std::vector<HammerSetting> hammerSettings = {
                     { {  0.000f,  4.000f,  0.000f }, { 1.500f, 1.000f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
                     { {  2.000f,  4.000f,  0.000f }, { 0.700f, 1.500f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
@@ -714,7 +815,6 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     { {  0.000f, -1.800f, -0.002f }, { 0.500f, 0.500f, 0.800f }, { 0.0f, 0.0f, 0.0f } },
                     { {  0.000f,  5.100f,  0.000f }, { 0.500f, 0.250f, 0.500f }, { 0.0f, 0.0f, 0.0f } }
                 };
-
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                     if (i < hammerSettings.size()) {
                         armorBlocks_[i]->SetTranslate(hammerSettings[i].translate);
@@ -738,11 +838,23 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animPhase_ = 21;
                 animTimer_ = 0.0f;
 
-                if (target_) {
-                    animTargetPos_ = target_->GetWorldPosition();
-                }
-                else {
-                    animTargetPos_ = GetTranslate();
+                if (target_) { animTargetPos_ = target_->GetWorldPosition(); }
+                else { animTargetPos_ = GetTranslate(); }
+
+                if (warningArea_) {
+                    // 高さをプレイヤーと同じ（2m）にし、位置を1m浮かせて地面に接地させる
+                    if (armorBlocks_.size() > 1 && armorBlocks_[1]) {
+                        Vector3 block2Scale = armorBlocks_[1]->GetScale();
+                        warningArea_->SetScale({ block2Scale.x, 2.0f, block2Scale.z }); // 高さ2.0f
+                    }
+                    warningArea_->SetTranslate({ animTargetPos_.x, 1.0f, animTargetPos_.z }); // 中心を1.0fにする
+
+                    float finalRotY = GetRotation().y + (std::numbers::pi_v<float> / 2.0f);
+                    warningArea_->SetRotation({ 0.0f, finalRotY, 0.0f });
+                    warningArea_->GetTransform()->isQuaternionMaster = false;
+
+                    // 透明度を薄く（0.3f）してスタート
+                    warningArea_->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f });
                 }
             }
         }
@@ -751,45 +863,39 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             animTimer_ += deltaTime;
 
             float moveDuration = 4.5f;
-            float rotDuration = 3.0f;
-
             float moveT = std::min(animTimer_ / moveDuration, 1.0f);
-            float rotT = std::min(animTimer_ / rotDuration, 1.0f);
 
+            if (warningArea_) {
+                // ★ 修正3：薄い透明度(0.3f)を維持したまま、黄色から赤へ
+                float currentGreen = Math::Lerp(1.0f, 0.0f, moveT);
+                warningArea_->SetColor({ 1.0f, currentGreen, 0.0f, 0.9f });
+            }
+
+            // ... (移動処理と回転処理は今のまま) ...
             Vector3 targetPos = animTargetPos_;
             Vector3 currentPos = GetTranslate();
-
             Vector3 toBoss = currentPos - targetPos;
             toBoss.y = 0.0f;
             float dist = std::sqrt(toBoss.x * toBoss.x + toBoss.z * toBoss.z);
             if (dist > 0.0f) { toBoss.x /= dist; toBoss.z /= dist; }
-
             Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
-
             float easeT = moveT;
             currentPos.x = Math::Lerp(currentPos.x, targetHoverPos.x, easeT);
             currentPos.y = Math::Lerp(currentPos.y, targetHoverPos.y, easeT);
             currentPos.z = Math::Lerp(currentPos.z, targetHoverPos.z, easeT);
             SetTranslate(currentPos);
-
+            float rotT = std::min(animTimer_ / 3.0f, 1.0f);
             Vector3 toPlayer = targetPos - currentPos;
             float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
-
             float elasticT = 0.0f;
-            if (rotT == 0.0f) {
-                elasticT = 0.0f;
-            }
-            else if (rotT == 1.0f) {
-                elasticT = 1.0f;
-            }
+            if (rotT == 0.0f) elasticT = 0.0f;
+            else if (rotT == 1.0f) elasticT = 1.0f;
             else {
                 float c4 = (2.0f * std::numbers::pi_v<float>) / 3.0f;
                 elasticT = -std::pow(2.0f, 10.0f * rotT - 10.0f) * std::sin((rotT * 10.0f - 10.75f) * c4);
             }
-
             float targetTilt = -70.0f * (std::numbers::pi_v<float> / 180.0f);
             float tiltBack = Math::Lerp(0.0f, targetTilt, elasticT);
-
             SetRotation({ 0.0f, angleY, tiltBack });
             GetTransform()->isQuaternionMaster = false;
 
@@ -801,18 +907,22 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
         else if (animPhase_ == 22) {
             animTimer_ += deltaTime;
-
             float smashDuration = 0.15f;
             float t = std::min(animTimer_ / smashDuration, 1.0f);
 
+            if (warningArea_) {
+                // ★ 修正4：振り下ろし中も薄い赤(0.3f)で表示し続ける
+                warningArea_->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+            }
+
             float startRotZ = -70.0f * (std::numbers::pi_v<float> / 180.0f);
             float endRotZ = 270.0f * (std::numbers::pi_v<float> / 180.0f);
-
             float currentRotZ = Math::Lerp(startRotZ, endRotZ, std::pow(t, 3.0f));
             SetRotation({ 0.0f, GetRotation().y, currentRotZ });
 
             if (t >= 1.0f) {
                 SetRotation({ 0.0f, GetRotation().y, endRotZ });
+                if (warningArea_) { warningArea_->SetScale({ 0.0f, 0.0f, 0.0f }); }
                 animPhase_ = 23;
                 animTimer_ = 0.0f;
             }
@@ -833,7 +943,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         }
         // --- Phase 24: 待機軌道に向かって復帰する ---
         else if (animPhase_ == 24) {
-
+            // (ここは今までと全く同じなので省略せずにそのまま残します)
             if (animTimer_ == 0.0f) {
                 blockStartPos_.clear();
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
@@ -1082,7 +1192,657 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 animTimer_ = 0.0f;
             }
         }
+    }// ======================================
+    // 攻撃モード5：人型になって倒れてくる！ (Phase 50 ~ 55)
+    // ======================================
+    else if (attackMode_ == 5) {
+
+        // --- Phase 50: ボスコアが画面の端（X = -50）まで行く ---
+        if (animPhase_ == 50) {
+            if (animTimer_ == 0.0f) {
+                animStartPos_ = GetTranslate();
+            }
+            animTimer_ += deltaTime;
+            float duration = 2.0f; // 2秒かけて移動
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            Vector3 pos = GetTranslate();
+            pos.x = Math::Lerp(animStartPos_.x, -50.0f, easeT); // 左端へ
+
+            pos.y = Math::Lerp(animStartPos_.y, 24.0f, easeT);
+            SetTranslate(pos);
+
+            if (target_) {
+                // ==========================================
+                // ★ 修正：プレイヤーを向く角度に「std::numbers::pi_v<float>」(180度)を足す！
+                // ==========================================
+                Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
+                float angleY = std::atan2(toPlayer.x, toPlayer.z) + std::numbers::pi_v<float>;
+
+                SetRotation({ GetRotation().x, angleY, GetRotation().z });
+                GetTransform()->isQuaternionMaster = false;
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 51;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 51: ボスのブロックが人型に変形する ---
+        else if (animPhase_ == 51) {
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                blockTargetPos_.clear();
+                blockStartScale_.clear();
+                blockTargetScale_.clear(); // ★追加
+
+                animStartRot_ = GetRotation();
+
+                // ==========================================
+                 // ★ 修正：Block4とBlock5の Z軸回転 を 90度（pi/2）にする！
+                 // ==========================================
+                float rotZ90 = std::numbers::pi_v<float> / 2.0f; // 90度のラジアン値
+
+                struct BlockSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+                std::vector<BlockSetting> settings = {
+                    { { -5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block1(足)
+                    { {  0.0f,  21.5f,  6.0f }, { 10.0f, 10.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block2(頭)
+                    { {  0.0f,  -3.5f,  6.0f }, {  8.0f, 15.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block3(胴体)
+                    { { 11.0f,   0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block4(右腕) ★Z回転
+                    { { -11.0f,  0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block5(左腕) ★Z回転
+                    { {  5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }    // Block6(足)
+                };
+
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    armorBlocks_[i]->SetParent(this);
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // ★追加
+
+                    if (i < settings.size()) {
+                        blockTargetPos_.push_back(settings[i].translate);
+                        blockTargetScale_.push_back(settings[i].scale); // ★追加
+                        armorBlocks_[i]->SetRotation(settings[i].rotation);
+                        armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                    }
+                    else {
+                        blockTargetPos_.push_back({ 0.0f, 0.0f, 0.0f });
+                        blockTargetScale_.push_back({ 0.0f, 0.0f, 0.0f });
+                    }
+                }
+
+                if (warningArea_) {
+                    warningArea_->SetTranslate({ 0.0f, -0.5f, 6.0f });
+                    warningArea_->SetScale({ 35.0f, 55.0f, 5.0f });
+                    warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
+                    warningArea_->GetTransform()->isQuaternionMaster = false;
+                    warningArea_->SetColor({ 1.0f, 1.0f, 0.0f, 0.5f });
+                }
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 1.5f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::OutExpo(t);
+
+            // ==========================================
+            // ★ 修正：コアはそのままに、ブロック全体を 0.2倍 に圧縮！
+            // ==========================================
+            float currentOverallScale = Math::Lerp(1.0f, 0.2f, easeT);
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+                    // 目標の座標もスケールも、圧縮率(0.2倍)をかける！
+                    Vector3 targetP = {
+                        blockTargetPos_[i].x * 0.2f,
+                        blockTargetPos_[i].y * 0.2f,
+                        blockTargetPos_[i].z * 0.2f
+                    };
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], targetP, easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+
+                    Vector3 targetS = {
+                        blockTargetScale_[i].x * 0.2f,
+                        blockTargetScale_[i].y * 0.2f,
+                        blockTargetScale_[i].z * 0.2f
+                    };
+                    Vector3 scale = Math::Lerp(blockStartScale_[i], targetS, easeT);
+                    armorBlocks_[i]->SetScale(scale);
+                }
+            }
+
+            // コアの回転演出
+            float spinCount = 3.0f;
+            float totalAngle = spinCount * 2.0f * std::numbers::pi_v<float>;
+            Vector3 rot = GetRotation();
+            rot.y = animStartRot_.y - totalAngle * (1.0f - easeT);
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            if (t >= 1.0f) {
+                animPhase_ = 52;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 52: 倒れる前のタメ（予兆が赤くなる ＆ 巨大化！） ---
+        else if (animPhase_ == 52) {
+            animTimer_ += deltaTime;
+
+            // ==========================================
+            // 倒れるまでの「合計のタメ時間」をここで長くする！（例：2.5秒）
+            // ==========================================
+            float duration = 2.5f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+
+            if (warningArea_) {
+                float currentGreen = Math::Lerp(1.0f, 0.0f, t);
+                warningArea_->SetColor({ 1.0f, currentGreen, 0.0f, 0.5f });
+            }
+
+            float currentOverallScale = 1.0f;
+
+            // ==========================================
+            // 't' ではなく 'animTimer_'（絶対時間）を使う！
+            // ==========================================
+            if (animTimer_ < 0.15f) {
+                currentOverallScale = 0.2f; // 小さいまま力を溜める
+            }
+            else if (animTimer_ < 0.3f) {
+                currentOverallScale = 1.2f; // バッ！と少し大きめに膨らむ
+            }
+            else if (animTimer_ < 0.45f) {
+                currentOverallScale = 0.5f; // また縮む
+            }
+            else if (animTimer_ < 0.6f) {
+                currentOverallScale = 1.1f; // また膨らむ
+            }
+            else if (animTimer_ < 0.75f) {
+                currentOverallScale = 0.8f; // ちょい縮む
+            }
+            else {
+                // ★ animTimer_ が 0.75秒を超えたら、duration(2.5秒)が終わるまでずっと1.0倍で静止！
+                currentOverallScale = 1.0f;
+            }
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockTargetPos_.size()) {
+                    Vector3 pos = { blockTargetPos_[i].x * currentOverallScale, blockTargetPos_[i].y * currentOverallScale, blockTargetPos_[i].z * currentOverallScale };
+                    armorBlocks_[i]->SetTranslate(pos);
+
+                    Vector3 scale = { blockTargetScale_[i].x * currentOverallScale, blockTargetScale_[i].y * currentOverallScale, blockTargetScale_[i].z * currentOverallScale };
+                    armorBlocks_[i]->SetScale(scale);
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 53;
+                animTimer_ = 0.0f;
+                animStartRot_ = GetRotation();
+                animStartPos_ = GetTranslate();
+            }
+            }
+        // --- Phase 53: 前にぶっ倒れて叩き潰す！ ---
+        else if (animPhase_ == 53) {
+            animTimer_ += deltaTime;
+            float duration = 2.0f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = std::pow(t, 3.0f);
+
+            // ==========================================
+            // 全体が1.0倍なので、つま先の距離(ピボット)も1.5倍！
+            // ==========================================
+            float overallScale = 1.0f;
+            float pivotY = -24.5f * overallScale;
+            float pivotZ = 8.5f * overallScale;
+
+            float currentRotX = Math::Lerp(animStartRot_.x, -90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
+
+            Vector3 rot = animStartRot_;
+            rot.x = currentRotX;
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            float dirX = std::sin(animStartRot_.y);
+            float dirZ = std::cos(animStartRot_.y);
+
+            Vector3 pivotWorldPos;
+            pivotWorldPos.x = animStartPos_.x + dirX * pivotZ;
+            pivotWorldPos.y = animStartPos_.y + pivotY;
+            pivotWorldPos.z = animStartPos_.z + dirZ * pivotZ;
+
+            float rotLocalY = pivotY * std::cos(currentRotX) - pivotZ * std::sin(currentRotX);
+            float rotLocalZ = pivotY * std::sin(currentRotX) + pivotZ * std::cos(currentRotX);
+
+            Vector3 newPos;
+            newPos.x = pivotWorldPos.x - dirX * rotLocalZ;
+            newPos.y = pivotWorldPos.y - rotLocalY;
+            newPos.z = pivotWorldPos.z - dirZ * rotLocalZ;
+            SetTranslate(newPos);
+
+            // ==========================================
+            // 右腕と左腕で「回転する方向」を逆にして、外側を通す！
+            // ==========================================
+            float startArmAngle = std::numbers::pi_v<float> / 2.0f;  // 90度（気を付け）
+            float armOffset45 = std::numbers::pi_v<float> / 4.0f;   // ★追加：45度のラジアン
+
+            // ① 右腕（Block4）は 270度(真上)の手前、225度に向かって「反時計回り（外回り）」
+            // 3pi/2 (270度) - pi/4 (45度) = 225度
+            float targetArmAngleRight = (3.0f * std::numbers::pi_v<float> / 2.0f) - armOffset45;
+            float currentArmAngleRight = Math::Lerp(startArmAngle, targetArmAngleRight, easeT);
+
+            // ② 左腕（Block5）は -90度(真上)の手前、-45度に向かって「時計回り（外回り）」
+            // -pi/2 (-90度) + pi/4 (45度) = -45度
+            float targetArmAngleLeft = (-std::numbers::pi_v<float> / 2.0f) + armOffset45;
+            float currentArmAngleLeft = Math::Lerp(startArmAngle, targetArmAngleLeft, easeT);
+
+            float armHalfLength = 3.5f; // 腕の長さ(Scale.x = 7.0)の半分
+            float shoulderY = 3.5f;     // 肩の高さ（中心0.0 + 半分3.5）
+
+            // 右腕 (Block4: index 3)
+            if (armorBlocks_.size() > 3 && armorBlocks_[3]) {
+                Vector3 pos = armorBlocks_[3]->GetTranslate();
+                // 右腕用の角度(currentArmAngleRight)で計算
+                pos.x = 11.0f - armHalfLength * std::cos(currentArmAngleRight);
+                pos.y = shoulderY - armHalfLength * std::sin(currentArmAngleRight);
+
+                armorBlocks_[3]->SetTranslate(pos);
+                armorBlocks_[3]->SetRotation({ 0.0f, 0.0f, currentArmAngleRight });
+                armorBlocks_[3]->GetTransform()->isQuaternionMaster = false;
+            }
+
+            // 左腕 (Block5: index 4)
+            if (armorBlocks_.size() > 4 && armorBlocks_[4]) {
+                Vector3 pos = armorBlocks_[4]->GetTranslate();
+                // 左腕用の角度(currentArmAngleLeft)で計算
+                pos.x = -11.0f - armHalfLength * std::cos(currentArmAngleLeft);
+                pos.y = shoulderY - armHalfLength * std::sin(currentArmAngleLeft);
+
+                armorBlocks_[4]->SetTranslate(pos);
+                armorBlocks_[4]->SetRotation({ 0.0f, 0.0f, currentArmAngleLeft });
+                armorBlocks_[4]->GetTransform()->isQuaternionMaster = false;
+            }
+
+            if (warningArea_) warningArea_->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+
+            if (t >= 1.0f) {
+                if (warningArea_) warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
+                animPhase_ = 54;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 54: 倒れたまま待機（攻撃チャンス） ---
+        else if (animPhase_ == 54) {
+            animTimer_ += deltaTime;
+            if (animTimer_ >= 3.0f) {
+                animPhase_ = 55;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 55: 起き上がって復帰 ---
+        else if (animPhase_ == 55) {
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                blockStartScale_.clear(); // ★追加
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // ★追加
+                }
+                animStartRot_ = GetRotation();
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 1.5f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::InOutSine(t);
+
+            // 起き上がりのピボットも 1.0倍 で計算
+            float overallScale = 1.0f;
+            float pivotY = -24.5f * overallScale;
+            float pivotZ = 8.5f * overallScale;
+            float dirX = std::sin(animStartRot_.y);
+            float dirZ = std::cos(animStartRot_.y);
+
+            float startRotLocalY = pivotY * std::cos(animStartRot_.x) - pivotZ * std::sin(animStartRot_.x);
+            float startRotLocalZ = pivotY * std::sin(animStartRot_.x) + pivotZ * std::cos(animStartRot_.x);
+            Vector3 startToeWorld = {
+                animStartPos_.x + dirX * startRotLocalZ,
+                animStartPos_.y + startRotLocalY,
+                animStartPos_.z + dirZ * startRotLocalZ
+            };
+
+            Vector3 targetToeWorld = {
+                0.0f + dirX * pivotZ,
+                4.0f + pivotY,
+                0.0f + dirZ * pivotZ
+            };
+
+            Vector3 currentToeWorld = {
+                Math::Lerp(startToeWorld.x, targetToeWorld.x, easeT),
+                Math::Lerp(startToeWorld.y, targetToeWorld.y, easeT),
+                Math::Lerp(startToeWorld.z, targetToeWorld.z, easeT)
+            };
+
+            float currentRotX = Math::Lerp(animStartRot_.x, 0.0f, easeT);
+            Vector3 rot = animStartRot_;
+            rot.x = currentRotX;
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            float currentRotLocalY = pivotY * std::cos(currentRotX) - pivotZ * std::sin(currentRotX);
+            float currentRotLocalZ = pivotY * std::sin(currentRotX) + pivotZ * std::cos(currentRotX);
+
+            Vector3 newPos = {
+                currentToeWorld.x - dirX * currentRotLocalZ,
+                currentToeWorld.y - currentRotLocalY,
+                currentToeWorld.z - dirZ * currentRotLocalZ
+            };
+            SetTranslate(newPos);
+
+            // ブロックを元の待機軌道に戻す（スケールも元通りに！）
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size()) {
+                    OrbitData orbit = GetIdleOrbit(i);
+                    Vector3 bPos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+                    armorBlocks_[i]->SetTranslate(bPos);
+
+                    Vector3 bScale = Math::Lerp(blockStartScale_[i], orbit.scale, easeT); // ★追加：スケールも戻す
+                    armorBlocks_[i]->SetScale(bScale);
+
+                    armorBlocks_[i]->SetRotation(orbit.rot);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
+        }
     }
+    // ======================================
+    // 攻撃モード6：中央移動 → 回転タメ → 回転変形 → 0.5秒停止 → レーザー！ (Phase 60 ~ 65)
+    // ======================================
+    else if (attackMode_ == 6) {
+
+        // ==========================================
+        // ★ 回転スピードの調整用変数
+        // ==========================================
+        float maxSpinSpeed = 8.0f;  // タメ・変形中の大回転トップスピード！
+        float fireSpinSpeed = 0.3f; // レーザー発射中の少し落ち着いた回転スピード
+
+        // --- Phase 60: まずはコアが中央(0,0)へスゥーッと移動する ---
+        if (animPhase_ == 60) {
+            if (animTimer_ == 0.0f) {
+                animStartPos_ = GetTranslate(); // コアのスタート位置
+            }
+
+            animTimer_ += deltaTime;
+            float duration = 2.5f; // 実時間で約1.6秒
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::InOutSine(t);
+
+            // コア本体をステージ中央 (X=0, Y=4.0, Z=0) へ移動
+            Vector3 corePos = GetTranslate();
+            corePos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
+            corePos.y = Math::Lerp(animStartPos_.y, 2.0f, easeT);
+            corePos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+            SetTranslate(corePos);
+
+            // 移動中、ブロックたちは普段の「フワフワ待機軌道」のまま追従
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                OrbitData orbit = GetIdleOrbit(i);
+                armorBlocks_[i]->SetTranslate(orbit.pos);
+                armorBlocks_[i]->SetScale(orbit.scale);
+                armorBlocks_[i]->SetRotation(orbit.rot);
+                armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 61;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 61: 待機軌道のまま、コアがギュイィィンと回転し始める（回転だけの時間） ---
+        else if (animPhase_ == 61) {
+            if (animTimer_ == 0.0f) {
+                // この瞬間のフワフワ軌道を「固定」してコアの子パーツにする！
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    OrbitData orbit = GetIdleOrbit(i);
+                    armorBlocks_[i]->SetParent(this);
+                    armorBlocks_[i]->SetTranslate(orbit.pos);
+                    armorBlocks_[i]->SetScale(orbit.scale);
+                    armorBlocks_[i]->SetRotation(orbit.rot);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            animTimer_ += deltaTime;
+            // 実時間で1.5秒間、回転だけのタメを作る (1.5 * 1.5 = 2.25f)
+            float duration = 2.25f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+
+            // コアの回転スピードを 0 から maxSpinSpeed(5.0f) まで徐々に上げる！（加速演出）
+            float currentSpinSpeed = Math::Lerp(0.0f, maxSpinSpeed, Easing::InSine(t));
+
+            Vector3 rot = GetRotation();
+            rot.y += currentSpinSpeed * deltaTime;
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            if (t >= 1.0f) {
+                animPhase_ = 62;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 62: 大回転を維持したまま、遠心力で開くように砲台陣形へ変形！ ---
+        else if (animPhase_ == 62) {
+            if (animTimer_ == 0.0f) {
+                blockStartPos_.clear();
+                blockTargetPos_.clear();
+                blockStartScale_.clear();
+                blockTargetScale_.clear();
+                attentionStartRot_.clear(); // ヘッダにある回転記憶用の変数を流用
+
+                float radius = 12.0f; // 陣形の半径
+
+                for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                    blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale());
+                    attentionStartRot_.push_back(armorBlocks_[i]->GetRotation()); // 現在の回転を記憶
+
+                    float angle = (i * 2.0f * std::numbers::pi_v<float>) / armorBlocks_.size();
+                    Vector3 targetPos = {
+                        std::cos(angle) * radius,
+                        0.0f,
+                        std::sin(angle) * radius
+                    };
+                    blockTargetPos_.push_back(targetPos);
+                    blockTargetScale_.push_back({ 1.5f, 1.5f, 1.5f });
+                }
+            }
+
+            animTimer_ += deltaTime;
+            // 変形は実時間で2.0秒 (2.0 * 1.5 = 3.0f)
+            float duration = 3.0f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::InOutSine(t);
+
+            // コアは大回転（トップスピード 5.0f）をそのまま継続！
+            Vector3 rot = GetRotation();
+            rot.y += maxSpinSpeed * deltaTime;
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            // ブロックの座標・スケール・角度を砲台の定位置へ補間
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+
+                    Vector3 scale = Math::Lerp(blockStartScale_[i], blockTargetScale_[i], easeT);
+                    armorBlocks_[i]->SetScale(scale);
+
+                    // 角度も、待機軌道のナナメ向きから「外側を向く角度」へ補間
+                    float angle = (i * 2.0f * std::numbers::pi_v<float>) / armorBlocks_.size();
+                    Vector3 targetRot = { 0.0f, -angle, 0.0f };
+
+                    Vector3 currentRot;
+                    currentRot.x = Math::Lerp(attentionStartRot_[i].x, targetRot.x, easeT);
+                    currentRot.y = Math::Lerp(attentionStartRot_[i].y, targetRot.y, easeT);
+                    currentRot.z = Math::Lerp(attentionStartRot_[i].z, targetRot.z, easeT);
+
+                    armorBlocks_[i]->SetRotation(currentRot);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            // 展開完了したら、完全停止フェーズへ！
+            if (t >= 1.0f) {
+                animPhase_ = 63;
+                animTimer_ = 0.0f;
+            }
+        }
+        // --- Phase 63: 陣形完了後、0.5秒間完全に沈黙する！（嵐の前の静けさ ＋ 予兆レーザー） ---
+        else if (animPhase_ == 63) {
+            if (animTimer_ == 0.0f) {
+                for (Object3d* block : armorBlocks_) {
+                    if (!block) continue;
+                    for (Object3d* child : block->GetChildren()) {
+                        if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+
+                            // ==========================================
+                            // ★ 修正：Y軸を長さ(80.0f)にして、XZを極細(0.1f)にする！
+                            // ==========================================
+                            child->SetScale({ 0.1f, 80.0f, 0.1f });
+
+                            // ==========================================
+                            // ★ 修正：円柱をX軸に90度（pi/2）倒して、正面に向ける！
+                            // ==========================================
+                            float rotX90 = std::numbers::pi_v<float> / 2.0f;
+                            child->SetRotation({ rotX90, 0.0f, 0.0f });
+                            child->GetTransform()->isQuaternionMaster = false;
+
+                            child->SetColor({ 1.0f, 0.0f, 0.0f, 0.5f }); // 半透明の赤
+                            child->SetCollisionAttribute(0); // 当たり判定なし
+                        }
+                    }
+                }
+            }
+
+            animTimer_ += deltaTime;
+
+            // ★ 修正：実時間で 0.5秒間ストップ (0.5 * 1.5 = 0.75f) に直しました！
+            float stopDuration = 0.75f;
+
+            if (animTimer_ >= stopDuration) {
+                animPhase_ = 64;
+                animTimer_ = 0.0f;
+            }
+            }
+            // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
+        else if (animPhase_ == 64) {
+                animTimer_ += deltaTime;
+
+                // 実時間で5.0秒間レーザーを撃ち続ける (5.0 * 1.5 = 7.5f)
+                float spinDuration = 7.5f;
+
+                // 回転スピードをレーザー用の速度（fireSpinSpeed: 0.5f）に切り替えて回し続ける
+                Vector3 rot = GetRotation();
+                rot.y += fireSpinSpeed * deltaTime;
+                SetRotation(rot);
+                GetTransform()->isQuaternionMaster = false;
+
+                // ==========================================
+                // ★ 追加：ビームを一気に極太にして、当たり判定を付ける！
+                // ==========================================
+                float expandTime = 0.2f; // 0.2秒で極太になる
+                float t = std::min(animTimer_ / expandTime, 1.0f);
+
+                // 太さを 0.1 から 3.0 へ一気に膨張させる
+                float beamThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
+
+                for (Object3d* block : armorBlocks_) {
+                    if (!block) continue;
+                    for (Object3d* child : block->GetChildren()) {
+                        if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+
+                            // ==========================================
+                            // ★ 修正：長さのY軸は80.0fに固定し、XZ（太さ）を極太にする！
+                            // ==========================================
+                            child->SetScale({ beamThickness, 80.0f, beamThickness });
+
+                            // ※回転（Rotation）はPhase 63で倒したままなので、ここでは設定しなくてOKです！
+
+                            child->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 濃い赤
+                            child->SetCollisionAttribute(kEnemyAttack);  // ★触れたらダメージ！
+                        }
+                    }
+                }
+
+                // 撃ち終わったら消して復帰！
+                if (animTimer_ >= spinDuration) {
+                    animPhase_ = 65; // 復帰フェーズへ
+                    animTimer_ = 0.0f;
+                    animStartRot_ = GetRotation();
+
+                    // ==========================================
+                    // ★ 追加：ビームを消して、当たり判定も消す
+                    // ==========================================
+                    for (Object3d* block : armorBlocks_) {
+                        if (!block) continue;
+                        for (Object3d* child : block->GetChildren()) {
+                            if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+                                child->SetScale({ 0.0f, 0.0f, 0.0f }); // 見えなくする
+                                child->SetCollisionAttribute(0);       // 当たり判定を消す
+                            }
+                        }
+                    }
+
+                    blockStartPos_.clear();
+                    blockStartScale_.clear();
+                    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                        blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
+                        blockStartScale_.push_back(armorBlocks_[i]->GetScale());
+                    }
+                }
+                }
+        // --- Phase 65: 回転を止め、待機状態のバラバラ軌道へ復帰する ---
+        else if (animPhase_ == 65) {
+            animTimer_ += deltaTime;
+            // 復帰は実時間で1.5秒 (1.5 * 1.5 = 2.25f)
+            float duration = 2.25f;
+            float t = std::min(animTimer_ / duration, 1.0f);
+            float easeT = Easing::InOutSine(t);
+
+            // コアの回転をゆっくり 0 に戻す
+            Vector3 rot = animStartRot_;
+            rot.y = Math::Lerp(animStartRot_.y, 0.0f, easeT);
+            SetRotation(rot);
+            GetTransform()->isQuaternionMaster = false;
+
+            // ブロックを元の待機軌道に戻す
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (i < blockStartPos_.size()) {
+                    OrbitData orbit = GetIdleOrbit(i);
+                    Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+                    armorBlocks_[i]->SetTranslate(pos);
+
+                    Vector3 scale = Math::Lerp(blockStartScale_[i], orbit.scale, easeT);
+                    armorBlocks_[i]->SetScale(scale);
+
+                    armorBlocks_[i]->SetRotation(orbit.rot);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            if (t >= 1.0f) {
+                animPhase_ = 0;
+                attackMode_ = 0;
+                animTimer_ = 0.0f;
+            }
+        }
+        }
 }
 
 void BossCore::UpdateFlyingBlocks(float deltaTime) {
@@ -1276,42 +2036,64 @@ void BossCore::TakeBarrierDamage(float damage) {
     }
 
     if (barrierHp_ <= 0.0f) {
-        DebugConsole::GetInstance()->AddLog("★☆ Barrier BROKEN! Boss is STUNNED! ☆★");
-        barrierHp_ = maxBarrierHp_; // 復帰後のためにリセットしておく
+        DebugConsole::GetInstance()->AddLog("★☆ Barrier BROKEN! ☆★");
+        barrierHp_ = maxBarrierHp_;
 
-        // どんな攻撃アニメーション中だろうと強制中断させる！
         animPhase_ = 0;
         attackMode_ = 0;
         animTimer_ = 0.0f;
-        shotCount_ = 0; // ★念のためこれもリセット
 
-        // =======================================
-        // ★修正：全てのブロックを強制的にボスの周りにワープさせる！（置いてけぼり完全防止）
-        // ==========================================
-        // ① 飛んでいるブロックのリストを完全に消去して「飛ぶのをやめさせる」
+        // ① 弾けている最中のブロック（射撃中など）を全て停止させる
         flyingBlocks_.clear();
 
-        // ② 全ブロックの親をボスに戻し、瞬時に待機軌道(Orbit)へセットする！
+        // ② 拡散用のデータを準備する
+        blockStartPos_.clear();
+        blockTargetPos_.clear();
+
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             Object3d* block = armorBlocks_[i];
             if (block) {
-                // 親をボス本体に戻す（射撃や壁攻撃で外れていたのを強制修復！）
+                // 親子関係は維持したまま（ローカル座標で計算）
                 block->SetParent(this);
 
-                // 待機軌道の定位置を計算して、瞬時にそこにスナップさせる！
-                OrbitData orbit = GetIdleOrbit(i);
-                block->SetTranslate(orbit.pos);
-                block->SetScale(orbit.scale);
-                block->SetRotation(orbit.rot);
-                block->GetTransform()->isQuaternionMaster = false;
+                // 現在の位置をスタート地点として保存
+                blockStartPos_.push_back(block->GetTranslate());
+
+                // 弾け飛ぶ方向をランダムに決定（半径 10.0f 〜 15.0f の範囲）
+                float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
+                float distance = 10.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
+                float height = ((static_cast<float>(rand()) / RAND_MAX) * 10.0f) - 5.0f; // 上下にもばらけさせる
+
+                Vector3 scatterPos = {
+                    std::cos(angle) * distance,
+                    height,
+                    std::sin(angle) * distance
+                };
+                blockTargetPos_.push_back(scatterPos);
             }
         }
 
-        // ③ ボス本体の回転などもまっすぐにリセットしておく
-        SetRotation({ 0.0f, 0.0f, 0.0f });
-        GetTransform()->isQuaternionMaster = false;
-
-        // ダウン状態(Weak)へ強制移行！
+        SetRotation({ 0.0f, GetRotation().y, 0.0f });
         ChangeState(State::Weak);
     }
+}
+
+
+
+bool BossCore::OnCollision(Object3d* other) {
+    uint32_t attribute = other->GetCollisionAttribute();
+
+    // プレイヤーの剣(kPlayerAttack)が当たった場合は、衝突判定を確認して
+    // BaseEnemy のダメージ処理に委譲する（＝剣でダメージを受ける）
+    if (attribute & kPlayerAttack) {
+        CollisionInfo info = CheckCollision(other);
+        if (!info.isColliding) {
+            return false;
+        }
+        // ここで BaseEnemy::OnCollision を呼ぶことで DamageEvent 発行など既存の処理を再利用
+        return BaseEnemy::OnCollision(other);
+    }
+
+    // それ以外は従来通り BaseEnemy に委譲
+    return BaseEnemy::OnCollision(other);
 }

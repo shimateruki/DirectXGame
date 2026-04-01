@@ -101,7 +101,9 @@ public:
 
     // どっちか一つでもtrueなら無敵として扱う
     bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
-
+    float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
+    float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
+    float GetDeathTimer() const { return deathTimer_; }
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先
@@ -135,5 +137,6 @@ private:
     float damageCooldownTimer_ = 0.0f;
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
+    float deathTimer_ = 0.0f;    // 死亡してからの経過時間
     void UpdateColor();
 };

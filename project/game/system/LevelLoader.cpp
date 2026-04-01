@@ -411,6 +411,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
 
 void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename) {
+    std::string justName = filename;
+    size_t slashPos = justName.find_last_of("/\\");
+    if (slashPos != std::string::npos) {
+        justName = justName.substr(slashPos + 1);
+    }
+    scene->SetLoadedSpriteFilename(justName);
     std::ifstream file(filename);
     if (!file.is_open()) return;
 
@@ -441,6 +447,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     auto newSprite = std::make_unique<Sprite>();
                     newSprite->Initialize(spriteCommon, handle);
                     newSprite->SetName(name);
+                    newSprite->SetTextureName(textureFile);
                     targetSprite = newSprite.get();
                     sprites.push_back(std::move(newSprite));
                 }

@@ -23,7 +23,7 @@ public:
     // ==================================================
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
-
+    bool OnCollision(Object3d* other) override;
 #ifdef USE_IMGUI
     void DrawImGui();
 #endif
@@ -40,7 +40,12 @@ public:
         block->SetCollisionMask(kPlayer);
     }
 
+    float GetHp() const { return param_.has_value() ? param_->hp : 1000.0f; }
+    float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 1000.0f; }
 
+    // バリアHP
+    float GetBarrierHp() const { return barrierHp_; }
+    float GetMaxBarrierHp() const { return maxBarrierHp_; }
 private:
     // 飛んでいるブロックを管理するための構造体
     struct FlyingBlock {
@@ -75,6 +80,7 @@ private:
     float animTimer_ = 0.0f;
     Vector3 animStartPos_ = { 0,0,0 };
     Vector3 animTargetPos_ = { 0,0,0 };
+    Vector3 animStartRot_ = { 0,0,0 };
     bool wasPlaying_ = false;
 
     int attackMode_ = 0;         // 0:待機, 1:突進攻撃, 2:ブロック射撃
@@ -96,8 +102,25 @@ private:
     // 形態変化アニメーション用の座標メモ
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
+    std::vector<Vector3> blockStartScale_;
+    std::vector<Vector3> blockTargetScale_;
+
+    // ==========================================
+    // Phase 50「気を付け」ポーズ遷移用のメモ
+    // ==========================================
+    std::vector<Vector3> attentionStartPos_;
+    std::vector<Vector3> attentionStartScale_;
+    std::vector<Vector3> attentionStartRot_;
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
 
     bool s_isTimeStopped_ = false;
+
+    // エディターで作った予兆エリアを参照するためのポインタ
+    Object3d* warningArea_ = nullptr;
+
+    Vector4 originalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    // 攻撃モード6のレーザービーム用円柱オブジェクト
+    std::vector<std::unique_ptr<Object3d>> laserBeams_;
 };

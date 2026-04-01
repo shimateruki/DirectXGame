@@ -48,7 +48,16 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
         selectedSprite_ = nullptr;
         isMovingX_ = false;
         isMovingY_ = false;
+        strcpy_s(currentSpriteFilename_, sizeof(currentSpriteFilename_), "Please_Select_Or_Set.json");
         lastUpdatedScene_ = currentScene;
+    }
+    static std::string s_lastSyncedSpriteFilename = "";
+    std::string currentLoadedName = currentScene->GetLoadedSpriteFilename();
+
+    // 読み込み名が変わった瞬間だけ、エディタにセットする！
+    if (!currentLoadedName.empty() && s_lastSyncedSpriteFilename != currentLoadedName) {
+        SetSpriteFilename(currentLoadedName);
+        s_lastSyncedSpriteFilename = currentLoadedName;
     }
     if (selectedSprite_ != nullptr) {
         // 文字入力中（名前の変更中など）でなければショートカットを許可
@@ -298,6 +307,7 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
             uint32_t handle = Sprite::LoadTexture(droppedFilename);
             newSprite->Initialize(spriteCommon, handle);
             newSprite->SetName(droppedFilename);
+            newSprite->SetTextureName(droppedFilename);
             sprites.push_back(std::move(newSprite));
             selectedSprite_ = sprites.back().get();
         }
@@ -339,7 +349,7 @@ void SpriteDebugEditor::DrawInspectorWindow() {
         ImGui::Separator();
 
         // 名前編集
-        char nameBuffer[256];
+        char nameBuffer[256] = { 0 };
         strcpy_s(nameBuffer, selectedSprite_->GetName().c_str());
         if (ImGui::InputText(ICON_FA_PEN " 名前 (Name)", nameBuffer, sizeof(nameBuffer))) {
             selectedSprite_->SetName(nameBuffer);
@@ -391,6 +401,7 @@ void SpriteDebugEditor::DrawInspectorWindow() {
                 const char* droppedFilename = (const char*)payload->Data;
                 uint32_t newHandle = Sprite::LoadTexture(droppedFilename);
                 selectedSprite_->SetTextureHandle(newHandle);
+                selectedSprite_->SetTextureName(droppedFilename);
             }
             ImGui::EndDragDropTarget();
         }
@@ -476,6 +487,7 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
         spriteData["size"] = { size.x, size.y };
         spriteData["anchor"] = { anchor.x, anchor.y };
         spriteData["color"] = { color.x, color.y, color.z };
+        spriteData["texture"] = sprite->GetTextureName();
         spriteArray.push_back(spriteData);
     }
     root["sprites"] = spriteArray;

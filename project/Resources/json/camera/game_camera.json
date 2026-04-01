@@ -1,18 +1,18 @@
 {
     "angle": [
-        25.0,
-        0.0,
+        8.097743034362793,
+        -156.0269012451172,
         0.0
     ],
     "boostSpeed": 2.0,
-    "distance": 15.0,
+    "distance": 21.100000381469727,
     "fixedPointPos": [
         0.0,
         5.0,
         -15.0
     ],
     "gameFollowMode": 1,
-    "height": 0.0,
+    "height": 1.600000023841858,
     "lockOnOffset": [
         0.0,
         4.0,
