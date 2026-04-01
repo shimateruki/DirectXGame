@@ -181,27 +181,33 @@ void BossCore::Update(float deltaTime) {
     // バリアへのダメージ処理
     if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
         Object3d* weapon = FindWeaponRecursive(target_);
-        if (weapon) {
-            // ブロックの「番号」を知る必要があるので、for(size_t i...) に変更！
+
+        // ==========================================
+        // ★ 修正1：武器のマスクが 0 じゃない（＝剣を振っている）時だけ処理する！
+        // ==========================================
+        if (weapon && weapon->GetCollisionMask() != 0) {
+
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 Object3d* block = armorBlocks_[i];
-
-                // ブロックが無いか、すでに壊れていたらスキップ！
                 if (!block || blockBroken_[i]) continue;
 
-                uint32_t originalMask = block->GetCollisionMask();
-                block->SetCollisionMask(0xFFFFFFFF);
+                // ==========================================
+                // ★ 修正2：無理やりマスクを全開放するのではなく、
+                // ブロックに一瞬だけ「敵(kEnemy)」の属性を追加する！
+                // ==========================================
+                uint32_t originalAttr = block->GetCollisionAttribute();
+                block->SetCollisionAttribute(originalAttr | kEnemy); // 敵属性を足す！
+
+                // エンジンの正しいルールで当たり判定チェック
                 CollisionInfo info = block->CheckCollision(weapon);
-                block->SetCollisionMask(originalMask);
+
+                // 判定が終わったら元の属性(kGroundなど)に戻す
+                block->SetCollisionAttribute(originalAttr);
 
                 if (info.isColliding) {
-                    // ==========================================
-                    // ★ 修正：ダメージと一緒に「当たったブロック」を渡す！
-                    // ==========================================
-                    TakeBarrierDamage(10.0f, block);
+                    TakeBarrierDamage(10.0f, block); // 当たったブロックだけ赤くする
 
-                    blockHps_[i] -= 10.0f;
-
+                    blockHps_[i] -= 10.0f; // 部位HPを減らす
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
                         DebugConsole::GetInstance()->AddLog("【BREAK】 ブロック " + std::to_string(i) + " が破壊された！！💥");

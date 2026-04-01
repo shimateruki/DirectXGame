@@ -126,7 +126,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 128,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -155,7 +155,7 @@
             },
             "materialType": 0,
             "metallic": 0.6000000238418579,
-            "modelName": "block",
+            "modelName": "enemy_block",
             "myEventID": -1,
             "name": "Enemy_Block1",
             "normalMapPath": "",
@@ -217,7 +217,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 128,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -246,7 +246,7 @@
             },
             "materialType": 0,
             "metallic": 0.6000000238418579,
-            "modelName": "block",
+            "modelName": "enemy_block",
             "myEventID": -1,
             "name": "Enemy_Block2",
             "normalMapPath": "",
@@ -308,7 +308,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 128,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -337,7 +337,7 @@
             },
             "materialType": 0,
             "metallic": 0.6000000238418579,
-            "modelName": "block",
+            "modelName": "enemy_block",
             "myEventID": -1,
             "name": "Enemy_Block3",
             "normalMapPath": "",
@@ -399,7 +399,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 128,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -428,7 +428,7 @@
             },
             "materialType": 0,
             "metallic": 0.6000000238418579,
-            "modelName": "block",
+            "modelName": "enemy_block",
             "myEventID": -1,
             "name": "Enemy_Block4",
             "normalMapPath": "",
@@ -490,7 +490,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 128,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -519,7 +519,7 @@
             },
             "materialType": 0,
             "metallic": 0.6000000238418579,
-            "modelName": "block",
+            "modelName": "enemy_block",
             "myEventID": -1,
             "name": "Enemy_Block5",
             "normalMapPath": "",
@@ -581,7 +581,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 128,
             "collisionMask": 1,
             "color": [
                 1.0,
@@ -610,7 +610,7 @@
             },
             "materialType": 0,
             "metallic": 0.6000000238418579,
-            "modelName": "block",
+            "modelName": "enemy_block",
             "myEventID": -1,
             "name": "Enemy_Block6",
             "normalMapPath": "",
@@ -672,8 +672,8 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
-            "collisionMask": 0,
+            "collisionAttribute": 128,
+            "collisionMask": 1,
             "color": [
                 1.0,
                 1.0,
