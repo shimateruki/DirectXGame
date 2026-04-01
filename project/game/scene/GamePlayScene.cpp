@@ -81,7 +81,7 @@ void GamePlayScene::Initialize() {
 
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);
-
+	//
 	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
 	// --- 3. サブシステム初期化 ---
