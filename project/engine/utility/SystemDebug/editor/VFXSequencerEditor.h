@@ -7,6 +7,7 @@
 // ==========================================================
 class VFXSequencerEditor : public IEditable {
 public:
+
     void Initialize();
     void Update(float deltaTime);
     void DrawImGui() override;
@@ -18,4 +19,6 @@ private:
     char sequenceNameInput_[64] = "UltimateMeteor";
     std::vector<std::string> particlePresetList_; // パーティクル（素材）のリスト
     std::vector<std::string> sequenceFileList_;   // シーケンス（必殺技）のリスト
+    std::vector<std::string> meshEffectList_;
+
 };

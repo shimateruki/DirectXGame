@@ -7,13 +7,28 @@
 #include <fstream>
 #include "json.hpp" // プロジェクト内のJSONライブラリ
 #include <DebugConsole.h>
+#include "IconsFontAwesome5.h"
+#include <filesystem>
 
 using json = nlohmann::json;
-
+static const char* kEasingNames[] = {
+    "Linear (等速)",
+    "InSine", "OutSine", "InOutSine",
+    "InQuad", "OutQuad", "InOutQuad",
+    "InCubic", "OutCubic", "InOutCubic",
+    "InQuart", "OutQuart", "InOutQuart",
+    "InQuint", "OutQuint", "InOutQuint",
+    "InExpo", "OutExpo", "InOutExpo",
+    "InCirc", "OutCirc", "InOutCirc",
+    "InBack", "OutBack", "InOutBack",
+    "InElastic", "OutElastic", "InOutElastic",
+    "InBounce", "OutBounce", "InOutBounce"
+};
 void MeshEffectEditor::Initialize(SceneManager* sceneManager) {
     // ★ 変更: SceneManager のポインタだけ保持する
     sceneManager_ = sceneManager;
     RefreshTextureList();
+    RefreshJsonFileList();
 }
 void MeshEffectEditor::RefreshTextureList() {
     textureFileList_.clear();
@@ -44,6 +59,22 @@ void MeshEffectEditor::RefreshTextureList() {
     }
     SyncTextureIndices();
 }
+void MeshEffectEditor::RefreshJsonFileList() {
+    jsonFileList_.clear();
+    std::string path = "Resources/json/effect/";
+
+    // フォルダが無ければ自動で作る（クラッシュ防止）
+    std::filesystem::create_directories(path);
+
+    // フォルダ内の .json ファイルだけをリストアップする
+    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+            jsonFileList_.push_back(entry.path().filename().string());
+        }
+    }
+
+    currentJsonIndex_ = -1; // 初期状態は未選択（新規作成）
+}
 void MeshEffectEditor::Update(float deltaTime) {
     if (!sceneManager_) return;
 
@@ -55,6 +86,7 @@ void MeshEffectEditor::Update(float deltaTime) {
     if (lastScene_ != currentScene) {
         previewEffect_.reset(); // 古いポインタを手放す
         lastScene_ = currentScene; // 現在のシーンを記憶
+        targetObject_ = nullptr;
     }
     // ★ 変更: まだプレビューが作られていなければ、シーンからObject3dCommonを取得して生成する
     if (!previewEffect_ && sceneManager_) {
@@ -86,17 +118,33 @@ void MeshEffectEditor::Update(float deltaTime) {
 
         previewEffect_->SetScrollSpeed(editScrollSpeed_);
         previewEffect_->SetIntensity(editIntensity_);
+        Vector3 finalPos = editPosition_;
+        Vector3 finalRot = editRotation_;
 
+        // ★ ターゲットが設定されていれば、その座標と角度を加算する！
+        if (targetObject_) {
+            Vector3 targetPos = targetObject_->GetWorldPosition();
+            Vector3 targetRot = targetObject_->GetRotation();
+
+            finalPos.x += targetPos.x;
+            finalPos.y += targetPos.y;
+            finalPos.z += targetPos.z;
+
+            finalRot.x += targetRot.x;
+            finalRot.y += targetRot.y;
+            finalRot.z += targetRot.z;
+        }
         // 固定の Transform は Position と Rotation だけ適用
-        previewEffect_->SetTranslate(editPosition_);
-        previewEffect_->SetRotation(editRotation_);
+        previewEffect_->SetTranslate(finalPos);
+        previewEffect_->SetRotation(finalRot);
         previewEffect_->SetDistortionStrength(editDistortionStrength_);
         previewEffect_->SetDistortionSpeed(editDistortionSpeed_);
         previewEffect_->SetEdgeFadeStrength(editEdgeFadeStrength_);
         previewEffect_->SetEnableDistortion(editEnableDistortion_);
-
+        previewEffect_->SetEnableReveal(editEnableReveal_);
+        previewEffect_->SetEasingType(editEasingType_);
         // ========================================================
-        // ★ ここを追加！：カラーランプを使うかどうかのフラグを毎フレーム送る！
+        // ：カラーランプを使うかどうかのフラグを毎フレーム送る！
         // ========================================================
         // editRampTexturePath_ に文字列が入っていれば(テクスチャが設定されていれば) true になる
         bool useRamp = (strlen(editRampTexturePath_) > 0);
@@ -158,43 +206,78 @@ void MeshEffectEditor::DrawImGui() {
     // 1. エフェクト再生コントロール
     // ==========================================
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
-    if (ImGui::Button("PLAY EFFECT (ATTACK!)", ImVec2(availWidth, 40))) {
+    if (ImGui::Button(ICON_FA_PLAY " エフェクト再生 (ATTACK!)", ImVec2(availWidth, 40))) {
         previewEffect_->Play(editLifetime_);
     }
     ImGui::PopStyleColor();
 
-    ImGui::Checkbox("Auto Loop", &isAutoLoop_);
+    ImGui::Checkbox("自動ループ (Auto Loop)", &isAutoLoop_);
     ImGui::SameLine();
-    if (ImGui::Button("Reset Time")) {
+    if (ImGui::Button(ICON_FA_UNDO " 時間リセット")) {
         previewEffect_->ResetTime();
     }
 
     ImGui::Spacing();
     ImGui::Separator();
+    ImGui::Separator();
+    ImGui::Text(ICON_FA_CROSSHAIRS " --- ターゲット追従 (Target Tracking) ---");
+
+    // SceneManager経由で現在のシーンのオブジェクトリストを取得
+    if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+        auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
+        // 現在選ばれているターゲットの名前
+        std::string currentTargetName = targetObject_ ? targetObject_->GetName() : "なし (None)";
+
+        if (ImGui::BeginCombo("追従対象", currentTargetName.c_str())) {
+            // 「追従解除（None）」の選択肢
+            if (ImGui::Selectable("なし (None)", targetObject_ == nullptr)) {
+                targetObject_ = nullptr;
+            }
+
+            // シーン内の全オブジェクトをリストアップ
+            for (auto& obj : objects) {
+                if (!obj) continue;
+                bool isSelected = (targetObject_ == obj.get());
+
+                if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
+                    targetObject_ = obj.get();
+                }
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+    ImGui::Separator();
 
     // ==========================================
     // 2. ブレンドモード設定
     // ==========================================
-    const char* blendModeNames[] = { "None", "Normal (半透明)", "Add (加算発光)", "Subtract (減算)", "Multiply (乗算)", "Screen" };
-    if (ImGui::Combo("Blend Mode", &currentBlendModeIndex_, blendModeNames, IM_ARRAYSIZE(blendModeNames))) {
+    const char* blendModeNames[] = { "なし (None)", "通常 (半透明)", "加算発光 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
+    if (ImGui::Combo(ICON_FA_ADJUST " ブレンドモード", &currentBlendModeIndex_, blendModeNames, IM_ARRAYSIZE(blendModeNames))) {
         previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
     }
-
+    ImGui::Checkbox(ICON_FA_RULER_HORIZONTAL " 伸びるアニメーション (Reveal Mode)", &editEnableReveal_);
+    if (ImGui::Combo(ICON_FA_CHART_LINE " イージング (Easing)", &editEasingType_, kEasingNames, IM_ARRAYSIZE(kEasingNames))) {
+        previewEffect_->SetEasingType(editEasingType_);
+    }
     ImGui::Spacing();
 
     // ==========================================
     // 3. リソース設定 (メッシュ・テクスチャ)
     // ==========================================
-    if (ImGui::CollapsingHeader("Resources", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader(ICON_FA_CUBES " リソース設定 (Resources)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         // --- 共通のテクスチャ選択ヘルパー (ラムダ式) ---
         auto TextureCombo = [&](const char* label, int& currentIndex, char* targetPath, auto callback) {
             const char* previewName = (currentIndex >= 0 && currentIndex < (int)textureFileList_.size())
-                ? textureFileList_[currentIndex].c_str() : "None";
+                ? textureFileList_[currentIndex].c_str() : "なし (None)";
 
             if (ImGui::BeginCombo(label, previewName)) {
                 // 「なし」の選択
-                if (ImGui::Selectable("None", currentIndex == -1)) {
+                if (ImGui::Selectable("なし (None)", currentIndex == -1)) {
                     currentIndex = -1;
                     targetPath[0] = '\0';
                     callback("");
@@ -214,7 +297,7 @@ void MeshEffectEditor::DrawImGui() {
 
         // --- メッシュ選択 ---
         std::vector<std::string> modelNames = ModelManager::GetInstance()->GetLoadedModelNames();
-        if (ImGui::BeginCombo("Select Mesh", editModelName_)) {
+        if (ImGui::BeginCombo(ICON_FA_CUBE " メッシュ選択", editModelName_)) {
             for (const auto& name : modelNames) {
                 bool isSelected = (name == editModelName_);
                 if (ImGui::Selectable(name.c_str(), isSelected)) {
@@ -228,20 +311,20 @@ void MeshEffectEditor::DrawImGui() {
         ImGui::Separator();
 
         // --- ① メインテクスチャ (t0) ---
-        TextureCombo("Main Texture", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
+        TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
             if (auto renderer = previewEffect_->GetMeshRenderer()) {
                 renderer->SetTexture(path);
             }
             });
 
         // --- ② ノイズテクスチャ (t2) ---
-        TextureCombo("Noise Texture", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
+        TextureCombo(ICON_FA_WIND " ノイズテクスチャ", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
             uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
             previewEffect_->SetNoiseTexture(handle);
             });
 
         // --- ③ カラーランプ (t3) ---
-        TextureCombo("Color Ramp", currentRampTextureIndex_, editRampTexturePath_, [&](const std::string& path) {
+        TextureCombo(ICON_FA_PALETTE " カラーランプ", currentRampTextureIndex_, editRampTexturePath_, [&](const std::string& path) {
             uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
             previewEffect_->SetRampTexture(handle);
             });
@@ -250,64 +333,100 @@ void MeshEffectEditor::DrawImGui() {
     // ==========================================
     // 4. 配置設定 (Transform)
     // ==========================================
-    if (ImGui::CollapsingHeader("Base Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat3("Position", &editPosition_.x, 0.1f);
-        ImGui::DragFloat3("Rotation", &editRotation_.x, 0.01f);
+    if (ImGui::CollapsingHeader(ICON_FA_ARROWS_ALT " 配置設定 (Transform)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::DragFloat3("座標 (Position)", &editPosition_.x, 0.1f);
+        ImGui::DragFloat3("回転 (Rotation)", &editRotation_.x, 0.01f);
     }
 
     // ==========================================
     // 5. アニメーション設定
     // ==========================================
-    if (ImGui::CollapsingHeader("Animation (Start -> End)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::SliderFloat("Lifetime (sec)", &editLifetime_, 0.05f, 3.0f);
+    if (ImGui::CollapsingHeader(ICON_FA_FILM " アニメーション設定", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SliderFloat(ICON_FA_CLOCK " 寿命 (秒)", &editLifetime_, 0.05f, 3.0f);
 
-        ImGui::Text("[ Scale ]");
-        ImGui::DragFloat3("Start Scale", &editStartScale_.x, 0.1f);
-        ImGui::DragFloat3("End Scale", &editEndScale_.x, 0.1f);
+        ImGui::Spacing();
+        ImGui::Text(ICON_FA_EXPAND_ARROWS_ALT " [ スケール (Scale) ]");
+        ImGui::DragFloat3("開始スケール", &editStartScale_.x, 0.1f);
+        ImGui::DragFloat3("終了スケール", &editEndScale_.x, 0.1f);
 
         ImGui::Spacing();
 
-        ImGui::Text("[ Color ]");
-        ImGui::ColorEdit4("Start Color", &editStartColor_.x);
-        ImGui::ColorEdit4("End Color", &editEndColor_.x);
+        // ★ カラーランプが設定されているかチェック
+        if (strlen(editRampTexturePath_) == 0) {
+            ImGui::Text(ICON_FA_TINT " [ カラー (Color) ]");
+            ImGui::ColorEdit4("開始カラー", &editStartColor_.x);
+            ImGui::ColorEdit4("終了カラー", &editEndColor_.x);
+        }
+        else {
+            // カラーランプ使用時は非表示にし、理由を明記する
+            ImGui::TextDisabled(ICON_FA_TINT " [ カラー設定無効 ]");
+            ImGui::TextDisabled("※カラーランプが適用されているため無効化されています");
+        }
     }
 
     // ==========================================
     // 6. シェーダーパラメータ
     // ==========================================
-    if (ImGui::CollapsingHeader("Shader Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // Scroll Speed: ドラッグによる微調整に対応
-        ImGui::DragFloat2("Scroll Speed", &editScrollSpeed_.x, 0.01f);
-
-        // Intensity: HDR発光強度 (負の値を防止)
-        ImGui::DragFloat("Intensity (HDR)", &editIntensity_, 0.01f, 0.0f, 100.0f);
+    if (ImGui::CollapsingHeader(ICON_FA_SLIDERS_H " シェーダーパラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::DragFloat2("スクロール速度", &editScrollSpeed_.x, 0.01f);
+        ImGui::DragFloat("発光強度 (HDR)", &editIntensity_, 0.01f, 0.0f, 100.0f);
 
         ImGui::Separator();
 
-        ImGui::Text("[ Distortion (背景歪み) ]");
-        ImGui::Checkbox("Enable Grab Distortion", &editEnableDistortion_);
-        ImGui::SliderFloat("Dist Strength", &editDistortionStrength_, 0.0f, 0.2f);
-        ImGui::SliderFloat("Dist Speed", &editDistortionSpeed_, 0.0f, 50.0f);
+        ImGui::Text(ICON_FA_WATER " [ 背景歪み (Distortion) ]");
+        ImGui::Checkbox("背景歪みを有効にする", &editEnableDistortion_);
+        ImGui::SliderFloat("歪みの強さ", &editDistortionStrength_, 0.0f, 0.2f);
+        ImGui::SliderFloat("歪みの速度", &editDistortionSpeed_, 0.0f, 50.0f);
 
         ImGui::Spacing();
 
-        ImGui::Text("[ Edge Fade (形状削り出し) ]");
-        // 刃の鋭さを調整
-        ImGui::SliderFloat("Fade Strength", &editEdgeFadeStrength_, 1.0f, 10.0f);
+        ImGui::Text(ICON_FA_CUT " [ エッジフェード (形状削り出し) ]");
+        ImGui::SliderFloat("削り出しの強さ", &editEdgeFadeStrength_, 1.0f, 10.0f);
     }
 
     // ==========================================
-    // 7. 保存と読み込み
-    // ==========================================
-    if (ImGui::CollapsingHeader("Save & Load")) {
-        ImGui::InputText("File Name", saveFileName_, sizeof(saveFileName_));
+       // 7. 保存と読み込み (Save & Load)
+       // ==========================================
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " 保存と読み込み (Save & Load)", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        // ：既存ファイルのプルダウン選択
+        const char* previewValue = (currentJsonIndex_ >= 0 && currentJsonIndex_ < (int)jsonFileList_.size())
+            ? jsonFileList_[currentJsonIndex_].c_str() : "新規作成 (New File)";
+
+        if (ImGui::BeginCombo(ICON_FA_FILE_ALT " 既存ファイル", previewValue)) {
+            // 「新規作成」を選ぶと入力欄をクリアする
+            if (ImGui::Selectable("新規作成 (New File)", currentJsonIndex_ == -1)) {
+                currentJsonIndex_ = -1;
+                saveFileName_[0] = '\0'; // ファイル名を空にする
+            }
+
+            // 既存ファイル一覧
+            for (int i = 0; i < (int)jsonFileList_.size(); ++i) {
+                if (ImGui::Selectable(jsonFileList_[i].c_str(), currentJsonIndex_ == i)) {
+                    currentJsonIndex_ = i;
+                    // ★ 選択したファイル名をテキスト入力欄に自動でコピーする！
+                    strncpy_s(saveFileName_, jsonFileList_[i].c_str(), sizeof(saveFileName_) - 1);
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::Spacing();
+
+        // ここは今まで通り（プルダウンと連動して文字が入ります）
+        ImGui::InputText("ファイル名", saveFileName_, sizeof(saveFileName_));
 
         float halfWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
-        if (ImGui::Button("Save JSON", ImVec2(halfWidth, 0))) {
+
+        // ★ 保存ボタン
+        if (ImGui::Button(ICON_FA_SAVE " JSON 保存", ImVec2(halfWidth, 0))) {
             SaveToJson();
+            RefreshJsonFileList(); // 保存したらリストを最新に更新する！
         }
         ImGui::SameLine();
-        if (ImGui::Button("Load JSON", ImVec2(halfWidth, 0))) {
+
+        // ★ 読込ボタン
+        if (ImGui::Button(ICON_FA_FOLDER_OPEN " JSON 読込", ImVec2(halfWidth, 0))) {
             LoadFromJson();
         }
     }
@@ -317,8 +436,21 @@ void MeshEffectEditor::DrawImGui() {
 // JSON 保存処理
 // ==========================================
 void MeshEffectEditor::SaveToJson() {
-    json j;
+    std::string directoryPath = "Resources/json/effect/";
 
+    // フォルダが無ければ自動で作ってくれる魔法の1行！
+    std::filesystem::create_directories(directoryPath);
+
+    // ファイル名と合体させてフルパスを作る
+    std::string fullPath = directoryPath + saveFileName_;
+
+    json j;
+    if (targetObject_) {
+        j["TargetName"] = targetObject_->GetName();
+    }
+    else {
+        j["TargetName"] = "";
+    }
     // --- リソース ---
     j["ModelName"] = editModelName_;
     j["TexturePath"] = editTexturePath_;
@@ -347,10 +479,16 @@ void MeshEffectEditor::SaveToJson() {
     j["EdgeFadeStrength"] = editEdgeFadeStrength_;
     j["EnableDistortion"] = editEnableDistortion_;
     j["BlendMode"] = currentBlendModeIndex_;
-    std::ofstream file(saveFileName_);
+    j["EnableReveal"] = editEnableReveal_;
+    j["EasingType"] = editEasingType_;
+    std::ofstream file(fullPath);
     if (file.is_open()) {
-        file << j.dump(4); // 4インデントで綺麗に出力
+        file << j.dump(4);
         file.close();
+        DebugConsole::GetInstance()->AddLog("Saved Effect JSON: " + fullPath);
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Failed to save Effect JSON: " + fullPath);
     }
 }
 
@@ -358,9 +496,11 @@ void MeshEffectEditor::SaveToJson() {
 // JSON 読み込み処理
 // ==========================================
 void MeshEffectEditor::LoadFromJson() {
-    std::ifstream file(saveFileName_);
+    std::string fullPath = "Resources/json/effect/" + std::string(saveFileName_);
+
+    std::ifstream file(fullPath);
     if (!file.is_open()) {
-        // ファイルが無ければ何もしない
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Failed to load Effect JSON: " + fullPath);
         return;
     }
 
@@ -466,6 +606,41 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("EnableDistortion")) editEnableDistortion_ = j["EnableDistortion"];
     if (j.contains("BlendMode")) {
         currentBlendModeIndex_ = j["BlendMode"];
+    }
+    if (j.contains("EnableReveal")) {
+        editEnableReveal_ = j["EnableReveal"];
+    }
+    else {
+        editEnableReveal_ = true;
+    }
+    if (j.contains("EasingType")) {
+        editEasingType_ = j["EasingType"];
+    }
+    else {
+        editEasingType_ = 0; // 古いJSONはLinearにする
+    }
+    targetObject_ = nullptr;
+    if (j.contains("TargetName")) {
+        std::string targetName = j["TargetName"];
+        if (!targetName.empty() && sceneManager_ && sceneManager_->GetCurrentScene()) {
+            auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
+            // シーン内を再帰的に探すヘルパー関数
+            std::function<Object3d* (Object3d*, const std::string&)> findObj = [&](Object3d* obj, const std::string& name) -> Object3d* {
+                if (!obj) return nullptr;
+                if (obj->GetName() == name) return obj;
+                for (auto* child : obj->GetChildren()) {
+                    Object3d* found = findObj(child, name);
+                    if (found) return found;
+                }
+                return nullptr;
+                };
+
+            for (auto& obj : objects) {
+                targetObject_ = findObj(obj.get(), targetName);
+                if (targetObject_) break; // 見つけたら終了
+            }
+        }
     }
     // ★読み込み完了後、新しい設定値でエフェクトを最初から再生し直す
     previewEffect_->Play(editLifetime_);

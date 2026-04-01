@@ -25,7 +25,7 @@ cbuffer EffectMaterial : register(b0)
     int enableDistortion; // 歪み有効フラグ (0:OFF, 1:ON)
     int enableColorRamp; // ★追加
     int enableNoiseTexture; // ★追加
-    float padding2; // ★追加
+    int enableReveal;
 };
 
 struct VertexOutput
@@ -72,9 +72,8 @@ float fbm_light(float2 uv)
 }
 float4 main(VertexOutput input) : SV_TARGET
 {
-    if (input.uv.x > revealProgress)
+    if (enableReveal == 1 && input.uv.x > revealProgress)
         discard;
-
     float2 scrolledUV = input.uv + (scrollSpeed * time);
     float4 mainColor = mainTex.Sample(smp, scrolledUV);
 
