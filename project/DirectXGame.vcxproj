@@ -278,6 +278,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\system\input\KeyConfig.cpp" />
     <ClCompile Include="MeshEffectEditor.cpp" />
     <ClCompile Include="MeshEffectManager.cpp" />
+    <ClCompile Include="SaveDataManager.cpp" />
+    <ClCompile Include="TimeAttackUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -670,6 +672,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />
     <ClInclude Include="engine\graphics\particle\VFXSequencer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
+    <ClInclude Include="SaveDataManager.h" />
+    <ClInclude Include="TimeAttackUI.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

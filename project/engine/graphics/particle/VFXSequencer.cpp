@@ -4,6 +4,8 @@
 #include <fstream>
 #include <json.hpp>
 #include "DebugConsole.h"
+#include "AudioPlayer.h"
+#include "Easing.h"
 using json = nlohmann::json;
 void VFXSequencer::Initialize(Object3d* targetObject) {
     targetObject_ = targetObject;
@@ -29,47 +31,97 @@ void VFXSequencer::Reset() {
     isPlaying_ = false;
     for (auto& e : events_) {
         e.hasFired = false; // 全イベントを未発火に戻す
+        e.isFinished = false;
     }
 }
+Vector3 CalculateBezier(const Vector3& p0, const Vector3& p1, const Vector3& p2, float t) {
+    auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+    Vector3 a = { lerp(p0.x, p1.x, t), lerp(p0.y, p1.y, t), lerp(p0.z, p1.z, t) };
+    Vector3 b = { lerp(p1.x, p2.x, t), lerp(p1.y, p2.y, t), lerp(p1.z, p2.z, t) };
+    return { lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t) };
+}
+
+// ==========================================================
 void VFXSequencer::Update(float deltaTime) {
     if (!isPlaying_) return;
     currentTime_ += deltaTime;
-    bool allFired = true;
+    bool allFinished = true;
 
     for (auto& e : events_) {
-        if (!e.hasFired) {
+        if (!e.isFinished) { // 未完了のイベントのみ処理
             if (currentTime_ >= e.triggerTime) {
-                if (e.type == VFXEventType::GPUParticle) {
-                    // --- ① パーティクルの発生処理 ---
-                    Vector3 spawnPos = e.offset;
+
+                // --- 瞬間処理のグループ (GPUParticle, MeshEffect, SoundEffect) ---
+                if (e.type != VFXEventType::MovingParticle && !e.hasFired) {
+                    if (e.type == VFXEventType::GPUParticle) {
+                        Vector3 spawnPos = e.offset;
+                        Matrix4x4 emitMat = Math::MakeIdentity4x4();
+                        if (targetObject_) {
+                            Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
+                            spawnPos = Math::TransformNormal(e.offset, worldMat);
+                            spawnPos.x += worldMat.m[3][0]; spawnPos.y += worldMat.m[3][1]; spawnPos.z += worldMat.m[3][2];
+                            emitMat = worldMat;
+                        }
+                        GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos, emitMat);
+                    }
+                    else if (e.type == VFXEventType::MeshEffect) {
+                        std::string path = "Resources/json/effect/" + e.presetName + ".json";
+                        MeshEffectManager::GetInstance()->SpawnEffect(path);
+                    }
+                    else if (e.type == VFXEventType::SoundEffect) {
+                        std::string path = "Resources/audio/se/" + e.presetName;
+                        uint32_t soundHandle = AudioPlayer::GetInstance()->LoadSoundFile(path);
+                        AudioPlayer::GetInstance()->PlaySE(soundHandle, false, 1.0f);
+                    }
+                    e.hasFired = true;
+                    e.isFinished = true; // 1回で完了
+                }
+                // --- ★追加: 継続処理 (軌跡パーティクル) ---
+                else if (e.type == VFXEventType::MovingParticle) {
+                    e.hasFired = true;
+
+                    // 進行度 (0.0 ～ 1.0) を計算
+                    float progress = (currentTime_ - e.triggerTime) / e.duration;
+                    if (progress >= 1.0f) {
+                        progress = 1.0f;
+                        e.isFinished = true; // 移動完了
+                    }
+
+                    // イージングを適用
+                    float easeT = progress;
+                    if (e.easingType == 2) easeT = Easing::OutSine(progress);
+                    else if (e.easingType == 4) easeT = Easing::InQuad(progress);
+                   
+
+                    // ベジェ曲線でローカル座標を計算
+                    Vector3 localPos = CalculateBezier(e.offset, e.controlPoint, e.endOffset, easeT);
+
+                    Vector3 spawnPos = localPos;
                     Matrix4x4 emitMat = Math::MakeIdentity4x4();
+
                     if (targetObject_) {
                         Matrix4x4 worldMat = targetObject_->GetWorldMatrix();
-                        spawnPos = Math::TransformNormal(e.offset, worldMat);
+                        spawnPos = Math::TransformNormal(localPos, worldMat);
                         spawnPos.x += worldMat.m[3][0];
                         spawnPos.y += worldMat.m[3][1];
                         spawnPos.z += worldMat.m[3][2];
                         emitMat = worldMat;
                     }
+
+                    // 毎フレーム Emit して軌跡を作る！
                     GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos, emitMat);
                 }
-                else if (e.type == VFXEventType::MeshEffect) {
-                    // --- ② メッシュエフェクトの発生処理 ---
-                    std::string path = "Resources/json/effect/" + e.presetName + ".json";
-
-                    // ★修正: 引数の targetObject_ を削除！
-                    // エフェクト側(JSON)で設定された TargetName に完全に任せます
-                    MeshEffectManager::GetInstance()->SpawnEffect(path);
-                }
-                e.hasFired = true;
             }
-            else {
-                allFired = false;
+
+            // まだ終わっていないイベントがあるなら終了させない
+            if (!e.isFinished) {
+                allFinished = false;
             }
         }
     }
-    if (allFired) isPlaying_ = false;
+    if (allFinished) isPlaying_ = false;
 }
+
 // ==========================================================
 //  タイムラインをJSONに保存
 // ==========================================================
