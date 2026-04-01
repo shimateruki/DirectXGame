@@ -44,7 +44,6 @@
 #include <ParticleManager.h>
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
-#include <MeshEffectManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -79,7 +78,7 @@ void GamePlayScene::Initialize() {
 	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
 	ParticleManager::GetInstance()->Initialize(particleSystem_.get());
-	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);
 
@@ -90,7 +89,7 @@ void GamePlayScene::Initialize() {
 
 	lockOnSystem_ = std::make_unique<LockOnSystem>();
 	lockOnSystem_->Initialize(inputManager_);
-	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png"); 
+	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png");
 	lockOnSprite_ = std::make_unique<Sprite>();
 	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
 	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
@@ -113,41 +112,41 @@ void GamePlayScene::Initialize() {
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
 	// ★ 1. まず objectManager からオブジェクトのリストを取得する！
-	auto &objects = objectManager_->GetObjects ();
+	auto& objects = objectManager_->GetObjects();
 
-	for (auto it = objects.begin (); it != objects.end (); ++it) {
-		if ((*it)->GetName () == "Enemy_BossCore") {
+	for (auto it = objects.begin(); it != objects.end(); ++it) {
+		if ((*it)->GetName() == "Enemy_BossCore") {
 			// 1. 古いボスの「今の住所」をメモ（まだ消さない）
-			Object3d *oldAddress = it->get ();
+			Object3d* oldAddress = it->get();
 
 			// 2. 新しい BossCore を準備（まだリストには入れない）
-			auto newBoss = std::make_unique<BossCore> ();
-			newBoss->SetSceneManager (SceneManager::GetInstance ());
-			newBoss->Initialize (object3dCommon_.get (), oldAddress->GetModelName ());
-			newBoss->CopyFrom (oldAddress); // 座標などをコピー
-			newBoss->SetTarget (player_);
+			auto newBoss = std::make_unique<BossCore>();
+			newBoss->SetSceneManager(SceneManager::GetInstance());
+			newBoss->Initialize(object3dCommon_.get(), oldAddress->GetModelName());
+			newBoss->CopyFrom(oldAddress); // 座標などをコピー
+			newBoss->SetTarget(player_);
 
-			BossCore *newAddress = newBoss.get ();
+			BossCore* newAddress = newBoss.get();
 
 			// ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
 
 			// (A) 当たり判定マネージャから古いボスを抹消し、新しいボスを登録する
 			// ※ もし Remove/Add 関数がない場合は、後述の「強硬手段」を使ってください
-			CollisionManager::GetInstance ()->RemoveObject (oldAddress);
-			CollisionManager::GetInstance ()->AddObject (newAddress);
+			CollisionManager::GetInstance()->RemoveObject(oldAddress);
+			CollisionManager::GetInstance()->AddObject(newAddress);
 
 			// (B) 子供たちの親を、古い住所から新しい住所へ書き換える
-			for (auto &obj : objects) {
-				if (obj->GetParent () == oldAddress) {
-					obj->SetParent (newAddress);
+			for (auto& obj : objects) {
+				if (obj->GetParent() == oldAddress) {
+					obj->SetParent(newAddress);
 
 					// ★ ここを追加！新しいボスにパーツを登録する
-					newAddress->AddArmorBlock (obj.get ());
+					newAddress->AddArmorBlock(obj.get());
 				}
 			}
 
 			// 3. 最後に実体を差し替える。ここで oldAddress は安全に消滅する
-			*it = std::move (newBoss);
+			*it = std::move(newBoss);
 			break;
 		}
 	}
@@ -156,7 +155,6 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::Finalize() {
-	MeshEffectManager::GetInstance()->Clear();
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
@@ -288,7 +286,6 @@ void GamePlayScene::Update(float deltaTime) {
 
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
-	MeshEffectManager::GetInstance()->Update(deltaTime);
 
 }
 
@@ -298,7 +295,7 @@ void GamePlayScene::Draw() {
 	bool isFirstPerson = false;
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 #ifndef _DEBUG
-	
+
 	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
 		isFirstPerson = true;
 	}
@@ -321,7 +318,7 @@ void GamePlayScene::Draw() {
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
-	MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		if (isFirstPerson && obj.get() == player_) continue;
