@@ -40,6 +40,9 @@ public:
         armorBlocks_.push_back(block);
         block->SetCollisionAttribute(kEnemyAttack);
         block->SetCollisionMask(kPlayer);
+
+        blockHps_.push_back(100.0f); // 例としてHPを100に設定
+        blockBroken_.push_back(false);
     }
 
     float GetHp() const { return param_.has_value() ? param_->hp : 1000.0f; }
@@ -87,7 +90,7 @@ private:
 
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
-    void TakeBarrierDamage(float damage);
+    void TakeBarrierDamage(float damage, Object3d* hitBlock = nullptr);
 
     // ==================================================
     // 内部コンポーネント・変数
@@ -120,4 +123,10 @@ private:
     // 現在実行中の新しい攻撃クラスを保持するポインタ
     // ==========================================
     std::unique_ptr<BaseBossAttack> currentAttack_ = nullptr;
+
+    // ==========================================
+    // ブロックごとのHPと破壊状態
+    // ==========================================
+    std::vector<float> blockHps_;
+    std::vector<bool> blockBroken_;
 };
