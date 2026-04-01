@@ -6,7 +6,9 @@
 #include "Object3d.h"
 enum class VFXEventType {
     GPUParticle = 0,
-    MeshEffect = 1
+    MeshEffect = 1,
+    SoundEffect = 2,
+    MovingParticle = 3
 };
 // タイムライン上の1つの発火イベント
 struct VFXEvent {
@@ -16,6 +18,11 @@ struct VFXEvent {
     float triggerTime;      // Play開始から何秒後に発火するか
     Vector3 offset;         // 対象からの位置ズレ（足元、頭上など）
     bool hasFired = false;  // 実行済みフラグ（内部用）
+    Vector3 controlPoint = { 0.0f, 5.0f, 0.0f }; // 中間点（カーブを引っ張る方向）
+    Vector3 endOffset = { 0.0f, 0.0f, 10.0f };   // 終点
+    float duration = 1.0f;                       // 移動にかける時間
+    int easingType = 0;                          // イージングの種類
+    bool isFinished = false; // 処理が完全に終わったか
 };
 
 // ==========================================================

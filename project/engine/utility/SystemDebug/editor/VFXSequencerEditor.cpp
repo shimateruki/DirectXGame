@@ -64,7 +64,17 @@ void VFXSequencerEditor::RefreshFileList() {
             }
         }
     }
+    std::string seDir = "Resources/audio/se/";
+    if (fs::exists(seDir)) {
+        for (const auto& entry : fs::directory_iterator(seDir)) {
+            auto ext = entry.path().extension();
+            if (ext == ".wav" || ext == ".mp3") {
+                seFileList_.push_back(entry.path().filename().string());
+            }
+        }
+    }
 }
+
 
 void VFXSequencerEditor::DrawImGui() {
 #ifdef USE_IMGUI
@@ -76,7 +86,7 @@ void VFXSequencerEditor::DrawImGui() {
     ImGui::Separator();
 
     // =========================================================
-    // 1. プレビュー操作 (★ 違和感のあったターゲット選択UIを削除！)
+    // 1. プレビュー操作
     // =========================================================
     if (ImGui::Button(ICON_FA_PLAY " 再生 (Play Test)", ImVec2(120, 30))) {
         previewSequencer_.Play();
@@ -106,25 +116,41 @@ void VFXSequencerEditor::DrawImGui() {
         ImGui::PushID(i);
         ImGui::BeginGroup();
 
-        // 種類をバッジで表示
+        // 種類に合わせて読み込むリストとラベルを切り替える準備
+        const std::vector<std::string>* currentListPtr = nullptr;
+        const char* comboLabel = "";
+
         if (events[i].type == VFXEventType::GPUParticle) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FA_FIRE " [ GPUパーティクル ]");
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FA_FIRE " [ GPUパーティクル (瞬間) ]");
+            currentListPtr = &particlePresetList_;
+            comboLabel = " プリセット名";
         }
-        else {
+        else if (events[i].type == VFXEventType::MovingParticle) {
+            // ★追加: 軌跡用UI
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), ICON_FA_FIRE " [ GPUパーティクル (軌跡) ]");
+            currentListPtr = &particlePresetList_;
+            comboLabel = " プリセット名";
+        }
+        else if (events[i].type == VFXEventType::MeshEffect) {
             ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ICON_FA_CUBE " [ メッシュエフェクト ]");
+            currentListPtr = &meshEffectList_;
+            comboLabel = " エフェクト名";
         }
+        else if (events[i].type == VFXEventType::SoundEffect) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_MUSIC " [ サウンドエフェクト ]");
+            currentListPtr = &seFileList_;
+            comboLabel = " ファイル名";
+        }
+
         ImGui::SameLine();
         ImGui::TextDisabled(" | ID:%d", i);
 
-        // 種類に合わせて読み込むリストを切り替える
-        const auto& currentList = (events[i].type == VFXEventType::GPUParticle) ? particlePresetList_ : meshEffectList_;
-        const char* comboLabel = (events[i].type == VFXEventType::GPUParticle) ? " プリセット名" : " エフェクト名";
-
-        if (ImGui::BeginCombo(comboLabel, events[i].presetName.c_str())) {
-            for (const auto& presetName : currentList) {
-                bool isSelected = (events[i].presetName == presetName);
-                if (ImGui::Selectable(presetName.c_str(), isSelected)) {
-                    events[i].presetName = presetName;
+        // コンボボックスの描画
+        if (currentListPtr && ImGui::BeginCombo(comboLabel, events[i].presetName.c_str())) {
+            for (const auto& itemName : *currentListPtr) {
+                bool isSelected = (events[i].presetName == itemName);
+                if (ImGui::Selectable(itemName.c_str(), isSelected)) {
+                    events[i].presetName = itemName;
                 }
                 if (isSelected) ImGui::SetItemDefaultFocus();
             }
@@ -133,9 +159,19 @@ void VFXSequencerEditor::DrawImGui() {
 
         ImGui::DragFloat(ICON_FA_STOPWATCH " 発火時間 (秒後)", &events[i].triggerTime, 0.05f, 0.0f, 60.0f);
 
-        // オフセット (メッシュエフェクトの場合は非表示にする事でさらにスッキリ！)
+        // =========================================================
+        // パラメータ入力欄 (SEやMeshには位置オフセットを出さない)
+        // =========================================================
         if (events[i].type == VFXEventType::GPUParticle) {
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " オフセット位置", &events[i].offset.x, 0.1f);
+        }
+        else if (events[i].type == VFXEventType::MovingParticle) {
+            // ★追加: 軌跡用パラメータUI
+            ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 始点オフセット", &events[i].offset.x, 0.1f);
+            ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 中間点(カーブ)", &events[i].controlPoint.x, 0.1f);
+            ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 終点オフセット", &events[i].endOffset.x, 0.1f);
+            ImGui::DragFloat(ICON_FA_STOPWATCH " 移動時間 (秒)", &events[i].duration, 0.05f, 0.1f, 10.0f);
+            ImGui::DragInt("イージング種別(0:等速, 2:減速など)", &events[i].easingType, 1.0f, 0, 30);
         }
 
         if (ImGui::Button(ICON_FA_TRASH_ALT " このイベントを削除", ImVec2(170, 0))) {
@@ -152,19 +188,40 @@ void VFXSequencerEditor::DrawImGui() {
     }
 
     // =========================================================
-    // イベント追加ボタン
+    // イベント追加ボタン（幅を3等分して綺麗に並べる）
     // =========================================================
-    float btnWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+    float btnWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
 
-    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " パーティクル追加", ImVec2(btnWidth, 35))) {
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " パーティクル", ImVec2(btnWidth, 35))) {
         std::string def = particlePresetList_.empty() ? "" : particlePresetList_[0];
         events.push_back({ VFXEventType::GPUParticle, def, 0.0f, {0,0,0}, false });
     }
     ImGui::SameLine();
-    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " メッシュ追加", ImVec2(btnWidth, 35))) {
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " メッシュ", ImVec2(btnWidth, 35))) {
         std::string def = meshEffectList_.empty() ? "" : meshEffectList_[0];
         events.push_back({ VFXEventType::MeshEffect, def, 0.0f, {0,0,0}, false });
     }
+    ImGui::SameLine();
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " SE (効果音)", ImVec2(btnWidth, 35))) {
+        std::string def = seFileList_.empty() ? "" : seFileList_[0];
+        events.push_back({ VFXEventType::SoundEffect, def, 0.0f, {0,0,0}, false });
+    }
+
+    //  軌跡用パーティクルの追加ボタン
+    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " 軌跡パーティクル追加", ImVec2(-1, 30))) {
+        std::string def = particlePresetList_.empty() ? "" : particlePresetList_[0];
+        VFXEvent newEvent;
+        newEvent.type = VFXEventType::MovingParticle;
+        newEvent.presetName = def;
+        newEvent.triggerTime = 0.0f;
+        newEvent.offset = { 0,0,0 };
+        newEvent.controlPoint = { 0, 5, 0 }; // デフォルトで少し上に弧を描く
+        newEvent.endOffset = { 0, 0, 10 };   // 奥へ飛ぶ
+        newEvent.duration = 1.0f;
+        newEvent.easingType = 0;
+        events.push_back(newEvent);
+    }
+
     ImGui::Separator();
 
     // =========================================================
