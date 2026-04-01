@@ -11,6 +11,7 @@
 #include "Text.h"
 #include "BulletManager.h"
 #include "Camera.h"
+#include "TimeAttackUI.h"
 
 #include "ObjectManager.h"
 #include "LevelLoader.h"
@@ -72,6 +73,8 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
+
+
 private:
     // --- エンジンシステム ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -91,6 +94,7 @@ private:
     // --- オブジェクト・リソース ---
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
+
     Player* player_ = nullptr;
 
     // --- BGM・オーディオ ---
@@ -99,7 +103,8 @@ private:
     // --- ライトリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
-
+    std::unique_ptr<TimeAttackUI> clearTimeUI_; // 今回のタイム用
+    std::unique_ptr<TimeAttackUI> bestTimeUI_;  // ベストタイム用
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
 };

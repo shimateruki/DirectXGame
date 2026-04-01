@@ -14,7 +14,7 @@
 #include "BulletManager.h"
 #include "Camera.h"
 #include "MeshRenderer.h"
-
+#include "TimeAttackUI.h"
 #include "ObjectManager.h"
 #include "DebugEditor.h" 
 #include <GhostRecorder.h>
@@ -107,7 +107,7 @@ private:
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     std::unique_ptr<Text>  debugText_;
     std::unique_ptr<GameRule> gameRule_;
-
+    std::unique_ptr<TimeAttackUI> timeAttackUI_;
     Player* player_ = nullptr;
 
     // --- BGM・SE ---
