@@ -20,5 +20,6 @@ private:
     std::vector<std::string> particlePresetList_; // パーティクル（素材）のリスト
     std::vector<std::string> sequenceFileList_;   // シーケンス（必殺技）のリスト
     std::vector<std::string> meshEffectList_;
+    std::vector<std::string> seFileList_;
 
 };
