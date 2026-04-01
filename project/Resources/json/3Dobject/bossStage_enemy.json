@@ -706,7 +706,7 @@
             "name": "WarningArea",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "",
+            "parentName": "Enemy_BossCore",
             "position": [
                 -3.7701148986816406,
                 5.241372108459473,

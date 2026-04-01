@@ -3,6 +3,7 @@
 #include "GhostDirector.h"
 #include <memory>
 #include <string>
+#include "BossAttack/BaseBossAttack.h"
 
 class SceneManager; // 前方宣言
 
@@ -24,6 +25,7 @@ public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     bool OnCollision(Object3d* other) override;
+
 #ifdef USE_IMGUI
     void DrawImGui();
 #endif
@@ -34,8 +36,8 @@ public:
     void SetSceneManager(SceneManager* manager) { sceneManager_ = manager; }
 
     // パーツ(ブロック)を登録する関数
-    void AddArmorBlock (Object3d *block) { 
-        armorBlocks_.push_back (block);
+    void AddArmorBlock(Object3d* block) {
+        armorBlocks_.push_back(block);
         block->SetCollisionAttribute(kEnemyAttack);
         block->SetCollisionMask(kPlayer);
     }
@@ -46,15 +48,31 @@ public:
     // バリアHP
     float GetBarrierHp() const { return barrierHp_; }
     float GetMaxBarrierHp() const { return maxBarrierHp_; }
-private:
-    // 飛んでいるブロックを管理するための構造体
-    struct FlyingBlock {
-        Object3d *block;
-        Vector3 velocity;
-        Vector3 currentRot;// 現在の回転角度を記憶する！
-        int mode; // 0=飛翔中, 1=地面待機, 2=帰還中, 3=回収完了
-        int originalIndex; // 元の配列の番号(居場所)を記憶！
+
+    // ==========================================
+    // 攻撃クラスがボスの部品をいじるためのゲッター！
+    // ==========================================
+    std::vector<Object3d*>& GetArmorBlocks() { return armorBlocks_; }
+    Object3d* GetTarget() const { return target_; }
+    Object3d* GetWarningArea() const { return warningArea_; }
+
+    struct OrbitData {
+        Vector3 pos;
+        Vector3 rot;
+        Vector3 scale;
     };
+    OrbitData GetIdleOrbit(size_t index);
+
+    struct FlyingBlock {
+        Object3d* block;
+        Vector3 velocity;
+        Vector3 currentRot;
+        int mode;
+        int originalIndex;
+    };
+    std::vector<FlyingBlock>& GetFlyingBlocks() { return flyingBlocks_; }
+
+private:
 
     // 射出されたブロックのリスト
     std::vector<FlyingBlock> flyingBlocks_;
@@ -65,55 +83,32 @@ private:
     // ==================================================
     void ChangeState(State nextState);
     void UpdateIdle(float deltaTime);
-    void UpdateAttack(float deltaTime);
     void UpdateWeak(float deltaTime);
-    // --- BossAnimationの実装 ---
-    
-    // 新しく追加するアニメーション関数
-    void UpdateAnimationSequence (float deltaTime);
 
     // 飛んでいるブロックを専用で更新する関数
-    void UpdateFlyingBlocks (float deltaTime);
+    void UpdateFlyingBlocks(float deltaTime);
     void TakeBarrierDamage(float damage);
-    // static だった変数をメンバ変数に移動
-    int animPhase_ = 0;
-    float animTimer_ = 0.0f;
-    Vector3 animStartPos_ = { 0,0,0 };
-    Vector3 animTargetPos_ = { 0,0,0 };
-    Vector3 animStartRot_ = { 0,0,0 };
-    bool wasPlaying_ = false;
-
-    int attackMode_ = 0;         // 0:待機, 1:突進攻撃, 2:ブロック射撃
-    int shotCount_ = 0;          // 撃った弾の数
-    float shotInterval_ = 0.0f;  // 連射のインターバル(間隔)計測用
 
     // ==================================================
     // 内部コンポーネント・変数
     // ==================================================
     std::unique_ptr<GhostDirector> director_; // 演出・モーション制御用の監督
-
     SceneManager* sceneManager_ = nullptr;    // エディタ操作/プレイ状態の判定用
 
     State state_ = State::Idle;               // 現在のステート
     bool isFirstFrame_ = true;                // 初回更新フラグ
 
-    std::vector<Object3d *> armorBlocks_;
+    std::vector<Object3d*> armorBlocks_;
 
-    // 形態変化アニメーション用の座標メモ
+    // ==========================================
+    // ★ ダウン(Weak)演出用のアニメーション変数（これだけ残す！）
+    // ==========================================
+    float animTimer_ = 0.0f;
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
-    std::vector<Vector3> blockStartScale_;
-    std::vector<Vector3> blockTargetScale_;
 
-    // ==========================================
-    // Phase 50「気を付け」ポーズ遷移用のメモ
-    // ==========================================
-    std::vector<Vector3> attentionStartPos_;
-    std::vector<Vector3> attentionStartScale_;
-    std::vector<Vector3> attentionStartRot_;
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
-
     bool s_isTimeStopped_ = false;
 
     // エディターで作った予兆エリアを参照するためのポインタ
@@ -121,6 +116,8 @@ private:
 
     Vector4 originalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-    // 攻撃モード6のレーザービーム用円柱オブジェクト
-    std::vector<std::unique_ptr<Object3d>> laserBeams_;
+    // ==========================================
+    // 現在実行中の新しい攻撃クラスを保持するポインタ
+    // ==========================================
+    std::unique_ptr<BaseBossAttack> currentAttack_ = nullptr;
 };
