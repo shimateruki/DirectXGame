@@ -131,6 +131,11 @@ public:
     void DrawShadow(); 
     void DrawLocalFog(uint32_t depthSrvHandle);
     LocalFogData* GetLocalFogData() { return localFogData_; } // 後でエディタから操作するため
+    ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }
+    ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
+
+
+
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -170,4 +175,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
     LocalFogData* localFogData_ = nullptr;
     float time_ = 0.0f;
+
+
 };

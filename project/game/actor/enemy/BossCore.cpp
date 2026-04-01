@@ -14,6 +14,8 @@
 namespace {
     float s_globalIdleTimer = 0.0f; // 待機アニメーション用のタイマー
 
+    int s_debugForceAttack = 0;
+
     struct OrbitData {
         Vector3 pos;
         Vector3 rot;
@@ -127,19 +129,6 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     }
 
     originalColor_ = GetColor();
-
-    // ==========================================
-    // レーザー用の円柱モデルを6本生成しておく
-    // ==========================================
-    for (int i = 0; i < 6; ++i) {
-        auto beam = std::make_unique<Object3d>();
-        beam->Initialize(common_);         // エンジンの共通データで初期化
-        beam->SetModel("cylinder");        // ※円柱モデルのファイル名に合わせてください！
-        beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
-        beam->SetCollisionAttribute(0);    // 当たり判定なし
-        beam->SetCollisionMask(0);
-        laserBeams_.push_back(std::move(beam));
-    }
 }
 
 void BossCore::Update(float deltaTime) {
@@ -154,9 +143,11 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     InputManager* input = InputManager::GetInstance();
 
-    if (input->IsKeyTriggered(DIK_1)) {
+    // ==========================================
+    // タイムストップ機能を「0キー(DIK_0)」にお引っ越し！
+    // ==========================================
+    if (input->IsKeyTriggered(DIK_0)) {
         s_isTimeStopped_ = !s_isTimeStopped_; // 押すたびに切り替え
-
         if (s_isTimeStopped_) {
             DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
         }
@@ -164,6 +155,61 @@ void BossCore::Update(float deltaTime) {
             DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
         }
     }
+
+#ifdef USE_IMGUI
+    if (SceneManager::GetInstance()->IsPlaying()) {
+        int triggerAttack = 0;
+        if (input->IsKeyTriggered(DIK_1)) triggerAttack = 1;
+        if (input->IsKeyTriggered(DIK_2)) triggerAttack = 2;
+        if (input->IsKeyTriggered(DIK_3)) triggerAttack = 3;
+        if (input->IsKeyTriggered(DIK_4)) triggerAttack = 4;
+        if (input->IsKeyTriggered(DIK_5)) triggerAttack = 5;
+        if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
+
+        if (triggerAttack != 0) {
+            DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
+
+            s_debugForceAttack = triggerAttack; // 次の攻撃を予約
+
+            // 強制的に状態をリセットして待機(Idle)に戻す
+            ChangeState(State::Idle);
+            animPhase_ = 0;
+            attackMode_ = 0;
+            animTimer_ = 0.0f; // ★ これにより、きっちり2秒間待機モーションを見せてから次の攻撃に移ります
+
+            // ボス本体の位置と回転を中央に強制リセット
+            SetTranslate({ 0.0f, 4.0f, 0.0f });
+            SetRotation({ 0.0f, 0.0f, 0.0f });
+            SetColor(originalColor_);
+
+            // 飛んでいるブロックを回収し、親子関係を強制修復
+            flyingBlocks_.clear();
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (armorBlocks_[i]) {
+                    armorBlocks_[i]->SetParent(this);
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
+
+            // ワーニングエリアを確実に隠す
+            if (warningArea_) {
+                warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
+                warningArea_->SetCollisionAttribute(0);
+                if (warningArea_->GetParent() == nullptr) {
+                    warningArea_->SetParent(this);
+                }
+            }
+
+            // レーザービームを確実に隠す
+            for (auto& beam : laserBeams_) {
+                if (beam) {
+                    beam->SetScale({ 0.0f, 0.0f, 0.0f });
+                    beam->SetCollisionAttribute(0);
+                }
+            }
+        }
+    }
+#endif
 
     // ★ 魔法の処理：時間停止中は、このフレームの経過時間を「0秒」に偽装する！
     if (s_isTimeStopped_) {
@@ -268,17 +314,30 @@ void BossCore::Update(float deltaTime) {
                 }
             }
 
+            // ==========================================
+            // ゲームが始まった瞬間に、エディターのScale設定に関わらず確実にビームを消しておく！
+            // ==========================================
+            for (Object3d* block : armorBlocks_) {
+                if (!block) continue;
+                for (Object3d* child : block->GetChildren()) {
+                    if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
+                        child->SetScale({ 0.0f, 0.0f, 0.0f });
+                        child->SetCollisionAttribute(0);
+                    }
+                }
+            }
+
             // ③ リストから「はく奪」した【後】に、状態をIdleに切り替える！
             // （これでWarningAreaは ChangeState の属性上書きに巻き込まれません！）
             ChangeState(State::Idle);
             isFirstFrame_ = false;
         }
-    }
 
-    switch (state_) {
-    case State::Idle:   UpdateIdle(deltaTime);   break;
-    case State::Attack: UpdateAttack(deltaTime); break;
-    case State::Weak:   UpdateWeak(deltaTime);   break;
+        switch (state_) {
+        case State::Idle:   UpdateIdle(deltaTime);   break;
+        case State::Attack: UpdateAttack(deltaTime); break;
+        case State::Weak:   UpdateWeak(deltaTime);   break;
+        }
     }
 }
 
@@ -348,7 +407,15 @@ void BossCore::ChangeState(State nextState) {
         if (nextAttackPattern > 6) {
             nextAttackPattern = 1; // 4番の次は1番に戻る
         }
-        nextAttackPattern = 6;
+        //nextAttackPattern = 6;
+
+        // ==========================================
+        // ★ 新規追加：デバッグ強制予約があれば、順番を無視して上書き！
+        // ==========================================
+        if (s_debugForceAttack != 0) {
+            nextAttack = s_debugForceAttack;
+            s_debugForceAttack = 0; // 一度使ったらリセットして通常の順番に戻す
+        }
 
         // 選ばれた攻撃モードをセットし、対応するPhaseからアニメーション開始！
         attackMode_ = nextAttack;

@@ -20,6 +20,7 @@
 #include "DebugConsole.h"
 #include "PresetManager.h"
 #include "KeyConfig.h"
+#include "MeshEffectEditor.h"
 #include "json.hpp"
 #include <filesystem>
 #include <algorithm> // std::transform用
@@ -80,6 +81,10 @@ void HierarchyWindow::Draw() {
         }
         if (editor_->GetGhostDirector() && ImGui::Selectable("  " ICON_FA_BULLHORN " ゴーストディレクター (Ghost Director)", currentObj == editor_->GetGhostDirector())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
+        }
+     if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
+            editor_->SetSelectedObject(nullptr); 
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetMeshEffectEditor());
         }
     }
 

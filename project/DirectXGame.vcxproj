@@ -155,6 +155,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
@@ -267,7 +268,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\SceneSerializer.cpp" />
     <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp" />
-    <ClCompile Include="KeyConfig.cpp" />
+    <ClCompile Include="engine\system\input\KeyConfig.cpp" />
+    <ClCompile Include="MeshEffectEditor.cpp" />
+    <ClCompile Include="MeshEffectManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -287,6 +290,17 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <None Include="Resources\shader\Object3d.hlsli" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Resources\shader\Effect3d.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Resources\shader\Effect3d.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="Resources\shader\LocalFog.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
@@ -359,6 +373,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h" />
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
@@ -633,7 +648,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\InspectorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h" />
-    <ClInclude Include="KeyConfig.h" />
+    <ClInclude Include="engine\system\input\KeyConfig.h" />
+    <ClInclude Include="MeshEffectEditor.h" />
+    <ClInclude Include="MeshEffectManager.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />

@@ -21,6 +21,7 @@
 #include "GhostDirector.h"
 #include "GPUParticleEditor.h"
 #include "EngineManualWindow.h"
+#include"MeshEffectEditor.h"
 
 class WinApp;
 
@@ -57,6 +58,7 @@ private:
 	std::unique_ptr<GhostDirector> ghostDirector_;
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
+	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
 	EngineManualWindow engineManualWindow_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;

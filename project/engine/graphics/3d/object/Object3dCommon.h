@@ -44,6 +44,9 @@ public:
    void CreateShadowRootSignature();
    void CreateLocalFogPipeline();
    void SetLocalFogGraphicsCommand();
+   void CreateEffectRootSignature();
+   void CreateEffectPipeline();
+   void SetEffectGraphicsCommand(BlendMode blendMode);
 private:
    /// <summary>
    /// ルートシグネチャの作成
@@ -65,5 +68,7 @@ private:
    Microsoft::WRL::ComPtr<ID3D12RootSignature> shadowRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12RootSignature> localFogRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> localFogPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12RootSignature> effectRootSignature_;
+   std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;
 
 };

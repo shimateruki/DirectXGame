@@ -45,6 +45,7 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
+#include <MeshEffectManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -96,7 +97,7 @@ void GamePlayScene::Initialize() {
 	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
 	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
-
+	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
 	GPUParticleManager::GetInstance()->LoadAllPresets();
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
@@ -551,6 +552,7 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
+	MeshEffectManager::GetInstance()->Update(deltaTime);
 	UpdateUI();
 }
 
@@ -610,7 +612,7 @@ void GamePlayScene::Draw() {
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
-
+	MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		// ここでも同じくプレイヤー関連をスキップ

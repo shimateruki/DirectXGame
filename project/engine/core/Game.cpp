@@ -84,6 +84,8 @@ void Game::Initialize() {
     gpuParticleEditor_->Initialize();
     vfxSequencerEditor_ = std::make_unique<VFXSequencerEditor>();
     vfxSequencerEditor_->Initialize();
+    meshEffectEditor_ = std::make_unique<MeshEffectEditor>();
+    meshEffectEditor_->Initialize(sceneManager_.get());
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
     ghostDirector_ = std::make_unique<GhostDirector>();
@@ -100,7 +102,8 @@ void Game::Initialize() {
             vfxSequencerEditor_.get(),
             ghostRecorder_.get(),   
             ghostDirector_.get(),
-			LightEditor::GetInstance()
+			LightEditor::GetInstance(),
+            meshEffectEditor_.get()
         );
     }
 
@@ -358,7 +361,9 @@ void Game::Update() {
     if (vfxSequencerEditor_) {
         vfxSequencerEditor_->Update(deltaTime);
     }
-
+    if (meshEffectEditor_) {
+        meshEffectEditor_->Update(deltaTime);
+    }
     // -------------------------------------------------------------------------
     // 4. エディタ描画の総仕上げ！
     // -------------------------------------------------------------------------
@@ -446,7 +451,9 @@ void Game::Draw() {
     dxCommon_->PostDrawShadow();
     if (sceneManager_) { sceneManager_->Draw(); }
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
-
+    if (meshEffectEditor_ && EditorManager::GetInstance()->GetSelectedObject() == meshEffectEditor_.get()) {
+        meshEffectEditor_->Draw();
+    }
     dxCommon_->PostDrawRenderTexture();
 
     // ---------------------------------------------------------------
