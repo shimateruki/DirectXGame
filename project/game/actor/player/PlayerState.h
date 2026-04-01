@@ -181,7 +181,7 @@ public:
 
 private:
     float animTimer_ = 0.0f;
-    float animDuration_ = 0.35f; // アニメーションにかける時間
+    float animDuration_ = 0.55f; // アニメーションにかける時間
 
     // 各パーツ
     Object3d* bodyObj_ = nullptr;

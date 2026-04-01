@@ -1158,9 +1158,9 @@ void PlayerStateAttack1::Update(Player* player)
 	// 通常アニメーション部分
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
 
-	// イーズインアウト
-	float et = EaseInOutSine(t);
-	ApplyPose(et);
+	// NOTE: ここで ApplyPose には「生の正規化時間 t」を渡すように変更しました。
+	//      これにより時間配分（start/hold/end の割合）が実時間に忠実に反映されます。
+	ApplyPose(t);
 
 	if (animTimer_ >= animDuration_)
 	{
@@ -1242,101 +1242,130 @@ void PlayerStateAttack1::ApplyPose(float t)
 	auto LerpVec3 = [](const Vector3& a, const Vector3& b, float t) {
 		return Vector3{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t };
 		};
+	// イーズ関数（必要な箇所だけで使う）
+	auto EaseInOutSine = [](float x) { return 0.5f * (1.0f - std::cos(3.14159265358979323846f * x)); };
 
-	// 開始ポーズ
+	// 開始ポーズ (既存)
 	Vector3 bodyStartPos{ 0.0f, 0.0f, 0.0f };
 	Vector3 bodyStartRot = bodyDefaultRot_;
-	// 変更点: Y 回転をデフォルト向きに対する相対値で設定
 	bodyStartRot.y = bodyDefaultRot_.y + DegToRad(60.0f);
 
-	// 頭:  開始はデフォルトの位置
 	Vector3 headStartPos{ 0.0f, 0.0f, 0.0f };
 	Vector3 headStartRot{ 0.0f, 0.0f, 0.0f };
 
-	// 右手: Y を前に出して体から離す
 	Vector3 rtArmStartPos{ 0.0f, 0.0f, 0.0f };
 	Vector3 rtArmStartRot{ DegToRad(-70.0f), DegToRad(32.0f), DegToRad(-23.0f) };
 
-	// 左手: Z を大きくして体に埋まらないように調整
 	Vector3 ltArmStartPos{ 0.0f, 0.0f, 1.0f };
 	Vector3 ltArmStartRot{ DegToRad(-190.0f), DegToRad(45.0f), DegToRad(-2.0f) };
 
-	// 右足: 開始はデフォルトの位置
 	Vector3 rtFootStartPos{ 0.0f, 0.0f, 0.0f };
 	Vector3 rtFootStartRot{ 0.0f, 0.0f, 0.0f };
 
-	// 左足: Y を持ち上げて埋まりを防止
 	Vector3 ltFootStartPos{ 0.0f, 1.0f, 0.4f };
 	Vector3 ltFootStartRot{ DegToRad(-72.0f), 0.0f, 0.0f };
 
-	// 終了ポーズ
+	// 中間 (既存終点を中間に移動)
+	Vector3 bodyMidPos{ 0.0f, 0.0f, 0.0f };
+	Vector3 bodyMidRot = bodyStartRot;
+	bodyMidRot.y = bodyDefaultRot_.y + DegToRad(-100.0f);
+	bodyMidRot.z = DegToRad(-36.0f);
+
+	Vector3 headMidPos{ 0.0f, 0.0f, 0.0f };
+	Vector3 headMidRot{ DegToRad(-22.0f), DegToRad(61.0f), 0.0f };
+
+	Vector3 rtArmMidPos{ 0.05f, 0.2f, 0.0f };
+	Vector3 rtArmMidRot{ DegToRad(-150.0f), DegToRad(-35.0f), DegToRad(35.0f) };
+
+	Vector3 ltArmMidPos{ 0.0f, 0.0f, 1.2f };
+	Vector3 ltArmMidRot{ DegToRad(43.0f), DegToRad(3.0f), DegToRad(-10.0f) };
+
+	Vector3 rtFootMidPos{ 0.0f, 0.0f, 0.0f };
+	Vector3 rtFootMidRot{ DegToRad(43.0f), DegToRad(3.0f), DegToRad(-10.0f) };
+
+	Vector3 ltFootMidPos{ 0.1f, 0.9f, -0.1f };
+	Vector3 ltFootMidRot{ DegToRad(57.0f), DegToRad(81.0f), DegToRad(-6.0f) };
+
+	// 新終点（すべて 0.0f にする）
 	Vector3 bodyEndPos{ 0.0f, 0.0f, 0.0f };
-	// 体の Y を -100deg にする（要求どおり）
-	Vector3 bodyEndRot = bodyStartRot;
-	// 変更点: End もデフォルト向きを基準にした相対角度で設定
-	bodyEndRot.y = bodyDefaultRot_.y + DegToRad(-100.0f);
-	bodyEndRot.z = DegToRad(-36.0f);
+	Vector3 bodyEndRot{ 0.0f, 0.0f, 0.0f };
 
 	Vector3 headEndPos{ 0.0f, 0.0f, 0.0f };
-	Vector3 headEndRot{ DegToRad(-22.0f), DegToRad(61.0f), 0.0f };
+	Vector3 headEndRot{ 0.0f, 0.0f, 0.0f };
 
 	Vector3 rtArmEndPos{ 0.0f, 0.0f, 0.0f };
-	Vector3 rtArmEndRot{ DegToRad(-151.0f), DegToRad(-70.0f), DegToRad(57.0f) };
+	Vector3 rtArmEndRot{ 0.0f, 0.0f, 0.0f };
 
-	// 左手終了位置もZを高めに（元 0.2）、
-	Vector3 ltArmEndPos{ 0.0f, 0.0f, 1.2f };
-	Vector3 ltArmEndRot{ DegToRad(43.0f), DegToRad(3.0f), DegToRad(-10.0f) };
+	Vector3 ltArmEndPos{ 0.0f, 0.0f, 0.0f };
+	Vector3 ltArmEndRot{ 0.0f, 0.0f, 0.0f };
 
 	Vector3 rtFootEndPos{ 0.0f, 0.0f, 0.0f };
-	Vector3 rtFootEndRot{ DegToRad(43.0f), DegToRad(3.0f), DegToRad(-10.0f) };
+	Vector3 rtFootEndRot{ 0.0f, 0.0f, 0.0f };
 
-	// 左足終了位置
-	Vector3 ltFootEndPos{ 0.1f, 0.9f, -0.1f };
-	Vector3 ltFootEndRot{ DegToRad(57.0f), DegToRad(81.0f), DegToRad(-6.0f) };
+	Vector3 ltFootEndPos{ 0.0f, 0.0f, 0.0f };
+	Vector3 ltFootEndRot{ 0.0f, 0.0f, 0.0f };
 
-	// 体は位置と回転を両方アニメーションさせる
-	if (bodyObj_) {
-		Transform* tf = bodyObj_->GetTransform();
-		tf->translate = bodyDefaultPos_ + LerpVec3(bodyStartPos, bodyEndPos, t);
-		tf->rotate = LerpVec3(bodyStartRot, bodyEndRot, t);
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix();
+	// ---- 時間配分（ここは「生の t」を使う） ----
+	// start -> mid に割く割合 (raw t 上の割合)
+	const float startCut = 0.45f;   // 開始→中間
+	// mid でホールドする割合
+	const float holdDur = 0.20f;   // 中間ホールド
+	const float midEnd = startCut + holdDur; // midEnd == startCut + holdDur
+
+	// 補間処理（raw t に基づく）
+	float rawT = std::clamp(t, 0.0f, 1.0f);
+
+	if (rawT <= startCut)
+	{
+		// start -> mid (ここでセグメント内だけイージングを行う)
+		float local = (startCut > 1e-6f) ? (rawT / startCut) : 1.0f;
+		float easedLocal = EaseInOutSine(std::clamp(local, 0.0f, 1.0f));
+
+		if (bodyObj_) {
+			Transform* tf = bodyObj_->GetTransform();
+			tf->translate = bodyDefaultPos_ + LerpVec3(bodyStartPos, bodyMidPos, easedLocal);
+			tf->rotate = LerpVec3(bodyStartRot, bodyMidRot, easedLocal);
+			tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix();
+		}
+		if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_ + LerpVec3(Vector3{ 0,0,0 }, headMidPos, easedLocal); tf->rotate = LerpVec3(headStartRot_, headMidRot, easedLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
+		if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_ + LerpVec3(rtArmStartPos, rtArmMidPos, easedLocal); tf->rotate = LerpVec3(rtArmStartRot, rtArmMidRot, easedLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
+		if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = LerpVec3(ltArmStartRot, ltArmMidRot, easedLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix(); }
+		if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_ + LerpVec3(rtFootStartPos, rtFootMidPos, easedLocal); tf->rotate = LerpVec3(rtFootStartRot, rtFootMidRot, easedLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+		if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = LerpVec3(ltFootStartRot, ltFootMidRot, easedLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix(); }
 	}
-
-	if (headObj_) {
-		Transform* tf = headObj_->GetTransform();
-		tf->translate = headDefaultPos_ + LerpVec3(Vector3{ 0,0,0 }, headEndPos, t);
-		tf->rotate = LerpVec3(headStartRot_, headEndRot, t);
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix();
+	else if (rawT <= midEnd)
+	{
+		// HOLD: 中間ポーズで一時停止（見た目の安定）
+		if (bodyObj_) {
+			Transform* tf = bodyObj_->GetTransform();
+			tf->translate = bodyDefaultPos_ + bodyMidPos;
+			tf->rotate = bodyMidRot;
+			tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix();
+		}
+		if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_ + headMidPos; tf->rotate = headMidRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
+		if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_ + rtArmMidPos; tf->rotate = rtArmMidRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
+		if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = ltArmMidRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix(); }
+		if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_ + rtFootMidPos; tf->rotate = rtFootMidRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+		if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = ltFootMidRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix(); }
 	}
+	else
+	{
+		// mid -> end はユーザ指定通りイージングせず線形補間（ただし raw t 分配に基づく）
+		float denom = (1.0f - midEnd);
+		float local = (denom > 1e-6f) ? ((rawT - midEnd) / denom) : 1.0f;
+		float linearLocal = std::clamp(local, 0.0f, 1.0f); // そのままリニア
 
-	if (rightArmObj_) {
-		Transform* tf = rightArmObj_->GetTransform();
-		tf->translate = rightArmDefaultPos_ + LerpVec3(rtArmStartPos, rtArmEndPos, t);
-		tf->rotate = LerpVec3(rtArmStartRot, rtArmEndRot, t);
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix();
-	}
-
-	if (leftArmObj_) {
-		Transform* tf = leftArmObj_->GetTransform();
-		// 位置アニメーションを無効化: 常にデフォルトのローカル位置を使う
-		tf->translate = leftArmDefaultPos_;
-		tf->rotate = LerpVec3(ltArmStartRot, ltArmEndRot, t);
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix();
-	}
-
-	if (rightFootObj_) {
-		Transform* tf = rightFootObj_->GetTransform();
-		tf->translate = rightFootDefaultPos_ + LerpVec3(rtFootStartPos, rtFootEndPos, t);
-		tf->rotate = LerpVec3(rtFootStartRot, rtFootEndRot, t);
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix();
-	}
-
-	if (leftFootObj_) {
-		Transform* tf = leftFootObj_->GetTransform();
-		// 位置アニメーションを無効化: 常にデフォルトのローカル位置を使う
-		tf->translate = leftFootDefaultPos_;
-		tf->rotate = LerpVec3(ltFootStartRot, ltFootEndRot, t);
-		tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix();
+		if (bodyObj_) {
+			Transform* tf = bodyObj_->GetTransform();
+			tf->translate = bodyDefaultPos_ + LerpVec3(bodyMidPos, bodyEndPos, linearLocal);
+			tf->rotate = LerpVec3(bodyMidRot, bodyEndRot, linearLocal);
+			tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; bodyObj_->UpdateWorldMatrix();
+		}
+		if (headObj_) { Transform* tf = headObj_->GetTransform(); tf->translate = headDefaultPos_ + LerpVec3(Vector3{ 0,0,0 }, headEndPos, linearLocal); tf->rotate = LerpVec3(headMidRot, headEndRot, linearLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; headObj_->UpdateWorldMatrix(); }
+		if (rightArmObj_) { Transform* tf = rightArmObj_->GetTransform(); tf->translate = rightArmDefaultPos_ + LerpVec3(rtArmMidPos, rtArmEndPos, linearLocal); tf->rotate = LerpVec3(rtArmMidRot, rtArmEndRot, linearLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightArmObj_->UpdateWorldMatrix(); }
+		if (leftArmObj_) { Transform* tf = leftArmObj_->GetTransform(); tf->translate = leftArmDefaultPos_; tf->rotate = LerpVec3(ltArmMidRot, ltArmEndRot, linearLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftArmObj_->UpdateLocalMatrix(); leftArmObj_->UpdateWorldMatrix(); }
+		if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->translate = rightFootDefaultPos_ + LerpVec3(rtFootMidPos, rtFootEndPos, linearLocal); tf->rotate = LerpVec3(rtFootMidRot, rtFootEndRot, linearLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
+		if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->translate = leftFootDefaultPos_; tf->rotate = LerpVec3(ltFootMidRot, ltFootEndRot, linearLocal); tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateLocalMatrix(); leftFootObj_->UpdateWorldMatrix(); }
 	}
 }
 
