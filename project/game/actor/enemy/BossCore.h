@@ -83,31 +83,11 @@ private:
     // ==================================================
     void ChangeState(State nextState);
     void UpdateIdle(float deltaTime);
-    void UpdateAttack(float deltaTime);
     void UpdateWeak(float deltaTime);
-
-    // --- BossAnimationの実装 ---
-
-    // 新しく追加するアニメーション関数
-    void UpdateAnimationSequence(float deltaTime);
 
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
     void TakeBarrierDamage(float damage);
-
-    // ==================================================
-    // まだ消さない！既存の攻撃コードを動かすために残しておく！
-    // ==================================================
-    int animPhase_ = 0;
-    float animTimer_ = 0.0f;
-    Vector3 animStartPos_ = { 0,0,0 };
-    Vector3 animTargetPos_ = { 0,0,0 };
-    Vector3 animStartRot_ = { 0,0,0 };
-    bool wasPlaying_ = false;
-
-    int attackMode_ = 0;         // 0:待機, 1:突進攻撃, 2:ブロック射撃
-    int shotCount_ = 0;          // 撃った弾の数
-    float shotInterval_ = 0.0f;  // 連射のインターバル(間隔)計測用
 
     // ==================================================
     // 内部コンポーネント・変数
@@ -120,16 +100,12 @@ private:
 
     std::vector<Object3d*> armorBlocks_;
 
-    // 形態変化アニメーション用の座標メモ
+    // ==========================================
+    // ★ ダウン(Weak)演出用のアニメーション変数（これだけ残す！）
+    // ==========================================
+    float animTimer_ = 0.0f;
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
-    std::vector<Vector3> blockStartScale_;
-    std::vector<Vector3> blockTargetScale_;
-
-    // Phase 50「気を付け」ポーズ遷移用のメモ
-    std::vector<Vector3> attentionStartPos_;
-    std::vector<Vector3> attentionStartScale_;
-    std::vector<Vector3> attentionStartRot_;
 
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
