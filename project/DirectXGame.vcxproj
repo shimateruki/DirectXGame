@@ -155,6 +155,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack1_Rush.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BaseBossAttack.cpp" />
     <ClCompile Include="EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
@@ -373,6 +376,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack1_Rush.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BaseBossAttack.h" />
     <ClInclude Include="EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h" />
