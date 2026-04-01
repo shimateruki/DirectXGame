@@ -9,6 +9,26 @@
             "presetName": "effect_slash",
             "triggerTime": 0.0,
             "type": 1
+        },
+        {
+            "offset": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "presetName": "Alarm01.wav",
+            "triggerTime": 0.0,
+            "type": 2
+        },
+        {
+            "offset": [
+                0.0,
+                0.0,
+                2.799999952316284
+            ],
+            "presetName": "bossEfect",
+            "triggerTime": 0.3499999940395355,
+            "type": 3
         }
     ]
 }
