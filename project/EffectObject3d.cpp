@@ -119,7 +119,7 @@ void EffectObject3d::Update(float deltaTime) {
 }
 
 void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    DebugConsole::GetInstance()->AddLog("  2: EffectObject3d::Draw() is Called!");
+
     if (!common_ || !meshRenderer_) return;
     Model* model = meshRenderer_->GetModel();
     if (!model)
@@ -129,7 +129,7 @@ void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
         return;
     }
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    DebugConsole::GetInstance()->AddLog(LogLevel::Info, "  3: Success! Ready to draw mesh.");
+
     // 1. エフェクト専用パイプラインへの切り替え
     common_->SetEffectGraphicsCommand(blendMode_);
 
