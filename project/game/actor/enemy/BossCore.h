@@ -82,6 +82,13 @@ public:
     void AddMapBlock(MapBlock* block) { mapBlocks_.push_back(block); }
     std::vector<MapBlock*>& GetMapBlocks() { return mapBlocks_; }
 
+    // ==========================================
+    // マップブロックを装甲として同化する関数と、バリア回復関数
+    // ==========================================
+    bool AssimilateBlock(Object3d* newBlock);
+    bool IsArmorFull() const;
+    int GetNeededBlockCount() const;
+
 private:
 
     // 射出されたブロックのリスト

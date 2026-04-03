@@ -1,7 +1,7 @@
 #include "BossAttack7_Absorb.h"
 #include "../BossCore.h"
 #include "./easing.h" 
-#include "../MapBlock.h" // ★ 吸収処理のためにインクルード
+#include "../MapBlock.h" 
 #include <algorithm>
 #include <cmath>
 
@@ -10,18 +10,32 @@ void BossAttack7_Absorb::Initialize(BossCore* boss) {
 
     animPhase_ = 70;
     animStartPos_ = boss->GetTranslate();
+    targetMapBlocks_.clear(); // ★ 最初は空っぽにしておく
 }
 
 void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
     auto& armorBlocks = boss->GetArmorBlocks();
 
-    // ==========================================
-    // ★ ボスが登録済みのマップブロックリストをもらう！
-    // ==========================================
-    auto& mapBlocks = boss->GetMapBlocks();
-
     // --- Phase 70: ボスが上空にフワッと浮かび上がり、タメを作る ---
     if (animPhase_ == 70) {
+        // ==========================================
+        // ★ タメ始めた最初の瞬間に、必要な数だけロックオンする！
+        // ==========================================
+        if (animTimer_ == 0.0f) {
+            targetMapBlocks_.clear();
+            int neededCount = boss->GetNeededBlockCount();
+
+            for (MapBlock* block : MapBlock::s_activeBlocks) {
+                if (block && block->GetIsVisible()) {
+                    targetMapBlocks_.push_back(block);
+                    // ★ 必要な数に達したら、もう探さない！（11個目以降を無視）
+                    if (targetMapBlocks_.size() >= neededCount) {
+                        break;
+                    }
+                }
+            }
+        }
+
         animTimer_ += deltaTime;
         float duration = 2.0f;
         float t = std::min(animTimer_ / duration, 1.0f);
@@ -29,7 +43,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
 
         Vector3 pos = boss->GetTranslate();
         pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
-        pos.y = Math::Lerp(animStartPos_.y, 10.0f, easeT); // 高く浮く
+        pos.y = Math::Lerp(animStartPos_.y, 10.0f, easeT);
         pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
         boss->SetTranslate(pos);
 
@@ -39,52 +53,68 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         if (t >= 1.0f) {
-            animPhase_ = 71;
+            // ★ 吸い込むものが無い（最初から満タン）なら、そのまま降りる！
+            if (targetMapBlocks_.empty()) {
+                animPhase_ = 72;
+            }
+            else {
+                animPhase_ = 71;
+            }
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 71: リストにあるマップブロックを念動力で引き寄せる！ ---
+    // --- Phase 71: ロックオンしたブロックだけを念動力で引き寄せる！ ---
     else if (animPhase_ == 71) {
         animTimer_ += deltaTime;
         Vector3 bossPos = boss->GetTranslate();
 
-        // ボス本体は超高速回転！
         Vector3 rot = boss->GetRotation();
         rot.y += 12.0f * deltaTime;
         boss->SetRotation(rot);
         boss->GetTransform()->isQuaternionMaster = false;
 
-        bool allAbsorbed = true; // 全部吸収し終わったかチェックするフラグ
+        bool allAbsorbed = true;
 
         // ==========================================
-        // MapBlockが自己登録している名簿を直接読みに行く！
+        // ★ 修正：普通のfor文にして、食べ終わったものをリストから除外(nullptr)する！
         // ==========================================
-        for (MapBlock* block : MapBlock::s_activeBlocks) {
+        for (size_t i = 0; i < targetMapBlocks_.size(); ++i) {
+            MapBlock* block = targetMapBlocks_[i];
 
-            // すでに吸収済み（見えなくなっている）ならスキップ
+            // すでに吸収されたか、非表示（nullptr）のものはスキップ
             if (!block || !block->GetIsVisible()) continue;
 
-            allAbsorbed = false; // まだ吸収していないブロックがあった！
+            allAbsorbed = false;
 
             Vector3 blockPos = block->GetTranslate();
             Vector3 dir = { bossPos.x - blockPos.x, bossPos.y - blockPos.y, bossPos.z - blockPos.z };
             float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 
-            // ボスに十分に近づいたら吸収！
             if (dist < 2.5f) {
-                block->OnAbsorbed(); // ★ ここで吸収関数を呼ぶ！
+                bool assimilated = boss->AssimilateBlock(block);
+
+                if (assimilated) {
+                    // 世界の大元リストから消す
+                    auto it = std::find(MapBlock::s_activeBlocks.begin(), MapBlock::s_activeBlocks.end(), block);
+                    if (it != MapBlock::s_activeBlocks.end()) {
+                        MapBlock::s_activeBlocks.erase(it);
+                    }
+                    // ==========================================
+                    // ★ 魔法の1行：自分のロックオンリストからも消す！
+                    // これがないと、同じブロックを何回も食べてしまいます！
+                    // ==========================================
+                    targetMapBlocks_[i] = nullptr;
+                }
             }
-            // まだ遠い場合はボスに向かって引き寄せる
             else {
                 dir.x /= dist; dir.y /= dist; dir.z /= dist;
-                float pullSpeed = 40.0f; // 引き寄せるスピード
+                float pullSpeed = 40.0f;
 
                 blockPos.x += dir.x * pullSpeed * deltaTime;
                 blockPos.y += dir.y * pullSpeed * deltaTime;
                 blockPos.z += dir.z * pullSpeed * deltaTime;
                 block->SetTranslate(blockPos);
 
-                // ブロックも空中で乱回転させる
                 Vector3 bRot = block->GetRotation();
                 bRot.x += 10.0f * deltaTime;
                 bRot.y += 15.0f * deltaTime;
@@ -93,7 +123,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
             }
         }
 
-        // 全部吸収し終わった、または5秒経過したら次のフェーズへ
+        // 全部吸収し終わった（すべてnullptrになった）ら、待たずにすぐ終了！
         if (allAbsorbed || animTimer_ > 5.0f) {
             animPhase_ = 72;
             animTimer_ = 0.0f;
