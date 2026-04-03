@@ -17,6 +17,7 @@
 #include "BossAttack/BossAttack4_Wall.h"
 #include "BossAttack/BossAttack5_Humanoid.h"
 #include "BossAttack/BossAttack6_Laser.h"
+#include "BossAttack/BossAttack7_Absorb.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -43,20 +44,24 @@ BossCore::OrbitData BossCore::GetIdleOrbit(size_t index) {
 
     static std::vector<Vector3> randomScales;
     if (randomScales.empty()) {
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 10; ++i) {
             float randomVal = 0.5f + (static_cast<float>(rand()) / RAND_MAX) * 0.5f;
             randomScales.push_back({ randomVal, randomVal, randomVal });
         }
     }
 
     Vector3 basePos;
-    switch (index % 6) {
+    switch (index % 10) {
     case 0: basePos = { 2.0f,  2.0f,  0.5f }; break;
     case 1: basePos = { -1.5f, -1.5f,  1.8f }; break;
     case 2: basePos = { 0.6f,  2.5f, -1.8f }; break;
     case 3: basePos = { -2.0f,  0.5f, -1.2f }; break;
     case 4: basePos = { 1.5f, -2.0f,  1.2f }; break;
     case 5: basePos = { -0.8f, -0.8f, -2.0f }; break;
+    case 6: basePos = { 2.5f, -0.5f, -1.5f }; break;
+    case 7: basePos = { -2.5f,  1.0f,  1.5f }; break;
+    case 8: basePos = { 0.0f,  3.0f,  1.5f }; break;
+    case 9: basePos = { 0.0f, -3.0f,  -1.5f }; break;
     }
 
     float angle = s_globalIdleTimer * 0.8f;
@@ -79,9 +84,72 @@ BossCore::OrbitData BossCore::GetIdleOrbit(size_t index) {
     float rotX = std::atan2(data.pos.y, xzLen);
 
     data.rot = { rotX, rotY, 0.0f };
-    data.scale = randomScales[index % 6];
+    data.scale = randomScales[index % 10];
 
     return data;
+}
+
+// ==========================================
+// ★ マップブロックを自分の装甲として取り込む（同化する）
+// ==========================================
+bool BossCore::AssimilateBlock(Object3d* newBlock) {
+    for (Object3d* block : armorBlocks_) {
+        if (block == newBlock) return true; // 既に同化済み！
+    }
+
+    newBlock->SetParent(this);
+    newBlock->GetTransform()->isQuaternionMaster = false;
+    newBlock->SetIsVisible(true);
+
+    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+        if (blockBroken_[i]) {
+            armorBlocks_[i] = newBlock;
+            blockHps_[i] = 100.0f;
+            blockBroken_[i] = false;
+
+            newBlock->SetCollisionAttribute(kEnemyAttack);
+            newBlock->SetCollisionMask(kPlayer);
+            return true;
+        }
+    }
+
+    if (armorBlocks_.size() < 10) {
+        AddArmorBlock(newBlock);
+        return true;
+    }
+
+    // ==========================================
+    // ★ 修正：10個満タンの時は吸収しないので、親子関係を解除して元に戻す！
+    // ==========================================
+    newBlock->SetParent(nullptr);
+    return false;
+}
+
+// ==========================================
+// 装甲が10個満タン（壊れてもいない）かどうかを判定！
+// ==========================================
+bool BossCore::IsArmorFull() const {
+    if (armorBlocks_.size() < 10) return false; // 10個未満ならまだ吸える
+
+    for (bool broken : blockBroken_) {
+        if (broken) return false; // 壊れている箇所があればまだ吸える
+    }
+
+    return true; // 10個あって、1つも壊れていないなら完全体！
+}
+
+// ==========================================
+// ★ 10個満タンになるまで、あと何個ブロックが必要かを計算する
+// ==========================================
+int BossCore::GetNeededBlockCount() const {
+    int validCount = 0;
+    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+        if (!blockBroken_[i]) {
+            validCount++; // 壊れていない装甲の数を数える
+        }
+    }
+    int needed = 10 - validCount;
+    return (needed > 0) ? needed : 0; // 必要な数を返す（満タンなら0）
 }
 
 // =================================================================
@@ -126,6 +194,7 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_4)) triggerAttack = 4;
         if (input->IsKeyTriggered(DIK_5)) triggerAttack = 5;
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
+        if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -246,25 +315,20 @@ void BossCore::Update(float deltaTime) {
                     warningArea_->SetRotation({ 0.0f, 0.0f, 0.0f });
                     warningArea_->GetTransform()->isQuaternionMaster = false;
 
-                    for (auto it = armorBlocks_.begin(); it != armorBlocks_.end(); ) {
-                        if (*it == warningArea_) {
-                            it = armorBlocks_.erase(it);
+                    // ==========================================
+                    // ★ 修正：armorBlocks_ だけではなく、HPやフラグのリストからも確実に消す！
+                    // ==========================================
+                    for (size_t i = 0; i < armorBlocks_.size(); ) {
+                        if (armorBlocks_[i] == warningArea_) {
+                            armorBlocks_.erase(armorBlocks_.begin() + i);
+                            if (i < blockHps_.size()) blockHps_.erase(blockHps_.begin() + i);
+                            if (i < blockBroken_.size()) blockBroken_.erase(blockBroken_.begin() + i);
                         }
                         else {
-                            ++it;
+                            ++i;
                         }
                     }
                     break;
-                }
-            }
-
-            for (Object3d* block : armorBlocks_) {
-                if (!block) continue;
-                for (Object3d* child : block->GetChildren()) {
-                    if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
-                        child->SetScale({ 0.0f, 0.0f, 0.0f });
-                        child->SetCollisionAttribute(0);
-                    }
                 }
             }
 
@@ -391,6 +455,9 @@ void BossCore::ChangeState(State nextState) {
         }
         else if (nextAttack == 6) {
             currentAttack_ = std::make_unique<BossAttack6_Laser>();
+        }
+        else if (nextAttack == 7) {
+            currentAttack_ = std::make_unique<BossAttack7_Absorb>();
         }
 
         if (currentAttack_) {

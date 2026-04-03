@@ -6,6 +6,7 @@
 #include "BossAttack/BaseBossAttack.h"
 
 class SceneManager; // 前方宣言
+class MapBlock;
 
 // ボスのコア(中核)となる統合制御クラス
 class BossCore : public BaseEnemy {
@@ -75,6 +76,24 @@ public:
     };
     std::vector<FlyingBlock>& GetFlyingBlocks() { return flyingBlocks_; }
 
+    // ==========================================
+    // マップブロックを登録・取得するゲッター！
+    // ==========================================
+    void AddMapBlock(MapBlock* block) { mapBlocks_.push_back(block); }
+    std::vector<MapBlock*>& GetMapBlocks() { return mapBlocks_; }
+
+    // ==========================================
+    // マップブロックを装甲として同化する関数と、バリア回復関数
+    // ==========================================
+    bool AssimilateBlock(Object3d* newBlock);
+    bool IsArmorFull() const;
+    int GetNeededBlockCount() const;
+
+    // ==========================================
+    // 新オブジェクト生成用に common_ を渡すゲッター
+    // ==========================================
+    Object3dCommon* GetCommon() const { return common_; }
+
 private:
 
     // 射出されたブロックのリスト
@@ -129,4 +148,7 @@ private:
     // ==========================================
     std::vector<float> blockHps_;
     std::vector<bool> blockBroken_;
+
+    // マップブロックのリスト
+    std::vector<MapBlock*> mapBlocks_;
 };

@@ -120,6 +120,7 @@
     <ClCompile Include="MeshEffectManager.cpp" />
     <ClCompile Include="SaveDataManager.cpp" />
     <ClCompile Include="TimeAttackUI.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.cpp" />
     <ClCompile Include="EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\TutorialDoll.cpp" />
   </ItemGroup>
@@ -414,6 +415,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
     <ClInclude Include="SaveDataManager.h" />
     <ClInclude Include="TimeAttackUI.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.h" />
     <ClInclude Include="EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\TutorialDoll.h" />
   </ItemGroup>
