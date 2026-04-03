@@ -169,6 +169,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp" />
+    <ClCompile Include="game\actor\enemy\TutorialDoll.cpp" />
     <ClCompile Include="game\actor\MapBlock.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
@@ -403,6 +404,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h" />
+    <ClInclude Include="game\actor\enemy\TutorialDoll.h" />
     <ClInclude Include="game\actor\MapBlock.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />
