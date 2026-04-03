@@ -5,7 +5,7 @@
     "DistortionStrength": 0.20000000298023224,
     "EasingType": 0,
     "EdgeFadeStrength": 4.184999942779541,
-    "EnableDistortion": true,
+    "EnableDistortion": false,
     "EnableReveal": true,
     "EndColor": [
         0.5,
@@ -16,38 +16,40 @@
     "EndScale": [
         6.0,
         6.0,
-        6.0
+        7.0
     ],
-    "Intensity": 4.159999847412109,
-    "Lifetime": 1.0,
+    "Intensity": 100.0,
+    "Lifetime": 0.7459999918937683,
     "ModelName": "Semicircle.gltf",
-    "NoiseTexturePath": "Resources/sprite/image3.png",
+    "NoiseTexturePath": "",
     "Position": [
-        -0.10000000149011612,
         0.5,
-        0.6000000238418579
+        0.8999999761581421,
+        1.399999976158142
     ],
-    "RampTexturePath": "Resources/sprite/abc.png",
+    "ProceduralType": 1,
+    "RampTexturePath": "Resources/sprite/color.png",
     "Rotation": [
         0.0,
         3.319999933242798,
         -4.010000228881836
     ],
     "ScrollSpeed": [
-        -1.2400000095367432,
+        -2.990000009536743,
         0.0
     ],
     "StartColor": [
-        2.0,
-        2.0,
-        2.0,
+        0.0,
+        0.5482628345489502,
+        1.0,
         1.0
     ],
     "StartScale": [
         3.0,
         3.0,
-        3.0
+        7.199999809265137
     ],
     "TargetName": "Player_body",
-    "TexturePath": "Resources/sprite/image3.png"
+    "TexturePath": "",
+    "VolumeMode": 0
 }
