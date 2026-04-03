@@ -1,1327 +1,445 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ソース ファイル">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="ヘッダー ファイル">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="リソース ファイル">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="imgui">
-      <UniqueIdentifier>{c84d4c6b-9fad-4272-b662-c64df6e89e69}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="シェーダーファイル">
-      <UniqueIdentifier>{42e1e68e-0fab-4757-8871-4657ef9d3c7e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine">
-      <UniqueIdentifier>{da16cde6-4bb6-498c-b3d2-0fdb9557158d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine\2d">
-      <UniqueIdentifier>{63a150fc-a8e2-4ed2-83e6-187ebfae593e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine\3d">
-      <UniqueIdentifier>{0521c480-d958-4c9d-8044-d60d59155459}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine\base">
-      <UniqueIdentifier>{a9927d57-d6f6-4882-aedb-98dbd5f3ed7f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine\io">
-      <UniqueIdentifier>{3881cda8-2b74-44e7-a5a8-baac82dce75e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine\audio">
-      <UniqueIdentifier>{7a13f0d1-7443-44dd-af68-d8ef50629ba6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\engine\scene">
-      <UniqueIdentifier>{f728a35a-3504-46b6-a11b-3c5b16097321}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine">
-      <UniqueIdentifier>{e82206fb-0d89-4c48-a2d4-812227ccb34d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine\2d">
-      <UniqueIdentifier>{c42fa355-c6a5-4acf-a0a5-4c1cf5cb44ab}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine\3d">
-      <UniqueIdentifier>{a73c3875-d1a3-494f-b58a-2ce68a2f95b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine\base">
-      <UniqueIdentifier>{817d9f71-c073-40b2-9a0a-7364ded0ae1b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine\scene">
-      <UniqueIdentifier>{2778633c-d0fb-4312-8561-68c0269702e3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine\io">
-      <UniqueIdentifier>{53d507d0-4b03-426d-ba95-aa67c43386d2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソース ファイル\engine\audio">
-      <UniqueIdentifier>{c3e82146-ba72-421d-9ee5-d1fce3e762d1}</UniqueIdentifier>
-    </Filter>
+    <FxCompile Include="Resources\shader\Effect3d.PS.hlsl" />
+    <FxCompile Include="Resources\shader\Effect3d.VS.hlsl" />
+    <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
+    <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
+    <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
+    <FxCompile Include="Resources\shader\DebugPrimitive.PS.hlsl" />
+    <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
+    <FxCompile Include="Resources\shader\Particle.PS.hlsl" />
+    <FxCompile Include="Resources\shader\Object3d.PS.hlsl" />
+    <FxCompile Include="Resources\shader\Object3d.VS.hlsl" />
+    <FxCompile Include="Resources\shader\PostEffect.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="engine\core\main.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\audio\AudioPlayer.cpp">
-      <Filter>ソース ファイル\engine\audio</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\camera\debugCamera.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\core\DirectXCommon.cpp">
-      <Filter>ソース ファイル\engine\base</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\core\Framework.cpp">
-      <Filter>ソース ファイル\engine\base</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\core\Game.cpp">
-      <Filter>ソース ファイル\engine\scene</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\input\InputManager.cpp">
-      <Filter>ソース ファイル\engine\io</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\math\Math.cpp">
-      <Filter>ソース ファイル\engine\base</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\model\Model.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\model\ModelCommon.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\model\ModelManager.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\object\Object3d.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\object\Object3dCommon.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\2d\Sprite.cpp">
-      <Filter>ソース ファイル\engine\2d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\2d\SpriteCommon.cpp">
-      <Filter>ソース ファイル\engine\2d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\core\TextureManager.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\platform\WinApp.cpp">
-      <Filter>ソース ファイル\engine\base</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\scene\BaseScene.cpp">
-      <Filter>ソース ファイル\engine\scene</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\camera\Camera.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\camera\CameraManager.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="game\scene\GamePlayScene.cpp">
-      <Filter>ソース ファイル\engine\scene</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp">
-      <Filter>ソース ファイル\engine\io</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\particle\ParticleCommon.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\particle\ParticleSystem.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\core\SrvManager.cpp">
-      <Filter>ソース ファイル\engine\3d</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\collision\CollisionManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\player\Player.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\Character.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\collision\CollisionConfig.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\DebugEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\ImGuizmo\ImGuizmo.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\scene\SceneManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\scene\TitleScene.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\2d\Text.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\light\Light.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\light\LightManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\EventManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\ParticleEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\DebugConsole.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\scene\SceneFactory.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\Log.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\Bullet.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\BulletManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\component\MoveStrategy3D.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\component\MoveStrategy2D.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\math\Easing.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\LightEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\GhostRecorder.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\GameRule.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\CameraEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BaseEnemy.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\EnemySlime.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\EnemyFactory.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_demo.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_draw.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_tables.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_widgets.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\PresetManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\EnemySpawner.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\scene\GameClearScene.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\scene\GameOverScene.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\component\Collider.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\3d\MeshRenderer.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\LevelLoader.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\LockOnSystem.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\ObjectManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerMover.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\state\IAnimationState.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\player\PlayerState.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\particle\ParticleManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\system\GhostDirector.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossCore.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\MapBlock.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\GPUParticleEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\particle\GPUParticleEmitter.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\core\RootSignatureBuilder.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\HierarchyWindow.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\ProjectWindow.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\InspectorWindow.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\SceneSerializer.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\system\input\KeyConfig.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="EffectObject3d.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MeshEffectEditor.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="MeshEffectManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BaseBossAttack.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack1_Rush.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack4_Wall.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp">
-    <ClCompile Include="TimeAttackUI.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="SaveDataManager.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack4_Wall.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack1_Rush.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BaseBossAttack.cpp" />
+    <ClCompile Include="EffectObject3d.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp" />
+    <ClCompile Include="game\actor\enemy\BossCore.cpp" />
+    <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
+    <ClCompile Include="engine\component\Collider.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp" />
+    <ClCompile Include="game\actor\MapBlock.cpp" />
+    <ClCompile Include="game\system\EnemyFactory.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
+    <ClCompile Include="game\system\EnemySpawner.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\CameraEditor.cpp" />
+    <ClCompile Include="engine\utility\math\Easing.cpp" />
+    <ClCompile Include="externals\imgui\imgui.cpp" />
+    <ClCompile Include="externals\imgui\imgui_demo.cpp" />
+    <ClCompile Include="externals\imgui\imgui_draw.cpp" />
+    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp" />
+    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="externals\imgui\imgui_tables.cpp" />
+    <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="game\scene\GameOverScene.cpp" />
+    <ClCompile Include="game\scene\GameClearScene.cpp" />
+    <ClCompile Include="game\system\GameRule.cpp" />
+    <ClCompile Include="game\actor\Bullet.cpp" />
+    <ClCompile Include="game\system\BulletManager.cpp" />
+    <ClCompile Include="game\actor\Character.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\DebugConsole.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\DebugEditor.cpp" />
+    <ClCompile Include="engine\system\collision\CollisionConfig.cpp" />
+    <ClCompile Include="engine\system\collision\CollisionManager.cpp" />
+    <ClCompile Include="engine\system\scene\BaseScene.cpp" />
+    <ClCompile Include="engine\graphics\3d\camera\CameraManager.cpp" />
+    <ClCompile Include="engine\graphics\3d\camera\Camera.cpp" />
+    <ClCompile Include="engine\system\audio\AudioPlayer.cpp" />
+    <ClCompile Include="engine\graphics\3d\camera\debugCamera.cpp" />
+    <ClCompile Include="engine\graphics\core\DirectXCommon.cpp" />
+    <ClCompile Include="game\system\EventManager.cpp" />
+    <ClCompile Include="externals\ImGuizmo\ImGuizmo.cpp" />
+    <ClCompile Include="engine\core\Framework.cpp" />
+    <ClCompile Include="engine\core\Game.cpp" />
+    <ClCompile Include="engine\system\input\InputManager.cpp" />
+    <ClCompile Include="game\scene\GamePlayScene.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
+    <ClCompile Include="engine\graphics\3d\light\Light.cpp" />
+    <ClCompile Include="engine\graphics\3d\light\LightManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\Log.cpp" />
+    <ClCompile Include="engine\core\main.cpp" />
+    <ClCompile Include="engine\graphics\3d\model\Model.cpp" />
+    <ClCompile Include="engine\graphics\3d\model\ModelCommon.cpp" />
+    <ClCompile Include="engine\graphics\3d\model\ModelManager.cpp" />
+    <ClCompile Include="engine\graphics\3d\object\Object3d.cpp" />
+    <ClCompile Include="engine\graphics\3d\object\Object3dCommon.cpp" />
+    <ClCompile Include="engine\graphics\2d\Sprite.cpp" />
+    <ClCompile Include="engine\graphics\2d\SpriteCommon.cpp" />
+    <ClCompile Include="engine\graphics\core\TextureManager.cpp" />
+    <ClCompile Include="engine\platform\WinApp.cpp" />
+    <ClCompile Include="engine\utility\math\Math.cpp" />
+    <ClCompile Include="engine\graphics\core\SrvManager.cpp" />
+    <ClCompile Include="engine\graphics\particle\ParticleCommon.cpp" />
+    <ClCompile Include="engine\graphics\particle\ParticleSystem.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\ParticleEditor.cpp" />
+    <ClCompile Include="game\actor\player\Player.cpp" />
+    <ClCompile Include="engine\system\scene\SceneFactory.cpp" />
+    <ClCompile Include="engine\system\scene\SceneManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.cpp" />
+    <ClCompile Include="engine\graphics\2d\Text.cpp" />
+    <ClCompile Include="game\scene\TitleScene.cpp" />
+    <ClCompile Include="game\component\MoveStrategy2D.cpp" />
+    <ClCompile Include="game\component\MoveStrategy3D.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\GhostRecorder.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\LightEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\PresetManager.cpp" />
+    <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
+    <ClCompile Include="game\system\GhostDirector.cpp" />
+    <ClCompile Include="engine\utility\state\IAnimationState.cpp" />
+    <ClCompile Include="game\system\LevelLoader.cpp" />
+    <ClCompile Include="game\system\LockOnSystem.cpp" />
+    <ClCompile Include="engine\graphics\3d\MeshRenderer.cpp" />
+    <ClCompile Include="game\system\ObjectManager.cpp" />
+    <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
+    <ClCompile Include="game\actor\player\PlayerMover.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.cpp" />
+    <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\PostEffectEditor.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\GPUParticleEditor.cpp" />
+    <ClCompile Include="engine\graphics\particle\GPUParticleEmitter.cpp" />
+    <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\HierarchyWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\InspectorWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\ProjectWindow.cpp" />
+    <ClCompile Include="engine\graphics\core\RootSignatureBuilder.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\SceneSerializer.cpp" />
+    <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp" />
+    <ClCompile Include="engine\system\input\KeyConfig.cpp" />
+    <ClCompile Include="MeshEffectEditor.cpp" />
+    <ClCompile Include="MeshEffectManager.cpp" />
+    <ClCompile Include="SaveDataManager.cpp" />
+    <ClCompile Include="TimeAttackUI.cpp" />
+    <ClCompile Include="EnemyBomb.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\shader\Object3d.hlsli">
-      <Filter>シェーダーファイル</Filter>
-    </None>
-    <None Include="Resources\shader\Sprite.PS.hlsl">
-      <Filter>シェーダーファイル</Filter>
-    </None>
-    <None Include="Resources\shader\Sprite.VS.hlsl">
-      <Filter>シェーダーファイル</Filter>
-    </None>
-    <None Include="Resources\shader\Particle.VS.hlsl">
-      <Filter>シェーダーファイル</Filter>
-    </None>
-    <None Include="DUMPS\2025-0422-1117.dmp">
-      <Filter>ソース ファイル\engine\scene</Filter>
-    </None>
-    <None Include="Resources\shader\DebugPrimitive.hlsli" />
-    <None Include="Resources\shader\DebugPrimitive.VS.hlsl" />
-    <None Include="externals\assimp\include\assimp\color4.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\material.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\matrix3x3.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\matrix4x4.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\quaternion.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\SmoothingGroups.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\vector2.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="externals\assimp\include\assimp\vector3.inl">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
-    <None Include="Resources\shader\PostEffect.PS.hlsl" />
-    <None Include="Resources\shader\GPUParticlePS.hlsl" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack4_Wall.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack1_Rush.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BaseBossAttack.h" />
+    <ClInclude Include="EffectObject3d.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h" />
+    <ClInclude Include="externals\imgui\IconsFontAwesome5.h" />
+    <ClInclude Include="game\actor\enemy\BossCore.h" />
+    <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
+    <ClInclude Include="engine\component\Collider.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h" />
+    <ClInclude Include="game\actor\MapBlock.h" />
+    <ClInclude Include="game\system\EnemyFactory.h" />
+    <ClInclude Include="game\actor\enemy\EnemySlime.h" />
+    <ClInclude Include="game\system\EnemySpawner.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\CameraEditor.h" />
+    <ClInclude Include="engine\utility\math\Easing.h" />
+    <ClInclude Include="externals\assimp\include\assimp\aabb.h" />
+    <ClInclude Include="externals\assimp\include\assimp\ai_assert.h" />
+    <ClInclude Include="externals\assimp\include\assimp\anim.h" />
+    <ClInclude Include="externals\assimp\include\assimp\AssertHandler.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Base64.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\BaseImporter.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Bitmap.h" />
+    <ClInclude Include="externals\assimp\include\assimp\BlobIOSystem.h" />
+    <ClInclude Include="externals\assimp\include\assimp\ByteSwapper.h" />
+    <ClInclude Include="externals\assimp\include\assimp\camera.h" />
+    <ClInclude Include="externals\assimp\include\assimp\cexport.h" />
+    <ClInclude Include="externals\assimp\include\assimp\cfileio.h" />
+    <ClInclude Include="externals\assimp\include\assimp\cimport.h" />
+    <ClInclude Include="externals\assimp\include\assimp\ColladaMetaData.h" />
+    <ClInclude Include="externals\assimp\include\assimp\color4.h" />
+    <ClInclude Include="externals\assimp\include\assimp\commonMetaData.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Compiler\poppack1.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Compiler\pstdint.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Compiler\pushpack1.h" />
+    <ClInclude Include="externals\assimp\include\assimp\config.h" />
+    <ClInclude Include="externals\assimp\include\assimp\CreateAnimMesh.h" />
+    <ClInclude Include="externals\assimp\include\assimp\DefaultIOStream.h" />
+    <ClInclude Include="externals\assimp\include\assimp\DefaultIOSystem.h" />
+    <ClInclude Include="externals\assimp\include\assimp\DefaultLogger.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\defs.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Exceptional.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Exporter.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\fast_atof.h" />
+    <ClInclude Include="externals\assimp\include\assimp\GenericProperty.h" />
+    <ClInclude Include="externals\assimp\include\assimp\GltfMaterial.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Hash.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Importer.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\importerdesc.h" />
+    <ClInclude Include="externals\assimp\include\assimp\IOStream.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\IOStreamBuffer.h" />
+    <ClInclude Include="externals\assimp\include\assimp\IOSystem.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\light.h" />
+    <ClInclude Include="externals\assimp\include\assimp\LineSplitter.h" />
+    <ClInclude Include="externals\assimp\include\assimp\LogAux.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Logger.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\LogStream.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\material.h" />
+    <ClInclude Include="externals\assimp\include\assimp\MathFunctions.h" />
+    <ClInclude Include="externals\assimp\include\assimp\matrix3x3.h" />
+    <ClInclude Include="externals\assimp\include\assimp\matrix4x4.h" />
+    <ClInclude Include="externals\assimp\include\assimp\MemoryIOWrapper.h" />
+    <ClInclude Include="externals\assimp\include\assimp\mesh.h" />
+    <ClInclude Include="externals\assimp\include\assimp\metadata.h" />
+    <ClInclude Include="externals\assimp\include\assimp\NullLogger.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\ObjMaterial.h" />
+    <ClInclude Include="externals\assimp\include\assimp\ParsingUtils.h" />
+    <ClInclude Include="externals\assimp\include\assimp\pbrmaterial.h" />
+    <ClInclude Include="externals\assimp\include\assimp\port\AndroidJNI\AndroidJNIIOSystem.h" />
+    <ClInclude Include="externals\assimp\include\assimp\port\AndroidJNI\BundledAssetIOSystem.h" />
+    <ClInclude Include="externals\assimp\include\assimp\postprocess.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Profiler.h" />
+    <ClInclude Include="externals\assimp\include\assimp\ProgressHandler.hpp" />
+    <ClInclude Include="externals\assimp\include\assimp\qnan.h" />
+    <ClInclude Include="externals\assimp\include\assimp\quaternion.h" />
+    <ClInclude Include="externals\assimp\include\assimp\RemoveComments.h" />
+    <ClInclude Include="externals\assimp\include\assimp\scene.h" />
+    <ClInclude Include="externals\assimp\include\assimp\SceneCombiner.h" />
+    <ClInclude Include="externals\assimp\include\assimp\SGSpatialSort.h" />
+    <ClInclude Include="externals\assimp\include\assimp\SkeletonMeshBuilder.h" />
+    <ClInclude Include="externals\assimp\include\assimp\SmallVector.h" />
+    <ClInclude Include="externals\assimp\include\assimp\SmoothingGroups.h" />
+    <ClInclude Include="externals\assimp\include\assimp\SpatialSort.h" />
+    <ClInclude Include="externals\assimp\include\assimp\StandardShapes.h" />
+    <ClInclude Include="externals\assimp\include\assimp\StreamReader.h" />
+    <ClInclude Include="externals\assimp\include\assimp\StreamWriter.h" />
+    <ClInclude Include="externals\assimp\include\assimp\StringComparison.h" />
+    <ClInclude Include="externals\assimp\include\assimp\StringUtils.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Subdivision.h" />
+    <ClInclude Include="externals\assimp\include\assimp\texture.h" />
+    <ClInclude Include="externals\assimp\include\assimp\TinyFormatter.h" />
+    <ClInclude Include="externals\assimp\include\assimp\types.h" />
+    <ClInclude Include="externals\assimp\include\assimp\vector2.h" />
+    <ClInclude Include="externals\assimp\include\assimp\vector3.h" />
+    <ClInclude Include="externals\assimp\include\assimp\version.h" />
+    <ClInclude Include="externals\assimp\include\assimp\Vertex.h" />
+    <ClInclude Include="externals\assimp\include\assimp\XmlParser.h" />
+    <ClInclude Include="externals\assimp\include\assimp\XMLTools.h" />
+    <ClInclude Include="externals\assimp\include\assimp\ZipArchiveIOSystem.h" />
+    <ClInclude Include="externals\imgui\imconfig.h" />
+    <ClInclude Include="externals\imgui\imgui.h" />
+    <ClInclude Include="externals\imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="externals\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="externals\imgui\imgui_internal.h" />
+    <ClInclude Include="externals\imgui\imstb_rectpack.h" />
+    <ClInclude Include="externals\imgui\imstb_textedit.h" />
+    <ClInclude Include="externals\imgui\imstb_truetype.h" />
+    <ClInclude Include="externals\SDL2\include\begin_code.h" />
+    <ClInclude Include="externals\SDL2\include\close_code.h" />
+    <ClInclude Include="externals\SDL2\include\SDL.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_assert.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_atomic.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_audio.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_bits.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_blendmode.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_clipboard.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_android.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_emscripten.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_iphoneos.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_macosx.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_minimal.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_ngage.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_os2.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_pandora.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_windows.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_wingdk.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_winrt.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_config_xbox.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_copying.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_cpuinfo.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_egl.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_endian.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_error.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_events.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_filesystem.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_gamecontroller.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_gesture.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_guid.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_haptic.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_hidapi.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_hints.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_joystick.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_keyboard.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_keycode.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_loadso.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_locale.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_log.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_main.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_messagebox.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_metal.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_misc.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_mouse.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_mutex.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_name.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengl.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengles.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengles2.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengles2_gl2.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengles2_gl2ext.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengles2_gl2platform.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengles2_khrplatform.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_opengl_glext.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_pixels.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_platform.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_power.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_quit.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_rect.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_render.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_revision.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_rwops.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_scancode.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_sensor.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_shape.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_stdinc.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_surface.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_system.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_syswm.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_assert.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_common.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_compare.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_crc32.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_font.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_fuzzer.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_harness.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_images.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_log.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_md5.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_memory.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_test_random.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_thread.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_timer.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_touch.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_types.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_version.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_video.h" />
+    <ClInclude Include="externals\SDL2\include\SDL_vulkan.h" />
+    <ClInclude Include="game\scene\GameOverScene.h" />
+    <ClInclude Include="game\scene\GameClearScene.h" />
+    <ClInclude Include="game\system\GameRule.h" />
+    <ClInclude Include="game\actor\Bullet.h" />
+    <ClInclude Include="game\system\BulletManager.h" />
+    <ClInclude Include="engine\system\scene\AbstractSceneFactory.h" />
+    <ClInclude Include="game\actor\Character.h" />
+    <ClInclude Include="engine\utility\SystemDebug\DebugConsole.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\DebugEditor.h" />
+    <ClInclude Include="game\actor\CollisionConfig.h" />
+    <ClInclude Include="engine\system\collision\CollisionManager.h" />
+    <ClInclude Include="engine\system\scene\BaseScene.h" />
+    <ClInclude Include="engine\graphics\3d\camera\CameraManager.h" />
+    <ClInclude Include="engine\graphics\3d\camera\Camera.h" />
+    <ClInclude Include="engine\system\audio\AudioPlayer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\D3DResouceLeakChecKer.h" />
+    <ClInclude Include="engine\graphics\3d\camera\debugCamera.h" />
+    <ClInclude Include="engine\graphics\core\DirectXCommon.h" />
+    <ClInclude Include="game\actor\Event.h" />
+    <ClInclude Include="game\system\EventManager.h" />
+    <ClInclude Include="externals\ImGuizmo\ImGuizmo.h" />
+    <ClInclude Include="engine\core\Framework.h" />
+    <ClInclude Include="engine\core\Game.h" />
+    <ClInclude Include="engine\system\input\InputManager.h" />
+    <ClInclude Include="engine\graphics\3d\model\Model.h" />
+    <ClInclude Include="engine\graphics\3d\model\ModelCommon.h" />
+    <ClInclude Include="engine\graphics\3d\model\ModelManager.h" />
+    <ClInclude Include="engine\graphics\3d\object\Object3d.h" />
+    <ClInclude Include="engine\graphics\3d\object\Object3dCommon.h" />
+    <ClInclude Include="engine\graphics\2d\Sprite.h" />
+    <ClInclude Include="engine\graphics\2d\SpriteCommon.h" />
+    <ClInclude Include="engine\graphics\core\TextureManager.h" />
+    <ClInclude Include="engine\platform\WinApp.h" />
+    <ClInclude Include="engine\utility\math\Math.h" />
+    <ClInclude Include="engine\graphics\core\SrvManager.h" />
+    <ClInclude Include="game\scene\GamePlayScene.h" />
+    <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h" />
+    <ClInclude Include="engine\graphics\particle\ParticleCommon.h" />
+    <ClInclude Include="engine\graphics\particle\ParticleSystem.h" />
+    <ClInclude Include="engine\graphics\3d\light\Light.h" />
+    <ClInclude Include="engine\graphics\3d\light\LightManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\ParticleEditor.h" />
+    <ClInclude Include="game\actor\player\Player.h" />
+    <ClInclude Include="engine\system\scene\SceneFactory.h" />
+    <ClInclude Include="engine\system\scene\SceneManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.h" />
+    <ClInclude Include="engine\graphics\2d\Text.h" />
+    <ClInclude Include="game\scene\TitleScene.h" />
+    <ClInclude Include="engine\utility\SystemDebug\Log.h" />
+    <ClInclude Include="game\component\IMoveStrategy.h" />
+    <ClInclude Include="game\component\MoveStrategy2D.h" />
+    <ClInclude Include="game\component\MoveStrategy3D.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\GhostRecorder.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\LightEditor.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h" />
+    <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
+    <ClInclude Include="game\system\GhostDirector.h" />
+    <ClInclude Include="engine\utility\state\IAnimationState.h" />
+    <ClInclude Include="engine\utility\state\IEditable.h" />
+    <ClInclude Include="game\system\LevelLoader.h" />
+    <ClInclude Include="game\system\LockOnSystem.h" />
+    <ClInclude Include="engine\graphics\3d\MeshRenderer.h" />
+    <ClInclude Include="game\system\ObjectManager.h" />
+    <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
+    <ClInclude Include="game\actor\player\PlayerMover.h" />
+    <ClInclude Include="game\actor\player\PlayerState.h" />
+    <ClInclude Include="engine\graphics\postprocess\PostEffect.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\PostEffectEditor.h" />
+    <ClInclude Include="engine\component\Transform.h" />
+    <ClInclude Include="engine\graphics\particle\GPUParticleConfig.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\GPUParticleEditor.h" />
+    <ClInclude Include="engine\graphics\particle\GPUParticleEmitter.h" />
+    <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\HierarchyWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\InspectorWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h" />
+    <ClInclude Include="engine\system\input\KeyConfig.h" />
+    <ClInclude Include="MeshEffectEditor.h" />
+    <ClInclude Include="MeshEffectManager.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />
+    <ClInclude Include="engine\graphics\particle\VFXSequencer.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
+    <ClInclude Include="SaveDataManager.h" />
+    <ClInclude Include="TimeAttackUI.h" />
+    <ClInclude Include="EnemyBomb.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DirectXGame.rc" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include=".editorconflg" />
     <None Include=".github\copilot-instructions.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
-      <Filter>シェーダーファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="Resources\shader\Object3d.PS.hlsl">
-      <Filter>シェーダーファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="Resources\shader\Particle.PS.hlsl">
-      <Filter>シェーダーファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="Resources\shader\DebugPrimitive.PS.hlsl" />
-    <FxCompile Include="Resources\shader\PostEffect.VS.hlsl" />
-    <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
-    <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
-    <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
-    <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
-    <FxCompile Include="Resources\shader\Effect3d.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Effect3d.PS.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="engine\system\audio\AudioPlayer.h">
-      <Filter>ヘッダー ファイル\engine\audio</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\D3DResouceLeakChecKer.h">
-      <Filter>ヘッダー ファイル\engine\base</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\camera\debugCamera.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\core\DirectXCommon.h">
-      <Filter>ヘッダー ファイル\engine\base</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\core\Framework.h">
-      <Filter>ヘッダー ファイル\engine\base</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\core\Game.h">
-      <Filter>ヘッダー ファイル\engine\scene</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\input\InputManager.h">
-      <Filter>ヘッダー ファイル\engine\io</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\math\Math.h">
-      <Filter>ヘッダー ファイル\engine\base</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\model\Model.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\model\ModelCommon.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\model\ModelManager.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\object\Object3d.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\object\Object3dCommon.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\2d\SpriteCommon.h">
-      <Filter>ヘッダー ファイル\engine\2d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\2d\Sprite.h">
-      <Filter>ヘッダー ファイル\engine\2d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\platform\WinApp.h">
-      <Filter>ヘッダー ファイル\engine\base</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\core\TextureManager.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\scene\BaseScene.h">
-      <Filter>ヘッダー ファイル\engine\scene</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\camera\Camera.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\camera\CameraManager.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="game\scene\GamePlayScene.h">
-      <Filter>ヘッダー ファイル\engine\scene</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h">
-      <Filter>ヘッダー ファイル\engine\io</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\ParticleCommon.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\core\SrvManager.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\ParticleSystem.h">
-      <Filter>ヘッダー ファイル\engine\3d</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\collision\CollisionManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\player\Player.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\CollisionConfig.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\Character.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\DebugEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\ImGuizmo\ImGuizmo.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\scene\SceneManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\scene\TitleScene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\SpriteDebugEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\2d\Text.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\light\Light.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\light\LightManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\Event.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\EventManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\ParticleEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\DebugConsole.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\scene\AbstractSceneFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\scene\SceneFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\Log.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\Bullet.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\BulletManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\component\IMoveStrategy.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\component\MoveStrategy3D.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\component\MoveStrategy2D.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\math\Easing.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\LightEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\GhostRecorder.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\aabb.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ai_assert.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\anim.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\AssertHandler.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Base64.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\BaseImporter.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Bitmap.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\BlobIOSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ByteSwapper.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\camera.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\cexport.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\cfileio.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\cimport.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ColladaMetaData.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\color4.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\commonMetaData.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Compiler\poppack1.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Compiler\pstdint.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Compiler\pushpack1.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\config.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\CreateAnimMesh.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\DefaultIOStream.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\DefaultIOSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\DefaultLogger.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\defs.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Exceptional.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Exporter.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\fast_atof.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\GenericProperty.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\GltfMaterial.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Hash.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Importer.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\importerdesc.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\IOStream.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\IOStreamBuffer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\IOSystem.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\light.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\LineSplitter.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\LogAux.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Logger.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\LogStream.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\material.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\MathFunctions.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\matrix3x3.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\matrix4x4.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\MemoryIOWrapper.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\mesh.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\metadata.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\NullLogger.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ObjMaterial.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ParsingUtils.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\pbrmaterial.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\port\AndroidJNI\AndroidJNIIOSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\port\AndroidJNI\BundledAssetIOSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\postprocess.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Profiler.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ProgressHandler.hpp">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\qnan.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\quaternion.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\RemoveComments.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\scene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\SceneCombiner.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\SGSpatialSort.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\SkeletonMeshBuilder.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\SmallVector.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\SmoothingGroups.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\SpatialSort.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\StandardShapes.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\StreamReader.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\StreamWriter.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\StringComparison.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\StringUtils.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Subdivision.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\texture.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\TinyFormatter.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\types.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\vector2.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\vector3.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\version.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\Vertex.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\XmlParser.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\XMLTools.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\assimp\include\assimp\ZipArchiveIOSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\GameRule.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\CameraEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BaseEnemy.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\EnemySlime.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\EnemyFactory.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imconfig.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imgui.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imgui_impl_win32.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imgui_internal.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imstb_rectpack.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imstb_textedit.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imstb_truetype.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\imgui_impl_dx12.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\PresetManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\EnemySpawner.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\scene\GameClearScene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\scene\GameOverScene.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\begin_code.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\close_code.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_assert.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_atomic.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_audio.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_bits.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_blendmode.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_clipboard.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_android.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_emscripten.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_iphoneos.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_macosx.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_minimal.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_ngage.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_os2.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_pandora.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_windows.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_wingdk.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_winrt.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_config_xbox.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_copying.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_cpuinfo.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_egl.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_endian.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_error.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_events.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_filesystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_gamecontroller.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_gesture.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_guid.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_haptic.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_hidapi.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_hints.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_joystick.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_keyboard.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_keycode.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_loadso.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_locale.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_log.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_main.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_messagebox.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_metal.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_misc.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_mouse.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_mutex.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_name.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengl.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengles.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengles2.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengles2_gl2.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengles2_gl2ext.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengles2_gl2platform.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengles2_khrplatform.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_opengl_glext.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_pixels.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_platform.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_power.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_quit.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_rect.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_render.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_revision.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_rwops.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_scancode.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_sensor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_shape.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_stdinc.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_surface.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_system.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_syswm.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_assert.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_common.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_compare.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_crc32.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_font.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_fuzzer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_harness.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_images.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_log.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_md5.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_memory.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_test_random.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_thread.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_timer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_touch.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_types.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_version.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_video.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\SDL2\include\SDL_vulkan.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\component\Transform.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\component\Collider.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\3d\MeshRenderer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\LevelLoader.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\LockOnSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\ObjectManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerMover.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\state\IAnimationState.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\player\PlayerState.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\ParticleManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\postprocess\PostEffect.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\PostEffectEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\state\IEditable.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\GPUParticleManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\system\GhostDirector.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossCore.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\MapBlock.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\GPUParticleEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\GPUParticleConfig.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\GPUParticleEmitter.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\particle\VFXSequencer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="externals\imgui\IconsFontAwesome5.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\HierarchyWindow.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\InspectorWindow.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\system\input\KeyConfig.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="EffectObject3d.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MeshEffectEditor.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="MeshEffectManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BaseBossAttack.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack1_Rush.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack4_Wall.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h">
-    <ClInclude Include="TimeAttackUI.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="SaveDataManager.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
+    <None Include="DUMPS\2025-0422-1117.dmp" />
+    <None Include="externals\assimp\include\assimp\color4.inl" />
+    <None Include="externals\assimp\include\assimp\material.inl" />
+    <None Include="externals\assimp\include\assimp\matrix3x3.inl" />
+    <None Include="externals\assimp\include\assimp\matrix4x4.inl" />
+    <None Include="externals\assimp\include\assimp\quaternion.inl" />
+    <None Include="externals\assimp\include\assimp\SmoothingGroups.inl" />
+    <None Include="externals\assimp\include\assimp\vector2.inl" />
+    <None Include="externals\assimp\include\assimp\vector3.inl" />
+    <None Include="Resources\shader\DebugPrimitive.hlsli" />
+    <None Include="Resources\shader\DebugPrimitive.VS.hlsl" />
+    <None Include="Resources\shader\Particle.VS.hlsl" />
+    <None Include="Resources\shader\Object3d.hlsli" />
+    <None Include="Resources\shader\GPUParticlePS.hlsl" />
+    <None Include="Resources\shader\PostEffect.PS.hlsl" />
+    <None Include="Resources\shader\Sprite.PS.hlsl" />
+    <None Include="Resources\shader\Sprite.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="DirectXGame.rc">
-      <Filter>リソース ファイル</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

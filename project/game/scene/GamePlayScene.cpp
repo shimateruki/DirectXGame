@@ -45,6 +45,7 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
+#include <MeshEffectManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -99,6 +100,7 @@ void GamePlayScene::Initialize() {
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
 	GPUParticleManager::GetInstance()->LoadAllPresets();
+	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
@@ -217,6 +219,7 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::Finalize() {
+	MeshEffectManager::GetInstance()->Clear();
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
@@ -551,6 +554,7 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
+	MeshEffectManager::GetInstance()->Update(deltaTime);
 	UpdateUI();
 }
 
@@ -610,7 +614,7 @@ void GamePlayScene::Draw() {
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
-
+	MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		// ここでも同じくプレイヤー関連をスキップ
