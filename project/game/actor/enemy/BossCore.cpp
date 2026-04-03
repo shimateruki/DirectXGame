@@ -17,6 +17,7 @@
 #include "BossAttack/BossAttack4_Wall.h"
 #include "BossAttack/BossAttack5_Humanoid.h"
 #include "BossAttack/BossAttack6_Laser.h"
+#include "BossAttack/BossAttack7_Absorb.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -126,6 +127,7 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_4)) triggerAttack = 4;
         if (input->IsKeyTriggered(DIK_5)) triggerAttack = 5;
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
+        if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -391,6 +393,9 @@ void BossCore::ChangeState(State nextState) {
         }
         else if (nextAttack == 6) {
             currentAttack_ = std::make_unique<BossAttack6_Laser>();
+        }
+        else if (nextAttack == 7) {
+            currentAttack_ = std::make_unique<BossAttack7_Absorb>();
         }
 
         if (currentAttack_) {
