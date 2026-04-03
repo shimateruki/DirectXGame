@@ -156,6 +156,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.cpp" />
+    <ClCompile Include="EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack4_Wall.cpp" />
@@ -169,6 +170,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp" />
+    <ClCompile Include="game\actor\enemy\TutorialDoll.cpp" />
     <ClCompile Include="game\actor\MapBlock.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
@@ -304,7 +306,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="Resources\shader\Effect3d.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
@@ -384,6 +388,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.h" />
+    <ClInclude Include="EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack4_Wall.h" />
@@ -401,6 +406,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h" />
+    <ClInclude Include="game\actor\enemy\TutorialDoll.h" />
     <ClInclude Include="game\actor\MapBlock.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />

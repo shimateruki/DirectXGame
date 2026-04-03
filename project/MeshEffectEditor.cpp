@@ -80,106 +80,146 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
 
-    // ========================================================
-    //  シーンが切り替わった（再生ボタン等）らプレビューを破棄！
-    // ========================================================
     if (lastScene_ != currentScene) {
-        previewEffect_.reset(); // 古いポインタを手放す
-        lastScene_ = currentScene; // 現在のシーンを記憶
+        previewEffect_.reset();
+        extraPreviewEffects_.clear();
+        lastScene_ = currentScene;
         targetObject_ = nullptr;
     }
-    // ★ 変更: まだプレビューが作られていなければ、シーンからObject3dCommonを取得して生成する
-    if (!previewEffect_ && sceneManager_) {
-        BaseScene* currentScene = sceneManager_->GetCurrentScene();
-        if (currentScene && currentScene->GetObject3dCommon()) {
 
-            previewEffect_ = std::make_unique<EffectObject3d>();
-            previewEffect_->Initialize(currentScene->GetObject3dCommon());
-
-            // パラメータの初期設定
-            previewEffect_->SetModel(editModelName_);
-            if (auto renderer = previewEffect_->GetMeshRenderer()) {
-                if (strlen(editTexturePath_) > 0) {
-                    renderer->SetTexture(editTexturePath_);
-                }
-            }
-            previewEffect_->SetColor(editColor_);
-            previewEffect_->SetScrollSpeed(editScrollSpeed_);
-            previewEffect_->SetIntensity(editIntensity_);
+    if (!previewEffect_ && currentScene && currentScene->GetObject3dCommon()) {
+        previewEffect_ = std::make_unique<EffectObject3d>();
+        previewEffect_->Initialize(currentScene->GetObject3dCommon());
+        previewEffect_->SetModel(editModelName_);
+        if (auto renderer = previewEffect_->GetMeshRenderer()) {
+            if (strlen(editTexturePath_) > 0) renderer->SetTexture(editTexturePath_);
         }
-    }
-    if (previewEffect_) {
-        previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
-        // ★ 毎フレーム新しいパラメータを送る
-        previewEffect_->SetStartScale(editStartScale_);
-        previewEffect_->SetEndScale(editEndScale_);
-        previewEffect_->SetStartColor(editStartColor_);
-        previewEffect_->SetEndColor(editEndColor_);
-
+        previewEffect_->SetColor(editColor_);
         previewEffect_->SetScrollSpeed(editScrollSpeed_);
         previewEffect_->SetIntensity(editIntensity_);
-        Vector3 finalPos = editPosition_;
-        Vector3 finalRot = editRotation_;
+    }
 
-        // ★ ターゲットが設定されていれば、その座標と角度を加算する！
-        if (targetObject_) {
-            Vector3 targetPos = targetObject_->GetWorldPosition();
-            Vector3 targetRot = targetObject_->GetRotation();
+    if (!previewEffect_) return;
 
-            finalPos.x += targetPos.x;
-            finalPos.y += targetPos.y;
-            finalPos.z += targetPos.z;
+    int neededExtras = 0;
+    if (editVolumeMode_ == 1) neededExtras = 1;
+    else if (editVolumeMode_ == 2) neededExtras = 2;
 
-            finalRot.x += targetRot.x;
-            finalRot.y += targetRot.y;
-            finalRot.z += targetRot.z;
+    while (extraPreviewEffects_.size() < neededExtras) {
+        auto extra = std::make_unique<EffectObject3d>();
+        if (currentScene && currentScene->GetObject3dCommon()) {
+            extra->Initialize(currentScene->GetObject3dCommon());
         }
-        // 固定の Transform は Position と Rotation だけ適用
-        previewEffect_->SetTranslate(finalPos);
-        previewEffect_->SetRotation(finalRot);
-        previewEffect_->SetDistortionStrength(editDistortionStrength_);
-        previewEffect_->SetDistortionSpeed(editDistortionSpeed_);
-        previewEffect_->SetEdgeFadeStrength(editEdgeFadeStrength_);
-        previewEffect_->SetEnableDistortion(editEnableDistortion_);
-        previewEffect_->SetEnableReveal(editEnableReveal_);
-        previewEffect_->SetEasingType(editEasingType_);
-        // ========================================================
-        // ：カラーランプを使うかどうかのフラグを毎フレーム送る！
-        // ========================================================
-        // editRampTexturePath_ に文字列が入っていれば(テクスチャが設定されていれば) true になる
+        extraPreviewEffects_.push_back(std::move(extra));
+    }
+    while (extraPreviewEffects_.size() > neededExtras) {
+        extraPreviewEffects_.pop_back();
+    }
+
+    std::vector<EffectObject3d*> activePreviews;
+    activePreviews.push_back(previewEffect_.get());
+    for (auto& ex : extraPreviewEffects_) activePreviews.push_back(ex.get());
+
+    Vector3 basePos = editPosition_;
+    Vector3 baseRot = editRotation_;
+
+    if (targetObject_) {
+        Vector3 targetPos = targetObject_->GetWorldPosition();
+
+        // ★修正: ターゲットのY軸回転（向き）だけを取得
+        float targetWorldY = 0.0f;
+        Object3d* curr = targetObject_;
+        while (curr) {
+            targetWorldY += curr->GetRotation().y;
+            curr = curr->GetParent();
+        }
+
+        // ★修正: エディタ設定位置(editPosition_)をターゲットの向きに合わせて回転
+        float s = sinf(targetWorldY);
+        float c = cosf(targetWorldY);
+        Vector3 rotatedOffset;
+        rotatedOffset.x = editPosition_.x * c + editPosition_.z * s;
+        rotatedOffset.y = editPosition_.y;
+        rotatedOffset.z = -editPosition_.x * s + editPosition_.z * c;
+
+        // 基準座標と回転の計算
+        basePos.x = targetPos.x + rotatedOffset.x;
+        basePos.y = targetPos.y + rotatedOffset.y;
+        basePos.z = targetPos.z + rotatedOffset.z;
+
+        // 回転はY軸（向き）だけを足す
+        baseRot.y = editRotation_.y + targetWorldY;
+    }
+    // ========================================================
+    // ★ 修正1: 一斉再生の完全同期！
+    // ========================================================
+    if (forcePlayRequest_ || (isAutoLoop_ && !activePreviews.empty() && !activePreviews[0]->IsPlaying())) {
+        for (auto* fx : activePreviews) {
+            fx->Play(editLifetime_);
+        }
+        forcePlayRequest_ = false; // フラグを消化
+    }
+
+    Vector3 localZ;
+    localZ.x = sinf(baseRot.y) * cosf(baseRot.x);
+    localZ.y = -sinf(baseRot.x);
+    localZ.z = cosf(baseRot.y) * cosf(baseRot.x);
+
+    float timeStep = (deltaTime <= 0.0001f) ? (1.0f / 60.0f) : deltaTime;
+
+    for (size_t i = 0; i < activePreviews.size(); ++i) {
+        auto* fx = activePreviews[i];
+
+        fx->SetModel(editModelName_);
+        if (auto renderer = fx->GetMeshRenderer()) {
+            if (strlen(editTexturePath_) > 0) renderer->SetTexture(editTexturePath_);
+        }
+        fx->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
+        fx->SetStartScale(editStartScale_);
+        fx->SetEndScale(editEndScale_);
+        fx->SetStartColor(editStartColor_);
+        fx->SetEndColor(editEndColor_);
+        fx->SetScrollSpeed(editScrollSpeed_);
+        fx->SetIntensity(editIntensity_);
+
+        fx->SetDistortionStrength(editDistortionStrength_);
+        fx->SetDistortionSpeed(editDistortionSpeed_);
+        fx->SetEdgeFadeStrength(editEdgeFadeStrength_);
+        fx->SetEnableDistortion(editEnableDistortion_);
+        fx->SetEnableReveal(editEnableReveal_);
+        fx->SetEasingType(editEasingType_);
+        fx->SetProceduralType(editProceduralType_);
+
         bool useRamp = (strlen(editRampTexturePath_) > 0);
-        previewEffect_->SetEnableColorRamp(useRamp);
         bool useNoise = (strlen(editNoiseTexturePath_) > 0);
-        previewEffect_->SetEnableNoiseTexture(useNoise);
-        // ========================================================
+        fx->SetEnableColorRamp(useRamp);
+        fx->SetEnableNoiseTexture(useNoise);
 
-        // ★ ここを追加！：テクスチャの紐付けを毎フレーム確実に行う！
-        if (strlen(editNoiseTexturePath_) > 0) {
-            uint32_t handle = TextureManager::GetInstance()->Load(editNoiseTexturePath_);
-            previewEffect_->SetNoiseTexture(handle);
+        if (useNoise) fx->SetNoiseTexture(TextureManager::GetInstance()->Load(editNoiseTexturePath_));
+        if (useRamp) fx->SetRampTexture(TextureManager::GetInstance()->Load(editRampTexturePath_));
+
+        Vector3 finalPos = basePos;
+        Vector3 finalRot = baseRot;
+
+        if (editVolumeMode_ == 1 && i == 1) {
+            finalRot.x += 1.570796f;
         }
-        if (strlen(editRampTexturePath_) > 0) {
-            uint32_t handle = TextureManager::GetInstance()->Load(editRampTexturePath_);
-            previewEffect_->SetRampTexture(handle);
+        else if (editVolumeMode_ == 2) {
+            float gap = 0.02f;
+            if (i == 1) { finalPos.x += localZ.x * gap; finalPos.y += localZ.y * gap; finalPos.z += localZ.z * gap; }
+            if (i == 2) { finalPos.x -= localZ.x * gap; finalPos.y -= localZ.y * gap; finalPos.z -= localZ.z * gap; }
         }
 
-        // ★ オートループ機能
-        if (isAutoLoop_ && !previewEffect_->IsPlaying()) {
-            previewEffect_->Play(editLifetime_);
-        }
+        fx->SetTranslate(finalPos);
+        fx->SetRotation(finalRot);
 
-        float timeStep = deltaTime;
-        if (timeStep <= 0.0001f) timeStep = 1.0f / 60.0f;
-
-        previewEffect_->Update(timeStep);
-        previewEffect_->UpdateLocalMatrix();
-        previewEffect_->UpdateWorldMatrix();
+        fx->Update(timeStep);
+        fx->UpdateLocalMatrix();
+        fx->UpdateWorldMatrix();
     }
 }
-
 void MeshEffectEditor::Draw() {
     // ★ 1. Game側から呼ばれているか確認
-    DebugConsole::GetInstance()->AddLog("1: MeshEffectEditor::Draw() is Called!");
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (lastScene_ != currentScene || !currentScene) {
         // シーンが破棄・切り替えられた直後のフレームなので、
@@ -188,6 +228,9 @@ void MeshEffectEditor::Draw() {
     }
     if (previewEffect_) {
         previewEffect_->Draw();
+        for (auto& ex : extraPreviewEffects_) {
+            ex->Draw();
+        }
     }
     else {
         // ★ もし生成されていなければエラーを出す
@@ -207,7 +250,7 @@ void MeshEffectEditor::DrawImGui() {
     // ==========================================
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
     if (ImGui::Button(ICON_FA_PLAY " エフェクト再生 (ATTACK!)", ImVec2(availWidth, 40))) {
-        previewEffect_->Play(editLifetime_);
+        forcePlayRequest_ = true;
     }
     ImGui::PopStyleColor();
 
@@ -215,6 +258,7 @@ void MeshEffectEditor::DrawImGui() {
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_UNDO " 時間リセット")) {
         previewEffect_->ResetTime();
+        for (auto& ex : extraPreviewEffects_) ex->ResetTime(); 
     }
 
     ImGui::Spacing();
@@ -259,10 +303,19 @@ void MeshEffectEditor::DrawImGui() {
     if (ImGui::Combo(ICON_FA_ADJUST " ブレンドモード", &currentBlendModeIndex_, blendModeNames, IM_ARRAYSIZE(blendModeNames))) {
         previewEffect_->SetBlendMode(static_cast<BlendMode>(currentBlendModeIndex_));
     }
+    ImGui::Separator();
+    ImGui::Text(ICON_FA_CUBES " [ 立体化モード (Volume Mode) ]");
+    const char* volumeModes[] = { "0: なし (None)", "1: 十字クロス (Cross)", "2: 3枚重ね (Layer)" };
+    ImGui::Combo("立体化", &editVolumeMode_, volumeModes, IM_ARRAYSIZE(volumeModes));
+
     ImGui::Checkbox(ICON_FA_RULER_HORIZONTAL " 伸びるアニメーション (Reveal Mode)", &editEnableReveal_);
     if (ImGui::Combo(ICON_FA_CHART_LINE " イージング (Easing)", &editEasingType_, kEasingNames, IM_ARRAYSIZE(kEasingNames))) {
         previewEffect_->SetEasingType(editEasingType_);
     }
+    ImGui::Separator();
+    ImGui::Text("--- Shader Generation ---");
+    const char* procTypes[] = { "0: Use Texture (None)", "1: Procedural Slash (斬撃)", "2: Procedural Aura (球体)", "3: Procedural Noise (モヤ)" };
+    ImGui::Combo("Shader Type", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes));
     ImGui::Spacing();
 
     // ==========================================
@@ -311,17 +364,31 @@ void MeshEffectEditor::DrawImGui() {
         ImGui::Separator();
 
         // --- ① メインテクスチャ (t0) ---
-        TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
-            if (auto renderer = previewEffect_->GetMeshRenderer()) {
-                renderer->SetTexture(path);
-            }
-            });
+        if (editProceduralType_ == 0) {
+            TextureCombo(ICON_FA_IMAGE " メインテクスチャ", currentTextureIndex_, editTexturePath_, [&](const std::string& path) {
+                if (auto renderer = previewEffect_->GetMeshRenderer()) {
+                    renderer->SetTexture(path);
+                }
+                });
+        }
+        else {
+            // プロシージャル使用時は無効化されていることを明記する
+            ImGui::TextDisabled(ICON_FA_IMAGE " メインテクスチャ (無効)");
+            ImGui::TextDisabled("※シェーダーで形を生成しているため不要です");
+        }
 
         // --- ② ノイズテクスチャ (t2) ---
-        TextureCombo(ICON_FA_WIND " ノイズテクスチャ", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
-            uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
-            previewEffect_->SetNoiseTexture(handle);
-            });
+    
+        if (editProceduralType_ != 1) {
+            TextureCombo(ICON_FA_WIND " ノイズテクスチャ", currentNoiseTextureIndex_, editNoiseTexturePath_, [&](const std::string& path) {
+                uint32_t handle = path.empty() ? 0 : TextureManager::GetInstance()->Load(path);
+                previewEffect_->SetNoiseTexture(handle);
+                });
+        }
+        else {
+            ImGui::TextDisabled(ICON_FA_WIND " ノイズテクスチャ (無効)");
+            ImGui::TextDisabled("※プロシージャルで斬撃の筋(ノイズ)を自動生成しています");
+        }
 
         // --- ③ カラーランプ (t3) ---
         TextureCombo(ICON_FA_PALETTE " カラーランプ", currentRampTextureIndex_, editRampTexturePath_, [&](const std::string& path) {
@@ -455,7 +522,7 @@ void MeshEffectEditor::SaveToJson() {
     j["ModelName"] = editModelName_;
     j["TexturePath"] = editTexturePath_;
     j["NoiseTexturePath"] = editNoiseTexturePath_;
-    j["RampTexturePath"] = editRampTexturePath_; // ★ 追加
+    j["RampTexturePath"] = editRampTexturePath_; 
 
     // --- ベース Transform ---
     j["Position"] = { editPosition_.x, editPosition_.y, editPosition_.z };
@@ -481,6 +548,8 @@ void MeshEffectEditor::SaveToJson() {
     j["BlendMode"] = currentBlendModeIndex_;
     j["EnableReveal"] = editEnableReveal_;
     j["EasingType"] = editEasingType_;
+    j["ProceduralType"] = editProceduralType_;
+    j["VolumeMode"] = editVolumeMode_;
     std::ofstream file(fullPath);
     if (file.is_open()) {
         file << j.dump(4);
@@ -619,6 +688,10 @@ void MeshEffectEditor::LoadFromJson() {
     else {
         editEasingType_ = 0; // 古いJSONはLinearにする
     }
+
+    if (j.contains("VolumeMode")) editVolumeMode_ = j["VolumeMode"];
+    else editVolumeMode_ = 0; // 古いファイル対策
+    if (j.contains("ProceduralType")) { editProceduralType_ = j["ProceduralType"]; }
     targetObject_ = nullptr;
     if (j.contains("TargetName")) {
         std::string targetName = j["TargetName"];
@@ -643,7 +716,7 @@ void MeshEffectEditor::LoadFromJson() {
         }
     }
     // ★読み込み完了後、新しい設定値でエフェクトを最初から再生し直す
-    previewEffect_->Play(editLifetime_);
+    forcePlayRequest_ = true;
     SyncTextureIndices();
 }
 
