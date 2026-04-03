@@ -26,8 +26,24 @@ cbuffer EffectMaterial : register(b0)
     int enableColorRamp; // ★追加
     int enableNoiseTexture; // ★追加
     int enableReveal;
+    int proceduralType; 
+    float3 padding2;
 };
-
+// --- プロシージャル計算用関数 ---
+// 2Dランダムハッシュ
+float hash(float2 p)
+{
+    return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+}
+// シンプルなバリューノイズ
+float valueNoise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float2 u = f * f * (3.0 - 2.0 * f);
+    return lerp(lerp(hash(i + float2(0.0, 0.0)), hash(i + float2(1.0, 0.0)), u.x),
+                lerp(hash(i + float2(0.0, 1.0)), hash(i + float2(1.0, 1.0)), u.x), u.y);
+}
 struct VertexOutput
 {
     float4 svpos : SV_POSITION;
@@ -72,13 +88,15 @@ float fbm_light(float2 uv)
 }
 float4 main(VertexOutput input) : SV_TARGET
 {
+    // 1. エディタからの制御で進行方向に合わせて消す (Reveal)
     if (enableReveal == 1 && input.uv.x > revealProgress)
         discard;
+        
     float2 scrolledUV = input.uv + (scrollSpeed * time);
     float4 mainColor = mainTex.Sample(smp, scrolledUV);
 
     // ========================================================
-    // ★ ベースとなるノイズ値を取得 (テクスチャ or FBM)
+    // 2. ベースとなるノイズ値を取得 (テクスチャ or FBM)
     // ========================================================
     float baseNoiseValue = 0.0f;
     float2 distOffset = float2(0.0f, 0.0f);
@@ -103,50 +121,97 @@ float4 main(VertexOutput input) : SV_TARGET
     // 3. ディゾルブ消滅
     if (baseNoiseValue < dissolveFade)
         discard;
-
-// --------------------------------------------------------
-    // 4. マスク計算 (★ここを「斬撃の形」に書き換える！)
-    // --------------------------------------------------------
+// 4. マスク計算 (★プロシージャルTypeで形を分岐！)
+    // ========================================================
+    float alphaMask = 1.0f;
+    float distMask = 1.0f;
     
-    // ① 尻尾のフェード（X軸：弧の長さ）
-    // 先端(0.0)は濃く、尻尾(1.0)に向かってスッと消えるグラデーション
-    float trailMask = smoothstep(1.0f, 0.0f, input.uv.x);
-    // もし向きが逆（尻尾が太くなる）なら、 smoothstep(0.0f, 1.0f, input.uv.x) に変えてください！
+    if (proceduralType == 0)
+    {
+        // Type 0: 通常のテクスチャ
+        alphaMask = mainColor.a * baseNoiseValue;
+        distMask = mainColor.a;
+    }
+    else if (proceduralType == 1)
+    {
+        // Type 1: プロシージャル「鋭い斬撃 (SAO風)」ガチ版
+        
+        // ① 尻尾に向かって細くなる「えぐり」の計算
+        float trail = 1.0f - saturate(input.uv.x); // 先端(1.0) -> 尻尾(0.0)
+        float thickness = pow(trail, 0.5f); // 尻尾に向かって急激に細くなるカーブ
+        
+        // ② Y軸の中心(0.5)から端への距離を計算し、刃の鋭さを作る
+        float yDist = abs(input.uv.y - 0.5f) * 2.0f;
+        float widthMask = 1.0f - (yDist / max(thickness, 0.001f)); // 0除算防止
+        
+        // edgeFadeStrengthで刃先のシャープさを極限まで高める
+        widthMask = saturate(pow(max(widthMask, 0.0f), abs(edgeFadeStrength) + 1.0f));
+        float trailMask = smoothstep(0.0f, 1.0f, trail); // 尻尾をスッとフェードアウト
 
-    // ② 刃の鋭さ（Y軸：太さ）
-    // sin波を使って「中心が1.0、両端が0.0」になる丸みを作り、それを累乗して鋭く尖らせる
-    float widthMask = sin(saturate(input.uv.y) * 3.14159f);
-    widthMask = pow(widthMask, abs(edgeFadeStrength) + 1.0f); // edgeFadeStrengthで鋭さを調整
+        float2 streakUV = float2(input.uv.x * 2.0f - (time * 8.0f), input.uv.y * 5.0f);
+        float streakNoise = smoothstep(0.1f, 0.9f, fbm_light(streakUV));
 
-    // ③ 合成
-    // 読み込んだノイズの形 × 尻尾フェード × 刃の鋭さ
-    float alphaMask = baseNoiseValue * trailMask * widthMask;
-    
-    // 歪み用のマスク（縁が四角く歪むのを防ぐ）
-    float distMask = widthMask;
+        // 全部掛け合わせる！
+        float baseShape = widthMask * trailMask;
+        float energyMask = (streakNoise * 0.7f) + 0.3f;
+        
+        alphaMask = baseShape * energyMask * baseNoiseValue;
+        distMask = baseShape;
+        mainColor.r = 1.0f;
+    }
+    else if (proceduralType == 2)
+    {
+        // Type 2: プロシージャル「オーラ・球体」
+        // ★修正: smoothstep(0, 0.5, dist) の形にしてから 1.0 から引く！
+        float dist = distance(input.uv, float2(0.5f, 0.5f));
+        float sphere = 1.0f - smoothstep(0.0f, 0.5f, dist);
+        
+        alphaMask = sphere * baseNoiseValue;
+        distMask = sphere;
+        mainColor.r = 1.0f;
+    }
+    else if (proceduralType == 3)
+    {
+        // Type 3: プロシージャル「モヤモヤノイズ（広範囲オーラ）」
+        alphaMask = baseNoiseValue;
+        distMask = baseNoiseValue;
+        mainColor.r = 1.0f;
+    }
 
+    // ========================================================
     // 5. 発光カラーの計算 (カラーランプ切り替え)
+    // ========================================================
     float3 baseColor = color.rgb;
     if (enableColorRamp == 1)
     {
         float rampU = saturate(input.uv.y);
         baseColor = rampTex.Sample(smp, float2(rampU, 0.5f)).rgb;
     }
+    
+    // mainColor.rを掛けることで、テクスチャの濃淡(白黒)も反映させる
     float3 tintColor = baseColor * intensity * mainColor.r;
+    
     float4 glowColor = float4(tintColor, alphaMask * color.a);
 
+    // ========================================================
     // 6. 最終出力
+    // ========================================================
     if (enableDistortion == 1)
     {
         float2 ndc = input.clipPos.xy / input.clipPos.w;
         float2 screenUV = ndc * float2(0.5f, -0.5f) + 0.5f;
 
-        // ★ 計算済みの distOffset を使う
+        // distOffset(テクスチャの歪み) と distMask(斬撃の形) を掛け合わせる
         float2 offset = distOffset * distortionStrength * distMask * 0.01f;
 
+        // 背景を切り抜く
         float3 distortedBg = grabTex.Sample(smp, screenUV + offset).rgb;
-        float3 finalRGB = lerp(distortedBg, distortedBg + glowColor.rgb, max(alphaMask, 0.3f));
+        
+        // ★ max(0.3)を完全に削除！
+        // 歪んだ背景の上に、純粋に「発光色(glowColor.rgb)」を足し合わせる！
+        float3 finalRGB = distortedBg + glowColor.rgb;
 
+        // 歪み描画時は背景を自前で描いているため、アルファは強制1.0でOK
         return float4(finalRGB, 1.0f);
     }
     else

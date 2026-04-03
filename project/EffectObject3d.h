@@ -24,6 +24,8 @@ public:
         int enableColorRamp;  //カラーランプ有効フラグ
         int enableNoiseTexture; //ノイズテクスチャ有効フラグ
         int enableReveal;
+        int proceduralType;
+        Vector3 padding2;
     };
 
     // 初期化・更新・描画
@@ -70,6 +72,7 @@ public:
     void SetTargetObject(Object3d* target) { targetObject_ = target; }
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
+    void SetProceduralType(int type) { materialData_->proceduralType = type; }
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;

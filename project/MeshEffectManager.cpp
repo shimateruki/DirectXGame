@@ -55,89 +55,19 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     file >> j;
     file.close();
 
-    // 新しいエフェクトの作成
-    auto effect = std::make_unique<EffectObject3d>();
-    effect->Initialize(common_);
-
     // ==========================================
-    // JSONからパラメータを復元 (Editorと同じ処理)
-    // ==========================================
-    if (j.contains("ModelName")) {
-        effect->SetModel(j["ModelName"].get<std::string>());
-    }
-
-    if (j.contains("TexturePath")) {
-        std::string texPath = j["TexturePath"];
-        if (!texPath.empty()) {
-            if (auto renderer = effect->GetMeshRenderer()) renderer->SetTexture(texPath);
-        }
-    }
-
-    if (j.contains("NoiseTexturePath")) {
-        std::string noisePath = j["NoiseTexturePath"];
-        if (!noisePath.empty()) {
-            effect->SetNoiseTexture(TextureManager::GetInstance()->Load(noisePath));
-            effect->SetEnableNoiseTexture(true);
-        }
-        else {
-            effect->SetEnableNoiseTexture(false);
-        }
-    }
-
-    if (j.contains("RampTexturePath")) {
-        std::string rampPath = j["RampTexturePath"];
-        if (!rampPath.empty()) {
-            effect->SetRampTexture(TextureManager::GetInstance()->Load(rampPath));
-            effect->SetEnableColorRamp(true);
-        }
-        else {
-            effect->SetEnableColorRamp(false);
-        }
-    }
-
-    // アニメーション (Start/End)
-    if (j.contains("StartScale")) effect->SetStartScale({ j["StartScale"][0], j["StartScale"][1], j["StartScale"][2] });
-    if (j.contains("EndScale"))   effect->SetEndScale({ j["EndScale"][0], j["EndScale"][1], j["EndScale"][2] });
-    if (j.contains("StartColor")) effect->SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });
-    if (j.contains("EndColor"))   effect->SetEndColor({ j["EndColor"][0], j["EndColor"][1], j["EndColor"][2], j["EndColor"][3] });
-
-    // シェーダーパラメータ
-    if (j.contains("ScrollSpeed")) effect->SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
-    if (j.contains("Intensity")) effect->SetIntensity(j["Intensity"]);
-    if (j.contains("DistortionStrength")) effect->SetDistortionStrength(j["DistortionStrength"]);
-    if (j.contains("DistortionSpeed")) effect->SetDistortionSpeed(j["DistortionSpeed"]);
-    if (j.contains("EdgeFadeStrength")) effect->SetEdgeFadeStrength(j["EdgeFadeStrength"]);
-    if (j.contains("EnableDistortion")) effect->SetEnableDistortion(j["EnableDistortion"]);
-    if (j.contains("BlendMode")) effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
-    if (j.contains("EnableReveal")) {
-        effect->SetEnableReveal(j["EnableReveal"]);
-    }
-    else {
-        effect->SetEnableReveal(true); // 互換性維持
-    }
-    if (j.contains("EasingType")) {
-        effect->SetEasingType(j["EasingType"]);
-    }
-    // ==========================================
-    // ★ 基準となる座標・角度の決定ロジック
-    // ==========================================
+      // ★ 1. 基準となるターゲットの取得とY軸の計算
+      // ==========================================
     Vector3 basePos = { 0, 0, 0 };
-    Vector3 baseRot = { 0, 0, 0 };
+    float targetWorldY = 0.0f; // ★プレイヤーの「向き」だけを抽出する
 
-    // ① 引数でターゲットが直接指定されていれば、それを最優先（ボスの使い回し等）
-    if (baseObject) {
-        basePos = baseObject->GetWorldPosition();
-        baseRot = baseObject->GetRotation();
-    }
-    // ② 引数が無い場合、JSONに「TargetName」があればシーン内を全自動検索！
-    else if (j.contains("TargetName")) {
+    Object3d* target = baseObject;
+    if (!target && j.contains("TargetName")) {
         std::string targetName = j["TargetName"];
         if (!targetName.empty()) {
             SceneManager* sm = SceneManager::GetInstance();
             if (sm && sm->GetCurrentScene()) {
                 auto& objects = sm->GetCurrentScene()->GetObjects();
-
-                // シーン内の親子階層を全て探す再帰関数
                 std::function<Object3d* (Object3d*, const std::string&)> findObj = [&](Object3d* obj, const std::string& name) -> Object3d* {
                     if (!obj) return nullptr;
                     if (obj->GetName() == name) return obj;
@@ -147,41 +77,106 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                     }
                     return nullptr;
                     };
-
-                Object3d* foundTarget = nullptr;
                 for (auto& obj : objects) {
-                    foundTarget = findObj(obj.get(), targetName);
-                    if (foundTarget) break; // 見つけたら探索終了
-                }
-
-                // シーン内にターゲットが見つかったら、そこを基準にする
-                if (foundTarget) {
-                    basePos = foundTarget->GetWorldPosition();
-                    baseRot = foundTarget->GetRotation();
+                    target = findObj(obj.get(), targetName);
+                    if (target) break;
                 }
             }
         }
     }
 
+    if (target) {
+        basePos = target->GetWorldPosition();
+
+        // ★ターゲットの「Y軸回転（向いている方向）」だけを全階層からかき集める
+        Object3d* curr = target;
+        while (curr) {
+            targetWorldY += curr->GetRotation().y;
+            curr = curr->GetParent();
+        }
+    }
+
     // ==========================================
-    // ★ エディタで作った「微調整オフセット」の加算
+    // ★ 2. オフセットの読み込みと「回転計算」
     // ==========================================
     Vector3 offsetPos = { 0, 0, 0 };
     Vector3 offsetRot = { 0, 0, 0 };
     if (j.contains("Position")) offsetPos = { j["Position"][0], j["Position"][1], j["Position"][2] };
     if (j.contains("Rotation")) offsetRot = { j["Rotation"][0], j["Rotation"][1], j["Rotation"][2] };
 
-    // 最終的な座標 = (基準の座標) + (オフセット)
-    effect->SetTranslate({ basePos.x + offsetPos.x, basePos.y + offsetPos.y, basePos.z + offsetPos.z });
-    effect->SetRotation({ baseRot.x + offsetRot.x, baseRot.y + offsetRot.y, baseRot.z + offsetRot.z });
+    // ★超重要：エディタで作った「右側」などのオフセット位置を、プレイヤーの向きに合わせて回転させる！
+    float s = sinf(targetWorldY);
+    float c = cosf(targetWorldY);
+    Vector3 rotatedOffset;
+    rotatedOffset.x = offsetPos.x * c + offsetPos.z * s;
+    rotatedOffset.y = offsetPos.y;
+    rotatedOffset.z = -offsetPos.x * s + offsetPos.z * c;
+
+    int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
+    int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
+    float lifetime = j.contains("Lifetime") ? (float)j["Lifetime"] : 1.0f;
 
     // ==========================================
-    // 再生開始
+    // ★ 3. ループ生成
     // ==========================================
-    float lifetime = 1.0f;
-    if (j.contains("Lifetime")) lifetime = j["Lifetime"];
-    effect->Play(lifetime);
+    for (int i = 0; i < numSpawns; ++i) {
+        auto effect = std::make_unique<EffectObject3d>();
+        effect->Initialize(common_);
 
-    // リストに追加して管理を任せる
-    activeEffects_.push_back(std::move(effect));
+        // 初期化リセット
+        effect->SetProceduralType(0); effect->SetEnableNoiseTexture(false); effect->SetEnableColorRamp(false);
+        effect->SetEnableDistortion(false); effect->SetEnableReveal(true); effect->SetDistortionStrength(0.0f); effect->SetEdgeFadeStrength(1.0f);
+
+        // --- パラメータ復元 (中略：変更なし) ---
+        if (j.contains("ModelName")) effect->SetModel(j["ModelName"].get<std::string>());
+        if (j.contains("TexturePath")) { std::string tp = j["TexturePath"]; if (!tp.empty() && effect->GetMeshRenderer()) effect->GetMeshRenderer()->SetTexture(tp); }
+        if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np)); effect->SetEnableNoiseTexture(true); } }
+        if (j.contains("RampTexturePath")) { std::string rp = j["RampTexturePath"]; if (!rp.empty()) { effect->SetRampTexture(TextureManager::GetInstance()->Load(rp)); effect->SetEnableColorRamp(true); } }
+        if (j.contains("StartScale")) effect->SetStartScale({ j["StartScale"][0], j["StartScale"][1], j["StartScale"][2] });
+        if (j.contains("EndScale")) effect->SetEndScale({ j["EndScale"][0], j["EndScale"][1], j["EndScale"][2] });
+        if (j.contains("StartColor")) effect->SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });
+        if (j.contains("EndColor")) effect->SetEndColor({ j["EndColor"][0], j["EndColor"][1], j["EndColor"][2], j["EndColor"][3] });
+        if (j.contains("ScrollSpeed")) effect->SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
+        if (j.contains("Intensity")) effect->SetIntensity(j["Intensity"]);
+        if (j.contains("DistortionStrength")) effect->SetDistortionStrength(j["DistortionStrength"]);
+        if (j.contains("DistortionSpeed")) effect->SetDistortionSpeed(j["DistortionSpeed"]);
+        if (j.contains("EdgeFadeStrength")) effect->SetEdgeFadeStrength(j["EdgeFadeStrength"]);
+        if (j.contains("EnableDistortion")) effect->SetEnableDistortion(j["EnableDistortion"]);
+        if (j.contains("BlendMode")) effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
+        if (j.contains("EnableReveal")) effect->SetEnableReveal(j["EnableReveal"]);
+        if (j.contains("EasingType")) effect->SetEasingType(j["EasingType"]);
+        if (j.contains("ProceduralType")) effect->SetProceduralType(j["ProceduralType"]);
+
+        // --- ★ 4. 立体化のための座標・回転適用 ---
+        // 最終座標 ＝ ターゲット座標 ＋ 向きに合わせて回転させたオフセット
+        Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
+
+        // 最終回転 ＝ エディタの回転 ＋ プレイヤーのY軸（向き）だけ足す！ (XやZを足すとエフェクトが地面にめり込む)
+        Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
+
+        Vector3 localZ;
+        localZ.x = sinf(finalRot.y) * cosf(finalRot.x);
+        localZ.y = -sinf(finalRot.x);
+        localZ.z = cosf(finalRot.y) * cosf(finalRot.x);
+
+        if (volumeMode == 1 && i == 1) {
+            finalRot.x += 1.570796f;
+        }
+        else if (volumeMode == 2) {
+            float gap = 0.02f;
+            if (i == 1) { finalPos.x += localZ.x * gap; finalPos.y += localZ.y * gap; finalPos.z += localZ.z * gap; }
+            if (i == 2) { finalPos.x -= localZ.x * gap; finalPos.y -= localZ.y * gap; finalPos.z -= localZ.z * gap; }
+        }
+
+        effect->SetTranslate(finalPos);
+        effect->SetRotation(finalRot);
+
+        // --- 5. 再生開始 ---
+        effect->Play(lifetime);
+        effect->Update(0.0f);
+        effect->UpdateLocalMatrix();
+        effect->UpdateWorldMatrix();
+        activeEffects_.push_back(std::move(effect));
+    }
+
 }
