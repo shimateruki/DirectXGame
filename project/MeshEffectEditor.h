@@ -74,4 +74,9 @@ private:
     std::vector<std::string> jsonFileList_;
     int currentJsonIndex_ = -1; // -1は「新規作成」扱い
     int editEasingType_ = 0;
+    int editProceduralType_ = 0; // 0:Tex, 1:Slash, 2:Aura, 3:Noise
+    int editVolumeMode_ = 0; // 0: なし, 1: 十字クロス, 2: 3枚重ね
+    std::vector<std::unique_ptr<EffectObject3d>> extraPreviewEffects_; // 立体化プレビュー用
+    bool forcePlayRequest_ = false;
+
 };
