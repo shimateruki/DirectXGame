@@ -89,6 +89,11 @@ public:
     bool IsArmorFull() const;
     int GetNeededBlockCount() const;
 
+    // ==========================================
+    // 新オブジェクト生成用に common_ を渡すゲッター
+    // ==========================================
+    Object3dCommon* GetCommon() const { return common_; }
+
 private:
 
     // 射出されたブロックのリスト

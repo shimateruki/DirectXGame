@@ -43,28 +43,32 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
             blockStartPos_.clear();
             blockTargetPos_.clear();
 
-            struct BlockSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
+            // ==========================================
+            // ★ 修正：手書きの配置データをやめて、自動で綺麗な多角形（円陣）を作る！
+            // ==========================================
             float turnY = std::numbers::pi_v<float> / 2.0f;
-            std::vector<BlockSetting> settings = {
-                { { -2.0f,  2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
-                { { -2.0f,  1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
-                { { -2.0f,  1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
-                { { -2.0f, -1.0f, -2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
-                { { -2.0f, -1.0f,  2.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } },
-                { { -2.0f, -2.5f,  0.0f }, { 0.5f, 0.5f, 0.5f }, { 0.0f, turnY, 0.0f } }
-            };
+            float radius = 4.0f; // ★ 10角形の半径（迫力を出すために少し広めに設定！）
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
-                if (i < settings.size()) {
-                    blockTargetPos_.push_back(settings[i].translate);
-                    armorBlocks[i]->SetScale(settings[i].scale);
-                    armorBlocks[i]->SetRotation(settings[i].rotation);
-                    armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
-                }
-                else {
-                    blockTargetPos_.push_back({ 0.0f, 0.0f, 0.0f });
-                }
+
+                // 360度（2π）を現在のブロック数で割って、均等な角度を計算する！
+                // （10個なら36度ずつ、6個なら60度ずつズレる）
+                float angle = (2.0f * std::numbers::pi_v<float> *i) / armorBlocks.size();
+
+                // YZ平面（ボスの正面）に円を描くように座標をセット
+                Vector3 targetPos = {
+                    -2.0f,                    // X: ボスの少し手前
+                    std::sin(angle) * radius, // Y: 上下位置
+                    std::cos(angle) * radius  // Z: 左右位置
+                };
+
+                blockTargetPos_.push_back(targetPos);
+
+                // スケールと向きも一緒にセット
+                armorBlocks[i]->SetScale({ 0.5f, 0.5f, 0.5f });
+                armorBlocks[i]->SetRotation({ 0.0f, turnY, 0.0f });
+                armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
             }
         }
     }

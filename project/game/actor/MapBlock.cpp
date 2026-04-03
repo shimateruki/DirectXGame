@@ -1,6 +1,10 @@
 #include "MapBlock.h"
 #include "CollisionConfig.h"
+#include "DebugConsole.h"
 #include <algorithm> // ★ std::find を使うために追加
+#include "SceneManager.h"
+#include "BaseScene.h"
+#include "CollisionManager.h"
 
 // ==========================================
 // 静的リスト（名簿）の実体を定義
@@ -17,24 +21,43 @@ MapBlock::~MapBlock() {
 
 void MapBlock::Initialize(Object3dCommon* common) {
     Object3d::Initialize(common);
-
-    // マップブロックとしての属性を設定
     SetCollisionAttribute(kMapBlock);
-    // 地形（Ground）としても機能させたい場合は以下のようにビットORをとる
-    // SetCollisionAttribute(kMapBlock | kGround);
-
-    // デフォルトでは押し出し対象にする
     SetCollisionMask(kPlayer | kEnemy);
-
     SetClassName("MapBlock");
+    s_activeBlocks.push_back(this);
+
+    auto laserBeam = std::make_unique<Object3d>();
+    laserBeam->Initialize(common);
+    laserBeam->SetName("Beam_Cylinder");
+    laserBeam->SetModel("Cylinder");
+    laserBeam->SetParent(this);
+    laserBeam->SetScale({ 0.0f, 0.0f, 0.0f });
+    laserBeam->SetCollisionAttribute(0);
+
+    // 自分の子供名簿に登録（攻撃クラスの検索用）
+    children_.push_back(laserBeam.get());
+
+    CollisionManager::GetInstance()->AddObject(laserBeam.get());
 
     // ==========================================
-    // 自分が生まれたら名簿に登録する！
+    // ★ ここがポイント！SceneManagerから現在のシーンを取得して叩き込む！
     // ==========================================
-    s_activeBlocks.push_back(this);
+    // 🚨 注意： GetCurrentScene() の部分は、タイクラーさんの
+    // SceneManagerクラスにある「現在のシーンを取得する関数名」に書き換えてください！
+    if (BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene()) {
+        currentScene->GetObjects().push_back(std::move(laserBeam));
+    }
 }
 
 void MapBlock::Update(float deltaTime) {
+    // ==========================================
+    // レーザーの更新は、吸収されていても常にやる！
+    // これをやらないと座標や大きさが計算されません！
+    // ==========================================
+    if (laserBeam_) {
+        laserBeam_->Update(deltaTime);
+    }
+
     if (isAbsorbed_) return;
 
     Object3d::Update(deltaTime);

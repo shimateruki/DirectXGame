@@ -46,7 +46,12 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
             }
 
-            float offset = -(static_cast<float>(i) - 2.5f) * blockWidth;
+            // ==========================================
+            // 現在のブロック数に合わせて、常に「真ん中」を自動計算する！
+            // ==========================================
+            float centerIndex = (armorBlocks.size() - 1.0f) / 2.0f;
+            float offset = -(static_cast<float>(i) - centerIndex) * blockWidth;
+
             Vector3 targetPos;
 
             if (wallStep_ == 0) {

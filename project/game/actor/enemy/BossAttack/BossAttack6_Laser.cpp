@@ -4,6 +4,15 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include "DebugConsole.h"
+#include "SceneManager.h"
+#include "BaseScene.h"
+
+BossAttack6_Laser::~BossAttack6_Laser() {
+    for (Object3d* beam : activeBeams_) {
+        if (beam) beam->isDead = true;
+    }
+}
 
 void BossAttack6_Laser::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
@@ -13,6 +22,14 @@ void BossAttack6_Laser::Initialize(BossCore* boss) {
     blockStartScale_.clear();
     blockTargetScale_.clear();
     attentionStartRot_.clear();
+
+    // ==========================================
+    // 前回の攻撃で作った余分なレーザーをリセット
+    // ==========================================
+    activeBeams_.clear();
+
+    // ★ 修正：ここに残っていた「古いレーザー生成コード」は
+    // クラッシュの原因になるため綺麗に削除しました！
 
     animPhase_ = 60;
 }
@@ -148,19 +165,33 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
     // --- Phase 63: 陣形完了後、0.5秒間完全に沈黙する！（予兆レーザー） ---
     else if (animPhase_ == 63) {
         if (animTimer_ == 0.0f) {
-            for (Object3d* block : armorBlocks) {
-                if (!block) continue;
-                for (Object3d* child : block->GetChildren()) {
-                    if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
-                        child->SetScale({ 0.1f, 80.0f, 0.1f });
+            BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
 
-                        float rotX90 = std::numbers::pi_v<float> / 2.0f;
-                        child->SetRotation({ rotX90, 0.0f, 0.0f });
-                        child->GetTransform()->isQuaternionMaster = false;
+            for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                if (!armorBlocks[i]) continue;
 
-                        child->SetColor({ 1.0f, 0.0f, 0.0f, 0.5f });
-                        child->SetCollisionAttribute(0);
-                    }
+                auto laser = std::make_unique<Object3d>();
+                laser->Initialize(boss->GetCommon());
+                laser->SetModel("Cylinder");
+                laser->SetName("Beam_Cylinder");
+
+                laser->SetColliderType(ColliderType::kOBB);
+                laser->SetScale({ 0.1f, 80.0f, 0.1f }); // 予兆の細いレーザー
+                laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.5f });
+                laser->SetCollisionAttribute(0);
+
+                // 座標をブロックに追従させる（※子供リストには入れないから安全！）
+                laser->SetParent(armorBlocks[i]);
+
+                float rotX90 = std::numbers::pi_v<float> / 2.0f;
+                laser->SetRotation({ rotX90, 0.0f, 0.0f });
+                laser->GetTransform()->isQuaternionMaster = false;
+
+                activeBeams_.push_back(laser.get()); // リストに記憶
+
+                // シーンの世界に正式登録（所有権を渡す）
+                if (currentScene) {
+                    currentScene->GetObjects().push_back(std::move(laser));
                 }
             }
         }
@@ -172,7 +203,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animPhase_ = 64;
             animTimer_ = 0.0f;
         }
-    }
+    } // ★ 修正：ここに紛れ込んでいた余分な「}」を削除しました！
     // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
     else if (animPhase_ == 64) {
         animTimer_ += deltaTime;
@@ -187,14 +218,12 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         float t = std::min(animTimer_ / expandTime, 1.0f);
         float beamThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
 
-        for (Object3d* block : armorBlocks) {
-            if (!block) continue;
-            for (Object3d* child : block->GetChildren()) {
-                if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
-                    child->SetScale({ beamThickness, 80.0f, beamThickness });
-                    child->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
-                    child->SetCollisionAttribute(kEnemyAttack);
-                }
+        // 名簿(children)を探さず、自分専用のリストを使う！
+        for (Object3d* beam : activeBeams_) {
+            if (beam) {
+                beam->SetScale({ beamThickness, 80.0f, beamThickness });
+                beam->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+                beam->SetCollisionAttribute(kEnemyAttack);
             }
         }
 
@@ -203,15 +232,15 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
             animStartRot_ = boss->GetRotation();
 
-            for (Object3d* block : armorBlocks) {
-                if (!block) continue;
-                for (Object3d* child : block->GetChildren()) {
-                    if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
-                        child->SetScale({ 0.0f, 0.0f, 0.0f });
-                        child->SetCollisionAttribute(0);
-                    }
+            // 撃ち終わったビームを即座に消滅(isDead)させる！
+            for (Object3d* beam : activeBeams_) {
+                if (beam) {
+                    beam->SetScale({ 0.0f, 0.0f, 0.0f });
+                    beam->SetCollisionAttribute(0);
+                    beam->isDead = true; // エンジンの自動削除に任せる
                 }
             }
+            activeBeams_.clear(); // リストも空にする
 
             blockStartPos_.clear();
             blockStartScale_.clear();
