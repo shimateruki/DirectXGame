@@ -3297,19 +3297,19 @@
                     0.550000011920929,
                     0.550000011920929
                 ],
-                "type": 1
+                "type": 2
             },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
+            "collisionAttribute": 6,
+            "collisionMask": 4294967137,
             "color": [
                 1.0,
-                1.0,
-                1.0,
+                0.6078431606292725,
+                0.6078431606292725,
                 1.0
             ],
             "enableEnvMap": false,
             "enableNormalMap": false,
-            "enemyType": "",
+            "enemyType": "Tutorial_Doll",
             "envIntensity": 1.0,
             "eventID": 0,
             "localFog": {
@@ -3333,10 +3333,21 @@
             "name": "Tutorial_Doll",
             "normalMapPath": "",
             "ormMapPath": "",
+            "param": {
+                "enemyType": "Tutorial_Doll",
+                "gravity": 0.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 0.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "speed": 1.0
+            },
             "parentName": "",
             "position": [
                 -10.568668365478516,
-                24.04400062561035,
+                23.881000518798828,
                 -218.3124542236328
             ],
             "quaternion": [
