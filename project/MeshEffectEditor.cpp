@@ -220,7 +220,6 @@ void MeshEffectEditor::Update(float deltaTime) {
 }
 void MeshEffectEditor::Draw() {
     // ★ 1. Game側から呼ばれているか確認
-    DebugConsole::GetInstance()->AddLog("1: MeshEffectEditor::Draw() is Called!");
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (lastScene_ != currentScene || !currentScene) {
         // シーンが破棄・切り替えられた直後のフレームなので、

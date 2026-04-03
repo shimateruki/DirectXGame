@@ -2,6 +2,7 @@
 #include "EnemySlime.h"
 #include <BossCore.h>
 #include "SceneManager.h"
+#include "EnemyBomb.h"
 // 他の敵ができたらここに追加 (#include "EnemyRobot.h" 等)
 
 EnemyFactory* EnemyFactory::GetInstance() {
@@ -29,6 +30,25 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.gravity = 60.0f;     // 重力 
 
         newEnemy = std::move(slime);
+    }
+    else if (enemyName == "Bomb") {
+        auto bomb = std::make_unique<EnemyBomb>();
+
+        // ボム用のモデル名を指定
+        bomb->Initialize(common, "block");
+
+        if (!bomb->param_.has_value()) {
+            bomb->param_.emplace();
+        }
+
+        // ステータス設定
+        auto& p = bomb->param_.value();
+        p.hp = 10.0f;         
+        p.maxHp = 10.0f;
+        p.speed = 0.15f;     
+        p.gravity = 60.0f;
+
+        newEnemy = std::move(bomb);
     }
     else if (enemyName == "BossCore") 
     {

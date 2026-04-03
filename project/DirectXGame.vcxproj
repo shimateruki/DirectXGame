@@ -155,6 +155,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack4_Wall.cpp" />
@@ -384,6 +385,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack4_Wall.h" />
