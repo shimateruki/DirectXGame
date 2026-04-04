@@ -344,6 +344,14 @@ void InspectorWindow::Draw() {
                 if (ImGui::ColorEdit4(ICON_FA_FILL_DRIP " 色 (Color)", &color.x)) {
                     selectedObject->SetColor(color); isGraphicsChanged = true;
                 }
+
+                ImGui::Spacing();
+                float emissive = selectedObject->GetEmissive();
+                // 1.0 で光なし。HDR空間で限界突破させるため最大値は大きめ(50.0等)にしておく
+                if (ImGui::DragFloat(ICON_FA_SUN " 発光強度 (Emissive)", &emissive, 0.1f, 1.0f, 50.0f, "%.1f")) {
+                    selectedObject->SetEmissive(emissive);
+                    isGraphicsChanged = true;
+                }
             }
 
             ImGui::Separator();

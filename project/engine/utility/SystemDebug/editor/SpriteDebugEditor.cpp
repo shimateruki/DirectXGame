@@ -360,12 +360,14 @@ void SpriteDebugEditor::DrawInspectorWindow() {
         Vector2 size = selectedSprite_->GetSize();
         Vector2 anchor = selectedSprite_->GetAnchorPoint();
         Vector4 color = selectedSprite_->GetColor();
-
+        float emissive = selectedSprite_->GetEmissive();
         if (ImGui::DragFloat2(ICON_FA_ARROWS_ALT " 座標 (Pos)", &pos.x, 1.0f)) selectedSprite_->SetPosition(pos);
         if (ImGui::DragFloat2(ICON_FA_EXPAND_ARROWS_ALT " サイズ (Size)", &size.x, 1.0f)) selectedSprite_->SetSize(size);
         if (ImGui::DragFloat2(ICON_FA_ANCHOR " アンカー (Anchor)", &anchor.x, 0.01f)) selectedSprite_->SetAnchorPoint(anchor);
         if (ImGui::ColorEdit4(ICON_FA_PALETTE " 色 (Color)", &color.x)) selectedSprite_->SetColor(color);
-
+        if (ImGui::DragFloat(ICON_FA_SUN " Emissive (発光)", &emissive, 0.1f, 1.0f, 50.0f, "%.1f")) {
+            selectedSprite_->SetEmissive(emissive);
+        }
         ImGui::Separator();
 
         // クイック配置
@@ -488,6 +490,7 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
         spriteData["anchor"] = { anchor.x, anchor.y };
         spriteData["color"] = { color.x, color.y, color.z };
         spriteData["texture"] = sprite->GetTextureName();
+        spriteData["emissive"] = sprite->GetEmissive();
         spriteArray.push_back(spriteData);
     }
     root["sprites"] = spriteArray;

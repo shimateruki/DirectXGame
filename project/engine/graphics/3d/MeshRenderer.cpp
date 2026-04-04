@@ -43,7 +43,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->enableNormalMap = 0;
     materialData_->enableEnvMap = 0;     // デフォルトoff
     materialData_->envIntensity = 1.0f;  // デフォルト1.0倍
-
+    materialData_->emissive = 1.0f;
     shadowWvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
     shadowWvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&shadowWvpData_));
     shadowWvpData_->WVP = Math::MakeIdentity4x4();
@@ -285,3 +285,10 @@ float MeshRenderer::GetEnvIntensity() const {
     return materialData_ ? materialData_->envIntensity : 1.0f;
 }
 
+void MeshRenderer::SetEmissive(float emissive) {
+    if (materialData_) materialData_->emissive = emissive;
+}
+
+float MeshRenderer::GetEmissive() const {
+    return materialData_ ? materialData_->emissive : 1.0f;
+}

@@ -37,6 +37,8 @@ public:
         int32_t enableNormalMap;
         int32_t enableEnvMap;      // 4 byte (環境マップ有効化)
         float envIntensity;        // 4 byte (環境マップ強度)
+        float emissive;            // 4 byte (自己発光の強さ。1.0で光らない)
+        float padding2[3];         // 12 byte (16バイト境界に合わせるためのダミー)
     };
 
     struct PointLight {
@@ -133,7 +135,8 @@ public:
     LocalFogData* GetLocalFogData() { return localFogData_; } // 後でエディタから操作するため
     ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }
     ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
-
+    void SetEmissive(float emissive);
+    float GetEmissive() const;
 
 
 private:
