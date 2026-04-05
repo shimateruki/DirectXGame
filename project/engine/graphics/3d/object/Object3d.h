@@ -185,7 +185,9 @@ public:
     float GetEnvIntensity() const { return meshRenderer_ ? meshRenderer_->GetEnvIntensity() : 1.0f; }
     void SetEmissive(float emissive) { if (meshRenderer_) meshRenderer_->SetEmissive(emissive); }
     float GetEmissive() const { return meshRenderer_ ? meshRenderer_->GetEmissive() : 1.0f; }
-
+    void SetIsUIPreview(bool isPreview) { 
+        if (meshRenderer_) meshRenderer_->SetIsUIPreview(isPreview); 
+    }
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;

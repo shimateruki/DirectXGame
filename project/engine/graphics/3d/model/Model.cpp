@@ -19,9 +19,34 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
     // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
-    // ※ ここでボーンがない場合のダミーボーン生成も行われます
     modelData_ = LoadFile(directoryPath, filename);
 
+    Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
+    Vector3 max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    bool hasVertices = false;
+
+    for (const auto& mesh : modelData_.meshes) {
+        for (const auto& vertex : mesh.vertices) {
+            min.x = (std::min)(min.x, vertex.position.x);
+            min.y = (std::min)(min.y, vertex.position.y);
+            min.z = (std::min)(min.z, vertex.position.z);
+            max.x = (std::max)(max.x, vertex.position.x);
+            max.y = (std::max)(max.y, vertex.position.y);
+            max.z = (std::max)(max.z, vertex.position.z);
+            hasVertices = true;
+        }
+    }
+
+    if (hasVertices) {
+        // 全体の中心座標を計算
+        center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
+        // 全体の縦・横・奥のサイズを計算
+        size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
+    }
+    else {
+        center_ = { 0.0f, 0.0f, 0.0f };
+        size_ = { 1.0f, 1.0f, 1.0f };
+    }
     // 2. マテリアルごとにテクスチャをロード
     for (auto& material : modelData_.materials) {
         material.textureHandle = TextureManager::GetInstance()->Load(material.textureFilePath);

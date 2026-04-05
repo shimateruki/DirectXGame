@@ -441,6 +441,11 @@ void Game::Draw() {
     // 1. シーンレンダリング (オフスクリーン描画)
     // ---------------------------------------------------------------
     dxCommon_->PreDrawRenderTexture();
+#ifdef USE_IMGUI
+    if (debugEditor_ && debugEditor_->GetProjectWindow()) {
+        debugEditor_->GetProjectWindow()->CapturePendingThumbnails();
+    }
+#endif
     dxCommon_->PreDrawShadow();
     SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
     // ★ GPUストップウォッチ開始！

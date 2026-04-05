@@ -75,7 +75,7 @@ void MeshRenderer::Update() {
     // Transformの計算結果 (matWorld) をGPUに転送する
     if (wvpData_ && transform_) {
         Math math;
-        const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+        Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
         if (camera) {
             const Matrix4x4& view = camera->GetViewMatrix();
@@ -95,7 +95,14 @@ void MeshRenderer::Update() {
             wvpData_->WVP = Math::MakeIdentity4x4();
             wvpData_->world = Math::MakeIdentity4x4();
         }
-
+        if (isUIPreview_) {
+            if (shadowWvpData_) {
+                // 影マップの影響を受けないように、行列を初期化しておく
+                shadowWvpData_->WVP = Math::MakeIdentity4x4();
+                shadowWvpData_->world = Math::MakeIdentity4x4();
+            }
+            return; 
+        }
         // ライト更新
         if (directionalLightData_) {
             directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
@@ -113,7 +120,7 @@ void MeshRenderer::Update() {
             }
 
             // 1. カメラの位置を取得して、影の箱の「中心（ターゲット）」にする
-            const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+            Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
             Vector3 target = { 0.0f, 0.0f, 0.0f };
             if (camera) {
                 target = camera->GetEye(); // カメラ（プレイヤー）の位置を基準にする

@@ -137,7 +137,7 @@ public:
     ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
     void SetEmissive(float emissive);
     float GetEmissive() const;
-
+    void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
 
 private:
     // 依存オブジェクト
@@ -179,5 +179,5 @@ private:
     LocalFogData* localFogData_ = nullptr;
     float time_ = 0.0f;
 
-
+    bool isUIPreview_ = false;
 };
