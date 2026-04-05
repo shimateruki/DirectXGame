@@ -24,6 +24,7 @@ struct Material
     int32_t enableNormalMap;
     int32_t enableEnvMap; // 追加: 環境マップON/OFF
     float envIntensity; // 追加: 環境マップ強度
+    float emissive; // 自己発光の強さ
     float padding2; // 16バイトアライメント調整
 };
 
@@ -584,9 +585,17 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                         }
                     }
                 }
+                if (gMaterial.emissive > 1.0f)
+                {
+        // オブジェクト本来の色（光の影響なし）
+                    float3 emissiveColor = gMaterial.color.rgb * textureColor.rgb;
+        
+        // 発光強度分だけ、最終出力カラーに加算する
+                    output.color.rgb += emissiveColor * (gMaterial.emissive - 1.0f);
+                }
                 break;
             }
     }
-
+  
     return output;
 }

@@ -385,6 +385,7 @@ void Object3d::CopyFrom(const Object3d* other) {
         // 環境マップ
         this->SetEnableEnvMap(other->GetEnableEnvMap());
         this->SetEnvIntensity(other->GetEnvIntensity());
+        this->SetEmissive(other->GetEmissive());
     }
 
     // 7. アニメーション
@@ -473,7 +474,7 @@ json Object3d::ExportToJson() {
     d["texturePath"] = GetTexturePath();
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
-
+    d["emissive"] = GetEmissive();
     // 7. アニメーション
     d["animation"]["animName"] = animName_;
     d["animation"]["isAnimLoop"] = isAnimLoop_;
@@ -570,6 +571,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("texturePath")) SetTexture(j["texturePath"]);
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
+    if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
 
     // 7. アニメーション
     if (j.contains("animation")) {

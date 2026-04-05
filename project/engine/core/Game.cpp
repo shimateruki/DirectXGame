@@ -441,6 +441,11 @@ void Game::Draw() {
     // 1. シーンレンダリング (オフスクリーン描画)
     // ---------------------------------------------------------------
     dxCommon_->PreDrawRenderTexture();
+#ifdef USE_IMGUI
+    if (debugEditor_ && debugEditor_->GetProjectWindow()) {
+        debugEditor_->GetProjectWindow()->CapturePendingThumbnails();
+    }
+#endif
     dxCommon_->PreDrawShadow();
     SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
     // ★ GPUストップウォッチ開始！
@@ -450,6 +455,10 @@ void Game::Draw() {
     }
     dxCommon_->PostDrawShadow();
     if (sceneManager_) { sceneManager_->Draw(); }
+    if (sceneManager_) {
+        sceneManager_->DrawUI();
+    }
+
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
     if (meshEffectEditor_ && EditorManager::GetInstance()->GetSelectedObject() == meshEffectEditor_.get()) {
         meshEffectEditor_->Draw();
@@ -499,9 +508,6 @@ void Game::Draw() {
     // ---------------------------------------------------------------
     // 3. ゲームUI描画 (SDR合成後のテクスチャへ描き込み)
     // ---------------------------------------------------------------
-    if (sceneManager_) {
-        sceneManager_->DrawUI();
-    }
 
     // ImGui(GameView)での表示用にリソースを変換
     postEffect_->TransitionToSRV(commandList, 1);
@@ -542,6 +548,11 @@ void Game::Draw() {
 
     // メイン画面の描画
     if (sceneManager_) { sceneManager_->Draw(); }
+    // ゲームUIのオーバーレイ描画
+    if (sceneManager_) {
+        sceneManager_->DrawUI();
+    }
+
     dxCommon_->PostDrawRenderTexture();
 
     // 2. ポストエフェクト・マルチパス (ブルーム生成)
@@ -580,11 +591,7 @@ void Game::Draw() {
     // HDRからSDRへの変換と最終エフェクトの適用
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
 
-    // ゲームUIのオーバーレイ描画
-    if (sceneManager_) {
-        sceneManager_->DrawUI();
-    }
-
+  
     // ★ GPUストップウォッチ終了！ (PostDrawの直前)
     dxCommon_->EndGpuProfile();
 

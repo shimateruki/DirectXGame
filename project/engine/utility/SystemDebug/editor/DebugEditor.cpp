@@ -55,7 +55,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     lastUpdatedScene_ = nullptr;
     PresetManager::GetInstance()->LoadPresets();
     hierarchyWindow_.Initialize(this);
-    projectWindow_.Initialize(this);
+    projectWindow_.Initialize(this,dxCommon);
     inspectorWindow_.Initialize(this);
     serializer_.Initialize(this);
     primitiveDrawer_.Initialize(dxCommon);
