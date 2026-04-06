@@ -151,7 +151,7 @@ void ProjectWindow::CapturePendingThumbnails() {
     for (auto& pair : thumbnailAlbum_) {
         std::string modelName = pair.first;
         ThumbnailData& data = pair.second;
-
+        if (data.isCaptured) continue;
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
         barrier.Transition.pResource = data.resource.Get();
