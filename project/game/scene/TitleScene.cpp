@@ -83,6 +83,9 @@ void TitleScene::Initialize() {
     
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
+    optionUI_ = std::make_unique<OptionUI>();
+    optionUI_->Initialize(this,spriteCommon_.get());
+
 
     dxCommon_->FlushCommandQueue(false);
 }
@@ -101,57 +104,60 @@ void TitleScene::Finalize() {
 
 void TitleScene::Update(float deltaTime) {
 
-    // -------------------------------------------------
-    // 1. 入力によるメニューの上下移動
-    // -------------------------------------------------
     InputManager* input = InputManager::GetInstance();
-
-    // （KeyConfigを実装済みなら "Up" や "Down" などのアクション名に置き換えてください！）
-    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-        currentMenuIndex_--;
-        if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1; // 一番上なら一番下へループ
-    }
-    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-        currentMenuIndex_++;
-        if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0; // 一番下なら一番上へループ
-    }
-
-    // -------------------------------------------------
-    // 2. 選択中のメニューをハイライト(色を変える)
-    // -------------------------------------------------
     Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f }; // 非選択時は少し暗くする
     Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 選択時は明るく白！
 
-    if (startTextSprite_) {
-        startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
-    }
-    if (settingTextSprite_) {
-        settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+    // =================================================
+    // ステートに応じた入力・UI操作処理
+    // =================================================
+    switch (currentState_) {
+    case TitleState::MainMenu:
+        // 上下選択
+        if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+            currentMenuIndex_--;
+            if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+        }
+        if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+            currentMenuIndex_++;
+            if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+        }
+
+        // 色の更新
+        if (startTextSprite_) startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
+        if (settingTextSprite_) settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+
+        // 決定 (Spaceキーのみ)
+        if (input->IsKeyTriggered(DIK_SPACE)) {
+            if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
+                // ゲーム開始！
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            }
+            else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
+                // 設定画面へ移行
+                currentState_ = TitleState::OptionMenu;
+            }
+        }
+        break;
+
+    case TitleState::OptionMenu:
+        // ★ OptionUI に処理を丸投げ！ 戻る要求(true)が返ってきたらメインに戻す
+        if (optionUI_ && optionUI_->Update(deltaTime)) {
+            currentState_ = TitleState::MainMenu;
+        }
+        break;
     }
 
-    // -------------------------------------------------
-    // 3. 決定ボタンでシーン遷移
-    // -------------------------------------------------
-    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-        if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
-            // ゲーム開始！
-            SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-        }
-        else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
-            // 設定画面へ！(まだシーンがない場合は一旦ログを出すだけにしておきます)
-            DebugConsole::GetInstance()->AddLog("【Title】設定画面へ移行します！");
-            // SceneManager::GetInstance()->ChangeScene("SETTING"); 
-        }
-    }
-
-    // 常に実行されるマネージャ更新
+    // =================================================
+    // 常に実行される更新処理
+    // =================================================
     LightEditor::GetInstance()->Update();
     CameraManager::GetInstance()->Update();
     CameraEditor::GetInstance()->Update(player_, false);
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
-    objectManager_->Update(deltaTime);
-    particleSystem_->Update(deltaTime);
+    if (objectManager_) objectManager_->Update(deltaTime);
+    if (particleSystem_) particleSystem_->Update(deltaTime);
 
     for (auto& sprite : sprites_) {
         sprite->Update();
@@ -160,6 +166,33 @@ void TitleScene::Update(float deltaTime) {
     // 各種グローバル更新
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
+}
+
+
+
+void TitleScene::DrawUI() {
+    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    for (auto& sprite : sprites_) {
+        Sprite* sp = sprite.get();
+
+        if (currentState_ == TitleState::MainMenu) {
+            // メインメニュー時：OptionUI管轄のスプライトなら描画をスキップ
+            if (optionUI_ && optionUI_->IsOptionSprite(sp)) {
+                continue;
+            }
+        }
+        else if (currentState_ == TitleState::OptionMenu) {
+            // オプションメニュー時：メインメニュー用の文字なら描画をスキップ
+            if (sp == startTextSprite_ || sp == settingTextSprite_) {
+                continue;
+            }
+        }
+
+        sprite->Draw();
+    }
+    if (currentState_ == TitleState::OptionMenu && optionUI_) {
+        optionUI_->DrawKeyIcons();
+    }
 }
 
 void TitleScene::Draw() {
@@ -236,13 +269,6 @@ void TitleScene::Draw() {
 // ====================================================================
 // UI描画専用の関数
 // ====================================================================
-void TitleScene::DrawUI() {
-    // --- 4. 2D描画 (UIスプライト) ---
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
-    for (auto& sprite : sprites_) {
-        sprite->Draw();
-    }
-}
 
 // シャドウマップ描画の実装
 void TitleScene::DrawShadow() {

@@ -281,6 +281,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\system\input\KeyConfig.cpp" />
     <ClCompile Include="MeshEffectEditor.cpp" />
     <ClCompile Include="MeshEffectManager.cpp" />
+    <ClCompile Include="OptionUI.cpp" />
     <ClCompile Include="SaveDataManager.cpp" />
     <ClCompile Include="TimeAttackUI.cpp" />
   </ItemGroup>
@@ -675,6 +676,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\system\input\KeyConfig.h" />
     <ClInclude Include="MeshEffectEditor.h" />
     <ClInclude Include="MeshEffectManager.h" />
+    <ClInclude Include="OptionUI.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />
