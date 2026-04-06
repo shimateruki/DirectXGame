@@ -16,7 +16,7 @@
 #include "LevelLoader.h"
 #include <GhostRecorder.h>
 #include <GameRule.h>
-
+#include "OptionUI.h"
 #include <memory>
 #include <vector>
 
@@ -82,9 +82,17 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
-
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
+
+    // ==========================================
+    // 状態管理用 (追加部分)
+    // ==========================================
+    enum class TitleState {
+        MainMenu,   // 最初から表示されている「Game Start / Setting」を選ぶ画面
+        OptionMenu  // Settingを選んだ後の「Sound / Keyboard」などを選ぶ画面
+    };
+    TitleState currentState_ = TitleState::MainMenu;
 
     // メニューの選択肢
     enum class MenuIndex {
@@ -92,10 +100,21 @@ private:
         Setting,
         Max // 項目数を取るためのダミー
     };
-
     int currentMenuIndex_ = (int)MenuIndex::GameStart; // 現在の選択番号
 
-    // スプライトのポインタを保持しておく
+    // オプションメニューの選択肢 (追加部分)
+    enum class OptionIndex {
+        Sound,
+        KeyConfig,
+        Max
+    };
+    int currentOptionIndex_ = (int)OptionIndex::Sound;
+
+    // ==========================================
+    // スプライトのポインタ保持
+    // ==========================================
     Sprite* startTextSprite_ = nullptr;
     Sprite* settingTextSprite_ = nullptr;
+
+    std::unique_ptr<OptionUI> optionUI_ = nullptr;
 };

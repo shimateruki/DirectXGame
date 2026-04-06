@@ -482,7 +482,7 @@ void PlayerStateIdle::Update(Player* player)
 	if (!player) return;
 
 	InputManager* im = player ? player->GetInputManager() : nullptr;
-	bool attackTriggered = im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0));
+	bool attackTriggered = im && im->IsActionTriggered("Attack");
 
 	if (attackTriggered)
 	{
@@ -849,7 +849,7 @@ void PlayerStateRun::Update(Player* player)
 	if (!player) return;
 
 	InputManager* im = player ? player->GetInputManager() : nullptr;
-	bool attackTriggered = im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0));
+	bool attackTriggered = im && im->IsActionTriggered("Attack");
 
 	if (attackTriggered)
 	{
@@ -1210,7 +1210,7 @@ void PlayerStateAttack1::Update(Player* player)
 	if (player)
 	{
 		InputManager* im = player->GetInputManager();
-		if (im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0)))
+		if (im && (im && im->IsActionTriggered("Attack")))
 		{
 			player->SetPendingAttack2(true);
 		}
@@ -1599,7 +1599,7 @@ void PlayerStateAttack2::Update(Player* player)
 
 	// 入力で3段目予約
 	InputManager* im = player->GetInputManager();
-	if (im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0))) {
+	if ((im && im->IsActionTriggered("Attack"))) {
 		player->SetPendingAttack2(true);
 		DebugConsole::GetInstance()->AddLog("Attack2: input detected -> pending Attack3 set");
 	}
