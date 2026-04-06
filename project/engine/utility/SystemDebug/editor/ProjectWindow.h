@@ -7,7 +7,7 @@
 class DebugEditor; // 前方宣言
 class DirectXCommon;
 class Object3d;
-
+class Object3dCommon;
 struct ThumbnailData {
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;       // 写真の画用紙（実体）
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap;  // 描き込むための筆（RTV）
@@ -36,7 +36,7 @@ private:
 
     DebugEditor* editor_ = nullptr;
     DirectXCommon* dxCommon_ = nullptr; // 追加
-
+    std::unique_ptr<Object3dCommon> previewObject3dCommon_;
     // モデル名と写真のヒモヅケ辞書（アルバム）
     std::map<std::string, ThumbnailData> thumbnailAlbum_;
     const int kThumbnailSize = 256; // 写真の高解像度サイズ

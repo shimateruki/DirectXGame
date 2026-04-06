@@ -149,7 +149,7 @@ private:
     std::string modelName_;
 
     // 描画設定
-    BlendMode blendMode_ = BlendMode::kNone;
+    BlendMode blendMode_ = BlendMode::kNormal;
 
     // --- DirectXリソース (Object3dから移動) ---
     Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;

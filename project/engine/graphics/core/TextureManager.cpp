@@ -80,6 +80,9 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
+    if (!resource) {
+        return 0;
+    }
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
 
 
@@ -134,15 +137,15 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
     if (std::filesystem::exists(directoryPath)) {
-        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
-            // .png と .jpg を自動ロード
-            if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
-                std::string path = entry.path().string();
-                // パスの区切り文字を / に統一（バグ防止）
-                std::replace(path.begin(), path.end(), '\\', '/');
 
-                // 隊長のLoad関数を呼ぶだけ！（内部で重複チェック＆コマンド実行してくれる）
-                Load(path);
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
+            // フォルダではなく「ファイル」だった場合のみ処理
+            if (entry.is_regular_file()) {
+                if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
+                    std::string path = entry.path().string();
+                    std::replace(path.begin(), path.end(), '\\', '/');
+                    Load(path);
+                }
             }
         }
     }

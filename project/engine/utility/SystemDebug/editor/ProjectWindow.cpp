@@ -12,6 +12,7 @@
 #include "Object3d.h"
 #include "WinApp.h"
 #include "CameraManager.h"
+#include "Object3dCommon.h"
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -19,6 +20,10 @@ namespace fs = std::filesystem;
 void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
     editor_ = editor;
     dxCommon_ = dxCommon;
+    if (dxCommon_) {
+        previewObject3dCommon_ = std::make_unique<Object3dCommon>();
+        previewObject3dCommon_->Initialize(dxCommon_);
+    }
 }
 
 // ==========================================================
@@ -80,12 +85,13 @@ void ProjectWindow::CapturePendingThumbnails() {
     auto device = dxCommon_->GetDevice();
     auto commandList = dxCommon_->GetCommandList();
 
-    auto sceneManager = editor_->GetSceneManager();
-    if (!sceneManager || !sceneManager->GetCurrentScene()) return;
-    Object3dCommon* objCommon = sceneManager->GetCurrentScene()->GetObject3dCommon();
+    // =======================================================
+    //  シーンの進行状況に依存しない、安全な専用 Object3dCommon を使う！
+    // =======================================================
+    Object3dCommon* objCommon = previewObject3dCommon_.get();
     if (!objCommon) return;
 
-    // --- Zバッファの生成 (前回と同じなので省略せず残してください) ---
+    // --- Zバッファの生成 ---
     static Microsoft::WRL::ComPtr<ID3D12Resource> s_studioDepth;
     static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> s_studioDsvHeap;
     if (!s_studioDepth) {
@@ -133,10 +139,6 @@ void ProjectWindow::CapturePendingThumbnails() {
     originalScissor.top = 0;
     originalScissor.bottom = WinApp::kClientHeight;
 
-
-    // =================================================================
-    // ★★★ 修正: スタジオ専用のカメラを用意してセットする ★★★
-    // =================================================================
     Camera studioCamera;
     studioCamera.Initialize();           // 初期値: eye(0,5,-20) -> target(0,0,0)
     studioCamera.SetInputEnabled(false); // エラー回避のため入力を無視
@@ -145,11 +147,10 @@ void ProjectWindow::CapturePendingThumbnails() {
     // メインカメラから、このスタジオ用カメラにすり替える！
     CameraManager::GetInstance()->SetActiveCamera(&studioCamera);
     // =================================================================
+
     for (auto& pair : thumbnailAlbum_) {
         std::string modelName = pair.first;
         ThumbnailData& data = pair.second;
-
-
 
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -189,6 +190,7 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.previewObject = std::make_shared<Object3d>();
             data.previewObject->Initialize(objCommon);
             data.previewObject->SetIsUIPreview(true);
+
             // ★ ここで LoadModel しつつ、Model実体のポインタを受け取る！
             Model* model = ModelManager::GetInstance()->LoadModel(modelName);
             data.previewObject->SetModel(modelName);
@@ -204,25 +206,25 @@ void ProjectWindow::CapturePendingThumbnails() {
                 // 最も長い辺を見つける
                 float maxDim = (std::max)({ modelSize.x, modelSize.y, modelSize.z });
                 if (maxDim > 0.001f) {
-                    // ★ 修正1: 10.0 と 7.0 の間の「8.5」でジャストサイズを狙う！
+                    // ★ ジャストサイズと中心点を計算
                     autoScale = 8.5f / maxDim;
-
-                    // ★ 修正2: Yオフセットを「1.1」にして、沈まないギリギリの中央を狙う！
                     autoTranslate.x = -modelCenter.x * autoScale;
                     autoTranslate.y = -modelCenter.y * autoScale + 1.1f;
                     autoTranslate.z = -modelCenter.z * autoScale;
                 }
-            
             }
 
             // 計算したスケールと位置をセット（これ以降は保持される）
             data.previewObject->GetTransform()->scale = { autoScale, autoScale, autoScale };
             data.previewObject->GetTransform()->translate = autoTranslate;
+
+            // ★ スタジオカメラが少し見下ろしているため、モデルを上向きにして正面からのフレーミングにする
+            data.previewObject->GetTransform()->rotate.x = -0.2f;
         }
 
         auto& targetObj = data.previewObject;
 
-     
+        // くるくる回転
         targetObj->GetTransform()->rotate.y += 0.02f;
 
         // 行列の更新と描画
@@ -238,9 +240,7 @@ void ProjectWindow::CapturePendingThumbnails() {
         data.isCaptured = true;
     }
 
-    // =================================================================
-    // ★★★ 修正: 撮影が終わったら必ず元のカメラに戻す！ ★★★
-    // =================================================================
+
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
 
     commandList->RSSetViewports(1, &originalViewport);

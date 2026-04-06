@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "SpriteDebugEditor.h"
 #include "Sprite.h"
 #include "imgui.h"
@@ -422,86 +423,145 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 #endif
 }
 
+
+
 // =========================================================================
-// 3. Project (下パネル / アセットブラウザ) の描画
+// 3. Project (下パネル / アセットブラウザ) の描画 [階層フォルダ対応・完全防弾版]
 // =========================================================================
 void SpriteDebugEditor::DrawProjectWindow() {
 #ifdef USE_IMGUI
 	ImGui::Begin(ICON_FA_FOLDER_OPEN " Sprite Assets");
-	std::string spriteDirPath = "Resources/sprite/";
-	if (std::filesystem::exists(spriteDirPath)) {
 
-		// ★ サムネイルのサイズとパディング設定
+	std::string baseDirPath = "Resources/sprite/";
+
+	if (currentSpriteDirectory_ != baseDirPath) {
+		if (ImGui::Button(ICON_FA_ARROW_UP " Back")) {
+
+			fs::path p(currentSpriteDirectory_);
+			currentSpriteDirectory_ = p.parent_path().parent_path().generic_string() + "/";
+
+			// ルート（baseDirPath）より上に戻りすぎないように最終ガード
+			if (currentSpriteDirectory_.length() < baseDirPath.length() ||
+				currentSpriteDirectory_.find(baseDirPath) == std::string::npos) {
+				currentSpriteDirectory_ = baseDirPath;
+			}
+		}
+		ImGui::SameLine();
+	}
+	ImGui::TextDisabled("%s", currentSpriteDirectory_.c_str());
+	ImGui::Separator();
+	
+	if (fs::exists(currentSpriteDirectory_)) {
+
 		float thumbnailSize = 64.0f;
 		float padding = 16.0f;
 		float cellSize = thumbnailSize + padding;
 
-		// ウィンドウの横幅から「何列並べられるか」を自動計算
 		float panelWidth = ImGui::GetContentRegionAvail().x;
-		int columnCount = (int)(panelWidth / cellSize);
-		if (columnCount < 1) columnCount = 1;
+		int columnCount = std::max(1, (int)(panelWidth / cellSize));
 
-		// テーブルを使ってグリッド状（マス目）に並べる！
 		if (ImGui::BeginTable("SpriteAssetTable", columnCount)) {
-			for (const auto& entry : std::filesystem::directory_iterator(spriteDirPath)) {
-				if (entry.path().extension() == ".png") {
-					ImGui::TableNextColumn(); // 次のマスへ
 
+			for (const auto& entry : fs::directory_iterator(currentSpriteDirectory_)) {
+
+				// ==========================================================
+					// パターンA: フォルダ（ディレクトリ）の場合
+					// ==========================================================
+				if (entry.is_directory()) {
+					ImGui::TableNextColumn();
+					std::string folderName = entry.path().filename().string();
+
+					ImGui::PushID(folderName.c_str());
+					ImGui::BeginGroup();
+
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
+					ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.7f, 0.2f, 1.0f));
+
+					// 一時的に文字サイズを3倍にする
+					ImGui::SetWindowFontScale(3.0f);
+
+					if (ImGui::Button(ICON_FA_FOLDER, ImVec2(thumbnailSize, thumbnailSize))) {
+						currentSpriteDirectory_ = entry.path().generic_string() + "/";
+					}
+
+					ImGui::SetWindowFontScale(1.0f); // 忘れずに元に戻す
+					ImGui::PopStyleColor(4);
+
+					// フォルダ名表示
+					ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+					ImGui::TextWrapped("%s", folderName.c_str());
+					ImGui::PopTextWrapPos();
+
+					ImGui::EndGroup();
+					ImGui::PopID();
+				}
+
+				// ==========================================================
+				// パターンB: ファイル（.png 画像）の場合
+				// ==========================================================
+				else if (entry.is_regular_file() && entry.path().extension() == ".png") {
+					std::error_code ec;
+					if (fs::file_size(entry.path(), ec) == 0 || ec) {
+						continue;
+					}
+
+					ImGui::TableNextColumn();
 					std::string filename = entry.path().filename().string();
+
+					// ドラッグ＆ドロップ（エンジンへの送信）用の相対パス
+					std::string relativePath = fs::relative(entry.path(), baseDirPath).generic_string();
+					std::string fullPath = entry.path().generic_string();
+
 					ImGui::PushID(filename.c_str());
-					// ==========================================================
-					//  テクスチャのGPUハンドルを取得して画像化！
-					// ==========================================================
-					uint32_t texHandle = Sprite::LoadTexture(filename);
+
+					uint32_t texHandle = TextureManager::GetInstance()->Load(fullPath);
+
+					if (texHandle == 0) {
+						ImGui::PopID();
+						continue;
+					}
+
 					D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
 
-					//  テクスチャの本来のサイズを取得
+					// --- アスペクト比維持の計算 ---
 					const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetadata(texHandle);
 					float w = (float)metadata.width;
 					float h = (float)metadata.height;
-
-					// アスペクト比を維持したまま thumbnailSize の枠内に収める計算
 					float drawW = thumbnailSize;
 					float drawH = thumbnailSize;
-					if (w > h) {
-						drawH = thumbnailSize * (h / w); // 横長の場合、高さを縮める
-					}
-					else if (h > w) {
-						drawW = thumbnailSize * (w / h); // 縦長の場合、幅を縮める
-					}
-
-					// 中央に配置するための余白（オフセット）
+					if (w > h) { drawH = thumbnailSize * (h / w); }
+					else if (h > w) { drawW = thumbnailSize * (w / h); }
 					float offsetX = (thumbnailSize - drawW) * 0.5f;
 					float offsetY = (thumbnailSize - drawH) * 0.5f;
 
-					// グループ化して、画像+テキストを1つのカタマリとして扱う
 					ImGui::BeginGroup();
 
-					// --- Y軸の余白 (上) ---
 					if (offsetY > 0.0f) ImGui::Dummy(ImVec2(1.0f, offsetY));
-
-					// --- X軸の余白 (左) ---
 					if (offsetX > 0.0f) ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
 
-					// 1. サムネイル画像 (背景透明のボタンとして配置)
 					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 					ImGui::ImageButton(filename.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(drawW, drawH));
 					ImGui::PopStyleColor();
 
-					// 画像をつかんでドラッグ＆ドロップ可能にする！
+					// ドラッグ＆ドロップ処理
 					if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-						ImGui::SetDragDropPayload("SPRITE_FILE", filename.c_str(), filename.size() + 1);
-						// つまんでいる時のプレビューも比率維持！
+						// =======================================================
+						//  裏のデータ（ペイロード）は relativePath に戻してクラッシュ回避！
+						// =======================================================
+						ImGui::SetDragDropPayload("SPRITE_FILE", relativePath.c_str(), relativePath.size() + 1);
+
 						ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(drawW * 0.5f, drawH * 0.5f));
 						ImGui::SameLine();
-						ImGui::Text("生成/変更: %s", filename.c_str());
+						ImGui::Text("Place: %s", filename.c_str());
+
 						ImGui::EndDragDropSource();
 					}
 
-					// --- Y軸の余白 (下) 高さを揃えるため ---
 					if (offsetY > 0.0f) ImGui::Dummy(ImVec2(1.0f, offsetY));
 
-					// 2. ファイル名 (長すぎたら自動で折り返して表示)
+				
 					ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
 					ImGui::TextWrapped("%s", filename.c_str());
 					ImGui::PopTextWrapPos();
@@ -514,7 +574,8 @@ void SpriteDebugEditor::DrawProjectWindow() {
 		}
 	}
 	else {
-		ImGui::TextDisabled("フォルダが見つかりません: %s", spriteDirPath.c_str());
+		// フォルダが見つからなかった時の警告色
+		ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Directory Not Found: %s", currentSpriteDirectory_.c_str());
 	}
 	ImGui::End();
 #endif

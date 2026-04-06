@@ -229,7 +229,52 @@ void Game::Update() {
             uint32_t texHandle = PostEffect::GetInstance()->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
+                    const char* droppedFilename = (const char*)payload->Data;
 
+                    if (sceneManager_) {
+                        BaseScene* currentScene = sceneManager_->GetCurrentScene();
+                        if (currentScene) {
+                            SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
+                            auto& sprites = currentScene->GetSprites();
+
+                            // 1. 座標計算 (画面の解像度スケールを考慮した完璧なマウス座標)
+                            ImVec2 mousePos = ImGui::GetIO().MousePos;
+                            float localX = mousePos.x - imageScreenPos.x;
+                            float localY = mousePos.y - imageScreenPos.y;
+                            float gameResW = float(WinApp::kClientWidth);
+                            float gameResH = float(WinApp::kClientHeight);
+                            Vector2 dropPos = { localX * (gameResW / displaySize.x), localY * (gameResH / displaySize.y) };
+
+                            std::string fullPath = "Resources/sprite/" + std::string(droppedFilename);
+
+                            auto newSprite = std::make_unique<Sprite>();
+
+                            // 復元した fullPath を渡すことで、ディスクアクセスを回避し一瞬でロード完了！
+                            uint32_t handle = TextureManager::GetInstance()->Load(fullPath);
+
+                            newSprite->Initialize(spriteCommon, handle);
+                            newSprite->SetName(droppedFilename);
+                            newSprite->SetTextureName(droppedFilename);
+       
+                            // 3. マウスでドロップした位置に座標をセット！
+                            newSprite->SetPosition(dropPos);
+
+                            // シーンに追加
+                            sprites.push_back(std::move(newSprite));
+
+                            // 4. 追加したスプライトを即座に「選択状態」にする！
+                            if (spriteDebugEditor_) {
+                                spriteDebugEditor_->SetSelectedSprite(sprites.back().get());
+                            }
+
+                            DebugConsole::GetInstance()->AddLog("Dropped Sprite: " + std::string(droppedFilename) + " at X:" + std::to_string(dropPos.x) + " Y:" + std::to_string(dropPos.y));
+                        }
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
             bool isHovered = ImGui::IsItemHovered();
             ImVec2 mPos = ImGui::GetIO().MousePos;
 
