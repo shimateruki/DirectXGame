@@ -151,17 +151,41 @@ void Object3d::SetParent(Object3d* parent) {
 // ========================================================================
 
 void Object3d::SetModel(Model* model) {
-    if (meshRenderer_) meshRenderer_->SetModel(model);
+    if (meshRenderer_) {
+        meshRenderer_->SetModel(model);
+
+        // =======================================================
+        //  モデルのサイズに合わせてコライダーを自動設定 (Auto-Fit)
+        // =======================================================
+        if (model && collider_) {
+            ColliderConfig config = collider_->GetConfig();
+            Vector3 fullSize = model->GetSize();
+            config.size = { fullSize.x / 2.0f, fullSize.y / 2.0f, fullSize.z / 2.0f };
+
+            config.center = model->GetCenter();
+            collider_->SetConfig(config);
+        }
+    }
 }
 
 void Object3d::SetModel(const std::string& modelName) {
     if (meshRenderer_ && !modelName.empty()) {
-        ModelManager::GetInstance()->LoadModel(modelName);
-
+        Model* model = ModelManager::GetInstance()->LoadModel(modelName);
         meshRenderer_->SetModel(modelName);
+
+        // =======================================================
+        //  モデルのサイズに合わせてコライダーを自動設定 (Auto-Fit)
+        // =======================================================
+        if (model && collider_) {
+            ColliderConfig config = collider_->GetConfig();
+            Vector3 fullSize = model->GetSize();
+            config.size = { fullSize.x / 2.0f, fullSize.y / 2.0f, fullSize.z / 2.0f };
+
+            config.center = model->GetCenter();
+            collider_->SetConfig(config);
+        }
     }
 }
-
 Model* Object3d::GetModel() const {
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }
