@@ -292,6 +292,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->UpdateWorldMatrix();
                 if (objData.contains("blendMode")) targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
                 if (objData.contains("materialType")) targetObject->SetMaterialType(objData["materialType"].get<int>());
+
                 if (objData.contains("color")) {
                     targetObject->SetColor({
                         objData["color"][0],
@@ -309,6 +310,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("texturePath")) targetObject->SetTexture(objData["texturePath"].get<std::string>());
                 if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
+                if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
                 if (objData.contains("localFog")) {
                     if (auto* fogData = targetObject->GetLocalFogData()) {
                         auto& f = objData["localFog"];
@@ -464,6 +466,9 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                             spriteData["color"][2], // B
                             currentColor.w          // A (現在の透明度を維持)
                             });
+                    }
+                    if (spriteData.contains("emissive")) {
+                        targetSprite->SetEmissive(spriteData["emissive"].get<float>());
                     }
                     targetSprite->Update();
                 }

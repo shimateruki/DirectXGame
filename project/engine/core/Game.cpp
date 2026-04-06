@@ -209,10 +209,9 @@ void Game::Update() {
 
     bool isSpriteEditorBusy = false;
     bool is3DGizmoBusy = false;
-
     // -------------------------------------------------------------------------
-    // 2. Game View ウィンドウ (余白なし・タブバー非表示設定)
-    // -------------------------------------------------------------------------
+        // 2. Game View ウィンドウ (余白なし・タブバー非表示設定)
+        // -------------------------------------------------------------------------
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGuiWindowClass window_class;
     window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar;
@@ -228,7 +227,67 @@ void Game::Update() {
         if (displaySize.x > 0 && displaySize.y > 0) {
             uint32_t texHandle = PostEffect::GetInstance()->GetSRVHandle(1);
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(texHandle);
+
+            // ★ ここで描画される画像が、ドラッグ＆ドロップの「的（ターゲット）」になる！
             ImGui::Image((ImTextureID)gpuHandle.ptr, displaySize);
+
+            // =======================================================
+            // ★ Game View へのドラッグ＆ドロップ統合受け取り口
+            // =======================================================
+            if (ImGui::BeginDragDropTarget()) {
+
+                // [A] スプライト画像が落ちてきた場合
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
+                    const char* droppedFilename = (const char*)payload->Data;
+
+                    if (sceneManager_) {
+                        BaseScene* currentScene = sceneManager_->GetCurrentScene();
+                        if (currentScene) {
+                            SpriteCommon* spriteCommon = currentScene->GetSpriteCommon();
+                            auto& sprites = currentScene->GetSprites();
+
+                            ImVec2 mousePos = ImGui::GetIO().MousePos;
+                            float localX = mousePos.x - imageScreenPos.x;
+                            float localY = mousePos.y - imageScreenPos.y;
+                            float gameResW = float(WinApp::kClientWidth);
+                            float gameResH = float(WinApp::kClientHeight);
+                            Vector2 dropPos = { localX * (gameResW / displaySize.x), localY * (gameResH / displaySize.y) };
+
+                            std::string fullPath = "Resources/sprite/" + std::string(droppedFilename);
+                            auto newSprite = std::make_unique<Sprite>();
+                            uint32_t handle = TextureManager::GetInstance()->Load(fullPath);
+
+                            newSprite->Initialize(spriteCommon, handle);
+                            newSprite->SetName(droppedFilename);
+                            newSprite->SetTextureName(droppedFilename);
+                            newSprite->SetPosition(dropPos);
+
+                            sprites.push_back(std::move(newSprite));
+
+                            if (spriteDebugEditor_) {
+                                spriteDebugEditor_->SetSelectedSprite(sprites.back().get());
+                            }
+                            DebugConsole::GetInstance()->AddLog("Dropped Sprite: " + std::string(droppedFilename));
+                        }
+                    }
+                }
+
+                // [B] 3Dモデルが落ちてきた場合
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
+                    const char* droppedModelName = (const char*)payload->Data;
+
+                    if (debugEditor_) {
+                        // ドロップした瞬間の最新マウス座標を渡して、完璧な位置に配置させる！
+                        ImVec2 mPos = ImGui::GetIO().MousePos;
+                        debugEditor_->SetGameViewMousePos({ mPos.x - imageScreenPos.x, mPos.y - imageScreenPos.y });
+
+                        debugEditor_->InstantiateModelAtCursor(droppedModelName);
+                    }
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+            // =======================================================
 
             bool isHovered = ImGui::IsItemHovered();
             ImVec2 mPos = ImGui::GetIO().MousePos;
@@ -441,6 +500,11 @@ void Game::Draw() {
     // 1. シーンレンダリング (オフスクリーン描画)
     // ---------------------------------------------------------------
     dxCommon_->PreDrawRenderTexture();
+#ifdef USE_IMGUI
+    if (debugEditor_ && debugEditor_->GetProjectWindow()) {
+        debugEditor_->GetProjectWindow()->CapturePendingThumbnails();
+    }
+#endif
     dxCommon_->PreDrawShadow();
     SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
     // ★ GPUストップウォッチ開始！
@@ -450,6 +514,10 @@ void Game::Draw() {
     }
     dxCommon_->PostDrawShadow();
     if (sceneManager_) { sceneManager_->Draw(); }
+    if (sceneManager_) {
+        sceneManager_->DrawUI();
+    }
+
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
     if (meshEffectEditor_ && EditorManager::GetInstance()->GetSelectedObject() == meshEffectEditor_.get()) {
         meshEffectEditor_->Draw();
@@ -499,9 +567,6 @@ void Game::Draw() {
     // ---------------------------------------------------------------
     // 3. ゲームUI描画 (SDR合成後のテクスチャへ描き込み)
     // ---------------------------------------------------------------
-    if (sceneManager_) {
-        sceneManager_->DrawUI();
-    }
 
     // ImGui(GameView)での表示用にリソースを変換
     postEffect_->TransitionToSRV(commandList, 1);
@@ -542,6 +607,11 @@ void Game::Draw() {
 
     // メイン画面の描画
     if (sceneManager_) { sceneManager_->Draw(); }
+    // ゲームUIのオーバーレイ描画
+    if (sceneManager_) {
+        sceneManager_->DrawUI();
+    }
+
     dxCommon_->PostDrawRenderTexture();
 
     // 2. ポストエフェクト・マルチパス (ブルーム生成)
@@ -580,11 +650,7 @@ void Game::Draw() {
     // HDRからSDRへの変換と最終エフェクトの適用
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
 
-    // ゲームUIのオーバーレイ描画
-    if (sceneManager_) {
-        sceneManager_->DrawUI();
-    }
-
+  
     // ★ GPUストップウォッチ終了！ (PostDrawの直前)
     dxCommon_->EndGpuProfile();
 

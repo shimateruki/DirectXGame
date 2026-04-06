@@ -89,6 +89,7 @@ public:
     void PerformUndo();           // 元に戻す
     void PerformRedo();           // やり直し
     void DropToFloor();
+    void InstantiateModelAtCursor(const std::string& modelName);
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------
@@ -107,7 +108,6 @@ public:
     void SetSelectedObject(Object3d* obj) { selectedObject_ = obj; }
     void SetPreviewObject(std::unique_ptr<Object3d> obj) { previewObject_ = std::move(obj); }
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
-
     void SetEditors(
         PostEffectEditor* postEffectEditor,
         SpriteDebugEditor* spriteDebugEditor,
@@ -155,6 +155,7 @@ public:
 
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
+    ProjectWindow* GetProjectWindow() { return &projectWindow_; }
 
 private:
     // --------------------------------------------------------------------

@@ -46,6 +46,7 @@ void Sprite::Initialize(SpriteCommon* common, uint32_t textureHandle) {
 	materialResource_ = dxCommon_->CreateBufferResource(sizeof(Material));
 	materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 	materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	materialData_->emissive = 1.0f;
 }
 
 /// <summary>

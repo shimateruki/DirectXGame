@@ -25,13 +25,12 @@ public: // 内部構造体の定義
 
 	struct Material
 	{
-		Vector4 color;
-		int32_t enableLighting;
-		float padding1[3];
-		Matrix4x4 uvTransform;
-		int32_t selectedLighting;
-		float padding2[3];
-
+		Vector4 color;            // 16 bytes
+		int32_t enableLighting;   // 4 bytes
+		float padding1[3];        // 12 bytes
+		Matrix4x4 uvTransform;    // 64 bytes
+		float emissive;           // 4 bytes
+		float padding2[3];        // 12 bytes (合計112バイト = 16の倍数で完璧！)
 	};
 	struct TransformationMatrix {
 		Matrix4x4 WVP;
@@ -81,6 +80,8 @@ public: // メンバ関数
 		textureLeftTop_ = texLeftTop;
 		textureSize_ = texSize;
 	}
+	void SetEmissive(float emissive) { if (materialData_) materialData_->emissive = emissive; }
+	float GetEmissive() const { return materialData_ ? materialData_->emissive : 1.0f; }
 
 	/// <summary>
 /// 現在設定されているテクスチャハンドルを取得
