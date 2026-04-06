@@ -88,9 +88,12 @@ public:
 
     struct Mesh {
         std::vector<VertexData> vertices;
+        std::vector<uint32_t> indices;
         uint32_t materialIndex;
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource; //  インデックス用バッファ
+        D3D12_INDEX_BUFFER_VIEW indexBufferView{};            //  インデックス用ビュー
     };
 
     struct ModelData {
@@ -121,7 +124,10 @@ public: // メンバ関数
         ID3D12Resource* cameraResource,
         ID3D12Resource* pointLightResource,
         ID3D12Resource* spotLightResource,
-        ID3D12Resource* overrideMaterialResource = nullptr, uint32_t normalMapHandle = 0,uint32_t ormMapHandle= 0, uint32_t overrideTextureHandle = 0);
+        ID3D12Resource* overrideMaterialResource = nullptr, uint32_t normalMapHandle = 0, uint32_t ormMapHandle = 0, uint32_t overrideTextureHandle = 0,
+        uint32_t instanceCount = 1,          
+        uint32_t startInstanceLocation = 0   
+    );
     void DrawShadow(ID3D12Resource* wvpResource);
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)

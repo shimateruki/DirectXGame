@@ -19,9 +19,34 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
     // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
-    // ※ ここでボーンがない場合のダミーボーン生成も行われます
     modelData_ = LoadFile(directoryPath, filename);
 
+    Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
+    Vector3 max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    bool hasVertices = false;
+
+    for (const auto& mesh : modelData_.meshes) {
+        for (const auto& vertex : mesh.vertices) {
+            min.x = (std::min)(min.x, vertex.position.x);
+            min.y = (std::min)(min.y, vertex.position.y);
+            min.z = (std::min)(min.z, vertex.position.z);
+            max.x = (std::max)(max.x, vertex.position.x);
+            max.y = (std::max)(max.y, vertex.position.y);
+            max.z = (std::max)(max.z, vertex.position.z);
+            hasVertices = true;
+        }
+    }
+
+    if (hasVertices) {
+        // 全体の中心座標を計算
+        center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
+        // 全体の縦・横・奥のサイズを計算
+        size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
+    }
+    else {
+        center_ = { 0.0f, 0.0f, 0.0f };
+        size_ = { 1.0f, 1.0f, 1.0f };
+    }
     // 2. マテリアルごとにテクスチャをロード
     for (auto& material : modelData_.materials) {
         material.textureHandle = TextureManager::GetInstance()->Load(material.textureFilePath);
@@ -42,6 +67,16 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
         std::memcpy(vertexData, mesh.vertices.data(), sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexResource->Unmap(0, nullptr);
+
+        mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
+        mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
+        mesh.indexBufferView.SizeInBytes = UINT(sizeof(uint32_t) * mesh.indices.size());
+        mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+
+        uint32_t* indexData = nullptr;
+        mesh.indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
+        std::memcpy(indexData, mesh.indices.data(), sizeof(uint32_t) * mesh.indices.size());
+        mesh.indexResource->Unmap(0, nullptr);
     }
 
     // 4. 定数バッファ(Material)の作成
@@ -121,7 +156,7 @@ void Model::UpdateBoneBuffer() {
 }
 
 // モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle)
+void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation)
 {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     // 1. マテリアル設定
@@ -166,7 +201,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     // 3. メッシュごとの描画ループ
     for (const auto& mesh : modelData_.meshes) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
-
+        commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
         if (overrideTextureHandle > 0 && overrideTextureHandle <= 1000) {
             // エディタで画像が選ばれていたら、そっちを優先して貼る！
@@ -177,7 +212,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
             SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, handle);
         }
 
-        commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
+        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), instanceCount, 0, 0, startInstanceLocation);
     }
 }
 // ==========================================
@@ -192,7 +227,9 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
     std::string filePath = directoryPath + sep + filename;
 
 
-    const aiScene* scene = importer.ReadFile(filePath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_ConvertToLeftHanded | aiProcess_CalcTangentSpace);
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_ConvertToLeftHanded |
+        aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices | aiProcess_OptimizeMeshes);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         return modelData;
@@ -293,11 +330,13 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
             }
         }
 
-        // メッシュ構築
+        mesh.vertices = tempVertices;
+
         for (unsigned int f = 0; f < aiMesh->mNumFaces; f++) {
             aiFace face = aiMesh->mFaces[f];
             for (unsigned int j = 0; j < face.mNumIndices; j++) {
-                mesh.vertices.push_back(tempVertices[face.mIndices[j]]);
+                // 頂点をコピーするのではなく、頂点の「番号」だけを記録する！
+                mesh.indices.push_back(face.mIndices[j]);
             }
         }
         modelData.meshes.push_back(mesh);
@@ -536,7 +575,8 @@ void Model::DrawShadow(ID3D12Resource* wvpResource) {
     // 各メッシュの頂点を描画
     for (auto& mesh : modelData_.meshes) {
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
-        commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
+        commandList->IASetIndexBuffer(&mesh.indexBufferView);
+        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
     }
 }
 
@@ -547,8 +587,7 @@ void Model::DrawMeshOnly() {
     for (const auto& mesh : modelData_.meshes) {
         // 頂点バッファをセット
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
-
-        // インデックスバッファを使わない純粋な描画（DrawInstanced）
-        commandList->DrawInstanced(UINT(mesh.vertices.size()), 1, 0, 0);
+        commandList->IASetIndexBuffer(&mesh.indexBufferView);
+        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
     }
 }

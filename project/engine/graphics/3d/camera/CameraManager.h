@@ -29,8 +29,8 @@ public:
 
     // --- ゲッター ---
     Camera* GetMainCamera() { return mainCamera_.get(); }
-    Camera* GetActiveCamera() { return mainCamera_.get(); }
-
+    Camera* GetActiveCamera() { return activeCamera_ ? activeCamera_ : mainCamera_.get(); }
+    void SetActiveCamera(Camera* camera) { activeCamera_ = camera; }
 private:
     CameraManager() = default;
     ~CameraManager() = default;
@@ -39,4 +39,5 @@ private:
 
 private:
     std::unique_ptr<Camera> mainCamera_;
+    Camera* activeCamera_ = nullptr;
 };

@@ -37,6 +37,7 @@ public:
     void DrawHierarchyWindow();
     void DrawInspectorWindow();
     void DrawProjectWindow();
+    void SetSelectedSprite(Sprite* sprite) { selectedSprite_ = sprite; }
     void SetSpriteFilename(const std::string& filepath) {
         std::string name = filepath;
         // パスからファイル名だけを抜き出す
@@ -69,4 +70,5 @@ private:
 
     // 保存用ファイル名
     char currentSpriteFilename_[128] = "sprite_layout.json";
+    std::string currentSpriteDirectory_ = "Resources/sprite/";
 };
