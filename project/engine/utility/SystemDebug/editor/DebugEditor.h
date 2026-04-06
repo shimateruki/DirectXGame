@@ -89,6 +89,7 @@ public:
     void PerformUndo();           // 元に戻す
     void PerformRedo();           // やり直し
     void DropToFloor();
+    void InstantiateModelAtCursor(const std::string& modelName);
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------
@@ -155,6 +156,7 @@ public:
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
+
 private:
     // --------------------------------------------------------------------
     // 内部ヘルパー (Internal Helpers)
