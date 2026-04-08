@@ -23,6 +23,7 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include <SaveDataManager.h>
 
 void GameClearScene::Initialize() {
     // --- 1. システム基盤の取得 ---
@@ -72,13 +73,24 @@ void GameClearScene::Initialize() {
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
     // --- 5. 固定スプライトの生成 (必要であれば) ---
-    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
-    auto monsterBallSprite = std::make_unique<Sprite>();
-    monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
-    monsterBallSprite->SetPosition({ 200.0f, 360.0f });
-    monsterBallSprite->SetSize({ 100.0f, 100.0f });
-    monsterBallSprite->SetName("MonsterBall");
-    sprites_.push_back(std::move(monsterBallSprite));
+ // --- セーブデータの読み込み ---
+    SaveDataManager::GetInstance()->Load();
+    float clearTime = SaveDataManager::GetInstance()->GetLatestClearTime();
+    float bestTime = SaveDataManager::GetInstance()->GetBestTime();
+
+    // --- 今回のタイムUI ---
+    clearTimeUI_ = std::make_unique<TimeAttackUI>();
+    clearTimeUI_->Initialize(spriteCommon_.get());
+    clearTimeUI_->SetPosition({ 400.0f, 300.0f }); // 画面中央付近など好きな位置に
+    clearTimeUI_->SetTime(clearTime);
+    clearTimeUI_->Update(0.0f); // 1回だけUpdateを呼んでテクスチャを数字に反映させる
+
+    // --- ベストタイムUI ---
+    bestTimeUI_ = std::make_unique<TimeAttackUI>();
+    bestTimeUI_->Initialize(spriteCommon_.get());
+    bestTimeUI_->SetPosition({ 400.0f, 450.0f }); // 今回のタイムの下などに配置
+    bestTimeUI_->SetTime(bestTime);
+    bestTimeUI_->Update(0.0f);
 
     // --- 6. レベルデータの読み込み ---
     // 自前関数ではなくLevelLoaderに委譲
@@ -207,6 +219,8 @@ void GameClearScene::DrawUI() {
     for (auto& sprite : sprites_) {
         sprite->Draw();
     }
+    if (clearTimeUI_) clearTimeUI_->Draw();
+    if (bestTimeUI_) bestTimeUI_->Draw();
 }
 
 // ★追加: シャドウマップ描画の実装

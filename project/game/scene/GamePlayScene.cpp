@@ -45,6 +45,7 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
+#include <MeshEffectManager.h>
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -82,7 +83,7 @@ void GamePlayScene::Initialize() {
 
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);
-
+	//
 	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
 	// --- 3. サブシステム初期化 ---
@@ -90,7 +91,7 @@ void GamePlayScene::Initialize() {
 
 	lockOnSystem_ = std::make_unique<LockOnSystem>();
 	lockOnSystem_->Initialize(inputManager_);
-	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png"); 
+	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png");
 	lockOnSprite_ = std::make_unique<Sprite>();
 	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
 	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
@@ -99,6 +100,7 @@ void GamePlayScene::Initialize() {
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
 	GPUParticleManager::GetInstance()->LoadAllPresets();
+	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
@@ -173,12 +175,12 @@ void GamePlayScene::Initialize() {
 
 
 	// ★ 1. まず objectManager からオブジェクトのリストを取得する！
-	auto &objects = objectManager_->GetObjects ();
+	auto& objects = objectManager_->GetObjects();
 
-	for (auto it = objects.begin (); it != objects.end (); ++it) {
-		if ((*it)->GetName () == "Enemy_BossCore") {
+	for (auto it = objects.begin(); it != objects.end(); ++it) {
+		if ((*it)->GetName() == "Enemy_BossCore") {
 			// 1. 古いボスの「今の住所」をメモ（まだ消さない）
-			Object3d *oldAddress = it->get ();
+			Object3d* oldAddress = it->get();
 
 			// 2. 新しい BossCore を準備（まだリストには入れない）
 			auto newBoss = std::make_unique<BossCore> ();
@@ -193,21 +195,21 @@ void GamePlayScene::Initialize() {
 
 			// (A) 当たり判定マネージャから古いボスを抹消し、新しいボスを登録する
 			// ※ もし Remove/Add 関数がない場合は、後述の「強硬手段」を使ってください
-			CollisionManager::GetInstance ()->RemoveObject (oldAddress);
-			CollisionManager::GetInstance ()->AddObject (newAddress);
+			CollisionManager::GetInstance()->RemoveObject(oldAddress);
+			CollisionManager::GetInstance()->AddObject(newAddress);
 
 			// (B) 子供たちの親を、古い住所から新しい住所へ書き換える
-			for (auto &obj : objects) {
-				if (obj->GetParent () == oldAddress) {
-					obj->SetParent (newAddress);
+			for (auto& obj : objects) {
+				if (obj->GetParent() == oldAddress) {
+					obj->SetParent(newAddress);
 
 					// ★ ここを追加！新しいボスにパーツを登録する
-					newAddress->AddArmorBlock (obj.get ());
+					newAddress->AddArmorBlock(obj.get());
 				}
 			}
 
 			// 3. 最後に実体を差し替える。ここで oldAddress は安全に消滅する
-			*it = std::move (newBoss);
+			*it = std::move(newBoss);
 			break;
 		}
 		
@@ -217,6 +219,7 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::Finalize() {
+	MeshEffectManager::GetInstance()->Clear();
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
@@ -439,28 +442,46 @@ void GamePlayScene::Update(float deltaTime) {
 			isDrawLockOn_ = false;
 		}
 
-		// 自由カメラモード以外の操作
+			// 自由カメラモード以外の操作
 		if (!CameraEditor::GetInstance()->IsEditorMode()) {
 			Camera::FollowMode currentMode = camera->GetFollowMode();
 
-		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
-			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+			if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+
+				// =======================================================
+				// ★ 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
+				// =======================================================
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				Vector2 rightStick = inputManager_->GetRightStick();
+
+				// =======================================================
+				// ★ 2. カメラ感度を倍率に変換する！
+				// =======================================================
+				int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
+				float speedMultiplier = 1.0f + (sens * 0.1f);
+
+				// =======================================================
+				// ★ 3. 入力値に感度を掛け算して「最終的な移動量」を出す！
+				// =======================================================
+				Vector2 totalDelta;
+				totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f) * speedMultiplier;
+				totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f) * speedMultiplier; // スティックの上下は反転
 
 #ifdef USE_IMGUI
-			// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」のみ回転
-			if (inputManager_->IsMouseButtonPressed(1)) {
-				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-					camera->AddRotation(mouseDelta);
+				// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」または「スティック入力中」のみ回転
+				if (inputManager_->IsMouseButtonPressed(1) || rightStick.x != 0.0f || rightStick.y != 0.0f) {
+					if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
+						camera->AddRotation(totalDelta);
+					}
 				}
-			}
 #else
-			// ★ Release環境限定: 右クリック不要！マウスを動かすだけで回転する
-			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-				camera->AddRotation(mouseDelta);
-			}
+				// ★ Release環境限定: 右クリック不要！操作した分だけ回転する
+				if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
+					camera->AddRotation(totalDelta);
+				}
 #endif
+			}
 		}
-	}
 	// --- 全体更新 ---
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
@@ -551,6 +572,7 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
+	MeshEffectManager::GetInstance()->Update(deltaTime);
 	UpdateUI();
 }
 
@@ -610,7 +632,7 @@ void GamePlayScene::Draw() {
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
-
+	MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		// ここでも同じくプレイヤー関連をスキップ

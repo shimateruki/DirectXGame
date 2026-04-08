@@ -404,6 +404,22 @@ void Game::Update() {
         }
         ImGui::EndMainMenuBar();
     }
+
+    if (ImGui::BeginMainMenuBar()) {
+        // WinAppのウィンドウサイズを取得 
+     
+        std::string sizeText = "Screen: " + std::to_string(WinApp::kClientWidth) + " x " + std::to_string(WinApp::kClientHeight);
+
+        // 文字列の横幅を計算し、メニューバーの右端にスナップさせる
+        float textWidth = ImGui::CalcTextSize(sizeText.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth - 15.0f);
+
+        // 目立つように色付き（明るい緑など）で表示
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", sizeText.c_str());
+
+        ImGui::EndMainMenuBar();
+    }
+
 #endif
 
     // --- deltaTime計算 ---

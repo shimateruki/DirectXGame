@@ -506,7 +506,7 @@ void CameraEditor::SaveSettings() {
     j["orbitRadius"] = settings_.orbitRadius;
     j["orbitHeight"] = settings_.orbitHeight;
     j["orbitSpeed"] = settings_.orbitSpeed;
-
+    j["cameraSensitivity"] = settings_.cameraSensitivity;
     // エディタ設定
     j["moveSpeed"] = settings_.moveSpeed;
     j["boostSpeed"] = settings_.boostSpeed;
@@ -573,6 +573,7 @@ void CameraEditor::LoadSettings() {
         if (j.contains("orbitRadius")) settings_.orbitRadius = j["orbitRadius"];
         if (j.contains("orbitHeight")) settings_.orbitHeight = j["orbitHeight"];
         if (j.contains("orbitSpeed"))  settings_.orbitSpeed = j["orbitSpeed"];
+        if (j.contains("cameraSensitivity")) settings_.cameraSensitivity = j["cameraSensitivity"];
 
         if (j.contains("moveSpeed")) settings_.moveSpeed = j["moveSpeed"];
         if (j.contains("boostSpeed")) settings_.boostSpeed = j["boostSpeed"];

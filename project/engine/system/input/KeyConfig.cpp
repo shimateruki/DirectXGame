@@ -362,3 +362,9 @@ const BindData* KeyConfig::GetBindData(const std::string& actionName) const {
     }
     return nullptr; // 見つからない場合
 }
+
+void KeyConfig::SetKeyCode(const std::string& actionName, int keyCode) {
+    bindings_[actionName].keyCode = keyCode;
+    bindings_[actionName].mouseButton = -1; // キー入力が優先されたのでマウスはリセット
+    Save(); // 変更されたら自動でJSONに即セーブ！
+}

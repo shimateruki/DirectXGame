@@ -1,7 +1,7 @@
 {
     "Attack": {
-        "key": 44,
-        "mouse": -1,
+        "key": 0,
+        "mouse": 0,
         "pad": 0
     },
     "Backward": {
@@ -26,6 +26,11 @@
     },
     "Left": {
         "key": 30,
+        "mouse": -1,
+        "pad": 0
+    },
+    "LockOn": {
+        "key": 19,
         "mouse": -1,
         "pad": 0
     },
