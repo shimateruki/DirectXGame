@@ -55,6 +55,7 @@ void CameraEditor::RefreshFileList() {
 
 
 void CameraEditor::Update(Object3d* player, bool isLockingOn) {
+    targetPlayer_ = player;
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return;
 
@@ -127,7 +128,9 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
     }
     else {
         camera->SetFollowTarget(nullptr);
-        UpdateFreeCamera(camera);
+        if (!camera->IsOverridden()) {
+            UpdateFreeCamera(camera);
+        }
     }
 }
 void CameraEditor::UpdateFreeCamera(Camera* camera) {
@@ -274,9 +277,9 @@ void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_VIDEO " --- カメラエディタ (Camera Editor) ---");
 
-    // ---------------------------------------------------------
+    // =========================================================
     // 1. ファイル管理セクション
-    // ---------------------------------------------------------
+    // =========================================================
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File Manager)", ImGuiTreeNodeFlags_DefaultOpen)) {
         static int currentItem = -1;
         if (ImGui::BeginCombo(ICON_FA_HISTORY " ファイル選択", "Choose from list...")) {
@@ -303,9 +306,9 @@ void CameraEditor::DrawImGui() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    // ---------------------------------------------------------
+    // =========================================================
     // 2. モード選択
-    // ---------------------------------------------------------
+    // =========================================================
     const char* modeNames[] = { "ゲームカメラ (Game)", "自由カメラ (Editor)" };
     int currentModeInt = static_cast<int>(settings_.currentMode);
     if (ImGui::Combo(ICON_FA_COGS " メインモード", &currentModeInt, modeNames, IM_ARRAYSIZE(modeNames))) {
@@ -314,9 +317,9 @@ void CameraEditor::DrawImGui() {
 
     ImGui::Separator();
 
-    // ---------------------------------------------------------
+    // =========================================================
     // 3. 各モードごとの詳細設定
-    // ---------------------------------------------------------
+    // =========================================================
     if (settings_.currentMode == Mode::Game) {
         // --- Game Mode 設定 ---
         ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_GAMEPAD " カメラ挙動設定 (Game)");
@@ -375,6 +378,116 @@ void CameraEditor::DrawImGui() {
             ImGui::TextDisabled(ICON_FA_LOCATION_ARROW " 現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
         }
     }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // =========================================================
+    // 4. シネマティックカメラ（オーバーライド）設定
+    // =========================================================
+    if (ImGui::CollapsingHeader(ICON_FA_VIDEO " 演出カメラ設定 (Cinematic Camera)")) {
+
+        // --- 新規カメラの作成 ---
+        ImGui::InputText("新規カメラ名", newOverrideNameBuffer_, sizeof(newOverrideNameBuffer_));
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_PLUS " 追加")) {
+            std::string nName = newOverrideNameBuffer_;
+            if (!nName.empty() && overrideParamsMap_.find(nName) == overrideParamsMap_.end()) {
+                overrideParamsMap_[nName] = Camera::CameraOverrideParams(); // 新規作成
+                selectedOverrideName_ = nName;
+                newOverrideNameBuffer_[0] = '\0'; // 入力欄クリア
+                SaveSettings(); // 追加したら即保存
+            }
+        }
+
+        // --- 登録済みカメラのリスト ---
+        ImGui::Text(ICON_FA_LIST " 保存済みカメラ一覧:");
+        if (ImGui::BeginListBox("##CameraList", ImVec2(-FLT_MIN, 100))) {
+            for (auto& [name, param] : overrideParamsMap_) {
+                bool isSelected = (selectedOverrideName_ == name);
+                if (ImGui::Selectable(name.c_str(), isSelected)) {
+                    selectedOverrideName_ = name;
+                }
+            }
+            ImGui::EndListBox();
+        }
+
+        // --- 選択中のカメラの詳細設定 ---
+        if (!selectedOverrideName_.empty() && overrideParamsMap_.find(selectedOverrideName_) != overrideParamsMap_.end()) {
+            auto& p = overrideParamsMap_[selectedOverrideName_];
+            bool changed = false;
+
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "編集中: [%s]", selectedOverrideName_.c_str());
+            ImGui::Indent();
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_CAMERA " 現在のカメラ視点をここにコピー (Copy Current View)")) {
+                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                if (camera) {
+                    // 位置をそのままコピー
+                    p.fixedEyePos = camera->GetEye();
+
+                    if (targetPlayer_) {
+                        Vector3 pPos = targetPlayer_->GetWorldPosition();
+                        pPos.y += 5.0f; // プレイヤーの少し上（注視点）を基準にする
+                        p.fixedTargetPos = pPos;
+                    }
+                    else {
+                        p.fixedTargetPos = camera->GetTargetPoint();
+                    }
+
+                    // その場所・その角度に完全に固定するため、追従フラグはすべてOFFにする
+                    p.trackEyeX = false; p.trackEyeY = false; p.trackEyeZ = false;
+                    p.trackTargetX = false; p.trackTargetY = false; p.trackTargetZ = false;
+
+                    changed = true; // セーブフラグを立てる
+                }
+            }
+            ImGui::Spacing();
+            ImGui::Separator();
+            if (ImGui::DragFloat("移行時間 (秒)", &p.duration, 0.1f, 0.0f, 10.0f)) changed = true;
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), ICON_FA_EYE " カメラ位置 (Eye)");
+            if (ImGui::Checkbox("X軸追従##Eye", &p.trackEyeX)) changed = true; ImGui::SameLine();
+            if (ImGui::Checkbox("Y軸追従##Eye", &p.trackEyeY)) changed = true; ImGui::SameLine();
+            if (ImGui::Checkbox("Z軸追従##Eye", &p.trackEyeZ)) changed = true;
+            if (ImGui::DragFloat3("固定座標##Eye", &p.fixedEyePos.x, 0.1f)) changed = true;
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.4f, 1.0f), ICON_FA_CROSSHAIRS " 注視点 (Target)");
+            if (ImGui::Checkbox("X軸追従##Tgt", &p.trackTargetX)) changed = true; ImGui::SameLine();
+            if (ImGui::Checkbox("Y軸追従##Tgt", &p.trackTargetY)) changed = true; ImGui::SameLine();
+            if (ImGui::Checkbox("Z軸追従##Tgt", &p.trackTargetZ)) changed = true;
+            if (ImGui::DragFloat3("固定座標##Tgt", &p.fixedTargetPos.x, 0.1f)) changed = true;
+
+            ImGui::Unindent();
+
+            // ★ エディタ上で動きを確認できる神機能！
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_PLAY " テスト再生 (Test Play)")) {
+                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                if (camera) PlayOverrideCamera(camera, selectedOverrideName_);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_STOP " 停止 (Stop)")) {
+                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                if (camera) camera->EndOverride(1.0f);
+            }
+
+            if (changed) {
+                SaveSettings(); // いじったら即保存
+            }
+
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+            if (ImGui::Button(ICON_FA_TRASH " 選択中のカメラを削除")) {
+                overrideParamsMap_.erase(selectedOverrideName_);
+                selectedOverrideName_ = "";
+                SaveSettings();
+            }
+            ImGui::PopStyleColor();
+        }
+    }
 #endif
 }
 void CameraEditor::SaveSettings() {
@@ -399,6 +512,23 @@ void CameraEditor::SaveSettings() {
     j["boostSpeed"] = settings_.boostSpeed;
     j["mouseSensitivity"] = settings_.mouseSensitivity;
     j["fixedPointPos"] = { settings_.fixedPointPos.x, settings_.fixedPointPos.y, settings_.fixedPointPos.z };
+    json overridesJson = json::object();
+    for (const auto& [name, param] : overrideParamsMap_) {
+        json p;
+        p["duration"] = param.duration;
+        p["trackEyeX"] = param.trackEyeX;
+        p["trackEyeY"] = param.trackEyeY;
+        p["trackEyeZ"] = param.trackEyeZ;
+        p["fixedEyePos"] = { param.fixedEyePos.x, param.fixedEyePos.y, param.fixedEyePos.z };
+
+        p["trackTargetX"] = param.trackTargetX;
+        p["trackTargetY"] = param.trackTargetY;
+        p["trackTargetZ"] = param.trackTargetZ;
+        p["fixedTargetPos"] = { param.fixedTargetPos.x, param.fixedTargetPos.y, param.fixedTargetPos.z };
+
+        overridesJson[name] = p; // JSONオブジェクトに追加
+    }
+    j["Overrides"] = overridesJson; // 大元のJSONに「Overrides」という項目でまとめる
     std::ofstream file(filePath);
     if (file.is_open()) {
         file << j.dump(4);
@@ -453,6 +583,27 @@ void CameraEditor::LoadSettings() {
             settings_.fixedPointPos.y = j["fixedPointPos"][1];
             settings_.fixedPointPos.z = j["fixedPointPos"][2];
         }
+        overrideParamsMap_.clear();
+        if (j.contains("Overrides")) {
+            for (auto& [key, val] : j["Overrides"].items()) {
+                Camera::CameraOverrideParams p;
+                p.duration = val.value("duration", 1.0f);
+                p.trackEyeX = val.value("trackEyeX", false);
+                p.trackEyeY = val.value("trackEyeY", false);
+                p.trackEyeZ = val.value("trackEyeZ", false);
+                if (val.contains("fixedEyePos")) {
+                    p.fixedEyePos = { val["fixedEyePos"][0], val["fixedEyePos"][1], val["fixedEyePos"][2] };
+                }
+                p.trackTargetX = val.value("trackTargetX", true);
+                p.trackTargetY = val.value("trackTargetY", true);
+                p.trackTargetZ = val.value("trackTargetZ", true);
+                if (val.contains("fixedTargetPos")) {
+                    p.fixedTargetPos = { val["fixedTargetPos"][0], val["fixedTargetPos"][1], val["fixedTargetPos"][2] };
+                }
+                overrideParamsMap_[key] = p;
+            }
+        }
+
     }
     catch (...) {
         // エラーハンドリング
@@ -495,4 +646,20 @@ void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vecto
         // ターゲット追従を切らないと動かない場合があるので念のため
         camera->SetFollowTarget(nullptr);
     }
+}
+
+bool CameraEditor::PlayOverrideCamera(Camera* camera, const std::string& cameraName) {
+    if (!camera) return false;
+
+    // 登録されているカメラ名を探す
+    auto it = overrideParamsMap_.find(cameraName);
+    if (it != overrideParamsMap_.end()) {
+        // 見つかったら、その設定をCameraクラスに渡して実行！
+        camera->StartOverride(it->second);
+        return true;
+    }
+
+    // 見つからなかった場合はエラーを出す
+    DebugConsole::GetInstance()->AddLog("Error: Camera Override '" + cameraName + "' not found!");
+    return false;
 }

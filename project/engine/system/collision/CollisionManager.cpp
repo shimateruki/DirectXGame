@@ -219,12 +219,26 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
 /// (ヘルパー関数) レイ と AABB の交差判定
 /// </summary>
 /// <returns>衝突距離 (衝突しなかったら FLT_MAX)</returns>
-float IntersectRayAABB(const Vector3& start, const Vector3& direction,
-    const AABB& aabb) {
+float IntersectRayAABB(const Vector3& start, const Vector3& direction, const AABB& aabb) {
 
-    // 各軸で「衝突時間」(t) の最小と最大を計算
-    Vector3 tMin = (aabb.min - start) / direction;
-    Vector3 tMax = (aabb.max - start) / direction;
+    //  ゼロ除算 (NaN / Infinity) を防ぐため、0に近い場合は極小値(1e-6f)にする
+    Vector3 invDir = {
+        1.0f / (std::abs(direction.x) < 1e-6f ? 1e-6f : direction.x),
+        1.0f / (std::abs(direction.y) < 1e-6f ? 1e-6f : direction.y),
+        1.0f / (std::abs(direction.z) < 1e-6f ? 1e-6f : direction.z)
+    };
+
+    // 各軸で「衝突時間」(t) の最小と最大を計算 (割り算ではなく安全な掛け算を使用)
+    Vector3 tMin = {
+        (aabb.min.x - start.x) * invDir.x,
+        (aabb.min.y - start.y) * invDir.y,
+        (aabb.min.z - start.z) * invDir.z
+    };
+    Vector3 tMax = {
+        (aabb.max.x - start.x) * invDir.x,
+        (aabb.max.y - start.y) * invDir.y,
+        (aabb.max.z - start.z) * invDir.z
+    };
 
     // (direction がマイナスの場合、tMin と tMax が逆転するので入れ替える)
     Vector3 tNear = {
@@ -238,9 +252,8 @@ float IntersectRayAABB(const Vector3& start, const Vector3& direction,
         std::max(tMin.z, tMax.z)
     };
 
-    // 3軸（X,Y,Z）すべてで重なっている領域の「最も近い点(tEnter)」を求める
+    // 3軸すべてで重なっている領域の最も近い点と遠い点を求める
     float tEnter = std::max({ tNear.x, tNear.y, tNear.z });
-    // 3軸（X,Y,Z）すべてで重なっている領域の「最も遠い点(tExit)」を求める
     float tExit = std::min({ tFar.x, tFar.y, tFar.z });
 
     // 衝突していないパターン
@@ -248,10 +261,61 @@ float IntersectRayAABB(const Vector3& start, const Vector3& direction,
         return std::numeric_limits<float>::max(); // 衝突しない
     }
 
+    // ★修正2: レイの始点がAABBの「中」にあった場合は、即座に押し出すために 0.0f を返す
+    if (tEnter < 0.0f) {
+        return 0.0f;
+    }
+
     // 衝突している
     return tEnter;
 }
 
+/// <summary>
+/// (ヘルパー関数) レイ と OBB の交差判定 (スラブメソッド)
+/// </summary>
+float IntersectRayOBB(const Vector3& start, const Vector3& direction, const OBB& obb) {
+    Math math;
+    float tMin = -std::numeric_limits<float>::max();
+    float tMax = std::numeric_limits<float>::max();
+
+    // カメラ(始点)からOBBの中心へのベクトル
+    Vector3 p = obb.center - start;
+
+    // OBBの3つのローカル軸（X, Y, Z）について調べる
+    for (int i = 0; i < 3; ++i) {
+        Vector3 axis = obb.orientations[i];
+        float e = math.Dot(axis, p);
+        float f = math.Dot(direction, axis);
+
+        // 各軸の半分のサイズを取得
+        float size = (i == 0) ? obb.size.x : (i == 1) ? obb.size.y : obb.size.z;
+
+        // レイがその軸と平行でない場合
+        if (std::abs(f) > 1e-6f) {
+            float t1 = (e + size) / f;
+            float t2 = (e - size) / f;
+
+            if (t1 > t2) std::swap(t1, t2);
+
+            if (t1 > tMin) tMin = t1;
+            if (t2 < tMax) tMax = t2;
+
+            if (tMin > tMax) return std::numeric_limits<float>::max(); // 衝突しない
+            if (tMax < 0.0f) return std::numeric_limits<float>::max(); // OBBがカメラの後ろにある
+        }
+        else {
+            // レイが面とほぼ平行な場合、OBBの範囲外にいるなら当たらない
+            if (-e - size > 0 || -e + size < 0) {
+                return std::numeric_limits<float>::max();
+            }
+        }
+    }
+
+    // カメラ(始点)がすでにOBBの中にめり込んでいる場合は即座に押し出す
+    if (tMin < 0.0f) return 0.0f;
+
+    return tMin;
+}
 
 /// <summary>
 /// レイキャスト本体
@@ -266,7 +330,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
     for (Object3d* object : objects_) {
 
         // =========================================================
-        // ★ 修正: プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
+        // ★ プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
         // 壁（レイキャストの障害物）として扱わないように完全に除外する！
         // =========================================================
         bool isPlayerPart = false;
@@ -290,25 +354,36 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
         if (!((object->GetCollisionAttribute()) & mask)) {
             continue; // 対象外 
         }
+            // =========================================================
+               // (2) 形状判定 (AABB と OBB に対応)
+               // =========================================================
+            ColliderType colType = object->GetColliderType();
+            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB) {
+                continue; // 球や判定なしはスキップ
+            }
 
-        // (2) 形状判定 (AABBのみ対応)
-        if (object->GetColliderType() != ColliderType::kAABB) {
-            continue; // 球 や判定なし は（まだ）無視
+            float distance = std::numeric_limits<float>::max();
+
+            // (3) 交差判定 (形状によって計算を分ける)
+            if (colType == ColliderType::kAABB) {
+                AABB aabb = object->GetAABB();
+                distance = IntersectRayAABB(start, direction, aabb);
+            }
+            else if (colType == ColliderType::kOBB) {
+                OBB obb = object->GetOBB(); 
+                distance = IntersectRayOBB(start, direction, obb);
+            }
+
+            // (4) 一番近いものを採用
+            if (distance < closestHit.distance) {
+                closestHit.isHit = true;
+                closestHit.distance = distance;
+                closestHit.hitObject = object;
+                closestHit.hitPoint = start + direction * distance;
+
+
+            }
         }
 
-        AABB aabb = object->GetAABB();
-
-        // (3) 交差判定
-        float distance = IntersectRayAABB(start, direction, aabb);
-
-        // (4) 一番近いものを採用
-        if (distance < closestHit.distance) {
-            closestHit.isHit = true;
-            closestHit.distance = distance;
-            closestHit.hitObject = object;
-            closestHit.hitPoint = start + direction * distance;
-        }
+        return closestHit;
     }
-
-    return closestHit;
-}
