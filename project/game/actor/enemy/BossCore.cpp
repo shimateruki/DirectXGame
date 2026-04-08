@@ -413,52 +413,68 @@ void BossCore::ChangeState(State nextState) {
 
     case State::Attack: {
         // ==========================================
-        // ★ 修正：1〜6のランダムな攻撃を選ぶ！
-        // （同じ攻撃が連続で出ないようにするプロの技！）
+        // ★ 攻撃の確率（重み）設定
+        // 数値を大きくするほど、その攻撃が出やすくなります！
         // ==========================================
-        static int lastAttack = 0; // 前回撃った攻撃を記憶しておく変数
-        int nextAttack = 0;
+        struct AttackWeight {
+            int id;      // 攻撃番号
+            int weight;  // 出やすさ（重み）
+        };
 
-        do {
-            nextAttack = (std::rand() % 6) + 1; // 1〜6の乱数を生成
-        } while (nextAttack == lastAttack);     // 前回と全く同じ攻撃なら、もう一回引き直す！
+        std::vector<AttackWeight> attackList = {
+            { 1, 30 }, // 突進 (30%)
+            { 2, 25 }, // 射撃 (25%)
+            { 3, 20 }, // ハンマー (20%)
+            { 4, 10 }, // 壁 (10%)
+            { 5, 10 }, // 人型 (10%)
+            { 6, 5  },  // レーザー (5%) ※超大技！
+            { 7, 15 },  // 吸収 (重み15)
+        };
 
-        lastAttack = nextAttack; // 選ばれた攻撃を「前回撃った攻撃」として記憶更新
+        static int lastAttack = 0; // 前回撃った攻撃を記憶
+        int totalWeight = 0;
+        std::vector<AttackWeight> candidates;
 
+        // 前回と同じ攻撃を除外しながら、有効な攻撃の合計重みを計算
+        for (const auto& a : attackList) {
+            if (a.id != lastAttack) {
+                candidates.push_back(a);
+                totalWeight += a.weight;
+            }
+        }
+
+        // 重みに基づいた抽選
+        int nextAttack = 1; // デフォルト
+        if (totalWeight > 0) {
+            int randomVal = std::rand() % totalWeight;
+            int currentSum = 0;
+            for (const auto& c : candidates) {
+                currentSum += c.weight;
+                if (randomVal < currentSum) {
+                    nextAttack = c.id;
+                    break;
+                }
+            }
+        }
+
+        lastAttack = nextAttack; // 記憶更新
+
+        // デバッグ用強制上書き
         if (s_debugForceAttack != 0) {
             nextAttack = s_debugForceAttack;
             s_debugForceAttack = 0;
         }
 
-        // ==========================================
-        // エラーになっていた行を削除し、animTimer_ だけ残す！
-        // ==========================================
         animTimer_ = 0.0f;
 
-        // ==========================================
-        // attackMode_ の代わりに nextAttack を直接使う！
-        // ==========================================
-        if (nextAttack == 1) {
-            currentAttack_ = std::make_unique<BossAttack1_Rush>();
-        }
-        else if (nextAttack == 2) {
-            currentAttack_ = std::make_unique<BossAttack2_Shoot>();
-        }
-        else if (nextAttack == 3) {
-            currentAttack_ = std::make_unique<BossAttack3_Hammer>();
-        }
-        else if (nextAttack == 4) {
-            currentAttack_ = std::make_unique<BossAttack4_Wall>();
-        }
-        else if (nextAttack == 5) {
-            currentAttack_ = std::make_unique<BossAttack5_Humanoid>();
-        }
-        else if (nextAttack == 6) {
-            currentAttack_ = std::make_unique<BossAttack6_Laser>();
-        }
-        else if (nextAttack == 7) {
-            currentAttack_ = std::make_unique<BossAttack7_Absorb>();
-        }
+        // 攻撃インスタンスの生成
+        if (nextAttack == 1)      currentAttack_ = std::make_unique<BossAttack1_Rush>();
+        else if (nextAttack == 2) currentAttack_ = std::make_unique<BossAttack2_Shoot>();
+        else if (nextAttack == 3) currentAttack_ = std::make_unique<BossAttack3_Hammer>();
+        else if (nextAttack == 4) currentAttack_ = std::make_unique<BossAttack4_Wall>();
+        else if (nextAttack == 5) currentAttack_ = std::make_unique<BossAttack5_Humanoid>();
+        else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
+        else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
