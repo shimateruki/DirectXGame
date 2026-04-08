@@ -27,7 +27,7 @@ public:
         float orbitRadius = 15.0f;
         float orbitHeight = 5.0f;
         float orbitSpeed = 0.005f;
-
+        int cameraSensitivity = 0;
         // --- Editorモード用パラメータ ---
         float moveSpeed = 0.5f;
         float boostSpeed = 2.0f;
@@ -57,6 +57,11 @@ public:
     Mode GetMode() const { return settings_.currentMode; }
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
+    int GetCameraSensitivity() const { return settings_.cameraSensitivity; }
+    void SetCameraSensitivity(int val) {
+        settings_.cameraSensitivity = val;
+        SaveSettings(); // 変更された瞬間に自動セーブ！
+    }
 
 private:
     void UpdateFreeCamera(Camera* camera);
