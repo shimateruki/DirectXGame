@@ -4,6 +4,7 @@
 #include "KeyConfig.h"
 #include "TextureManager.h"
 #include "SpriteCommon.h"
+#include <CameraEditor.h>
 
 void OptionUI::Initialize(BaseScene* scene, SpriteCommon* spriteCommon) {
     if (!scene || !spriteCommon) return;
@@ -24,7 +25,8 @@ void OptionUI::Initialize(BaseScene* scene, SpriteCommon* spriteCommon) {
     currentState_ = MenuState::Top;
     currentOptionIndex_ = (int)OptionIndex::Sound;
     currentConfigIndex_ = 0;
-
+    sensitivityBarSprite_ = scene->GetSpriteByName("UI/pole.png");
+    UpdateSensitivityBar();
     // ========================================================
     // ★ エディタ配置スプライトは「目印」なので、透明にして隠す！
     // ========================================================
@@ -60,20 +62,14 @@ bool OptionUI::Update(float deltaTime) {
         if (soundSprite_) soundSprite_->SetColor(currentOptionIndex_ == (int)OptionIndex::Sound ? selectColor : normalColor);
         if (keyboardSprite_) keyboardSprite_->SetColor(currentOptionIndex_ == (int)OptionIndex::KeyConfig ? selectColor : normalColor);
 
-        // カーソルを透明にして隠す
-        if (cursorSprite_) {
-            cursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
-        }
+        if (cursorSprite_) cursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
 
-        if (input->IsKeyTriggered(DIK_BACKSPACE)) {
-            return true;
-        }
-
+        if (input->IsKeyTriggered(DIK_BACKSPACE)) return true;
         if (input->IsKeyTriggered(DIK_SPACE)) {
             if (currentOptionIndex_ == (int)OptionIndex::KeyConfig) {
                 currentState_ = MenuState::KeyConfig;
                 currentConfigIndex_ = 0;
-                RefreshKeyIcons(); // 最新情報を読み込み
+                RefreshKeyIcons();
             }
         }
         break;
@@ -81,31 +77,61 @@ bool OptionUI::Update(float deltaTime) {
 
     case MenuState::KeyConfig:
     {
-        if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-            currentConfigIndex_--;
-            if (currentConfigIndex_ < 0) currentConfigIndex_ = (int)configActions_.size() - 1;
-        }
-        if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-            currentConfigIndex_++;
-            if (currentConfigIndex_ >= (int)configActions_.size()) currentConfigIndex_ = 0;
+        // 感度バーの色を強調（操作中なら赤くする）
+        if (sensitivityBarSprite_) {
+            sensitivityBarSprite_->SetColor(isFocusOnSensitivity_ ? Vector4{ 1.0f, 0.3f, 0.3f, 1.0f } : Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
         }
 
-        // カーソルを不透明に戻し、エディタのY座標に完全スナップ！
-        if (cursorSprite_ && currentConfigIndex_ < actionSprites_.size()) {
-            cursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-            Vector2 newPos = cursorBasePos_;
-            if (actionSprites_[currentConfigIndex_]) {
-                newPos.y = actionSprites_[currentConfigIndex_]->GetPosition().y;
+        if (!isFocusOnSensitivity_) {
+            // --- 左側のリストを操作中 ---
+            if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+                currentConfigIndex_--;
+                if (currentConfigIndex_ < 0) currentConfigIndex_ = (int)configActions_.size() - 1;
             }
-            cursorSprite_->SetPosition(newPos);
-        }
+            if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+                currentConfigIndex_++;
+                if (currentConfigIndex_ >= (int)configActions_.size()) currentConfigIndex_ = 0;
+            }
 
-        if (input->IsKeyTriggered(DIK_BACKSPACE)) {
-            currentState_ = MenuState::Top;
-        }
+            // 右キーで感度調整へ
+            if (input->IsKeyTriggered(DIK_RIGHT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
+                isFocusOnSensitivity_ = true;
+            }
 
-        if (input->IsKeyTriggered(DIK_SPACE)) {
-            currentState_ = MenuState::WaitInput;
+            if (cursorSprite_ && currentConfigIndex_ < actionSprites_.size()) {
+                cursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                Vector2 newPos = cursorBasePos_;
+                if (actionSprites_[currentConfigIndex_]) newPos.y = actionSprites_[currentConfigIndex_]->GetPosition().y;
+                cursorSprite_->SetPosition(newPos);
+            }
+
+            if (input->IsKeyTriggered(DIK_BACKSPACE)) currentState_ = MenuState::Top;
+            if (input->IsKeyTriggered(DIK_SPACE)) currentState_ = MenuState::WaitInput;
+        }
+        else {
+            // --- 右側の感度バーを操作中 ---
+            if (cursorSprite_) cursorSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+
+            int currentSens = CameraEditor::GetInstance()->GetCameraSensitivity();
+            bool isChanged = false;
+
+            if (input->IsKeyTriggered(DIK_RIGHT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
+                if (currentSens < 5) { currentSens++; isChanged = true; }
+            }
+            if (input->IsKeyTriggered(DIK_LEFT) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
+                if (currentSens > -5) { currentSens--; isChanged = true; }
+            }
+
+            // ★ここを改善！ 戻るときは「左端(-5)」ではなく、Backspace か Space で戻る
+            if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_SPACE) ||
+                input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+                isFocusOnSensitivity_ = false;
+            }
+
+            if (isChanged) {
+                CameraEditor::GetInstance()->SetCameraSensitivity(currentSens);
+                UpdateSensitivityBar();
+            }
         }
         break;
     }
@@ -113,11 +139,7 @@ bool OptionUI::Update(float deltaTime) {
     case MenuState::WaitInput:
     {
         if (cursorSprite_) cursorSprite_->SetColor({ 1.0f, 0.3f, 0.3f, 1.0f });
-
-        if (input->IsKeyTriggered(DIK_ESCAPE)) {
-            currentState_ = MenuState::KeyConfig;
-            break;
-        }
+        if (input->IsKeyTriggered(DIK_ESCAPE)) { currentState_ = MenuState::KeyConfig; break; }
 
         const auto& pressedKeys = input->GetPressedKeys();
         for (int newKey : pressedKeys) {
@@ -125,17 +147,14 @@ bool OptionUI::Update(float deltaTime) {
                 if (IsValidKey(newKey)) {
                     std::string targetAction = configActions_[currentConfigIndex_];
                     int oldKey = KeyConfig::GetInstance()->GetKeyCode(targetAction);
-
-                    // 重複スワップ処理
                     for (const auto& otherAction : configActions_) {
                         if (otherAction != targetAction && KeyConfig::GetInstance()->GetKeyCode(otherAction) == newKey) {
                             KeyConfig::GetInstance()->SetKeyCode(otherAction, oldKey);
                             break;
                         }
                     }
-
                     KeyConfig::GetInstance()->SetKeyCode(targetAction, newKey);
-                    RefreshKeyIcons(); // 最新情報で再生成！
+                    RefreshKeyIcons();
                     currentState_ = MenuState::KeyConfig;
                     break;
                 }
@@ -149,7 +168,8 @@ bool OptionUI::Update(float deltaTime) {
 
 bool OptionUI::IsOptionSprite(Sprite* sp) const {
     if (sp == bgSprite_ || sp == titleSprite_ || sp == soundSprite_ ||
-        sp == keyboardSprite_ || sp == spaceIconSprite_ || sp == cursorSprite_) {
+        sp == keyboardSprite_ || sp == spaceIconSprite_ || sp == cursorSprite_ ||
+        sp == sensitivityBarSprite_) {
         return true;
     }
     for (Sprite* actionSp : actionSprites_) {
@@ -158,7 +178,7 @@ bool OptionUI::IsOptionSprite(Sprite* sp) const {
     return false;
 }
 
-// --- OptionUI.cpp ---
+
 
 void OptionUI::RefreshKeyIcons() {
     keyIconSprites_.clear(); // 古い見切れた画像をクリア
@@ -271,4 +291,17 @@ std::string OptionUI::GetKeySpriteName(int keyCode) const {
     if (keyCode == DIK_8) return "UI/8.png"; if (keyCode == DIK_9) return "UI/9.png";
 
     return "white.png";
+}
+
+void OptionUI::UpdateSensitivityBar() {
+    if (!sensitivityBarSprite_) return;
+
+    int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
+
+    float centerPosX = 1168.0f; // 感度が「0」のときの棒の X座標
+    float stepX = 45.0f;        // 1メモリ（感度1）あたりの移動ピクセル数
+
+    Vector2 pos = sensitivityBarSprite_->GetPosition();
+    pos.x = centerPosX + (sens * stepX);
+    sensitivityBarSprite_->SetPosition(pos);
 }

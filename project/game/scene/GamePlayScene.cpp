@@ -442,28 +442,46 @@ void GamePlayScene::Update(float deltaTime) {
 			isDrawLockOn_ = false;
 		}
 
-		// 自由カメラモード以外の操作
+			// 自由カメラモード以外の操作
 		if (!CameraEditor::GetInstance()->IsEditorMode()) {
 			Camera::FollowMode currentMode = camera->GetFollowMode();
 
-		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
-			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+			if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+
+				// =======================================================
+				// ★ 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
+				// =======================================================
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				Vector2 rightStick = inputManager_->GetRightStick();
+
+				// =======================================================
+				// ★ 2. カメラ感度を倍率に変換する！
+				// =======================================================
+				int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
+				float speedMultiplier = 1.0f + (sens * 0.1f);
+
+				// =======================================================
+				// ★ 3. 入力値に感度を掛け算して「最終的な移動量」を出す！
+				// =======================================================
+				Vector2 totalDelta;
+				totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f) * speedMultiplier;
+				totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f) * speedMultiplier; // スティックの上下は反転
 
 #ifdef USE_IMGUI
-			// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」のみ回転
-			if (inputManager_->IsMouseButtonPressed(1)) {
-				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-					camera->AddRotation(mouseDelta);
+				// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」または「スティック入力中」のみ回転
+				if (inputManager_->IsMouseButtonPressed(1) || rightStick.x != 0.0f || rightStick.y != 0.0f) {
+					if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
+						camera->AddRotation(totalDelta);
+					}
 				}
-			}
 #else
-			// ★ Release環境限定: 右クリック不要！マウスを動かすだけで回転する
-			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-				camera->AddRotation(mouseDelta);
-			}
+				// ★ Release環境限定: 右クリック不要！操作した分だけ回転する
+				if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
+					camera->AddRotation(totalDelta);
+				}
 #endif
+			}
 		}
-	}
 	// --- 全体更新 ---
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);

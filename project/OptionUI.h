@@ -23,7 +23,7 @@ private:
     bool IsValidKey(int keyCode) const;
     std::string GetKeySpriteName(int keyCode) const;
     void RefreshKeyIcons();
-
+    void UpdateSensitivityBar();        // バーの座標を更新する関数
 private:
     enum class MenuState { Top, KeyConfig, WaitInput };
     MenuState currentState_ = MenuState::Top;
@@ -57,4 +57,7 @@ private:
 
     std::vector<std::unique_ptr<Sprite>> keyIconSprites_; // 実際に描画する綺麗な画像
     SpriteCommon* spriteCommon_ = nullptr;
+    Sprite* sensitivityBarSprite_ = nullptr;
+    bool isFocusOnSensitivity_ = false; // 現在感度バーを操作中かどうか
+ 
 };
