@@ -398,6 +398,28 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     output.color.rgb = finalColor * outline;
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
+                else if (gMaterial.materialType == 7)
+                {
+                    // 1. C++から送られたUVスクロール(uvTransform)を適用してループさせる
+                    float2 st = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform).xy;
+                    st = frac(st);
+
+                    // 2. ノイズテクスチャの「赤チャンネル(白黒の濃淡)」を取得
+                    float noise = gTexture.Sample(gSampler, st).r;
+
+                    // 3. ★魔法の計算：smoothstepでノイズを「鋭いエネルギーの筋」に変換！
+                    // ノイズの値が0.4以下は透明(0)に、0.6以上は真っ白(1)になるように補間します。
+                    float energy = smoothstep(0.4f, 0.6f, noise);
+
+                    // 4. ベースの色にエネルギーと自己発光(emissive)を掛け合わせる
+                    output.color.rgb = gMaterial.color.rgb * energy * gMaterial.emissive;
+                    
+                    // 5. エネルギーがない(黒い)部分は透明にする
+                    output.color.a = gMaterial.color.a * energy;
+
+                    return output; // 影などを無視して強制終了
+                }
+           
             // ===========================================================
             // 通常のPBRマテリアル
             // ===========================================================
