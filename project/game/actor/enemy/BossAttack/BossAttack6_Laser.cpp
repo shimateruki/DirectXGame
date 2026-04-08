@@ -175,9 +175,28 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 laser->SetModel("Cylinder");
                 laser->SetName("Beam_Cylinder");
 
+                // =========================================================
+                // ★ ビームの視覚エフェクト設定（初期化）
+                // =========================================================
+
+                // 1. ブレンドモードを加算（光の重なり）にして透明感を出す
+                laser->SetBlendMode(BlendMode::kAdd);
+
+                // 2. 影を無視して強烈に発光させる
+                laser->SetEmissive(5.0f);
+                laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
+                laser->SetTexture("Resources/sprite/beamNoice.png");
+                laser->SetMaterialType(9); // さっき作ったレーザー専用シェーダー
+                // 4. UVスケール設定（テクスチャが縦にビローンと伸びるのを防ぎ、15回繰り返す）
+                static Math math;
+                Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
+                Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
+                laser->SetUVTransform(uvMat);
+
+          
+
                 laser->SetColliderType(ColliderType::kOBB);
-                laser->SetScale({ 0.1f, 80.0f, 0.1f }); // 予兆の細いレーザー
-                laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.5f });
+                laser->SetScale({ 0.1f, 80.0f, 0.1f }); // まずは予兆の細いレーザーとして生成
                 laser->SetCollisionAttribute(0);
 
                 // 座標をブロックに追従させる（※子供リストには入れないから安全！）
@@ -203,7 +222,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animPhase_ = 64;
             animTimer_ = 0.0f;
         }
-    } // ★ 修正：ここに紛れ込んでいた余分な「}」を削除しました！
+    }
     // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
     else if (animPhase_ == 64) {
         animTimer_ += deltaTime;
@@ -214,16 +233,40 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         boss->SetRotation(rot);
         boss->GetTransform()->isQuaternionMaster = false;
 
-        float expandTime = 0.2f;
+        // ==========================================
+        // ★ レーザーの太さと振動（脈動）の計算
+        // ==========================================
+        float expandTime = 0.01f;
         float t = std::min(animTimer_ / expandTime, 1.0f);
-        float beamThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
+
+        // 基本の太さ（0.1から1.0へ一瞬で太くなる）
+        float baseThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
+
+        // 【振動】animTimer_ を使って、1.0を中心にして ±15% ほど激しく震わせる！
+        // ※ 60.0f を大きくすると震えるスピードが上がり、0.15f を大きくすると震幅（太さの差）が大きくなります。
+        float pulse = 1.0f + (std::sin(animTimer_ * 60.0f) * 0.05f);
+
+        // 最終的な太さ
+        float currentThickness = baseThickness * pulse;
 
         // 名簿(children)を探さず、自分専用のリストを使う！
         for (Object3d* beam : activeBeams_) {
             if (beam) {
-                beam->SetScale({ beamThickness, 80.0f, beamThickness });
+                // 震える太さを適用
+                beam->SetScale({ currentThickness, 80.0f, currentThickness });
+
+                // 発射中は完全に不透明な赤（Emissiveと加算ブレンドで白飛びするほど輝きます！）
                 beam->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                 beam->SetCollisionAttribute(kEnemyAttack);
+
+                // ==========================================
+                // ★ エネルギーのUVスクロール
+                // ==========================================
+                static Math math;
+                Vector3 uvScale = { 1.0f, 15.0f, 1.0f }; // 縦に15回リピート
+                float scrollSpeed = -30.0f; // -30.0f の猛スピードで奥へかっ飛ばす
+                Vector3 uvTranslate = { 0.0f, animTimer_ * scrollSpeed, 0.0f };
+                beam->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
             }
         }
 
@@ -249,7 +292,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 blockStartScale_.push_back(armorBlocks[i]->GetScale());
             }
         }
-    }
+        }
     // --- Phase 65: 回転を止め、待機状態のバラバラ軌道へ復帰する ---
     else if (animPhase_ == 65) {
         animTimer_ += deltaTime;

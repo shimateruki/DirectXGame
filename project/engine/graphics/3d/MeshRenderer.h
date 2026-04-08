@@ -138,7 +138,7 @@ public:
     void SetEmissive(float emissive);
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
-
+    void SetUVTransform(const Matrix4x4& mat) { if (materialData_) materialData_->uvTransform = mat; }
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
