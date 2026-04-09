@@ -465,6 +465,10 @@ void BossCore::ChangeState(State nextState) {
             s_debugForceAttack = 0;
         }
 
+        if (isFinalPhase_) {
+            nextAttack = 8;
+        }
+
         animTimer_ = 0.0f;
 
         // 攻撃インスタンスの生成
@@ -475,6 +479,7 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 5) currentAttack_ = std::make_unique<BossAttack5_Humanoid>();
         else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
         else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
+        //else if (nextAttack == 8) currentAttack_ = std::make_unique<BossAttack8_Final>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
@@ -488,11 +493,51 @@ void BossCore::ChangeState(State nextState) {
     }
 }
 
+void BossCore::TakeBodyDamage(float damage) {
+    if (isWaitingForDeath_) {
+        // ★ トドメ待ち状態の時にダメージを受けたら、ここで完全に死亡（爆発など）！
+        DebugConsole::GetInstance()->AddLog("ボス撃破！！！🎉");
+        isDead = true;
+        return;
+    }
+
+    if (isFinalPhase_) return; // 必殺技の最中は無敵！
+
+    param_->hp -= damage;
+
+    // ==========================================
+    // ★ 運命の分かれ道：HPが0以下になったら必殺技発動！
+    // ==========================================
+    if (param_->hp <= 0.0f) {
+        param_->hp = 1.0f;        // HPを1で踏みとどまる！
+        isFinalPhase_ = true;     // 発狂モードON！
+
+        DebugConsole::GetInstance()->AddLog("【覚醒】ボスのHPが1で耐えた！最終奥義が来るぞ！！");
+
+        // 即座に攻撃状態へ移行（上で追加した処理により、絶対8番が選ばれる）
+        ChangeState(State::Attack);
+    }
+}
+
 // =================================================================
 // 各ステートの個別更新処理
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
+    if (isWaitingForDeath_) {
+        SetColor({ 0.5f, 0.5f, 0.5f, 1.0f }); // ボロボロの色にする
+
+        // ブロックも地面に落として機能停止させる
+        for (Object3d* block : armorBlocks_) {
+            if (block) {
+                Vector3 pos = block->GetTranslate();
+                if (pos.y > 0.0f) pos.y -= 20.0f * deltaTime; // 地面に落ちる
+                block->SetTranslate(pos);
+            }
+        }
+        return; // これ以上何もしない（攻撃にも移行しない）
+    }
+
     // ★ 待機中は常にブロックをランダムスケールの周回軌道に乗せる！
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
