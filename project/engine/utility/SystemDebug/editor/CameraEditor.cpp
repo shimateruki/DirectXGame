@@ -425,15 +425,7 @@ void CameraEditor::DrawImGui() {
                 if (camera) {
                     // 位置をそのままコピー
                     p.fixedEyePos = camera->GetEye();
-
-                    if (targetPlayer_) {
-                        Vector3 pPos = targetPlayer_->GetWorldPosition();
-                        pPos.y += 5.0f; // プレイヤーの少し上（注視点）を基準にする
-                        p.fixedTargetPos = pPos;
-                    }
-                    else {
-                        p.fixedTargetPos = camera->GetTargetPoint();
-                    }
+                    p.fixedTargetPos = camera->GetTargetPoint();
 
                     // その場所・その角度に完全に固定するため、追従フラグはすべてOFFにする
                     p.trackEyeX = false; p.trackEyeY = false; p.trackEyeZ = false;

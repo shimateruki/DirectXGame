@@ -330,23 +330,37 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
     for (Object3d* object : objects_) {
 
         // =========================================================
-        // ★ プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
-        // 壁（レイキャストの障害物）として扱わないように完全に除外する！
+        // ★ キャラクター（プレイヤー＆敵）の除外処理
         // =========================================================
-        bool isPlayerPart = false;
+        bool isIgnoreObject = false;
         Object3d* current = object;
         while (current) {
-            // クラス名が "Player"、または名前(Name)に "Player" が含まれていたら除外
-            if (current->GetClassName() == "Player" ||
-                current->GetName().find("Player") != std::string::npos) {
-                isPlayerPart = true;
+            std::string className = current->GetClassName();
+            std::string name = current->GetName();
+
+            // ① プレイヤー（自分自身と武器など）は、どんなレイキャストでも常に除外！
+            if (className == "Player" || name.find("Player") != std::string::npos) {
+                isIgnoreObject = true;
                 break;
             }
+
+            // ② 「地形・壁（mask == 1）」を探すレイキャストの時だけ、敵やボスも除外！
+            if (mask == 1) {
+                if (className == "Enemy" ||
+                    name.find("Enemy") != std::string::npos ||
+                    name.find("Boss") != std::string::npos ||
+                    name.find("Block") != std::string::npos ||
+                    name.find("block") != std::string::npos) {
+                    isIgnoreObject = true;
+                    break;
+                }
+            }
+
             current = current->GetParent();
         }
 
-        // プレイヤーの一部だったら、このオブジェクトへのレイキャストはスキップ！
-        if (isPlayerPart) {
+        // 無視すべきオブジェクトだったら、このオブジェクトへのレイキャストはスキップ！
+        if (isIgnoreObject) {
             continue;
         }
 

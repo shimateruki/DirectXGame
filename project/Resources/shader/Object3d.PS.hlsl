@@ -419,7 +419,34 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
                     return output; // 影などを無視して強制終了
                 }
-           
+           // ===========================================================
+            // タイリングの継ぎ目を消す（仮想パディング）シェーダー
+            // ===========================================================
+                else if (gMaterial.materialType == 8)
+                {
+                    float2 st = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform).xy;
+                    float2 localUV = frac(st);
+
+                    // 隙間を作る魔法の計算
+                    float paddingScale = 1.2f;
+                    localUV = (localUV - 0.5f) * paddingScale + 0.5f;
+
+                    // 枠の外側を判定するマスク
+                    float mask = step(0.0f, localUV.x) * step(localUV.x, 1.0f) * step(0.0f, localUV.y) * step(localUV.y, 1.0f);
+                    float4 texColor = gTexture.Sample(gSampler, localUV);
+
+
+                    if (mask == 0.0f || texColor.a < 0.1f)
+                    {
+                        discard; // ピクセル破棄（Zバッファにも書き込まない！）
+                    }
+
+                    // 生き残った「矢印の絵があるピクセル」だけ色を計算する
+                    output.color.rgb = texColor.rgb * gMaterial.color.rgb * gMaterial.emissive;
+                    output.color.a = texColor.a * gMaterial.color.a;
+
+                    return output;
+                }
             // ===========================================================
             // 通常のPBRマテリアル
             // ===========================================================
