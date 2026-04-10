@@ -133,7 +133,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             warning->SetCollisionMask(0);
             warning->SetMaterialType(0);
             warning->SetEmissive(3.0f);
-
+            warning->SetTexture("Resources/sprite/yazirusi1.png"); // 上向き
             // ==================================================
             // ★ 画像のタイリングと縦スクロール
             // ==================================================

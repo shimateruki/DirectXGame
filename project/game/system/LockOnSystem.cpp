@@ -25,7 +25,19 @@ void LockOnSystem::Initialize(InputManager* inputManager) {
 }
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
+    if (camera->IsOverridden()) {
+        if (isLockingOn_) {
+            // ロックオン中なら強制的に解除する
+            isLockingOn_ = false;
+            lockOnTarget_ = nullptr;
+            camera->SetLockOnTarget(nullptr);
+            camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モードに戻しておく
+            lostSightTimer_ = 0.0f;
 
+            DebugConsole::GetInstance()->AddLog("LockOn Canceled: Cinematic Camera Active.");
+        }
+        return; // ★ ここで return するため、この下にある「ボタン入力」や「ロックオン追従」が一切働かなくなる！
+    }
     // (1) 0キー(Zキー等)入力処理
     if (inputManager_->IsActionTriggered("LockOn")) {
         isLockingOn_ = !isLockingOn_;
