@@ -94,6 +94,11 @@ public:
     // ==========================================
     Object3dCommon* GetCommon() const { return common_; }
 
+    // ==========================================
+    // 最終奥義が終わったことを伝えるためのセッター！
+    // ==========================================
+    void SetWaitingForDeath(bool waiting) { isWaitingForDeath_ = waiting; }
+
 private:
 
     // 射出されたブロックのリスト
