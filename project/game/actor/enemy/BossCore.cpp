@@ -376,14 +376,26 @@ void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
     uint32_t coreAttribute;
-    if (state_ == State::Attack) {
-        coreAttribute = kEnemyAttack | kGround;
-    }
-    else if (state_ == State::Weak) {
-        coreAttribute = kEnemy | kGround;
+    uint32_t blockAttribute;
+    // ==========================================
+    // ★ 修正：トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
+    // ==========================================
+    if (isWaitingForDeath_) {
+        coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
+        blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
     }
     else {
-        coreAttribute = kGround;
+        // 今までの通常の処理
+        if (state_ == State::Attack) {
+            coreAttribute = kEnemyAttack | kGround;
+        }
+        else if (state_ == State::Weak) {
+            coreAttribute = kEnemy | kGround;
+        }
+        else {
+            coreAttribute = kGround;
+        }
+        blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
     }
 
     SetCollisionAttribute(coreAttribute);
@@ -397,7 +409,7 @@ void BossCore::ChangeState(State nextState) {
         SetColor(originalColor_);
     }
 
-    uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+    //uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
 
     for (Object3d* block : armorBlocks_) {
         if (block) {

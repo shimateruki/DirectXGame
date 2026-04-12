@@ -1,6 +1,6 @@
 #include "BossAttack8_Final.h"
 #include "../BossCore.h"
-#include "Object3d.h" // ★ ご指定のパス形式に統一！
+#include "Object3d.h" 
 #include "./easing.h" 
 #include <algorithm>
 #include <cmath>
@@ -63,6 +63,21 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
     // --- Phase 80: ボス上昇 ＆ 必要な【11個】だけを事前生成！ ---
     if (animPhase_ == 80) {
         if (animTimer_ == 0.0f) {
+            areaWarnings_.clear();
+            // ★ 4つの警告エリア板を生成
+            for (int i = 0; i < 4; ++i) {
+                auto warn = std::make_unique<Object3d>();
+                warn->Initialize(boss->GetCommon());
+                warn->SetModel("plane");
+                warn->SetTexture("Resources/sprite/yazirusi1.png");
+                warn->SetScale({ 0, 0, 0 }); // 最初は隠しておく
+                warn->SetIsVisible(false);
+                warn->SetCollisionAttribute(0);
+                warn->SetEmissive(3.0f);
+
+                areaWarnings_.push_back(warn.get());
+                if (currentScene) currentScene->GetObjects().push_back(std::move(warn));
+            }
             for (int i = 0; i < 11; ++i) {
                 auto meteor = std::make_unique<Object3d>();
                 meteor->Initialize(boss->GetCommon());
@@ -126,64 +141,117 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             DebugConsole::GetInstance()->AddLog("【最終奥義】 ブロックの雨、開始！");
         }
     }
-    // --- Phase 81〜84: 四分割エリアに【10個のブロックを使い回して】降らせる ---
-    else if (animPhase_ >= 81 && animPhase_ <= 84) {
-        if (animTimer_ == 0.0f) {
-            for (int i = 0; i < 10; ++i) {
-                if (meteors_.size() > i && meteors_[i]) {
-                    meteors_[i]->SetTranslate({ 0.0f, 1000.0f, 0.0f });
-                }
+    // --- Phase 81: 4つのエリアが順番に確定 ---
+    else if (animPhase_ == 81) {
+        animTimer_ += deltaTime;
+        float interval = 0.5f;
+
+        for (int i = 0; i < 4; ++i) {
+            // エリアが有効化される瞬間の処理
+            if (animTimer_ >= i * interval && areaWarnings_[i]->GetScale().x == 0.0f) {
+                float centerX = (i == 0 || i == 2) ? -37.5f : 37.5f;
+                float centerZ = (i == 0 || i == 1) ? 37.5f : -37.5f;
+
+                areaWarnings_[i]->SetIsVisible(true);
+                areaWarnings_[i]->SetTranslate({ centerX, 0.05f, centerZ });
+                areaWarnings_[i]->SetScale({ 37.5f, 0.1f, 37.5f });
+
+                // ★テクスチャとマテリアル設定を明示的に追加
+                areaWarnings_[i]->SetTexture("Resources/sprite/yazirusi1.png");
+                areaWarnings_[i]->SetMaterialType(0); // ライティングの影響を受けない設定
+                areaWarnings_[i]->SetEmissive(3.0f);   // 発光させて視認性を上げる
+
+                areaWarnings_[i]->UpdateWorldMatrix();
+                DebugConsole::GetInstance()->AddLog("エリア " + std::to_string(i + 1) + " 確定！");
+            }
+
+            // 表示中のエリアに対する毎フレームの更新（UVスクロールと点滅）
+            if (areaWarnings_[i]->GetIsVisible()) {
+                // ★UVスクロール処理を追加（Attack1のロジックを流用）
+                static Math math;
+                Vector3 uvScale = { 10.0f, 10.0f, 1.0f };
+                Vector3 uvTranslate = { 0.0f, animTimer_ * 4.0f, 0.0f };
+                Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate);
+                areaWarnings_[i]->SetUVTransform(uvMat);
+
+                float flash = (std::sin(animTimer_ * 20.0f) + 1.0f) * 0.5f;
+                areaWarnings_[i]->SetColor({ 1.0f, 0.2f, 0.0f, 0.3f + flash * 0.4f });
             }
         }
 
+        if (animTimer_ >= 2.0f) {
+            animPhase_ = 82;
+            animTimer_ = 0.0f;
+        }
+    }
+    else if (animPhase_ == 82) {
         animTimer_ += deltaTime;
         rainTimer_ += deltaTime;
 
-        if (rainTimer_ >= 0.1f && rainCount_ < 10) {
-            rainTimer_ = 0.0f;
+        // 警告エリアの点滅を激化
+        for (int i = 0; i < 4; ++i) {
+            if (areaWarnings_[i]) {
+                // ★UVスクロールを継続させる（フェーズを跨いでもアニメーションを止めない）
+                static Math math;
+                Vector3 uvScale = { 10.0f, 10.0f, 1.0f };
+                Vector3 uvTranslate = { 0.0f, (animTimer_ + 2.0f) * 4.0f, 0.0f }; // 継続時間を考慮
+                areaWarnings_[i]->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
 
-            int meteorIndex = rainCount_; // 0〜9のブロックを順番に使う
+                float flash = (std::sin(animTimer_ * 30.0f) + 1.0f) * 0.5f;
+                areaWarnings_[i]->SetColor({ 1.0f, 0.0f, 0.0f, 0.4f + flash * 0.5f });
+            }
+        }
+
+        if (rainTimer_ >= 0.08f && rainCount_ < 10) {
+            rainTimer_ = 0.0f;
+            int meteorIndex = rainCount_;
 
             if (meteorIndex < 10 && meteors_[meteorIndex]) {
+                // ==========================================
+                // ★ 修正：タイクラーさんの「完璧な座標範囲」に落とす！
+                // ==========================================
                 float rx = (static_cast<float>(rand()) / RAND_MAX) * 75.0f;
                 float rz = (static_cast<float>(rand()) / RAND_MAX) * 75.0f;
-                float targetX = 0.0f; float targetZ = 0.0f;
 
-                if (animPhase_ == 81) { targetX = -rx; targetZ = rz; }  // 左奥
-                if (animPhase_ == 82) { targetX = rx;  targetZ = rz; }  // 右奥
-                if (animPhase_ == 83) { targetX = -rx; targetZ = -rz; } // 左手前
-                if (animPhase_ == 84) { targetX = rx;  targetZ = -rz; } // 右手前
+                // 4つのエリアのどこかにランダムで振り分ける
+                int area = rand() % 4;
+                float tx = (area == 0 || area == 2) ? -rx : rx;
+                float tz = (area == 0 || area == 1) ? rz : -rz;
 
-                meteors_[meteorIndex]->SetTranslate({ targetX, 50.0f + (static_cast<float>(rand()) / RAND_MAX) * 10.0f, targetZ });
+                meteors_[meteorIndex]->SetTranslate({ tx, 50.0f + (rand() % 10), tz });
+                meteors_[meteorIndex]->UpdateWorldMatrix(); // 念のため行列更新
             }
             rainCount_++;
         }
 
-        if (animTimer_ >= 1.5f) {
-            animPhase_++;
+        if (animTimer_ >= 3.0f) {
+            animPhase_ = 85;
             animTimer_ = 0.0f;
             rainCount_ = 0;
-            if (animPhase_ == 85) {
-                DebugConsole::GetInstance()->AddLog("【最終奥義】 中央へ超巨大隕石、投下！！");
+            // お掃除
+            for (auto* warn : areaWarnings_) {
+                if (warn) {
+                    warn->SetScale({ 0, 0, 0 });
+                    warn->UpdateWorldMatrix(); // ★これがないとカメラがバグります！
+                    warn->isDead = true;
+                }
             }
         }
     }
     // --- Phase 85: 最後にステージ中央へ「超巨大ブロック」を落とす ---
     else if (animPhase_ == 85) {
+        // ==========================================
+        // ★ 巨大隕石用に予測線をステージ中央へ移動し、真っ赤にする！
+        // ==========================================
+        Object3d* warning = boss->GetWarningArea();
+        if (warning) {
+            warning->SetTranslate({ 0.0f, 0.05f, 0.0f });
+            warning->SetScale({ 16.0f, 0.1f, 16.0f }); // 隕石サイズに合わせる
+            warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+            warning->UpdateWorldMatrix();
+        }
         if (rainCount_ == 0) {
             rainCount_ = 1;
-
-            // ==========================================
-            // ★ 修正：非表示ではなく、完全に削除して Hierarchy から消す！
-            // ==========================================
-            for (int i = 0; i < 10; ++i) {
-                if (meteors_.size() > i && meteors_[i]) {
-                    meteors_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
-                    meteors_[i]->SetCollisionAttribute(0);
-                    meteors_[i]->isDead = true; // エンジンの自動削除に任せる
-                    meteors_[i] = nullptr;           // ポインタを空にする
-                }
-            }
 
             // 10番目（巨大隕石）をワープさせて落下開始！
             if (meteors_.size() > 10 && meteors_[10]) {
@@ -221,10 +289,19 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             if (meteors_.size() > 10 && meteors_[10]) {
                 meteors_[10]->SetScale({ 0.0f, 0.0f, 0.0f });
                 meteors_[10]->SetCollisionAttribute(0);
-                meteors_[10]->isDead = true; // エンジンの自動削除に任せる
-                meteors_[10] = nullptr;           // ポインタを空にする
+                meteors_[10]->UpdateWorldMatrix(); // ★追加
+                meteors_[10]->isDead = true;
             }
             meteors_.clear();
+
+            // ==========================================
+            // ★ 予測線を完全に消去
+            // ==========================================
+            Object3d* warning = boss->GetWarningArea();
+            if (warning) {
+                warning->SetScale({ 0.0f, 0.0f, 0.0f });
+                warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            }
 
             boss->SetWaitingForDeath(true);
             isFinished_ = true;

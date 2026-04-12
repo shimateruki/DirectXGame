@@ -11,6 +11,7 @@ private:
 
     // 生成した隕石（ブロック）を管理するリスト
     std::vector<Object3d*> meteors_;
+    std::vector<Object3d*> areaWarnings_;
 
     float rainTimer_ = 0.0f;
     int rainCount_ = 0;
