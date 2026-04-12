@@ -32,6 +32,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
             "enemyType": "",
@@ -134,6 +135,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -225,6 +227,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -316,6 +319,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -407,6 +411,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -498,6 +503,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -589,6 +595,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -667,7 +674,7 @@
                 ],
                 "size": [
                     1.0,
-                    1.0,
+                    0.0,
                     1.0
                 ],
                 "type": 2
@@ -680,6 +687,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -701,7 +709,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "yazirusi.gltf",
             "myEventID": -1,
             "name": "WarningArea",
             "normalMapPath": "",

@@ -188,6 +188,7 @@ public:
     void SetIsUIPreview(bool isPreview) { 
         if (meshRenderer_) meshRenderer_->SetIsUIPreview(isPreview); 
     }
+    void SetUVTransform(const Matrix4x4& mat) { if (meshRenderer_) meshRenderer_->SetUVTransform(mat); }
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;
