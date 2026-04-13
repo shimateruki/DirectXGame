@@ -49,13 +49,21 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
     // 生み出したすべての隕石を落下させる！
     for (Object3d* meteor : meteors_) {
-        // Y座標が 900 以下なら「落下命令が出た」とみなす
         if (meteor && !meteor->isDead && meteor->GetTranslate().y <= 900.0f) {
             Vector3 pos = meteor->GetTranslate();
             if (pos.y > 0.0f) {
-                pos.y -= 80.0f * deltaTime; // 猛スピードで落下
-                if (pos.y <= 0.0f) pos.y = 0.0f; // 地面で止まる
+                pos.y -= 100.0f * deltaTime; // 落下速度を少しアップして激しさを出す
                 meteor->SetTranslate(pos);
+            }
+            else {
+                // ==========================================
+                // 地面に到達したら即座に「消去」して再利用待ちにする
+                // ==========================================
+                meteor->SetScale({ 0.0f, 0.0f, 0.0f });
+                meteor->SetCollisionAttribute(0);
+                meteor->UpdateWorldMatrix();
+                // 座標を上空に逃がして、再投下命令を待つ
+                meteor->SetTranslate({ pos.x, 1000.0f, pos.z });
             }
         }
     }
@@ -225,16 +233,24 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         }
 
         // 攻撃ロジック（0.1秒間隔で投下）
-        if (rainTimer_ >= 0.1f && rainCount_ < 5) {
+        if (rainTimer_ >= 0.05f && rainCount_ < 15) {
             rainTimer_ = 0.0f;
-            int meteorIdx = (currentTargetArea * 2 + rainCount_) % 10;
+            int meteorIdx = (rainCount_) % 10;
 
             if (meteors_[meteorIdx]) {
                 float cX = (currentTargetArea == 0 || currentTargetArea == 2) ? -37.5f : 37.5f;
                 float cZ = (currentTargetArea == 0 || currentTargetArea == 1) ? 37.5f : -37.5f;
-                float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 37.5f;
-                float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 37.5f;
 
+                // ==========================================
+                // ★ 修正：範囲を 37.5 から 75.0 に拡大！
+                // これで Scale 37.5 の見た目（全幅 75）にピッタリ重なります
+                // ==========================================
+                float spread = 75.0f;
+                float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * spread;
+                float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * spread;
+
+                meteors_[meteorIdx]->SetScale({ 3.0f, 3.0f, 3.0f });
+                meteors_[meteorIdx]->SetCollisionAttribute(kEnemyAttack);
                 meteors_[meteorIdx]->SetTranslate({ cX + rx, 50.0f + (rand() % 10), cZ + rz });
                 meteors_[meteorIdx]->UpdateWorldMatrix();
                 rainCount_++;
