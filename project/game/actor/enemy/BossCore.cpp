@@ -378,7 +378,7 @@ void BossCore::ChangeState(State nextState) {
     uint32_t coreAttribute;
     uint32_t blockAttribute;
     // ==========================================
-    // ★ 修正：トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
+    // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
     // ==========================================
     if (isWaitingForDeath_) {
         coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す

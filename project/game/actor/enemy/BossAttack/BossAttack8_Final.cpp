@@ -68,12 +68,17 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             for (int i = 0; i < 4; ++i) {
                 auto warn = std::make_unique<Object3d>();
                 warn->Initialize(boss->GetCommon());
-                warn->SetModel("plane");
-                warn->SetTexture("Resources/sprite/yazirusi1.png");
-                warn->SetScale({ 0, 0, 0 }); // 最初は隠しておく
+
+                // ==================================================
+                // ★ 修正：データに基づいたモデル名とブレンドモードを設定
+                // ==================================================
+                warn->SetModel("yazirusi.gltf");
+                warn->SetBlendMode(BlendMode::kNormal);
+
+                warn->SetScale({ 0, 0, 0 });
                 warn->SetIsVisible(false);
                 warn->SetCollisionAttribute(0);
-                warn->SetEmissive(3.0f);
+                warn->SetEmissive(1.0f); // データ上のデフォルト値
 
                 areaWarnings_.push_back(warn.get());
                 if (currentScene) currentScene->GetObjects().push_back(std::move(warn));
@@ -141,103 +146,116 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             DebugConsole::GetInstance()->AddLog("【最終奥義】 ブロックの雨、開始！");
         }
     }
-    // --- Phase 81: 4つのエリアが順番に確定 ---
+    // --- Phase 81: 4つのエリアを順番に予告（2秒間かけて溜める！） ---
     else if (animPhase_ == 81) {
         animTimer_ += deltaTime;
         float interval = 0.5f;
 
         for (int i = 0; i < 4; ++i) {
-            // エリアが有効化される瞬間の処理
+            // 0.5秒ごとに1つずつ予測線を出す
             if (animTimer_ >= i * interval && areaWarnings_[i]->GetScale().x == 0.0f) {
                 float centerX = (i == 0 || i == 2) ? -37.5f : 37.5f;
                 float centerZ = (i == 0 || i == 1) ? 37.5f : -37.5f;
 
                 areaWarnings_[i]->SetIsVisible(true);
                 areaWarnings_[i]->SetTranslate({ centerX, 0.05f, centerZ });
-                areaWarnings_[i]->SetScale({ 37.5f, 0.1f, 37.5f });
-
-                // ★テクスチャとマテリアル設定を明示的に追加
+                areaWarnings_[i]->SetScale({ 37.5f, 0.1f, 37.5f }); // タイクラーさん指定のサイズ
                 areaWarnings_[i]->SetTexture("Resources/sprite/yazirusi1.png");
-                areaWarnings_[i]->SetMaterialType(0); // ライティングの影響を受けない設定
-                areaWarnings_[i]->SetEmissive(3.0f);   // 発光させて視認性を上げる
-
-                areaWarnings_[i]->UpdateWorldMatrix();
-                DebugConsole::GetInstance()->AddLog("エリア " + std::to_string(i + 1) + " 確定！");
+                areaWarnings_[i]->SetMaterialType(0);
+                areaWarnings_[i]->SetEmissive(3.0f);
+                areaWarnings_[i]->UpdateWorldMatrix(); // カメラバグ防止
             }
 
-            // 表示中のエリアに対する毎フレームの更新（UVスクロールと点滅）
+            // 予測線のUVスクロールと点滅
             if (areaWarnings_[i]->GetIsVisible()) {
-                // ★UVスクロール処理を追加（Attack1のロジックを流用）
                 static Math math;
                 Vector3 uvScale = { 10.0f, 10.0f, 1.0f };
                 Vector3 uvTranslate = { 0.0f, animTimer_ * 4.0f, 0.0f };
-                Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate);
-                areaWarnings_[i]->SetUVTransform(uvMat);
+                areaWarnings_[i]->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0,0,0 }, uvTranslate));
 
                 float flash = (std::sin(animTimer_ * 20.0f) + 1.0f) * 0.5f;
                 areaWarnings_[i]->SetColor({ 1.0f, 0.2f, 0.0f, 0.3f + flash * 0.4f });
             }
         }
 
+        // 4つすべて出し切って2秒経ったら、爆撃開始フェーズへ
         if (animTimer_ >= 2.0f) {
             animPhase_ = 82;
             animTimer_ = 0.0f;
+            rainCount_ = 0;
+            rainTimer_ = 0.0f;
         }
     }
+    // --- Phase 82: 1〜4のエリアを順番に爆撃していく（予測線を追う演出） ---
     else if (animPhase_ == 82) {
         animTimer_ += deltaTime;
         rainTimer_ += deltaTime;
 
-        // 警告エリアの点滅を激化
+        // 1秒ごとに降らせるエリア(0〜3)を切り替える
+        int currentTargetArea = std::min(static_cast<int>(animTimer_), 3);
+
+        // ★ 修正：攻撃が終わったエリア（現在のターゲットより前のエリア）の予測線を消す
+        for (int i = 0; i < currentTargetArea; ++i) {
+            if (areaWarnings_[i] && areaWarnings_[i]->GetScale().x > 0.0f) {
+                areaWarnings_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
+                areaWarnings_[i]->UpdateWorldMatrix(); // カメラバグ（見えない壁）を確実に防ぐ！
+            }
+        }
+
+        static int lastArea = -1;
+        if (currentTargetArea != lastArea) {
+            rainCount_ = 0;
+            lastArea = currentTargetArea;
+        }
+
+        // 予測線の演出（現在攻撃中のエリアだけを強調）
         for (int i = 0; i < 4; ++i) {
-            if (areaWarnings_[i]) {
-                // ★UVスクロールを継続させる（フェーズを跨いでもアニメーションを止めない）
-                static Math math;
-                Vector3 uvScale = { 10.0f, 10.0f, 1.0f };
-                Vector3 uvTranslate = { 0.0f, (animTimer_ + 2.0f) * 4.0f, 0.0f }; // 継続時間を考慮
-                areaWarnings_[i]->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
+            // Scaleが0より大きい（まだ消えていない）エリアのみ処理
+            if (areaWarnings_[i] && areaWarnings_[i]->GetScale().x > 0.0f) {
+                float speed = (i == currentTargetArea) ? 30.0f : 20.0f;
+                float flash = (std::sin(animTimer_ * speed) + 1.0f) * 0.5f;
 
-                float flash = (std::sin(animTimer_ * 30.0f) + 1.0f) * 0.5f;
-                areaWarnings_[i]->SetColor({ 1.0f, 0.0f, 0.0f, 0.4f + flash * 0.5f });
+                if (i == currentTargetArea) {
+                    areaWarnings_[i]->SetColor({ 1.0f, 0.0f, 0.0f, 0.4f + flash * 0.5f }); // 落下中
+                }
+                else {
+                    areaWarnings_[i]->SetColor({ 1.0f, 0.2f, 0.0f, 0.3f + flash * 0.2f }); // 待機中
+                }
             }
         }
 
-        if (rainTimer_ >= 0.08f && rainCount_ < 10) {
+        // 攻撃ロジック（0.1秒間隔で投下）
+        if (rainTimer_ >= 0.1f && rainCount_ < 5) {
             rainTimer_ = 0.0f;
-            int meteorIndex = rainCount_;
+            int meteorIdx = (currentTargetArea * 2 + rainCount_) % 10;
 
-            if (meteorIndex < 10 && meteors_[meteorIndex]) {
-                // ==========================================
-                // ★ 修正：タイクラーさんの「完璧な座標範囲」に落とす！
-                // ==========================================
-                float rx = (static_cast<float>(rand()) / RAND_MAX) * 75.0f;
-                float rz = (static_cast<float>(rand()) / RAND_MAX) * 75.0f;
+            if (meteors_[meteorIdx]) {
+                float cX = (currentTargetArea == 0 || currentTargetArea == 2) ? -37.5f : 37.5f;
+                float cZ = (currentTargetArea == 0 || currentTargetArea == 1) ? 37.5f : -37.5f;
+                float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 37.5f;
+                float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 37.5f;
 
-                // 4つのエリアのどこかにランダムで振り分ける
-                int area = rand() % 4;
-                float tx = (area == 0 || area == 2) ? -rx : rx;
-                float tz = (area == 0 || area == 1) ? rz : -rz;
-
-                meteors_[meteorIndex]->SetTranslate({ tx, 50.0f + (rand() % 10), tz });
-                meteors_[meteorIndex]->UpdateWorldMatrix(); // 念のため行列更新
+                meteors_[meteorIdx]->SetTranslate({ cX + rx, 50.0f + (rand() % 10), cZ + rz });
+                meteors_[meteorIdx]->UpdateWorldMatrix();
+                rainCount_++;
             }
-            rainCount_++;
         }
 
-        if (animTimer_ >= 3.0f) {
+        if (animTimer_ >= 4.0f) {
             animPhase_ = 85;
             animTimer_ = 0.0f;
             rainCount_ = 0;
-            // お掃除
+            lastArea = -1;
+            // 最後のエリアと、念のため残っている予測線をすべて完全消去
             for (auto* warn : areaWarnings_) {
                 if (warn) {
-                    warn->SetScale({ 0, 0, 0 });
-                    warn->UpdateWorldMatrix(); // ★これがないとカメラがバグります！
+                    warn->SetScale({ 0,0,0 });
+                    warn->UpdateWorldMatrix();
                     warn->isDead = true;
                 }
             }
         }
-    }
+        }
     // --- Phase 85: 最後にステージ中央へ「超巨大ブロック」を落とす ---
     else if (animPhase_ == 85) {
         // ==========================================
