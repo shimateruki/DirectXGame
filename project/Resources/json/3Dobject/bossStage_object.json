@@ -32,6 +32,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
             "enemyType": "",
@@ -123,6 +124,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -187,6 +189,190 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_001_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -214,6 +400,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -278,6 +465,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_001_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -305,6 +584,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -369,6 +649,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_001_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -396,6 +768,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -460,6 +833,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_002_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -487,6 +952,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -551,6 +1017,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_002_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -578,6 +1136,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -642,6 +1201,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_002_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -669,6 +1320,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -733,6 +1385,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_003_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -760,6 +1504,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -824,6 +1569,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_003_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -851,6 +1688,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -915,6 +1753,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_003_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -942,6 +1872,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1006,6 +1937,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_004_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1033,6 +2056,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1097,6 +2121,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_004_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1124,6 +2240,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1188,6 +2305,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_004_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1215,6 +2424,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1279,6 +2489,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_005_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1306,6 +2608,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1370,6 +2673,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_005_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1397,6 +2792,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1461,6 +2857,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_005_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1488,6 +2976,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1552,6 +3041,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1579,6 +3160,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1643,6 +3225,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1670,6 +3344,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1734,6 +3409,98 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
             "blendMode": 0,
             "collider": {
                 "center": [
@@ -1761,6 +3528,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1852,6 +3620,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -1943,6 +3712,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2034,6 +3804,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2125,6 +3896,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2192,8 +3964,8 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.20000000298023224,
-                    -2.0
+                    -0.6299999952316284,
+                    -13.600000381469727
                 ],
                 "rotation": [
                     0.0,
@@ -2201,9 +3973,9 @@
                     0.0
                 ],
                 "size": [
+                    10.0,
                     1.0,
-                    1.0800000429153442,
-                    3.0
+                    20.5
                 ],
                 "type": 3
             },
@@ -2215,6 +3987,7 @@
                 0.9411764740943909,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2236,7 +4009,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "bridge",
             "myEventID": -1,
             "name": "Bridge_Block_Front",
             "normalMapPath": "",
@@ -2244,7 +4017,7 @@
             "parentName": "",
             "position": [
                 0.0,
-                2.200000047683716,
+                3.0,
                 -88.0
             ],
             "quaternion": [
@@ -2266,9 +4039,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                20.0,
+                2.0,
                 1.0,
-                14.0
+                2.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -2283,7 +4056,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
+                    0.7211500406265259,
                     0.0
                 ],
                 "rotation": [
@@ -2292,9 +4065,9 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0,
-                    1.0
+                    10.0,
+                    0.9711500406265259,
+                    7.009926795959473
                 ],
                 "type": 0
             },
@@ -2306,6 +4079,7 @@
                 0.9411764740943909,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2327,7 +4101,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "bridge",
             "myEventID": -1,
             "name": "Bridge_Block_Center",
             "normalMapPath": "",
@@ -2335,11 +4109,11 @@
             "parentName": "",
             "position": [
                 0.0,
-                8.9738130569458,
-                -115.16828155517578
+                9.550000190734863,
+                -114.26799774169922
             ],
             "quaternion": [
-                0.12186934798955917,
+                0.12186936289072037,
                 0.0,
                 0.0,
                 0.9925461411476135
@@ -2350,16 +4124,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.24434608221054077,
+                0.24434611201286316,
                 -0.0,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                20.0,
+                2.0,
                 1.0,
-                14.0
+                2.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -2374,7 +4148,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
+                    0.7211500406265259,
                     0.0
                 ],
                 "rotation": [
@@ -2383,9 +4157,9 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0,
-                    1.0
+                    10.0,
+                    0.9711500406265259,
+                    7.009926795959473
                 ],
                 "type": 0
             },
@@ -2397,6 +4171,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2418,7 +4193,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "bridge",
             "myEventID": -1,
             "name": "Bridge_Block_Back",
             "normalMapPath": "",
@@ -2426,11 +4201,11 @@
             "parentName": "",
             "position": [
                 0.0,
-                15.747625350952148,
-                -142.33656311035156
+                16.100000381469727,
+                -140.5399932861328
             ],
             "quaternion": [
-                0.12186934798955917,
+                0.12186936289072037,
                 0.0,
                 0.0,
                 0.9925461411476135
@@ -2441,16 +4216,16 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.24434608221054077,
+                0.24434611201286316,
                 -0.0,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                20.0,
+                2.0,
                 1.0,
-                14.0
+                2.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -2488,6 +4263,7 @@
                 0.800000011920929,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2579,6 +4355,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2670,6 +4447,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2761,6 +4539,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2852,6 +4631,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -2943,6 +4723,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -3034,6 +4815,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -3125,6 +4907,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -3216,6 +4999,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -3307,6 +5091,7 @@
                 0.6078431606292725,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "Tutorial_Doll",
