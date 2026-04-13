@@ -7,6 +7,7 @@
 #include <numbers>
 #include <ctime>
 #include <cstdlib>
+#include "GPUParticleManager.h"
 
 // ==========================================
 // 攻撃クラスを読み込む
@@ -168,6 +169,24 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     }
 
     originalColor_ = GetColor();
+
+    // --- 1. オーラの追加 ---
+    auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
+    BossParticle1->Initialize("Boss1", this);
+    BossParticle1->Play();
+    particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加！
+
+    // --- 2. 砂埃の追加 ---
+    auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
+    BossParticle2->Initialize("Boss2", this);
+    BossParticle2->Play();
+    particleEmitters_.push_back(std::move(BossParticle2)); // 配列に追加！
+
+    // --- 3. 火花の追加 ---
+    auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
+    BossParticle3->Initialize("Boss3", this);
+    BossParticle3->Play();
+    //particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
 }
 
 void BossCore::Update(float deltaTime) {
@@ -248,6 +267,15 @@ void BossCore::Update(float deltaTime) {
     float preTimer = colorResetTimer_;
 
     BaseEnemy::Update(deltaTime);
+
+    // ==========================================
+    // ★ パーティクルの自動追従・更新
+    // ==========================================
+    for (auto& emitter : particleEmitters_) {
+        if (emitter) {
+            emitter->Update(deltaTime);
+        }
+    }
 
     // バリアへのダメージ処理
     if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
