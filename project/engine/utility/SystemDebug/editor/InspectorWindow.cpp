@@ -197,13 +197,14 @@ void InspectorWindow::Draw() {
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;
                 const char* matTypes[] = {
-                                "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
-                                "ホログラム (Hologram)", "消滅 (Dissolve)", "マグマ・覚醒 (Emissive)",
-                                "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
+                                         "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
+                                         "ホログラム (Hologram)", "消滅 (Dissolve)", "旧マグマ (Emissive)",
+                                         "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
+                                         "水 (Water)", "新マグマ (Magma)", "分厚い氷 (Ice)" 
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 7) currentMatType = 0;
+                if (currentMatType > 10) currentMatType = 0; 
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -234,6 +235,21 @@ void InspectorWindow::Draw() {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), ICON_FA_SUN " --- Light Scattering ---");
                         ImGui::DragFloat("Scattering G (光の芯の強さ)", &fogData->scatteringG, 0.01f, 0.0f, 0.99f);
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
+                    }
+                }
+                if (currentMatType >= 8 && currentMatType <= 10) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ICON_FA_TINT " --- Water Settings ---");
+
+                    if (selectedObject->GetMeshRenderer() && selectedObject->GetMeshRenderer()->GetWaterParamData()) {
+                        auto* waterData = selectedObject->GetMeshRenderer()->GetWaterParamData();
+                        ImGui::DragFloat("Wave Speed (波の速さ)", &waterData->waveSpeed, 0.05f, 0.0f, 10.0f);
+                        ImGui::DragFloat("Wave Height (波の高さ)", &waterData->waveHeight, 0.05f, 0.0f, 10.0f);
+                        ImGui::DragFloat("Wave Frequency (波の細かさ)", &waterData->waveFrequency, 0.05f, 0.0f, 20.0f);
+                        ImGui::Separator();
+                        ImGui::Text(ICON_FA_WIND " --- Flow Settings ---");
+                        ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f);
+                        ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f);
                     }
                 }
                 ImGui::Separator();
