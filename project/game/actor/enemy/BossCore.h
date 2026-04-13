@@ -94,6 +94,11 @@ public:
     // ==========================================
     Object3dCommon* GetCommon() const { return common_; }
 
+    // ==========================================
+    // 最終奥義が終わったことを伝えるためのセッター！
+    // ==========================================
+    void SetWaitingForDeath(bool waiting) { isWaitingForDeath_ = waiting; }
+
 private:
 
     // 射出されたブロックのリスト
@@ -110,6 +115,7 @@ private:
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
     void TakeBarrierDamage(float damage, Object3d* hitBlock = nullptr);
+    void TakeBodyDamage(float damage);
 
     // ==================================================
     // 内部コンポーネント・変数
@@ -151,4 +157,10 @@ private:
 
     // マップブロックのリスト
     std::vector<MapBlock*> mapBlocks_;
+
+    // ==========================================
+    // 最終奥義とトドメに関するフラグ
+    // ==========================================
+    bool isFinalPhase_ = false;       // HP1になって発狂中か？
+    bool isWaitingForDeath_ = false;  // 必殺技が終わってトドメ待ちか？
 };

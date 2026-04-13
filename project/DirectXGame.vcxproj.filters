@@ -124,6 +124,7 @@
     <ClCompile Include="EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\TutorialDoll.cpp" />
     <ClCompile Include="OptionUI.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack8_Final.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
@@ -420,6 +421,7 @@
     <ClInclude Include="EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\TutorialDoll.h" />
     <ClInclude Include="OptionUI.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack8_Final.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectXGame.rc" />

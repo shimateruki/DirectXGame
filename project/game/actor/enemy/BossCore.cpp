@@ -18,6 +18,7 @@
 #include "BossAttack/BossAttack5_Humanoid.h"
 #include "BossAttack/BossAttack6_Laser.h"
 #include "BossAttack/BossAttack7_Absorb.h"
+#include "BossAttack/BossAttack8_Final.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -195,6 +196,7 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_5)) triggerAttack = 5;
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
+        if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -374,14 +376,26 @@ void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
     uint32_t coreAttribute;
-    if (state_ == State::Attack) {
-        coreAttribute = kEnemyAttack | kGround;
-    }
-    else if (state_ == State::Weak) {
-        coreAttribute = kEnemy | kGround;
+    uint32_t blockAttribute;
+    // ==========================================
+    // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
+    // ==========================================
+    if (isWaitingForDeath_) {
+        coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
+        blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
     }
     else {
-        coreAttribute = kGround;
+        // 今までの通常の処理
+        if (state_ == State::Attack) {
+            coreAttribute = kEnemyAttack | kGround;
+        }
+        else if (state_ == State::Weak) {
+            coreAttribute = kEnemy | kGround;
+        }
+        else {
+            coreAttribute = kGround;
+        }
+        blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
     }
 
     SetCollisionAttribute(coreAttribute);
@@ -395,7 +409,7 @@ void BossCore::ChangeState(State nextState) {
         SetColor(originalColor_);
     }
 
-    uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+    //uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
 
     for (Object3d* block : armorBlocks_) {
         if (block) {
@@ -465,6 +479,10 @@ void BossCore::ChangeState(State nextState) {
             s_debugForceAttack = 0;
         }
 
+        if (isFinalPhase_) {
+            nextAttack = 8;
+        }
+
         animTimer_ = 0.0f;
 
         // 攻撃インスタンスの生成
@@ -475,6 +493,7 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 5) currentAttack_ = std::make_unique<BossAttack5_Humanoid>();
         else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
         else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
+        else if (nextAttack == 8) currentAttack_ = std::make_unique<BossAttack8_Final>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
@@ -488,11 +507,51 @@ void BossCore::ChangeState(State nextState) {
     }
 }
 
+void BossCore::TakeBodyDamage(float damage) {
+    if (isWaitingForDeath_) {
+        // ★ トドメ待ち状態の時にダメージを受けたら、ここで完全に死亡（爆発など）！
+        DebugConsole::GetInstance()->AddLog("ボス撃破！！！🎉");
+        isDead = true;
+        return;
+    }
+
+    if (isFinalPhase_) return; // 必殺技の最中は無敵！
+
+    param_->hp -= damage;
+
+    // ==========================================
+    // ★ 運命の分かれ道：HPが0以下になったら必殺技発動！
+    // ==========================================
+    if (param_->hp <= 0.0f) {
+        param_->hp = 1.0f;        // HPを1で踏みとどまる！
+        isFinalPhase_ = true;     // 発狂モードON！
+
+        DebugConsole::GetInstance()->AddLog("【覚醒】ボスのHPが1で耐えた！最終奥義が来るぞ！！");
+
+        // 即座に攻撃状態へ移行（上で追加した処理により、絶対8番が選ばれる）
+        ChangeState(State::Attack);
+    }
+}
+
 // =================================================================
 // 各ステートの個別更新処理
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
+    if (isWaitingForDeath_) {
+        SetColor({ 0.5f, 0.5f, 0.5f, 1.0f }); // ボロボロの色にする
+
+        // ブロックも地面に落として機能停止させる
+        for (Object3d* block : armorBlocks_) {
+            if (block) {
+                Vector3 pos = block->GetTranslate();
+                if (pos.y > 0.0f) pos.y -= 20.0f * deltaTime; // 地面に落ちる
+                block->SetTranslate(pos);
+            }
+        }
+        return; // これ以上何もしない（攻撃にも移行しない）
+    }
+
     // ★ 待機中は常にブロックをランダムスケールの周回軌道に乗せる！
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
