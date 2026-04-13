@@ -509,26 +509,24 @@ void BossCore::ChangeState(State nextState) {
 
 void BossCore::TakeBodyDamage(float damage) {
     if (isWaitingForDeath_) {
-        // ★ トドメ待ち状態の時にダメージを受けたら、ここで完全に死亡（爆発など）！
+        // ★ トドメ待ち状態の時にダメージを受けたら、完全に死亡！
         DebugConsole::GetInstance()->AddLog("ボス撃破！！！🎉");
         isDead = true;
         return;
     }
 
-    if (isFinalPhase_) return; // 必殺技の最中は無敵！
+    if (isFinalPhase_) return; // 最終奥義の最中は無敵！
 
     param_->hp -= damage;
 
-    // ==========================================
-    // ★ 運命の分かれ道：HPが0以下になったら必殺技発動！
-    // ==========================================
+    // HPが0以下になったら必殺技発動！
     if (param_->hp <= 0.0f) {
         param_->hp = 1.0f;        // HPを1で踏みとどまる！
         isFinalPhase_ = true;     // 発狂モードON！
 
         DebugConsole::GetInstance()->AddLog("【覚醒】ボスのHPが1で耐えた！最終奥義が来るぞ！！");
 
-        // 即座に攻撃状態へ移行（上で追加した処理により、絶対8番が選ばれる）
+        // 即座に攻撃状態へ移行（ChangeState内で nextAttack = 8 が選ばれる）
         ChangeState(State::Attack);
     }
 }
@@ -792,6 +790,8 @@ bool BossCore::OnCollision(Object3d* other) {
         if (!info.isColliding) {
             return false;
         }
+
+        TakeBodyDamage(10.0f);
         return BaseEnemy::OnCollision(other);
     }
 
