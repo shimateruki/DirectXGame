@@ -16,6 +16,10 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreateLocalFogPipeline();
     CreateEffectRootSignature();
     CreateEffectPipeline();
+    CreateWaterRootSignature();
+    CreateWaterPipeline();
+    CreateMagmaPipeline();
+    CreateIcePipeline();
 
 }
 
@@ -350,4 +354,141 @@ void Object3dCommon::CreateEffectPipeline() {
         // 配列の該当インデックスにPSOをビルドして保存
         psoBuilder.Build(dxCommon_->GetDevice(), effectPipelineStates_[i].GetAddressOf());
     }
+}
+
+// 水専用のルートシグネチャ作成
+void Object3dCommon::CreateWaterRootSignature() {
+    RootSignatureBuilder builder;
+
+    // [0] WVP (b0レジスタ)
+    builder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+    // [1] 波パラメータ (b1レジスタ)
+    builder.AddCBV(1, 0, D3D12_SHADER_VISIBILITY_ALL);
+    // [2] マテリアル/色 (b2レジスタ)
+    builder.AddCBV(2, 0, D3D12_SHADER_VISIBILITY_ALL);
+    //  [3] 背景深度テクスチャ (t0レジスタ)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    //  サンプラー (s0レジスタ) 境界が綺麗に補間されるようにCLAMPを指定
+    builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+    // 引数でポインタを渡して構築結果を受け取る
+    builder.Build(dxCommon_->GetDevice(), waterRootSignature_.GetAddressOf(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+}
+
+// 水専用のパイプライン（PSO）作成
+void Object3dCommon::CreateWaterPipeline() {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // 先ほど作ったシェーダーを読み込む
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Water.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Water.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(waterRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+
+    // 水が裏側（水中）からも見えるようにカリングをオフ
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
+
+    // 半透明合成（アルファブレンド）
+    psoBuilder.SetBlendMode(BlendMode::kNormal);
+
+    // Zテストはする(true)が、Z書き込みはしない(ZERO)ように引数で直接指定
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+
+    // RenderTargetのフォーマット設定（※既存のPSO構築に合わせるため追加）
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+
+    // 引数でポインタを渡して構築結果を受け取る
+    psoBuilder.Build(dxCommon_->GetDevice(), waterPipelineState_.GetAddressOf());
+}
+// 描画コマンドセット
+void Object3dCommon::SetWaterGraphicsCommand() {
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(waterPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+// ==========================================
+// マグマ専用のパイプライン作成
+// ==========================================
+void Object3dCommon::CreateMagmaPipeline() {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // ★頂点シェーダーは水(Water.VS)を使い回し、ピクセルシェーダーだけMagmaにする！
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Magma.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Magma.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    // ルートシグネチャも水のものを完全に使い回す
+    psoBuilder.SetRootSignature(waterRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+
+    // ★マグマは不透明で分厚いので裏面カリング(CULL_MODE_BACK)
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
+    // ★ブレンドなし（完全不透明）
+    psoBuilder.SetBlendMode(BlendMode::kNone);
+    // ★ZテストもZ書き込みも行う
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ALL, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    psoBuilder.Build(dxCommon_->GetDevice(), magmaPipelineState_.GetAddressOf());
+}
+
+// ==========================================
+// 氷専用のパイプライン作成
+// ==========================================
+void Object3dCommon::CreateIcePipeline() {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Ice.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Ice.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(waterRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+
+    // ★氷は分厚く見せたいのでカリングなし(CULL_MODE_NONE)
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
+    // ★半透明合成
+    psoBuilder.SetBlendMode(BlendMode::kNormal);
+    // ★Zテストはするが、Z書き込みはしない(透明物の基本)
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    psoBuilder.Build(dxCommon_->GetDevice(), icePipelineState_.GetAddressOf());
+}
+
+// コマンドセット関数
+void Object3dCommon::SetMagmaGraphicsCommand() {
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(magmaPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetIceGraphicsCommand() {
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(icePipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }

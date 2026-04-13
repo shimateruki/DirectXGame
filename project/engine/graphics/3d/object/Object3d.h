@@ -188,6 +188,9 @@ public:
     void SetIsUIPreview(bool isPreview) { 
         if (meshRenderer_) meshRenderer_->SetIsUIPreview(isPreview); 
     }
+    void DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);  
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;

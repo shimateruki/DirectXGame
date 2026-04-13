@@ -47,6 +47,14 @@ public:
    void CreateEffectRootSignature();
    void CreateEffectPipeline();
    void SetEffectGraphicsCommand(BlendMode blendMode);
+   void CreateWaterRootSignature();
+   void CreateWaterPipeline();
+   void SetWaterGraphicsCommand();
+   void CreateMagmaPipeline();
+   void CreateIcePipeline();
+   void SetMagmaGraphicsCommand();
+   void SetIceGraphicsCommand();
+
 private:
    /// <summary>
    /// ルートシグネチャの作成
@@ -69,6 +77,10 @@ private:
    Microsoft::WRL::ComPtr<ID3D12RootSignature> localFogRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> localFogPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12RootSignature> effectRootSignature_;
+   Microsoft::WRL::ComPtr<ID3D12RootSignature> waterRootSignature_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> waterPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> magmaPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> icePipelineState_;
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;
 
 };

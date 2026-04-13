@@ -53,12 +53,30 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     localFogResource_->Map(0, nullptr, reinterpret_cast<void**>(&localFogData_));
     localFogData_->fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // 毒沼カラー
     localFogData_->fogDensity = 0.5f;
+
+    waterParamResource_ = dxCommon->CreateBufferResource(sizeof(WaterParamForGPU));
+    waterParamResource_->Map(0, nullptr, reinterpret_cast<void**>(&waterParamData_));
+    // デフォルト値のセット
+    waterParamData_->time = 0.0f;
+    waterParamData_->waveSpeed = 2.0f;
+    waterParamData_->waveHeight = 0.5f;
+    waterParamData_->waveFrequency = 1.5f;
+    waterParamData_->flowSpeedX = 0.1f; // 緩やかに流れる
+    waterParamData_->flowSpeedY = 0.1f;
     
 }
 
 void MeshRenderer::Update() {
 	// 経過時間を更新してGPUに転送
     time_ += 1.0f / 60.0f;
+
+    if (waterParamData_) {
+        waterParamData_->time = time_; 
+
+        // ★流速に基づいてオフセットを蓄積）
+        waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * (1.0f / 60.0f);
+        waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * (1.0f / 60.0f);
+    }
     if (localFogData_) {
         localFogData_->time = time_;
         auto& sun = LightManager::GetInstance()->GetDirectionalLight();
@@ -177,7 +195,50 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         materialResource_.Get(), normalMapHandle_, ormMapHandle_, textureHandle_
     );
 }
+void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    if (!model_ || !common_ || !waterParamResource_) return;
 
+    common_->SetWaterGraphicsCommand();
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+
+    //  4番目にカラーテクスチャをセット
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+
+    model_->DrawMeshOnly();
+}
+void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    if (!model_ || !common_ || !waterParamResource_) return;
+
+    common_->SetMagmaGraphicsCommand();
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+
+    model_->DrawMeshOnly();
+}
+
+void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    if (!model_ || !common_ || !waterParamResource_) return;
+
+    common_->SetIceGraphicsCommand(); 
+    // (以下、DrawMagmaと全く同じ)
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    model_->DrawMeshOnly();
+}
 void MeshRenderer::SetModel(const std::string& modelName) {
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);

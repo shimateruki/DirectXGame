@@ -566,7 +566,7 @@ void GamePlayScene::Draw() {
 #endif
 
 	// =========================================================
-	// ★ 追加: カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
+	// ★ カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
 	// =========================================================
 	if (!isFirstPerson && player_ && camera) {
 		Vector3 pPos = player_->GetWorldPosition();
@@ -602,7 +602,7 @@ void GamePlayScene::Draw() {
 		}
 		if (isPlayerPart) continue; // プレイヤーの一部なら描画をスキップ！
 
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 
@@ -647,7 +647,38 @@ void GamePlayScene::Draw() {
 		}
 		dxCommon_->PostDrawLocalFog();
 	}
+	bool hasFluid = false;
+	for (auto& obj : objects) {
+		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 10) hasFluid = true;
+	}
 
+	if (hasFluid) {
+		// 画面をキャプチャしてテクスチャにする
+		dxCommon_->UpdateGrabTexture();
+
+		for (auto& obj : objects) {
+			bool isPlayerPart = false;
+			if (isFirstPerson) {
+				Object3d* current = obj.get();
+				while (current) {
+					if (current == player_) { isPlayerPart = true; break; }
+					current = current->GetParent();
+				}
+			}
+			if (isPlayerPart) continue;
+
+			int matType = obj->GetMaterialType();
+			if (matType == 8) {
+				obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			}
+			else if (matType == 9) {
+				obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			}
+			else if (matType == 10) {
+				obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			}
+		}
+	}
 	// =======================================================
 	// 5. GPUパーティクルの描画！
 	// =======================================================
