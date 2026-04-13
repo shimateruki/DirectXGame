@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include "BossAttack/BaseBossAttack.h"
+#include "GPUParticleEmitter.h"
 
 class SceneManager; // 前方宣言
 class MapBlock;
@@ -163,4 +164,9 @@ private:
     // ==========================================
     bool isFinalPhase_ = false;       // HP1になって発狂中か？
     bool isWaitingForDeath_ = false;  // 必殺技が終わってトドメ待ちか？
+
+    // ==========================================
+    // パーティクルのエミッターを保持
+    // ==========================================
+    std::vector<std::unique_ptr<GPUParticleEmitter>> particleEmitters_;
 };
