@@ -5263,7 +5263,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.6000000238418579,
+                    0.0,
                     0.0
                 ],
                 "rotation": [
@@ -5272,11 +5272,11 @@
                     0.0
                 ],
                 "size": [
-                    20.0,
-                    20.0,
-                    20.0
+                    0.0,
+                    0.0,
+                    0.0
                 ],
-                "type": 1
+                "type": 2
             },
             "collisionAttribute": 4,
             "collisionMask": 219,
