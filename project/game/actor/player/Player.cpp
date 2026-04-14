@@ -88,14 +88,14 @@ void Player::Update(float deltaTime)
         }
     }
 
-    // 4. 操作有効時のみ親クラスの更新（物理演算など）を行う
-    if (isControlActive_)
+    // 4. 物理フラグ有効時のみ親クラスの更新（物理演算など）を行う
+    if (isPhysicsActive_)
     {
         Character::Update(deltaTime);
     }
     else
     {
-        // 操作無効時は行列計算のみ更新
+        // 物理無効時は行列計算のみ更新
         Object3d::Update(deltaTime);
     }
 
@@ -248,7 +248,7 @@ bool Player::OnCollision(Object3d* other)
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
     // =======================================================
-    if (isControlActive_ && (attribute & kAllSolid))
+    if (isPhysicsActive_ && (attribute & kAllSolid))
     {
         ApplyPhysicsCollision(info, attribute);
     }

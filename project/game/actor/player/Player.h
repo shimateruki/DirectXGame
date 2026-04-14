@@ -67,6 +67,8 @@ public:
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
     void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
+    void SetIsPhysicsActive(bool active) { isPhysicsActive_ = active; }
+    bool IsPhysicsActive() const { return isPhysicsActive_; }
 
     // --- コンボ：次のクリックで2段目を出すためのフラグ操作 ---
     void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
@@ -116,6 +118,7 @@ private:
     // --- プレイヤー状態フラグ ---
     bool isLockingOn_ = false;       // 敵をロックオンしているか
     bool isControlActive_ = true;    // 入力を受け付ける状態か（デモシーン等で制限用）
+    bool isPhysicsActive_ = true;    // 物理演算・移動計算を行うか（座標固定用）
 
     // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
     bool pendingAttack2_ = false;
