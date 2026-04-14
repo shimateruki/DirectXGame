@@ -372,7 +372,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                // (2) 形状判定 (AABB と OBB に対応)
                // =========================================================
             ColliderType colType = object->GetColliderType();
-            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB) {
+            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB && colType != ColliderType::kCylinder) {
                 continue; // 球や判定なしはスキップ
             }
 
@@ -387,7 +387,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                 OBB obb = object->GetOBB(); 
                 distance = IntersectRayOBB(start, direction, obb);
             }
-
+         
             // (4) 一番近いものを採用
             if (distance < closestHit.distance) {
                 closestHit.isHit = true;

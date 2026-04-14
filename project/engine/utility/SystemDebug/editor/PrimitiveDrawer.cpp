@@ -94,6 +94,46 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     primitiveWVPBuffer_ = dxCommon_->CreateBufferResource(sizeof(AlignedMatrix4x4) * kMaxInstances);
     hr = primitiveWVPBuffer_->Map(0, nullptr, (void**)&primitiveWVPData_);
     assert(SUCCEEDED(hr));
+    // --- 円柱のバッファ作成 ---
+    const int kCylinderSegments = 16; // 16角柱で円柱を表現
+    Vector4 cylinderVerts[kCylinderSegments * 2];
+    uint32_t cylinderIdx[kCylinderSegments * 6];
+
+    for (int i = 0; i < kCylinderSegments; ++i) {
+        float theta = (2.0f * 3.14159265f * i) / kCylinderSegments;
+        float cosT = std::cos(theta) * 0.5f; // 半径0.5
+        float sinT = std::sin(theta) * 0.5f;
+
+        // 上面の頂点 (Y = 0.5)
+        cylinderVerts[i] = { cosT, 0.5f, sinT, 1.0f };
+        // 底面の頂点 (Y = -0.5)
+        cylinderVerts[kCylinderSegments + i] = { cosT, -0.5f, sinT, 1.0f };
+
+        // インデックス結線
+        // ① 上面の円の線分
+        cylinderIdx[i * 2] = i;
+        cylinderIdx[i * 2 + 1] = (i + 1) % kCylinderSegments;
+
+        // ② 底面の円の線分
+        cylinderIdx[kCylinderSegments * 2 + i * 2] = kCylinderSegments + i;
+        cylinderIdx[kCylinderSegments * 2 + i * 2 + 1] = kCylinderSegments + ((i + 1) % kCylinderSegments);
+
+        // ③ 上下を繋ぐ縦線
+        cylinderIdx[kCylinderSegments * 4 + i * 2] = i;
+        cylinderIdx[kCylinderSegments * 4 + i * 2 + 1] = kCylinderSegments + i;
+    }
+
+    // 頂点バッファ生成
+    cylinderVertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cylinderVerts));
+    cylinderVertexBufferView_ = { cylinderVertexBuffer_->GetGPUVirtualAddress(), sizeof(cylinderVerts), sizeof(Vector4) };
+    void* cvbData; hr = cylinderVertexBuffer_->Map(0, nullptr, &cvbData); assert(SUCCEEDED(hr));
+    memcpy(cvbData, cylinderVerts, sizeof(cylinderVerts)); cylinderVertexBuffer_->Unmap(0, nullptr);
+
+    // インデックスバッファ生成
+    cylinderIndexBuffer_ = dxCommon_->CreateBufferResource(sizeof(cylinderIdx));
+    cylinderIndexBufferView_ = { cylinderIndexBuffer_->GetGPUVirtualAddress(), sizeof(cylinderIdx), DXGI_FORMAT_R32_UINT };
+    void* cibData; hr = cylinderIndexBuffer_->Map(0, nullptr, &cibData); assert(SUCCEEDED(hr));
+    memcpy(cibData, cylinderIdx, sizeof(cylinderIdx)); cylinderIndexBuffer_->Unmap(0, nullptr);
 }
 
 void PrimitiveDrawer::Finalize() {
@@ -150,6 +190,36 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
     commandList->DrawIndexedInstanced(216, 1, 0, 0, 0);
 
     // ★他の描画（DrawWireCube）に影響が出ないようにキューブ用に戻しておく
+    commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
+    commandList->IASetIndexBuffer(&cubeIndexBufferView_);
+}
+
+
+void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex) {
+    Math math;
+    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) return;
+
+    // 定数バッファの更新（WVP行列と色）
+    primitiveWVPData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
+    Vector4 opaqueColor = color;
+    opaqueColor.w = 1.0f;
+    primitiveColorData_[instanceIndex].vector = opaqueColor;
+
+    D3D12_GPU_VIRTUAL_ADDRESS wvpGpuAddress = primitiveWVPBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedMatrix4x4));
+    D3D12_GPU_VIRTUAL_ADDRESS colorGpuAddress = primitiveColorBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedVector4));
+
+    commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
+    commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
+
+    // ★ 円柱の描画ロジックに修正
+    commandList->IASetVertexBuffers(0, 1, &cylinderVertexBufferView_);
+    commandList->IASetIndexBuffer(&cylinderIndexBufferView_);
+
+    // 16分割 × (上面+底面+縦線=3パーツ) × 2インデックス = 96インデックス
+    commandList->DrawIndexedInstanced(96, 1, 0, 0, 0);
+
+    // 他の描画（DrawWireCube等）に影響が出ないようにキューブ用に戻しておく
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 }

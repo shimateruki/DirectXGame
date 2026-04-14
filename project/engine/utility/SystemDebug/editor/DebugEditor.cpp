@@ -401,6 +401,15 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
             }
+            else if (type == ColliderType::kCylinder) {
+                // size.x を半径、size.y を高さ(の半分)として扱っている想定
+                float radius = config.size.x;
+                float height = config.size.y;
+                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height*2.0f, radius * 2.0f });
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+            }
 
         }
         else {
@@ -421,6 +430,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             case ColliderType::kOBB:    color = { 1.0f, 0.2f, 0.2f, 1.0f }; break; // 赤
             case ColliderType::kAABB:   color = { 0.0f, 1.0f, 0.0f, 1.0f }; break; // 緑
             case ColliderType::kSphere: color = { 0.0f, 0.5f, 1.0f, 1.0f }; break; // 青
+            case ColliderType::kCylinder: color = { 1.0f, 0.5f, 0.0f, 1.0f }; break; // オレンジ色
             default:                    color = { 1.0f, 1.0f, 1.0f, 1.0f }; break; // 白
             }
         }
@@ -430,6 +440,9 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         // =========================================================
         if (type == ColliderType::kSphere) {
             primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+        }
+        else if (type == ColliderType::kCylinder) { 
+            primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
         }
         else {
             primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
@@ -491,6 +504,9 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             // =========================================================
             if (type == ColliderType::kSphere) {
                 primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+            }
+            else if (type == ColliderType::kCylinder) { 
+                primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
             }
             else {
                 primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
@@ -556,7 +572,7 @@ void DebugEditor::DuplicateSelected() {
     newObj->SetName(selectedObject_->GetName() + "_Copy" + std::to_string(duplicateCount++));
 
     // =========================================================
-    // ★追加: マウスカーソルの位置(レイキャスト)を計算してペースト！
+    //  マウスカーソルの位置(レイキャスト)を計算してペースト！
     // =========================================================
     Math math;
     Ray ray = ScreenPointToRay(gameViewMousePos_);

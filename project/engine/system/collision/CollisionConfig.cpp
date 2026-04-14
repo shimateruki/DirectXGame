@@ -299,3 +299,226 @@ CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
     // OBB同士として判定
     return CheckOBBCollision(obbA, b);
 }
+
+CollisionInfo CheckSphereCylinderCollision(const Vector3& sphereCenter, float sphereRadius, const Cylinder& cylinder) {
+    CollisionInfo info;
+    info.isColliding = false;
+
+    // 円柱の中心から球の中心へのベクトル
+    Vector3 d = sphereCenter - cylinder.center;
+
+    // Y軸（高さ）方向の距離と、XZ平面（水平）での距離
+    float distY = std::abs(d.y);
+    float distXZ = std::sqrt(d.x * d.x + d.z * d.z);
+
+    float halfHeight = cylinder.height * 0.5f;
+
+    // 完全に離れているかチェック
+    if (distY > halfHeight + sphereRadius) return info;
+    if (distXZ > cylinder.radius + sphereRadius) return info;
+
+    // 角（フチ）の判定
+    if (distY > halfHeight && distXZ > cylinder.radius) {
+        float cornerDistSq = (distXZ - cylinder.radius) * (distXZ - cylinder.radius) + (distY - halfHeight) * (distY - halfHeight);
+        if (cornerDistSq > sphereRadius * sphereRadius) return info;
+    }
+
+    info.isColliding = true;
+
+    // 押し出し計算（上下の面か、側面か、浅い方に押し出す）
+    float penY = (halfHeight + sphereRadius) - distY;
+    float penXZ = (cylinder.radius + sphereRadius) - distXZ;
+
+    if (penY < penXZ && distXZ < cylinder.radius) {
+        // 上下に押し出す
+        info.penetration = penY;
+        info.normal = { 0.0f, (d.y > 0.0f) ? 1.0f : -1.0f, 0.0f };
+    }
+    else {
+        // 横に押し出す
+        info.penetration = penXZ;
+        if (distXZ > 0.0001f) {
+            info.normal = { d.x / distXZ, 0.0f, d.z / distXZ };
+        }
+        else {
+            info.normal = { 1.0f, 0.0f, 0.0f };
+        }
+    }
+    return info;
+}
+
+// ========================================================================
+// : 円柱 vs 円柱
+// ========================================================================
+CollisionInfo CheckCylinderCollision(const Cylinder& a, const Cylinder& b) {
+    CollisionInfo info;
+    info.isColliding = false;
+
+    Vector3 d = a.center - b.center;
+    float distY = std::abs(d.y);
+    float distXZ = std::sqrt(d.x * d.x + d.z * d.z);
+
+    float sumHalfHeight = (a.height + b.height) * 0.5f;
+    float sumRadius = a.radius + b.radius;
+
+    if (distY > sumHalfHeight) return info;
+    if (distXZ > sumRadius) return info;
+
+    info.isColliding = true;
+    float penY = sumHalfHeight - distY;
+    float penXZ = sumRadius - distXZ;
+
+    if (penY < penXZ) {
+        info.penetration = penY;
+        info.normal = { 0.0f, (d.y > 0.0f) ? 1.0f : -1.0f, 0.0f };
+    }
+    else {
+        info.penetration = penXZ;
+        if (distXZ > 0.0001f) {
+            info.normal = { d.x / distXZ, 0.0f, d.z / distXZ };
+        }
+        else {
+            info.normal = { 1.0f, 0.0f, 0.0f };
+        }
+    }
+    return info;
+}
+
+// ========================================================================
+//  AABB vs 円柱 (Cylinder)
+// ========================================================================
+CollisionInfo CheckAABBCylinderCollision(const AABB& aabb, const Cylinder& cylinder) {
+    CollisionInfo info;
+    info.isColliding = false;
+
+    // Y軸（高さ）の判定
+    float aabbCenterY = (aabb.max.y + aabb.min.y) * 0.5f;
+    float aabbHalfHeight = (aabb.max.y - aabb.min.y) * 0.5f;
+    float cylHalfHeight = cylinder.height * 0.5f;
+    float distY = std::abs(cylinder.center.y - aabbCenterY);
+    float overlapY = (aabbHalfHeight + cylHalfHeight) - distY;
+
+    if (overlapY <= 0.0f) return info; // 高さが重なっていない
+
+    // XZ平面の判定 (AABBに対する円柱中心の最近接点を求める)
+    float closestX = std::clamp(cylinder.center.x, aabb.min.x, aabb.max.x);
+    float closestZ = std::clamp(cylinder.center.z, aabb.min.z, aabb.max.z);
+
+    Vector3 closestPoint = { closestX, cylinder.center.y, closestZ };
+    Vector3 diff = cylinder.center - closestPoint;
+    diff.y = 0.0f; // XZ平面のみの距離
+
+    float distSq = diff.x * diff.x + diff.z * diff.z;
+    if (distSq > cylinder.radius * cylinder.radius) return info; // XZ平面で重なっていない
+
+    info.isColliding = true;
+
+    // 押し出し方向と量の計算
+    float overlapXZ = cylinder.radius;
+    if (distSq > 0.0001f) {
+        float dist = std::sqrt(distSq);
+        overlapXZ = cylinder.radius - dist;
+        info.normal = { diff.x / dist, 0.0f, diff.z / dist };
+    }
+    else {
+        // 円柱の中心がAABBの中にある場合の例外処理
+        float centerDistX = cylinder.center.x - ((aabb.max.x + aabb.min.x) * 0.5f);
+        float centerDistZ = cylinder.center.z - ((aabb.max.z + aabb.min.z) * 0.5f);
+        float overlapX = ((aabb.max.x - aabb.min.x) * 0.5f) - std::abs(centerDistX);
+        float overlapZ = ((aabb.max.z - aabb.min.z) * 0.5f) - std::abs(centerDistZ);
+
+        if (overlapX < overlapZ) {
+            overlapXZ = overlapX + cylinder.radius;
+            info.normal = { (centerDistX > 0.0f) ? 1.0f : -1.0f, 0.0f, 0.0f };
+        }
+        else {
+            overlapXZ = overlapZ + cylinder.radius;
+            info.normal = { 0.0f, 0.0f, (centerDistZ > 0.0f) ? 1.0f : -1.0f };
+        }
+    }
+
+    // 上下に押し出すか、横に押し出すかを決定
+    if (overlapY < overlapXZ) {
+        info.penetration = overlapY;
+        info.normal = { 0.0f, (cylinder.center.y > aabbCenterY) ? 1.0f : -1.0f, 0.0f };
+    }
+    else {
+        info.penetration = overlapXZ;
+    }
+
+    return info;
+}
+
+// ========================================================================
+//  OBB vs 円柱 (Cylinder)
+// ========================================================================
+CollisionInfo CheckOBBCylinderCollision(const OBB& obb, const Cylinder& cylinder) {
+    CollisionInfo info;
+    info.isColliding = false;
+
+    // 円柱の中心をOBBのローカル空間に変換
+    Vector3 diff = cylinder.center - obb.center;
+    Math math; // Mathのインスタンスを作成
+    Vector3 localCenter;
+    localCenter.x = math.Dot(diff, obb.orientations[0]);
+    localCenter.y = math.Dot(diff, obb.orientations[1]);
+    localCenter.z = math.Dot(diff, obb.orientations[2]);
+
+    // Y軸（高さ）の判定
+    float cylHalfHeight = cylinder.height * 0.5f;
+    float distY = std::abs(localCenter.y);
+    float overlapY = (obb.size.y + cylHalfHeight) - distY;
+
+    if (overlapY <= 0.0f) return info;
+
+    // XZ平面の判定 (OBBローカル内での最近接点)
+    float closestX = std::clamp(localCenter.x, -obb.size.x, obb.size.x);
+    float closestZ = std::clamp(localCenter.z, -obb.size.z, obb.size.z);
+
+    Vector3 closestLocal = { closestX, localCenter.y, closestZ };
+    Vector3 diffLocal = localCenter - closestLocal;
+    diffLocal.y = 0.0f;
+
+    float distSq = diffLocal.x * diffLocal.x + diffLocal.z * diffLocal.z;
+    if (distSq > cylinder.radius * cylinder.radius) return info;
+
+    info.isColliding = true;
+
+    // 押し出し計算（AABBと同じロジックをローカル空間で実行）
+    float overlapXZ = cylinder.radius;
+    Vector3 localNormal = { 1.0f, 0.0f, 0.0f };
+    if (distSq > 0.0001f) {
+        float dist = std::sqrt(distSq);
+        overlapXZ = cylinder.radius - dist;
+        localNormal = { diffLocal.x / dist, 0.0f, diffLocal.z / dist };
+    }
+    else {
+        float overlapX = obb.size.x - std::abs(localCenter.x);
+        float overlapZ = obb.size.z - std::abs(localCenter.z);
+        if (overlapX < overlapZ) {
+            overlapXZ = overlapX + cylinder.radius;
+            localNormal = { (localCenter.x > 0.0f) ? 1.0f : -1.0f, 0.0f, 0.0f };
+        }
+        else {
+            overlapXZ = overlapZ + cylinder.radius;
+            localNormal = { 0.0f, 0.0f, (localCenter.z > 0.0f) ? 1.0f : -1.0f };
+        }
+    }
+
+    if (overlapY < overlapXZ) {
+        info.penetration = overlapY;
+        localNormal = { 0.0f, (localCenter.y > 0.0f) ? 1.0f : -1.0f, 0.0f };
+    }
+    else {
+        info.penetration = overlapXZ;
+    }
+
+    // ローカルの押し出し方向をワールド方向に変換して返す
+    info.normal = {
+        obb.orientations[0].x * localNormal.x + obb.orientations[1].x * localNormal.y + obb.orientations[2].x * localNormal.z,
+        obb.orientations[0].y * localNormal.x + obb.orientations[1].y * localNormal.y + obb.orientations[2].y * localNormal.z,
+        obb.orientations[0].z * localNormal.x + obb.orientations[1].z * localNormal.y + obb.orientations[2].z * localNormal.z
+    };
+
+    return info;
+}
