@@ -387,6 +387,7 @@ void GamePlayScene::Update(float deltaTime) {
 			movieStoredPlayerPos_ = player_->GetWorldPosition();
 			player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
 			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
 		}
 
 		movieTimer_ += deltaTime;
@@ -464,6 +465,7 @@ void GamePlayScene::Update(float deltaTime) {
 				}
 				movieState_ = MovieState::kNone;
 				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true);
 				GameProgress::GetInstance()->hasBridgeDropped = true;
 			}
 
