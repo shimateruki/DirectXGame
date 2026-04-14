@@ -88,6 +88,10 @@ private:
     Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
 
+    // --- チュートリアルドア用 ---
+    bool hasFinishedTutorial_ = false;
+    float doorOpenProgress_ = 0.0f;
+
 private:
     // --- エンジンシステムへのポインタ ---
     DirectXCommon* dxCommon_ = nullptr;

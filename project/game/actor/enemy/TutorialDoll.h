@@ -11,6 +11,9 @@ public:
     void Update(float deltaTime) override;
     bool OnCollision(Object3d* other) override;
 
+    bool HasBeenDefeatedAtLeastOnce() const { return hasBeenDefeatedAtLeastOnce_; }
+
+
 private:
     void Respawn();
 
@@ -21,4 +24,6 @@ private:
     Vector3 basePosition_ = { 0.0f, 0.0f, 0.0f }; // 初期座標を記憶
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };    // 初期スケールを記憶
     float deathAnimTimer_ = 0.0f; // 死亡時の縮小演出用
+
+    bool hasBeenDefeatedAtLeastOnce_ = false;
 };

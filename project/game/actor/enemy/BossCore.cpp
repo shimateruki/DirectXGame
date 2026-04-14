@@ -7,6 +7,7 @@
 #include <numbers>
 #include <ctime>
 #include <cstdlib>
+#include "GPUParticleManager.h"
 
 // ==========================================
 // 攻撃クラスを読み込む
@@ -18,6 +19,7 @@
 #include "BossAttack/BossAttack5_Humanoid.h"
 #include "BossAttack/BossAttack6_Laser.h"
 #include "BossAttack/BossAttack7_Absorb.h"
+#include "BossAttack/BossAttack8_Final.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -167,6 +169,24 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     }
 
     originalColor_ = GetColor();
+
+    // --- 1. オーラの追加 ---
+    auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
+    BossParticle1->Initialize("Boss1", this);
+    BossParticle1->Play();
+    particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加！
+
+    // --- 2. 砂埃の追加 ---
+    auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
+    BossParticle2->Initialize("Boss2", this);
+    BossParticle2->Play();
+    particleEmitters_.push_back(std::move(BossParticle2)); // 配列に追加！
+
+    // --- 3. 火花の追加 ---
+    auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
+    BossParticle3->Initialize("Boss3", this);
+    BossParticle3->Play();
+    //particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
 }
 
 void BossCore::Update(float deltaTime) {
@@ -195,6 +215,7 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_5)) triggerAttack = 5;
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
+        if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -246,6 +267,15 @@ void BossCore::Update(float deltaTime) {
     float preTimer = colorResetTimer_;
 
     BaseEnemy::Update(deltaTime);
+
+    // ==========================================
+    // ★ パーティクルの自動追従・更新
+    // ==========================================
+    for (auto& emitter : particleEmitters_) {
+        if (emitter) {
+            emitter->Update(deltaTime);
+        }
+    }
 
     // バリアへのダメージ処理
     if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
@@ -374,14 +404,26 @@ void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
     uint32_t coreAttribute;
-    if (state_ == State::Attack) {
-        coreAttribute = kEnemyAttack | kGround;
-    }
-    else if (state_ == State::Weak) {
-        coreAttribute = kEnemy | kGround;
+    uint32_t blockAttribute;
+    // ==========================================
+    // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
+    // ==========================================
+    if (isWaitingForDeath_) {
+        coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
+        blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
     }
     else {
-        coreAttribute = kGround;
+        // 今までの通常の処理
+        if (state_ == State::Attack) {
+            coreAttribute = kEnemyAttack | kGround;
+        }
+        else if (state_ == State::Weak) {
+            coreAttribute = kEnemy | kGround;
+        }
+        else {
+            coreAttribute = kGround;
+        }
+        blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
     }
 
     SetCollisionAttribute(coreAttribute);
@@ -395,7 +437,7 @@ void BossCore::ChangeState(State nextState) {
         SetColor(originalColor_);
     }
 
-    uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+    //uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
 
     for (Object3d* block : armorBlocks_) {
         if (block) {
@@ -465,6 +507,10 @@ void BossCore::ChangeState(State nextState) {
             s_debugForceAttack = 0;
         }
 
+        if (isFinalPhase_) {
+            nextAttack = 8;
+        }
+
         animTimer_ = 0.0f;
 
         // 攻撃インスタンスの生成
@@ -475,6 +521,7 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 5) currentAttack_ = std::make_unique<BossAttack5_Humanoid>();
         else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
         else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
+        else if (nextAttack == 8) currentAttack_ = std::make_unique<BossAttack8_Final>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
@@ -488,11 +535,49 @@ void BossCore::ChangeState(State nextState) {
     }
 }
 
+void BossCore::TakeBodyDamage(float damage) {
+    if (isWaitingForDeath_) {
+        // ★ トドメ待ち状態の時にダメージを受けたら、完全に死亡！
+        DebugConsole::GetInstance()->AddLog("ボス撃破！！！🎉");
+        isDead = true;
+        return;
+    }
+
+    if (isFinalPhase_) return; // 最終奥義の最中は無敵！
+
+    param_->hp -= damage;
+
+    // HPが0以下になったら必殺技発動！
+    if (param_->hp <= 0.0f) {
+        param_->hp = 1.0f;        // HPを1で踏みとどまる！
+        isFinalPhase_ = true;     // 発狂モードON！
+
+        DebugConsole::GetInstance()->AddLog("【覚醒】ボスのHPが1で耐えた！最終奥義が来るぞ！！");
+
+        // 即座に攻撃状態へ移行（ChangeState内で nextAttack = 8 が選ばれる）
+        ChangeState(State::Attack);
+    }
+}
+
 // =================================================================
 // 各ステートの個別更新処理
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
+    if (isWaitingForDeath_) {
+        SetColor({ 0.5f, 0.5f, 0.5f, 1.0f }); // ボロボロの色にする
+
+        // ブロックも地面に落として機能停止させる
+        for (Object3d* block : armorBlocks_) {
+            if (block) {
+                Vector3 pos = block->GetTranslate();
+                if (pos.y > 0.0f) pos.y -= 20.0f * deltaTime; // 地面に落ちる
+                block->SetTranslate(pos);
+            }
+        }
+        return; // これ以上何もしない（攻撃にも移行しない）
+    }
+
     // ★ 待機中は常にブロックをランダムスケールの周回軌道に乗せる！
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
@@ -733,6 +818,8 @@ bool BossCore::OnCollision(Object3d* other) {
         if (!info.isColliding) {
             return false;
         }
+
+        TakeBodyDamage(10.0f);
         return BaseEnemy::OnCollision(other);
     }
 
