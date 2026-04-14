@@ -28,6 +28,7 @@
 #include "BossCore.h"
 #include "TutorialDoll.h"
 #include"WinApp.h"
+#include "GameProgress.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -213,7 +214,37 @@ void GamePlayScene::Initialize() {
 			*it = std::move(newBoss);
 			break;
 		}
-		
+		// =======================================================
+		// ★ 進行状況の復元：橋がすでに落ちている場合の処理
+		// =======================================================
+		if (GameProgress::GetInstance()->hasBridgeDropped) {
+			// 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
+			auto& objects = objectManager_->GetObjects();
+			for (auto& obj : objects) {
+				std::string name = obj->GetName();
+				// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
+				if (name.find("Bridge_Block") != std::string::npos) {
+					obj->SetIsVisible(false);        // 見えなくする
+					obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+				}
+			}
+
+			// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
+			this->hasBridgeDropped_ = true;
+
+			// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
+			if (player_) {
+				// 隊長が設定したボス前の座標を適用！
+				player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
+				player_->UpdateLocalMatrix();
+				player_->UpdateWorldMatrix();
+
+				// チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
+				GameProgress::GetInstance()->hasFinishedTutorial = true;
+				this->hasFinishedTutorial_ = true;
+				this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
+			}
+		}
 	}
 
 	dxCommon_->FlushCommandQueue(false);
@@ -420,6 +451,7 @@ void GamePlayScene::Update(float deltaTime) {
 					}
 				}
 				movieState_ = MovieState::kNone;
+				GameProgress::GetInstance()->hasBridgeDropped = true;
 			}
 
 		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
