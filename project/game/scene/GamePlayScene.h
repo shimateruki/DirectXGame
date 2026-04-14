@@ -87,6 +87,7 @@ private:
     Vector3 movieStartCameraEye_;
     Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
+    Vector3 movieStoredPlayerPos_;
 
     // --- チュートリアルドア用 ---
     bool hasFinishedTutorial_ = false;
