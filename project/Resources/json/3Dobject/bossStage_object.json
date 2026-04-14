@@ -6697,7 +6697,7 @@
             "position": [
                 -5.0,
                 28.0,
-                -201.64700317382813
+                -200.0
             ],
             "quaternion": [
                 0.0,
@@ -6789,7 +6789,7 @@
             "position": [
                 5.0,
                 28.0,
-                -201.64700317382813
+                -200.0
             ],
             "quaternion": [
                 0.0,
@@ -7334,7 +7334,7 @@
             "metallic": 0.0,
             "modelName": "bridge_02",
             "myEventID": -1,
-            "name": "bridge_02_94",
+            "name": "Bridge_Block_Back_02",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "Bridge_Block_Back",
@@ -7426,7 +7426,7 @@
             "metallic": 0.0,
             "modelName": "bridge_03",
             "myEventID": -1,
-            "name": "bridge_03_95",
+            "name": "Bridge_Block_Back_03",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "Bridge_Block_Back",
