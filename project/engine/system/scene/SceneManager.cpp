@@ -6,6 +6,7 @@
 #include <utility>
 #include <fstream>   
 #include "json.hpp"  
+#include <CinematicFade.h>
 using json = nlohmann::json; 
 
 
@@ -47,6 +48,7 @@ void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& 
 
     // シーンの初期化を呼び出す
     currentScene_->Initialize();
+    CinematicFade::GetInstance()->Initialize(currentScene_->GetSpriteCommon());
 }
 /// <summary>
 /// 終了処理
@@ -66,35 +68,81 @@ void SceneManager::Finalize() {
 /// 更新
 /// </summary>
 void SceneManager::Update(float deltaTime) {
+    // 修正: deltaTimeのスパイク（巨大化）を防ぐ
+    if (deltaTime > 0.1f) {
+        deltaTime = 0.1f;
+    }
+
+    CinematicFade* fade = CinematicFade::GetInstance();
+
+    // 1. フェードの更新を常に行う
+    fade->Update(deltaTime);
+
     // --- 次のシーンが予約されている場合 ---
     if (nextScene_ != nullptr) {
 
-        DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+        // =========================================================
+        // ★ 修正: エディタで「停止」中などで deltaTime が 0.0f の場合、
+        // フェードの演出をスキップして即座にシーンを切り替える！
+        // （開発中の「再生・停止」のテンポを爆速にする効果もあります）
+        // =========================================================
+        if (!isPlaying_ || deltaTime <= 0.0f) {
+            DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+            dxCommon->WaitForGPUAndReset();
 
-        // 1. GPU処理を完了してコマンドリストをOpen状態に戻す
-        dxCommon->WaitForGPUAndReset();
+            // 現在のシーンを破棄
+            if (currentScene_) {
+                currentScene_->Finalize();
+                currentScene_.reset();
+            }
 
-        // 2. 現在のシーンを終了・破棄
-        if (currentScene_) {
-            currentScene_->Finalize();
-            currentScene_.reset();
+            // 次のシーンへ即座に入れ替え
+            currentScene_ = std::move(nextScene_);
+            nextScene_ = nullptr;
+            currentScene_->Initialize();
+
+            // フェードに SpriteCommon を渡して、強制的に全開状態にする
+            fade->SetSpriteCommon(currentScene_->GetSpriteCommon());
+            fade->StartOpen(0.0f); // 0.0秒で強制オープン
         }
+        else {
+            // =========================================================
+            // 通常のゲームプレイ中のフェード遷移
+            // =========================================================
+            // ① フェードがまだ閉まり始めていなければ、閉じる処理を開始！
+            if (fade->GetState() == CinematicFade::State::kIdle ||
+                fade->GetState() == CinematicFade::State::kOpening) {
+                fade->StartClose(0.5f); // 0.5秒で閉じる
+            }
 
-        // 3. 次のシーンを現在のシーンに設定
-        currentScene_ = std::move(nextScene_);
-        nextScene_ = nullptr;
+            // ② フェードが完全に閉まりきった瞬間に、裏でシーンをすり替える！
+            if (fade->IsClosed()) {
+                DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+                dxCommon->WaitForGPUAndReset();
 
-        // 4. 新しいシーンを初期化
-        currentScene_->Initialize();
+                if (currentScene_) {
+                    currentScene_->Finalize();
+                    currentScene_.reset();
+                }
+
+                currentScene_ = std::move(nextScene_);
+                nextScene_ = nullptr;
+                currentScene_->Initialize();
+
+                fade->SetSpriteCommon(currentScene_->GetSpriteCommon());
+                fade->StartOpen(0.5f);
+            }
+        }
     }
 
     // --- 現在のシーンを更新 ---
     if (currentScene_) {
-        currentScene_->Update(deltaTime);
+        // 画面が完全に真っ黒な間は、裏のゲーム進行を一時停止する
+        if (!fade->IsClosed()) {
+            currentScene_->Update(deltaTime);
+        }
     }
 }
-
-
 /// <summary>
 /// 描画（現在のシーンの描画）
 /// </summary>
@@ -131,13 +179,17 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
     }
     // SetNextScene に渡して、次のフレームで遷移させる
     if (newScene) {
+        // =======================================================
+        // ★ 修正3: 新しいシーンに SceneManager 自身を登録する！
+        // =======================================================
+        newScene->SetSceneManager(this);
+
         SetNextScene(std::move(newScene));
 #ifdef USE_IMGUI
         SaveLastSceneName(sceneName);
 #endif
     }
 }
-
 void SceneManager::SaveLastSceneName(const std::string& sceneName) {
     json root;
     root["lastScene"] = sceneName;
@@ -175,6 +227,7 @@ void SceneManager::DrawUI() {
     if (currentScene_) {
         currentScene_->DrawUI();
     }
+    CinematicFade::GetInstance()->Draw();
 }
 
 void SceneManager::DrawShadow() {

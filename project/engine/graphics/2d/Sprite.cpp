@@ -207,3 +207,8 @@ void Sprite::Play() {
 void Sprite::Stop() {
 	isPlaying_ = false;
 }
+void Sprite::SetCommon(SpriteCommon* common) {
+	assert(common);
+	common_ = common;
+	dxCommon_ = common_->GetDxCommon();
+}

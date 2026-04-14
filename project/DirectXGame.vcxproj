@@ -155,6 +155,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CinematicFade.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.cpp" />
     <ClCompile Include="EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
@@ -279,6 +280,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp" />
     <ClCompile Include="engine\system\input\KeyConfig.cpp" />
+    <ClCompile Include="GPUParticleSystem.cpp" />
     <ClCompile Include="MeshEffectEditor.cpp" />
     <ClCompile Include="MeshEffectManager.cpp" />
     <ClCompile Include="OptionUI.cpp" />
@@ -388,6 +390,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CinematicFade.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.h" />
     <ClInclude Include="EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
@@ -674,6 +677,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h" />
     <ClInclude Include="engine\system\input\KeyConfig.h" />
+    <ClInclude Include="GPUParticleSystem.h" />
     <ClInclude Include="MeshEffectEditor.h" />
     <ClInclude Include="MeshEffectManager.h" />
     <ClInclude Include="OptionUI.h" />

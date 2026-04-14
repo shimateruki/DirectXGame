@@ -1,5 +1,5 @@
 {
-    "bloomIntensity": 0.10000000149011612,
+    "bloomIntensity": 0.0,
     "chromaticAberration": 0.0,
     "cinemaBarHeight": 0.0,
     "damageFlash": 0.0,
@@ -12,7 +12,7 @@
     "radialIntensity": 0.0,
     "scanlineIntensity": 0.0,
     "spread": 1.0,
-    "threshold": 1.0,
+    "threshold": 3.640000104904175,
     "vignetteIntensity": 0.0,
     "wobbleIntensity": 0.0
 }

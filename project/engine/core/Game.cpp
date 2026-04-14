@@ -121,7 +121,7 @@ void Game::Initialize() {
     CameraEditor::GetInstance()->SetMode(isPlaying_ ? CameraEditor::Mode::Game : CameraEditor::Mode::Editor);
 #endif
     CameraEditor::GetInstance()->Initialize();
- 
+
     dxCommon_->CreateRenderTexture();
 
 

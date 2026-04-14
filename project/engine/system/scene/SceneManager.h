@@ -68,6 +68,7 @@ public:
     bool IsPlaying() const { return isPlaying_; }
     void SetIsPlaying(bool isPlaying) { isPlaying_ = isPlaying; }
     void DrawShadow();
+    void SetTimeScale(float scale) { timeScale_ = scale; }
 private:
     static SceneManager* instance_;
     std::unique_ptr<BaseScene> currentScene_ = nullptr;
@@ -76,4 +77,6 @@ private:
     DebugEditor* debugEditor_ = nullptr;
     const std::string kUserConfigPath = "Resources/json/user_config.json";
     bool isPlaying_ = false;
+    float timeScale_ = 1.0f;
+
 };
