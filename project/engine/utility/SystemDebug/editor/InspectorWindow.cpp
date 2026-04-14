@@ -160,7 +160,7 @@ void InspectorWindow::Draw() {
             Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
             bool isColChanged = false;
 
-            const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)" };
+            const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)", "円柱 (Cylinder)" };
             int currentTypeIndex = (int)colConfig.type;
             if (ImGui::Combo(ICON_FA_SHAPES " 形状タイプ", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
@@ -170,18 +170,32 @@ void InspectorWindow::Draw() {
                 isColChanged = true;
             }
 
-            if (colConfig.type != ColliderType::kNone) {
+         if (colConfig.type != ColliderType::kNone) {
                 if (ImGui::DragFloat3("中心オフセット", &colConfig.center.x, 0.05f)) isColChanged = true;
 
+                // 形状ごとのサイズ変更UIの分岐を整理
                 if (colConfig.type == ColliderType::kSphere) {
                     if (ImGui::DragFloat("半径 (Radius)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) {
                         colConfig.size.y = colConfig.size.z = colConfig.size.x;
                         isColChanged = true;
                     }
                 }
+                // ★ 円柱の分岐をここに入れる（else if にする）
+                else if (colConfig.type == ColliderType::kCylinder) {
+                    // if文にして isColChanged = true をつける！
+                    if (ImGui::DragFloat("Radius (X)", &colConfig.size.x, 0.1f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("Height (Y)", &colConfig.size.y, 0.1f, 0.0f, 100.0f)) isColChanged = true;
+
+                    // Z軸を強制的に半径(X)と同期させておく
+                    colConfig.size.z = colConfig.size.x;
+                    ImGui::TextDisabled("※Z軸の値は半径(X)と同期します");
+                }
+                // 箱(AABB)や回転箱(OBB)の場合
                 else {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
+
+                // OBBの時の回転UI
                 if (colConfig.type == ColliderType::kOBB) {
                     Vector3 rotDegObj = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
                     if (ImGui::DragFloat3("回転 (Rotation)", &rotDegObj.x, 1.0f, -360.0f, 360.0f)) {
@@ -189,6 +203,7 @@ void InspectorWindow::Draw() {
                         isColChanged = true;
                     }
                 }
+
                 if (isColChanged) {
                     selectedObject->SetColliderConfig(colConfig);
                 }
