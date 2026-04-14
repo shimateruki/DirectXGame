@@ -62,6 +62,7 @@ void TutorialDoll::Update(float deltaTime) {
     // HPが尽きたら死亡状態へ遷移
     if (param_->hp <= 0.0f) {
         isDead_ = true;
+        hasBeenDefeatedAtLeastOnce_ = true;
         respawnTimer_ = 5.0f; // 5秒後に復活
         deathAnimTimer_ = 0.5f;
 

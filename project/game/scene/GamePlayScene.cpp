@@ -26,6 +26,7 @@
 #include "GameRule.h"
 #include "ObjectManager.h" 
 #include "BossCore.h"
+#include "TutorialDoll.h"
 #include"WinApp.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -301,6 +302,45 @@ void GamePlayScene::Update(float deltaTime) {
 		return;
 	}
 
+	// =======================================================
+	// チュートリアルドアの処理
+	// =======================================================
+	if (!hasFinishedTutorial_) {
+		for (auto& obj : objectManager_->GetObjects()) {
+			if (obj->GetName() == "Tutorial_Doll") {
+				TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
+				if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
+					hasFinishedTutorial_ = true;
+					break;
+				}
+			}
+		}
+	}
+
+	if (hasFinishedTutorial_) {
+		if (doorOpenProgress_ < 1.0f) {
+			doorOpenProgress_ += deltaTime * 0.5f; // 2秒で開く
+			if (doorOpenProgress_ > 1.0f) {
+				doorOpenProgress_ = 1.0f;
+			}
+		}
+
+		for (auto& obj : objectManager_->GetObjects()) {
+			if (obj->GetName() == "Tutorial_Door_Left") {
+				Transform* trans = obj->GetTransform();
+				trans->translate.x = -5.0f - 15.0f * doorOpenProgress_; // -5 -> -15
+				trans->isQuaternionMaster = false;
+				obj->UpdateWorldMatrix();
+			}
+			else if (obj->GetName() == "Tutorial_Door_Right") {
+				Transform* trans = obj->GetTransform();
+				trans->translate.x = 5.0f + 15.0f * doorOpenProgress_; // 5 -> +15
+				trans->isQuaternionMaster = false;
+				obj->UpdateWorldMatrix();
+			}
+		}
+	}
+
 
 	static Math math;
 	LightEditor::GetInstance()->Update();
@@ -354,10 +394,28 @@ void GamePlayScene::Update(float deltaTime) {
 					if (obj->GetName() == "Bridge_Block_Center") {
 						obj->SetIsVisible(false);
 					}
+					if (obj->GetName() == "Bridge_Block_Center_02") {
+						obj->SetIsVisible(false);
+					}
+					if (obj->GetName() == "Bridge_Block_Center_03") {
+						obj->SetIsVisible(false);
+					}
 					if (obj->GetName() == "Bridge_Block_Back") {
 						obj->SetIsVisible(false);
 					}
+					if (obj->GetName() == "Bridge_Block_Back_02") {
+						obj->SetIsVisible(false);
+					}
+					if (obj->GetName() == "Bridge_Block_Back_03") {
+						obj->SetIsVisible(false);
+					}
 					if (obj->GetName() == "Bridge_Block_Front") {
+						obj->SetIsVisible(false);
+					}
+					if (obj->GetName() == "Bridge_Block_Front_02") {
+						obj->SetIsVisible(false);
+					}
+					if (obj->GetName() == "Bridge_Block_Front_03") {
 						obj->SetIsVisible(false);
 					}
 				}
