@@ -351,7 +351,19 @@ void GamePlayScene::Update(float deltaTime) {
 	// ムービーの制御
 	// =================================================================
 	if (movieState_ == MovieState::kBridgeDrop) {
+		// ムービー開始時の初期化
+		if (movieTimer_ == 0.0f) {
+			movieStoredPlayerPos_ = player_->GetWorldPosition();
+			player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+			player_->SetIsControlActive(false);
+		}
+
 		movieTimer_ += deltaTime;
+
+		// プレイヤーの座標を強制固定 (Player::Update側でも物理が無効化されているため)
+		player_->SetTranslate(movieStoredPlayerPos_);
+
+		// ムービー開始から1.5秒後にブリッジブロックの崩落演出を開始する
 
 		// カメラ制御は GhostRecorder に任せるため、ブロックの崩落演出のみ実行する
 		if (movieTimer_ > 1.5f) {
@@ -420,6 +432,7 @@ void GamePlayScene::Update(float deltaTime) {
 					}
 				}
 				movieState_ = MovieState::kNone;
+				player_->SetIsControlActive(true);
 			}
 
 		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
