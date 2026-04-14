@@ -126,6 +126,7 @@ public: // メンバ関数
 	void SetLocked(bool isLocked) { isLocked_ = isLocked; }
 	const std::string& GetTextureName() const { return textureName_; }
 	void SetTextureName(const std::string& name) { textureName_ = name; }
+	void SetCommon(SpriteCommon* common);
 private: // メンバ変数
 	SpriteCommon* common_ = nullptr;
 	DirectXCommon* dxCommon_ = nullptr;

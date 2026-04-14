@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <vector>
+#include <GPUParticleEmitter.h>
 
 // --- 前方宣言 ---
 class DirectXCommon;
@@ -153,7 +154,9 @@ private:
     Sprite* gameOverTextSprite_ = nullptr;
     Sprite* restartTextSprite_ = nullptr;
     Sprite* titleTextSprite_ = nullptr;
-
+    std::unique_ptr<GPUParticleEmitter> emitterA_;
+    std::unique_ptr<GPUParticleEmitter> emitterB_;
+    std::unique_ptr<GPUParticleEmitter> emitterC_;
     // =======================================================
     // ポーズ画面用
     // =======================================================

@@ -12,7 +12,22 @@ struct Particle
     float scale;
     float rotation;
     float rotSpeed;
-    float padding;
+    uint configIndex;
+    float4 memBaseColor;
+    float4 memMidColor;
+    float4 memEndColor;
+    float memBaseSize;
+    float memMidSize;
+    float memEndSize;
+    float memColorMidTime;
+    float memSizeMidTime;
+    uint memColorEaseType;
+    uint memSizeEaseType;
+    float memColorIntensity;
+    float3 memGravity;
+    float memDrag;
+    float3 memWind;
+    float memTurbulence;
 };
 
 StructuredBuffer<Particle> particles : register(t0);

@@ -22,7 +22,8 @@
 #include "GPUParticleEditor.h"
 #include "EngineManualWindow.h"
 #include"MeshEffectEditor.h"
-
+#include "GPUParticleEmitter.h"
+#include <vector>
 class WinApp;
 
 class Game : public Framework {
@@ -50,6 +51,10 @@ private:
 	int timeHistoryIndex_ = 0;
 	float drawTimeMs_ = 0.0f;
 	float drawTimeHistory_[120] = { 0 };
+	// 複数のエミッターをまとめて管理する配列！
+	std::unique_ptr<GPUParticleEmitter> testEmitter1_;
+	std::unique_ptr<GPUParticleEmitter> testEmitter2_;
+	std::unique_ptr<GPUParticleEmitter> testEmitter3_;
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;

@@ -100,7 +100,7 @@ void GamePlayScene::Initialize() {
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-	GPUParticleManager::GetInstance()->LoadAllPresets();
+	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
 	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
