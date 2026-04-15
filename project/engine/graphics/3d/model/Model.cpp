@@ -591,3 +591,93 @@ void Model::DrawMeshOnly() {
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
     }
 }
+
+
+
+void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices) {
+    assert(common);
+    common_ = common;
+    DirectXCommon* dxCommon = common_->GetDxCommon();
+    ID3D12Device* device = dxCommon->GetDevice();
+
+    // 既存のメッシュデータがあればクリアする（エディタでのリアルタイム更新用）
+    modelData_.meshes.clear();
+
+    // 動的生成用のメッシュを1つ追加
+    modelData_.meshes.emplace_back();
+    auto& mesh = modelData_.meshes.back();
+
+    // 頂点とインデックスのデータを保持
+    mesh.vertices = vertices;
+    mesh.indices = indices;
+    mesh.materialIndex = 0; // ★マテリアルインデックスを初期化
+
+    // ==========================================
+    // 1. 頂点バッファ (Vertex Buffer) の作成
+    // ==========================================
+    UINT vbSize = static_cast<UINT>(sizeof(VertexData) * vertices.size());
+
+    D3D12_HEAP_PROPERTIES uploadHeap{};
+    uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC vbDesc{};
+    vbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    vbDesc.Width = vbSize;
+    vbDesc.Height = 1;
+    vbDesc.DepthOrArraySize = 1;
+    vbDesc.MipLevels = 1;
+    vbDesc.SampleDesc.Count = 1;
+    vbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    // ★ 修正: vertexResource に生成
+    HRESULT hr = device->CreateCommittedResource(
+        &uploadHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &vbDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&mesh.vertexResource)
+    );
+    assert(SUCCEEDED(hr));
+
+    // ★ 修正: vertexResource に対してマップしてデータを流し込む
+    void* mappedVerts = nullptr;
+    mesh.vertexResource->Map(0, nullptr, &mappedVerts);
+    memcpy(mappedVerts, vertices.data(), vbSize);
+    mesh.vertexResource->Unmap(0, nullptr);
+
+    // ★ 修正: vertexResource からGPUアドレスを取得
+    mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
+    mesh.vertexBufferView.SizeInBytes = vbSize;
+    mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
+
+    // ==========================================
+    // 2. インデックスバッファ (Index Buffer) の作成
+    // ==========================================
+    UINT ibSize = static_cast<UINT>(sizeof(uint32_t) * indices.size());
+
+    D3D12_RESOURCE_DESC ibDesc = vbDesc;
+    ibDesc.Width = ibSize;
+
+    // ★ 修正: indexResource に生成
+    hr = device->CreateCommittedResource(
+        &uploadHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &ibDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&mesh.indexResource)
+    );
+    assert(SUCCEEDED(hr));
+
+    // ★ 修正: indexResource に対してマップしてデータを流し込む
+    void* mappedIndices = nullptr;
+    mesh.indexResource->Map(0, nullptr, &mappedIndices);
+    memcpy(mappedIndices, indices.data(), ibSize);
+    mesh.indexResource->Unmap(0, nullptr);
+
+    // ★ 修正: indexResource からGPUアドレスを取得
+    mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
+    mesh.indexBufferView.SizeInBytes = ibSize;
+    mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+}

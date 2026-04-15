@@ -1,5 +1,7 @@
 #pragma once
 #include "Object3d.h"
+#include"Model.h"
+#include <vector>
 #include <wrl.h>
 
 // ========================================================
@@ -73,6 +75,17 @@ public:
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
     void SetProceduralType(int type) { materialData_->proceduralType = type; }
+    void UpdateProceduralMesh();
+
+    // --- プロシージャルメッシュ用パラメータ ---
+    float editSlashAngle_ = 360.0f; // 斬撃の角度（360度以上も可能に）
+    float editInnerRadius_ = 0.5f;  // 内径（剣の根元）
+    float editOuterRadius_ = 4.0f;  // 外径（剣の先端）
+    float editThickness_ = 0.5f;    // 軌跡の厚み
+    float editSpiralPitch_ = 0.0f;  // 螺旋の高さ（スパイラル）
+    float editThrustLength_ = 5.0f; // 突きの長さ
+    float editThrustRadius_ = 0.8f; // 突きの根本の太さ
+    int   editMeshSegments_ = 16;   // ポリゴンの分割数（滑らかさ）
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
@@ -92,4 +105,13 @@ private:
     Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     int easingType_ = 0; // デフォルトは 0 (Linear)
+    // 動的生成専用のモデル
+    std::unique_ptr<Model> dynamicModel_;
+    std::vector<Model::VertexData> proceduralVertices_;
+    std::vector<uint32_t> proceduralIndices_;
+
+    // 形状別の生成ロジック
+    void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
+    void GenerateThrustVertices(float length, float radius, int segments);
+
 };

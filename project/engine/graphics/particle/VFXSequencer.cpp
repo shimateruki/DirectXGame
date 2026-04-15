@@ -66,7 +66,7 @@ void VFXSequencer::Update(float deltaTime) {
                     }
                     else if (e.type == VFXEventType::MeshEffect) {
                         std::string path = "Resources/json/effect/" + e.presetName + ".json";
-                        MeshEffectManager::GetInstance()->SpawnEffect(path);
+                        MeshEffectManager::GetInstance()->SpawnEffect(path, targetObject_);
                     }
                     else if (e.type == VFXEventType::SoundEffect) {
                         std::string path = "Resources/audio/se/" + e.presetName;

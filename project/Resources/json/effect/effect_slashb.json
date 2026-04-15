@@ -18,19 +18,19 @@
         2.0,
         2.0
     ],
-    "InnerRadius": 0.5,
+    "InnerRadius": 2.0220000743865967,
     "Intensity": 100.0,
     "Lifetime": 0.7459999918937683,
-    "MeshSegments": 16,
+    "MeshSegments": 66,
     "ModelName": "Semicircle.gltf",
     "NoiseTexturePath": "",
-    "OuterRadius": 4.0,
+    "OuterRadius": 3.124000072479248,
     "Position": [
         -4.699999809265137,
         18.399999618530273,
         -10.600000381469727
     ],
-    "ProceduralType": 1,
+    "ProceduralType": 3,
     "RampTexturePath": "Resources/sprite/color.png",
     "Rotation": [
         0.0,
@@ -41,7 +41,7 @@
         -2.990000009536743,
         0.0
     ],
-    "SlashAngle": 360.0,
+    "SlashAngle": 690.6740112304688,
     "SpiralPitch": 0.0,
     "StartColor": [
         0.0,
@@ -56,8 +56,8 @@
     ],
     "TargetName": "",
     "TexturePath": "",
-    "Thickness": 0.5,
-    "ThrustLength": 5.0,
-    "ThrustRadius": 0.800000011920929,
+    "Thickness": 0.3490000069141388,
+    "ThrustLength": 4.0960001945495605,
+    "ThrustRadius": 0.12800000607967377,
     "VolumeMode": 0
 }

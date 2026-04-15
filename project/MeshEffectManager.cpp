@@ -56,8 +56,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     file.close();
 
     // ==========================================
-      // ★ 1. 基準となるターゲットの取得とY軸の計算
-      // ==========================================
+    // ★ 1. 基準となるターゲットの取得とY軸の計算
+    // ==========================================
     Vector3 basePos = { 0, 0, 0 };
     float targetWorldY = 0.0f; // ★プレイヤーの「向き」だけを抽出する
 
@@ -127,7 +127,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         effect->SetProceduralType(0); effect->SetEnableNoiseTexture(false); effect->SetEnableColorRamp(false);
         effect->SetEnableDistortion(false); effect->SetEnableReveal(true); effect->SetDistortionStrength(0.0f); effect->SetEdgeFadeStrength(1.0f);
 
-        // --- パラメータ復元 (中略：変更なし) ---
+        // --- パラメータ復元 ---
         if (j.contains("ModelName")) effect->SetModel(j["ModelName"].get<std::string>());
         if (j.contains("TexturePath")) { std::string tp = j["TexturePath"]; if (!tp.empty() && effect->GetMeshRenderer()) effect->GetMeshRenderer()->SetTexture(tp); }
         if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np)); effect->SetEnableNoiseTexture(true); } }
@@ -145,7 +145,28 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         if (j.contains("BlendMode")) effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
         if (j.contains("EnableReveal")) effect->SetEnableReveal(j["EnableReveal"]);
         if (j.contains("EasingType")) effect->SetEasingType(j["EasingType"]);
-        if (j.contains("ProceduralType")) effect->SetProceduralType(j["ProceduralType"]);
+
+        // =========================================================
+        // プロシージャルパラメータの完全復元と構築
+        // =========================================================
+        if (j.contains("ProceduralType")) {
+            int procType = j["ProceduralType"];
+            effect->SetProceduralType(procType);
+
+            if (procType >= 1) { // プロシージャルを使用する場合
+                if (j.contains("SlashAngle")) effect->editSlashAngle_ = j["SlashAngle"];
+                if (j.contains("InnerRadius")) effect->editInnerRadius_ = j["InnerRadius"];
+                if (j.contains("OuterRadius")) effect->editOuterRadius_ = j["OuterRadius"];
+                if (j.contains("Thickness")) effect->editThickness_ = j["Thickness"];
+                if (j.contains("SpiralPitch")) effect->editSpiralPitch_ = j["SpiralPitch"];
+                if (j.contains("ThrustLength")) effect->editThrustLength_ = j["ThrustLength"];
+                if (j.contains("ThrustRadius")) effect->editThrustRadius_ = j["ThrustRadius"];
+                if (j.contains("MeshSegments")) effect->editMeshSegments_ = j["MeshSegments"];
+
+                // ★ これを呼ぶことで、ロードした数値をもとに「突き」や「三日月」の形を実際に構築する
+                effect->UpdateProceduralMesh();
+            }
+        }
 
         // --- ★ 4. 立体化のための座標・回転適用 ---
         // 最終座標 ＝ ターゲット座標 ＋ 向きに合わせて回転させたオフセット
@@ -178,5 +199,4 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         effect->UpdateWorldMatrix();
         activeEffects_.push_back(std::move(effect));
     }
-
 }
