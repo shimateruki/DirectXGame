@@ -8,6 +8,7 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include <functional>
+#include <CollisionManager.h>
 using json = nlohmann::json;
 
 MeshEffectManager* MeshEffectManager::GetInstance() {
@@ -23,6 +24,12 @@ void MeshEffectManager::Update(float deltaTime) {
     // リストの中を回して、寿命が切れたエフェクトを削除する
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
         if (!(*it)->IsPlaying()) {
+
+      
+            if ((*it)->editHasCollision_) {
+                CollisionManager::GetInstance()->RemoveObject(it->get());
+            }
+
             // 再生が終了していたらリストから削除（メモリも自動解放される）
             it = activeEffects_.erase(it);
         }
@@ -163,16 +170,47 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 if (j.contains("ThrustRadius")) effect->editThrustRadius_ = j["ThrustRadius"];
                 if (j.contains("MeshSegments")) effect->editMeshSegments_ = j["MeshSegments"];
 
-                // ★ これを呼ぶことで、ロードした数値をもとに「突き」や「三日月」の形を実際に構築する
                 effect->UpdateProceduralMesh();
             }
         }
 
-        // --- ★ 4. 立体化のための座標・回転適用 ---
-        // 最終座標 ＝ ターゲット座標 ＋ 向きに合わせて回転させたオフセット
-        Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
+        // =========================================================
+        // ★ NEW: 当たり判定(Collision)の復元とマネージャーへの登録
+        // =========================================================
+        if (j.contains("Collision")) {
+            effect->editHasCollision_ = j["Collision"]["HasCollision"];
+            effect->editCollisionShape_ = j["Collision"]["Shape"];
+            effect->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
+            effect->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
 
-        // 最終回転 ＝ エディタの回転 ＋ プレイヤーのY軸（向き）だけ足す！ (XやZを足すとエフェクトが地面にめり込む)
+            if (effect->editHasCollision_) {
+                ColliderType cType = ColliderType::kNone;
+                if (effect->editCollisionShape_ == 0) cType = ColliderType::kSphere;
+                else if (effect->editCollisionShape_ == 1) cType = ColliderType::kAABB;
+                else if (effect->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+                else if (effect->editCollisionShape_ == 3) cType = ColliderType::kCylinder;
+
+                effect->SetColliderType(cType);
+
+                Object3d::ColliderConfig cConfig;
+                cConfig.size = effect->editCollisionSize_;
+                cConfig.center = effect->editCollisionOffset_;
+                cConfig.rotation = { 0.0f, 0.0f, 0.0f }; // デフォルト
+                effect->SetColliderConfig(cConfig);
+
+                // --- 属性とマスクの設定 ---
+                // ※ ここはエンジンの CollisionConfig 等に合わせて数値を調整してください
+                // 例: 攻撃判定として属性(Attribute)を2、敵に当たるようにマスク(Mask)を1とする場合
+                effect->SetCollisionAttribute(2); // 例: kPlayerAttack 相当
+                effect->SetCollisionMask(1);      // 例: kEnemy 相当
+
+                // ★ 当たり判定の世界（CollisionManager）へ出向！
+                CollisionManager::GetInstance()->AddObject(effect.get());
+            }
+        }
+
+        // --- ★ 4. 立体化のための座標・回転適用 ---
+        Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
         Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
 
         Vector3 localZ;
@@ -197,6 +235,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         effect->Update(0.0f);
         effect->UpdateLocalMatrix();
         effect->UpdateWorldMatrix();
+
         activeEffects_.push_back(std::move(effect));
     }
 }

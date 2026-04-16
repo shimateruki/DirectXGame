@@ -9,6 +9,7 @@
 #include <DebugConsole.h>
 #include "IconsFontAwesome5.h"
 #include <filesystem>
+#include <MeshEffectManager.h>
 
 using json = nlohmann::json;
 static const char* kEasingNames[] = {
@@ -502,7 +503,35 @@ void MeshEffectEditor::DrawImGui() {
         ImGui::Text(ICON_FA_CUT " [ エッジフェード (形状削り出し) ]");
         ImGui::SliderFloat("削り出しの強さ", &editEdgeFadeStrength_, 1.0f, 10.0f);
     }
+    if (ImGui::CollapsingHeader("Collision Settings")) {
+        ImGui::Checkbox("Has Collision", &previewEffect_->editHasCollision_);
+        if (previewEffect_->editHasCollision_) {
+            ImGui::Combo("Shape", &previewEffect_->editCollisionShape_, "Sphere\0AABB\0OBB\0Cylinder\0\0");
+            ImGui::DragFloat3("Size/Radius", &previewEffect_->editCollisionSize_.x, 0.1f);
+            ImGui::DragFloat3("Offset", &previewEffect_->editCollisionOffset_.x, 0.1f);
 
+            // スライダーを動かした瞬間、実際のコライダー設定に反映させる！
+            ColliderType cType = ColliderType::kNone;
+            if (previewEffect_->editCollisionShape_ == 0) cType = ColliderType::kSphere;
+            else if (previewEffect_->editCollisionShape_ == 1) cType = ColliderType::kAABB;
+            else if (previewEffect_->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+            else if (previewEffect_->editCollisionShape_ == 3) cType = ColliderType::kCylinder;
+            previewEffect_->SetColliderType(cType);
+
+            Object3d::ColliderConfig cConfig;
+            cConfig.size = previewEffect_->editCollisionSize_;
+            cConfig.center = previewEffect_->editCollisionOffset_;
+            cConfig.rotation = { 0.0f, 0.0f, 0.0f };
+            previewEffect_->SetColliderConfig(cConfig);
+        }
+        else {
+            // チェックを外したら判定を消す
+            previewEffect_->SetColliderType(ColliderType::kNone);
+        }
+
+        // ★マネージャーに「今プレビューしてるエフェクト」を教える
+        MeshEffectManager::GetInstance()->SetPreviewEffectForDebug(previewEffect_.get());
+    }
     // ==========================================
        // 7. 保存と読み込み (Save & Load)
        // ==========================================
@@ -603,7 +632,7 @@ void MeshEffectEditor::SaveToJson() {
     j["VolumeMode"] = editVolumeMode_;
 
     // ==========================================
-    // ★ 追加: プロシージャルパラメータの保存
+    // プロシージャルパラメータの保存
     // ==========================================
     j["ProceduralType"] = editProceduralType_;
     if (previewEffect_) {
@@ -616,7 +645,10 @@ void MeshEffectEditor::SaveToJson() {
         j["ThrustRadius"] = previewEffect_->editThrustRadius_;
         j["MeshSegments"] = previewEffect_->editMeshSegments_;
     }
-
+    j["Collision"]["HasCollision"] = previewEffect_->editHasCollision_;
+    j["Collision"]["Shape"] = previewEffect_->editCollisionShape_;
+    j["Collision"]["Size"] = { previewEffect_->editCollisionSize_.x, previewEffect_->editCollisionSize_.y, previewEffect_->editCollisionSize_.z };
+    j["Collision"]["Offset"] = { previewEffect_->editCollisionOffset_.x, previewEffect_->editCollisionOffset_.y, previewEffect_->editCollisionOffset_.z };
     std::ofstream file(fullPath);
     if (file.is_open()) {
         file << j.dump(4);
@@ -759,7 +791,12 @@ void MeshEffectEditor::LoadFromJson() {
         if (j.contains("ThrustRadius")) previewEffect_->editThrustRadius_ = j["ThrustRadius"];
         if (j.contains("MeshSegments")) previewEffect_->editMeshSegments_ = j["MeshSegments"];
     }
-
+    if (j.contains("Collision")) {
+        previewEffect_->editHasCollision_ = j["Collision"]["HasCollision"];
+        previewEffect_->editCollisionShape_ = j["Collision"]["Shape"];
+        previewEffect_->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
+        previewEffect_->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
+    }
     targetObject_ = nullptr;
     if (j.contains("TargetName")) {
         std::string targetName = j["TargetName"];

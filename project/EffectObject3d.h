@@ -86,6 +86,10 @@ public:
     float editThrustLength_ = 5.0f; // 突きの長さ
     float editThrustRadius_ = 0.8f; // 突きの根本の太さ
     int   editMeshSegments_ = 16;   // ポリゴンの分割数（滑らかさ）
+    bool editHasCollision_ = false;
+    int editCollisionShape_ = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
+    Vector3 editCollisionSize_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 editCollisionOffset_ = { 0.0f, 0.0f, 0.0f };
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
