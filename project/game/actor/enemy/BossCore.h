@@ -174,12 +174,12 @@ private:
     // ★ 破片演出用の構造体と変数
     // ==========================================
     struct CorePiece {
-        Object3d* obj;
-        Vector3 velocity; // 吹っ飛ぶ速度
-        Vector3 rotSpeed; // 回転速度
+        Object3d* obj; // ★ 生ポインタでOK！（実体はシーンが管理する）
+        Vector3 velocity;
+        Vector3 rotSpeed;
     };
-
     std::vector<CorePiece> corePieces_;
+
     bool isCoreBroken_ = false;  // 割れたかどうかのフラグ
     float deathTimer_ = 0.0f;    // 割れたあとの退場タイマー
 

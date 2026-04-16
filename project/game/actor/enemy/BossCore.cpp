@@ -187,34 +187,6 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
     //particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
-
-    //// ==========================================
-    //// ★ 破片モデルの読み込みと待機
-    //// ==========================================
-    //// ※ 20個に割った場合。出力した数に合わせてループを変えてください
-    //for (int i = 1; i <= 20; ++i) {
-    //    // ① まずスマートポインタで実体を作る
-    //    auto pieceObj = std::make_unique<Object3d>();
-    //    pieceObj->Initialize(common);
-    //    pieceObj->SetModel("core_piece_" + std::to_string(i));
-
-    //    // ==========================================
-    //    // ★ これを追加！
-    //    // エンジンに「これは骨を持たない背景(静的)モデルだぞ！」と教える
-    //    // ==========================================
-    //    pieceObj->SetStatic(true);
-
-    //    // 最初は見えないように隠しておく
-    //    pieceObj->SetScale({ 0.0f, 0.0f, 0.0f });
-    //    pieceObj->SetCollisionAttribute(0);
-
-    //    // ② ボス側は「操作用のポインタ」だけを配列に覚えておく
-    //    CorePiece piece;
-    //    piece.obj = pieceObj.get();
-    //    piece.velocity = { 0.0f, 0.0f, 0.0f };
-    //    piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
-    //    corePieces_.push_back(piece);
-    //}
 }
 
 void BossCore::Update(float deltaTime) {
@@ -222,19 +194,21 @@ void BossCore::Update(float deltaTime) {
 
     InputManager* input = InputManager::GetInstance();
 
-    // 0キーで時間停止
-    if (input->IsKeyTriggered(DIK_0)) {
-        s_isTimeStopped_ = !s_isTimeStopped_;
-        if (s_isTimeStopped_) {
-            DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
-        }
-        else {
-            DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
-        }
-    }
+    
 
 #ifdef USE_IMGUI
     if (SceneManager::GetInstance()->IsPlaying()) {
+        // 0キーで時間停止
+        if (input->IsKeyTriggered(DIK_0)) {
+            s_isTimeStopped_ = !s_isTimeStopped_;
+            if (s_isTimeStopped_) {
+                DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
+            }
+            else {
+                DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
+            }
+        }
+        
         int triggerAttack = 0;
         if (input->IsKeyTriggered(DIK_1)) triggerAttack = 1;
         if (input->IsKeyTriggered(DIK_2)) triggerAttack = 2;
@@ -244,6 +218,18 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
         if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
+
+        // ==========================================
+    // ★ 追加：9キーで即座にボスを爆散させるデバッグ機能！
+    // ==========================================
+        if (input->IsKeyTriggered(DIK_9)) {
+            if (!isCoreBroken_) {
+                DebugConsole::GetInstance()->AddLog("【DEBUG】 9キー入力：ボスを強制爆散させます！！！💥");
+
+                param_->hp = 0.0f;  // 念のためステータスもHP0にしておく
+                BreakCore();        // 爆散演出を強制発動！
+            }
+        }
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -286,6 +272,8 @@ void BossCore::Update(float deltaTime) {
             }
         }
     }
+
+    
 #endif
 
     if (s_isTimeStopped_) {
@@ -427,7 +415,7 @@ void BossCore::Update(float deltaTime) {
     // ★ 追加：破片の物理計算・退場タイマーを進める！
     // これを呼ばないと、破片が飛び散りません。
     // ==========================================
-    //UpdateCorePieces(deltaTime);
+    UpdateCorePieces(deltaTime);
 }
 
 // =================================================================
@@ -569,29 +557,20 @@ void BossCore::ChangeState(State nextState) {
 }
 
 void BossCore::TakeBodyDamage(float damage) {
-    if (isWaitingForDeath_) {
-        // ==========================================
-        // ★ 修正：トドメを刺されたら即座に消さず、割る！
-        // ==========================================
-        if (!isCoreBroken_) {
-            BreakCore(); // 爆散演出スタート！
-        }
-        return; // ここではまだ isDead = true にしない！
-    }
+    // すでに割れて退場中なら、これ以上ダメージ計算しない
+    if (isCoreBroken_) return;
 
-    if (isFinalPhase_) return; // 最終奥義の最中は無敵！
-
+    // ダメージを与える
     param_->hp -= damage;
 
-    // HPが0以下になったら必殺技発動！
+    // HPが0以下になったら爆散演出スタート！
     if (param_->hp <= 0.0f) {
-        param_->hp = 1.0f;        // HPを1で踏みとどまる！
-        isFinalPhase_ = true;     // 発狂モードON！
+        param_->hp = 0.0f; // HPを0に固定
 
-        DebugConsole::GetInstance()->AddLog("【覚醒】ボスのHPが1で耐えた！最終奥義が来るぞ！！");
+        DebugConsole::GetInstance()->AddLog("【撃破】 ボスのHPが0になった！粉砕！！");
 
-        // 即座に攻撃状態へ移行（ChangeState内で nextAttack = 8 が選ばれる）
-        ChangeState(State::Attack);
+        // ★ ここで割れる演出の関数を呼ぶ！
+        BreakCore();
     }
 }
 
@@ -851,76 +830,84 @@ void BossCore::BreakCore() {
 
     DebugConsole::GetInstance()->AddLog("【撃破】 コアが粉砕された！！！🎉");
 
-    // ① ボス本体を完全に隠す（当たり判定も消す）
     this->SetScale({ 0.0f, 0.0f, 0.0f });
     this->SetCollisionAttribute(0);
 
-    // （おまけ）もしパーティクルを消したければここで止める
-    // for (auto& emitter : particleEmitters_) { if (emitter) emitter->Stop(); }
-
+    // ボスの現在の座標を取得
     Vector3 corePos = this->GetTranslate();
 
-    // ② 隠しておいた破片を一斉に出現させ、ランダムな方向に吹き飛ばす！
-    for (auto& piece : corePieces_) {
-        piece.obj->SetScale({ 1.0f, 1.0f, 1.0f }); // 元のサイズに戻す
-        piece.obj->SetTranslate(corePos);          // ボスの中心位置へ
+    // 現在のシーンを取得（ゲーム中なら必ず成功する）
+    BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
+    if (!currentScene) return;
 
-        // ランダムなベクトル計算（上方向に少し強めに飛ばす）
+    // ==========================================
+    // ★ ここで初めて破片を18個生成し、シーンにぶん投げる！
+    // ==========================================
+    for (int i = 0; i < 18; ++i) {
+        auto pieceObj = std::make_unique<Object3d>();
+
+        pieceObj->Initialize(common_);
+        pieceObj->SetStatic(true);
+        pieceObj->SetModel("enemy_core_shards/enemy_core" + std::to_string(i + 1));
+
+        pieceObj->SetScale({ 1.0f, 1.0f, 1.0f });
+        pieceObj->SetTranslate(corePos);
+        pieceObj->SetCollisionAttribute(0);
+
+        CorePiece piece;
+        piece.obj = pieceObj.get();
+
+        // ランダムな方向に吹き飛ぶ計算
         float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
         float ry = ((static_cast<float>(rand()) / RAND_MAX) * 1.0f) + 0.5f;
         float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
 
-        // 爆発の勢い（スピード）
         float speed = 30.0f + (rand() % 30);
         piece.velocity = { rx * speed, ry * speed, rz * speed };
-
-        // ランダムな回転速度
         piece.rotSpeed = {
             (rand() % 60) - 30.0f,
             (rand() % 60) - 30.0f,
             (rand() % 60) - 30.0f
         };
+
+        corePieces_.push_back(piece);
+
+        // シーンのリストに実体を渡す！（AllDrawに乗る）
+        currentScene->GetObjects().push_back(std::move(pieceObj));
     }
 }
 
 void BossCore::UpdateCorePieces(float deltaTime) {
-    if (!isCoreBroken_) return; // 割れていなければ何もしない
+    if (!isCoreBroken_) return;
 
-    // 退場タイマーを進める（5秒後に完全に消す）
     deathTimer_ += deltaTime;
     if (deathTimer_ > 5.0f) {
-        // ==========================================
-        // シーンにある破片の「自動解放」を要求する！
-        // ==========================================
+        // ★ ボスが消える時、シーンにある破片にも「死」を伝達して自動削除させる
         for (auto& piece : corePieces_) {
             if (piece.obj) {
-                piece.obj->isDead = true; // これでシーンの更新時に自動で delete されます！
+                piece.obj->isDead = true;
             }
         }
-
-        isDead = true; // ここで初めてメモリから完全消去される！
+        isDead = true; // ボス自身も消滅
         return;
     }
 
-    // 破片の物理演算
+    // 物理演算
     for (auto& piece : corePieces_) {
-        if (piece.obj->GetScale().x > 0.0f) {
+        // ★ 安全対策：ポインタが生きている時だけ動かす
+        if (piece.obj) {
             Vector3 pos = piece.obj->GetTranslate();
-
-            // 重力
             piece.velocity.y -= 98.0f * deltaTime;
 
             pos.x += piece.velocity.x * deltaTime;
             pos.y += piece.velocity.y * deltaTime;
             pos.z += piece.velocity.z * deltaTime;
 
-            // 地面（y=0）でのバウンド処理
             if (pos.y <= 0.0f) {
                 pos.y = 0.0f;
-                piece.velocity.y *= -0.5f; // 反発係数（半分くらいの勢いで跳ねる）
-                piece.velocity.x *= 0.8f;  // 摩擦で横移動が減る
+                piece.velocity.y *= -0.5f;
+                piece.velocity.x *= 0.8f;
                 piece.velocity.z *= 0.8f;
-
                 piece.rotSpeed.x *= 0.8f;
                 piece.rotSpeed.y *= 0.8f;
                 piece.rotSpeed.z *= 0.8f;
@@ -928,7 +915,6 @@ void BossCore::UpdateCorePieces(float deltaTime) {
 
             piece.obj->SetTranslate(pos);
 
-            // 回転処理
             Vector3 rot = piece.obj->GetRotation();
             rot.x += piece.rotSpeed.x * deltaTime;
             rot.y += piece.rotSpeed.y * deltaTime;
@@ -939,7 +925,6 @@ void BossCore::UpdateCorePieces(float deltaTime) {
         }
     }
 }
-
 bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
 
