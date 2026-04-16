@@ -204,10 +204,11 @@ void InspectorWindow::Draw() {
                     }
                 }
 
-                if (isColChanged) {
-                    selectedObject->SetColliderConfig(colConfig);
-                }
+            
             }
+         if (isColChanged) {
+             selectedObject->SetColliderConfig(colConfig);
+         }
             ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;

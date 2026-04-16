@@ -148,6 +148,7 @@ public: // メンバ関数
     const Animation* GetAnimation(const std::string& name) const;
     uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
     void DrawMeshOnly();
+    void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
 private: // 内部処理関数
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);

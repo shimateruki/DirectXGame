@@ -21,6 +21,7 @@ public:
     /// </summary>
     std::vector<std::string> GetLoadedModelNames() const;
     void LoadAllModels();
+    ModelCommon* GetModelCommon() const { return modelCommon_.get(); }
 private:
     ModelManager() = default;
     ~ModelManager() = default;

@@ -39,6 +39,7 @@
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
 #include <PresetManager.h>
+#include <MeshEffectManager.h>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
@@ -510,6 +511,77 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
             }
             instanceCount++;
+        }
+        // =========================================================
+    // 3. エフェクトのコライダー描画
+    // =========================================================
+        if (drawColliders_) {
+            // ★ 修正：ゲーム中のエフェクト ＋ エディタのプレビューエフェクト を両方集める
+            std::vector<EffectObject3d*> effectsToDraw;
+
+            for (const auto& eff : MeshEffectManager::GetInstance()->GetActiveEffects()) {
+                if (eff) effectsToDraw.push_back(eff.get());
+            }
+            if (EffectObject3d* preview = MeshEffectManager::GetInstance()->GetPreviewEffectForDebug()) {
+                effectsToDraw.push_back(preview);
+            }
+
+            // 集めたエフェクトを描画！
+            for (EffectObject3d* effect : effectsToDraw) {
+                if (instanceCount >= kMaxDrawLimit) break;
+
+                ColliderType type = effect->GetColliderType();
+                if (type == ColliderType::kNone) continue;
+
+                // エフェクトの判定枠はシアン（水色）にして区別
+                Vector4 color = { 0.0f, 1.0f, 1.0f, 1.0f };
+                Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+
+                Object3d::ColliderConfig config = effect->GetColliderConfig();
+
+                if (type == ColliderType::kOBB) {
+                    Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                    Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                    Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+                else if (type == ColliderType::kAABB) {
+                    Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+                else if (type == ColliderType::kSphere) {
+                    float radius = config.size.x;
+                    Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+                else if (type == ColliderType::kCylinder) {
+                    float radius = config.size.x;
+                    float height = config.size.y;
+                    Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+
+                if (type == ColliderType::kSphere) {
+                    primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                else if (type == ColliderType::kCylinder) {
+                    primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                else {
+                    primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                instanceCount++;
+            }
         }
     }
 }

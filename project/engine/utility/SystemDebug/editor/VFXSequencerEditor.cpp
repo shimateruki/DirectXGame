@@ -10,6 +10,7 @@ namespace fs = std::filesystem;
 
 void VFXSequencerEditor::Initialize() {
     previewSequencer_.Initialize(nullptr);
+
     RefreshFileList(); 
 }
 

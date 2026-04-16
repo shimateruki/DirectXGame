@@ -8,6 +8,7 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include <functional>
+#include <CollisionManager.h>
 using json = nlohmann::json;
 
 MeshEffectManager* MeshEffectManager::GetInstance() {
@@ -23,6 +24,12 @@ void MeshEffectManager::Update(float deltaTime) {
     // リストの中を回して、寿命が切れたエフェクトを削除する
     for (auto it = activeEffects_.begin(); it != activeEffects_.end();) {
         if (!(*it)->IsPlaying()) {
+
+      
+            if ((*it)->editHasCollision_) {
+                CollisionManager::GetInstance()->RemoveObject(it->get());
+            }
+
             // 再生が終了していたらリストから削除（メモリも自動解放される）
             it = activeEffects_.erase(it);
         }
@@ -56,8 +63,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     file.close();
 
     // ==========================================
-      // ★ 1. 基準となるターゲットの取得とY軸の計算
-      // ==========================================
+    // ★ 1. 基準となるターゲットの取得とY軸の計算
+    // ==========================================
     Vector3 basePos = { 0, 0, 0 };
     float targetWorldY = 0.0f; // ★プレイヤーの「向き」だけを抽出する
 
@@ -127,7 +134,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         effect->SetProceduralType(0); effect->SetEnableNoiseTexture(false); effect->SetEnableColorRamp(false);
         effect->SetEnableDistortion(false); effect->SetEnableReveal(true); effect->SetDistortionStrength(0.0f); effect->SetEdgeFadeStrength(1.0f);
 
-        // --- パラメータ復元 (中略：変更なし) ---
+        // --- パラメータ復元 ---
         if (j.contains("ModelName")) effect->SetModel(j["ModelName"].get<std::string>());
         if (j.contains("TexturePath")) { std::string tp = j["TexturePath"]; if (!tp.empty() && effect->GetMeshRenderer()) effect->GetMeshRenderer()->SetTexture(tp); }
         if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np)); effect->SetEnableNoiseTexture(true); } }
@@ -145,13 +152,65 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         if (j.contains("BlendMode")) effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
         if (j.contains("EnableReveal")) effect->SetEnableReveal(j["EnableReveal"]);
         if (j.contains("EasingType")) effect->SetEasingType(j["EasingType"]);
-        if (j.contains("ProceduralType")) effect->SetProceduralType(j["ProceduralType"]);
+
+        // =========================================================
+        // プロシージャルパラメータの完全復元と構築
+        // =========================================================
+        if (j.contains("ProceduralType")) {
+            int procType = j["ProceduralType"];
+            effect->SetProceduralType(procType);
+
+            if (procType >= 1) { // プロシージャルを使用する場合
+                if (j.contains("SlashAngle")) effect->editSlashAngle_ = j["SlashAngle"];
+                if (j.contains("InnerRadius")) effect->editInnerRadius_ = j["InnerRadius"];
+                if (j.contains("OuterRadius")) effect->editOuterRadius_ = j["OuterRadius"];
+                if (j.contains("Thickness")) effect->editThickness_ = j["Thickness"];
+                if (j.contains("SpiralPitch")) effect->editSpiralPitch_ = j["SpiralPitch"];
+                if (j.contains("ThrustLength")) effect->editThrustLength_ = j["ThrustLength"];
+                if (j.contains("ThrustRadius")) effect->editThrustRadius_ = j["ThrustRadius"];
+                if (j.contains("MeshSegments")) effect->editMeshSegments_ = j["MeshSegments"];
+
+                effect->UpdateProceduralMesh();
+            }
+        }
+
+        // =========================================================
+        // ★ NEW: 当たり判定(Collision)の復元とマネージャーへの登録
+        // =========================================================
+        if (j.contains("Collision")) {
+            effect->editHasCollision_ = j["Collision"]["HasCollision"];
+            effect->editCollisionShape_ = j["Collision"]["Shape"];
+            effect->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
+            effect->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
+
+            if (effect->editHasCollision_) {
+                ColliderType cType = ColliderType::kNone;
+                if (effect->editCollisionShape_ == 0) cType = ColliderType::kSphere;
+                else if (effect->editCollisionShape_ == 1) cType = ColliderType::kAABB;
+                else if (effect->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+                else if (effect->editCollisionShape_ == 3) cType = ColliderType::kCylinder;
+
+                effect->SetColliderType(cType);
+
+                Object3d::ColliderConfig cConfig;
+                cConfig.size = effect->editCollisionSize_;
+                cConfig.center = effect->editCollisionOffset_;
+                cConfig.rotation = { 0.0f, 0.0f, 0.0f }; // デフォルト
+                effect->SetColliderConfig(cConfig);
+
+                // --- 属性とマスクの設定 ---
+                // ※ ここはエンジンの CollisionConfig 等に合わせて数値を調整してください
+                // 例: 攻撃判定として属性(Attribute)を2、敵に当たるようにマスク(Mask)を1とする場合
+                effect->SetCollisionAttribute(2); // 例: kPlayerAttack 相当
+                effect->SetCollisionMask(1);      // 例: kEnemy 相当
+
+                // ★ 当たり判定の世界（CollisionManager）へ出向！
+                CollisionManager::GetInstance()->AddObject(effect.get());
+            }
+        }
 
         // --- ★ 4. 立体化のための座標・回転適用 ---
-        // 最終座標 ＝ ターゲット座標 ＋ 向きに合わせて回転させたオフセット
         Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
-
-        // 最終回転 ＝ エディタの回転 ＋ プレイヤーのY軸（向き）だけ足す！ (XやZを足すとエフェクトが地面にめり込む)
         Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
 
         Vector3 localZ;
@@ -176,7 +235,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         effect->Update(0.0f);
         effect->UpdateLocalMatrix();
         effect->UpdateWorldMatrix();
+
         activeEffects_.push_back(std::move(effect));
     }
-
 }

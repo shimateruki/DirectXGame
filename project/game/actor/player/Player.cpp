@@ -163,7 +163,6 @@ void Player::Update(float deltaTime)
                 // 画面の邪魔になる歪みやフラッシュは全てオフ
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
             }
             else if (hpRatio <= 0.2f) {
                 // ---------------------------------------------------
@@ -180,7 +179,7 @@ void Player::Update(float deltaTime)
 
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
+  
             }
             else {
                 // ---------------------------------------------------
@@ -193,7 +192,6 @@ void Player::Update(float deltaTime)
                 postParams->blackout = 0.0f; // リセット
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
             }
         }
     }

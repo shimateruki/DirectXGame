@@ -24,7 +24,9 @@ public:
 
     // シーン切り替え時などに全てのエフェクトを消す
     void Clear() { activeEffects_.clear(); }
-
+    const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
+    void SetPreviewEffectForDebug(EffectObject3d* effect) { previewEffectForDebug_ = effect; }
+    EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
 private:
     MeshEffectManager() = default;
     ~MeshEffectManager() = default;
@@ -35,4 +37,6 @@ private:
 
     // 現在再生中のエフェクトリスト
     std::vector<std::unique_ptr<EffectObject3d>> activeEffects_;
+    EffectObject3d* previewEffectForDebug_ = nullptr;
+
 };

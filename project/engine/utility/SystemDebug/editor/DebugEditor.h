@@ -238,4 +238,5 @@ private:
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
     MeshEffectEditor* meshEffectEditor_ = nullptr;
+
 };
