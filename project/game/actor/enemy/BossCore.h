@@ -169,4 +169,21 @@ private:
     // パーティクルのエミッターを保持
     // ==========================================
     std::vector<std::unique_ptr<GPUParticleEmitter>> particleEmitters_;
+
+    // ==========================================
+    // ★ 破片演出用の構造体と変数
+    // ==========================================
+    struct CorePiece {
+        Object3d* obj;
+        Vector3 velocity; // 吹っ飛ぶ速度
+        Vector3 rotSpeed; // 回転速度
+    };
+
+    std::vector<CorePiece> corePieces_;
+    bool isCoreBroken_ = false;  // 割れたかどうかのフラグ
+    float deathTimer_ = 0.0f;    // 割れたあとの退場タイマー
+
+    // 演出用の関数
+    void BreakCore();
+    void UpdateCorePieces(float deltaTime);
 };

@@ -1,0 +1,69 @@
+{
+    "baseColor": [
+        0.31660228967666626,
+        0.23714612424373627,
+        0.23714612424373627,
+        1.0
+    ],
+    "baseSize": 1.0,
+    "blendModeIndex": 1,
+    "colorEaseType": 0,
+    "colorIntensity": 1.0,
+    "colorMidTime": 0.23000000417232513,
+    "emitArea": [
+        14.899999618530273,
+        0.0,
+        7.400000095367432
+    ],
+    "emitCount": 100,
+    "emitInterval": 0.10000000149011612,
+    "emitLife": 2.5,
+    "emitPos": [
+        0.0,
+        3.4000000953674316,
+        0.0
+    ],
+    "emitVelocity": [
+        0.0,
+        -15.899999618530273,
+        0.0
+    ],
+    "enableCollision": 1,
+    "endColor": [
+        0.11969113349914551,
+        0.09381197392940521,
+        0.09381197392940521,
+        1.0
+    ],
+    "endSize": 0.0,
+    "envDrag": 0.800000011920929,
+    "envGravity": [
+        0.0,
+        -20.09000015258789,
+        0.0
+    ],
+    "envTurbulence": 0.0,
+    "envWind": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "isLooping": false,
+    "midColor": [
+        0.23166024684906006,
+        0.15921051800251007,
+        0.15921051800251007,
+        1.0
+    ],
+    "midSize": 0.6000000238418579,
+    "restitution": 1.0,
+    "rotSpeed": 6.5,
+    "shapeAngle": 30.0,
+    "shapeRadius": 2.0,
+    "shapeType": 0,
+    "sizeEaseType": 0,
+    "sizeMidTime": 1.0,
+    "softParticleFade": 5.0,
+    "texturePath": "Resources/sprite/white.png",
+    "velocityVariance": 1.0
+}

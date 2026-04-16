@@ -187,6 +187,34 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
     //particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
+
+    //// ==========================================
+    //// ★ 破片モデルの読み込みと待機
+    //// ==========================================
+    //// ※ 20個に割った場合。出力した数に合わせてループを変えてください
+    //for (int i = 1; i <= 20; ++i) {
+    //    // ① まずスマートポインタで実体を作る
+    //    auto pieceObj = std::make_unique<Object3d>();
+    //    pieceObj->Initialize(common);
+    //    pieceObj->SetModel("core_piece_" + std::to_string(i));
+
+    //    // ==========================================
+    //    // ★ これを追加！
+    //    // エンジンに「これは骨を持たない背景(静的)モデルだぞ！」と教える
+    //    // ==========================================
+    //    pieceObj->SetStatic(true);
+
+    //    // 最初は見えないように隠しておく
+    //    pieceObj->SetScale({ 0.0f, 0.0f, 0.0f });
+    //    pieceObj->SetCollisionAttribute(0);
+
+    //    // ② ボス側は「操作用のポインタ」だけを配列に覚えておく
+    //    CorePiece piece;
+    //    piece.obj = pieceObj.get();
+    //    piece.velocity = { 0.0f, 0.0f, 0.0f };
+    //    piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
+    //    corePieces_.push_back(piece);
+    //}
 }
 
 void BossCore::Update(float deltaTime) {
@@ -387,14 +415,19 @@ void BossCore::Update(float deltaTime) {
     }
     // ==========================================
     // ★ 魔法の処理：破壊されたブロックの強制消去！
-    // 攻撃クラスが勝手にスケールを戻しても、フレームの最後で絶対に消し去る！
     // ==========================================
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (blockBroken_[i] && armorBlocks_[i]) {
-            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f }); // 完全に隠す
-            armorBlocks_[i]->SetCollisionAttribute(0);       // 当たり判定も消す
+            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
+            armorBlocks_[i]->SetCollisionAttribute(0);
         }
     }
+
+    // ==========================================
+    // ★ 追加：破片の物理計算・退場タイマーを進める！
+    // これを呼ばないと、破片が飛び散りません。
+    // ==========================================
+    //UpdateCorePieces(deltaTime);
 }
 
 // =================================================================
@@ -537,10 +570,13 @@ void BossCore::ChangeState(State nextState) {
 
 void BossCore::TakeBodyDamage(float damage) {
     if (isWaitingForDeath_) {
-        // ★ トドメ待ち状態の時にダメージを受けたら、完全に死亡！
-        DebugConsole::GetInstance()->AddLog("ボス撃破！！！🎉");
-        isDead = true;
-        return;
+        // ==========================================
+        // ★ 修正：トドメを刺されたら即座に消さず、割る！
+        // ==========================================
+        if (!isCoreBroken_) {
+            BreakCore(); // 爆散演出スタート！
+        }
+        return; // ここではまだ isDead = true にしない！
     }
 
     if (isFinalPhase_) return; // 最終奥義の最中は無敵！
@@ -809,6 +845,100 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     }
 }
 
+void BossCore::BreakCore() {
+    isCoreBroken_ = true;
+    deathTimer_ = 0.0f;
+
+    DebugConsole::GetInstance()->AddLog("【撃破】 コアが粉砕された！！！🎉");
+
+    // ① ボス本体を完全に隠す（当たり判定も消す）
+    this->SetScale({ 0.0f, 0.0f, 0.0f });
+    this->SetCollisionAttribute(0);
+
+    // （おまけ）もしパーティクルを消したければここで止める
+    // for (auto& emitter : particleEmitters_) { if (emitter) emitter->Stop(); }
+
+    Vector3 corePos = this->GetTranslate();
+
+    // ② 隠しておいた破片を一斉に出現させ、ランダムな方向に吹き飛ばす！
+    for (auto& piece : corePieces_) {
+        piece.obj->SetScale({ 1.0f, 1.0f, 1.0f }); // 元のサイズに戻す
+        piece.obj->SetTranslate(corePos);          // ボスの中心位置へ
+
+        // ランダムなベクトル計算（上方向に少し強めに飛ばす）
+        float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+        float ry = ((static_cast<float>(rand()) / RAND_MAX) * 1.0f) + 0.5f;
+        float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+
+        // 爆発の勢い（スピード）
+        float speed = 30.0f + (rand() % 30);
+        piece.velocity = { rx * speed, ry * speed, rz * speed };
+
+        // ランダムな回転速度
+        piece.rotSpeed = {
+            (rand() % 60) - 30.0f,
+            (rand() % 60) - 30.0f,
+            (rand() % 60) - 30.0f
+        };
+    }
+}
+
+void BossCore::UpdateCorePieces(float deltaTime) {
+    if (!isCoreBroken_) return; // 割れていなければ何もしない
+
+    // 退場タイマーを進める（5秒後に完全に消す）
+    deathTimer_ += deltaTime;
+    if (deathTimer_ > 5.0f) {
+        // ==========================================
+        // シーンにある破片の「自動解放」を要求する！
+        // ==========================================
+        for (auto& piece : corePieces_) {
+            if (piece.obj) {
+                piece.obj->isDead = true; // これでシーンの更新時に自動で delete されます！
+            }
+        }
+
+        isDead = true; // ここで初めてメモリから完全消去される！
+        return;
+    }
+
+    // 破片の物理演算
+    for (auto& piece : corePieces_) {
+        if (piece.obj->GetScale().x > 0.0f) {
+            Vector3 pos = piece.obj->GetTranslate();
+
+            // 重力
+            piece.velocity.y -= 98.0f * deltaTime;
+
+            pos.x += piece.velocity.x * deltaTime;
+            pos.y += piece.velocity.y * deltaTime;
+            pos.z += piece.velocity.z * deltaTime;
+
+            // 地面（y=0）でのバウンド処理
+            if (pos.y <= 0.0f) {
+                pos.y = 0.0f;
+                piece.velocity.y *= -0.5f; // 反発係数（半分くらいの勢いで跳ねる）
+                piece.velocity.x *= 0.8f;  // 摩擦で横移動が減る
+                piece.velocity.z *= 0.8f;
+
+                piece.rotSpeed.x *= 0.8f;
+                piece.rotSpeed.y *= 0.8f;
+                piece.rotSpeed.z *= 0.8f;
+            }
+
+            piece.obj->SetTranslate(pos);
+
+            // 回転処理
+            Vector3 rot = piece.obj->GetRotation();
+            rot.x += piece.rotSpeed.x * deltaTime;
+            rot.y += piece.rotSpeed.y * deltaTime;
+            rot.z += piece.rotSpeed.z * deltaTime;
+            piece.obj->SetRotation(rot);
+
+            piece.obj->UpdateWorldMatrix();
+        }
+    }
+}
 
 bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();

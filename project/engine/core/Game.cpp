@@ -23,6 +23,11 @@ void Game::Initialize() {
     Framework::Initialize();
     TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
     ModelManager::GetInstance()->LoadAllModels();
+    for (int i = 0; i < 18; ++i) {
+        ModelManager::GetInstance()->LoadModel(
+            ("enemy_core_shards/enemy_core" + std::to_string(i + 1))
+        );
+    }
     sceneFactory_ = std::make_unique<SceneFactory>();
     //  SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
