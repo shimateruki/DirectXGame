@@ -317,6 +317,18 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (f.contains("scatteringG")) fogData->scatteringG = f["scatteringG"];
                         if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
                     }
+                    if (objData.contains("waterParam") && targetObject->GetMaterialType() == 8) {
+                        if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
+                            auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
+                            const auto& jw = objData["waterParam"];
+
+                            if (jw.contains("waveSpeed"))     water->waveSpeed = jw["waveSpeed"];
+                            if (jw.contains("waveHeight"))    water->waveHeight = jw["waveHeight"];
+                            if (jw.contains("waveFrequency")) water->waveFrequency = jw["waveFrequency"];
+                            if (jw.contains("flowSpeedX"))    water->flowSpeedX = jw["flowSpeedX"];
+                            if (jw.contains("flowSpeedY"))    water->flowSpeedY = jw["flowSpeedY"];
+                        }
+                    }
                 }
                 // 5. Collider
                 if (objData.contains("collider")) {

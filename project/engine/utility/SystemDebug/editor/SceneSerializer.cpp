@@ -162,7 +162,17 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["localFog"]["scatteringG"] = fogData->scatteringG;
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
     }
+    if (obj->GetMaterialType() == 8 && obj->GetMeshRenderer() && obj->GetMeshRenderer()->GetWaterParamData()) {
+        auto* water = obj->GetMeshRenderer()->GetWaterParamData();
+        json jw;
+        jw["waveSpeed"] = water->waveSpeed;
+        jw["waveHeight"] = water->waveHeight;
+        jw["waveFrequency"] = water->waveFrequency;
+        jw["flowSpeedX"] = water->flowSpeedX;
+        jw["flowSpeedY"] = water->flowSpeedY;
 
+        d["waterParam"] = jw;
+    }
     return d;
 }
 

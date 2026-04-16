@@ -75,6 +75,16 @@ public:
         Vector3 lightColor;                            // 12 byte
         float scatteringG = 0.6f;                      // 4 byte (光の芯の強さ: 0.0~0.99)
     };
+    struct WaterParamForGPU {
+        float time;
+        float waveSpeed;
+        float waveHeight;
+        float waveFrequency;
+        float flowSpeedX;    // X方向への流れる速さ
+        float flowSpeedY;    // Y(Z)方向への流れる速さ
+        float uvOffsetX;
+        float uvOffsetY;
+    };
 public:
     // コンストラクタ: 描画対象のTransformを受け取る
     MeshRenderer(Transform* transform);
@@ -138,7 +148,10 @@ public:
     void SetEmissive(float emissive);
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
-
+    void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle); 
+    void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);   
+    WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -172,7 +185,8 @@ private:
     std::string texturePath_ = "";
     uint32_t textureHandle_ = 0;
 
-
+    Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
+    WaterParamForGPU* waterParamData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;

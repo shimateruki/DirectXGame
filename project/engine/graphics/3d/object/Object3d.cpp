@@ -52,6 +52,7 @@ void Object3d::Initialize(Object3dCommon* common) {
 // ========================================================================
 
 void Object3d::Update(float deltaTime) {
+
     if (meshRenderer_ && meshRenderer_->GetModel()) {
         // アニメーション更新
         if (!animName_.empty()) {
@@ -83,6 +84,7 @@ void Object3d::Update(float deltaTime) {
     }
     
     UpdateParticle();
+
 }
 
 void Object3d::UpdateParticle() {
@@ -184,6 +186,21 @@ void Object3d::SetModel(const std::string& modelName) {
             config.center = model->GetCenter();
             collider_->SetConfig(config);
         }
+    }
+}
+void Object3d::DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawWater(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawMagma(depthSrvHandle, colorSrvHandle);
+    }
+}
+void Object3d::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawIce(depthSrvHandle, colorSrvHandle);
     }
 }
 Model* Object3d::GetModel() const {
