@@ -400,6 +400,8 @@
     <None Include=".github\copilot-instructions.md" />
     <None Include="Resources\shader\Water.hlsli" />
     <None Include="Resources\shader\Magma.PS.hlsl" />
+    <None Include="Resources\shader\LocalFog.PS.hlsl" />
+    <None Include="Resources\shader\Water.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
@@ -416,11 +418,9 @@
     <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
     <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
     <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
-    <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
     <FxCompile Include="Resources\shader\Effect3d.VS.hlsl" />
     <FxCompile Include="Resources\shader\Effect3d.PS.hlsl" />
     <FxCompile Include="Resources\shader\Water.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Water.PS.hlsl" />
     <FxCompile Include="Resources\shader\Ice.PS.hlsl" />
     <FxCompile Include="Resources\shader\Magma.VS.hlsl" />
     <FxCompile Include="Resources\shader\Ice.VS.hlsl" />

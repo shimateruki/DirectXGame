@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 #include <string>
-
+#include <cstdint>
 class WinApp {
 public:
     inline static int32_t kClientWidth = 1280;

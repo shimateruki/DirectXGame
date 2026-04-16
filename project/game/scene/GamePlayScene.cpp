@@ -167,9 +167,8 @@ void GamePlayScene::Update(float deltaTime) {
 				ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
 				ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
 
-				float screenWidth = WinApp::kClientWidth;
-				float screenHeight = WinApp::kClientHeight;
-
+				float screenWidth = static_cast<float>(::WinApp::kClientWidth);
+				float screenHeight = static_cast<float>(::WinApp::kClientHeight);
 				float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
 				float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
 
