@@ -303,9 +303,6 @@
     <ClCompile Include="game\actor\enemy\BossCore.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="game\actor\MapBlock.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\GPUParticleEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -1200,9 +1197,6 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\BossCore.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="game\actor\MapBlock.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\GPUParticleEditor.h">
