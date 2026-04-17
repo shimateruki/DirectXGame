@@ -90,7 +90,7 @@ public:
     void ConfigFixed(const Vector3& offset);
     void ConfigAimable(float distance, float height, const Vector3& angle);
     void ConfigFirstPerson(const Vector3& eyeOffset);
-    void ConfigFixedPoint(const Vector3& position);
+    void ConfigFixedPoint(const Vector3& position, const Vector3& angle);
 
     void SetOrbitParams(float radius, float height, float speed) {
         orbitRadius_ = radius;
@@ -175,4 +175,5 @@ private:
     float overrideWeight_ = 0.0f;         // 0.0(通常) ～ 1.0(完全オーバーライド)
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
 };

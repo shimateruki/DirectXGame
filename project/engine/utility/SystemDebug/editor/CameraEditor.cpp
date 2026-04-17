@@ -115,10 +115,9 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
                 // 操作していない時だけ、設定値をカメラに流し込む
                 camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
             }
-
             // これらは操作中でも反映してOK
             camera->SetLockOnOffset(settings_.lockOnOffset);
-            camera->ConfigFixedPoint(settings_.fixedPointPos);
+            camera->ConfigFixedPoint(settings_.fixedPointPos, settings_.fixedPointAngle); 
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
@@ -273,6 +272,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetTarget(newTarget);
 }
+
 void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_VIDEO " --- カメラエディタ (Camera Editor) ---");
@@ -356,6 +356,7 @@ void CameraEditor::DrawImGui() {
             ImGui::Separator();
             ImGui::Text(ICON_FA_MAP_MARKER_ALT " 定点カメラ設定");
             ImGui::DragFloat3(" カメラ座標", &settings_.fixedPointPos.x, 0.1f);
+            ImGui::DragFloat3(" カメラ角度", &settings_.fixedPointAngle.x, 0.05f);
             if (ImGui::Button(ICON_FA_CROSSHAIRS " 現在のカメラ位置をセット")) {
                 Camera* cam = CameraManager::GetInstance()->GetMainCamera();
                 if (cam) settings_.fixedPointPos = cam->GetEye();
@@ -376,9 +377,15 @@ void CameraEditor::DrawImGui() {
         if (camera) {
             Vector3 pos = camera->GetEye();
             ImGui::TextDisabled(ICON_FA_LOCATION_ARROW " 現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_MAP_MARKER_ALT " 現在位置を「定点カメラ」の座標・角度にセット")) {
+                settings_.fixedPointPos = pos;
+                settings_.fixedPointAngle = camera->GetRotation(); // ★角度も記録する
+                SaveSettings(); // セットしたら自動でセーブ
+            }
         }
     }
-
     ImGui::Spacing();
     ImGui::Separator();
 
@@ -504,6 +511,7 @@ void CameraEditor::SaveSettings() {
     j["boostSpeed"] = settings_.boostSpeed;
     j["mouseSensitivity"] = settings_.mouseSensitivity;
     j["fixedPointPos"] = { settings_.fixedPointPos.x, settings_.fixedPointPos.y, settings_.fixedPointPos.z };
+    j["fixedPointAngle"] = { settings_.fixedPointAngle.x, settings_.fixedPointAngle.y, settings_.fixedPointAngle.z };
     json overridesJson = json::object();
     for (const auto& [name, param] : overrideParamsMap_) {
         json p;
@@ -574,6 +582,11 @@ void CameraEditor::LoadSettings() {
             settings_.fixedPointPos.x = j["fixedPointPos"][0];
             settings_.fixedPointPos.y = j["fixedPointPos"][1];
             settings_.fixedPointPos.z = j["fixedPointPos"][2];
+        }
+        if (j.contains("fixedPointAngle") && j["fixedPointAngle"].is_array()) {
+            settings_.fixedPointAngle.x = j["fixedPointAngle"][0];
+            settings_.fixedPointAngle.y = j["fixedPointAngle"][1];
+            settings_.fixedPointAngle.z = j["fixedPointAngle"][2];
         }
         overrideParamsMap_.clear();
         if (j.contains("Overrides")) {

@@ -503,35 +503,41 @@ void MeshEffectEditor::DrawImGui() {
         ImGui::Text(ICON_FA_CUT " [ エッジフェード (形状削り出し) ]");
         ImGui::SliderFloat("削り出しの強さ", &editEdgeFadeStrength_, 1.0f, 10.0f);
     }
-    if (ImGui::CollapsingHeader("Collision Settings")) {
-        ImGui::Checkbox("Has Collision", &previewEffect_->editHasCollision_);
-        if (previewEffect_->editHasCollision_) {
-            ImGui::Combo("Shape", &previewEffect_->editCollisionShape_, "Sphere\0AABB\0OBB\0Cylinder\0\0");
-            ImGui::DragFloat3("Size/Radius", &previewEffect_->editCollisionSize_.x, 0.1f);
-            ImGui::DragFloat3("Offset", &previewEffect_->editCollisionOffset_.x, 0.1f);
+        // ---------------------------------------------------------
+        // 当たり判定 (Collision) の設定
+        // ---------------------------------------------------------
+        if (ImGui::CollapsingHeader("Collision Settings")) {
+            ImGui::Checkbox("Has Collision", &previewEffect_->editHasCollision_);
+            if (previewEffect_->editHasCollision_) {
+                ImGui::Combo("Shape", &previewEffect_->editCollisionShape_, "Sphere\0AABB\0OBB\0Cylinder\0\0");
+                ImGui::DragFloat3("Size/Radius", &previewEffect_->editCollisionSize_.x, 0.1f);
+                ImGui::DragFloat3("Offset", &previewEffect_->editCollisionOffset_.x, 0.1f);
 
-            // スライダーを動かした瞬間、実際のコライダー設定に反映させる！
-            ColliderType cType = ColliderType::kNone;
-            if (previewEffect_->editCollisionShape_ == 0) cType = ColliderType::kSphere;
-            else if (previewEffect_->editCollisionShape_ == 1) cType = ColliderType::kAABB;
-            else if (previewEffect_->editCollisionShape_ == 2) cType = ColliderType::kOBB;
-            else if (previewEffect_->editCollisionShape_ == 3) cType = ColliderType::kCylinder;
-            previewEffect_->SetColliderType(cType);
+                // 型を決定
+                ColliderType cType = ColliderType::kNone;
+                if (previewEffect_->editCollisionShape_ == 0) cType = ColliderType::kSphere;
+                else if (previewEffect_->editCollisionShape_ == 1) cType = ColliderType::kAABB;
+                else if (previewEffect_->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+                else if (previewEffect_->editCollisionShape_ == 3) cType = ColliderType::kCylinder;
 
-            Object3d::ColliderConfig cConfig;
-            cConfig.size = previewEffect_->editCollisionSize_;
-            cConfig.center = previewEffect_->editCollisionOffset_;
-            cConfig.rotation = { 0.0f, 0.0f, 0.0f };
-            previewEffect_->SetColliderConfig(cConfig);
+                // =======================================================
+                //  現在の設定を取り出して、正しく上書きする！
+                // =======================================================
+                Object3d::ColliderConfig cConfig = previewEffect_->GetColliderConfig();
+                cConfig.type = cType; // ここで確実に Sphere や Cylinder をセット！
+                cConfig.size = previewEffect_->editCollisionSize_;
+                cConfig.center = previewEffect_->editCollisionOffset_;
+
+                // 設定を戻す
+                previewEffect_->SetColliderConfig(cConfig);
+
+            }
+            else {
+                previewEffect_->SetColliderType(ColliderType::kNone);
+            }
+
+            MeshEffectManager::GetInstance()->SetPreviewEffectForDebug(previewEffect_.get());
         }
-        else {
-            // チェックを外したら判定を消す
-            previewEffect_->SetColliderType(ColliderType::kNone);
-        }
-
-        // ★マネージャーに「今プレビューしてるエフェクト」を教える
-        MeshEffectManager::GetInstance()->SetPreviewEffectForDebug(previewEffect_.get());
-    }
     // ==========================================
        // 7. 保存と読み込み (Save & Load)
        // ==========================================

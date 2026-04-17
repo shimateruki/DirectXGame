@@ -12,7 +12,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetModel(modelName);
 
     // 3. 当たり判定の設定
-    SetCollisionAttribute(kEnemy);       // 自分は「敵」グループ
+    SetCollisionAttribute(kEnemy);      
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack);
     SetClassName("Enemy");
     defaultColor_ = GetColor();

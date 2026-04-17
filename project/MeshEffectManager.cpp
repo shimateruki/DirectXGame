@@ -175,8 +175,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         }
 
         // =========================================================
-        // ★ NEW: 当たり判定(Collision)の復元とマネージャーへの登録
-        // =========================================================
+            // ★ 当たり判定(Collision)の復元とマネージャーへの登録
+            // =========================================================
         if (j.contains("Collision")) {
             effect->editHasCollision_ = j["Collision"]["HasCollision"];
             effect->editCollisionShape_ = j["Collision"]["Shape"];
@@ -184,27 +184,26 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
             effect->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
 
             if (effect->editHasCollision_) {
+
                 ColliderType cType = ColliderType::kNone;
                 if (effect->editCollisionShape_ == 0) cType = ColliderType::kSphere;
                 else if (effect->editCollisionShape_ == 1) cType = ColliderType::kAABB;
                 else if (effect->editCollisionShape_ == 2) cType = ColliderType::kOBB;
                 else if (effect->editCollisionShape_ == 3) cType = ColliderType::kCylinder;
 
-                effect->SetColliderType(cType);
-
-                Object3d::ColliderConfig cConfig;
+                // =======================================================
+                // ★ 修正箇所: 現在の設定を取り出して、正しく上書きする！
+                // =======================================================
+                Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
+                cConfig.type = cType;
                 cConfig.size = effect->editCollisionSize_;
                 cConfig.center = effect->editCollisionOffset_;
-                cConfig.rotation = { 0.0f, 0.0f, 0.0f }; // デフォルト
                 effect->SetColliderConfig(cConfig);
 
                 // --- 属性とマスクの設定 ---
-                // ※ ここはエンジンの CollisionConfig 等に合わせて数値を調整してください
-                // 例: 攻撃判定として属性(Attribute)を2、敵に当たるようにマスク(Mask)を1とする場合
                 effect->SetCollisionAttribute(2); // 例: kPlayerAttack 相当
                 effect->SetCollisionMask(1);      // 例: kEnemy 相当
 
-                // ★ 当たり判定の世界（CollisionManager）へ出向！
                 CollisionManager::GetInstance()->AddObject(effect.get());
             }
         }

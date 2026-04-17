@@ -548,12 +548,14 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                    DebugConsole::GetInstance()->AddLog("OBB");
                 }
                 else if (type == ColliderType::kAABB) {
                     Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                    DebugConsole::GetInstance()->AddLog("AABB");
                 }
                 else if (type == ColliderType::kSphere) {
                     float radius = config.size.x;
@@ -561,6 +563,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                    DebugConsole::GetInstance()->AddLog("Sphere");
                 }
                 else if (type == ColliderType::kCylinder) {
                     float radius = config.size.x;
