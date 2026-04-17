@@ -112,7 +112,7 @@ public:
     void EndOverride(float duration);
     bool IsOverridden() const { return isOverridden_; }
     float GetOverrideWeight() const { return overrideWeight_; }
-
+    const Frustum& GetFrustum() const { return frustum_; }
 private:
     // ==================================================
     // メンバ変数
@@ -176,4 +176,5 @@ private:
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
+    Frustum frustum_;
 };

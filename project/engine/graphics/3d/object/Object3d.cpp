@@ -16,6 +16,20 @@ Object3d::~Object3d() {
         delete recorder_;
         recorder_ = nullptr;
     }
+    // 1. 親のリストから自分を外す
+    if (parent_) {
+        auto& siblings = parent_->children_;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+    }
+
+    // 2. 子が持っている「自分（親）への参照」を無効化する
+    for (Object3d* child : children_) {
+        if (child) {
+            child->parent_ = nullptr;
+            child->GetTransform()->parent = nullptr;
+            child->UpdateWorldMatrix(); // 親が消えた状態で即座に行列を再計算させる
+        }
+    }
     // unique_ptr (collider_, meshRenderer_) は自動解放
 }
 

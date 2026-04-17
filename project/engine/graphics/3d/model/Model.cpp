@@ -21,12 +21,14 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
     modelData_ = LoadFile(directoryPath, filename);
 
+    // --- AABB（モデルのサイズ）計算 ---
     Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
     Vector3 max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
     bool hasVertices = false;
 
     for (const auto& mesh : modelData_.meshes) {
         for (const auto& vertex : mesh.vertices) {
+            // 全メッシュの全頂点から最小・最大を割り出す
             min.x = (std::min)(min.x, vertex.position.x);
             min.y = (std::min)(min.y, vertex.position.y);
             min.z = (std::min)(min.z, vertex.position.z);
@@ -38,36 +40,39 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     }
 
     if (hasVertices) {
-        // 全体の中心座標を計算
+        // カリング用のローカルAABBを保存
+        localAabbMin_ = min;
+        localAabbMax_ = max;
+        // 中心座標とサイズも一応計算して保持
         center_ = { (min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f };
-        // 全体の縦・横・奥のサイズを計算
         size_ = { max.x - min.x, max.y - min.y, max.z - min.z };
     }
     else {
+        localAabbMin_ = { -0.5f, -0.5f, -0.5f };
+        localAabbMax_ = { 0.5f, 0.5f, 0.5f };
         center_ = { 0.0f, 0.0f, 0.0f };
         size_ = { 1.0f, 1.0f, 1.0f };
     }
+
     // 2. マテリアルごとにテクスチャをロード
     for (auto& material : modelData_.materials) {
         material.textureHandle = TextureManager::GetInstance()->Load(material.textureFilePath);
     }
 
-    // 3. メッシュごとに頂点バッファを作成
+    // 3. メッシュごとに頂点バッファ・インデックスバッファを作成
     for (auto& mesh : modelData_.meshes) {
-        // バッファ作成
+        // 頂点バッファ
         mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
-
-        // VBV設定
         mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
         mesh.vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
 
-        // データ書き込み
         VertexData* vertexData = nullptr;
         mesh.vertexResource->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
         std::memcpy(vertexData, mesh.vertices.data(), sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexResource->Unmap(0, nullptr);
 
+        // インデックスバッファ
         mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
         mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
         mesh.indexBufferView.SizeInBytes = UINT(sizeof(uint32_t) * mesh.indices.size());
@@ -79,24 +84,22 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         mesh.indexResource->Unmap(0, nullptr);
     }
 
-    // 4. 定数バッファ(Material)の作成
+    // 4. 定数バッファ(Material)の作成と初期設定
     materialResource_ = dxCommon->CreateBufferResource(sizeof(Material));
     materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = true;
-    materialData_->selectedLighting = 2;
+    materialData_->selectedLighting = 2; // 隊長の設定値を維持
     materialData_->shininess = 50;
-    materialData_->materialType = 0; // 通常
-    materialData_->roughness = 0.5f; // 程よくザラザラ（光沢が広がる）
-    materialData_->metallic = 0.0f;  // 非金属（景色を反射しない）
+    materialData_->materialType = 0;
+    materialData_->roughness = 0.5f;
+    materialData_->metallic = 0.0f;
     materialData_->enableNormalMap = 1;
-    Math math;
-    materialData_->uvTransform = math.MakeIdentity4x4();
+    materialData_->uvTransform = math_.MakeIdentity4x4();
 
     // 5. ボーン用バッファの作成 
     CreateBoneBuffer();
 }
-
 // ==========================================
 // ボーンバッファの作成とSRV登録 
 // ==========================================

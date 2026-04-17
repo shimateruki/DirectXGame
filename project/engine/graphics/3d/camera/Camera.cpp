@@ -359,6 +359,8 @@ void Camera::Update() {
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, currentUp);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
+    frustum_ = math.ExtractFrustumPlanes(vp);
 }
 
 

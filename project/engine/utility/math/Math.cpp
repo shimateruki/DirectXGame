@@ -667,3 +667,55 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 
 	return q;
 }
+
+
+Frustum Math::ExtractFrustumPlanes(const Matrix4x4& vp) {
+	Frustum f;
+	// 左
+	f.planes[0].normal.x = vp.m[0][3] + vp.m[0][0]; f.planes[0].normal.y = vp.m[1][3] + vp.m[1][0];
+	f.planes[0].normal.z = vp.m[2][3] + vp.m[2][0]; f.planes[0].distance = vp.m[3][3] + vp.m[3][0];
+	// 右
+	f.planes[1].normal.x = vp.m[0][3] - vp.m[0][0]; f.planes[1].normal.y = vp.m[1][3] - vp.m[1][0];
+	f.planes[1].normal.z = vp.m[2][3] - vp.m[2][0]; f.planes[1].distance = vp.m[3][3] - vp.m[3][0];
+	// 下
+	f.planes[2].normal.x = vp.m[0][3] + vp.m[0][1]; f.planes[2].normal.y = vp.m[1][3] + vp.m[1][1];
+	f.planes[2].normal.z = vp.m[2][3] + vp.m[2][1]; f.planes[2].distance = vp.m[3][3] + vp.m[3][1];
+	// 上
+	f.planes[3].normal.x = vp.m[0][3] - vp.m[0][1]; f.planes[3].normal.y = vp.m[1][3] - vp.m[1][1];
+	f.planes[3].normal.z = vp.m[2][3] - vp.m[2][1]; f.planes[3].distance = vp.m[3][3] - vp.m[3][1];
+	// 近 (DirectX12は0〜w)
+	f.planes[4].normal.x = vp.m[0][2]; f.planes[4].normal.y = vp.m[1][2];
+	f.planes[4].normal.z = vp.m[2][2]; f.planes[4].distance = vp.m[3][2];
+	// 遠
+	f.planes[5].normal.x = vp.m[0][3] - vp.m[0][2]; f.planes[5].normal.y = vp.m[1][3] - vp.m[1][2];
+	f.planes[5].normal.z = vp.m[2][3] - vp.m[2][2]; f.planes[5].distance = vp.m[3][3] - vp.m[3][2];
+
+	// 正規化
+	for (int i = 0; i < 6; ++i) {
+		float length = std::sqrt(f.planes[i].normal.x * f.planes[i].normal.x +
+			f.planes[i].normal.y * f.planes[i].normal.y +
+			f.planes[i].normal.z * f.planes[i].normal.z);
+		if (length > 0.0f) {
+			f.planes[i].normal = f.planes[i].normal / length;
+			f.planes[i].distance /= length;
+		}
+	}
+	return f;
+}
+
+bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const Vector3& maxBox) {
+	for (int i = 0; i < 6; ++i) {
+		// AABBの中で一番「平面の法線方向にある点(p)」を調べる
+		Vector3 p = minBox;
+		if (f.planes[i].normal.x >= 0) p.x = maxBox.x;
+		if (f.planes[i].normal.y >= 0) p.y = maxBox.y;
+		if (f.planes[i].normal.z >= 0) p.z = maxBox.z;
+
+		// pが面よりも外側にあれば、箱全体が外側にあると確定！
+		float dot = f.planes[i].normal.x * p.x + f.planes[i].normal.y * p.y + f.planes[i].normal.z * p.z;
+		if (dot + f.planes[i].distance < 0) {
+			return false;
+		}
+	}
+	return true;
+}
