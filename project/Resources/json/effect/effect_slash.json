@@ -1,10 +1,24 @@
 {
     "AutoLoop": true,
     "BlendMode": 2,
+    "Collision": {
+        "HasCollision": true,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 1,
+        "Size": [
+            2.700000047683716,
+            2.0,
+            2.299999952316284
+        ]
+    },
     "DistortionSpeed": 50.0,
     "DistortionStrength": 0.20000000298023224,
     "EasingType": 0,
-    "EdgeFadeStrength": 4.184999942779541,
+    "EdgeFadeStrength": 3.3259999752044678,
     "EnableDistortion": false,
     "EnableReveal": true,
     "EndColor": [
@@ -14,7 +28,7 @@
         0.0
     ],
     "EndScale": [
-        2.0,
+        1.5,
         2.0,
         2.0
     ],
@@ -26,16 +40,16 @@
     "NoiseTexturePath": "",
     "OuterRadius": 4.0,
     "Position": [
-        -4.699999809265137,
-        18.399999618530273,
-        -10.600000381469727
+        -1.899999976158142,
+        -0.10000000149011612,
+        5.400000095367432
     ],
     "ProceduralType": 1,
     "RampTexturePath": "Resources/sprite/color.png",
     "Rotation": [
-        0.0,
-        3.319999933242798,
-        -4.010000228881836
+        -3.119999885559082,
+        2.4600000381469727,
+        -11.619999885559082
     ],
     "ScrollSpeed": [
         -2.990000009536743,
@@ -54,7 +68,7 @@
         1.0,
         1.0
     ],
-    "TargetName": "",
+    "TargetName": "Player_body",
     "TexturePath": "",
     "Thickness": 0.5,
     "ThrustLength": 5.0,

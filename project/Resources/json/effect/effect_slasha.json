@@ -1,6 +1,20 @@
 {
     "AutoLoop": true,
     "BlendMode": 2,
+    "Collision": {
+        "HasCollision": true,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            2.700000047683716,
+            2.0,
+            2.299999952316284
+        ]
+    },
     "DistortionSpeed": 50.0,
     "DistortionStrength": 0.20000000298023224,
     "EasingType": 0,
@@ -20,25 +34,25 @@
     ],
     "InnerRadius": 2.0220000743865967,
     "Intensity": 100.0,
-    "Lifetime": 0.7459999918937683,
+    "Lifetime": 0.6129999756813049,
     "MeshSegments": 16,
     "ModelName": "Semicircle.gltf",
     "NoiseTexturePath": "",
     "OuterRadius": 3.124000072479248,
     "Position": [
-        -4.699999809265137,
-        18.399999618530273,
-        -10.600000381469727
+        0.0,
+        0.0,
+        0.0
     ],
     "ProceduralType": 2,
     "RampTexturePath": "Resources/sprite/color.png",
     "Rotation": [
         0.0,
-        3.319999933242798,
-        -4.010000228881836
+        7.039999961853027,
+        0.0
     ],
     "ScrollSpeed": [
-        -2.990000009536743,
+        2.200000047683716,
         0.0
     ],
     "SlashAngle": 690.6740112304688,
@@ -54,7 +68,7 @@
         1.0,
         1.0
     ],
-    "TargetName": "",
+    "TargetName": "Player_body",
     "TexturePath": "",
     "Thickness": 0.3490000069141388,
     "ThrustLength": 5.0,

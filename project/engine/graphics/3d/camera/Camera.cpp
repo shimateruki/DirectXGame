@@ -16,8 +16,9 @@
 const float PI = (float)M_PI;
 static Math math;
 
-void Camera::ConfigFixedPoint(const Vector3& position) {
+void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
     fixedPointPos_ = position;
+    fixedPointAngle_ = angle; 
 }
 
 void Camera::UpdateProjectionMatrix() {
@@ -172,15 +173,25 @@ void Camera::Update() {
         case FollowMode::kFixedPoint:
         {
             desiredEye = fixedPointPos_;
+
+            //  角度から前方ベクトルを計算して、カメラの注視点(Target)を強制上書きする
+            float pitch = fixedPointAngle_.x;
+            float yaw = fixedPointAngle_.y;
+            Vector3 forward;
+            forward.x = std::sin(yaw) * std::cos(pitch);
+            forward.y = -std::sin(pitch);
+            forward.z = std::cos(yaw) * std::cos(pitch);
+
+            target_ = desiredEye + forward * 10.0f; // プレイヤー追従をキャンセル
             break;
         }
         }
-
         // ★独立したEyeの補間(Lerp)を削除（Targetが滑らかなので自動的にEyeも滑らかになる）
         eye_ = desiredEye;
 
         if (!isEyeFrozen_) {
-            if (followMode_ != FollowMode::kFirstPerson) {
+            if (followMode_ != FollowMode::kFirstPerson && followMode_ != FollowMode::kFixedPoint) {
+                
                 Vector3 toEye = desiredEye - target_;
                 float dist = math.Length(toEye);
                 Vector3 direction = (dist > 0.001f) ? math.Normalize(toEye) : Vector3{ 0,0,1 };
@@ -348,6 +359,8 @@ void Camera::Update() {
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, currentUp);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
+    frustum_ = math.ExtractFrustumPlanes(vp);
 }
 
 

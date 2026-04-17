@@ -79,7 +79,14 @@ Vector3 operator-(const Vector3& v);
 
 Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
 Vector3& operator+=(Vector3& v1, const Vector3& v2);
+struct Plane {
+	Vector3 normal;
+	float distance;
+};
 
+struct Frustum {
+	Plane planes[6]; // 左右上下・近遠の6面
+};
 class Math
 {
 
@@ -142,4 +149,8 @@ public:
 	static Quaternion EulerToQuaternion(const Vector3& rot);
 	static Vector3 MatrixToEuler(const Matrix4x4& m);
 	static Quaternion MatrixToQuaternion(const Matrix4x4& m);
+	//  ビュープロジェクション行列からフラスタムを抽出
+	static Frustum ExtractFrustumPlanes(const Matrix4x4& vp);
+	//  フラスタムとAABB（箱）の交差判定
+	static bool IntersectFrustumAABB(const Frustum& frustum, const Vector3& minBox, const Vector3& maxBox);
 };

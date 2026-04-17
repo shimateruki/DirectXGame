@@ -548,12 +548,14 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                    DebugConsole::GetInstance()->AddLog("OBB");
                 }
                 else if (type == ColliderType::kAABB) {
                     Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                    DebugConsole::GetInstance()->AddLog("AABB");
                 }
                 else if (type == ColliderType::kSphere) {
                     float radius = config.size.x;
@@ -561,6 +563,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                    DebugConsole::GetInstance()->AddLog("Sphere");
                 }
                 else if (type == ColliderType::kCylinder) {
                     float radius = config.size.x;
@@ -722,14 +725,24 @@ void DebugEditor::DuplicateSelected() {
 void DebugEditor::DeleteSelected() {
     if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
 
+    // ：Undo/Redoスタックから、削除されるオブジェクトの履歴を安全に消去する
+    undoStack_.erase(
+        std::remove_if(undoStack_.begin(), undoStack_.end(),
+            [this](const TransformCommand& cmd) { return cmd.target == selectedObject_; }),
+        undoStack_.end()
+    );
+    redoStack_.erase(
+        std::remove_if(redoStack_.begin(), redoStack_.end(),
+            [this](const TransformCommand& cmd) { return cmd.target == selectedObject_; }),
+        redoStack_.end()
+    );
+
     std::string name = selectedObject_->GetName();
     sceneManager_->GetCurrentScene()->RequestRemoveObject(selectedObject_);
 
     // 重要：削除したポインタを持ち続けないようにする
     selectedObject_ = nullptr;
-
 }
-
 // ==========================================
 //  Undo処理 
 // ==========================================

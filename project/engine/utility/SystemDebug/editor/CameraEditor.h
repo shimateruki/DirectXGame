@@ -33,6 +33,7 @@ public:
         float boostSpeed = 2.0f;
         float mouseSensitivity = 0.003f;
         Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
+        Vector3 fixedPointAngle = { 0.0f, 0.0f, 0.0f };
     };
 
 public:

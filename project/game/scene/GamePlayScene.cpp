@@ -714,11 +714,59 @@ void GamePlayScene::Draw() {
 
 	auto& objects = objectManager_->GetObjects();
 
+	// =========================================================
+	// ★ ここに「完全自動カリング」のロジックを挿入！
+	// =========================================================
+	Frustum frustum = camera->GetFrustum();
+	Math math;
+	int drawCount = 0;
+	int totalCount = 0;
+
+	auto IsVisible = [&](Object3d* obj) {
+		if (!obj->GetIsVisible()) return false;
+
+		// 1. オブジェクトから Model を取得 
+		// ※もし Object3d に GetModel() が無ければ追加してください！ ( return model_; など )
+		Model* model = obj->GetModel(); 
+		if (!model) return true; // モデルが無い(空の)場合は安全のため描画を通す
+
+		// 2. モデル本来のサイズ（ローカルAABB）を取得
+		Vector3 lMin = model->GetLocalAabbMin();
+		Vector3 lMax = model->GetLocalAabbMax();
+
+		// 3. ローカルの「箱の8つの角（頂点）」を作成
+		Vector3 corners[8] = {
+			{lMin.x, lMin.y, lMin.z}, {lMax.x, lMin.y, lMin.z},
+			{lMin.x, lMax.y, lMin.z}, {lMax.x, lMax.y, lMin.z},
+			{lMin.x, lMin.y, lMax.z}, {lMax.x, lMin.y, lMax.z},
+			{lMin.x, lMax.y, lMax.z}, {lMax.x, lMax.y, lMax.z}
+		};
+
+		// 4. ワールド行列を使って、8つの角すべてをゲーム空間の座標に変換する
+		Matrix4x4 wm = obj->GetWorldMatrix();
+		Vector3 wMin = { FLT_MAX, FLT_MAX, FLT_MAX };
+		Vector3 wMax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+		for (int i = 0; i < 8; ++i) {
+			// math.Transform で座標に行列を掛ける
+			Vector3 wPos = math.Transform(corners[i], wm); 
+
+			// 変換後の8つの点から、ワールド空間での新たな min / max を見つける
+			wMin.x = (std::min)(wMin.x, wPos.x);
+			wMin.y = (std::min)(wMin.y, wPos.y);
+			wMin.z = (std::min)(wMin.z, wPos.z);
+			wMax.x = (std::max)(wMax.x, wPos.x);
+			wMax.y = (std::max)(wMax.y, wPos.y);
+			wMax.z = (std::max)(wMax.z, wPos.z);
+		}
+
+		// 回転したことで箱が大きくなっても問題なし！確実にオブジェクトを包み込むAABBが完成。
+		return math.IntersectFrustumAABB(frustum, wMin, wMax);
+	};
+
 	// --- 1. 不透明描画 ---
 	for (auto& obj : objects) {
-		// =========================================================
-		// ★ 修正: プレイヤー本体だけでなく「子パーツ（緑のブロック等）」も巻き込んで消す！
-		// =========================================================
+		
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
 			Object3d* current = obj.get();
@@ -730,7 +778,13 @@ void GamePlayScene::Draw() {
 		if (isPlayerPart) continue; // プレイヤーの一部なら描画をスキップ！
 
 		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue;
-		obj->Draw(pointLightRes, spotLightRes);
+		
+		totalCount++;
+		// ★ カリング判定！
+		if (IsVisible(obj.get())) {
+			obj->Draw(pointLightRes, spotLightRes);
+			drawCount++;
+		}
 	}
 
 	// --- 2. 中間描画 (弾・デバッグ) ---
@@ -738,6 +792,7 @@ void GamePlayScene::Draw() {
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
 	MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+	
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		// ここでも同じくプレイヤー関連をスキップ
@@ -752,7 +807,12 @@ void GamePlayScene::Draw() {
 		if (isPlayerPart) continue;
 
 		if (obj->GetMaterialType() == 1) { // 透明のみ描画
-			obj->Draw(pointLightRes, spotLightRes);
+			totalCount++;
+			// ★ カリング判定！
+			if (IsVisible(obj.get())) {
+				obj->Draw(pointLightRes, spotLightRes);
+				drawCount++;
+			}
 		}
 	}
 	particleSystem_->Draw();
@@ -769,7 +829,10 @@ void GamePlayScene::Draw() {
 		dxCommon_->PreDrawLocalFog();
 		for (auto& obj : objects) {
 			if (obj->GetMaterialType() == 7) {
-				obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+				// ★ フォグの箱自体も画面外なら描画しないように最適化！
+				if (IsVisible(obj.get())) {
+					obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+				}
 			}
 		}
 		dxCommon_->PostDrawLocalFog();
@@ -790,6 +853,9 @@ void GamePlayScene::Draw() {
 	);
 
 	dxCommon_->PostDrawLocalFog();
+
+	// ★ カリングがどれくらい効いているか確認用のログ 
+	// DebugConsole::GetInstance()->AddLog("DrawCount: " + std::to_string(drawCount) + " / Total: " + std::to_string(totalCount));
 }
 // ====================================================================
 // UI描画専用の関数

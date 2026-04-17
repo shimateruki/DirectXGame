@@ -147,6 +147,9 @@ public: // メンバ関数
     void ApplyAnimation(const Animation& animation, float time);
     const Animation* GetAnimation(const std::string& name) const;
     uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
+    Vector3 GetLocalAabbMin() const { return localAabbMin_; }
+    Vector3 GetLocalAabbMax() const { return localAabbMax_; }
+
     void DrawMeshOnly();
     void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
 private: // 内部処理関数
@@ -178,10 +181,11 @@ private: // メンバ変数
     Math math_;
     Vector3 size_ = { 1.0f, 1.0f, 1.0f };   // デフォルトは1x1x1
     Vector3 center_ = { 0.0f, 0.0f, 0.0f }; // デフォルトは原点
-
     // --- ボーンバッファ関連 ---
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
     BoneForGPU* boneMappedData_ = nullptr;
     uint32_t boneSrvIndex_ = 0; //  ボーン情報SRVのインデックス
 
+    Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };
 };
