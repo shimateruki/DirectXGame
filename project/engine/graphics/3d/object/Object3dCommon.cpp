@@ -21,6 +21,7 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreateMagmaPipeline();
     CreateIcePipeline();
 
+    CreateSkyboxPipeline();
 }
 
 void Object3dCommon::SetGraphicsCommand() {
@@ -491,4 +492,35 @@ void Object3dCommon::SetIceGraphicsCommand() {
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(icePipelineState_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::CreateSkyboxPipeline() {
+    RootSignatureBuilder rsBuilder;
+    rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    rsBuilder.Build(dxCommon_->GetDevice(), &skyboxRootSignature_);
+
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Skybox.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Skybox.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder pipelineBuilder;
+    pipelineBuilder.SetRootSignature(skyboxRootSignature_.Get());
+    pipelineBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+
+    pipelineBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE);
+
+    pipelineBuilder.SetBlendMode(BlendMode::kNone);
+
+    pipelineBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+
+    D3D12_INPUT_ELEMENT_DESC inputElements[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+    pipelineBuilder.SetInputLayout(inputElements, _countof(inputElements));
+
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+    pipelineBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    pipelineBuilder.Build(dxCommon_->GetDevice(), &skyboxPipelineState_);
 }

@@ -15,7 +15,7 @@ LightManager* LightManager::GetInstance() {
 void LightManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/rostock_laage_airport_4k.dds");
+    uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
     LightManager::GetInstance()->SetEnvironmentMapHandle(envHandle);
 
     // --- バッファ作成 (サイズはConstData構造体に合わせる) ---

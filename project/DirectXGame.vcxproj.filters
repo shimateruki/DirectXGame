@@ -351,6 +351,9 @@
     <ClCompile Include="MeshEffectManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Skybox.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\shader\Object3d.hlsli">
@@ -402,6 +405,7 @@
     <None Include="Resources\shader\Magma.PS.hlsl" />
     <None Include="Resources\shader\LocalFog.PS.hlsl" />
     <None Include="Resources\shader\Water.PS.hlsl" />
+    <None Include="Resources\shader\Skybox.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
@@ -424,6 +428,8 @@
     <FxCompile Include="Resources\shader\Ice.PS.hlsl" />
     <FxCompile Include="Resources\shader\Magma.VS.hlsl" />
     <FxCompile Include="Resources\shader\Ice.VS.hlsl" />
+    <FxCompile Include="Resources\shader\Skybox.PS.hlsl" />
+    <FxCompile Include="Resources\shader\Skybox.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\system\audio\AudioPlayer.h">
@@ -1264,6 +1270,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="MeshEffectManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Skybox.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

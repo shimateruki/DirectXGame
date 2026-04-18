@@ -102,6 +102,14 @@ void GamePlayScene::Initialize() {
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
+	// 1. キューブマップ（DDS）の読み込み
+	// TextureManagerがDDS対応していればこれでハンドルが取れます
+	skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+
+	// 2. スカイボックスの生成と初期化
+	skybox_ = std::make_unique<Skybox>();
+	// object3dCommon_ は GamePlayScene が持っている共通クラスを渡します
+	skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
@@ -300,7 +308,9 @@ void GamePlayScene::Draw() {
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
-
+	if (skybox_) {
+		skybox_->Draw(camera->GetConstantBuffer());
+	}
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		// ここでも同じくプレイヤー関連をスキップ

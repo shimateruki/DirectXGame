@@ -55,6 +55,9 @@ public:
    void SetMagmaGraphicsCommand();
    void SetIceGraphicsCommand();
 
+   void CreateSkyboxPipeline();
+   ID3D12RootSignature* GetSkyboxRootSignature() const { return skyboxRootSignature_.Get(); }
+   ID3D12PipelineState* GetSkyboxPipelineState() const { return skyboxPipelineState_.Get(); }
 private:
    /// <summary>
    /// ルートシグネチャの作成
@@ -81,6 +84,8 @@ private:
    Microsoft::WRL::ComPtr<ID3D12PipelineState> waterPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> magmaPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> icePipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;
 
 };

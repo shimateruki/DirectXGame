@@ -47,6 +47,13 @@ void Camera::Initialize() {
     distance_ = 10.0f;
 
     isInputEnabled_ = true;
+    auto dxCommon = DirectXCommon::GetInstance();
+    // 必要なサイズを計算（16バイト境界に合わせる）
+    size_t sizeInBytes = (sizeof(CameraData) + 0xFF) & ~0xFF;
+    constantBuffer_ = dxCommon->CreateBufferResource(sizeInBytes);
+
+    // 常時 Map しておく（Unmap はデストラクタ等で行うか、放置でも可）
+    constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
 }
 
 void Camera::Update() {
@@ -348,6 +355,10 @@ void Camera::Update() {
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, currentUp);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    if (mappedData_) {
+        mappedData_->view = viewMatrix_;
+        mappedData_->projection = projectionMatrix_;
+    }
 }
 
 

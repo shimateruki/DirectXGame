@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <vector>
+#include <Skybox.h>
 
 // --- 前方宣言 ---
 class DirectXCommon;
@@ -124,46 +125,6 @@ private:
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<Sprite> lockOnSprite_;
     bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
-	//sprite変数
-    Sprite* playerHpBarSprite_ = nullptr;
-    float playerHpBarMaxWidth_ = 0.0f; // 100%の時の長さ
-    // =================================================
-    //  ボスUI同期用のポインタと変数を保持
-    // =================================================
-    BossCore* boss_ = nullptr;
-
-    Sprite* bossHpBarSprite_ = nullptr;    // メインHPバー
-    float bossHpBarMaxWidth_ = 0.0f;
-
-    Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
-    float barrierHpBarMaxWidth_ = 0.0f;
-
-    enum class GameOverMenuIndex {
-        Restart,
-        Title,
-        Max
-    };
-    int currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Restart;
-    bool isGameOverUiReady_ = false; // テキストのフェードインが完了したか
-
-    Sprite* gameOverTextSprite_ = nullptr;
-    Sprite* restartTextSprite_ = nullptr;
-    Sprite* titleTextSprite_ = nullptr;
-
-    // =======================================================
-    // ポーズ画面用
-    // =======================================================
-    bool isPaused_ = false; // ポーズ中かどうか
-
-    enum class PauseMenuIndex {
-        Restart,
-        Title,
-        Max
-    };
-    int currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
-
-    Sprite* poseBackSprite_ = nullptr;
-    Sprite* poseTextSprite_ = nullptr;
-    Sprite* restartPoseTextSprite_ = nullptr;
-    Sprite* titleTextPoseSprite_ = nullptr;
+    std::unique_ptr<Skybox> skybox_;
+    uint32_t skyboxTextureHandle_ = 0;
 };

@@ -39,6 +39,12 @@ public:
     };
 
 public:
+
+    struct CameraData {
+        Matrix4x4 view;
+        Matrix4x4 projection;
+    };
+
     // ==================================================
     // 初期化・更新
     // ==================================================
@@ -112,7 +118,7 @@ public:
     void EndOverride(float duration);
     bool IsOverridden() const { return isOverridden_; }
     float GetOverrideWeight() const { return overrideWeight_; }
-
+    ID3D12Resource* GetConstantBuffer() const { return constantBuffer_.Get(); }
 private:
     // ==================================================
     // メンバ変数
@@ -175,4 +181,6 @@ private:
     float overrideWeight_ = 0.0f;         // 0.0(通常) ～ 1.0(完全オーバーライド)
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
+    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
+    CameraData* mappedData_ = nullptr;
 };

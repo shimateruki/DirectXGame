@@ -141,7 +141,13 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
             // フォルダではなく「ファイル」だった場合のみ処理
             if (entry.is_regular_file()) {
-                if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
+                if (entry.path().extension() == ".png" ||
+                    entry.path().extension() == ".jpg" ||
+                    entry.path().extension() == ".dds") { 
+                    std::string path = entry.path().string();
+                    std::replace(path.begin(), path.end(), '\\', '/');
+                    Load(path);
+                } {
                     std::string path = entry.path().string();
                     std::replace(path.begin(), path.end(), '\\', '/');
                     Load(path);
