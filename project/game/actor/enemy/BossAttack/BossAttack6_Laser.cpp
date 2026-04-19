@@ -7,6 +7,7 @@
 #include "DebugConsole.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
+#include <CollisionManager.h>
 
 BossAttack6_Laser::~BossAttack6_Laser() {
     for (Object3d* beam : activeBeams_) {
@@ -162,7 +163,6 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 63: 陣形完了後、0.5秒間完全に沈黙する！（予兆レーザー） ---
     else if (animPhase_ == 63) {
         if (animTimer_ == 0.0f) {
             BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
@@ -193,11 +193,26 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
                 laser->SetUVTransform(uvMat);
 
-          
 
+                // =========================================================
+                // ★ 当たり判定の設定とマネージャーへの登録
+                // =========================================================
                 laser->SetColliderType(ColliderType::kOBB);
+
+                // サイズを明示的に指定してあげる
+                Object3d::ColliderConfig cConfig = laser->GetColliderConfig();
+                cConfig.type = ColliderType::kOBB;
+                cConfig.size = { 1.0f, 1.0f, 1.0f }; // 基本サイズ（スケールで伸びるので1.0でOK）
+                laser->SetColliderConfig(cConfig);
+
                 laser->SetScale({ 0.1f, 80.0f, 0.1f }); // まずは予兆の細いレーザーとして生成
+
+                // 予兆中は当たらないように属性を0にする
                 laser->SetCollisionAttribute(0);
+
+                // マネージャーに登録して、実際に当たり判定の世界に存在させる
+                CollisionManager::GetInstance()->AddObject(laser.get());
+
 
                 // 座標をブロックに追従させる（※子供リストには入れないから安全！）
                 laser->SetParent(armorBlocks[i]);
@@ -222,7 +237,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animPhase_ = 64;
             animTimer_ = 0.0f;
         }
-    }
+        }
     // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
     else if (animPhase_ == 64) {
         animTimer_ += deltaTime;
@@ -258,7 +273,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 // 発射中は完全に不透明な赤（Emissiveと加算ブレンドで白飛びするほど輝きます！）
                 beam->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                 beam->SetCollisionAttribute(kEnemyAttack);
-
+                beam->SetCollisionMask(kPlayer);
                 // ==========================================
                 // ★ エネルギーのUVスクロール
                 // ==========================================

@@ -123,19 +123,20 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     Vector3 basePos = editPosition_;
     Vector3 baseRot = editRotation_;
-
     if (targetObject_) {
         Vector3 targetPos = targetObject_->GetWorldPosition();
 
-        // ★修正: ターゲットのY軸回転（向き）だけを取得
+        // ★超重要修正: ボーンのねじれを完全無視して、大元（ルートノード）の向きだけを取る！
         float targetWorldY = 0.0f;
-        Object3d* curr = targetObject_;
-        while (curr) {
-            targetWorldY += curr->GetRotation().y;
-            curr = curr->GetParent();
+        Object3d* rootObj = targetObject_;
+        while (rootObj && rootObj->GetParent()) {
+            rootObj = rootObj->GetParent(); // 一番上の親（プレイヤー本体など）まで遡る
+        }
+        if (rootObj) {
+            targetWorldY = rootObj->GetRotation().y; // 本体の大元の向きだけを使う！
         }
 
-        // ★修正: エディタ設定位置(editPosition_)をターゲットの向きに合わせて回転
+        // 位置のオフセット計算（sin/cosを使う元の計算が一番安全）
         float s = sinf(targetWorldY);
         float c = cosf(targetWorldY);
         Vector3 rotatedOffset;
@@ -143,13 +144,13 @@ void MeshEffectEditor::Update(float deltaTime) {
         rotatedOffset.y = editPosition_.y;
         rotatedOffset.z = -editPosition_.x * s + editPosition_.z * c;
 
-        // 基準座標と回転の計算
         basePos.x = targetPos.x + rotatedOffset.x;
         basePos.y = targetPos.y + rotatedOffset.y;
         basePos.z = targetPos.z + rotatedOffset.z;
 
-        // 回転はY軸（向き）だけを足す
-        baseRot.y = editRotation_.y + targetWorldY;
+        // ★回転はシンプルにY軸だけを足す（行列変換のバグを回避！）
+        baseRot = editRotation_;
+        baseRot.y += targetWorldY;
     }
     // ========================================================
     // ★ 修正1: 一斉再生の完全同期！
