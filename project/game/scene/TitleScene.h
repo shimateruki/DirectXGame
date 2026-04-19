@@ -102,6 +102,9 @@ private:
     };
     int currentMenuIndex_ = (int)MenuIndex::GameStart; // 現在の選択番号
 
+    // 設定項目を無効化するフラグ（falseにしておけば設定へは遷移できない）
+    bool settingEnabled_ = false;
+
     // オプションメニューの選択肢 (追加部分)
     enum class OptionIndex {
         Sound,
