@@ -80,12 +80,11 @@ void TitleScene::Initialize() {
     LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile("title_camera.json");
-    
+
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
     optionUI_ = std::make_unique<OptionUI>();
-    optionUI_->Initialize(this,spriteCommon_.get());
-
+    optionUI_->Initialize(this, spriteCommon_.get());
 
     dxCommon_->FlushCommandQueue(false);
 }
@@ -113,19 +112,28 @@ void TitleScene::Update(float deltaTime) {
     // =================================================
     switch (currentState_) {
     case TitleState::MainMenu:
-        // 上下選択
+        // 上下選択 (設定項目が無効ならスキップする)
         if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-            currentMenuIndex_--;
-            if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+            // 1回の操作で無効項目に止まらないようループでスキップ
+            do {
+                currentMenuIndex_--;
+                if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+            } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
         }
         if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-            currentMenuIndex_++;
-            if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+            do {
+                currentMenuIndex_++;
+                if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+            } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
         }
 
         // 色の更新
         if (startTextSprite_) startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
-        if (settingTextSprite_) settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+        if (settingTextSprite_) {
+            // 設定が無効なら常に非選択カラーにする（視覚的に選べないことを示す）
+            if (!settingEnabled_) settingTextSprite_->SetColor(normalColor);
+            else settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+        }
 
         // 決定 (Spaceキーのみ)
         if (input->IsKeyTriggered(DIK_SPACE)) {
@@ -134,8 +142,10 @@ void TitleScene::Update(float deltaTime) {
                 SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
             }
             else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
-                // 設定画面へ移行
-                currentState_ = TitleState::OptionMenu;
+                // 設定が有効なときのみ遷移（通常はここに来ない）
+                if (settingEnabled_) {
+                    currentState_ = TitleState::OptionMenu;
+                }
             }
         }
         break;
