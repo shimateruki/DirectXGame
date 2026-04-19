@@ -2,7 +2,7 @@
     "Attack": {
         "key": 0,
         "mouse": 0,
-        "pad": 0
+        "pad": 32768
     },
     "Backward": {
         "key": 31,
@@ -12,7 +12,7 @@
     "Dash": {
         "key": 42,
         "mouse": -1,
-        "pad": 0
+        "pad": 256
     },
     "Forward": {
         "key": 17,
@@ -22,7 +22,7 @@
     "Jump": {
         "key": 57,
         "mouse": -1,
-        "pad": 0
+        "pad": 8192
     },
     "Left": {
         "key": 30,
@@ -32,11 +32,16 @@
     "LockOn": {
         "key": 19,
         "mouse": -1,
-        "pad": 0
+        "pad": 512
     },
     "Right": {
         "key": 32,
         "mouse": -1,
         "pad": 0
+    },
+    "pose": {
+        "key": 25,
+        "mouse": -1,
+        "pad": 16
     }
 }
