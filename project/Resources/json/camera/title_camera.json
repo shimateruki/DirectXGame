@@ -1,19 +1,24 @@
 {
     "Overrides": {},
     "angle": [
-        25.0,
+        24.999996185302734,
         0.0,
         0.0
     ],
     "boostSpeed": 2.0,
     "cameraSensitivity": 0,
-    "distance": 15.0,
-    "fixedPointPos": [
-        0.0,
-        5.0,
-        -15.0
+    "distance": 16.299999237060547,
+    "fixedPointAngle": [
+        -0.020999997854232788,
+        -0.7500001192092896,
+        0.0
     ],
-    "gameFollowMode": 1,
+    "fixedPointPos": [
+        68.51644897460938,
+        11.192235946655273,
+        -125.08153533935547
+    ],
+    "gameFollowMode": 5,
     "height": 5.0,
     "lockOnOffset": [
         0.0,

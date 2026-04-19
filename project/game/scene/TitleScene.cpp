@@ -23,6 +23,9 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include <cmath>    // std::sin
+#include <algorithm> // std::transform
+#include <cctype>    // ::tolower
 
 void TitleScene::Initialize() {
     // --- 1. システム基盤の取得 ---
@@ -71,8 +74,6 @@ void TitleScene::Initialize() {
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
-
-
     // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/titleScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
@@ -85,6 +86,51 @@ void TitleScene::Initialize() {
     settingTextSprite_ = GetSpriteByName("setting.png");
     optionUI_ = std::make_unique<OptionUI>();
     optionUI_->Initialize(this, spriteCommon_.get());
+
+    // --- オブジェクト一覧をログ出力して調査（デバッグ用） ---
+    LOG("TitleScene: listing loaded objects:");
+    if (objectManager_) {
+        for (auto& obj : objectManager_->GetObjects()) {
+            if (!obj) continue;
+            LOG(" - name:\"%s\" class:\"%s\" enemyType:\"%s\"", obj->GetName().c_str(), obj->GetClassName().c_str(), obj->GetEnemyType().c_str());
+        }
+    }
+
+    // --- enemy_core をシーン内から探して初期化（複数対応・名前バリエーション） ---
+    enemyCores_.clear();
+    enemyCoreBaseYs_.clear();
+    if (objectManager_) {
+        for (auto& objPtr : objectManager_->GetObjects()) {
+            if (!objPtr) continue;
+            const std::string& nm = objPtr->GetName();
+            std::string lower = nm;
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+            bool matched = false;
+            // 直接一致候補
+            if (lower.find("enemy__core") != std::string::npos || lower.find("enemy_core") != std::string::npos) {
+                matched = true;
+            }
+            // 汎用: 名前に enemy と core が含まれる場合
+            if (!matched && lower.find("enemy") != std::string::npos && lower.find("core") != std::string::npos) {
+                matched = true;
+            }
+            // 敵タイプ（Factoryで生成された場合など）
+            if (!matched) {
+                std::string et = objPtr->GetEnemyType();
+                std::transform(et.begin(), et.end(), et.begin(), ::tolower);
+                if (et.find("bosscore") != std::string::npos || et.find("boss") != std::string::npos) {
+                    matched = true;
+                }
+            }
+
+            if (matched) {
+                enemyCores_.push_back(objPtr.get());
+                enemyCoreBaseYs_.push_back(objPtr->GetWorldPosition().y);
+            }
+        }
+    }
+    LOG("Found %d enemy core(s) to animate.", (int)enemyCores_.size());
 
     dxCommon_->FlushCommandQueue(false);
 }
@@ -169,6 +215,23 @@ void TitleScene::Update(float deltaTime) {
 
     CameraEditor::GetInstance()->Update(cameraTarget, false);
     CameraManager::GetInstance()->Update();
+
+    // --- enemy_core を上下移動（複数対応） ---
+    if (!enemyCores_.empty()) {
+        enemyCoreTimer_ += deltaTime * enemyCoreSpeed_;
+        for (size_t i = 0; i < enemyCores_.size(); ++i) {
+            Object3d* core = enemyCores_[i];
+            if (!core) continue;
+            float baseY = (i < enemyCoreBaseYs_.size()) ? enemyCoreBaseYs_[i] : core->GetWorldPosition().y;
+            // 少し位相ずらすことで複数並んだときに同調しないようにする
+            float phase = enemyCoreTimer_ + static_cast<float>(i) * 0.7f;
+            float newY = baseY + std::sin(phase) * enemyCoreAmplitude_;
+            Vector3 pos = core->GetTranslate(); // コピー
+            pos.y = newY;
+            core->SetTranslate(pos);
+            core->UpdateWorldMatrix();
+        }
+    }
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
     if (objectManager_) objectManager_->Update(deltaTime);
