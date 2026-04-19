@@ -63,13 +63,16 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     file.close();
 
     // ==========================================
-    // ★ 1. 基準となるターゲットの取得とY軸の計算
+    // ★ 1. 基準となるターゲットの取得（位置と向きを分離！）
     // ==========================================
     Vector3 basePos = { 0, 0, 0 };
-    float targetWorldY = 0.0f; // ★プレイヤーの「向き」だけを抽出する
+    float targetWorldY = 0.0f; // ★プレイヤーの「向き」
 
-    Object3d* target = baseObject;
-    if (!target && j.contains("TargetName")) {
+    Object3d* posTarget = baseObject; // 位置の基準
+    Object3d* rotTarget = baseObject; // 向きの基準
+
+    // JSONでTargetNameが指定されている場合、特定のボーンなどを探す
+    if (j.contains("TargetName")) {
         std::string targetName = j["TargetName"];
         if (!targetName.empty()) {
             SceneManager* sm = SceneManager::GetInstance();
@@ -85,21 +88,32 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                     return nullptr;
                     };
                 for (auto& obj : objects) {
-                    target = findObj(obj.get(), targetName);
-                    if (target) break;
+                    Object3d* found = findObj(obj.get(), targetName);
+                    if (found) {
+                        posTarget = found; // 見つかったボーンを位置の基準にする
+                        // rotTarget が null の場合のみ、見つけたオブジェクトをセットする
+                        if (!rotTarget) rotTarget = found;
+                        break;
+                    }
                 }
             }
         }
     }
 
-    if (target) {
-        basePos = target->GetWorldPosition();
+    // ① 位置は指定されたボーン（posTarget）に正確に合わせる
+    if (posTarget) {
+        basePos = posTarget->GetWorldPosition();
+    }
 
-        // ★ターゲットの「Y軸回転（向いている方向）」だけを全階層からかき集める
-        Object3d* curr = target;
-        while (curr) {
-            targetWorldY += curr->GetRotation().y;
-            curr = curr->GetParent();
+    // ② 向き（Y回転）はボーンのねじれを完全に無視し、一番大元（ルート）の向きだけを取る！
+    if (rotTarget) {
+        Object3d* rootObj = rotTarget;
+        // 親を辿って一番上のノード（プレイヤー本体など）を見つける
+        while (rootObj && rootObj->GetParent()) {
+            rootObj = rootObj->GetParent();
+        }
+        if (rootObj) {
+            targetWorldY = rootObj->GetRotation().y;
         }
     }
 
@@ -111,7 +125,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     if (j.contains("Position")) offsetPos = { j["Position"][0], j["Position"][1], j["Position"][2] };
     if (j.contains("Rotation")) offsetRot = { j["Rotation"][0], j["Rotation"][1], j["Rotation"][2] };
 
-    // ★超重要：エディタで作った「右側」などのオフセット位置を、プレイヤーの向きに合わせて回転させる！
+    // ★超重要：エディタで作った「右側」などのオフセット位置を、プレイヤーの大元の向きに合わせて回転させる！
     float s = sinf(targetWorldY);
     float c = cosf(targetWorldY);
     Vector3 rotatedOffset;
@@ -175,15 +189,15 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         }
 
         // =========================================================
-            // ★ 当たり判定(Collision)の復元とマネージャーへの登録
-            // =========================================================
+        // ★ 当たり判定(Collision)の復元とマネージャーへの登録
+        // =========================================================
         if (j.contains("Collision")) {
             effect->editHasCollision_ = j["Collision"]["HasCollision"];
-            effect->editCollisionShape_ = j["Collision"]["Shape"];
-            effect->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
-            effect->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
 
             if (effect->editHasCollision_) {
+                effect->editCollisionShape_ = j["Collision"]["Shape"];
+                effect->editCollisionSize_ = { j["Collision"]["Size"][0], j["Collision"]["Size"][1], j["Collision"]["Size"][2] };
+                effect->editCollisionOffset_ = { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] };
 
                 ColliderType cType = ColliderType::kNone;
                 if (effect->editCollisionShape_ == 0) cType = ColliderType::kSphere;
@@ -201,8 +215,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 effect->SetColliderConfig(cConfig);
 
                 // --- 属性とマスクの設定 ---
-                effect->SetCollisionAttribute(2); // 例: kPlayerAttack 相当
-                effect->SetCollisionMask(1);      // 例: kEnemy 相当
+                effect->SetCollisionAttribute(kPlayerAttack); // 例: kPlayerAttack 相当
+                effect->SetCollisionMask(kEnemy);      // 例: kEnemy 相当
 
                 CollisionManager::GetInstance()->AddObject(effect.get());
             }
@@ -210,6 +224,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
 
         // --- ★ 4. 立体化のための座標・回転適用 ---
         Vector3 finalPos = { basePos.x + rotatedOffset.x, basePos.y + rotatedOffset.y, basePos.z + rotatedOffset.z };
+
+        // ★回転はシンプルにY軸だけを足す！（行列バグ防止）
         Vector3 finalRot = { offsetRot.x, offsetRot.y + targetWorldY, offsetRot.z };
 
         Vector3 localZ;
@@ -218,7 +234,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         localZ.z = cosf(finalRot.y) * cosf(finalRot.x);
 
         if (volumeMode == 1 && i == 1) {
-            finalRot.x += 1.570796f;
+            finalRot.x += 1.570796f; // 90度
         }
         else if (volumeMode == 2) {
             float gap = 0.02f;

@@ -51,7 +51,7 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     // ========================================================
     if (attribute & kPlayerAttack) {
 
-        // ★ 追加: クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
+        // ★ クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
         if (damageCooldownTimer_ > 0.0f) {
             return true;
         }

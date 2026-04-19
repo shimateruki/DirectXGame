@@ -151,23 +151,26 @@ std::string KeyConfig::GetKeyName(int keyCode) const {
 }
 std::string KeyConfig::GetPadName(WORD padCode) const {
     if (padCode == 0) return "None";
-    switch (padCode) {
-    case XINPUT_GAMEPAD_A: return "A";
-    case XINPUT_GAMEPAD_B: return "B";
-    case XINPUT_GAMEPAD_X: return "X";
-    case XINPUT_GAMEPAD_Y: return "Y";
-    case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "RB";
-    case XINPUT_GAMEPAD_LEFT_SHOULDER:  return "LB";
-    case XINPUT_GAMEPAD_DPAD_UP:    return "D-Up";
-    case XINPUT_GAMEPAD_DPAD_DOWN:  return "D-Down";
-    case XINPUT_GAMEPAD_DPAD_LEFT:  return "D-Left";
-    case XINPUT_GAMEPAD_DPAD_RIGHT: return "D-Right";
-    case XINPUT_GAMEPAD_START: return "Start";
-    case XINPUT_GAMEPAD_BACK:  return "Back";
-    case XINPUT_GAMEPAD_LEFT_THUMB:  return "L3 (Stick)";
-    case XINPUT_GAMEPAD_RIGHT_THUMB: return "R3 (Stick)";
-    }
-    return "Pad:" + std::to_string(padCode);
+
+    // == XInput標準ボタン ==
+    if (padCode == XINPUT_GAMEPAD_DPAD_UP) return "D-Pad Up";
+    if (padCode == XINPUT_GAMEPAD_DPAD_DOWN) return "D-Pad Down";
+    if (padCode == XINPUT_GAMEPAD_DPAD_LEFT) return "D-Pad Left";
+    if (padCode == XINPUT_GAMEPAD_DPAD_RIGHT) return "D-Pad Right";
+    if (padCode == XINPUT_GAMEPAD_START) return "Start";
+    if (padCode == XINPUT_GAMEPAD_BACK) return "Back";
+    if (padCode == XINPUT_GAMEPAD_LEFT_THUMB) return "L3 (Left Stick)";
+    if (padCode == XINPUT_GAMEPAD_RIGHT_THUMB) return "R3 (Right Stick)";
+    if (padCode == XINPUT_GAMEPAD_LEFT_SHOULDER) return "LB / L1";
+    if (padCode == XINPUT_GAMEPAD_RIGHT_SHOULDER) return "RB / R1";
+    if (padCode == XINPUT_GAMEPAD_A) return "A Button";
+    if (padCode == XINPUT_GAMEPAD_B) return "B Button";
+    if (padCode == XINPUT_GAMEPAD_X) return "X Button";
+    if (padCode == XINPUT_GAMEPAD_Y) return "Y Button";
+    if (padCode == 0x0400) return "LT / L2"; // 未使用ビットをLTに
+    if (padCode == 0x0800) return "RT / R2"; // 未使用ビットをRTに
+
+    return "Unknown Pad";
 }
 
 // =================================================================
@@ -293,14 +296,17 @@ void KeyConfig::DrawImGui() {
                 0,
                 XINPUT_GAMEPAD_A, XINPUT_GAMEPAD_B, XINPUT_GAMEPAD_X, XINPUT_GAMEPAD_Y,
                 XINPUT_GAMEPAD_RIGHT_SHOULDER, XINPUT_GAMEPAD_LEFT_SHOULDER,
+                0x0400, 0x0800, // ★ 追加: LTとRTの仮想コード
                 XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, XINPUT_GAMEPAD_DPAD_RIGHT,
                 XINPUT_GAMEPAD_START, XINPUT_GAMEPAD_BACK,
                 XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB
             };
+
             const char* padNames[] = {
                 "None",
                 "A", "B", "X", "Y",
                 "RB", "LB",
+                "LT (L2)", "RT (R2)", 
                 "D-Up", "D-Down", "D-Left", "D-Right",
                 "Start", "Back",
                 "L3 (Stick)", "R3 (Stick)"
