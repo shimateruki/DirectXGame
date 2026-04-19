@@ -118,13 +118,18 @@ void GameClearScene::Finalize() {
 }
 
 void GameClearScene::Update(float deltaTime) {
-    // エディタ・マネージャ更新
     LightEditor::GetInstance()->Update();
-    CameraManager::GetInstance()->Update();
-    CameraEditor::GetInstance()->Update(player_, false);
+    Object3d* cameraTarget = player_;
+    if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
+        cameraTarget = objectManager_->GetObjects().front().get();
+    }
 
-    // サブシステムの一括更新
-    objectManager_->Update(deltaTime);
+
+    CameraEditor::GetInstance()->Update(cameraTarget, false);
+    CameraManager::GetInstance()->Update();
+
+    // オブジェクト一括更新 (ObjectManagerに委譲)
+    if (objectManager_) objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);
 
     // スプライト更新
