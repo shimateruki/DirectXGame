@@ -159,6 +159,9 @@ void InputManager::Update()
         // 必要なら: leftY = -leftY; のように反転
         if (abs(leftX) > 0 || abs(leftY) > 0) {
             gamepadState.Gamepad.sThumbLX = leftX;
+            if (leftY <= -32768) {
+                leftY = -32767;
+            }
             gamepadState.Gamepad.sThumbLY = (short)-leftY; // Y軸反転させておくのが一般的
         }
         if (abs(rightX) > 0 || abs(rightY) > 0) {

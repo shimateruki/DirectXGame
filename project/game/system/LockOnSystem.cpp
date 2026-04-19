@@ -25,20 +25,26 @@ void LockOnSystem::Initialize(InputManager* inputManager) {
 }
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
+
+    // ========================================================
+    // シネマティックカメラ（演出）起動時の強制解除
+    // ========================================================
     if (camera->IsOverridden()) {
         if (isLockingOn_) {
-            // ロックオン中なら強制的に解除する
             isLockingOn_ = false;
             lockOnTarget_ = nullptr;
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
-            camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モードに戻しておく
             lostSightTimer_ = 0.0f;
 
             DebugConsole::GetInstance()->AddLog("LockOn Canceled: Cinematic Camera Active.");
         }
-        return; // ★ ここで return するため、この下にある「ボタン入力」や「ロックオン追従」が一切働かなくなる！
+        return; // 以降のロックオン制御を行わない
     }
-    // (1) 0キー(Zキー等)入力処理
+
+    // ========================================================
+    // (1) ボタン入力による手動ロックオン切り替え
+    // ========================================================
     if (inputManager_->IsActionTriggered("LockOn")) {
         isLockingOn_ = !isLockingOn_;
 
@@ -46,40 +52,61 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             // ロックオン開始 -> 対象検索
             lockOnTarget_ = FindBestTarget(objects, camera, player);
             if (!lockOnTarget_) {
-                isLockingOn_ = false; // 見つからなかったら解除
+                isLockingOn_ = false; // 見つからなかったら即解除
             }
             else {
-                lostSightTimer_ = 0.0f; // ★ 新規ロックオン時はタイマーをリセット
+                lostSightTimer_ = 0.0f;
             }
         }
 
         if (!isLockingOn_) {
-            // ロックオン解除
+            // 手動でのロックオン解除
             lockOnTarget_ = nullptr;
-            camera->SyncRotationToCurrentView();
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
-            camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モード
-            lostSightTimer_ = 0.0f; // ★ 手動解除時も念のためリセット
+            camera->SyncRotationToCurrentView(); // 視点のガクつき防止
+            lostSightTimer_ = 0.0f;
         }
-
     }
 
+    // ========================================================
     // (2) ロックオン中の挙動
+    // ========================================================
     if (isLockingOn_) {
-        // ターゲットが消えた(死亡など)場合の安全対策
+        // ターゲット消失(死亡など)の場合の安全対策
         if (!lockOnTarget_) {
             isLockingOn_ = false;
-            // player->SetLockOn(false); // ← ここも念のためコメントアウト！！
             camera->SetFollowMode(Camera::FollowMode::kAimable);
+            camera->SetLockOnTarget(nullptr);
+            camera->SyncRotationToCurrentView();
             return;
         }
 
-        // ========================================================
-        // ★ 壁による視線切れチェック (モンハン・ダクソ方式)
-        // ========================================================
         Vector3 playerPos = player->GetWorldPosition();
         Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
+        static Math math;
 
+        // --------------------------------------------------------
+        // 距離による強制解除 (捕捉距離 + 5.0f の遊びを持たせる)
+        // --------------------------------------------------------
+        Vector3 toEnemyDist = { enemyPos.x - playerPos.x, enemyPos.y - playerPos.y, enemyPos.z - playerPos.z };
+        float currentDist = math.Length(toEnemyDist);
+
+        if (currentDist > kMaxLockOnDistance_ + 5.0f) {
+            isLockingOn_ = false;
+            lockOnTarget_ = nullptr;
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            camera->SetLockOnTarget(nullptr);
+            camera->SyncRotationToCurrentView();
+            lostSightTimer_ = 0.0f;
+
+            DebugConsole::GetInstance()->AddLog("LockOn Lost: Target too far.");
+            return;
+        }
+
+        // --------------------------------------------------------
+        // 障害物による視線切れチェック (間に壁があれば即解除)
+        // --------------------------------------------------------
         // 足元だと地面をすってしまうので、胸の高さ(Y+1.0f)からレイを飛ばす
         Vector3 rayStart = { playerPos.x, playerPos.y + 1.0f, playerPos.z };
         Vector3 rayEnd = { enemyPos.x, enemyPos.y + 1.0f, enemyPos.z };
@@ -89,34 +116,35 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
         if (dist > 0.0f) {
             Vector3 dir = { toEnemy.x / dist, toEnemy.y / dist, toEnemy.z / dist };
 
-            // 障害物があるかチェック (第4引数の 1 は kGround などの壁属性)
+            // 障害物チェック (属性1: kGround などの壁)
             RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, dir, dist, 1);
 
             if (hit.isHit) {
-                // 壁に遮られたらタイマーを進める (約60FPS想定で 0.016f ずつ加算)
+                // 壁に遮られたらタイマーを進める
                 lostSightTimer_ += 0.016f;
 
-                // 1.5秒間、壁に隠れ続けたら強制的にロックオン解除！
-                if (lostSightTimer_ >= 1.5f) {
+                // 0.1秒(約6フレーム) 遮られたら即座に解除！
+                if (lostSightTimer_ >= 0.1f) {
                     isLockingOn_ = false;
                     lockOnTarget_ = nullptr;
-                    // player->SetLockOn(false); // ← 視線切れ解除時もコメントアウト！！
-                    camera->SyncRotationToCurrentView(); // 今のカメラの向きを維持
-                    camera->SetLockOnTarget(nullptr);
                     camera->SetFollowMode(Camera::FollowMode::kAimable);
+                    camera->SetLockOnTarget(nullptr);
+                    camera->SyncRotationToCurrentView();
                     lostSightTimer_ = 0.0f;
 
                     DebugConsole::GetInstance()->AddLog("LockOn Lost: Target behind wall.");
-                    return; // 今フレームの処理はここで終了
+                    return;
                 }
             }
             else {
-                // 見えているならタイマーをリセット（一瞬でも見えれば回復する）
+                // 見えているならタイマーをリセット
                 lostSightTimer_ = 0.0f;
             }
         }
 
+        // --------------------------------------------------------
         // カメラ設定 (毎フレーム更新)
+        // --------------------------------------------------------
         camera->SetFollowMode(Camera::FollowMode::kLockOn);
         camera->SetLockOnTarget(lockOnTarget_);
     }
