@@ -13,8 +13,8 @@
             "emissive": 1.0,
             "name": "title.png",
             "position": [
-                525.0,
-                150.0
+                550.0,
+                200.0
             ],
             "size": [
                 540.0,
@@ -35,12 +35,12 @@
             "emissive": 1.0,
             "name": "gameStartText.png",
             "position": [
-                480.0,
-                520.0
+                435.0,
+                495.0
             ],
             "size": [
-                412.0,
-                102.0
+                288.0,
+                71.0
             ],
             "texture": "gameStartText.png"
         },

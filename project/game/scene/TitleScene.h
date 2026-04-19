@@ -120,4 +120,13 @@ private:
     Sprite* settingTextSprite_ = nullptr;
 
     std::unique_ptr<OptionUI> optionUI_ = nullptr;
+
+    // ==========================================
+    // enemy_core を上下に動かすための変数（複数対応）
+    // ==========================================
+    std::vector<Object3d*> enemyCores_;       // 見つけた enemy_core オブジェクト群
+    std::vector<float> enemyCoreBaseYs_;      // 各オブジェクトの基準Y
+    float enemyCoreAmplitude_ = 0.5f;         // 振幅
+    float enemyCoreSpeed_ = 1.5f;             // 速度（係数）
+    float enemyCoreTimer_ = 0.0f;             // 共通タイマー
 };
