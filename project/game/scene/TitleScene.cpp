@@ -147,13 +147,18 @@ void TitleScene::Update(float deltaTime) {
         }
         break;
     }
-
     // =================================================
     // 常に実行される更新処理
     // =================================================
     LightEditor::GetInstance()->Update();
+    Object3d* cameraTarget = player_;
+    if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
+        cameraTarget = objectManager_->GetObjects().front().get();
+    }
+
+
+    CameraEditor::GetInstance()->Update(cameraTarget, false);
     CameraManager::GetInstance()->Update();
-    CameraEditor::GetInstance()->Update(player_, false);
 
     // オブジェクト一括更新 (ObjectManagerに委譲)
     if (objectManager_) objectManager_->Update(deltaTime);
