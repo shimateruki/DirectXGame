@@ -591,20 +591,23 @@ void BossCore::StartAppearance() {
 
     isAppearing_ = true;
     appearancePhase_ = 1;
-    appearanceTimer_ = 2.0f; // ★ 2秒間、ボスをドアップで映す！
+    appearanceTimer_ = 2.0f; // 2秒間、ボスをドアップで映す！
 
     DebugConsole::GetInstance()->AddLog("【EVENT】 ボス登場演出スタート！！");
 
-    // ★ カメラをボスの正面に滑らかに（1秒かけて）移動させる！
+    // カメラをボスの正面に滑らかに（1秒かけて）移動させる！
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         Camera::CameraOverrideParams params;
-        params.duration = 1.0f; // 1秒かけてスーッと寄る
+        params.duration = 1.0f;
         params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
 
         Vector3 bossPos = GetTranslate();
-        // ボスを少し見上げるような、カッコいいカメラ位置
+
+        // ====================================================
+        // ★ 修正：カメラの「ターゲット（見る場所）」をボスの中心に合わせる！
+        // ====================================================
         params.fixedEyePos = { bossPos.x, bossPos.y + 2.0f, bossPos.z - 20.0f };
-        params.fixedTargetPos = { bossPos.x, bossPos.y + 5.0f, bossPos.z };
+        params.fixedTargetPos = { bossPos.x, bossPos.y + 2.0f, bossPos.z }; // Yを +5.0f から +2.0f に下げました！
 
         camera->StartOverride(params);
     }

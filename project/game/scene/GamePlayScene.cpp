@@ -715,14 +715,21 @@ void GamePlayScene::Update(float deltaTime) {
 	// ボス登場ムービー中の監視処理
 	// ========================================================
 	if (isBossMoviePlaying_ && boss_) {
+		// ★ 修正：プレイヤーが少しでもズレないように毎フレーム座標を上書き固定する！
+		if (player_) {
+			player_->SetTranslate(movieStoredPlayerPos_);
+			player_->UpdateWorldMatrix(); // 座標の更新を確定
+		}
+
 		// BossCore に「演出終わった？」と毎フレーム聞く
 		if (!boss_->IsAppearing()) {
 			// 演出が終わった（＝カメラが戻って StartBattle が呼ばれた）！！
 			isBossMoviePlaying_ = false;
 
-			// プレイヤーの操作を復活させる
+			// ★ 修正：プレイヤーの操作と物理演算を復活させる！
 			if (player_) {
 				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true);
 			}
 		}
 	}
@@ -974,7 +981,7 @@ void GamePlayScene::StartBridgeDropMovie() {
 }
 
 // ========================================================
-// ★ 追加：ボス登場ムービーの開始処理
+// ボス登場ムービーの開始処理
 // ========================================================
 void GamePlayScene::StartBossAppearanceMovie() {
 	// 既にムービー中、またはボスがいなければ何もしない
@@ -982,11 +989,16 @@ void GamePlayScene::StartBossAppearanceMovie() {
 
 	isBossMoviePlaying_ = true;
 
+	// ====================================================
+	// ★ 修正：プレイヤーの慣性を消し、物理演算も切って完全固定！
+	// ====================================================
+	if (player_) {
+		movieStoredPlayerPos_ = player_->GetWorldPosition(); // 今の場所を記憶！
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });          // 歩くスピードをゼロに！
+		player_->SetIsControlActive(false);                  // 操作不能に！
+		player_->SetIsPhysicsActive(false);                  // 重力や移動を完全にストップ！
+	}
+
 	// 前回 BossCore に作った、カメラが寄る超カッコいい演出をスタート！
 	boss_->StartAppearance();
-
-	// ムービー中はプレイヤーの操作を奪う（動けなくする）
-	if (player_) {
-		player_->SetIsControlActive(false);
-	}
 }
