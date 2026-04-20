@@ -169,7 +169,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             animStartPos_ = boss->GetTranslate();
 
             // ★ バスターズ風に突き抜ける設定！プレイヤーの位置ではなく、方向ベクトルの先へ！
-            float dashDistance = 80.0f;
+            float dashDistance = 110.0f;
             animTargetPos_ = {
                 animStartPos_.x + dir.x * dashDistance,
                 animStartPos_.y, // 高さは維持

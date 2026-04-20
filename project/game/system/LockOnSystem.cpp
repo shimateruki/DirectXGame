@@ -19,13 +19,30 @@ LockOnSystem::LockOnSystem() {
 LockOnSystem::~LockOnSystem() {
     // ポインタは外部管理なのでdeleteしない
 }
-
+void LockOnSystem::SetForceLockOn(Object3d* target, bool isForced) {
+    isForced_ = isForced;
+    if (isForced_) {
+        lockOnTarget_ = target;
+        isLockingOn_ = true;
+    }
+}
 void LockOnSystem::Initialize(InputManager* inputManager) {
     inputManager_ = inputManager;
 }
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
+    Object3d* forceTarget = player->GetForceLockOnTarget();
+    if (forceTarget) {
+        // カメラに強制ターゲットを教える
+        camera->SetFollowMode(Camera::FollowMode::kLockOn);
+        camera->SetLockOnTarget(forceTarget);
 
+        // 内部のロックオン状態も強制的に上書き
+        lockOnTarget_ = forceTarget;
+        isLockingOn_ = true;
+		DebugConsole::GetInstance()->AddLog("LockOn Forced: Target set by Player.");
+        return;
+    }
     // ========================================================
     // シネマティックカメラ（演出）起動時の強制解除
     // ========================================================

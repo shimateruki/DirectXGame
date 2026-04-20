@@ -624,7 +624,7 @@ void GamePlayScene::Update(float deltaTime) {
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
 	//// 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
-	//GPUParticleManager::GetInstance()->Update(deltaTime);
+	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
 		sprite->Update();
 	}
@@ -873,7 +873,6 @@ void GamePlayScene::Draw() {
 	// 5. GPUパーティクルの描画！
 	// =======================================================
 	dxCommon_->UpdateGrabTexture();
-	dxCommon_->PreDrawLocalFog();
 
 	GPUParticleManager::GetInstance()->Draw(
 		dxCommon_->GetCommandList(),
@@ -883,7 +882,7 @@ void GamePlayScene::Draw() {
 		dxCommon_->GetDepthSrvHandle()
 	);
 
-	dxCommon_->PostDrawLocalFog();
+
 
 	// ★ カリングがどれくらい効いているか確認用のログ 
 	// DebugConsole::GetInstance()->AddLog("DrawCount: " + std::to_string(drawCount) + " / Total: " + std::to_string(totalCount));
