@@ -9,6 +9,9 @@
 #include <cstdlib>
 #include "GPUParticleManager.h"
 
+#include "CameraManager.h"
+#include "CameraEditor.h"
+
 // ==========================================
 // 攻撃クラスを読み込む
 // ==========================================
@@ -220,14 +223,34 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
 
         // ==========================================
-    // ★ 追加：9キーで即座にボスを爆散させるデバッグ機能！
+    // 9キーで即座にボスを爆散させるデバッグ機能！
     // ==========================================
         if (input->IsKeyTriggered(DIK_9)) {
             if (!isCoreBroken_) {
                 DebugConsole::GetInstance()->AddLog("【DEBUG】 9キー入力：ボスを強制爆散させます！！！💥");
 
                 param_->hp = 0.0f;  // 念のためステータスもHP0にしておく
-                BreakCore();        // 爆散演出を強制発動！
+                StartDeathSequence();       // 爆散演出を強制発動！
+            }
+        }
+
+        if (deathPhase_ == 1 || deathPhase_ == 2) {
+            sequenceTimer_ -= deltaTime;
+
+            // 1秒経つごとに次のフェーズへ進む！
+            if (sequenceTimer_ <= 0.0f) {
+
+                if (deathPhase_ == 1) {
+                    // 1秒経過 ➔ 「亀裂フェーズ」へ移行し、さらに1秒待つ！
+                    deathPhase_ = 2;
+                    sequenceTimer_ = 1.0f;
+                    ShowCrackedCore();
+                }
+                else if (deathPhase_ == 2) {
+                    // さらに1秒経過 ➔ ついに「爆散フェーズ」へ！
+                    deathPhase_ = 3;
+                    BreakCore();
+                }
             }
         }
 
@@ -557,20 +580,22 @@ void BossCore::ChangeState(State nextState) {
 }
 
 void BossCore::TakeBodyDamage(float damage) {
-    // すでに割れて退場中なら、これ以上ダメージ計算しない
-    if (isCoreBroken_) return;
+    // ==========================================
+    // ★ 修正1：古い変数ではなく、「すでに死亡フェーズに入っているか」で判定する！
+    // deathPhase_ が 0 以外（1, 2, 3）なら、もう倒しているのでダメージ無効。
+    // ==========================================
+    if (deathPhase_ != 0) return;
 
     // ダメージを与える
     param_->hp -= damage;
 
-    // HPが0以下になったら爆散演出スタート！
     if (param_->hp <= 0.0f) {
-        param_->hp = 0.0f; // HPを0に固定
+        param_->hp = 0.0f;
 
-        DebugConsole::GetInstance()->AddLog("【撃破】 ボスのHPが0になった！粉砕！！");
-
-        // ★ ここで割れる演出の関数を呼ぶ！
-        BreakCore();
+        // ==========================================
+        // ★ 修正2：新しい3段演出のスタート関数を呼ぶ！
+        // ==========================================
+        StartDeathSequence();
     }
 }
 
@@ -824,56 +849,119 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     }
 }
 
-void BossCore::BreakCore() {
-    isCoreBroken_ = true;
-    deathTimer_ = 0.0f;
+void BossCore::StartDeathSequence() {
+    if (deathPhase_ != 0) return; // 既に死亡処理中なら何もしない
 
-    DebugConsole::GetInstance()->AddLog("【撃破】 コアが粉砕された！！！🎉");
+    deathPhase_ = 1;         // ★ フェーズ1（無傷で静止）
+    sequenceTimer_ = 1.0f;   // ★ 1秒間待機！
 
+    DebugConsole::GetInstance()->AddLog("【撃破】 ボス沈黙…！！");
+
+    if (currentAttack_) currentAttack_.reset();
+    isWaitingForDeath_ = true;
+    ChangeState(State::Idle);
+
+    // 周りのブロックを消す
+    for (Object3d* block : armorBlocks_) {
+        if (block) {
+            block->SetScale({ 0.0f, 0.0f, 0.0f });
+            block->SetCollisionAttribute(0);
+        }
+    }
+
+    // 上空へワープ
+    Vector3 currentPos = this->GetTranslate();
+    float targetY = currentPos.y + 10.0f;
+    this->SetRotation({ 0.0f, 0.0f, 0.0f });
+    this->SetTranslate({ 0.0f, targetY, 0.0f });
+
+    // カメラをパッと切り替え（0秒）
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        Camera::CameraOverrideParams params;
+        params.duration = 0.0f;
+        params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
+        params.fixedEyePos = { 0.0f, targetY + 5.0f, -20.0f };
+        params.trackTargetX = false; params.trackTargetY = false; params.trackTargetZ = false;
+        params.fixedTargetPos = { 0.0f, targetY, 0.0f };
+        camera->StartOverride(params);
+    }
+}
+
+// ==========================================
+// ★ 段階2：亀裂状態（少し隙間をあけた破片）を出現させる
+// ==========================================
+void BossCore::ShowCrackedCore() {
+    DebugConsole::GetInstance()->AddLog("【撃破】 コアに亀裂が！！");
+
+    // 本体を非表示にする
     this->SetScale({ 0.0f, 0.0f, 0.0f });
     this->SetCollisionAttribute(0);
 
-    // ボスの現在の座標を取得
     Vector3 corePos = this->GetTranslate();
-
-    // 現在のシーンを取得（ゲーム中なら必ず成功する）
     BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
-    if (!currentScene) return;
 
-    // ==========================================
-    // ★ ここで初めて破片を18個生成し、シーンにぶん投げる！
-    // ==========================================
-    for (int i = 0; i < 18; ++i) {
-        auto pieceObj = std::make_unique<Object3d>();
+    if (currentScene) {
+        for (int i = 0; i < 18; ++i) {
+            auto pieceObj = std::make_unique<Object3d>();
+            pieceObj->Initialize(common_);
+            pieceObj->SetStatic(true);
+            pieceObj->SetModel("enemy_core_shards/enemy_core" + std::to_string(i + 1));
 
-        pieceObj->Initialize(common_);
-        pieceObj->SetStatic(true);
-        pieceObj->SetModel("enemy_core_shards/enemy_core" + std::to_string(i + 1));
+            // 見た目の設定（発光を少し強くして「光が漏れてる感」を出す）
+            pieceObj->SetColor({ 0.0f, 0.5946f, 1.0f, 1.0f });
+            pieceObj->SetMaterialType(2);
+            pieceObj->SetEmissive(2.0f);
+            pieceObj->SetMetallic(0.0f);
+            pieceObj->SetRoughness(0.5f);
+            pieceObj->SetEnableEnvMap(true);
+            pieceObj->SetEnvIntensity(1.035f);
 
-        pieceObj->SetScale({ 1.0f, 1.0f, 1.0f });
-        pieceObj->SetTranslate(corePos);
-        pieceObj->SetCollisionAttribute(0);
+            pieceObj->SetScale({ 1.0f, 1.0f, 1.0f });
+            pieceObj->SetCollisionAttribute(0);
 
-        CorePiece piece;
-        piece.obj = pieceObj.get();
+            // 亀裂のズラし幅（0.2f ほど中心から離す）
+            float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            float ry = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            Vector3 crackOffset = { rx * 0.2f, ry * 0.2f, rz * 0.2f };
+            pieceObj->SetTranslate({ corePos.x + crackOffset.x, corePos.y + crackOffset.y, corePos.z + crackOffset.z });
 
-        // ランダムな方向に吹き飛ぶ計算
-        float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-        float ry = ((static_cast<float>(rand()) / RAND_MAX) * 1.0f) + 0.5f;
-        float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            // まだ飛ばさない！
+            CorePiece piece;
+            piece.obj = pieceObj.get();
+            piece.velocity = { 0.0f, 0.0f, 0.0f };
+            piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
 
-        float speed = 30.0f + (rand() % 30);
-        piece.velocity = { rx * speed, ry * speed, rz * speed };
-        piece.rotSpeed = {
-            (rand() % 60) - 30.0f,
-            (rand() % 60) - 30.0f,
-            (rand() % 60) - 30.0f
-        };
+            corePieces_.push_back(piece);
+            currentScene->GetObjects().push_back(std::move(pieceObj));
+        }
+    }
+}
 
-        corePieces_.push_back(piece);
+// ==========================================
+// ★ 段階3：一気に吹き飛ばす！（爆散）
+// ==========================================
+void BossCore::BreakCore() {
+    isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動！
+    deathTimer_ = 0.0f;
 
-        // シーンのリストに実体を渡す！（AllDrawに乗る）
-        currentScene->GetObjects().push_back(std::move(pieceObj));
+    DebugConsole::GetInstance()->AddLog("【撃破】 コア完全粉砕！！！🎉");
+
+    for (auto& piece : corePieces_) {
+        if (piece.obj) {
+            float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            float ry = ((static_cast<float>(rand()) / RAND_MAX) * 1.0f) + 0.5f;
+            float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+
+            float speed = 30.0f + (rand() % 30);
+            piece.velocity = { rx * speed, ry * speed, rz * speed };
+            piece.rotSpeed = {
+                (rand() % 60) - 30.0f, (rand() % 60) - 30.0f, (rand() % 60) - 30.0f
+            };
+
+            // 発光を元に戻す
+            piece.obj->SetEmissive(1.0f);
+        }
     }
 }
 
@@ -881,27 +969,43 @@ void BossCore::UpdateCorePieces(float deltaTime) {
     if (!isCoreBroken_) return;
 
     deathTimer_ += deltaTime;
+
     if (deathTimer_ > 5.0f) {
-        // ★ ボスが消える時、シーンにある破片にも「死」を伝達して自動削除させる
         for (auto& piece : corePieces_) {
-            if (piece.obj) {
-                piece.obj->isDead = true;
-            }
+            if (piece.obj) piece.obj->isDead = true;
         }
-        isDead = true; // ボス自身も消滅
+        isDead = true;
+
+        // ==========================================
+        // ★ 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す！
+        // 一瞬で戻すなら 0.0f に変更します。
+        // ==========================================
+        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+            camera->EndOverride(0.0f); // 0秒で一瞬で戻る
+        }
         return;
     }
 
-    // 物理演算
+    // --- スローモーション計算 ---
+    float timeScale = 1.0f;
+    if (deathTimer_ < 0.1f) {
+        timeScale = 0.01f; // ヒットストップ
+    }
+    else if (deathTimer_ < 1.5f) {
+        timeScale = 0.2f;  // スローモーション
+    }
+    float slowDeltaTime = deltaTime * timeScale;
+
+    // --- 物理演算 ---
     for (auto& piece : corePieces_) {
-        // ★ 安全対策：ポインタが生きている時だけ動かす
         if (piece.obj) {
             Vector3 pos = piece.obj->GetTranslate();
-            piece.velocity.y -= 98.0f * deltaTime;
 
-            pos.x += piece.velocity.x * deltaTime;
-            pos.y += piece.velocity.y * deltaTime;
-            pos.z += piece.velocity.z * deltaTime;
+            piece.velocity.y -= 98.0f * slowDeltaTime;
+
+            pos.x += piece.velocity.x * slowDeltaTime;
+            pos.y += piece.velocity.y * slowDeltaTime;
+            pos.z += piece.velocity.z * slowDeltaTime;
 
             if (pos.y <= 0.0f) {
                 pos.y = 0.0f;
@@ -916,15 +1020,16 @@ void BossCore::UpdateCorePieces(float deltaTime) {
             piece.obj->SetTranslate(pos);
 
             Vector3 rot = piece.obj->GetRotation();
-            rot.x += piece.rotSpeed.x * deltaTime;
-            rot.y += piece.rotSpeed.y * deltaTime;
-            rot.z += piece.rotSpeed.z * deltaTime;
+            rot.x += piece.rotSpeed.x * slowDeltaTime;
+            rot.y += piece.rotSpeed.y * slowDeltaTime;
+            rot.z += piece.rotSpeed.z * slowDeltaTime;
             piece.obj->SetRotation(rot);
 
             piece.obj->UpdateWorldMatrix();
         }
     }
 }
+
 bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
 

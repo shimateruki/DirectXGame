@@ -100,6 +100,11 @@ public:
     // ==========================================
     void SetWaitingForDeath(bool waiting) { isWaitingForDeath_ = waiting; }
 
+
+    // --- public: に追加 ---
+    void StartDeathSequence(); // 死亡演出の開始
+    void ShowCrackedCore();    // 段階2：亀裂モデルへの差し替え
+
 private:
 
     // 射出されたブロックのリスト
@@ -186,4 +191,9 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
+
+
+    // --- private: に追加 ---
+    int deathPhase_ = 0;       // 0: 生存, 1: 静止, 2: 亀裂, 3: 爆散
+    float sequenceTimer_ = 0.0f; // 各フェーズの1秒を測るタイマー
 };
