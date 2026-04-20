@@ -27,6 +27,8 @@
 #include <algorithm> // std::transform
 #include <cctype>    // ::tolower
 
+#include "Easing.h" // 追加: イージング関数利用
+
 void TitleScene::Initialize() {
     // --- 1. システム基盤の取得 ---
     dxCommon_ = DirectXCommon::GetInstance();
@@ -82,10 +84,35 @@ void TitleScene::Initialize() {
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile("title_camera.json");
 
+    // --- スプライト参照取得 ---
+    titleSprite_ = GetSpriteByName("title.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
     optionUI_ = std::make_unique<OptionUI>();
     optionUI_->Initialize(this, spriteCommon_.get());
+
+    // --- イントロ演出: 初期位置・透明度をセット ---
+    introPlaying_ = true;
+    introTimer_ = 0.0f;
+    // 読み込み直後のレイアウト位置を目標にする
+    if (titleSprite_) {
+        titleTargetPos_ = titleSprite_->GetPosition();
+        titleStartPos_ = titleTargetPos_;
+        titleStartPos_.y += 40.0f; // 下から上に浮かび上がる
+        titleSprite_->SetPosition(titleStartPos_);
+        Vector4 col = titleSprite_->GetColor();
+        col.w = 0.0f;
+        titleSprite_->SetColor(col);
+    }
+    if (startTextSprite_) {
+        startTextTargetPos_ = startTextSprite_->GetPosition();
+        startTextStartPos_ = startTextTargetPos_;
+        startTextStartPos_.y += 30.0f;
+        startTextSprite_->SetPosition(startTextStartPos_);
+        Vector4 col = startTextSprite_->GetColor();
+        col.w = 0.0f;
+        startTextSprite_->SetColor(col);
+    }
 
     // --- オブジェクト一覧をログ出力して調査（デバッグ用） ---
     LOG("TitleScene: listing loaded objects:");
@@ -153,56 +180,93 @@ void TitleScene::Update(float deltaTime) {
     Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f }; // 非選択時は少し暗くする
     Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 選択時は明るく白！
 
-    // =================================================
-    // ステートに応じた入力・UI操作処理
-    // =================================================
-    switch (currentState_) {
-    case TitleState::MainMenu:
-        // 上下選択 (設定項目が無効ならスキップする)
-        if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-            // 1回の操作で無効項目に止まらないようループでスキップ
-            do {
-                currentMenuIndex_--;
-                if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
-            } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
-        }
-        if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-            do {
-                currentMenuIndex_++;
-                if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
-            } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
-        }
+    // --- イントロ演出の更新（黒帯が消える演出後にタイトル等をフェード＋浮上） ---
+    if (introPlaying_) {
+        introTimer_ += deltaTime;
+        // 黒帯等の演出待ち時間が終わったらフェード＆浮上を開始
+        if (introTimer_ >= introDelay_) {
+            float t = (introTimer_ - introDelay_) / introDuration_;
+            if (t > 1.0f) t = 1.0f;
+            float ease = Easing::OutCubic(t);
 
-        // 色の更新
-        if (startTextSprite_) startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
-        if (settingTextSprite_) {
-            // 設定が無効なら常に非選択カラーにする（視覚的に選べないことを示す）
-            if (!settingEnabled_) settingTextSprite_->SetColor(normalColor);
-            else settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
-        }
-
-        // 決定 (Spaceキーのみ)
-        if (input->IsKeyTriggered(DIK_SPACE)) {
-            if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
-                // ゲーム開始！
-                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            // タイトル
+            if (titleSprite_) {
+                Vector2 p = titleSprite_->GetPosition();
+                p.y = Math::Lerp(titleStartPos_.y, titleTargetPos_.y, ease);
+                titleSprite_->SetPosition(p);
+                Vector4 c = titleSprite_->GetColor();
+                c.w = ease;
+                titleSprite_->SetColor(c);
             }
-            else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
-                // 設定が有効なときのみ遷移（通常はここに来ない）
-                if (settingEnabled_) {
-                    currentState_ = TitleState::OptionMenu;
+            // スタートテキスト
+            if (startTextSprite_) {
+                Vector2 p = startTextSprite_->GetPosition();
+                p.y = Math::Lerp(startTextStartPos_.y, startTextTargetPos_.y, ease);
+                startTextSprite_->SetPosition(p);
+                Vector4 c = startTextSprite_->GetColor();
+                c.w = ease;
+                startTextSprite_->SetColor(c);
+            }
+
+            if (t >= 1.0f) {
+                introPlaying_ = false; // 演出終了、以降通常の入力受付
+            }
+        }
+        // イントロ中はメニュー入力や選択の処理をスキップする（だが他の更新は続行）
+    }
+    else {
+        // =================================================
+        // ステートに応じた入力・UI操作処理
+        // =================================================
+        switch (currentState_) {
+        case TitleState::MainMenu:
+            // 上下選択 (設定項目が無効ならスキップする)
+            if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+                // 1回の操作で無効項目に止まらないようループでスキップ
+                do {
+                    currentMenuIndex_--;
+                    if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+                } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
+            }
+            if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+                do {
+                    currentMenuIndex_++;
+                    if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+                } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
+            }
+
+            // 色の更新
+            if (startTextSprite_) startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
+            if (settingTextSprite_) {
+                // 設定が無効なら常に非選択カラーにする（視覚的に選べないことを示す）
+                if (!settingEnabled_) settingTextSprite_->SetColor(normalColor);
+                else settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+            }
+
+            // 決定 (Spaceキーのみ)
+            if (input->IsKeyTriggered(DIK_SPACE)) {
+                if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
+                    // ゲーム開始！
+                    SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+                }
+                else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
+                    // 設定が有効なときのみ遷移（通常はここに来ない）
+                    if (settingEnabled_) {
+                        currentState_ = TitleState::OptionMenu;
+                    }
                 }
             }
-        }
-        break;
+            break;
 
-    case TitleState::OptionMenu:
-        // ★ OptionUI に処理を丸投げ！ 戻る要求(true)が返ってきたらメインに戻す
-        if (optionUI_ && optionUI_->Update(deltaTime)) {
-            currentState_ = TitleState::MainMenu;
+        case TitleState::OptionMenu:
+            // ★ OptionUI に処理を丸投げ！ 戻る要求(true)が返ってきたらメインに戻す
+            if (optionUI_ && optionUI_->Update(deltaTime)) {
+                currentState_ = TitleState::MainMenu;
+            }
+            break;
         }
-        break;
     }
+
     // =================================================
     // 常に実行される更新処理
     // =================================================
