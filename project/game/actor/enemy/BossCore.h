@@ -108,6 +108,9 @@ public:
     void StartBattle(); // シーン側から「戦闘開始！」の合図を送る関数
     bool IsBattleStarted() const { return isBattleStarted_; }
 
+    void StartAppearance(); // 登場演出をスタートする関数
+    bool IsAppearing() const { return isAppearing_; }
+
 private:
 
     // 射出されたブロックのリスト
@@ -201,4 +204,10 @@ private:
     float sequenceTimer_ = 0.0f; // 各フェーズの1秒を測るタイマー
 
     bool isBattleStarted_ = false; // 戦闘開始フラグ（最初は false）
+
+    void UpdateAppearance(float deltaTime); // 演出中の更新処理
+
+    bool isAppearing_ = false;  // 登場演出中かどうか
+    int appearancePhase_ = 0;   // 演出の進行度
+    float appearanceTimer_ = 0.0f;
 };

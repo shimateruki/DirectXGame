@@ -679,6 +679,22 @@ void GamePlayScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 	MeshEffectManager::GetInstance()->Update(deltaTime);
 	UpdateUI();
+
+	// ========================================================
+	// ボス登場ムービー中の監視処理
+	// ========================================================
+	if (isBossMoviePlaying_ && boss_) {
+		// BossCore に「演出終わった？」と毎フレーム聞く
+		if (!boss_->IsAppearing()) {
+			// 演出が終わった（＝カメラが戻って StartBattle が呼ばれた）！！
+			isBossMoviePlaying_ = false;
+
+			// プレイヤーの操作を復活させる
+			if (player_) {
+				player_->SetIsControlActive(true);
+			}
+		}
+	}
 }
 
 
@@ -924,5 +940,23 @@ void GamePlayScene::StartBridgeDropMovie() {
 			}
 			break;
 		}
+	}
+}
+
+// ========================================================
+// ★ 追加：ボス登場ムービーの開始処理
+// ========================================================
+void GamePlayScene::StartBossAppearanceMovie() {
+	// 既にムービー中、またはボスがいなければ何もしない
+	if (isBossMoviePlaying_ || !boss_) return;
+
+	isBossMoviePlaying_ = true;
+
+	// 前回 BossCore に作った、カメラが寄る超カッコいい演出をスタート！
+	boss_->StartAppearance();
+
+	// ムービー中はプレイヤーの操作を奪う（動けなくする）
+	if (player_) {
+		player_->SetIsControlActive(false);
 	}
 }
