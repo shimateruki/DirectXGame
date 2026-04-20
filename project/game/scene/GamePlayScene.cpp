@@ -353,6 +353,19 @@ void GamePlayScene::Update(float deltaTime) {
 			doorOpenProgress_ += deltaTime * 0.5f; // 2秒で開く
 			if (doorOpenProgress_ > 1.0f) {
 				doorOpenProgress_ = 1.0f;
+				// ドアが完全に開いた瞬間モデルを消しておく
+				for (auto& obj : objectManager_->GetObjects()) {
+					if (obj->GetName() == "Tutorial_Door_Left") {
+						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+					}
+					else if (obj->GetName() == "Tutorial_Door_Right") {
+						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+					}
+				}
 			}
 		}
 
@@ -437,30 +450,48 @@ void GamePlayScene::Update(float deltaTime) {
 				for (auto& obj : objectManager_->GetObjects()) {
 					if (obj->GetName() == "Bridge_Block_Center") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Center_02") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Center_03") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Back") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Back_02") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Back_03") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Front") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Front_02") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					if (obj->GetName() == "Bridge_Block_Front_03") {
 						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 				}
 				movieState_ = MovieState::kNone;
