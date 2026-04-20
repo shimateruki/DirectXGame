@@ -179,4 +179,5 @@ private:
     bool isGameClearSequence_ = false;
     float gameClearTimer_ = 0.0f;
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
+
 };

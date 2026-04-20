@@ -24,27 +24,22 @@
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
 #include <SaveDataManager.h>
-
+#include "PlayerState.h"
 void GameClearScene::Initialize() {
-    // --- 1. システム基盤の取得 ---
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
     audioPlayer_ = AudioPlayer::GetInstance();
 
-    // --- 2. リソースロード ---
-    LOG("GameClearScene Initialized!");
-
     bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
-    // --- 3. 共通クラス・マネージャの初期化 ---
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    object3dCommon_ = std::make_unique<Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_);
-
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->Initialize(dxCommon_);
+
+    object3dCommon_ = std::make_unique<Object3dCommon>();
+    object3dCommon_->Initialize(dxCommon_);
 
     particleCommon_ = std::make_unique<ParticleCommon>();
     particleCommon_->Initialize(dxCommon_);
@@ -52,61 +47,72 @@ void GameClearScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
-    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
-    ParticleManager::GetInstance()->Initialize(particleSystem_.get());
-
-    // ライトエディタの設定
-    LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
-
-    // --- 4. サブシステムの生成 ---
     objectManager_ = std::make_unique<ObjectManager>();
-    levelLoader_ = std::make_unique<LevelLoader>();
-    gameRule_ = std::make_unique<GameRule>();
-    gameRule_->Initialize(this);
 
-    // 弾マネージャの初期化
-    BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
-
-    //  GPUパーティクルの初期化
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
-
-    // --- 5. 固定スプライトの生成 (必要であれば) ---
- // --- セーブデータの読み込み ---
+    // --- セーブデータ読み込み ---
     SaveDataManager::GetInstance()->Load();
     float clearTime = SaveDataManager::GetInstance()->GetLatestClearTime();
     float bestTime = SaveDataManager::GetInstance()->GetBestTime();
 
-    // --- 今回のタイムUI ---
+    // --- タイムUI初期化（右寄せ配置） ---
     clearTimeUI_ = std::make_unique<TimeAttackUI>();
     clearTimeUI_->Initialize(spriteCommon_.get());
-    clearTimeUI_->SetPosition({ 400.0f, 300.0f }); // 画面中央付近など好きな位置に
+    clearTimeUI_->SetPosition({ 850.0f, 350.0f });
     clearTimeUI_->SetTime(clearTime);
-    clearTimeUI_->Update(0.0f); // 1回だけUpdateを呼んでテクスチャを数字に反映させる
-
-    // --- ベストタイムUI ---
+    clearTimeUI_->SetAlpha(0.0f);
     bestTimeUI_ = std::make_unique<TimeAttackUI>();
     bestTimeUI_->Initialize(spriteCommon_.get());
-    bestTimeUI_->SetPosition({ 400.0f, 450.0f }); // 今回のタイムの下などに配置
+    bestTimeUI_->SetPosition({ 850.0f, 500.0f });
     bestTimeUI_->SetTime(bestTime);
-    bestTimeUI_->Update(0.0f);
-
-    // --- 6. レベルデータの読み込み ---
-    // 自前関数ではなくLevelLoaderに委譲
+    bestTimeUI_->SetAlpha(0.0f);
+    // --- レベルデータ読み込み ---
+    levelLoader_ = std::make_unique<LevelLoader>();
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameClearScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameClearScene.json");
+
+    // =========================================================
+    // ★ 修正：エディター配置スプライトの特定と初期非表示化
+    // =========================================================
+    for (auto& sprite : sprites_) {
+ 
+        if (sprite->GetName() == "GameClear.png") gameClearSprite_ = sprite.get();
+        if (sprite->GetName() == "restartText.png")     retryTextSprite_ = sprite.get();
+        if (sprite->GetName() == "title.png")     titleTextSprite_ = sprite.get();
+    }
+
+    auto HideSprite = [](Sprite* s) {
+        if (s) { Vector4 c = s->GetColor(); c.w = 0.0f; s->SetColor(c); }
+        };
+    HideSprite(gameClearSprite_);
+    HideSprite(retryTextSprite_);
+    HideSprite(titleTextSprite_);
+
     if (player_) {
-        // プレイヤーの移動入力やカメラ操作をシャットアウト！
         player_->SetIsControlActive(false);
-        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
-        player_->SetGravity(0.0f);
+
+        // 1. JSONで配置した位置（＝ガッツポーズを見せたい最高の場所）を記憶！
+        targetPlayerPos_ = player_->GetTransform()->translate;
+        targetPlayerRot_ = player_->GetRotation();
+        // 2. プレイヤーを画面の奥（または手前）にワープさせる！
+        Vector3 startPos = targetPlayerPos_;
+        startPos.z += 15.0f;
+
+        player_->GetTransform()->translate = startPos;
+        player_->UpdateWorldMatrix();
+
+        // 3. 最初は「走りステート」にする！
+        player_->ChangeState(std::make_unique<PlayerStateRun>());
     }
     LightManager::GetInstance()->LoadState("Resources/json/light/gameClearScene.json");
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile("gameClear_camera.json");
-
-    dxCommon_->FlushCommandQueue(false);
+    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+    clearState_ = ClearState::kRunIn;
+    stateTimer_ = 0.0f;
+    resultAlpha_ = 0.0f;
+    menuAlpha_ = 0.0f;
 }
 
 void GameClearScene::Finalize() {
@@ -123,101 +129,150 @@ void GameClearScene::Finalize() {
 }
 
 void GameClearScene::Update(float deltaTime) {
-    // =========================================================
-    // 1. 基盤システムの更新 (常に動かすもの)
-    // =========================================================
     LightEditor::GetInstance()->Update();
-
-    // カメラのターゲット設定
     Object3d* cameraTarget = player_;
     if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
         cameraTarget = objectManager_->GetObjects().front().get();
     }
 
-    // カメラとライトの更新
     CameraEditor::GetInstance()->Update(cameraTarget, false);
     CameraManager::GetInstance()->Update();
 
-    // ゲームオブジェクト・エフェクトの更新
     if (objectManager_) objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);
-    GPUParticleManager::GetInstance()->Update(deltaTime); // GPUパーティクルも忘れずに！
+    GPUParticleManager::GetInstance()->Update(deltaTime);
 
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
 
     // =========================================================
-    // 2. 演出ステートマシンの更新
+    // ★ 修正：演出シーケンス制御とメニュー選択フィードバック
     // =========================================================
     stateTimer_ += deltaTime;
 
     switch (clearState_) {
-    case ClearState::kPlayerAction:
-        // 【状態1】プレイヤーの勝利アクション中
-        // 3秒間モーションを見せてからタイム表示へ移行
-        if (stateTimer_ > 3.0f) {
-            clearState_ = ClearState::kShowTime;
-            stateTimer_ = 0.0f;
-
-            // タイム表示開始のログ
-            DebugConsole::GetInstance()->AddLog("【RESULT】 タイム表示開始！");
-        }
-        break;
-
-    case ClearState::kShowTime:
-        // 【状態2】リザルトタイムのフェードイン
-        uiAlpha_ += deltaTime * 2.0f; // 約0.5秒でフェード完了
-        if (uiAlpha_ >= 1.0f) {
-            uiAlpha_ = 1.0f;
-
-            // タイムが完全に出てから少し余韻(1秒)を置いてメニュー選択へ
-            if (stateTimer_ > 1.0f) {
-                clearState_ = ClearState::kSelectMenu;
-                DebugConsole::GetInstance()->AddLog("【RESULT】 メニュー選択可能");
-            }
-        }
-        break;
-
-    case ClearState::kSelectMenu:
+    case ClearState::kRunIn:
     {
-        // 【状態3】リトライ or タイトルの選択
-        InputManager* input = InputManager::GetInstance();
+        if (player_) {
+            Vector3 currentPos = player_->GetTransform()->translate;
+            Vector3 dir = { targetPlayerPos_.x - currentPos.x, 0.0f, targetPlayerPos_.z - currentPos.z };
+            float dist = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
-        // --- メニュー選択（上下） ---
-        if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-            currentMenuIndex_--;
-            if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
-        }
-        if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-            currentMenuIndex_++;
-            if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
-        }
+            if (dist > 0.5f) {
+                // 走らせ続ける
+                dir.x /= dist; dir.z /= dist;
+                float runSpeed = 12.0f;
+                player_->SetVelocity({ dir.x * runSpeed, 0.0f, dir.z * runSpeed });
 
-        // --- 決定処理 ---
-        if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-            if (currentMenuIndex_ == (int)MenuIndex::Retry) {
-                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+                float angle = std::atan2(dir.x, dir.z);
+                player_->SetRotation({ 0.0f, angle, 0.0f });
             }
-            else if (currentMenuIndex_ == (int)MenuIndex::Title) {
-                SceneManager::GetInstance()->ChangeScene("TITLE");
+            else {
+                // ゴール到達！！
+                player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player_->GetTransform()->translate = targetPlayerPos_;
+
+                // =========================================================
+                // ★ 追加：走るのをやめた瞬間、エディターで設定した「最高の向き」に戻す！
+                // =========================================================
+                player_->SetRotation(targetPlayerRot_);
+
+                // 勝利ステートへ移行！
+                player_->ChangeState(std::make_unique<PlayerStateWin>());
+
+                clearState_ = ClearState::kVictoryMotion;
+                stateTimer_ = 0.0f;
             }
         }
+        break;
+    }
+    case ClearState::kVictoryMotion:
+        // 勝利ジャンプの頂点（PlayerStateWinで設定した約0.6秒）を待つ
+        if (stateTimer_ > 0.6f) {
+            clearState_ = ClearState::kShowResult;
+            stateTimer_ = 0.0f;
+        }
+        break;
 
-        // 選択中のメニューを分かりやすくするための色調整 (例)
-        // ※後ほど、Retry/Title用のスプライトをここで色変えするとリッチになります！
+    case ClearState::kShowResult:
+        // ロゴとタイマーをフェードイン
+        resultAlpha_ += deltaTime * 2.0f;
+        if (resultAlpha_ > 1.0f) resultAlpha_ = 1.0f;
+
+        if (gameClearSprite_) {
+            Vector4 c = gameClearSprite_->GetColor(); c.w = resultAlpha_;
+            gameClearSprite_->SetColor(c);
+        }
+        if (clearTimeUI_) clearTimeUI_->SetAlpha(resultAlpha_);
+        if (bestTimeUI_) bestTimeUI_->SetAlpha(resultAlpha_);
+
+        // ★ 完全に表示された後、ボタン入力を待つ
+        if (resultAlpha_ >= 1.0f) {
+            if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+
+                clearState_ = ClearState::kShowMenu;
+                stateTimer_ = 0.0f;
+
+                if (player_) {
+                
+                    player_->ChangeState(std::make_unique<PlayerStateWinReturn>());
+
+                    DebugConsole::GetInstance()->AddLog("【RESULT】 メニューへ。自然落下＆ポーズ戻し開始！");
+                }
+            }
+        }
+        break;
+        // タイマーが出てから1秒後にメニュー選択へ
+        if (stateTimer_ > 1.0f) {
+            clearState_ = ClearState::kShowMenu;
+            stateTimer_ = 0.0f;
+        }
+        break;
+
+    case ClearState::kShowMenu:
+    {
+        // メニュー自体のフェードイン
+        menuAlpha_ += deltaTime * 2.0f;
+        if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
+
+        // 入力
+        if (inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+            currentMenuIndex_ = (int)MenuIndex::Retry;
+        }
+        if (inputManager_->IsKeyTriggered(DIK_DOWN) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+            currentMenuIndex_ = (int)MenuIndex::Title;
+        }
+
+        // --- 選択フィードバック演出 ---
+        auto ApplyMenuEffect = [&](Sprite* s, bool isSelected) {
+            if (!s) return;
+            // 選択中：不透明(1.0)＋白(1,1,1)＋少し拡大
+            // 未選択：半透明(0.3)＋暗い(0.5,0.5,0.5)＋元のサイズ
+            float alpha = (isSelected ? 1.0f : 0.3f) * menuAlpha_;
+            Vector4 color = isSelected ? Vector4{ 1,1,1,alpha } : Vector4{ 0.5f,0.5f,0.5f,alpha };
+            s->SetColor(color);
+
+            // サイズでの強調（元のサイズを320x80と仮定して1.1倍に）
+            Vector2 baseSize = { 320.0f, 80.0f };
+            s->SetSize(isSelected ? Vector2{ baseSize.x * 1.1f, baseSize.y * 1.1f } : baseSize);
+            };
+
+        ApplyMenuEffect(retryTextSprite_, currentMenuIndex_ == (int)MenuIndex::Retry);
+        ApplyMenuEffect(titleTextSprite_, currentMenuIndex_ == (int)MenuIndex::Title);
+
+        // 決定
+        if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+            if (currentMenuIndex_ == (int)MenuIndex::Retry) SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            else SceneManager::GetInstance()->ChangeScene("TITLE");
+        }
         break;
     }
     }
 
-    // =========================================================
-    // 3. UI（スプライト）の最終更新
-    // =========================================================
-
-    // タイムアタックUIの更新
+    // UIの行列更新
     if (clearTimeUI_) clearTimeUI_->Update(deltaTime);
     if (bestTimeUI_) bestTimeUI_->Update(deltaTime);
 
-    // シーン内の全スプライトを更新
     for (auto& sprite : sprites_) {
         sprite->Update();
     }

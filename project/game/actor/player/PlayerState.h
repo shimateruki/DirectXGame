@@ -505,3 +505,77 @@ private:
     bool initializedParts_ = false;
     void ApplyPose(Player* player, float t);
 };
+// --------------------------------------------------------
+// 勝利状態 (Win - クリア時の専用モーション)
+// --------------------------------------------------------
+class PlayerStateWin : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+
+private:
+    float animTimer_ = 0.0f;
+    float animDuration_ = 3.0f;
+
+    Object3d* bodyObj_ = nullptr;
+    Object3d* headObj_ = nullptr;
+    Object3d* rightArmObj_ = nullptr;
+    Object3d* leftArmObj_ = nullptr;
+    Object3d* rightFootObj_ = nullptr;
+    Object3d* leftFootObj_ = nullptr;
+
+    Vector3 bodyDefaultPos_{}; Vector3 bodyDefaultRot_{};
+    Vector3 headDefaultRot_{};
+    Vector3 rightArmDefaultRot_{}; Vector3 leftArmDefaultRot_{};
+    Vector3 rightFootDefaultRot_{}; Vector3 leftFootDefaultRot_{};
+
+    Vector3 bodyStartRot_{};
+    Vector3 headStartRot_{};
+    Vector3 rightArmStartRot_{}; Vector3 leftArmStartRot_{};
+    Vector3 rightFootStartRot_{}; Vector3 leftFootStartRot_{};
+
+    // =========================================================
+    // ★ 追加：空中停止とカメラ振り向き用の変数
+    // =========================================================
+    bool isFrozen_ = false;
+    float freezePosY_ = 0.0f;
+    float targetYAngle_ = 0.0f; // カメラの方を向くための角度
+
+    bool initializedParts_ = false;
+    void ApplyPose(float t);
+};
+
+
+// --------------------------------------------------------
+// 勝利状態からの復帰 (WinReturn - 着地して通常に戻る)
+// --------------------------------------------------------
+class PlayerStateWinReturn : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+
+private:
+    float animTimer_ = 0.0f;
+    float blendDuration_ = 0.3f; // ★ 0.3秒かけて滑らかに腕を下ろす
+
+    Object3d* bodyObj_ = nullptr;
+    Object3d* headObj_ = nullptr;
+    Object3d* rightArmObj_ = nullptr;
+    Object3d* leftArmObj_ = nullptr;
+    Object3d* rightFootObj_ = nullptr;
+    Object3d* leftFootObj_ = nullptr;
+
+    Vector3 bodyDefaultRot_{}; Vector3 headDefaultRot_{};
+    Vector3 rightArmDefaultRot_{}; Vector3 leftArmDefaultRot_{};
+    Vector3 rightFootDefaultRot_{}; Vector3 leftFootDefaultRot_{};
+
+    Vector3 bodyStartRot_{}; Vector3 headStartRot_{};
+    Vector3 rightArmStartRot_{}; Vector3 leftArmStartRot_{};
+    Vector3 rightFootStartRot_{}; Vector3 leftFootStartRot_{};
+
+    bool initializedParts_ = false;
+};

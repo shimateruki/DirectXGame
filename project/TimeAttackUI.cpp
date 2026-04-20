@@ -103,3 +103,13 @@ void TimeAttackUI::SetPosition(const Vector2& basePos) {
         }
     }
 }
+
+void TimeAttackUI::SetAlpha(float alpha) {
+    for (auto& sprite : digitSprites_) {
+        if (sprite) {
+            Vector4 color = sprite->GetColor();
+            color.w = alpha; // 透明度(w)をセット
+            sprite->SetColor(color);
+        }
+    }
+}

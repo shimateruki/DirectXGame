@@ -18,7 +18,7 @@ public:
     void SetTime(float time) { currentTime_ = time; isRunning_ = false; }
     void SetPosition(const Vector2& basePos);
     float GetCurrentTime() const { return currentTime_; }
-
+    void SetAlpha(float alpha);
 private:
     // 数字(0~9)と記号のテクスチャハンドル
     uint32_t numberTexHandles_[10];
@@ -33,4 +33,5 @@ private:
     float currentTime_ = 0.0f;
     bool isRunning_ = false;
     SpriteCommon* spriteCommon_ = nullptr;
+
 };
