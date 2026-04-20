@@ -159,6 +159,9 @@ void InputManager::Update()
         // 必要なら: leftY = -leftY; のように反転
         if (abs(leftX) > 0 || abs(leftY) > 0) {
             gamepadState.Gamepad.sThumbLX = leftX;
+            if (leftY <= -32768) {
+                leftY = -32767;
+            }
             gamepadState.Gamepad.sThumbLY = (short)-leftY; // Y軸反転させておくのが一般的
         }
         if (abs(rightX) > 0 || abs(rightY) > 0) {
@@ -208,7 +211,27 @@ void InputManager::Update()
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
         }
     }
+    const WORD VIRTUAL_BTN_LT = 0x0400;
+    const WORD VIRTUAL_BTN_RT = 0x0800;
 
+    // トリガーの閾値（これ以上押し込んだら「ボタンを押した」と判定する）
+    const BYTE TRIGGER_THRESHOLD = 30; // 0~255の範囲。少し甘めにしておく
+
+    // 現在のフレームのLT
+    if (gamepadState.Gamepad.bLeftTrigger > TRIGGER_THRESHOLD) {
+        gamepadState.Gamepad.wButtons |= VIRTUAL_BTN_LT; // 仮想ボタンをON
+    }
+    else {
+        gamepadState.Gamepad.wButtons &= ~VIRTUAL_BTN_LT; // 仮想ボタンをOFF
+    }
+
+    // 現在のフレームのRT
+    if (gamepadState.Gamepad.bRightTrigger > TRIGGER_THRESHOLD) {
+        gamepadState.Gamepad.wButtons |= VIRTUAL_BTN_RT;
+    }
+    else {
+        gamepadState.Gamepad.wButtons &= ~VIRTUAL_BTN_RT;
+    }
 
     // =================================================================
     // 3. キャリブレーション
@@ -235,9 +258,7 @@ void InputManager::Update()
         }
     }
 
-    // ★修正点2: マウスの「微細なブレ」を無視する (閾値を設ける)
-    // マウスは触れてなくてもセンサーの誤差で 1〜2 動くことがあるため、
-    // 明らかに動かしたと判定できる数値(例えば 5程度)以上で反応させる
+
     const long MOUSE_MOVE_THRESHOLD = 5;
 
     if (abs(mouseState.lX) > MOUSE_MOVE_THRESHOLD ||
@@ -268,10 +289,7 @@ void InputManager::Update()
         isGamepadActive = true;
     }
 
-    // ★修正点3: スティックのデッドゾーン判定を「モード切替用」に甘くする
-    // デフォルトの XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE (7849) はゲーム操作用には良いが、
-    // 「コントローラー触った！」という検知には少し鈍感な場合があるため、閾値を下げる。
-
+    //  スティックのデッドゾーン判定を「モード切替用」に甘くする
     // モード切替検知用の閾値 (少し触れたら反応するように小さくする: 例 2000)
     const short DETECTION_DEADZONE = 2000;
 
@@ -505,15 +523,15 @@ std::vector<uint8_t> InputManager::GetPressedKeys() const {
     return pressedKeys;
 }
 
-// 現在押されているゲームパッドのボタンを取得する
 WORD InputManager::GetPressedGamepadButton() const {
-    // XInputのボタンはビットマスクなので、代表的なものを順番にチェックする
+    // 全てのボタン＋仮想トリガーを網羅
     const WORD buttons[] = {
         XINPUT_GAMEPAD_A, XINPUT_GAMEPAD_B, XINPUT_GAMEPAD_X, XINPUT_GAMEPAD_Y,
-        XINPUT_GAMEPAD_RIGHT_SHOULDER, XINPUT_GAMEPAD_LEFT_SHOULDER,
+        XINPUT_GAMEPAD_LEFT_SHOULDER, XINPUT_GAMEPAD_RIGHT_SHOULDER,
+        0x0400, 0x0800, // LT, RT
         XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, XINPUT_GAMEPAD_DPAD_RIGHT,
-        XINPUT_GAMEPAD_START, XINPUT_GAMEPAD_BACK,
-        XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB
+        XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB, // L3, R3
+        XINPUT_GAMEPAD_START, XINPUT_GAMEPAD_BACK
     };
 
     for (WORD btn : buttons) {

@@ -102,6 +102,9 @@ private:
     };
     int currentMenuIndex_ = (int)MenuIndex::GameStart; // 現在の選択番号
 
+    // 設定項目を無効化するフラグ（falseにしておけば設定へは遷移できない）
+    bool settingEnabled_ = false;
+
     // オプションメニューの選択肢 (追加部分)
     enum class OptionIndex {
         Sound,
@@ -113,8 +116,32 @@ private:
     // ==========================================
     // スプライトのポインタ保持
     // ==========================================
+    Sprite* titleSprite_ = nullptr;
     Sprite* startTextSprite_ = nullptr;
     Sprite* settingTextSprite_ = nullptr;
 
     std::unique_ptr<OptionUI> optionUI_ = nullptr;
+
+    // ==========================================
+    // イントロ（黒帯）後のフェード＆浮上演出用
+    // ==========================================
+    bool introPlaying_ = true;   // trueの間はメニュー入力を受け付けない
+    float introTimer_ = 0.0f;    // イントロ経過時間
+    float introDelay_ = 1.0f;    // 黒帯等の演出待ち時間（秒）
+    float introDuration_ = 0.7f; // フェード＋浮上の所要時間（秒）
+
+    // 開始位置（下） / 目標位置（レイアウトから読み取り）
+    Vector2 titleStartPos_ = {0.0f, 0.0f};
+    Vector2 titleTargetPos_ = {0.0f, 0.0f};
+    Vector2 startTextStartPos_ = {0.0f, 0.0f};
+    Vector2 startTextTargetPos_ = {0.0f, 0.0f};
+
+    // ==========================================
+    // enemy_core を上下に動かすための変数（複数対応）
+    // ==========================================
+    std::vector<Object3d*> enemyCores_;       // 見つけた enemy_core オブジェクト群
+    std::vector<float> enemyCoreBaseYs_;      // 各オブジェクトの基準Y
+    float enemyCoreAmplitude_ = 0.5f;         // 振幅
+    float enemyCoreSpeed_ = 1.5f;             // 速度（係数）
+    float enemyCoreTimer_ = 0.0f;             // 共通タイマー
 };

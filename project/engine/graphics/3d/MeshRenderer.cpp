@@ -57,7 +57,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
 }
 
 void MeshRenderer::Update() {
-	// 経過時間を更新してGPUに転送
+    // 経過時間を更新してGPUに転送
     time_ += 1.0f / 60.0f;
     if (localFogData_) {
         localFogData_->time = time_;
@@ -70,8 +70,8 @@ void MeshRenderer::Update() {
             sun.color.y * sun.intensity,
             sun.color.z * sun.intensity
         };
-
     }
+
     // Transformの計算結果 (matWorld) をGPUに転送する
     if (wvpData_ && transform_) {
         Math math;
@@ -91,61 +91,26 @@ void MeshRenderer::Update() {
             cameraData_->worldPosition = camera->GetEye();
             localFogData_->cameraPos = camera->GetEye();
             localFogData_->inverseViewProj = math.Inverse(viewProj);
-        } else {
+        }
+        else {
             wvpData_->WVP = Math::MakeIdentity4x4();
             wvpData_->world = Math::MakeIdentity4x4();
         }
+
         if (isUIPreview_) {
             if (shadowWvpData_) {
                 // 影マップの影響を受けないように、行列を初期化しておく
                 shadowWvpData_->WVP = Math::MakeIdentity4x4();
                 shadowWvpData_->world = Math::MakeIdentity4x4();
             }
-            return; 
-        }
-        // ライト更新
-        if (directionalLightData_) {
-            directionalLightData_->direction = math.Normalize(directionalLightData_->direction);
+            return;
         }
 
+    
         if (shadowWvpData_ && transform_) {
-            Math math;
+            // LightManagerがさきほど計算してくれた行列を取得するだけ！
+            Matrix4x4 lightVP = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
 
-            Vector3 lightDir = LightManager::GetInstance()->GetDirectionalLight().direction;
-            // 0除算防止のための安全対策を追加
-            if (math.Length(lightDir) > 0.0001f) {
-                lightDir = math.Normalize(lightDir);
-            } else {
-                lightDir = { 0.0f, -1.0f, 0.0f }; // デフォルトの下向き
-            }
-
-            // 1. カメラの位置を取得して、影の箱の「中心（ターゲット）」にする
-            Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-            Vector3 target = { 0.0f, 0.0f, 0.0f };
-            if (camera) {
-                target = camera->GetEye(); // カメラ（プレイヤー）の位置を基準にする
-            }
-
-            // 2. 太陽の位置を、カメラから光の逆方向へ離す
-            Vector3 lightPos = {
-                target.x - lightDir.x * 200.0f,
-                target.y - lightDir.y * 200.0f,
-                target.z - lightDir.z * 200.0f
-            };
-
-            Vector3 up = { 0.0f, 1.0f, 0.0f };
-
-            if (std::abs(lightDir.x) < 0.001f && std::abs(lightDir.z) < 0.001f) {
-                up = { 0.0f, 0.0f, 1.0f };
-            }
-
-            // 太陽目線のビュー行列
-            Matrix4x4 lightView = math.MakeLookAtMatrix(lightPos, target, up);
-
-            Matrix4x4 lightProj = math.MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
-
-            Matrix4x4 lightVP = math.Multiply(lightView, lightProj);
-            LightManager::GetInstance()->GetDirectionalLight().lightViewProj = lightVP;
             // 影用のWVP = モデルのワールド行列 * 太陽のビュープロジェクション
             shadowWvpData_->WVP = math.Multiply(transform_->matWorld, lightVP);
             shadowWvpData_->world = transform_->matWorld;

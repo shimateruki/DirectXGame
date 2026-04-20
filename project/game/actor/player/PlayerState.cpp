@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <MeshEffectManager.h>
 
 // ========================================================
 // ヘルパ: 小文字化
@@ -1125,7 +1126,7 @@ void PlayerStateAttack1::Enter(Player* player)
 	if (player) player->SetIsControlActive(false);
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
-
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slash.json");
 	bodyObj_ = player;
 
 	TryFindHead(player, headObj_);
@@ -1478,7 +1479,7 @@ void PlayerStateAttack2::Enter(Player* player)
 	if (player) player->SetIsControlActive(false);
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
-
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slasha.json");
 	bodyObj_ = player;
 
 	// パーツ探索
@@ -1907,6 +1908,7 @@ void PlayerStateAttack3::Enter(Player* player)
 	player->SetIsControlActive(false);
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slashb.json");
 	bodyObj_ = player;
 
 	TryFindHead(player, headObj_); TryFindArms(player, leftArmObj_, rightArmObj_); TryFindFeet(player, leftFootObj_, rightFootObj_);

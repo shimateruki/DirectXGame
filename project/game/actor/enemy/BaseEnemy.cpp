@@ -12,7 +12,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetModel(modelName);
 
     // 3. 当たり判定の設定
-    SetCollisionAttribute(kEnemy);       // 自分は「敵」グループ
+    SetCollisionAttribute(kEnemy);      
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack);
     SetClassName("Enemy");
     defaultColor_ = GetColor();
@@ -51,7 +51,7 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     // ========================================================
     if (attribute & kPlayerAttack) {
 
-        // ★ 追加: クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
+        // ★ クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
         if (damageCooldownTimer_ > 0.0f) {
             return true;
         }

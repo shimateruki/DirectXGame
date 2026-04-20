@@ -88,8 +88,16 @@ void Player::Update(float deltaTime)
         }
     }
 
-    // 4. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
-    Character::Update(deltaTime);
+    // 4. 物理フラグ有効時のみ親クラスの更新（物理演算など）を行う
+    if (isPhysicsActive_)
+    {
+        Character::Update(deltaTime);
+    }
+    else
+    {
+        // 物理無効時は行列計算のみ更新
+        Object3d::Update(deltaTime);
+    }
 
     // =======================================================
     // 5. モデルアニメ適用後の最終上書き処理 (PostUpdate)
@@ -155,7 +163,6 @@ void Player::Update(float deltaTime)
                 // 画面の邪魔になる歪みやフラッシュは全てオフ
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
             }
             else if (hpRatio <= 0.2f) {
                 // ---------------------------------------------------
@@ -172,7 +179,7 @@ void Player::Update(float deltaTime)
 
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
+  
             }
             else {
                 // ---------------------------------------------------
@@ -185,7 +192,6 @@ void Player::Update(float deltaTime)
                 postParams->blackout = 0.0f; // リセット
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
             }
         }
     }
@@ -240,7 +246,7 @@ bool Player::OnCollision(Object3d* other)
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
     // =======================================================
-    if (attribute & kAllSolid)
+    if (isPhysicsActive_ && (attribute & kAllSolid))
     {
         ApplyPhysicsCollision(info, attribute);
     }

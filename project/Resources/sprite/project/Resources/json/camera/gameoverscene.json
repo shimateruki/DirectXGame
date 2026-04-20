@@ -1,0 +1,15 @@
+{
+    "angle": 38.70000076293945,
+    "boostSpeed": 2.0,
+    "distance": 15.399999618530273,
+    "gameFollowMode": 1,
+    "height": 0.0,
+    "lockOnOffset": [
+        0.0,
+        4.0,
+        -12.0
+    ],
+    "mode": 1,
+    "mouseSensitivity": 0.003000000026077032,
+    "moveSpeed": 0.5
+}

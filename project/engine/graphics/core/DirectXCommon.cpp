@@ -9,6 +9,7 @@
 #include <thread>
 #include "SRVManager.h"
 #include"ImguiManager.h"
+#include <mmsystem.h>
 
 // ログ出力用のヘルパー関数（グローバル）
 void Log(const std::string& message) { OutputDebugStringA(message.c_str()); }
@@ -17,6 +18,7 @@ std::string ConvertString(const std::wstring& str);
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "dxcompiler.lib")
+#pragma comment(lib, "winmm.lib")
 
 DirectXCommon* DirectXCommon::GetInstance() {
 	static DirectXCommon instance;
@@ -26,7 +28,7 @@ DirectXCommon* DirectXCommon::GetInstance() {
 void DirectXCommon::Initialize(WinApp* winApp) {
 	assert(winApp);
 	winApp_ = winApp;
-
+	timeBeginPeriod(1);
 	InitalaizeFixFPS();
 	// 各種初期化処理
 	InitializeDXGIDevice();
@@ -169,27 +171,31 @@ void DirectXCommon::InitalaizeFixFPS()
 
 void DirectXCommon::UpdateFixFPS()
 {
-	//1/60秒びったりの時間
+	// 1/60秒ぴったりの時間
 	const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
-	//1/60秒よりわずかに短い時間
-	const std::chrono::microseconds  kMinCheckTime(uint64_t(1000000.0f / 65.0f));
-	// 現在の時刻を取得
-	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
-	// 前回記録した時刻からの経過時間を計算
+	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 	std::chrono::microseconds elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - reference_);
-	//1/60秒(よりわずかに短い時間)立っていない場合
-	if (elapsed < kMinTimer)
+	std::chrono::microseconds waitTime = kMinTimer - elapsed;
+
+	if (waitTime.count() > 0)
 	{
-		//1/60経過するまでの微小なスリープを繰り返す
+		// 待機時間が2ms以上ある場合は、安全マージンを取ってスリープ
+		if (waitTime.count() > 2000)
+		{
+			std::this_thread::sleep_for(std::chrono::microseconds(waitTime.count() - 2000));
+		}
+		// 残りの微小な時間は空ループ（スピンロック）で正確に待つ
 		while (std::chrono::steady_clock::now() - reference_ < kMinTimer)
 		{
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			// 何もせず回す
 		}
 	}
+
 	// 現在の時刻を再取得
 	reference_ = std::chrono::steady_clock::now();
 }
+
 
 Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 	const std::wstring& filePath, const wchar_t* profile, const wchar_t* entryPoint)
@@ -259,7 +265,7 @@ void DirectXCommon::Finalize() {
 	swapChain_.Reset();
 	device_.Reset();
 	dxgiFactory_.Reset();
-
+	timeEndPeriod(1);
 	Log("[DirectXCommon] Finalized successfully.\n");
 }
 
@@ -285,7 +291,7 @@ void DirectXCommon::PostDraw() {
 
 	// コマンドキューにコマンドリストを投入し、GPUに実行を指示します。
 	commandQueue_->ExecuteCommandLists(1, commandLists);
-	swapChain_->Present(1, 0);
+	swapChain_->Present(0, 0);
 
 
 

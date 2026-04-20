@@ -127,6 +127,7 @@
     <ClCompile Include="CinematicFade.cpp" />
     <ClCompile Include="GPUParticleSystem.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack8_Final.cpp" />
+    <ClCompile Include="GameProgress.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
@@ -426,6 +427,7 @@
     <ClInclude Include="CinematicFade.h" />
     <ClInclude Include="GPUParticleSystem.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack8_Final.h" />
+    <ClInclude Include="GameProgress.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectXGame.rc" />

@@ -4,7 +4,7 @@
     "cinemaBarHeight": 0.0,
     "damageFlash": 0.0,
     "enableToneMapping": 0,
-    "filmGrainIntensity": 0.029999999329447746,
+    "filmGrainIntensity": 0.0,
     "lutIntensity": 0.0,
     "mosaicSize": 0.0,
     "radialCenterX": 0.0,
@@ -12,7 +12,7 @@
     "radialIntensity": 0.0,
     "scanlineIntensity": 0.0,
     "spread": 1.0,
-    "threshold": 3.640000104904175,
-    "vignetteIntensity": 0.0,
+    "threshold": 0.0,
+    "vignetteIntensity": 1.0,
     "wobbleIntensity": 0.0
 }
