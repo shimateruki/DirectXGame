@@ -8,7 +8,6 @@ struct PixelShanderOutput
     float32_t4 color : SV_TARGET0;
 };
 
-//  環境マップ設定を追加し、パディングを調整
 struct Material
 {
     float32_t4 color;
@@ -22,10 +21,10 @@ struct Material
     float32_t metallic;
     
     int32_t enableNormalMap;
-    int32_t enableEnvMap; // 追加: 環境マップON/OFF
-    float envIntensity; // 追加: 環境マップ強度
-    float emissive; // 自己発光の強さ
-    float padding2; // 16バイトアライメント調整
+    int32_t enableEnvMap;
+    float envIntensity;
+    float emissive;
+    float32_t3 padding2;
 };
 
 
