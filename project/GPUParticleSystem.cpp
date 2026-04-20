@@ -250,11 +250,19 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     commandList->SetGraphicsRootSignature(graphicsRootSignature_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
+    // =========================================================
+    // ★ 修正1: 斬撃エフェクトなどの頂点データを引き継がないようにリセット！
+    // =========================================================
+    commandList->IASetVertexBuffers(0, 0, nullptr);
+    commandList->IASetIndexBuffer(nullptr);
+
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 0, srvIndex_);
     commandList->SetGraphicsRootConstantBufferView(1, cameraBuffer_->GetGPUVirtualAddress());
 
-    if (currentTextureHandle_ > 0) {
-        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, currentTextureHandle_);
+
+    uint32_t texToUse = (currentTextureHandle_ > 0) ? currentTextureHandle_ : dummyTex;
+    if (texToUse > 0) {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, texToUse);
     }
 
     if (depthSrvHandle > 0) {
@@ -275,7 +283,6 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     toUAV.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     commandList->ResourceBarrier(1, &toUAV);
 }
-
 void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     if (emitRequests_.size() >= kMaxEmitRequests) return;
 

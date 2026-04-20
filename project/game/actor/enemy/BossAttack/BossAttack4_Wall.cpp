@@ -6,14 +6,23 @@
 #include <numbers>
 #include "CameraManager.h"
 #include "CameraEditor.h"
-
+#include"Player.h"
+#include"LockOnSystem.h"
+#include <DebugConsole.h>
 void BossAttack4_Wall::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
 
     blockStartPos_.clear();
     blockTargetPos_.clear();
     wallStep_ = 0; // カウントリセット
-
+    Player* player = dynamic_cast<Player*>(boss->GetTarget());
+    if (player) {
+        player->SetForceLockOnTarget(boss);
+        DebugConsole::GetInstance()->AddLog("強制ロックオン命令を送信！"); // ★ここを追加
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "エラー！プレイヤーが見つからない！"); // ★ここを追加
+    }
     animPhase_ = 39;
 }
 
@@ -29,13 +38,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 
         Vector3 bossCurrentPos = boss->GetTranslate();
         animStartPos_ = bossCurrentPos; // 移動のスタート地点を記憶
-        if (wallStep_ == 0) {
-            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            if (camera) {
-                // "WallAttackView" という名前で作ったカメラ設定を再生する！
-                CameraEditor::GetInstance()->PlayOverrideCamera(camera, "hukan");
-            }
-        }
+     
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             // 最初の1回目だけ親子関係を解除してワールド座標に変換
             if (wallStep_ == 0) {
@@ -238,6 +241,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             if (warning) {
                 warning->SetScale({ 0.0f, 0.0f, 0.0f });
             }
+     
             animPhase_ = 42;
             animTimer_ = 0.0f;
         }
@@ -254,10 +258,9 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 animPhase_ = 39; // まだ4回終わってなければ次へ
             }
             else {
-                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-                if (camera) {
-                    // 1.0f 秒かけて、スムーズに元のプレイヤー背後カメラに戻る
-                    camera->EndOverride(1.0f);
+                Player* player = dynamic_cast<Player*>(boss->GetTarget());
+                if (player) {
+                    player->SetForceLockOnTarget(nullptr);
                 }
                 animPhase_ = 43; // 4回終わったら復帰フェーズへ
             }
