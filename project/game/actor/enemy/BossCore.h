@@ -105,6 +105,9 @@ public:
     void StartDeathSequence(); // 死亡演出の開始
     void ShowCrackedCore();    // 段階2：亀裂モデルへの差し替え
 
+    void StartBattle(); // シーン側から「戦闘開始！」の合図を送る関数
+    bool IsBattleStarted() const { return isBattleStarted_; }
+
 private:
 
     // 射出されたブロックのリスト
@@ -196,4 +199,6 @@ private:
     // --- private: に追加 ---
     int deathPhase_ = 0;       // 0: 生存, 1: 静止, 2: 亀裂, 3: 爆散
     float sequenceTimer_ = 0.0f; // 各フェーズの1秒を測るタイマー
+
+    bool isBattleStarted_ = false; // 戦闘開始フラグ（最初は false）
 };

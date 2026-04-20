@@ -627,6 +627,18 @@ void BossCore::UpdateIdle(float deltaTime) {
         armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
     }
 
+    // ==========================================
+    // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める！
+    // ==========================================
+    //if (isBattleStarted_) {
+    //    animTimer_ += deltaTime;
+
+    //    // 2.0秒待機したら攻撃へ
+    //    if (animTimer_ >= 2.0f) {
+    //        ChangeState(State::Attack);
+    //    }
+    //}
+
     animTimer_ += deltaTime;
 
     // 2.0秒待機したら攻撃へ
@@ -1044,4 +1056,16 @@ bool BossCore::OnCollision(Object3d* other) {
     }
 
     return BaseEnemy::OnCollision(other);
+}
+
+// ==========================================
+// ★ 追加：戦闘開始の合図を受け取る！
+// ==========================================
+void BossCore::StartBattle() {
+    if (isBattleStarted_) return; // 既に始まっていたら何もしない
+
+    isBattleStarted_ = true;
+    animTimer_ = 0.0f; // ★ ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
+
+    DebugConsole::GetInstance()->AddLog("【BATTLE START】 ボスが行動を開始した！！！");
 }
