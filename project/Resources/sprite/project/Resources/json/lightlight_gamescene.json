@@ -1,0 +1,45 @@
+{
+    "pointLights": [
+        {
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "decay": 1.0,
+            "intensity": 1.0,
+            "position": [
+                0.0,
+                2.0,
+                0.0
+            ],
+            "radius": 10.0
+        }
+    ],
+    "spotLights": [
+        {
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "cosAngle": 0.70710688829422,
+            "cosFalloffStart": 0.866025447845459,
+            "decay": 1.0,
+            "direction": [
+                0.0,
+                -1.0,
+                0.0
+            ],
+            "distance": 20.0,
+            "intensity": 2.0,
+            "position": [
+                0.0,
+                5.0,
+                0.0
+            ]
+        }
+    ]
+}

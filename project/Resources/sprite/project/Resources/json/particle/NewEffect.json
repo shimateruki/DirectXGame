@@ -1,0 +1,46 @@
+{
+    "acceleration": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+    },
+    "blendMode": 0,
+    "coneAngle": 30.0,
+    "emitterType": 0,
+    "endColor": {
+        "w": 0.0,
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+    },
+    "endSize": 0.10000000149011612,
+    "hdrIntensity": 1.0,
+    "initialRotationSpeed": 0.0,
+    "initialVelocity": {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+    },
+    "particleLifetime": 2.0,
+    "particlesPerSecond": 10.0,
+    "rotationSpeedRandomness": 0.0,
+    "spawnArea": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+    },
+    "spawnRadius": 1.0,
+    "startColor": {
+        "w": 1.0,
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+    },
+    "startSize": 1.0,
+    "textureName": "Resources/sprite/particle.png",
+    "velocityRandomness": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.5
+    }
+}

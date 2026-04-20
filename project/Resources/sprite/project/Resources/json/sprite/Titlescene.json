@@ -1,0 +1,378 @@
+{
+    "sprites": [
+        {
+            "anchor": [
+                0.5,
+                0.0
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "title.png",
+            "position": [
+                800.5714111328125,
+                151.40452575683594
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "title.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "emissive": 1.0,
+            "name": "gameStartText.png",
+            "position": [
+                903.4285888671875,
+                570.390380859375
+            ],
+            "size": [
+                600.0,
+                240.0
+            ],
+            "texture": "gameStartText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                1.0
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "setting.png",
+            "position": [
+                846.8571166992188,
+                629.60302734375
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "setting.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/back_ground.png",
+            "position": [
+                768.0,
+                396.5
+            ],
+            "size": [
+                3840.0,
+                2160.0
+            ],
+            "texture": "UI/back_ground.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/option_UI.png",
+            "position": [
+                768.0,
+                396.5
+            ],
+            "size": [
+                1536.0,
+                793.0
+            ],
+            "texture": "UI/option_UI.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "emissive": 1.0,
+            "name": "UI/keyboard.png",
+            "position": [
+                543.4286499023438,
+                64.45934295654297
+            ],
+            "size": [
+                400.0,
+                60.0
+            ],
+            "texture": "UI/keyboard.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/sound.png",
+            "position": [
+                925.71435546875,
+                62.960296630859375
+            ],
+            "size": [
+                300.0,
+                60.0
+            ],
+            "texture": "UI/sound.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 5.699999809265137,
+            "name": "UI/cursor.png",
+            "position": [
+                490.2857666015625,
+                251.8412322998047
+            ],
+            "size": [
+                692.0,
+                58.0
+            ],
+            "texture": "UI/cursor.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/up.png",
+            "position": [
+                739.5709838867188,
+                248.84310913085938
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/down.png",
+            "position": [
+                739.5709838867188,
+                307.322998046875
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/right.png",
+            "position": [
+                740.9281616210938,
+                364.79937744140625
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/left.png",
+            "position": [
+                742.4281616210938,
+                418.29937744140625
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/jump.png",
+            "position": [
+                742.9281616210938,
+                474.79937744140625
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/dahe.png",
+            "position": [
+                743.4281616210938,
+                532.7993774414063
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/Lockon.png",
+            "position": [
+                743.4281616210938,
+                589.2993774414063
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/attck.png",
+            "position": [
+                744.9281616210938,
+                646.7993774414063
+            ],
+            "size": [
+                40.0,
+                40.0
+            ],
+            "texture": "UI/0.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "UI/pole.png",
+            "position": [
+                1168.950927734375,
+                325.119140625
+            ],
+            "size": [
+                8.0,
+                46.0
+            ],
+            "texture": "UI/pole.png"
+        }
+    ]
+}

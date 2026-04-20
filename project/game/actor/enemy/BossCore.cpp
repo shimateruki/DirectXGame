@@ -9,6 +9,9 @@
 #include <cstdlib>
 #include "GPUParticleManager.h"
 
+#include "CameraManager.h"
+#include "CameraEditor.h"
+
 // ==========================================
 // 攻撃クラスを読み込む
 // ==========================================
@@ -194,19 +197,21 @@ void BossCore::Update(float deltaTime) {
 
     InputManager* input = InputManager::GetInstance();
 
-    // 0キーで時間停止
-    if (input->IsKeyTriggered(DIK_0)) {
-        s_isTimeStopped_ = !s_isTimeStopped_;
-        if (s_isTimeStopped_) {
-            DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
-        }
-        else {
-            DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
-        }
-    }
+    
 
 #ifdef USE_IMGUI
     if (SceneManager::GetInstance()->IsPlaying()) {
+        // 0キーで時間停止
+        if (input->IsKeyTriggered(DIK_0)) {
+            s_isTimeStopped_ = !s_isTimeStopped_;
+            if (s_isTimeStopped_) {
+                DebugConsole::GetInstance()->AddLog("【TIME STOP】 ボスの時間が止まった…！");
+            }
+            else {
+                DebugConsole::GetInstance()->AddLog("【TIME RESUME】 時は動き出す！");
+            }
+        }
+        
         int triggerAttack = 0;
         if (input->IsKeyTriggered(DIK_1)) triggerAttack = 1;
         if (input->IsKeyTriggered(DIK_2)) triggerAttack = 2;
@@ -216,6 +221,38 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
         if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
+
+        // ==========================================
+    // 9キーで即座にボスを爆散させるデバッグ機能！
+    // ==========================================
+        if (input->IsKeyTriggered(DIK_9)) {
+            if (!isCoreBroken_) {
+                DebugConsole::GetInstance()->AddLog("【DEBUG】 9キー入力：ボスを強制爆散させます！！！💥");
+
+                param_->hp = 0.0f;  // 念のためステータスもHP0にしておく
+                StartDeathSequence();       // 爆散演出を強制発動！
+            }
+        }
+
+        if (deathPhase_ == 1 || deathPhase_ == 2) {
+            sequenceTimer_ -= deltaTime;
+
+            // 1秒経つごとに次のフェーズへ進む！
+            if (sequenceTimer_ <= 0.0f) {
+
+                if (deathPhase_ == 1) {
+                    // 1秒経過 ➔ 「亀裂フェーズ」へ移行し、さらに1秒待つ！
+                    deathPhase_ = 2;
+                    sequenceTimer_ = 1.0f;
+                    ShowCrackedCore();
+                }
+                else if (deathPhase_ == 2) {
+                    // さらに1秒経過 ➔ ついに「爆散フェーズ」へ！
+                    deathPhase_ = 3;
+                    BreakCore();
+                }
+            }
+        }
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -258,6 +295,8 @@ void BossCore::Update(float deltaTime) {
             }
         }
     }
+
+    
 #endif
 
     if (s_isTimeStopped_) {
@@ -387,14 +426,19 @@ void BossCore::Update(float deltaTime) {
     }
     // ==========================================
     // ★ 魔法の処理：破壊されたブロックの強制消去！
-    // 攻撃クラスが勝手にスケールを戻しても、フレームの最後で絶対に消し去る！
     // ==========================================
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (blockBroken_[i] && armorBlocks_[i]) {
-            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f }); // 完全に隠す
-            armorBlocks_[i]->SetCollisionAttribute(0);       // 当たり判定も消す
+            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
+            armorBlocks_[i]->SetCollisionAttribute(0);
         }
     }
+
+    // ==========================================
+    // ★ 追加：破片の物理計算・退場タイマーを進める！
+    // これを呼ばないと、破片が飛び散りません。
+    // ==========================================
+    UpdateCorePieces(deltaTime);
 }
 
 // =================================================================
@@ -536,26 +580,22 @@ void BossCore::ChangeState(State nextState) {
 }
 
 void BossCore::TakeBodyDamage(float damage) {
-    if (isWaitingForDeath_) {
-        // ★ トドメ待ち状態の時にダメージを受けたら、完全に死亡！
-        DebugConsole::GetInstance()->AddLog("ボス撃破！！！🎉");
-        isDead = true;
-        return;
-    }
+    // ==========================================
+    // ★ 修正1：古い変数ではなく、「すでに死亡フェーズに入っているか」で判定する！
+    // deathPhase_ が 0 以外（1, 2, 3）なら、もう倒しているのでダメージ無効。
+    // ==========================================
+    if (deathPhase_ != 0) return;
 
-    if (isFinalPhase_) return; // 最終奥義の最中は無敵！
-
+    // ダメージを与える
     param_->hp -= damage;
 
-    // HPが0以下になったら必殺技発動！
     if (param_->hp <= 0.0f) {
-        param_->hp = 1.0f;        // HPを1で踏みとどまる！
-        isFinalPhase_ = true;     // 発狂モードON！
+        param_->hp = 0.0f;
 
-        DebugConsole::GetInstance()->AddLog("【覚醒】ボスのHPが1で耐えた！最終奥義が来るぞ！！");
-
-        // 即座に攻撃状態へ移行（ChangeState内で nextAttack = 8 が選ばれる）
-        ChangeState(State::Attack);
+        // ==========================================
+        // ★ 修正2：新しい3段演出のスタート関数を呼ぶ！
+        // ==========================================
+        StartDeathSequence();
     }
 }
 
@@ -809,6 +849,186 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     }
 }
 
+void BossCore::StartDeathSequence() {
+    if (deathPhase_ != 0) return; // 既に死亡処理中なら何もしない
+
+    deathPhase_ = 1;         // ★ フェーズ1（無傷で静止）
+    sequenceTimer_ = 1.0f;   // ★ 1秒間待機！
+
+    DebugConsole::GetInstance()->AddLog("【撃破】 ボス沈黙…！！");
+
+    if (currentAttack_) currentAttack_.reset();
+    isWaitingForDeath_ = true;
+    ChangeState(State::Idle);
+
+    // 周りのブロックを消す
+    for (Object3d* block : armorBlocks_) {
+        if (block) {
+            block->SetScale({ 0.0f, 0.0f, 0.0f });
+            block->SetCollisionAttribute(0);
+        }
+    }
+
+    // 上空へワープ
+    Vector3 currentPos = this->GetTranslate();
+    float targetY = currentPos.y + 10.0f;
+    this->SetRotation({ 0.0f, 0.0f, 0.0f });
+    this->SetTranslate({ 0.0f, targetY, 0.0f });
+
+    // カメラをパッと切り替え（0秒）
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        Camera::CameraOverrideParams params;
+        params.duration = 0.0f;
+        params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
+        params.fixedEyePos = { 0.0f, targetY + 5.0f, -20.0f };
+        params.trackTargetX = false; params.trackTargetY = false; params.trackTargetZ = false;
+        params.fixedTargetPos = { 0.0f, targetY, 0.0f };
+        camera->StartOverride(params);
+    }
+}
+
+// ==========================================
+// ★ 段階2：亀裂状態（少し隙間をあけた破片）を出現させる
+// ==========================================
+void BossCore::ShowCrackedCore() {
+    DebugConsole::GetInstance()->AddLog("【撃破】 コアに亀裂が！！");
+
+    // 本体を非表示にする
+    this->SetScale({ 0.0f, 0.0f, 0.0f });
+    this->SetCollisionAttribute(0);
+
+    Vector3 corePos = this->GetTranslate();
+    BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
+
+    if (currentScene) {
+        for (int i = 0; i < 18; ++i) {
+            auto pieceObj = std::make_unique<Object3d>();
+            pieceObj->Initialize(common_);
+            pieceObj->SetStatic(true);
+            pieceObj->SetModel("enemy_core_shards/enemy_core" + std::to_string(i + 1));
+
+            // 見た目の設定（発光を少し強くして「光が漏れてる感」を出す）
+            pieceObj->SetColor({ 0.0f, 0.5946f, 1.0f, 1.0f });
+            pieceObj->SetMaterialType(2);
+            pieceObj->SetEmissive(2.0f);
+            pieceObj->SetMetallic(0.0f);
+            pieceObj->SetRoughness(0.5f);
+            pieceObj->SetEnableEnvMap(true);
+            pieceObj->SetEnvIntensity(1.035f);
+
+            pieceObj->SetScale({ 1.0f, 1.0f, 1.0f });
+            pieceObj->SetCollisionAttribute(0);
+
+            // 亀裂のズラし幅（0.2f ほど中心から離す）
+            float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            float ry = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            Vector3 crackOffset = { rx * 0.2f, ry * 0.2f, rz * 0.2f };
+            pieceObj->SetTranslate({ corePos.x + crackOffset.x, corePos.y + crackOffset.y, corePos.z + crackOffset.z });
+
+            // まだ飛ばさない！
+            CorePiece piece;
+            piece.obj = pieceObj.get();
+            piece.velocity = { 0.0f, 0.0f, 0.0f };
+            piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
+
+            corePieces_.push_back(piece);
+            currentScene->GetObjects().push_back(std::move(pieceObj));
+        }
+    }
+}
+
+// ==========================================
+// ★ 段階3：一気に吹き飛ばす！（爆散）
+// ==========================================
+void BossCore::BreakCore() {
+    isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動！
+    deathTimer_ = 0.0f;
+
+    DebugConsole::GetInstance()->AddLog("【撃破】 コア完全粉砕！！！🎉");
+
+    for (auto& piece : corePieces_) {
+        if (piece.obj) {
+            float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+            float ry = ((static_cast<float>(rand()) / RAND_MAX) * 1.0f) + 0.5f;
+            float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+
+            float speed = 30.0f + (rand() % 30);
+            piece.velocity = { rx * speed, ry * speed, rz * speed };
+            piece.rotSpeed = {
+                (rand() % 60) - 30.0f, (rand() % 60) - 30.0f, (rand() % 60) - 30.0f
+            };
+
+            // 発光を元に戻す
+            piece.obj->SetEmissive(1.0f);
+        }
+    }
+}
+
+void BossCore::UpdateCorePieces(float deltaTime) {
+    if (!isCoreBroken_) return;
+
+    deathTimer_ += deltaTime;
+
+    if (deathTimer_ > 5.0f) {
+        for (auto& piece : corePieces_) {
+            if (piece.obj) piece.obj->isDead = true;
+        }
+        isDead = true;
+
+        // ==========================================
+        // ★ 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す！
+        // 一瞬で戻すなら 0.0f に変更します。
+        // ==========================================
+        if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+            camera->EndOverride(0.0f); // 0秒で一瞬で戻る
+        }
+        return;
+    }
+
+    // --- スローモーション計算 ---
+    float timeScale = 1.0f;
+    if (deathTimer_ < 0.1f) {
+        timeScale = 0.01f; // ヒットストップ
+    }
+    else if (deathTimer_ < 1.5f) {
+        timeScale = 0.2f;  // スローモーション
+    }
+    float slowDeltaTime = deltaTime * timeScale;
+
+    // --- 物理演算 ---
+    for (auto& piece : corePieces_) {
+        if (piece.obj) {
+            Vector3 pos = piece.obj->GetTranslate();
+
+            piece.velocity.y -= 98.0f * slowDeltaTime;
+
+            pos.x += piece.velocity.x * slowDeltaTime;
+            pos.y += piece.velocity.y * slowDeltaTime;
+            pos.z += piece.velocity.z * slowDeltaTime;
+
+            if (pos.y <= 0.0f) {
+                pos.y = 0.0f;
+                piece.velocity.y *= -0.5f;
+                piece.velocity.x *= 0.8f;
+                piece.velocity.z *= 0.8f;
+                piece.rotSpeed.x *= 0.8f;
+                piece.rotSpeed.y *= 0.8f;
+                piece.rotSpeed.z *= 0.8f;
+            }
+
+            piece.obj->SetTranslate(pos);
+
+            Vector3 rot = piece.obj->GetRotation();
+            rot.x += piece.rotSpeed.x * slowDeltaTime;
+            rot.y += piece.rotSpeed.y * slowDeltaTime;
+            rot.z += piece.rotSpeed.z * slowDeltaTime;
+            piece.obj->SetRotation(rot);
+
+            piece.obj->UpdateWorldMatrix();
+        }
+    }
+}
 
 bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();

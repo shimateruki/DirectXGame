@@ -100,6 +100,11 @@ public:
     // ==========================================
     void SetWaitingForDeath(bool waiting) { isWaitingForDeath_ = waiting; }
 
+
+    // --- public: に追加 ---
+    void StartDeathSequence(); // 死亡演出の開始
+    void ShowCrackedCore();    // 段階2：亀裂モデルへの差し替え
+
 private:
 
     // 射出されたブロックのリスト
@@ -169,4 +174,26 @@ private:
     // パーティクルのエミッターを保持
     // ==========================================
     std::vector<std::unique_ptr<GPUParticleEmitter>> particleEmitters_;
+
+    // ==========================================
+    // ★ 破片演出用の構造体と変数
+    // ==========================================
+    struct CorePiece {
+        Object3d* obj; // ★ 生ポインタでOK！（実体はシーンが管理する）
+        Vector3 velocity;
+        Vector3 rotSpeed;
+    };
+    std::vector<CorePiece> corePieces_;
+
+    bool isCoreBroken_ = false;  // 割れたかどうかのフラグ
+    float deathTimer_ = 0.0f;    // 割れたあとの退場タイマー
+
+    // 演出用の関数
+    void BreakCore();
+    void UpdateCorePieces(float deltaTime);
+
+
+    // --- private: に追加 ---
+    int deathPhase_ = 0;       // 0: 生存, 1: 静止, 2: 亀裂, 3: 爆散
+    float sequenceTimer_ = 0.0f; // 各フェーズの1秒を測るタイマー
 };
