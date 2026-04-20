@@ -308,7 +308,7 @@ void Object3dCommon::CreateEffectRootSignature() {
     // ビルド実行 (頂点レイアウトを使用するフラグを立てる)
     builder.Build(
         dxCommon_->GetDevice(),
-        &effectRootSignature_,
+        effectRootSignature_.GetAddressOf(),
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
     );
 }
@@ -402,8 +402,8 @@ void Object3dCommon::CreateWaterPipeline() {
     // Zテストはする(true)が、Z書き込みはしない(ZERO)ように引数で直接指定
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
-    // RenderTargetのフォーマット設定（※既存のPSO構築に合わせるため追加）
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    // RenderTargetのフォーマット設定
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
 
     // 引数でポインタを渡して構築結果を受け取る
@@ -444,7 +444,7 @@ void Object3dCommon::CreateMagmaPipeline() {
     // ★ZテストもZ書き込みも行う
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ALL, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
     psoBuilder.Build(dxCommon_->GetDevice(), magmaPipelineState_.GetAddressOf());
 }
@@ -474,7 +474,7 @@ void Object3dCommon::CreateIcePipeline() {
     // ★Zテストはするが、Z書き込みはしない(透明物の基本)
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
     psoBuilder.Build(dxCommon_->GetDevice(), icePipelineState_.GetAddressOf());
 }
@@ -499,8 +499,7 @@ void Object3dCommon::CreateSkyboxPipeline() {
     rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-    rsBuilder.Build(dxCommon_->GetDevice(), &skyboxRootSignature_);
-
+    rsBuilder.Build(dxCommon_->GetDevice(), skyboxRootSignature_.GetAddressOf());
     auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Skybox.VS.hlsl", L"vs_6_0");
     auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Skybox.PS.hlsl", L"ps_6_0");
 
@@ -522,5 +521,5 @@ void Object3dCommon::CreateSkyboxPipeline() {
     DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     pipelineBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    pipelineBuilder.Build(dxCommon_->GetDevice(), &skyboxPipelineState_);
+    pipelineBuilder.Build(dxCommon_->GetDevice(), skyboxPipelineState_.GetAddressOf());
 }
