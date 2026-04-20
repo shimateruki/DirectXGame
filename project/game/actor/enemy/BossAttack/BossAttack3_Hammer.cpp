@@ -99,7 +99,9 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
         float dist = std::sqrt(toBoss.x * toBoss.x + toBoss.z * toBoss.z);
         if (dist > 0.0f) { toBoss.x /= dist; toBoss.z /= dist; }
 
-        Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
+        Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, 4.0f, targetPos.z + toBoss.z * 4.5f };
+
+        //Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
         float easeT = moveT;
         currentPos.x = Math::Lerp(currentPos.x, targetHoverPos.x, easeT);
         currentPos.y = Math::Lerp(currentPos.y, targetHoverPos.y, easeT);

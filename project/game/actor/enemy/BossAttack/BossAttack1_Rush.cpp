@@ -85,6 +85,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
 
         Vector3 pos = boss->GetTranslate();
         pos.x = Math::Lerp(animStartPos_.x, -50.0f, Easing::OutExpo(t));
+        pos.y = Math::Lerp(animStartPos_.y, 2.0f, Easing::OutExpo(t));
         boss->SetTranslate(pos); // ★ ボス本体を動かす
 
         if (t >= 1.0f) {
