@@ -105,6 +105,24 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
     std::unique_ptr<TimeAttackUI> clearTimeUI_; // 今回のタイム用
     std::unique_ptr<TimeAttackUI> bestTimeUI_;  // ベストタイム用
+    enum class ClearState {
+        kPlayerAction, // 状態1：プレイヤーの勝利モーション（ジャンプなど）を眺める
+        kShowTime,     // 状態2：タイムをフェードインで表示する
+        kSelectMenu    // 状態3：もう一回やるか、タイトルに戻るかを選択
+    };
+    ClearState clearState_ = ClearState::kPlayerAction;
+    float stateTimer_ = 0.0f; // 演出の時間を計るタイマー
+
+    // メニュー選択用
+    enum class MenuIndex {
+        Retry,
+        Title,
+        Max
+    };
+    int currentMenuIndex_ = (int)MenuIndex::Retry;
+
+    // タイムUIのアルファ値（フェードイン用）
+    float uiAlpha_ = 0.0f;
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
 };

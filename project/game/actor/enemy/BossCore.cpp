@@ -910,6 +910,10 @@ void BossCore::StartDeathSequence() {
             block->SetScale({ 0.0f, 0.0f, 0.0f });
             block->SetCollisionAttribute(0);
         }
+    }for (auto& emitter : particleEmitters_) {
+        if (emitter) {
+            emitter->Stop();
+        }
     }
 
     // 上空へワープ
@@ -1018,7 +1022,7 @@ void BossCore::UpdateCorePieces(float deltaTime) {
             if (piece.obj) piece.obj->isDead = true;
         }
         isDead = true;
-
+        isCompletelyDead_ = true;
         // ==========================================
         // ★ 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す！
         // 一瞬で戻すなら 0.0f に変更します。

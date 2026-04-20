@@ -96,7 +96,12 @@ void GameClearScene::Initialize() {
     // 自前関数ではなくLevelLoaderに委譲
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameClearScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameClearScene.json");
-
+    if (player_) {
+        // プレイヤーの移動入力やカメラ操作をシャットアウト！
+        player_->SetIsControlActive(false);
+        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetGravity(0.0f);
+    }
     LightManager::GetInstance()->LoadState("Resources/json/light/gameClearScene.json");
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile("gameClear_camera.json");
@@ -118,30 +123,105 @@ void GameClearScene::Finalize() {
 }
 
 void GameClearScene::Update(float deltaTime) {
+    // =========================================================
+    // 1. 基盤システムの更新 (常に動かすもの)
+    // =========================================================
     LightEditor::GetInstance()->Update();
+
+    // カメラのターゲット設定
     Object3d* cameraTarget = player_;
     if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
         cameraTarget = objectManager_->GetObjects().front().get();
     }
 
-
+    // カメラとライトの更新
     CameraEditor::GetInstance()->Update(cameraTarget, false);
     CameraManager::GetInstance()->Update();
 
-    // オブジェクト一括更新 (ObjectManagerに委譲)
+    // ゲームオブジェクト・エフェクトの更新
     if (objectManager_) objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);
+    GPUParticleManager::GetInstance()->Update(deltaTime); // GPUパーティクルも忘れずに！
 
-    // スプライト更新
+    BulletManager::GetInstance()->Update(deltaTime);
+    CollisionManager::GetInstance()->Update();
+
+    // =========================================================
+    // 2. 演出ステートマシンの更新
+    // =========================================================
+    stateTimer_ += deltaTime;
+
+    switch (clearState_) {
+    case ClearState::kPlayerAction:
+        // 【状態1】プレイヤーの勝利アクション中
+        // 3秒間モーションを見せてからタイム表示へ移行
+        if (stateTimer_ > 3.0f) {
+            clearState_ = ClearState::kShowTime;
+            stateTimer_ = 0.0f;
+
+            // タイム表示開始のログ
+            DebugConsole::GetInstance()->AddLog("【RESULT】 タイム表示開始！");
+        }
+        break;
+
+    case ClearState::kShowTime:
+        // 【状態2】リザルトタイムのフェードイン
+        uiAlpha_ += deltaTime * 2.0f; // 約0.5秒でフェード完了
+        if (uiAlpha_ >= 1.0f) {
+            uiAlpha_ = 1.0f;
+
+            // タイムが完全に出てから少し余韻(1秒)を置いてメニュー選択へ
+            if (stateTimer_ > 1.0f) {
+                clearState_ = ClearState::kSelectMenu;
+                DebugConsole::GetInstance()->AddLog("【RESULT】 メニュー選択可能");
+            }
+        }
+        break;
+
+    case ClearState::kSelectMenu:
+    {
+        // 【状態3】リトライ or タイトルの選択
+        InputManager* input = InputManager::GetInstance();
+
+        // --- メニュー選択（上下） ---
+        if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+            currentMenuIndex_--;
+            if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+        }
+        if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+            currentMenuIndex_++;
+            if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+        }
+
+        // --- 決定処理 ---
+        if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+            if (currentMenuIndex_ == (int)MenuIndex::Retry) {
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            }
+            else if (currentMenuIndex_ == (int)MenuIndex::Title) {
+                SceneManager::GetInstance()->ChangeScene("TITLE");
+            }
+        }
+
+        // 選択中のメニューを分かりやすくするための色調整 (例)
+        // ※後ほど、Retry/Title用のスプライトをここで色変えするとリッチになります！
+        break;
+    }
+    }
+
+    // =========================================================
+    // 3. UI（スプライト）の最終更新
+    // =========================================================
+
+    // タイムアタックUIの更新
+    if (clearTimeUI_) clearTimeUI_->Update(deltaTime);
+    if (bestTimeUI_) bestTimeUI_->Update(deltaTime);
+
+    // シーン内の全スプライトを更新
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
-
-    // 各種マネージャ更新
-    BulletManager::GetInstance()->Update(deltaTime);
-    CollisionManager::GetInstance()->Update();
 }
-
 void GameClearScene::Draw() {
     // --- 一人称視点判定 ---
     bool isFirstPerson = false;
