@@ -9,7 +9,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    -24.850000381469727,
+                    -0.4000000059604645,
                     0.0
                 ],
                 "rotation": [
@@ -19,10 +19,10 @@
                 ],
                 "size": [
                     69.29096984863281,
-                    25.0,
+                    0.5,
                     69.29096984863281
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967291,
@@ -3689,7 +3689,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
+                    0.550000011920929,
                     0.0
                 ],
                 "rotation": [
@@ -3699,10 +3699,10 @@
                 ],
                 "size": [
                     1.0,
-                    1.0800000429153442,
+                    0.5,
                     1.0
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 4,
             "collisionMask": 3,
@@ -3781,7 +3781,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
+                    29.549999237060547,
                     0.0
                 ],
                 "rotation": [
@@ -3790,11 +3790,11 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0053999423980713,
-                    1.0
+                    40.0,
+                    0.5,
+                    30.0
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 4,
             "collisionMask": 3,
@@ -3826,22 +3826,22 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "map_tutorial_01",
             "myEventID": -1,
-            "name": "Tutorial_Room_Main",
+            "name": "Tutorial_Room_Base",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
             "position": [
                 0.0,
                 -6.955999851226807,
-                -233.6719970703125
+                -232.61500549316406
             ],
             "quaternion": [
                 0.0,
+                1.0,
                 0.0,
-                0.0,
-                1.0
+                -4.371138828673793e-08
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -3850,15 +3850,15 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                3.1415927410125732,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                40.0,
-                30.0,
-                31.049999237060547
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -3979,7 +3979,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 3,
             "color": [
                 1.0,
@@ -4478,7 +4478,7 @@
             "position": [
                 0.0,
                 37.0,
-                -265.70001220703125
+                -263.6000061035156
             ],
             "quaternion": [
                 0.0,
@@ -4662,7 +4662,7 @@
             "position": [
                 25.0,
                 37.0,
-                -201.64700317382813
+                -201.89999389648438
             ],
             "quaternion": [
                 0.0,
@@ -4754,7 +4754,7 @@
             "position": [
                 -25.0,
                 37.0,
-                -201.64651489257813
+                -201.89999389648438
             ],
             "quaternion": [
                 0.0,
@@ -4989,7 +4989,7 @@
                     0.550000011920929,
                     0.550000011920929
                 ],
-                "type": 2
+                "type": 3
             },
             "collisionAttribute": 6,
             "collisionMask": 4294967137,
@@ -5262,9 +5262,9 @@
             "blendMode": 1,
             "collider": {
                 "center": [
-                    -13.350000381469727,
-                    0.75,
-                    -13.350000381469727
+                    -13.949999809265137,
+                    -0.30000001192092896,
+                    -14.0
                 ],
                 "rotation": [
                     0.017453286796808243,
@@ -5273,8 +5273,8 @@
                 ],
                 "size": [
                     1.600000023841858,
-                    1.0,
-                    2.5
+                    1.2000000476837158,
+                    2.549999952316284
                 ],
                 "type": 3
             },
@@ -5354,9 +5354,9 @@
             "blendMode": 1,
             "collider": {
                 "center": [
-                    12.850000381469727,
-                    0.44999998807907104,
-                    -12.838000297546387
+                    14.050000190734863,
+                    -0.20000000298023224,
+                    -13.98799991607666
                 ],
                 "rotation": [
                     0.0,
@@ -5364,9 +5364,9 @@
                     0.0
                 ],
                 "size": [
-                    3.0,
-                    0.8500000238418579,
-                    1.6779999732971191
+                    2.549999952316284,
+                    1.2000000476837158,
+                    1.649999976158142
                 ],
                 "type": 3
             },
@@ -5446,9 +5446,9 @@
             "blendMode": 1,
             "collider": {
                 "center": [
-                    12.949999809265137,
-                    0.3499999940395355,
-                    12.949999809265137
+                    14.0,
+                    -0.20000000298023224,
+                    14.050000190734863
                 ],
                 "rotation": [
                     0.0,
@@ -5456,9 +5456,9 @@
                     0.0
                 ],
                 "size": [
-                    1.600000023841858,
-                    1.4999990463256836,
-                    3.0
+                    1.5499999523162842,
+                    1.2000000476837158,
+                    2.5
                 ],
                 "type": 3
             },
@@ -5538,9 +5538,9 @@
             "blendMode": 1,
             "collider": {
                 "center": [
-                    -13.050000190734863,
-                    0.30000001192092896,
-                    13.088000297546387
+                    -14.0,
+                    -0.20000000298023224,
+                    13.98799991607666
                 ],
                 "rotation": [
                     0.0,
@@ -5548,9 +5548,9 @@
                     0.0
                 ],
                 "size": [
-                    2.75,
-                    1.4999990463256836,
-                    1.600000023841858
+                    2.549999952316284,
+                    1.2000000476837158,
+                    1.5499999523162842
                 ],
                 "type": 3
             },
@@ -5631,18 +5631,18 @@
             "collider": {
                 "center": [
                     -49.1439208984375,
-                    -0.30000001192092896,
+                    0.6000000238418579,
                     -49.1439208984375
                 ],
                 "rotation": [
                     0.0,
-                    0.0,
+                    0.7853981852531433,
                     0.0
                 ],
                 "size": [
-                    2.1213226318359375,
-                    1.4999990463256836,
-                    2.1213226318359375
+                    1.5499999523162842,
+                    0.699999988079071,
+                    1.5499999523162842
                 ],
                 "type": 3
             },
@@ -5723,18 +5723,18 @@
             "collider": {
                 "center": [
                     49.1439208984375,
-                    -0.30000001192092896,
+                    0.6000000238418579,
                     -49.1439208984375
                 ],
                 "rotation": [
                     0.0,
-                    0.0,
+                    0.7853981852531433,
                     0.0
                 ],
                 "size": [
-                    2.1213226318359375,
-                    1.4999990463256836,
-                    2.1213226318359375
+                    1.5499999523162842,
+                    0.699999988079071,
+                    1.5499999523162842
                 ],
                 "type": 3
             },
@@ -5815,18 +5815,18 @@
             "collider": {
                 "center": [
                     49.143917083740234,
-                    -0.30000001192092896,
+                    0.6000000238418579,
                     49.143924713134766
                 ],
                 "rotation": [
                     0.0,
-                    0.0,
+                    0.7853981852531433,
                     0.0
                 ],
                 "size": [
-                    2.1213226318359375,
-                    1.4999990463256836,
-                    2.1213226318359375
+                    1.5499999523162842,
+                    0.699999988079071,
+                    1.5499999523162842
                 ],
                 "type": 3
             },
@@ -5907,18 +5907,18 @@
             "collider": {
                 "center": [
                     -49.1439208984375,
-                    -0.30000001192092896,
+                    0.6000000238418579,
                     49.1439208984375
                 ],
                 "rotation": [
                     0.0,
-                    0.0,
+                    0.7853981852531433,
                     0.0
                 ],
                 "size": [
-                    2.1213226318359375,
-                    1.4999990463256836,
-                    2.1213226318359375
+                    1.5499999523162842,
+                    0.699999988079071,
+                    1.5499999523162842
                 ],
                 "type": 3
             },
@@ -6141,7 +6141,7 @@
             "name": "Map_Top_Equipment_02",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Top_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -6233,7 +6233,7 @@
             "name": "Map_Top_Equipment_03",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Top_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -6325,7 +6325,7 @@
             "name": "Map_Top_Equipment_04",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Top_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -6417,7 +6417,7 @@
             "name": "Map_Top_Equipment_05",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Top_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -6603,7 +6603,7 @@
             "ormMapPath": "",
             "parentName": "",
             "position": [
-                -5.0,
+                -20.0,
                 28.0,
                 -200.0
             ],
@@ -6695,7 +6695,7 @@
             "ormMapPath": "",
             "parentName": "",
             "position": [
-                5.0,
+                20.0,
                 28.0,
                 -200.0
             ],
@@ -6782,14 +6782,14 @@
             "metallic": 0.0,
             "modelName": "block",
             "myEventID": -1,
-            "name": "block_89",
+            "name": "Tutorial_Door_Wall",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
             "position": [
                 0.0,
                 42.5,
-                -201.64700317382813
+                -201.89999389648438
             ],
             "quaternion": [
                 0.0,
@@ -7521,7 +7521,7 @@
             "name": "Map_Under_Equipment_02",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Under_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -7613,7 +7613,7 @@
             "name": "Map_Under_Equipment_03",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Under_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -7705,7 +7705,7 @@
             "name": "Map_Under_Equipment_04",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Map_Floor_Base",
+            "parentName": "Map_Under_Equipment_01",
             "position": [
                 0.0,
                 0.0,
@@ -7747,7 +7747,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
+                    -1.25,
                     0.0
                 ],
                 "rotation": [
@@ -7756,14 +7756,14 @@
                     0.0
                 ],
                 "size": [
-                    0.0,
-                    0.0,
-                    0.0
+                    15.0,
+                    2.0,
+                    15.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967072,
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
             "color": [
                 0.5868725776672363,
                 0.5075654983520508,
@@ -8013,6 +8013,281 @@
             "targetID": -1,
             "texturePath": "",
             "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    25.677406311035156,
+                    -1.8491449356079102
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    40.0,
+                    42.5,
+                    30.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.24199999868869781,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_02",
+            "myEventID": -1,
+            "name": "Tutorial_Ceiling",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                70.69999694824219,
+                2.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.10000000149011612,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    8.0,
+                    0.20000000298023224,
+                    8.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_09",
+            "myEventID": -1,
+            "name": "Tutorial_Platform",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                100.0,
+                10.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    16.0,
+                    16.0,
+                    16.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Center_Collision_Box",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                1.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
         }
     ]
 }
