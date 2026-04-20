@@ -51,6 +51,7 @@ public:
 
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
+    void StartBossAppearanceMovie(); // ★ 追加：ボス登場の合図を受け取る関数
 
     // --- BaseScene インターフェース実装 ---
 
@@ -80,7 +81,8 @@ private:
 private:
     enum class MovieState {
         kNone,
-        kBridgeDrop
+        kBridgeDrop,
+        kBossAppearance
     };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
@@ -174,4 +176,6 @@ private:
     Sprite* poseTextSprite_ = nullptr;
     Sprite* restartPoseTextSprite_ = nullptr;
     Sprite* titleTextPoseSprite_ = nullptr;
+
+    bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
 };

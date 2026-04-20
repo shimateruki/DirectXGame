@@ -47,6 +47,13 @@ void GameRule::Initialize(BaseScene* scene) {
                 }
             }
             break;
+        case EventType::Movie_Boss:
+            if (scene_) {
+                if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
+                    gps->StartBossAppearanceMovie(); // シーンに合図を送る！
+                }
+            }
+            break;
 
         case EventType::None:
         default:

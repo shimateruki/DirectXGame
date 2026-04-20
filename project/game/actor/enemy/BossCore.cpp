@@ -308,6 +308,13 @@ void BossCore::Update(float deltaTime) {
     BaseEnemy::Update(deltaTime);
 
     // ==========================================
+    // ★ 登場演出中なら、それを更新する
+    // ==========================================
+    if (isAppearing_) {
+        UpdateAppearance(deltaTime);
+    }
+
+    // ==========================================
     // ★ パーティクルの自動追従・更新
     // ==========================================
     for (auto& emitter : particleEmitters_) {
@@ -576,6 +583,30 @@ void BossCore::ChangeState(State nextState) {
     case State::Weak:
         animTimer_ = 0.0f;
         break;
+    }
+}
+
+void BossCore::StartAppearance() {
+    if (isAppearing_ || isBattleStarted_) return;
+
+    isAppearing_ = true;
+    appearancePhase_ = 1;
+    appearanceTimer_ = 2.0f; // ★ 2秒間、ボスをドアップで映す！
+
+    DebugConsole::GetInstance()->AddLog("【EVENT】 ボス登場演出スタート！！");
+
+    // ★ カメラをボスの正面に滑らかに（1秒かけて）移動させる！
+    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        Camera::CameraOverrideParams params;
+        params.duration = 1.0f; // 1秒かけてスーッと寄る
+        params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
+
+        Vector3 bossPos = GetTranslate();
+        // ボスを少し見上げるような、カッコいいカメラ位置
+        params.fixedEyePos = { bossPos.x, bossPos.y + 2.0f, bossPos.z - 20.0f };
+        params.fixedTargetPos = { bossPos.x, bossPos.y + 5.0f, bossPos.z };
+
+        camera->StartOverride(params);
     }
 }
 
@@ -1068,4 +1099,29 @@ void BossCore::StartBattle() {
     animTimer_ = 0.0f; // ★ ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
 
     DebugConsole::GetInstance()->AddLog("【BATTLE START】 ボスが行動を開始した！！！");
+}
+
+void BossCore::UpdateAppearance(float deltaTime) {
+    if (!isAppearing_) return;
+
+    appearanceTimer_ -= deltaTime;
+
+    if (appearanceTimer_ <= 0.0f) {
+        if (appearancePhase_ == 1) {
+            // ★ 2秒経過：カメラをプレイヤー（元の視点）に戻す！
+            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                camera->EndOverride(1.0f); // 1秒かけて戻る
+            }
+
+            appearancePhase_ = 2;
+            appearanceTimer_ = 1.0f; // カメラが戻り切るまでの1秒を待つ
+        }
+        else if (appearancePhase_ == 2) {
+            // ★ カメラが戻り切ったら、ついに戦闘開始！！
+            isAppearing_ = false;
+            StartBattle(); // ここで前回作った StartBattle() を呼ぶ！
+        }
+    }
+
+    // （※もし演出中にボスを震わせたり、オーラを強くしたりしたければここに書きます）
 }
