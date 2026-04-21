@@ -302,6 +302,8 @@ void GameClearScene::Update(float deltaTime) {
         sprite->Update();
     }
 }
+
+
 void GameClearScene::Draw() {
     // --- 一人称視点判定 ---
     bool isFirstPerson = false;

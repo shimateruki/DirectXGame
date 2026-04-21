@@ -854,6 +854,8 @@ void PlayerStateRun::Update(Player* player)
 	InputManager* im = player ? player->GetInputManager() : nullptr;
 	bool attackTriggered = im && im->IsActionTriggered("Attack");
 
+if (player->GetIsControlActive())
+{
 	if (attackTriggered)
 	{
 		// --- 地上攻撃の処理 ---
@@ -872,6 +874,7 @@ void PlayerStateRun::Update(Player* player)
 		}
 		return;
 	}
+}
 
 	Vector3 rawVel = player->GetVelocity(); Vector3 flatVel = rawVel; flatVel.y = 0.0f;
 	float speed = Math::Length(flatVel);
