@@ -214,36 +214,37 @@ void GamePlayScene::Initialize() {
 			*it = std::move(newBoss);
 			break;
 		}
-		// =======================================================
-		// ★ 進行状況の復元：橋がすでに落ちている場合の処理
-		// =======================================================
-		if (GameProgress::GetInstance()->hasBridgeDropped) {
-			// 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
-			auto& objects = objectManager_->GetObjects();
-			for (auto& obj : objects) {
-				std::string name = obj->GetName();
-				// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
-				if (name.find("Bridge_Block") != std::string::npos) {
-					obj->SetIsVisible(false);        // 見えなくする
-					obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
-				}
+	}
+
+	// =======================================================
+	// ★ 進行状況の復元：橋がすでに落ちている場合の処理
+	// =======================================================
+	if (GameProgress::GetInstance()->hasBridgeDropped) {
+		// 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
+		auto& objects_ref = objectManager_->GetObjects();
+		for (auto& obj : objects_ref) {
+			std::string name = obj->GetName();
+			// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
+			if (name.find("Bridge_Block") != std::string::npos) {
+				obj->SetIsVisible(false);        // 見えなくする
+				obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
 			}
+		}
 
-			// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
-			this->hasBridgeDropped_ = true;
+		// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
+		this->hasBridgeDropped_ = true;
 
-			// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
-			if (player_) {
-				// 隊長が設定したボス前の座標を適用！
-				player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
-				player_->UpdateLocalMatrix();
-				player_->UpdateWorldMatrix();
+		// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
+		if (player_) {
+			// 隊長が設定したボス前の座標を適用！
+			player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
+			player_->UpdateLocalMatrix();
+			player_->UpdateWorldMatrix();
 
-				// チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
-				GameProgress::GetInstance()->hasFinishedTutorial = true;
-				this->hasFinishedTutorial_ = true;
-				this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
-			}
+			// チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
+			GameProgress::GetInstance()->hasFinishedTutorial = true;
+			this->hasFinishedTutorial_ = true;
+			this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
 		}
 	}
 
@@ -447,51 +448,14 @@ void GamePlayScene::Update(float deltaTime) {
 			// ムービー終了判定
             // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
 			if (movieTimer_ >= 5.5f) {
-				for (auto& obj : objectManager_->GetObjects()) {
-					if (obj->GetName() == "Bridge_Block_Center") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Center_02") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Center_03") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Back") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Back_02") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Back_03") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Front") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Front_02") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Front_03") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+				auto& objects_ref = objectManager_->GetObjects();
+				for (auto& obj : objects_ref) {
+					std::string name = obj->GetName();
+					// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
+					if (name.find("Bridge_Block") != std::string::npos) {
+						obj->SetIsVisible(false);        // 見えなくする
+						obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+						obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
 					}
 				}
 				movieState_ = MovieState::kNone;

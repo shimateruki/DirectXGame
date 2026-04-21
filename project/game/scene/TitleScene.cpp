@@ -23,6 +23,7 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include "GameProgress.h"
 #include <cmath>    // std::sin
 #include <algorithm> // std::transform
 #include <cctype>    // ::tolower
@@ -247,6 +248,7 @@ void TitleScene::Update(float deltaTime) {
             if (input->IsKeyTriggered(DIK_SPACE)) {
                 if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
                     // ゲーム開始！
+                    GameProgress::GetInstance()->Reset();
                     SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
                 }
                 else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
