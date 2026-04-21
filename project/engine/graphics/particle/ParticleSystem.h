@@ -35,6 +35,7 @@ private:
         Vector3 acceleration;
 
         float hdrIntensity;
+        Vector2 baseScale = { 1.0f, 1.0f };
 
     };
 
@@ -105,6 +106,12 @@ public:
     void EmitOneShot(const EmitterParams& params, const Vector3& position);
 
     void SetTexture(const std::string& texturePath);
+    void SpawnPrimitiveHitEffect(const Vector3& position);
+    void SpawnContinuousHitEffect(const Vector3& position, int count,
+        float initialSpeed,
+        Vector4 color,
+        float lifeTimeMin, float lifeTimeMax,
+        Vector2 baseScale);
 private:
     void CreateResources();
 

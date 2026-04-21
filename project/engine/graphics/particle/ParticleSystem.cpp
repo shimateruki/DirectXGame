@@ -323,7 +323,7 @@ void ParticleSystem::Update(float deltaTime) {
         // --- 行列計算 ---
 
         // 1. スケール行列
-        Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize, currentSize, currentSize });
+        Matrix4x4 scaleMatrix = math.MakeScaleMatrix({ currentSize * p.baseScale.x, currentSize * p.baseScale.y, currentSize });
 
         // 2. 回転行列 (★今回の追加: Z軸回転)
         // ビルボード面の上でクルクル回る動きを作ります
@@ -412,4 +412,38 @@ void ParticleSystem::SetTexture(const std::string& texturePath) {
 
     // テクスチャ読み込み (TextureManagerが重複ロードを防止してくれる前提)
     textureHandle_ = TextureManager::GetInstance()->Load(texturePath);
+}
+
+void ParticleSystem::SpawnPrimitiveHitEffect(const Vector3& position) {
+    std::uniform_real_distribution<float> angleDist(0.0f, 3.141592f);
+    float baseRotation = angleDist(randomEngine_);
+
+    // ① 星型の閃光 (4本のラインで十字を作る)
+    int lineCount = 4;
+    for (int i = 0; i < lineCount; ++i) {
+        if (particles_.size() >= kMaxParticles) break;
+
+        Particle p;
+        p.position = position;
+        p.velocity = { 0.0f, 0.0f, 0.0f }; // 固定
+        p.lifeTime = 0.15f;
+        p.currentTime = 0.0f;
+
+        p.startColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 真っ白
+        p.endColor = { 1.0f, 1.0f, 1.0f, 0.0f };
+
+        p.startSize = 0.5f;
+        p.endSize = 6.0f;   // 大きく広げる
+
+        p.rotation = baseRotation + i * (3.141592f / lineCount);
+        p.rotationSpeed = 0.0f;
+        p.acceleration = { 0.0f, 0.0f, 0.0f };
+        p.hdrIntensity = 1.5f;
+
+        p.baseScale = { 0.04f, 1.0f }; // 細長く
+
+        particles_.push_back(p);
+    }
+
+    // ★ ②の中心のまるフラッシュは削除しました
 }

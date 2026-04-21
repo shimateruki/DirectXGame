@@ -76,7 +76,7 @@ void GamePlayScene::Initialize() {
 	particleCommon_->Initialize(dxCommon_);
 
 	particleSystem_ = std::make_unique<ParticleSystem>();
-	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
+	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/circle2.png");
 
 	ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
@@ -250,6 +250,10 @@ void GamePlayScene::Update(float deltaTime) {
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
+	if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
+		Vector3 effectPos = { 0.0f, 2.0f, 0.0f }; // 確認用に原点の少し上に発生
+		particleSystem_->SpawnPrimitiveHitEffect(effectPos);
+	}
 }
 
 
