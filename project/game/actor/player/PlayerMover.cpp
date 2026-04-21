@@ -29,7 +29,7 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 {
     player_ = player;
     inputManager_ = inputManager;
-    particleSystem_ = particleSystem;
+    particleSystem_ = particleSystem;  
 
     // デフォルト戦略
     strategy_ = std::make_unique<MoveStrategy3D>();
