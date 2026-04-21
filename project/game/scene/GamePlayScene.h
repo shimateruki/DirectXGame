@@ -178,4 +178,5 @@ private:
     Sprite* titleTextPoseSprite_ = nullptr;
 
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
+    bool hasBossAppeared_ = false; // ボス登場イベントが既に終わったかどうかのロックフラグ
 };

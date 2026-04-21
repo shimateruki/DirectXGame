@@ -678,18 +678,35 @@ void GamePlayScene::Update(float deltaTime) {
 	UpdateUI();
 
 	// ========================================================
-	// ボス登場ムービー中の監視処理
+	// ★ ボス登場ムービー中の監視処理（時間で強制終了！）
 	// ========================================================
 	if (isBossMoviePlaying_ && boss_) {
-		// BossCore に「演出終わった？」と毎フレーム聞く
-		if (!boss_->IsAppearing()) {
-			// 演出が終わった（＝カメラが戻って StartBattle が呼ばれた）！！
+
+		// ★ タイマーを進める！
+		movieTimer_ += deltaTime;
+
+		// プレイヤーがズレないように固定し続ける
+		if (player_) {
+			player_->SetTranslate(movieStoredPlayerPos_);
+			player_->UpdateWorldMatrix();
+		}
+
+		// ====================================================
+		// ★ 修正：全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
+		// ====================================================
+		if (movieTimer_ >= 4.0f) {
 			isBossMoviePlaying_ = false;
 
-			// プレイヤーの操作を復活させる
+			if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+				camera->EndOverride(1.0f);
+			}
+
 			if (player_) {
 				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true);
 			}
+
+			boss_->StartBattle();
 		}
 	}
 }
@@ -940,19 +957,36 @@ void GamePlayScene::StartBridgeDropMovie() {
 }
 
 // ========================================================
-// ★ 追加：ボス登場ムービーの開始処理
+// ★ ボス登場ムービーの開始処理
 // ========================================================
 void GamePlayScene::StartBossAppearanceMovie() {
-	// 既にムービー中、またはボスがいなければ何もしない
-	if (isBossMoviePlaying_ || !boss_) return;
+	if (isBossMoviePlaying_ || !boss_ || hasBossAppeared_) return;
 
 	isBossMoviePlaying_ = true;
+	hasBossAppeared_ = true;
+	movieTimer_ = 0.0f;
 
-	// 前回 BossCore に作った、カメラが寄る超カッコいい演出をスタート！
-	boss_->StartAppearance();
-
-	// ムービー中はプレイヤーの操作を奪う（動けなくする）
+	// プレイヤーを固定
 	if (player_) {
+		movieStoredPlayerPos_ = player_->GetWorldPosition();
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
 		player_->SetIsControlActive(false);
+		player_->SetIsPhysicsActive(false);
 	}
+
+	// ====================================================
+	// ★ 追加：a.json（カメラのアニメーション）を再生する！
+	// ====================================================
+	for (auto& obj : objectManager_->GetObjects()) {
+		if (obj->GetName() == "Cinematic_Camera_Boss") { // ボス用のシネマティックカメラオブジェクトを用意しておく
+			if (obj->recorder_) {
+				// "a" という名前のJSONを再生！
+				obj->recorder_->Play("a", false, false, true);
+			}
+			break;
+		}
+	}
+
+	// ボス側にはカメラ移動以外の演出（ブロックが集まる等）だけをやらせる
+	boss_->StartAppearance();
 }
