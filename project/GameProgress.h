@@ -17,6 +17,12 @@ public:
     GameProgress(const GameProgress&) = delete;
     GameProgress& operator=(const GameProgress&) = delete;
 
+    // 全てのフラグをリセット（最初からはじめる・リスタート用）
+    void Reset() {
+        hasBridgeDropped = false;
+        hasFinishedTutorial = false;
+    }
+
     // ==========================================
     // ここにゲーム全体で保持したいフラグを追加していく！
     // ==========================================
