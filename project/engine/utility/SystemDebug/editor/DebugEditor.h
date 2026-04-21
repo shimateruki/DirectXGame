@@ -117,7 +117,7 @@ public:
         GhostRecorder* ghostRecorder,
         GhostDirector* ghostDirector,
         LightEditor* lightEditor,
-        MeshEffectEditor* meshEffectEditor) 
+        MeshEffectEditor* meshEffectEditor)
     {
         postEffectEditor_ = postEffectEditor;
         spriteDebugEditor_ = spriteDebugEditor;
@@ -127,7 +127,7 @@ public:
         ghostRecorder_ = ghostRecorder;
         ghostDirector_ = ghostDirector;
         lightEditor_ = lightEditor;
-        meshEffectEditor_ = meshEffectEditor; 
+        meshEffectEditor_ = meshEffectEditor;
     }
     // --------------------------------------------------------------------
     // ゲッター (Getters)
@@ -238,4 +238,5 @@ private:
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
     MeshEffectEditor* meshEffectEditor_ = nullptr;
+
 };

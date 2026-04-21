@@ -30,6 +30,7 @@ enum class ColliderType {
     kSphere, // 球
     kAABB,   // AABB（回転しない箱）
     kOBB,
+    kCylinder
 };
 
 // AABB構造体
