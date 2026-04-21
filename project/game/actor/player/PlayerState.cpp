@@ -3537,7 +3537,7 @@ void PlayerStateWin::ApplyPose(float t)
 	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->rotate = curLtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
 }
 
-
+PlayerStateWinReturn::PlayerStateWinReturn(float groundY) : groundY_(groundY) {}
 // ========================================================
 // 勝利状態からの復帰 (WinReturn) 実装
 // ========================================================
@@ -3613,8 +3613,8 @@ void PlayerStateWinReturn::Update(Player* player)
 
 	// --- 着地判定と Idle への完全移行 ---
 	Transform* tf = player->GetTransform();
-	if (tf->translate.y <= 0.0f) {
-		tf->translate.y = 0.0f;
+	if (tf->translate.y <= groundY_) {
+		tf->translate.y = groundY_; // 正しい高さでピタッと止める！
 		player->SetVelocity({ 0.0f, 0.0f, 0.0f });
 
 		// 着地しており、かつポーズ戻し(0.3秒)が終わっていれば、本当の待機状態へ！

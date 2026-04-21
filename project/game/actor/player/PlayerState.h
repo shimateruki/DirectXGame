@@ -554,14 +554,16 @@ private:
 class PlayerStateWinReturn : public IAnimationState
 {
 public:
+    PlayerStateWinReturn(float groundY);
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
 
 private:
     float animTimer_ = 0.0f;
-    float blendDuration_ = 0.3f; // ★ 0.3秒かけて滑らかに腕を下ろす
+    float blendDuration_ = 0.3f;
 
+    float groundY_ = 0.0f;
     Object3d* bodyObj_ = nullptr;
     Object3d* headObj_ = nullptr;
     Object3d* rightArmObj_ = nullptr;

@@ -129,7 +129,11 @@ void GameClearScene::Finalize() {
 }
 
 void GameClearScene::Update(float deltaTime) {
+    // ----------------------------------------------------------------
+    // 1. 基本的なシステム更新 (常に動かすもの)
+    // ----------------------------------------------------------------
     LightEditor::GetInstance()->Update();
+
     Object3d* cameraTarget = player_;
     if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
         cameraTarget = objectManager_->GetObjects().front().get();
@@ -141,43 +145,33 @@ void GameClearScene::Update(float deltaTime) {
     if (objectManager_) objectManager_->Update(deltaTime);
     particleSystem_->Update(deltaTime);
     GPUParticleManager::GetInstance()->Update(deltaTime);
-
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
 
-    // =========================================================
-    // ★ 修正：演出シーケンス制御とメニュー選択フィードバック
-    // =========================================================
+    // ----------------------------------------------------------------
+    // 2. クリア演出シーケンス制御
+    // ----------------------------------------------------------------
     stateTimer_ += deltaTime;
 
     switch (clearState_) {
     case ClearState::kRunIn:
-    {
+        // --- 【フェーズ1】 入場：指定位置まで走る ---
         if (player_) {
             Vector3 currentPos = player_->GetTransform()->translate;
             Vector3 dir = { targetPlayerPos_.x - currentPos.x, 0.0f, targetPlayerPos_.z - currentPos.z };
             float dist = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
             if (dist > 0.5f) {
-                // 走らせ続ける
                 dir.x /= dist; dir.z /= dist;
                 float runSpeed = 12.0f;
                 player_->SetVelocity({ dir.x * runSpeed, 0.0f, dir.z * runSpeed });
-
                 float angle = std::atan2(dir.x, dir.z);
                 player_->SetRotation({ 0.0f, angle, 0.0f });
             }
             else {
-                // ゴール到達！！
                 player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
                 player_->GetTransform()->translate = targetPlayerPos_;
-
-                // =========================================================
-                // ★ 追加：走るのをやめた瞬間、エディターで設定した「最高の向き」に戻す！
-                // =========================================================
                 player_->SetRotation(targetPlayerRot_);
-
-                // 勝利ステートへ移行！
                 player_->ChangeState(std::make_unique<PlayerStateWin>());
 
                 clearState_ = ClearState::kVictoryMotion;
@@ -185,9 +179,9 @@ void GameClearScene::Update(float deltaTime) {
             }
         }
         break;
-    }
+
     case ClearState::kVictoryMotion:
-        // 勝利ジャンプの頂点（PlayerStateWinで設定した約0.6秒）を待つ
+        // --- 【フェーズ2】 勝利：ジャンプの頂点でフリーズまで待機 ---
         if (stateTimer_ > 0.6f) {
             clearState_ = ClearState::kShowResult;
             stateTimer_ = 0.0f;
@@ -195,7 +189,7 @@ void GameClearScene::Update(float deltaTime) {
         break;
 
     case ClearState::kShowResult:
-        // ロゴとタイマーをフェードイン
+        // --- 【フェーズ3】 リザルト：ロゴとタイムを表示 ＆ ボタン待ち ---
         resultAlpha_ += deltaTime * 2.0f;
         if (resultAlpha_ > 1.0f) resultAlpha_ = 1.0f;
 
@@ -206,36 +200,29 @@ void GameClearScene::Update(float deltaTime) {
         if (clearTimeUI_) clearTimeUI_->SetAlpha(resultAlpha_);
         if (bestTimeUI_) bestTimeUI_->SetAlpha(resultAlpha_);
 
-        // ★ 完全に表示された後、ボタン入力を待つ
         if (resultAlpha_ >= 1.0f) {
             if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
 
-                clearState_ = ClearState::kShowMenu;
-                stateTimer_ = 0.0f;
+                // ★ 修正：メニューへ行く瞬間にタイマーを非表示にする
+                if (clearTimeUI_) clearTimeUI_->SetAlpha(0.0f);
+                if (bestTimeUI_) bestTimeUI_->SetAlpha(0.0f);
 
                 if (player_) {
-                
-                    player_->ChangeState(std::make_unique<PlayerStateWinReturn>());
-
-                    DebugConsole::GetInstance()->AddLog("【RESULT】 メニューへ。自然落下＆ポーズ戻し開始！");
+                    player_->ChangeState(std::make_unique<PlayerStateWinReturn>(targetPlayerPos_.y));
                 }
+
+                clearState_ = ClearState::kShowMenu;
+                stateTimer_ = 0.0f;
+                DebugConsole::GetInstance()->AddLog("【RESULT】 着地開始 ＆ メニュー表示（タイマー非表示）");
             }
-        }
-        break;
-        // タイマーが出てから1秒後にメニュー選択へ
-        if (stateTimer_ > 1.0f) {
-            clearState_ = ClearState::kShowMenu;
-            stateTimer_ = 0.0f;
         }
         break;
 
     case ClearState::kShowMenu:
-    {
-        // メニュー自体のフェードイン
+        // --- 【フェーズ4】 メニュー：リスタート / タイトルの選択 ---
         menuAlpha_ += deltaTime * 2.0f;
         if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
 
-        // 入力
         if (inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
             currentMenuIndex_ = (int)MenuIndex::Retry;
         }
@@ -243,33 +230,71 @@ void GameClearScene::Update(float deltaTime) {
             currentMenuIndex_ = (int)MenuIndex::Title;
         }
 
-        // --- 選択フィードバック演出 ---
-        auto ApplyMenuEffect = [&](Sprite* s, bool isSelected) {
-            if (!s) return;
-            // 選択中：不透明(1.0)＋白(1,1,1)＋少し拡大
-            // 未選択：半透明(0.3)＋暗い(0.5,0.5,0.5)＋元のサイズ
-            float alpha = (isSelected ? 1.0f : 0.3f) * menuAlpha_;
-            Vector4 color = isSelected ? Vector4{ 1,1,1,alpha } : Vector4{ 0.5f,0.5f,0.5f,alpha };
-            s->SetColor(color);
+        {
+            auto ApplyEffect = [&](Sprite* s, bool isSelected) {
+                if (!s) return;
+                float alpha = (isSelected ? 1.0f : 0.3f) * menuAlpha_;
+                Vector4 color = isSelected ? Vector4{ 1, 1, 1, alpha } : Vector4{ 0.5f, 0.5f, 0.5f, alpha };
+                s->SetColor(color);
+                Vector2 baseSize = { 320.0f, 80.0f };
+                s->SetSize(isSelected ? Vector2{ baseSize.x * 1.1f, baseSize.y * 1.1f } : baseSize);
+                };
+            ApplyEffect(retryTextSprite_, currentMenuIndex_ == (int)MenuIndex::Retry);
+            ApplyEffect(titleTextSprite_, currentMenuIndex_ == (int)MenuIndex::Title);
+        }
 
-            // サイズでの強調（元のサイズを320x80と仮定して1.1倍に）
-            Vector2 baseSize = { 320.0f, 80.0f };
-            s->SetSize(isSelected ? Vector2{ baseSize.x * 1.1f, baseSize.y * 1.1f } : baseSize);
-            };
-
-        ApplyMenuEffect(retryTextSprite_, currentMenuIndex_ == (int)MenuIndex::Retry);
-        ApplyMenuEffect(titleTextSprite_, currentMenuIndex_ == (int)MenuIndex::Title);
-
-        // 決定
         if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-            if (currentMenuIndex_ == (int)MenuIndex::Retry) SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-            else SceneManager::GetInstance()->ChangeScene("TITLE");
+            if (player_) {
+                float runSpeed = 15.0f;
+                float pi = 3.14159265f;
+                if (currentMenuIndex_ == (int)MenuIndex::Retry) {
+                    player_->SetVelocity({ -runSpeed, 0.0f, 0.0f });
+                    player_->SetRotation({ 0.0f, -pi / 2.0f, 0.0f });
+                }
+                else {
+                    player_->SetVelocity({ runSpeed, 0.0f, 0.0f });
+                    player_->SetRotation({ 0.0f, pi / 2.0f, 0.0f });
+                }
+                player_->ChangeState(std::make_unique<PlayerStateRun>());
+            }
+            clearState_ = ClearState::kRunOut;
+            stateTimer_ = 0.0f;
+        }
+        break;
+
+    case ClearState::kRunOut:
+        // --- 【フェーズ5】 退場：UI消去 ＆ 画面外へダッシュ ---
+        resultAlpha_ -= deltaTime * 3.0f;
+        menuAlpha_ -= deltaTime * 3.0f;
+        if (resultAlpha_ < 0.0f) resultAlpha_ = 0.0f;
+        if (menuAlpha_ < 0.0f) menuAlpha_ = 0.0f;
+
+        // ロゴなどのフェードアウト（タイマーは既に非表示なので更新しない）
+        if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
+
+        if (retryTextSprite_) {
+            float a = (currentMenuIndex_ == (int)MenuIndex::Retry ? 1.0f : 0.3f) * menuAlpha_;
+            retryTextSprite_->SetColor({ 1,1,1,a });
+        }
+        if (titleTextSprite_) {
+            float a = (currentMenuIndex_ == (int)MenuIndex::Title ? 1.0f : 0.3f) * menuAlpha_;
+            titleTextSprite_->SetColor({ 1,1,1,a });
+        }
+
+        if (stateTimer_ > 1.5f) {
+            if (currentMenuIndex_ == (int)MenuIndex::Retry) {
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            }
+            else {
+                SceneManager::GetInstance()->ChangeScene("TITLE");
+            }
         }
         break;
     }
-    }
 
-    // UIの行列更新
+    // ----------------------------------------------------------------
+    // 3. 描画用データの最終更新
+    // ----------------------------------------------------------------
     if (clearTimeUI_) clearTimeUI_->Update(deltaTime);
     if (bestTimeUI_) bestTimeUI_->Update(deltaTime);
 

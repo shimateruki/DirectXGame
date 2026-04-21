@@ -1,5 +1,25 @@
 {
-    "Overrides": {},
+    "Overrides": {
+        "camertimer": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "fixedTargetPos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "trackEyeX": false,
+            "trackEyeY": false,
+            "trackEyeZ": false,
+            "trackTargetX": true,
+            "trackTargetY": true,
+            "trackTargetZ": true
+        }
+    },
     "angle": [
         25.0,
         0.0,
@@ -9,14 +29,14 @@
     "cameraSensitivity": 0,
     "distance": 15.0,
     "fixedPointAngle": [
-        -0.05266762897372246,
-        -0.015000000596046448,
+        0.004332277458161116,
+        -0.01199999637901783,
         0.0
     ],
     "fixedPointPos": [
-        2.0969395637512207,
-        2.897380828857422,
-        -54.09939956665039
+        3.32423734664917,
+        2.775404214859009,
+        -47.16681671142578
     ],
     "gameFollowMode": 5,
     "height": 5.0,

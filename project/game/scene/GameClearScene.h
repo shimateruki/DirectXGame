@@ -82,7 +82,8 @@ private:
         kRunIn,
         kVictoryMotion, // プレイヤーが飛ぶまで
         kShowResult,    // ロゴとタイムのフェードイン
-        kShowMenu       // メニュー選択
+        kShowMenu,       // メニュー選択
+        kRunOut
     };
     ClearState clearState_ = ClearState::kVictoryMotion;
     float stateTimer_ = 0.0f;
