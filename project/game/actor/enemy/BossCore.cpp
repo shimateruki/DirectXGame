@@ -369,8 +369,13 @@ void BossCore::Update(float deltaTime) {
         }
     }
 
+    // ====================================================
+     // 登場演出中か、戦闘開始後のみアニメーションタイマーを進める！
+     // ====================================================
     if (SceneManager::GetInstance()->IsPlaying()) {
-        s_globalIdleTimer += deltaTime;
+        if (isAppearing_ || isBattleStarted_) {
+            s_globalIdleTimer += deltaTime;
+        }
     }
 
     UpdateFlyingBlocks(deltaTime);
@@ -410,6 +415,44 @@ void BossCore::Update(float deltaTime) {
 
             ChangeState(State::Idle);
             isFirstFrame_ = false;
+
+            // ====================================================
+            // ★ 追加：最初のフレームで、装甲ブロックをランダムに散らかす！
+            // ====================================================
+            blockStartPos_.clear(); // ★ armorManager_ ではなく、BossCoreが直接持っている変数を使います
+            Vector3 bossPos = GetTranslate();
+
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                // ボスを中心に、半径15〜30の範囲に散らす
+                float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
+                float distance = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 15.0f;
+
+                // ====================================================
+                // ★ 修正：ブロックは「ボスの子供（ローカル座標）」なので計算を変えます！
+                // ボスがどんな高さにいても、(0.5f - ボスの高さ) にすることで
+                // ワールド空間での高さを強制的に 0.5f (地面) に揃えることができます！
+                // ====================================================
+                Vector3 scatterPos = {
+                    std::cos(angle) * distance, // X: 子オブジェクトなので bossPos.x を足さなくてOK！
+                    0.5f - bossPos.y,           // Y: 地面の高さ(0.5f) - ボスの高さ
+                    std::sin(angle) * distance  // Z: 子オブジェクトなので bossPos.z を足さなくてOK！
+                };
+                blockStartPos_.push_back(scatterPos);
+
+                // 初期位置にブロックをワープさせておく
+                if (armorBlocks_[i]) {
+                    armorBlocks_[i]->SetTranslate(scatterPos);
+
+                    // ただの瓦礫感を出すため、初期角度をめちゃくちゃにする！
+                    float rX = (static_cast<float>(rand()) / RAND_MAX) * 3.1415f;
+                    float rY = (static_cast<float>(rand()) / RAND_MAX) * 3.1415f;
+                    float rZ = (static_cast<float>(rand()) / RAND_MAX) * 3.1415f;
+                    armorBlocks_[i]->SetRotation({ rX, rY, rZ });
+
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
         }
 
         switch (state_) {
@@ -639,45 +682,53 @@ void BossCore::TakeBodyDamage(float damage) {
 
 void BossCore::UpdateIdle(float deltaTime) {
     if (isWaitingForDeath_) {
-        SetColor({ 0.5f, 0.5f, 0.5f, 1.0f }); // ボロボロの色にする
-
-        // ブロックも地面に落として機能停止させる
-        for (Object3d* block : armorBlocks_) {
-            if (block) {
-                Vector3 pos = block->GetTranslate();
-                if (pos.y > 0.0f) pos.y -= 20.0f * deltaTime; // 地面に落ちる
-                block->SetTranslate(pos);
-            }
-        }
-        return; // これ以上何もしない（攻撃にも移行しない）
+        // (トドメ待ちのボロボロ処理はそのまま)
+        return;
     }
 
-    // ★ 待機中は常にブロックをランダムスケールの周回軌道に乗せる！
+    // ====================================================
+    // ★ 修正：登場演出に合わせて合体タイマーを進め、イージングで集める！
+    // ====================================================
+    // 演出中なら合体タイマーを進める（戦闘中は常にMAXの2.0fにする）
+    if (isAppearing_) {
+        assemblyTimer_ += deltaTime;
+    }
+    else if (isBattleStarted_) {
+        assemblyTimer_ = 2.0f;
+    }
+
+    // 2.0秒かけて 0.0f 〜 1.0f になる合体割合(t)
+    float t = std::min(assemblyTimer_ / 2.0f, 1.0f);
+
+    // カッコいいイージング計算（3乗アウト：最初は早く、ボスに近づくにつれてゆっくり）
+    float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
+
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
-        armorBlocks_[i]->SetTranslate(orbit.pos);
+
+        if (i < blockStartPos_.size()) {
+            // ★ ここが魔法！「散らばった位置(blockStartPos_)」から「軌道の位置(orbit)」へスーーッと補間！
+            Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+            armorBlocks_[i]->SetTranslate(pos);
+        }
+        else {
+            armorBlocks_[i]->SetTranslate(orbit.pos);
+        }
+
         armorBlocks_[i]->SetScale(orbit.scale);
         armorBlocks_[i]->SetRotation(orbit.rot);
         armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
     }
 
     // ==========================================
-    // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める！
+    // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める
     // ==========================================
-    //if (isBattleStarted_) {
-    //    animTimer_ += deltaTime;
+    if (isBattleStarted_) {
+        animTimer_ += deltaTime;
 
-    //    // 2.0秒待機したら攻撃へ
-    //    if (animTimer_ >= 2.0f) {
-    //        ChangeState(State::Attack);
-    //    }
-    //}
-
-    animTimer_ += deltaTime;
-
-    // 2.0秒待機したら攻撃へ
-    if (animTimer_ >= 2.0f) {
-        ChangeState(State::Attack);
+        if (animTimer_ >= 2.0f) {
+            ChangeState(State::Attack);
+        }
     }
 }
 

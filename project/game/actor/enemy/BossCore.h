@@ -210,4 +210,6 @@ private:
     bool isAppearing_ = false;  // 登場演出中かどうか
     int appearancePhase_ = 0;   // 演出の進行度
     float appearanceTimer_ = 0.0f;
+
+    float assemblyTimer_ = 0.0f;
 };
