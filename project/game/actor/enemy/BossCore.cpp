@@ -988,6 +988,16 @@ void BossCore::StartDeathSequence() {
 
     DebugConsole::GetInstance()->AddLog("【撃破】 ボス沈黙…！！");
 
+    // ====================================================
+    // ボスに付いているすべてのパーティクルを止める！
+    // これにより、新しいパーティクルが発生しなくなります。
+    // ====================================================
+    for (auto& emitter : particleEmitters_) {
+        if (emitter) {
+            emitter->Stop();
+        }
+    }
+
     if (currentAttack_) currentAttack_.reset();
     isWaitingForDeath_ = true;
     ChangeState(State::Idle);
