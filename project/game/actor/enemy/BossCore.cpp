@@ -607,10 +607,17 @@ void BossCore::ChangeState(State nextState) {
 
         // 前回と同じ攻撃を除外しながら、有効な攻撃の合計重みを計算
         for (const auto& a : attackList) {
-            if (a.id != lastAttack) {
-                candidates.push_back(a);
-                totalWeight += a.weight;
+            // 1. 前回と同じ攻撃は選ばない
+            if (a.id == lastAttack) continue;
+
+            // 2. 吸収攻撃(ID: 7)の場合、装甲が満タン(10個)なら候補から外す！
+            // ※IsArmorFull() は以前作った「10個あって壊れていないか」を判定する関数です
+            if (a.id == 7 && IsArmorFull()) {
+                continue;
             }
+
+            candidates.push_back(a);
+            totalWeight += a.weight;
         }
 
         // 重みに基づいた抽選
