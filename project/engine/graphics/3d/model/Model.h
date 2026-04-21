@@ -75,7 +75,7 @@ public:
         Vector3 tangent;
         Vector4 boneWeights; // 重み
         Vector4 boneIndices; // 骨番号
-   
+
     };
 
     // --- データまとめる用 ---
@@ -125,8 +125,8 @@ public: // メンバ関数
         ID3D12Resource* pointLightResource,
         ID3D12Resource* spotLightResource,
         ID3D12Resource* overrideMaterialResource = nullptr, uint32_t normalMapHandle = 0, uint32_t ormMapHandle = 0, uint32_t overrideTextureHandle = 0,
-        uint32_t instanceCount = 1,          
-        uint32_t startInstanceLocation = 0   
+        uint32_t instanceCount = 1,
+        uint32_t startInstanceLocation = 0
     );
     void DrawShadow(ID3D12Resource* wvpResource);
     /// <summary>
@@ -147,7 +147,11 @@ public: // メンバ関数
     void ApplyAnimation(const Animation& animation, float time);
     const Animation* GetAnimation(const std::string& name) const;
     uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
+    Vector3 GetLocalAabbMin() const { return localAabbMin_; }
+    Vector3 GetLocalAabbMax() const { return localAabbMax_; }
+
     void DrawMeshOnly();
+    void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
 private: // 内部処理関数
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);
@@ -165,7 +169,7 @@ private: // 内部処理関数
     void CreateBoneBuffer();
     void UpdateBoneBuffer();
 
-  
+
 
 private: // メンバ変数
     ModelCommon* common_ = nullptr;
@@ -177,10 +181,11 @@ private: // メンバ変数
     Math math_;
     Vector3 size_ = { 1.0f, 1.0f, 1.0f };   // デフォルトは1x1x1
     Vector3 center_ = { 0.0f, 0.0f, 0.0f }; // デフォルトは原点
-
     // --- ボーンバッファ関連 ---
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
     BoneForGPU* boneMappedData_ = nullptr;
     uint32_t boneSrvIndex_ = 0; //  ボーン情報SRVのインデックス
 
+    Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };
 };
