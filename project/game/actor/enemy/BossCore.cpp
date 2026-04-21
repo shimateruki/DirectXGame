@@ -633,27 +633,14 @@ void BossCore::StartAppearance() {
     if (isAppearing_ || isBattleStarted_) return;
 
     isAppearing_ = true;
-    appearancePhase_ = 1;
-    appearanceTimer_ = 2.0f; // 2秒間、ボスをドアップで映す！
 
-    DebugConsole::GetInstance()->AddLog("【EVENT】 ボス登場演出スタート！！");
+    // ====================================================
+    // ★ 変更：まずは「フェーズ0（1秒間の完全静止）」からスタート！
+    // ====================================================
+    appearancePhase_ = 0;
+    appearanceTimer_ = 1.0f; // 1秒待つ！
 
-    // カメラをボスの正面に滑らかに（1秒かけて）移動させる！
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        Camera::CameraOverrideParams params;
-        params.duration = 1.0f;
-        params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
-
-        Vector3 bossPos = GetTranslate();
-
-        // ====================================================
-        // ★ 修正：カメラの「ターゲット（見る場所）」をボスの中心に合わせる！
-        // ====================================================
-        params.fixedEyePos = { bossPos.x, bossPos.y + 2.0f, bossPos.z - 20.0f };
-        params.fixedTargetPos = { bossPos.x, bossPos.y + 2.0f, bossPos.z }; // Yを +5.0f から +2.0f に下げました！
-
-        camera->StartOverride(params);
-    }
+    DebugConsole::GetInstance()->AddLog("【EVENT】 ボス部屋到達…（1秒間の静寂）");
 }
 
 void BossCore::TakeBodyDamage(float damage) {
@@ -687,18 +674,24 @@ void BossCore::UpdateIdle(float deltaTime) {
     }
 
     // ====================================================
-    // ★ 修正：登場演出に合わせて合体タイマーを進め、イージングで集める！
+    // フェーズ1（咆哮開始）になってから、初めて合体タイマーを進める！
     // ====================================================
-    // 演出中なら合体タイマーを進める（戦闘中は常にMAXの2.0fにする）
-    if (isAppearing_) {
+    if (appearancePhase_ == 1 || (!isBattleStarted_ && assemblyTimer_ > 0.0f)) {
         assemblyTimer_ += deltaTime;
     }
     else if (isBattleStarted_) {
-        assemblyTimer_ = 2.0f;
+        assemblyTimer_ = 3.0f; // 戦闘中はMAX(3秒)にしておく
     }
 
-    // 2.0秒かけて 0.0f 〜 1.0f になる合体割合(t)
-    float t = std::min(assemblyTimer_ / 2.0f, 1.0f);
+    // ====================================================
+    // ★ ここが圧倒的カッコよさの秘密！
+    // 1.8秒（咆哮が終わって元のサイズに戻る瞬間）までは 0% で完全待機。
+    // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッ！と集める！
+    // ====================================================
+    float t = 0.0f;
+    if (assemblyTimer_ > 1.8f) {
+        t = std::min((assemblyTimer_ - 1.8f) / 0.7f, 1.0f);
+    }
 
     // カッコいいイージング計算（3乗アウト：最初は早く、ボスに近づくにつれてゆっくり）
     float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
@@ -707,7 +700,7 @@ void BossCore::UpdateIdle(float deltaTime) {
         OrbitData orbit = GetIdleOrbit(i);
 
         if (i < blockStartPos_.size()) {
-            // ★ ここが魔法！「散らばった位置(blockStartPos_)」から「軌道の位置(orbit)」へスーーッと補間！
+            // 散らばった位置(blockStartPos_)から、軌道の位置(orbit)へ補間！
             Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
             armorBlocks_[i]->SetTranslate(pos);
         }
@@ -1160,22 +1153,58 @@ void BossCore::UpdateAppearance(float deltaTime) {
 
     appearanceTimer_ -= deltaTime;
 
-    if (appearanceTimer_ <= 0.0f) {
-        if (appearancePhase_ == 1) {
-            // ★ 2秒経過：カメラをプレイヤー（元の視点）に戻す！
-            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                camera->EndOverride(1.0f); // 1秒かけて戻る
-            }
+    // ====================================================
+    // ★ 追加：フェーズ0（1秒間の待機）
+    // ====================================================
+    if (appearancePhase_ == 0) {
+        if (appearanceTimer_ <= 0.0f) {
+            // 1秒の沈黙が終わった！フェーズ1（咆哮）へ移行し、カメラを動かす！
+            appearancePhase_ = 1;
+            appearanceTimer_ = 2.0f; // 咆哮の2秒間
+            DebugConsole::GetInstance()->AddLog("【EVENT】 ボス起動！！");
 
-            appearancePhase_ = 2;
-            appearanceTimer_ = 1.0f; // カメラが戻り切るまでの1秒を待つ
+            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                CameraEditor::GetInstance()->PlayOverrideCamera(camera, "a");
+            }
         }
-        else if (appearancePhase_ == 2) {
-            // ★ カメラが戻り切ったら、ついに戦闘開始！！
-            isAppearing_ = false;
-            StartBattle(); // ここで前回作った StartBattle() を呼ぶ！
-        }
+        return; // 待機中はここで処理を終わる（ボスは微動だにしない）
     }
 
-    // （※もし演出中にボスを震わせたり、オーラを強くしたりしたければここに書きます）
+    // ====================================================
+    // フェーズ1：咆哮とスケール変更
+    // ====================================================
+    float t = 2.0f - appearanceTimer_;
+    Vector3 currentScale = { 1.0f, 1.0f, 1.0f };
+
+    if (t < 0.5f) {
+        // ① 息を吸い込む
+        float p = t / 0.5f;
+        float shrink = std::sin(p * 3.1415f) * 0.2f;
+        currentScale = { 1.0f - shrink, 1.0f - shrink, 1.0f - shrink };
+    }
+    else if (t < 1.8f) {
+        // ② 咆哮・ブルブル震える
+        float p = (t - 0.5f) / 1.3f;
+        float swell = (1.0f - std::pow(p, 2.0f)) * 0.3f;
+
+        float shakeX = std::sin(t * 60.0f) * 0.05f;
+        float shakeY = std::cos(t * 65.0f) * 0.05f;
+        float shakeZ = std::sin(t * 70.0f) * 0.05f;
+
+        currentScale = { 1.0f + swell + shakeX, 1.0f + swell + shakeY, 1.0f + swell + shakeZ };
+        SetColor({ 1.0f, 0.6f, 0.6f, 1.0f });
+    }
+    else {
+        // ③ スッと元に戻る
+        currentScale = { 1.0f, 1.0f, 1.0f };
+        SetColor(originalColor_);
+    }
+
+    SetScale(currentScale);
+
+    if (appearanceTimer_ <= 0.0f) {
+        isAppearing_ = false;
+        SetScale({ 1.0f, 1.0f, 1.0f });
+        SetColor(originalColor_);
+    }
 }

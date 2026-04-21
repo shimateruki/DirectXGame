@@ -690,24 +690,20 @@ void GamePlayScene::Update(float deltaTime) {
 		}
 
 		// ====================================================
-		// ★ 修正：3.0秒経ったら、問答無用でムービー終了！操作を返す！
-		// （ボスのカメラ演出が2秒＋戻るのに1秒＝計3秒）
+		// ★ 修正：全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
 		// ====================================================
-		if (movieTimer_ >= 3.0f) {
+		if (movieTimer_ >= 4.0f) {
 			isBossMoviePlaying_ = false;
 
-			// 念のため、カメラも強制的にプレイヤー視点に戻す命令を出す
 			if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
 				camera->EndOverride(1.0f);
 			}
 
-			// プレイヤーの操作と物理演算を完全復活させる！
 			if (player_) {
 				player_->SetIsControlActive(true);
 				player_->SetIsPhysicsActive(true);
 			}
 
-			// ボスにも「戦え！」と強制的に合図を送る
 			boss_->StartBattle();
 		}
 	}
@@ -966,13 +962,9 @@ void GamePlayScene::StartBossAppearanceMovie() {
 
 	isBossMoviePlaying_ = true;
 	hasBossAppeared_ = true;
-
-	// ====================================================
-	// ★ 追加：シーン側で時間を計るためにタイマーをリセット！
-	// ====================================================
 	movieTimer_ = 0.0f;
 
-	// プレイヤーの慣性を消し、物理演算も切って完全固定！
+	// プレイヤーを固定
 	if (player_) {
 		movieStoredPlayerPos_ = player_->GetWorldPosition();
 		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
@@ -980,6 +972,19 @@ void GamePlayScene::StartBossAppearanceMovie() {
 		player_->SetIsPhysicsActive(false);
 	}
 
-	// ボス側の演出（ブロックが集まる等）はそのまま開始
+	// ====================================================
+	// ★ 追加：a.json（カメラのアニメーション）を再生する！
+	// ====================================================
+	for (auto& obj : objectManager_->GetObjects()) {
+		if (obj->GetName() == "Cinematic_Camera_Boss") { // ボス用のシネマティックカメラオブジェクトを用意しておく
+			if (obj->recorder_) {
+				// "a" という名前のJSONを再生！
+				obj->recorder_->Play("a", false, false, true);
+			}
+			break;
+		}
+	}
+
+	// ボス側にはカメラ移動以外の演出（ブロックが集まる等）だけをやらせる
 	boss_->StartAppearance();
 }

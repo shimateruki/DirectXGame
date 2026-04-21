@@ -1,5 +1,24 @@
 {
     "Overrides": {
+        "a": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                0.22204479575157166,
+                13.760502815246582,
+                -12.058536529541016
+            ],
+            "fixedTargetPos": [
+                0.07232095301151276,
+                13.160861015319824,
+                -2.0776538848876953
+            ],
+            "trackEyeX": false,
+            "trackEyeY": false,
+            "trackEyeZ": false,
+            "trackTargetX": false,
+            "trackTargetY": false,
+            "trackTargetZ": false
+        },
         "down": {
             "duration": 1.0,
             "fixedEyePos": [
