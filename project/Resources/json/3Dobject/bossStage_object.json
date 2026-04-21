@@ -7447,7 +7447,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
+                -0.0,
                 0.0,
                 0.0
             ],
@@ -7907,7 +7907,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
+                -0.0,
                 0.0,
                 0.0
             ],
@@ -7999,7 +7999,7 @@
                 "recordPathName": ""
             },
             "rotation": [
-                0.0,
+                -0.0,
                 0.0,
                 0.0
             ],
@@ -8023,8 +8023,8 @@
             "collider": {
                 "center": [
                     0.0,
-                    25.677406311035156,
-                    -1.8491449356079102
+                    0.0,
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -8032,25 +8032,25 @@
                     0.0
                 ],
                 "size": [
-                    40.0,
-                    42.5,
-                    30.0
+                    0.0,
+                    0.0,
+                    0.0
                 ],
                 "type": 2
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.4864864945411682,
+                0.34185537695884705,
+                0.34185537695884705,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 0.24199999868869781,
+            "envIntensity": 0.15800000727176666,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -8067,7 +8067,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.03400000184774399,
             "modelName": "map_tutorial_02",
             "myEventID": -1,
             "name": "Tutorial_Ceiling",
@@ -8095,7 +8095,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.7919999957084656,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -8133,16 +8133,16 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.21621620655059814,
+                0.21538139879703522,
+                0.21538139879703522,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": false,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.0729999989271164,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -8159,7 +8159,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.6629999876022339,
             "modelName": "map_tutorial_09",
             "myEventID": -1,
             "name": "Tutorial_Platform",
@@ -8187,7 +8187,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.5,
+            "roughness": 0.7300000190734863,
             "saveCategory": "Object",
             "scale": [
                 1.0,

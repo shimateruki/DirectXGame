@@ -283,6 +283,40 @@ void GamePlayScene::Initialize() {
 		this->hasBridgeDropped_ = false;
 		this->hasFinishedTutorial_ = false;
 		this->doorOpenProgress_ = 0.0f; // ドアを閉める
+
+		// =======================================================
+		// ★ チュートリアルプラットフォーム降下演出の初期化
+		// =======================================================
+		for (auto& obj : objects_ref) {
+			if (obj->GetName() == "Tutorial_Platform") {
+				this->tutorialPlatform_ = obj.get();
+				// 初期位置を y:100 に (念のため)
+				obj->GetTransform()->translate.y = 100.0f;
+				obj->UpdateWorldMatrix();
+				break;
+			}
+		}
+
+		if (this->tutorialPlatform_ && player_) {
+			// プレイヤーをプラットフォームの真上に配置
+			// 本来の重力時の位置関係を維持するため、現状の差分をオフセットとして記録
+			Vector3 platformPos = this->tutorialPlatform_->GetTransform()->translate;
+			
+			// プレイヤーを初期位置へ (x, z はプラットフォームに合わせ、y は適切な高さへ)
+			// ユーザーの 94.7f という数値は、プラットフォーム 100.0f に対して -5.3f のオフセットを示唆
+			this->tutorialPlatformOffset_ = -5.3f;
+			player_->GetTransform()->translate = { 0.0f, platformPos.y + tutorialPlatformOffset_, -244.0f };
+			player_->UpdateLocalMatrix();
+			player_->UpdateWorldMatrix();
+
+			// 演出開始
+			movieState_ = MovieState::kTutorialPlatformDescent;
+			movieTimer_ = 0.0f;
+
+			// 重力に任せると跳ねるため、物理を無効化して手動更新にする
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
+		}
 	}
 
 	dxCommon_->FlushCommandQueue(false);
@@ -505,6 +539,41 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
+	}
+	else if (movieState_ == MovieState::kTutorialPlatformDescent) {
+		// =======================================================
+		// ★ チュートリアルプラットフォーム降下演出の実装
+		// =======================================================
+		if (tutorialPlatform_ && player_) {
+			// 操作無効化、重力無効（手動で吸着させるため）
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
+
+			// プラットフォームを降下させる
+			Transform* trans = tutorialPlatform_->GetTransform();
+			if (trans->translate.y > 29.6f) {
+				// 降下速度 (1秒間に約15ユニット程度。100->29.6 なので約4.7秒)
+				trans->translate.y -= 15.0f * deltaTime;
+				if (trans->translate.y < 29.6f) {
+					trans->translate.y = 29.6f;
+				}
+				tutorialPlatform_->UpdateWorldMatrix();
+			}
+			else {
+				// 到着
+				movieState_ = MovieState::kNone;
+				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true); // 物理復帰
+			}
+
+			// プレイヤーのY座標をプラットフォームに同期（重力の代わりに手動で吸着）
+			player_->GetTransform()->translate.y = trans->translate.y + tutorialPlatformOffset_;
+			player_->UpdateWorldMatrix();
+		} else {
+			// 万が一対象がいない場合は即終了
+			movieState_ = MovieState::kNone;
+			if (player_) player_->SetIsPhysicsActive(true);
+		}
 	}
 
 		// --- ロックオン & カメラ制御 ---
