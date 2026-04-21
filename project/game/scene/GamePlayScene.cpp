@@ -327,7 +327,9 @@ void GamePlayScene::Update(float deltaTime) {
 				SceneManager::GetInstance()->ChangeScene("TITLE");
 			}
 		}
-
+		for (auto& sprite : sprites_) {
+			sprite->Update();
+		}
 		// =======================================================
 		// ★超重要：ポーズ中はここで関数を強制終了し、ゲームの時間を止める！
 		// =======================================================
