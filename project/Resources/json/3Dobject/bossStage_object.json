@@ -3781,7 +3781,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    29.549999237060547,
+                    26.049999237060547,
                     0.0
                 ],
                 "rotation": [
@@ -3791,7 +3791,7 @@
                 ],
                 "size": [
                     40.0,
-                    0.5,
+                    4.0,
                     30.0
                 ],
                 "type": 3
@@ -3979,7 +3979,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 3,
             "color": [
                 1.0,
@@ -6603,7 +6603,7 @@
             "ormMapPath": "",
             "parentName": "",
             "position": [
-                -20.0,
+                -5.0,
                 28.0,
                 -200.0
             ],
@@ -6695,7 +6695,7 @@
             "ormMapPath": "",
             "parentName": "",
             "position": [
-                20.0,
+                5.0,
                 28.0,
                 -200.0
             ],
