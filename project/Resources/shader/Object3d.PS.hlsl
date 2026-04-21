@@ -3,7 +3,7 @@
 static const int kMaxPointLights = 100;
 static const int kMaxSpotLights = 100;
 
-struct PixelShanderOutput
+struct PixelShaderOutput
 {
     float32_t4 color : SV_TARGET0;
 };
@@ -27,7 +27,6 @@ struct Material
     float32_t3 padding2;
 };
 
-
 struct DirectionalLight
 {
     float32_t4 color;
@@ -37,8 +36,8 @@ struct DirectionalLight
     float fogStart;
     float fogEnd;
     float32_t3 fogColor;
-    float fogHeightMin; // 霧が最も濃い（100%溜まっている）高さ (例: -5.0f)
-    float fogHeightMax; // 霧が完全に晴れる高さ (例: 5.0f)
+    float fogHeightMin; // 霧が最も濃い（100%溜まっている）高さ
+    float fogHeightMax; // 霧が完全に晴れる高さ
     float volumetricIntensity;
     int volumetricSteps;
     int enableFog;
@@ -157,9 +156,9 @@ float3 CalcPBRLight(float3 L, float3 V, float3 N, float3 radiance, float3 albedo
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
-PixelShanderOutput main(VecrtexShaderOutput input)
+PixelShaderOutput main(VertexShaderOutput input)
 {
-    PixelShanderOutput output;
+    PixelShaderOutput output;
     float4 transformedUV = mul(float32_t4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float32_t4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
     
@@ -172,6 +171,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
     // W除算 (同次座標系からデカルト座標系へ)
     float3 shadowPos = input.shadowPosition.xyz / input.shadowPosition.w;
+    
     // クリップ空間(-1 ～ 1) を UV空間(0 ～ 1) に変換
     float2 shadowUV = float2(
         (shadowPos.x + 1.0f) / 2.0f,
@@ -185,7 +185,6 @@ PixelShanderOutput main(VecrtexShaderOutput input)
     {
         float bias = 0.005f;
         shadowFactor = 0.0f;
-
 
         float2 texelSize = 1.0f / 2048.0f;
         float spread = 1.5f;
@@ -206,6 +205,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
         }
         shadowFactor /= 9.0f;
     }
+    
     float NdotL;
     float cos;
     
@@ -242,17 +242,14 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float3 envR = gEnvTexture.SampleLevel(gSampler, RefractR, 0.0f).rgb;
                     float3 envG = gEnvTexture.SampleLevel(gSampler, RefractG, 0.0f).rgb;
                     float3 envB = gEnvTexture.SampleLevel(gSampler, RefractB, 0.0f).rgb;
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
+                
                     float3 refractionColor = float3(envR.r, envG.g, envB.b) * gMaterial.envIntensity;
-                    
+                
                     float F0_glass = 0.04f;
                     float fresnel = F0_glass + (1.0f - F0_glass) * pow(1.0f - NdotV, 5.0f);
                     float darkRim = smoothstep(0.6f, 1.0f, 1.0f - pow(NdotV, 0.5f));
 
                     float3 ReflectVec = reflect(-V, N);
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
                     float3 reflectionColor = gEnvTexture.SampleLevel(gSampler, ReflectVec, 0.0f).rgb * gMaterial.envIntensity;
 
                     float3 L_Dir = normalize(-gDirectionalLight.direction);
@@ -294,18 +291,16 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float3 envR = gEnvTexture.SampleLevel(gSampler, RefractR, 0.0f).rgb;
                     float3 envG = gEnvTexture.SampleLevel(gSampler, RefractG, 0.0f).rgb;
                     float3 envB = gEnvTexture.SampleLevel(gSampler, RefractB, 0.0f).rgb;
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
+                
                     float3 refractionColor = float3(envR.r, envG.g, envB.b) * gMaterial.envIntensity;
-                    
+                
                     float3 iceBaseColor = gMaterial.color.rgb * textureColor.rgb;
                     refractionColor = lerp(refractionColor, iceBaseColor, 0.4f);
 
                     float F0_ice = 0.02f;
                     float fresnel = F0_ice + (1.0f - F0_ice) * pow(1.0f - NdotV, 5.0f);
                     float3 ReflectVec = reflect(-V, N);
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
+                
                     float3 reflectionColor = gEnvTexture.SampleLevel(gSampler, ReflectVec, 0.0f).rgb * gMaterial.envIntensity;
 
                     float3 L_Dir = normalize(-gDirectionalLight.direction);
@@ -326,7 +321,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
                     float3 emission = baseColor * rimLight * 3.0f;
                     float3 frontColor = baseColor * 0.2f;
-                    
+                
                     output.color.rgb = emission + frontColor;
                     output.color.a = saturate(rimLight * 2.0f + 0.1f) * gMaterial.color.a * textureColor.a;
                 }
@@ -343,7 +338,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     {
                         discard;
                     }
-                    
+                
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
                     float edgeWidth = 0.08f;
 
@@ -365,14 +360,14 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                 else if (gMaterial.materialType == 5)
                 {
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
-                    
+                
                     float luminance = dot(baseColor, float3(0.299f, 0.587f, 0.114f));
                     float glowFactor = smoothstep(0.4f, 0.0f, luminance);
                     float3 glowColor = float3(2.5f, 0.8f, 0.0f) * gMaterial.color.rgb;
 
                     float NdotL = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
                     float3 litColor = baseColor * gDirectionalLight.color.rgb * NdotL;
-                    
+                
                     output.color.rgb = litColor + (glowColor * glowFactor);
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
@@ -384,16 +379,16 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float3 N = normalize(input.normal);
                     float3 L = normalize(-gDirectionalLight.direction);
                     float3 V = normalize(gCamera.worldPosition - input.worldPosition);
-                    
+                
                     float NdotL = dot(N, L);
                     float celFactor = (NdotL > 0.0f) ? 1.0f : 0.3f;
-                    
+                
                     float NdotV = saturate(dot(N, V));
                     float outline = (NdotV < 0.25f) ? 0.0f : 1.0f;
-                    
+                
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
                     float3 finalColor = baseColor * gDirectionalLight.color.rgb * celFactor;
-                    
+                
                     output.color.rgb = finalColor * outline;
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
@@ -405,7 +400,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float3 ormColor = gOrmMap.Sample(gSampler, input.texcoord).rgb;
                     float roughness = gMaterial.roughness * ormColor.g;
                     float metallic = gMaterial.metallic * ormColor.b;
-                    
+                
                     float3 N = normalize(input.normal);
 
                     if (gMaterial.enableNormalMap == 1)
@@ -425,20 +420,20 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
                     float3 Lo = float3(0.0f, 0.0f, 0.0f);
 
-                    // 1. 平行光源
+                // 1. 平行光源
                     float3 L_dir = normalize(-gDirectionalLight.direction);
-                    
-                    // 【青みのある影のブレンド】
-                    // shadowFactorが 0.0(影) の時は青い光、1.0(日向) の時は本来の光(白) になるように補間する
-                    float3 shadowTint = float3(0.15f, 0.25f, 0.5f); // ★ここの数値で影の青さを調整できます！
+                
+                // 【青みのある影のブレンド】
+                // shadowFactorが 0.0(影) の時は青い光、1.0(日向) の時は本来の光(白) になるように補間する
+                    float3 shadowTint = float3(0.15f, 0.25f, 0.5f);
                     float3 lightIntensity = lerp(shadowTint, float3(1.0f, 1.0f, 1.0f), shadowFactor);
-                    
-                    // 本来の光の強さに、青みを帯びたグラデーションを掛け合わせる
+                
+                // 本来の光の強さに、青みを帯びたグラデーションを掛け合わせる
                     float3 radiance_dir = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * lightIntensity;
-                    
+                
                     Lo += CalcPBRLight(L_dir, V, N, radiance_dir, albedo, roughness, metallic, F0);
 
-                    // 2. 点光源
+                // 2. 点光源
                     for (int i = 0; i < gPointLights.activeCount; ++i)
                     {
                         PointLight pLight = gPointLights.lights[i];
@@ -450,7 +445,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                         Lo += CalcPBRLight(L_point, V, N, radiance_point, albedo, roughness, metallic, F0);
                     }
 
-                    // 3. スポットライト
+                // 3. スポットライト
                     for (int j = 0; j < gSpotLights.activeCount; ++j)
                     {
                         SpotLight sLight = gSpotLights.lights[j];
@@ -464,19 +459,15 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                         Lo += CalcPBRLight(L_spot, V, N, radiance_spot, albedo, roughness, metallic, F0);
                     }
 
-                    // 4. 環境マップ (IBL)
+                // 4. 環境マップ (IBL)
                     float3 ambient = float3(0.0f, 0.0f, 0.0f);
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
+                
                     if (gMaterial.enableEnvMap == 1)
                     {
                         float3 R = reflect(-V, N);
-                        const float MAX_REFLECTION_LOD = 5.0f;
-                        float3 envColor = gEnvTexture.SampleLevel(gSampler, R, roughness * MAX_REFLECTION_LOD).rgb;
-                        
-                        // ★ gDirectionalLight から gMaterial に変更
+                        float3 envColor = gEnvTexture.Sample(gSampler, R).rgb;
                         envColor *= gMaterial.envIntensity;
-                        
+                    
                         float3 F_ibl = FresnelSchlick(max(dot(N, V), 0.0f), F0);
                         float3 kS_ibl = F_ibl;
                         float3 kD_ibl = 1.0f - kS_ibl;
@@ -495,12 +486,12 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     output.color.rgb = Lo + ambient;
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
+            
                 if (gDirectionalLight.enableFog != 0 && output.color.a > 0.0f)
                 {
-                
-            // ===========================================================
-            //  距離 ＋ ハイト（高さ）フォグ
-            // ===========================================================
+                // ===========================================================
+                //  距離 ＋ ハイト（高さ）フォグ
+                // ===========================================================
                     float3 fogColor = gDirectionalLight.fogColor;
                     float fogStart = gDirectionalLight.fogStart;
                     float fogEnd = gDirectionalLight.fogEnd;
@@ -513,18 +504,18 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     float distanceFogFactor = saturate((distanceToCamera - fogStart) / fogRange);
 
                 // ② 高さによる霧の濃さ (0.0 ～ 1.0)
-                // 低い(Min)ほど 1.0 に近づき、高い(Max)ほど 0.0 になるように計算
                     float heightRange = max(fogHeightMax - fogHeightMin, 0.01f);
                     float heightFogFactor = 1.0f - saturate((input.worldPosition.y - fogHeightMin) / heightRange);
 
-                // ③ 2つのフォグを掛け合わせる！（遠くて、かつ低い場所ほど濃くなる）
+                // ③ 2つのフォグを掛け合わせる
                     float finalFogFactor = distanceFogFactor * heightFogFactor;
 
                 // ピクセルの色とフォグの色を合成
                     output.color.rgb = lerp(output.color.rgb, fogColor, finalFogFactor);
-               // ===========================================================
-               // ボリューメトリックフォグ (光の筋 / ゴッドレイ) の計算
-               // ===========================================================
+                
+                // ===========================================================
+                // ボリューメトリックフォグ (光の筋 / ゴッドレイ) の計算
+                // ===========================================================
                     if (gDirectionalLight.volumetricIntensity > 0.0f && gDirectionalLight.volumetricSteps > 0)
                     {
                         float3 rayStart = gCamera.worldPosition;
@@ -532,64 +523,65 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                         float3 rayDir = rayEnd - rayStart;
                         float rayLength = length(rayDir);
                         rayDir = normalize(rayDir);
-        
+    
                     // あまり遠くまでレイを飛ばすと処理が重い＆ノイズになるので、計算距離を制限
                         float maxDistance = min(rayLength, 50.0f); // 50m先まで計算
                         float stepSize = maxDistance / (float) gDirectionalLight.volumetricSteps;
-        
+    
                         float scattering = 0.0f;
-        
-                     // レイマーチング (空間を少しずつ進むループ)
+    
+                    // レイマーチング (空間を少しずつ進むループ)
                         for (int i = 0; i < gDirectionalLight.volumetricSteps; ++i)
                         {
-                       // 現在のチェック地点のワールド座標
+                        // 現在のチェック地点のワールド座標
                             float3 currentPos = rayStart + rayDir * (stepSize * i);
-            
-                       // ワールド座標から、シャドウマップ上の座標に変換
+        
+                        // ワールド座標から、シャドウマップ上の座標に変換
                             float4 shadowPos = mul(float4(currentPos, 1.0f), gDirectionalLight.lightViewProj);
                             shadowPos.xyz /= shadowPos.w;
-            
-            // UV座標系 (0.0 ~ 1.0) に変換
+        
+                        // UV座標系 (0.0 ~ 1.0) に変換
                             float2 shadowUV = float2(
-                (shadowPos.x + 1.0f) / 2.0f,
-                (1.0f - shadowPos.y) / 2.0f
-            );
-            
-            // 画面外チェック
+                            (shadowPos.x + 1.0f) / 2.0f,
+                            (1.0f - shadowPos.y) / 2.0f
+                        );
+        
+                        // 画面外チェック
                             if (shadowPos.z > 0.0f && shadowPos.z < 1.0f &&
-                shadowUV.x > 0.0f && shadowUV.x < 1.0f &&
-                shadowUV.y > 0.0f && shadowUV.y < 1.0f)
+                            shadowUV.x > 0.0f && shadowUV.x < 1.0f &&
+                            shadowUV.y > 0.0f && shadowUV.y < 1.0f)
                             {
-                // シャドウマップからその地点の深度を取得（ループ内なので Sample ではなく SampleLevel を使う）
+                            // シャドウマップからその地点の深度を取得
                                 float depthFromLight = gShadowMap.SampleLevel(gShadowSampler, shadowUV, 0);
-                
-                // もし「日向（光が遮られていない）」なら、空気中の散乱光を加算！
+            
+                            // 日向なら、空気中の散乱光を加算
                                 if (shadowPos.z - 0.005f <= depthFromLight)
                                 {
                                     scattering += 1.0f;
                                 }
                             }
                         }
-        
-                       // 平均化して、指定した強さを掛ける
+    
+                    // 平均化して、指定した強さを掛ける
                         scattering = (scattering / (float) gDirectionalLight.volumetricSteps) * gDirectionalLight.volumetricIntensity;
-        
-                      // 光の筋の色を加算合成
+    
+                    // 光の筋の色を加算合成
                         float3 godRayColor = gDirectionalLight.color.rgb * gDirectionalLight.intenssity;
-        
-                       // ※透明なピクセルには足さない
+    
+                    // ※透明なピクセルには足さない
                         if (output.color.a > 0.0f)
                         {
                             output.color.rgb += godRayColor * scattering;
                         }
                     }
                 }
+            
                 if (gMaterial.emissive > 1.0f)
                 {
-        // オブジェクト本来の色（光の影響なし）
+                // オブジェクト本来の色（光の影響なし）
                     float3 emissiveColor = gMaterial.color.rgb * textureColor.rgb;
-        
-        // 発光強度分だけ、最終出力カラーに加算する
+    
+                // 発光強度分だけ、最終出力カラーに加算する
                     output.color.rgb += emissiveColor * (gMaterial.emissive - 1.0f);
                 }
                 break;
