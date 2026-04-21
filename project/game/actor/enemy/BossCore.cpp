@@ -1,4 +1,4 @@
-﻿#include "BossCore.h"
+#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h"
@@ -39,6 +39,15 @@ namespace {
         for (Object3d* child : node->GetChildren()) {
             Object3d* result = FindWeaponRecursive(child);
             if (result) return result;
+        }
+        return nullptr;
+    }
+
+    Object3d* FindObjectByNameRecursive(Object3d* node, const std::string& name) {
+        if (!node) return nullptr;
+        if (node->GetName() == name) return node;
+        for (Object3d* child : node->GetChildren()) {
+            if (Object3d* found = FindObjectByNameRecursive(child, name)) return found;
         }
         return nullptr;
     }
@@ -169,6 +178,10 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     director_ = std::make_unique<GhostDirector>();
     if (sceneManager_) {
         director_->Initialize(sceneManager_);
+    }
+    // 登場演出用のアニメーション(JSON)を読み込む
+    if (director_) {
+        director_->LoadScenario("EntranceAnimation");
     }
 
     originalColor_ = GetColor();
@@ -306,6 +319,27 @@ void BossCore::Update(float deltaTime) {
     float preTimer = colorResetTimer_;
 
     BaseEnemy::Update(deltaTime);
+
+    if (director_) {
+        director_->Update(deltaTime);
+
+        // ゴーストディレクターのアニメーション終了を待っている場合
+        if (isWaitingForDirector_ && director_->IsFinished()) {
+            isWaitingForDirector_ = false;
+
+            // アニメーションが終わったら、"Center_Collision_Box" の当たり判定を完全に消す
+            if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+                for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+                    if (Object3d* found = FindObjectByNameRecursive(obj.get(), "Center_Collision_Box")) {
+                        found->SetCollisionAttribute(0);
+                        found->SetCollisionMask(0); // マスクも念のため消しておく
+                        found->SetScale({ 0.0f, 0.0f, 0.0f }); // 見た目も消す
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     // ==========================================
     // ★ 登場演出中なら、それを更新する
@@ -1206,5 +1240,11 @@ void BossCore::UpdateAppearance(float deltaTime) {
         isAppearing_ = false;
         SetScale({ 1.0f, 1.0f, 1.0f });
         SetColor(originalColor_);
+
+        // ゴーストディレクターのアニメーション（EntranceAnimation.json）を再生
+        if (director_) {
+            director_->PlayScenario(false, false);
+            isWaitingForDirector_ = true; // 追加：アニメーション終了を待つフラグをオンにする！
+        }
     }
 }

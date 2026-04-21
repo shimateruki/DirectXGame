@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "BaseEnemy.h"
 #include "GhostDirector.h"
 #include <memory>
@@ -208,6 +208,7 @@ private:
     void UpdateAppearance(float deltaTime); // 演出中の更新処理
 
     bool isAppearing_ = false;  // 登場演出中かどうか
+    bool isWaitingForDirector_ = false; // ディレクターのアニメーション終了待ちかどうか
     int appearancePhase_ = 0;   // 演出の進行度
     float appearanceTimer_ = 0.0f;
 
