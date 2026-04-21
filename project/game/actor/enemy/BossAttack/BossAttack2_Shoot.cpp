@@ -27,6 +27,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
         Vector3 pos = boss->GetTranslate();
         pos.x = Math::Lerp(animStartPos_.x, 50.0f, Easing::OutExpo(t));
+        pos.y = Math::Lerp(animStartPos_.y, animStartPos_.y + 8.0f, Easing::OutExpo(t)); // Y座標も滑らかに持ち上げる
         boss->SetTranslate(pos);
 
         if (target) {
