@@ -224,10 +224,16 @@ void GamePlayScene::Initialize() {
 		auto& objects_ref = objectManager_->GetObjects();
 		for (auto& obj : objects_ref) {
 			std::string name = obj->GetName();
-			// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
-			if (name.find("Bridge_Block") != std::string::npos) {
-				obj->SetIsVisible(false);        // 見えなくする
+			// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
+			if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
 				obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+				if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
+					obj->SetIsVisible(false);        // 見えなくする
+					obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
+				}
+			}
+			else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+				obj->SetCollisionAttribute(kGround);
 			}
 		}
 
@@ -246,6 +252,37 @@ void GamePlayScene::Initialize() {
 			this->hasFinishedTutorial_ = true;
 			this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
 		}
+	} else {
+		// 最初からプレイする場合の完全リセット
+		// エディタ等でJSONが書き換わっていた場合でも確実に復活させる
+		auto& objects_ref = objectManager_->GetObjects();
+		for (auto& obj : objects_ref) {
+			std::string name = obj->GetName();
+			if (name.find("Tutorial_") != std::string::npos && name.find("Ceiling") == std::string::npos) { // Ceilingは含まない
+				obj->SetIsVisible(true);
+				obj->SetCollisionAttribute(kGround);
+				// ドアは最初は閉まっている状態にする
+				if (name == "Tutorial_Door_Left") {
+					obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
+				}
+				else if (name == "Tutorial_Door_Right") {
+					obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
+				}
+				obj->UpdateWorldMatrix();
+			}
+			else if (name.find("Bridge_") != std::string::npos) {
+				if (name.find("Bridge_Collision") == std::string::npos) {
+					obj->SetIsVisible(true);
+				}
+				obj->SetCollisionAttribute(kGround);
+			}
+			else if (name.find("Battle_Field_Collision_") != std::string::npos) {
+				obj->SetCollisionAttribute(0);
+			}
+		}
+		this->hasBridgeDropped_ = false;
+		this->hasFinishedTutorial_ = false;
+		this->doorOpenProgress_ = 0.0f; // ドアを閉める
 	}
 
 	dxCommon_->FlushCommandQueue(false);
@@ -356,12 +393,8 @@ void GamePlayScene::Update(float deltaTime) {
 				doorOpenProgress_ = 1.0f;
 				// ドアが完全に開いた瞬間モデルを消しておく
 				for (auto& obj : objectManager_->GetObjects()) {
-					if (obj->GetName() == "Tutorial_Door_Left") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					else if (obj->GetName() == "Tutorial_Door_Right") {
+					std::string name = obj->GetName();
+					if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
 						obj->SetIsVisible(false);
 						obj->SetCollisionAttribute(0); // 当たり判定も消す
 						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
@@ -451,11 +484,16 @@ void GamePlayScene::Update(float deltaTime) {
 				auto& objects_ref = objectManager_->GetObjects();
 				for (auto& obj : objects_ref) {
 					std::string name = obj->GetName();
-					// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
-					if (name.find("Bridge_Block") != std::string::npos) {
-						obj->SetIsVisible(false);        // 見えなくする
+					// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
+					if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
 						obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
-						obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
+						if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
+							obj->SetIsVisible(false);        // 見えなくする
+							obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
+						}
+					}
+					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+						obj->SetCollisionAttribute(kGround);
 					}
 				}
 				movieState_ = MovieState::kNone;

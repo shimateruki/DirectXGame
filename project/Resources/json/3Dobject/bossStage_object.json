@@ -3689,8 +3689,8 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.550000011920929,
-                    0.0
+                    0.05000000074505806,
+                    -0.20000000298023224
                 ],
                 "rotation": [
                     0.0,
@@ -3699,8 +3699,8 @@
                 ],
                 "size": [
                     1.0,
-                    0.5,
-                    1.0
+                    1.0,
+                    1.2000000476837158
                 ],
                 "type": 3
             },
@@ -4016,7 +4016,7 @@
             "ormMapPath": "",
             "parentName": "",
             "position": [
-                0.0,
+                -2.9802322387695313e-08,
                 3.0,
                 -88.0
             ],
@@ -4071,7 +4071,7 @@
                 ],
                 "type": 0
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 0,
             "color": [
                 0.9411764740943909,
@@ -4163,7 +4163,7 @@
                 ],
                 "type": 0
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 0,
             "color": [
                 0.9411764740943909,
@@ -4791,7 +4791,7 @@
             "blendMode": 0,
             "collider": {
                 "center": [
-                    4.0,
+                    3.9000000953674316,
                     0.0,
                     0.0
                 ],
@@ -4883,7 +4883,7 @@
             "blendMode": 0,
             "collider": {
                 "center": [
-                    -4.0,
+                    -3.9000000953674316,
                     0.0,
                     0.0
                 ],
@@ -4991,7 +4991,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 6,
+            "collisionAttribute": 4,
             "collisionMask": 4294967137,
             "color": [
                 1.0,
@@ -6842,7 +6842,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
                 1.0,
@@ -6934,7 +6934,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
                 1.0,
@@ -7026,7 +7026,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
                 1.0,
@@ -7118,7 +7118,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
                 1.0,
@@ -7210,7 +7210,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
                 1.0,
@@ -7302,7 +7302,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
                 1.0,
@@ -8039,7 +8039,7 @@
                 "type": 2
             },
             "collisionAttribute": 0,
-            "collisionMask": 4294967295,
+            "collisionMask": 4294967072,
             "color": [
                 1.0,
                 1.0,
@@ -8261,6 +8261,916 @@
                 0.0,
                 1.0,
                 0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -80.19999694824219,
+                    10.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    16.0,
+                    34.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_West",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -56.70000076293945,
+                    10.0,
+                    56.70000076293945
+                ],
+                "rotation": [
+                    0.0,
+                    0.7853981852531433,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    16.0,
+                    34.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_Northwest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -56.70000076293945,
+                    10.0,
+                    -56.70000076293945
+                ],
+                "rotation": [
+                    0.0,
+                    -0.7853981852531433,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    16.0,
+                    34.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_Southwest",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    10.0,
+                    -80.19999694824219
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    34.5,
+                    16.0,
+                    4.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_South",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    10.0,
+                    80.19999694824219
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    34.5,
+                    16.0,
+                    4.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_North",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    56.70000076293945,
+                    10.0,
+                    56.70000076293945
+                ],
+                "rotation": [
+                    0.0,
+                    -0.7853981852531433,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    16.0,
+                    34.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_Northeast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    56.70000076293945,
+                    10.0,
+                    -56.70000076293945
+                ],
+                "rotation": [
+                    0.0,
+                    0.7853981852531433,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    16.0,
+                    34.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_Southeast",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    80.19999694824219,
+                    10.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    16.0,
+                    34.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Battle_Field_Collision_Box_East",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    16.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    30.0,
+                    50.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Bridge_Corridor_Collision_Box_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -13.699999809265137,
+                0.0,
+                -115.4000015258789
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    16.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    30.0,
+                    50.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Bridge_Corridor_Collision_Box_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                13.699999809265137,
+                0.0,
+                -115.4000015258789
             ],
             "quaternion": [
                 0.0,
