@@ -166,7 +166,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 float centerZ = (i == 0 || i == 1) ? 37.5f : -37.5f;
 
                 areaWarnings_[i]->SetIsVisible(true);
-                areaWarnings_[i]->SetTranslate({ centerX, 0.05f, centerZ });
+                areaWarnings_[i]->SetTranslate({ centerX, 0.1f, centerZ });
                 areaWarnings_[i]->SetScale({ 37.5f, 0.1f, 37.5f }); // タイクラーさん指定のサイズ
                 areaWarnings_[i]->SetTexture("Resources/sprite/yazirusi1.png");
                 areaWarnings_[i]->SetMaterialType(0);
@@ -303,27 +303,75 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
     // --- Phase 86: 全ての力を使い果たし、ボスが地に落ちる ---
     else if (animPhase_ == 86) {
         animTimer_ += deltaTime;
-        float duration = 3.0f;
+        float duration = 3.0f; // 全体の演出時間は3秒
         float t = std::min(animTimer_ / duration, 1.0f);
-        float easeT = Easing::OutBounce(t);
 
         Vector3 pos = boss->GetTranslate();
-        pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
-        pos.y = Math::Lerp(animStartPos_.y, 2.0f, easeT); // 地面に落下
-        pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
-        boss->SetTranslate(pos);
 
-        boss->SetColor({ 0.2f, 0.2f, 0.2f, 1.0f });
-        boss->SetRotation({ 0.0f, 0.0f, 0.0f });
+        // ====================================================
+        // ★ カスタム落下＆バウンド計算
+        // ====================================================
+        // ① 落下スピード（地面に激突するまでの時間）
+        float fallDuration = 3.0f;
+        float fallT = std::min(animTimer_ / fallDuration, 1.0f);
+
+        // X軸とZ軸の移動（落下と同じタイミングでスッと中心へ）
+        float easeXZ = fallT * (2.0f - fallT); // OutQuad（スムーズな減速）
+        pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeXZ);
+        pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeXZ);
+
+        // ====================================================
+    // ★ 修正：着地点の高さ（Y座標）を設定！
+    // 浮いている場合は、この数値を小さく（0.5f や 0.0f に）してください！
+    // ====================================================
+        float groundY = 0.5f; // ← 元々はここが 2.0f になっていました
+
+        // Y軸の移動（高さ）
+        if (animTimer_ <= fallDuration) {
+            // 【落下中】
+            float easeY = fallT * fallT; // InQuad
+            pos.y = Math::Lerp(animStartPos_.y, groundY, easeY); // ★ 2.0f から groundY に変更
+        }
+        else {
+            // 【バウンド中】
+            float bounceTime = animTimer_ - fallDuration;
+
+            float bouncePower = 6.0f;
+            float bounceDamp = 3.0f;
+            float bounceFreq = 15.0f;
+
+            float bounceOffset = std::abs(std::sin(bounceTime * bounceFreq)) * std::exp(-bounceTime * bounceDamp) * bouncePower;
+            pos.y = groundY + bounceOffset; // ★ 2.0f から groundY に変更
+        }
+
+        boss->SetTranslate(pos);
+        boss->SetColor({ 1.0f, 0.0f, 1.0f, 1.0f });
+
+        // ====================================================
+        // ★ 修正：落下中のキリモミ回転 ＆ 接地で90度バタン！
+        // ====================================================
+        if (animTimer_ <= fallDuration) {
+            // 落下中：X軸をグルグル回転させる
+            float spinSpeed = 20.0f;
+            boss->SetRotation({ animTimer_ * spinSpeed, 0.0f, 0.0f });
+        }
+        else {
+            // 接地後：90度（ラジアンで π/2）傾けてバタンと横たわる！
+            float angle90 = std::numbers::pi_v<float> / 2.0f;
+            boss->SetRotation({ angle90, 0.0f, 0.0f });
+
+            // ※もしモデルの向きの都合で「仰向け」になってしまい、
+            // 「うつ伏せ」にしたい場合は -angle90 に変更してください！
+        }
 
         if (t >= 1.0f) {
             // ==========================================
-            // ★ 修正：巨大隕石もスマートに存在を消去！
+            // ★ 巨大隕石の消去
             // ==========================================
             if (meteors_.size() > 10 && meteors_[10]) {
                 meteors_[10]->SetScale({ 0.0f, 0.0f, 0.0f });
                 meteors_[10]->SetCollisionAttribute(0);
-                meteors_[10]->UpdateWorldMatrix(); // ★追加
+                meteors_[10]->UpdateWorldMatrix();
                 meteors_[10]->isDead = true;
             }
             meteors_.clear();
@@ -342,5 +390,5 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
             DebugConsole::GetInstance()->AddLog("ボスは完全に沈黙した…！今だ、トドメを刺せ！！");
         }
-    }
+        }
 }

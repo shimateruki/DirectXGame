@@ -186,23 +186,41 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 
     originalColor_ = GetColor();
 
-    // --- 1. オーラの追加 ---
+    // --- 1. 紫 ---
     auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
     BossParticle1->Initialize("Boss1", this);
     BossParticle1->Play();
-    particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加！
+    //particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加！
 
-    // --- 2. 砂埃の追加 ---
+    // --- 2. 黒 ---
     auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
     BossParticle2->Initialize("Boss2", this);
     BossParticle2->Play();
     particleEmitters_.push_back(std::move(BossParticle2)); // 配列に追加！
 
-    // --- 3. 火花の追加 ---
+    // --- 3. 水色 ---
     auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
-    //particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
+    particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
+
+    // --- 4. 赤 ---
+    auto BossParticle4 = std::make_unique<GPUParticleEmitter>();
+    BossParticle4->Initialize("Boss4", this);
+    BossParticle4->Play();
+    //particleEmitters_.push_back(std::move(BossParticle4)); // 配列に追加！
+
+    // --- 5. 黄色 ---
+    auto BossParticle5 = std::make_unique<GPUParticleEmitter>();
+    BossParticle5->Initialize("Boss5", this);
+    BossParticle5->Play();
+    //particleEmitters_.push_back(std::move(BossParticle5)); // 配列に追加！
+
+    // --- 6. 緑色 ---
+    auto BossParticle6 = std::make_unique<GPUParticleEmitter>();
+    BossParticle6->Initialize("Boss6", this);
+    BossParticle6->Play();
+    //particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加！
 }
 
 void BossCore::Update(float deltaTime) {
