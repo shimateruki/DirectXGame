@@ -385,7 +385,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             }
 
-            boss->SetWaitingForDeath(true);
+            //boss->SetWaitingForDeath(true);
             isFinished_ = true;
 
             DebugConsole::GetInstance()->AddLog("ボスは完全に沈黙した…！今だ、トドメを刺せ！！");

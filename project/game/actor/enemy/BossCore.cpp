@@ -265,25 +265,7 @@ void BossCore::Update(float deltaTime) {
             }
         }
 
-        if (deathPhase_ == 1 || deathPhase_ == 2) {
-            sequenceTimer_ -= deltaTime;
 
-            // 1秒経つごとに次のフェーズへ進む！
-            if (sequenceTimer_ <= 0.0f) {
-
-                if (deathPhase_ == 1) {
-                    // 1秒経過 ➔ 「亀裂フェーズ」へ移行し、さらに1秒待つ！
-                    deathPhase_ = 2;
-                    sequenceTimer_ = 1.0f;
-                    ShowCrackedCore();
-                }
-                else if (deathPhase_ == 2) {
-                    // さらに1秒経過 ➔ ついに「爆散フェーズ」へ！
-                    deathPhase_ = 3;
-                    BreakCore();
-                }
-            }
-        }
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -337,6 +319,29 @@ void BossCore::Update(float deltaTime) {
     float preTimer = colorResetTimer_;
 
     BaseEnemy::Update(deltaTime);
+
+    // ==========================================
+    // 死亡演出の進行ロジック
+    // ==========================================
+    if (deathPhase_ == 1 || deathPhase_ == 2) {
+        sequenceTimer_ -= deltaTime;
+
+        // 1秒経つごとに次のフェーズへ進む！
+        if (sequenceTimer_ <= 0.0f) {
+
+            if (deathPhase_ == 1) {
+                // 1秒経過 ➔ 「亀裂フェーズ」へ移行し、さらに1秒待つ！
+                deathPhase_ = 2;
+                sequenceTimer_ = 1.0f;
+                ShowCrackedCore();
+            }
+            else if (deathPhase_ == 2) {
+                // さらに1秒経過 ➔ ついに「爆散フェーズ」へ！
+                deathPhase_ = 3;
+                BreakCore();
+            }
+        }
+    }
 
     if (director_) {
         director_->Update(deltaTime);
