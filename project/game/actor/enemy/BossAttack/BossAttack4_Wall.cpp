@@ -116,7 +116,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                     warning->SetScale({ scaleLength, 1.0f, scaleWidth });
                 }
 
-                warning->SetTranslate({ 0.0f, 0.05f, 0.0f });
+                warning->SetTranslate({ 0.0f, 0.7f, 0.0f });
                 warning->SetRotation({ 0.0f, 0.0f, 0.0f });
                 warning->GetTransform()->isQuaternionMaster = false;
             }

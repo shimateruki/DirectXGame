@@ -280,7 +280,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
             warning->SetTranslate({ 0.0f, 0.05f, 0.0f });
-            warning->SetScale({ 16.0f, 0.1f, 16.0f }); // 隕石サイズに合わせる
+            warning->SetScale({ 16.0f, 0.7f, 16.0f }); // 隕石サイズに合わせる
             warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
             warning->UpdateWorldMatrix();
         }

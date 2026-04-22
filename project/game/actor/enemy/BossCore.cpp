@@ -578,7 +578,15 @@ void BossCore::ChangeState(State nextState) {
             coreAttribute = kEnemy | kGround;
         }
         else {
-            coreAttribute = kGround;
+            // ====================================================
+            // ★ 修正：戦闘が始まっていたら「kEnemy」属性を付ける！
+            // ====================================================
+            if (isBattleStarted_) {
+                coreAttribute = kEnemy | kGround; // 戦闘中は敵！
+            }
+            else {
+                coreAttribute = kGround; // 登場前・登場演出中はただの壁（無敵）
+            }
         }
         blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
     }
@@ -818,9 +826,23 @@ void BossCore::UpdateIdle(float deltaTime) {
     // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める
     // ==========================================
     if (isBattleStarted_) {
+
+        // ====================================================
+        // ★ 修正：4, 5, 6, 7, 8秒のどれかをピッタリ選ぶ！
+        // ====================================================
+        static float targetIdleTime = 5.0f;
+        if (animTimer_ == 0.0f) {
+            // rand() % 5 は「0, 1, 2, 3, 4」のどれかになるので、それに4を足すと「4, 5, 6, 7, 8」になります！
+            int randomSeconds = 4 + (std::rand() % 5);
+            targetIdleTime = static_cast<float>(randomSeconds);
+
+            DebugConsole::GetInstance()->AddLog("【AI】 次の攻撃まで " + std::to_string(randomSeconds) + " 秒待機します");
+        }
+
         animTimer_ += deltaTime;
 
-        if (animTimer_ >= 2.0f) {
+        // タイマーが「今回決めた目標時間」を超えたら攻撃へ！
+        if (animTimer_ >= targetIdleTime) {
             ChangeState(State::Attack);
         }
     }
@@ -1263,6 +1285,12 @@ void BossCore::StartBattle() {
     animTimer_ = 0.0f; // ★ ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
 
     DebugConsole::GetInstance()->AddLog("【BATTLE START】 ボスが行動を開始した！！！");
+
+    // ====================================================
+    // ★ 追加：戦闘開始フラグがONになったので、
+    // 現在の状態(Idle)を再セットして、即座に属性を「kEnemy」に更新する！
+    // ====================================================
+    ChangeState(state_);
 }
 
 void BossCore::UpdateAppearance(float deltaTime) {
