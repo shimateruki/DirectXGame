@@ -439,16 +439,16 @@ void GamePlayScene::Update(float deltaTime) {
 						obj->isDead = true; // 完全に消す
 					}
 					else if (obj->GetName() == "Tutorial_Door_Right") {
-					std::string name = obj->GetName();
-					if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す
+						std::string name = obj->GetName();
+						if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
+							obj->SetIsVisible(false);
+							obj->SetCollisionAttribute(0); // 当たり判定も消す
+							obj->isDead = true; // 完全に消す
+						}
 					}
 				}
 			}
 		}
-
 		for (auto& obj : objectManager_->GetObjects()) {
 			if (obj->GetName() == "Tutorial_Door_Left") {
 				Transform* trans = obj->GetTransform();
