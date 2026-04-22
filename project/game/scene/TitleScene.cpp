@@ -66,6 +66,8 @@ void TitleScene::Initialize() {
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
+    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     // --- 4. サブシステムの生成 ---
     objectManager_ = std::make_unique<ObjectManager>();
     levelLoader_ = std::make_unique<LevelLoader>();
