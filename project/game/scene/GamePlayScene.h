@@ -183,4 +183,34 @@ private:
 
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
     bool hasBossAppeared_ = false; // ボス登場イベントが既に終わったかどうかのロックフラグ
+
+    // ==========================================
+    // チュートリアル表示制御 (拡張版)
+    // ==========================================
+    enum class TutorialStep {
+        kNone,
+        kShowMove,          // 初回：移動表示
+        kWaitForMove,       // 移動入力待ち
+        kShowCamera,        // カメラ説明表示
+        kWaitForCamera,     // カメラ操作待ち
+        kShowLockOn,        // ロックオン表示
+        kWaitForLockOn,     // ロックオン待ち
+        kShowAttack,        // 攻撃表示
+        kWaitForAttack,     // 攻撃待ち
+        kShowDodge,         // 回避表示
+        kWaitForDodge,      // 回避待ち
+        kCompleted
+    };
+    TutorialStep tutorialStep_ = TutorialStep::kNone;
+
+    // チュートリアル用スプライトポインタ
+    Sprite* tutorialMoveSprite_ = nullptr;
+    Sprite* tutorialCameraSprite_ = nullptr;
+    Sprite* tutorialLockOnSprite_ = nullptr;
+    Sprite* tutorialAttackSprite_ = nullptr;
+    Sprite* tutorialDodgeSprite_ = nullptr;
+
+    float tutorialTimer_ = 0.0f; // フェード／タイマー汎用
+    bool tutorialUiCompleted_ = false;
+
 };

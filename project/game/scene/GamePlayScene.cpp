@@ -216,6 +216,27 @@ void GamePlayScene::Initialize() {
 		}
 	}
 
+	// チュートリアル用スプライトを取得して最初は非表示（透明）にする
+	tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
+	tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
+	tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
+	tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
+	tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
+
+	auto SetAlphaIfExists = [](Sprite* sprite, float a) {
+		if (sprite) {
+			Vector4 c = sprite->GetColor();
+			c.w = a;
+			sprite->SetColor(c);
+		}
+		};
+	SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
+	SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
+	SetAlphaIfExists(tutorialLockOnSprite_, 0.0f);
+	SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
+	SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
+
+
 	// =======================================================
 	// ★ 進行状況の復元：橋がすでに落ちている場合の処理
 	// =======================================================
@@ -564,6 +585,16 @@ void GamePlayScene::Update(float deltaTime) {
 				movieState_ = MovieState::kNone;
 				player_->SetIsControlActive(true);
 				player_->SetIsPhysicsActive(true); // 物理復帰
+
+				if (!hasFinishedTutorial_) {
+					tutorialStep_ = TutorialStep::kShowMove;
+					tutorialTimer_ = 0.0f;
+					if (tutorialMoveSprite_) {
+						Vector4 c = tutorialMoveSprite_->GetColor();
+						c.w = 1.0f;
+						tutorialMoveSprite_->SetColor(c);
+					}
+				}
 			}
 
 			// プレイヤーのY座標をプラットフォームに同期（重力の代わりに手動で吸着）
@@ -575,6 +606,119 @@ void GamePlayScene::Update(float deltaTime) {
 			if (player_) player_->SetIsPhysicsActive(true);
 		}
 	}
+
+	// チュートリアル状態機（順序：移動 → カメラ → ロックオン → 攻撃 → 回避）
+	if (!tutorialUiCompleted_) {
+		switch (tutorialStep_) {
+		case TutorialStep::kShowMove:
+			// 表示済みを確認して入力待ちへ
+			tutorialStep_ = TutorialStep::kWaitForMove;
+			tutorialTimer_ = 0.0f;
+			break;
+
+		case TutorialStep::kWaitForMove:
+		{
+			bool moved = false;
+			if (inputManager_) {
+				Vector2 left = inputManager_->GetLeftStick();
+				if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f) moved = true;
+				if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_A) ||
+					inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_D)) {
+					moved = true;
+				}
+			}
+			if (!moved && player_) {
+				Vector3 vel = player_->GetVelocity();
+				float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+				if (speed > 0.1f) moved = true;
+			}
+			if (moved) {
+				// 次のカメラ説明表示へ切り替え
+				if (tutorialMoveSprite_) { Vector4 c = tutorialMoveSprite_->GetColor(); c.w = 0.0f; tutorialMoveSprite_->SetColor(c); }
+				if (tutorialCameraSprite_) { Vector4 c = tutorialCameraSprite_->GetColor(); c.w = 1.0f; tutorialCameraSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForCamera;
+				tutorialTimer_ = 0.0f;
+			}
+		}
+		break;
+
+		case TutorialStep::kWaitForCamera:
+		{
+			bool cameraUsed = false;
+			if (inputManager_) {
+				Vector2 right = inputManager_->GetRightStick();
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				if (std::abs(right.x) > 0.2f || std::abs(right.y) > 0.2f) cameraUsed = true;
+				if (std::abs(mouseDelta.x) > 2.0f || std::abs(mouseDelta.y) > 2.0f) cameraUsed = true;
+			}
+			if (cameraUsed) {
+				if (tutorialCameraSprite_) { Vector4 c = tutorialCameraSprite_->GetColor(); c.w = 0.0f; tutorialCameraSprite_->SetColor(c); }
+				if (tutorialLockOnSprite_) { Vector4 c = tutorialLockOnSprite_->GetColor(); c.w = 1.0f; tutorialLockOnSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForLockOn;
+				tutorialTimer_ = 0.0f;
+			}
+		}
+		break;
+
+		case TutorialStep::kWaitForLockOn:
+			if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
+				if (tutorialLockOnSprite_) { Vector4 c = tutorialLockOnSprite_->GetColor(); c.w = 0.0f; tutorialLockOnSprite_->SetColor(c); }
+				if (tutorialAttackSprite_) { Vector4 c = tutorialAttackSprite_->GetColor(); c.w = 1.0f; tutorialAttackSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForAttack;
+				tutorialTimer_ = 0.0f;
+			}
+			break;
+
+		case TutorialStep::kWaitForAttack:
+			if (inputManager_) {
+				// 攻撃ボタン検出（KeyConfig の "Attack" に対応）
+				if (inputManager_->IsActionTriggered("Attack")) {
+					if (tutorialAttackSprite_) { Vector4 c = tutorialAttackSprite_->GetColor(); c.w = 0.0f; tutorialAttackSprite_->SetColor(c); }
+					if (tutorialDodgeSprite_) { Vector4 c = tutorialDodgeSprite_->GetColor(); c.w = 1.0f; tutorialDodgeSprite_->SetColor(c); }
+					tutorialStep_ = TutorialStep::kWaitForDodge;
+					tutorialTimer_ = 0.0f;
+				}
+			}
+			break;
+
+		case TutorialStep::kWaitForDodge:
+			if (inputManager_) {
+				// ダッシュがトリガーされたか
+				bool dashTriggered = inputManager_->IsActionTriggered("Dash");
+
+				// 同時に移動入力があるかをチェック（左スティックまたはW/A/S/D、または速度による判定）
+				bool moveInput = false;
+				Vector2 left = inputManager_->GetLeftStick();
+				if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f) moveInput = true;
+				if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_A) ||
+					inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_D)) {
+					moveInput = true;
+				}
+				if (!moveInput && player_) {
+					Vector3 vel = player_->GetVelocity();
+					float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+					if (speed > 0.1f) moveInput = true;
+				}
+
+				// ダッシュかつ移動入力がある場合に回避完了とする
+				if (dashTriggered && moveInput) {
+					if (tutorialDodgeSprite_) {
+						Vector4 c = tutorialDodgeSprite_->GetColor();
+						c.w = 0.0f;
+						tutorialDodgeSprite_->SetColor(c);
+					}
+					tutorialStep_ = TutorialStep::kCompleted;
+					tutorialUiCompleted_ = true;
+					// 必要なら hasFinishedTutorial_ をここで true にする
+				}
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+
 
 		// --- ロックオン & カメラ制御 ---
 		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
