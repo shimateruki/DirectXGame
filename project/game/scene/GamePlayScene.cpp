@@ -333,6 +333,7 @@ void GamePlayScene::Initialize() {
 		else if (name.find("Bridge_") != std::string::npos) {
 			if (name.find("Bridge_Collision") == std::string::npos) {
 				obj->SetIsVisible(true);
+			}
 			else if (name.find("Bridge_") != std::string::npos) { // ブリッジ関連は全て復活させる
 				if (name.find("Bridge_Collision") == std::string::npos) {
 					obj->SetIsVisible(true);
