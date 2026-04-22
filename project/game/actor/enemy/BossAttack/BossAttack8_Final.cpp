@@ -29,7 +29,7 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
         if (block) {
             block->SetScale({ 0.0f, 0.0f, 0.0f });
             block->SetCollisionAttribute(0);
-            block->isDead = true; // エンジンの自動削除に任せる
+            //block->isDead = true; // エンジンの自動削除に任せる
         }
     }
 
