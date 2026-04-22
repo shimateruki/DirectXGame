@@ -352,7 +352,6 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             // ==========================================
             // ★ カメラめり込み対策：すべてのブロックを完全消去！
             // ==========================================
-
             // ① 生成した隕石（巨大隕石も含む）をすべてサイズ0にする
             for (Object3d* meteor : meteors_) {
                 if (meteor) {
@@ -361,6 +360,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     meteor->UpdateWorldMatrix();
                     meteor->isDead = true;
                 }
+
             }
             meteors_.clear();
 

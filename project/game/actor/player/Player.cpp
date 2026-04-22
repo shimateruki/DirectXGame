@@ -98,7 +98,19 @@ void Player::Update(float deltaTime)
         // 物理無効時は行列計算のみ更新
         Object3d::Update(deltaTime);
     }
+    if (transform_.translate.y < -40.0f) {
+        // 1. 指定の座標(0, 5, -55)へ座標をセット
+        transform_.translate = { 0.0f, 5.0f, -55.0f };
 
+        // 2. 落下時の勢い（速度）が残っているとワープ直後にまた落ちるため、速度をリセット
+        velocity_ = { 0.0f, 0.0f, 0.0f };
+
+        UpdateLocalMatrix();
+        // 3. 座標の変更を即座に行列へ反映させる（描画や次フレームの計算のズレ防止）
+        UpdateWorldMatrix();
+
+        DebugConsole::GetInstance()->AddLog("【SYSTEM】 プレイヤーが落下したため、初期地点に復帰させました");
+    }
     // =======================================================
     // 5. モデルアニメ適用後の最終上書き処理 (PostUpdate)
     // =======================================================

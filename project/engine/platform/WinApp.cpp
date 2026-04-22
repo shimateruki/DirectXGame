@@ -54,28 +54,35 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
     RegisterClass(&wc);
 
-    RECT wrc = { 0, 0, width, height };
-    AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
+    // ==========================================
+    // ここからフルスクリーン（ボーダーレス）用の修正
+    // ==========================================
 
+    // モニターの画面解像度（縦横のピクセル数）を取得
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
+    // 内部の解像度設定を、実際のモニターサイズに合わせる
+    kClientWidth = screenWidth;
+    kClientHeight = screenHeight;
+
+    // ウィンドウ作成
+    // ★ WS_POPUP を指定することで、タイトルバーやサイズ変更枠を完全に消去します
     hwnd_ = CreateWindow(
         wc.lpszClassName,
         title,
-        WS_OVERLAPPEDWINDOW | WS_MAXIMIZE,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        wrc.right - wrc.left,
-        wrc.bottom - wrc.top,
+        WS_POPUP, // 枠なし・リサイズ不可のスタイル
+        0, 0,     // 画面の左上(0, 0)から表示
+        screenWidth,
+        screenHeight,
         nullptr, nullptr,
         hInstance_,
         nullptr);
 
+    // フルスクリーンで表示（最大化ボタンの挙動ではなく、そのまま表示）
+    ShowWindow(hwnd_, SW_SHOW);
 
-    RECT clientRect{};
-    GetClientRect(hwnd_, &clientRect);
-    kClientWidth = clientRect.right - clientRect.left;
-    kClientHeight = clientRect.bottom - clientRect.top;
 
-    ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
 }
 bool WinApp::Update() {
     MSG msg{};

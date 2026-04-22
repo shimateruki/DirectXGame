@@ -75,8 +75,6 @@ void TitleScene::Initialize() {
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
     //  GPUパーティクルの初期化
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
     // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
@@ -237,15 +235,14 @@ void TitleScene::Update(float deltaTime) {
         // =================================================
         switch (currentState_) {
         case TitleState::MainMenu:
-            // 上下選択 (設定項目が無効ならスキップする)
-            if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-                // 1回の操作で無効項目に止まらないようループでスキップ
+            // 上下選択
+            if (input->IsActionTriggered("Forward")) {
                 do {
                     currentMenuIndex_--;
                     if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
                 } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
             }
-            if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+            if (input->IsActionTriggered("Backward")) {
                 do {
                     currentMenuIndex_++;
                     if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
@@ -261,7 +258,7 @@ void TitleScene::Update(float deltaTime) {
             }
 
             // 決定 (Spaceキーのみ)
-            if (input->IsKeyTriggered(DIK_SPACE)) {
+            if (input->IsActionTriggered("Jump")) {
                 if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
                     // ゲーム開始！
                     GameProgress::GetInstance()->Reset();

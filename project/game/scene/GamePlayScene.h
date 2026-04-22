@@ -233,5 +233,9 @@ private:
     bool isRestartTransition_ = false;
     float restartTimer_ = 0.0f;
     bool isTitleTransition_ = false;
+    // =======================================================
+    // シネマティック演出（黒帯）用
+    // =======================================================
+    float currentCinemaBarHeight_ = 0.0f;
 
 };

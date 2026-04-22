@@ -25,6 +25,7 @@
 #include "GPUParticleManager.h"
 #include <SaveDataManager.h>
 #include "PlayerState.h"
+#include "PostEffect.h"
 void GameClearScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
@@ -57,12 +58,12 @@ void GameClearScene::Initialize() {
     // --- タイムUI初期化（右寄せ配置） ---
     clearTimeUI_ = std::make_unique<TimeAttackUI>();
     clearTimeUI_->Initialize(spriteCommon_.get());
-    clearTimeUI_->SetPosition({ 850.0f, 350.0f }, 1.15f);
+    clearTimeUI_->SetPosition({ 950.0f, 350.0f }, 1.15f);
     clearTimeUI_->SetTime(clearTime);
     clearTimeUI_->SetAlpha(0.0f);
     bestTimeUI_ = std::make_unique<TimeAttackUI>();
     bestTimeUI_->Initialize(spriteCommon_.get());
-    bestTimeUI_->SetPosition({ 850.0f, 500.0f }, 1.15f);
+    bestTimeUI_->SetPosition({ 950.0f, 600.0f }, 1.15f);
     bestTimeUI_->SetTime(bestTime);
     bestTimeUI_->SetAlpha(0.0f);
     // --- レベルデータ読み込み ---
@@ -78,6 +79,8 @@ void GameClearScene::Initialize() {
         if (sprite->GetName() == "GameClear.png") gameClearSprite_ = sprite.get();
         if (sprite->GetName() == "restartText.png")     retryTextSprite_ = sprite.get();
         if (sprite->GetName() == "title.png")     titleTextSprite_ = sprite.get();
+        if (sprite->GetName() == "playerTime.png") playerTimeSprite_ = sprite.get();
+        if (sprite->GetName() == "bestTime.png") bestTimeSprite_ = sprite.get();
     }
 
     auto HideSprite = [](Sprite* s) {
@@ -86,6 +89,8 @@ void GameClearScene::Initialize() {
     HideSprite(gameClearSprite_);
     HideSprite(retryTextSprite_);
     HideSprite(titleTextSprite_);
+    HideSprite(playerTimeSprite_);
+    HideSprite(bestTimeSprite_);
 
     if (player_) {
         player_->SetIsControlActive(false);
@@ -109,6 +114,7 @@ void GameClearScene::Initialize() {
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+    PostEffect::GetInstance()->ResetToBaseParams();
     clearState_ = ClearState::kRunIn;
     stateTimer_ = 0.0f;
     resultAlpha_ = 0.0f;
@@ -201,7 +207,7 @@ void GameClearScene::Update(float deltaTime) {
         // --- 【フェーズ3-A】 自己タイム表示（ドラムロール） ---
         resultAlpha_ += deltaTime * 2.0f;
         if (resultAlpha_ > 1.0f) resultAlpha_ = 1.0f;
-
+        if (playerTimeSprite_) playerTimeSprite_->SetColor({ 1,1,1,resultAlpha_ });
         if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
         if (clearTimeUI_) clearTimeUI_->SetAlpha(resultAlpha_);
 
@@ -216,7 +222,7 @@ void GameClearScene::Update(float deltaTime) {
         // --- 【フェーズ3-B】 ベストタイム表示（ドラムロール） ---
         bestTimeAlpha_ += deltaTime * 2.0f;
         if (bestTimeAlpha_ > 1.0f) bestTimeAlpha_ = 1.0f;
-
+        if (bestTimeSprite_) bestTimeSprite_->SetColor({ 1,1,1,bestTimeAlpha_ });
         if (bestTimeUI_) bestTimeUI_->SetAlpha(bestTimeAlpha_);
 
         if (bestTimeUI_ && !bestTimeUI_->IsRolling()) {
@@ -230,6 +236,9 @@ void GameClearScene::Update(float deltaTime) {
         if (inputManager_->IsActionTriggered("Jump")) {
             if (clearTimeUI_) clearTimeUI_->SetAlpha(0.0f);
             if (bestTimeUI_) bestTimeUI_->SetAlpha(0.0f);
+            if (playerTimeSprite_) playerTimeSprite_->SetColor({ 1,1,1,0.0f });
+     
+            if (bestTimeSprite_) bestTimeSprite_->SetColor({ 1,1,1,0.0f });
 
             // カメラ演出終了
             Camera* mainCamera = CameraManager::GetInstance()->GetMainCamera();
