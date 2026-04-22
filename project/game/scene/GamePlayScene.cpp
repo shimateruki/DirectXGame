@@ -90,6 +90,8 @@ void GamePlayScene::Initialize() {
 
 	gameRule_ = std::make_unique<GameRule>();
 	gameRule_->Initialize(this);
+	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
 	//
 	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
@@ -253,20 +255,29 @@ void GamePlayScene::Initialize() {
 	SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
 	SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
 
-	// --- ミッションタスクスプライトの取得（最初は非表示） ---
-	missionText_mission_ = GetSpriteByName("missionText_mission.png");
-	missionText_line_ = GetSpriteByName("missionText_line.png");
-	missionText_Mark_ = GetSpriteByName("missionText_Mark.png");
-	missionText_lever_ = GetSpriteByName("missionText_lever.png");
-	missionText_go_ = GetSpriteByName("missionText_go.png");
-	missionText_boss_ = GetSpriteByName("missionText_boss.png");
 
-	SetAlphaIfExists(missionText_mission_, 0.0f);
-	SetAlphaIfExists(missionText_line_, 0.0f);
-	SetAlphaIfExists(missionText_Mark_, 0.0f);
-	SetAlphaIfExists(missionText_lever_, 0.0f);
-	SetAlphaIfExists(missionText_go_, 0.0f);
-	SetAlphaIfExists(missionText_boss_, 0.0f);
+	for (auto& sprite : sprites_) {
+		// 既存のHPバー取得
+		if (sprite->GetName() == "playerHpBar") {
+			playerHpBarSprite_ = sprite.get();
+			playerHpBarMaxWidth_ = sprite->GetSize().x;
+		}
+		// ★ ミッション用スプライトを名前で一致させて変数に保存する
+		else if (sprite->GetName() == "missionText_mission.png") missionText_mission_ = sprite.get();
+		else if (sprite->GetName() == "missionText_line.png")    missionText_line_ = sprite.get();
+		else if (sprite->GetName() == "missionText_Mark.png")    missionText_Mark_ = sprite.get();
+		else if (sprite->GetName() == "missionText_lever.png")   missionText_lever_ = sprite.get();
+		else if (sprite->GetName() == "missionText_go.png")      missionText_go_ = sprite.get();
+		else if (sprite->GetName() == "missionText_boss.png")    missionText_boss_ = sprite.get();
+	}
+
+	
+	SetAlphaZero(missionText_mission_);
+	SetAlphaZero(missionText_line_);
+	SetAlphaZero(missionText_Mark_);
+	SetAlphaZero(missionText_lever_);
+	SetAlphaZero(missionText_go_);
+	SetAlphaZero(missionText_boss_);
 
 	missionInitialShown_ = false;
 	missionGoShown_ = false;
@@ -295,7 +306,8 @@ void GamePlayScene::Initialize() {
 
 		// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
 		this->hasBridgeDropped_ = true;
-
+		this->missionInitialShown_ = true; // チュートリアルミッションは表示済み
+		this->missionGoShown_ = true;      // 次の「GO」を表示する状態にする
 		// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
 		if (player_) {
 			// 隊長が設定したボス前の座標を適用！
@@ -1392,6 +1404,30 @@ void GamePlayScene::UpdateUI() {
 			float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
 			barrierHpBarSprite_->SetSize({ barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });
 		}
+	}
+	auto SetAlpha = [](Sprite* s, float a) {
+		if (s) { Vector4 c = s->GetColor(); c.w = a; s->SetColor(c); }
+		};
+
+	if (hasBridgeDropped_ && !hasBossAppeared_) {
+		// 橋が落ちてボス前なら「GO」を表示！
+		SetAlpha(missionText_go_, 1.0f);
+		SetAlpha(missionText_Mark_, 1.0f);
+		SetAlpha(missionText_line_, 1.0f);
+		SetAlpha(missionText_mission_, 0.0f);
+		SetAlpha(missionText_lever_, 0.0f);
+	}
+	else if (hasBossAppeared_) {
+		// ボス戦中なら「BOSS撃破」を表示！
+		SetAlpha(missionText_go_, 0.0f);
+		SetAlpha(missionText_boss_, 1.0f);
+	}
+	else if (!hasFinishedTutorial_) {
+		// チュートリアル中なら初期セットを表示
+		SetAlpha(missionText_mission_, 1.0f);
+		SetAlpha(missionText_line_, 1.0f);
+		SetAlpha(missionText_Mark_, 1.0f);
+		SetAlpha(missionText_lever_, 1.0f);
 	}
 }
 
