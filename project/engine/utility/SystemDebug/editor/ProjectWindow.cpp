@@ -41,7 +41,7 @@ void ProjectWindow::CreateThumbnailResource(const std::string& modelName) {
     resDesc.Height = kThumbnailSize;
     resDesc.DepthOrArraySize = 1;
     resDesc.MipLevels = 1;
-    resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    resDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     resDesc.SampleDesc.Count = 1;
     resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
@@ -101,7 +101,10 @@ void ProjectWindow::CapturePendingThumbnails() {
         depthDesc.Height = kThumbnailSize;
         depthDesc.DepthOrArraySize = 1;
         depthDesc.MipLevels = 1;
-        depthDesc.Format = DXGI_FORMAT_D32_FLOAT;
+
+        // ▼ 修正：パイプラインの要求に合わせて D24_UNORM_S8_UINT に変更
+        depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
         depthDesc.SampleDesc.Count = 1;
         depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
@@ -109,8 +112,10 @@ void ProjectWindow::CapturePendingThumbnails() {
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
         D3D12_CLEAR_VALUE clearValue{};
-        clearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        // ▼ 修正：クリア値のフォーマットも合わせる
+        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         clearValue.DepthStencil.Depth = 1.0f;
+        clearValue.DepthStencil.Stencil = 0; // ステンシル値も初期化
 
         device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &depthDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&s_studioDepth));
 
@@ -120,7 +125,8 @@ void ProjectWindow::CapturePendingThumbnails() {
         device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&s_studioDsvHeap));
 
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-        dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        // ▼ 修正：ビューのフォーマットも合わせる
+        dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
         device->CreateDepthStencilView(s_studioDepth.Get(), &dsvDesc, s_studioDsvHeap->GetCPUDescriptorHandleForHeapStart());
     }
