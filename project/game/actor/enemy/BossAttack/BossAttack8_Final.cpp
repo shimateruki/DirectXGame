@@ -311,26 +311,23 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         // ====================================================
         // ★ カスタム落下＆バウンド計算
         // ====================================================
-        // ① 落下スピード（地面に激突するまでの時間）
-        float fallDuration = 3.0f;
+        float fallDuration = 1.2f;
         float fallT = std::min(animTimer_ / fallDuration, 1.0f);
 
-        // X軸とZ軸の移動（落下と同じタイミングでスッと中心へ）
-        float easeXZ = fallT * (2.0f - fallT); // OutQuad（スムーズな減速）
+        float easeXZ = fallT * (2.0f - fallT); // OutQuad
         pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeXZ);
         pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeXZ);
 
-        // ====================================================
-    // ★ 修正：着地点の高さ（Y座標）を設定！
-    // 浮いている場合は、この数値を小さく（0.5f や 0.0f に）してください！
-    // ====================================================
-        float groundY = 0.5f; // ← 元々はここが 2.0f になっていました
+        float groundY = 0.5f;
 
-        // Y軸の移動（高さ）
         if (animTimer_ <= fallDuration) {
             // 【落下中】
-            float easeY = fallT * fallT; // InQuad
-            pos.y = Math::Lerp(animStartPos_.y, groundY, easeY); // ★ 2.0f から groundY に変更
+            float easeY = fallT * fallT;
+            pos.y = Math::Lerp(animStartPos_.y, groundY, easeY);
+
+            // キリモミ回転
+            float spinSpeed = 20.0f;
+            boss->SetRotation({ animTimer_ * spinSpeed, 0.0f, 0.0f });
         }
         else {
             // 【バウンド中】
@@ -341,40 +338,40 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             float bounceFreq = 15.0f;
 
             float bounceOffset = std::abs(std::sin(bounceTime * bounceFreq)) * std::exp(-bounceTime * bounceDamp) * bouncePower;
-            pos.y = groundY + bounceOffset; // ★ 2.0f から groundY に変更
+            pos.y = groundY + bounceOffset;
+
+            // 90度倒れる
+            float angle90 = std::numbers::pi_v<float> / 2.0f;
+            boss->SetRotation({ angle90, 0.0f, 0.0f });
         }
 
         boss->SetTranslate(pos);
         boss->SetColor({ 1.0f, 0.0f, 1.0f, 1.0f });
 
-        // ====================================================
-        // ★ 修正：落下中のキリモミ回転 ＆ 接地で90度バタン！
-        // ====================================================
-        if (animTimer_ <= fallDuration) {
-            // 落下中：X軸をグルグル回転させる
-            float spinSpeed = 20.0f;
-            boss->SetRotation({ animTimer_ * spinSpeed, 0.0f, 0.0f });
-        }
-        else {
-            // 接地後：90度（ラジアンで π/2）傾けてバタンと横たわる！
-            float angle90 = std::numbers::pi_v<float> / 2.0f;
-            boss->SetRotation({ angle90, 0.0f, 0.0f });
-
-            // ※もしモデルの向きの都合で「仰向け」になってしまい、
-            // 「うつ伏せ」にしたい場合は -angle90 に変更してください！
-        }
-
         if (t >= 1.0f) {
             // ==========================================
-            // ★ 巨大隕石の消去
+            // ★ カメラめり込み対策：すべてのブロックを完全消去！
             // ==========================================
-            if (meteors_.size() > 10 && meteors_[10]) {
-                meteors_[10]->SetScale({ 0.0f, 0.0f, 0.0f });
-                meteors_[10]->SetCollisionAttribute(0);
-                meteors_[10]->UpdateWorldMatrix();
-                meteors_[10]->isDead = true;
+
+            // ① 生成した隕石（巨大隕石も含む）をすべてサイズ0にする
+            for (Object3d* meteor : meteors_) {
+                if (meteor) {
+                    meteor->SetScale({ 0.0f, 0.0f, 0.0f });
+                    meteor->SetCollisionAttribute(0);
+                    meteor->UpdateWorldMatrix();
+                    meteor->isDead = true;
+                }
             }
             meteors_.clear();
+
+            // ② ボスに付いている装甲ブロックもすべてサイズ0にする
+            for (Object3d* block : boss->GetArmorBlocks()) {
+                if (block) {
+                    block->SetScale({ 0.0f, 0.0f, 0.0f });
+                    block->SetCollisionAttribute(0);
+                    block->UpdateWorldMatrix(); // カメラの判定更新のために必須
+                }
+            }
 
             // ==========================================
             // ★ 予測線を完全に消去
@@ -385,7 +382,6 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             }
 
-            //boss->SetWaitingForDeath(true);
             isFinished_ = true;
 
             DebugConsole::GetInstance()->AddLog("ボスは完全に沈黙した…！今だ、トドメを刺せ！！");

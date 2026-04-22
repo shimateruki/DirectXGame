@@ -570,7 +570,7 @@ void BossCore::ChangeState(State nextState) {
     // ==========================================
     // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
     // ==========================================
-    if (isWaitingForDeath_) {
+    if (isWaitingForDeath_||isWaitingForFinisher_) {
         coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
         blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
     }
