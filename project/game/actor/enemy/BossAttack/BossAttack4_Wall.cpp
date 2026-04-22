@@ -261,6 +261,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 Player* player = dynamic_cast<Player*>(boss->GetTarget());
                 if (player) {
                     player->SetForceLockOnTarget(nullptr);
+                    player->RequestClearLockOn();
                 }
                 animPhase_ = 43; // 4回終わったら復帰フェーズへ
             }
