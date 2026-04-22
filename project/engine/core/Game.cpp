@@ -34,7 +34,7 @@ void Game::Initialize() {
     // =========================================================
     //  ローカル設定を見て開始シーンを決める
     // =========================================================
-    std::string startScene = "GAMEPLAY"; // デフォルト
+    std::string startScene = "TITLE"; // デフォルト
 
 #ifdef USE_IMGUI
     std::string lastScene = sceneManager_->LoadLastSceneName();
