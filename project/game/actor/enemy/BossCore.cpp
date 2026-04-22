@@ -578,7 +578,15 @@ void BossCore::ChangeState(State nextState) {
             coreAttribute = kEnemy | kGround;
         }
         else {
-            coreAttribute = kGround;
+            // ====================================================
+            // ★ 修正：戦闘が始まっていたら「kEnemy」属性を付ける！
+            // ====================================================
+            if (isBattleStarted_) {
+                coreAttribute = kEnemy | kGround; // 戦闘中は敵！
+            }
+            else {
+                coreAttribute = kGround; // 登場前・登場演出中はただの壁（無敵）
+            }
         }
         blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
     }
@@ -1277,6 +1285,12 @@ void BossCore::StartBattle() {
     animTimer_ = 0.0f; // ★ ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
 
     DebugConsole::GetInstance()->AddLog("【BATTLE START】 ボスが行動を開始した！！！");
+
+    // ====================================================
+    // ★ 追加：戦闘開始フラグがONになったので、
+    // 現在の状態(Idle)を再セットして、即座に属性を「kEnemy」に更新する！
+    // ====================================================
+    ChangeState(state_);
 }
 
 void BossCore::UpdateAppearance(float deltaTime) {
