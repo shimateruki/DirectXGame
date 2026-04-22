@@ -77,12 +77,14 @@ private:
     Sprite* gameClearSprite_ = nullptr;
     Sprite* retryTextSprite_ = nullptr;
     Sprite* titleTextSprite_ = nullptr;
-
+    // GameClearScene.h の private: 内
     enum class ClearState {
         kRunIn,
-        kVictoryMotion, // プレイヤーが飛ぶまで
-        kShowResult,    // ロゴとタイムのフェードイン
-        kShowMenu,       // メニュー選択
+        kVictoryMotion,
+        kShowClearTime, // 今回のタイム表示＆ドラムロール
+        kShowBestTime,  // ベストタイム表示＆ドラムロール
+        kWaitInput,     // ：リザルト完了、入力待ち
+        kShowMenu,
         kRunOut
     };
     ClearState clearState_ = ClearState::kVictoryMotion;
@@ -93,6 +95,7 @@ private:
 
     float resultAlpha_ = 0.0f; // ロゴ・タイム用アルファ
     float menuAlpha_ = 0.0f;   // メニュー用アルファ
+    float bestTimeAlpha_ = 0.0f;
     Vector3 targetPlayerPos_;
     Vector3 targetPlayerRot_;
 };

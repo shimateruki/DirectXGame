@@ -128,7 +128,7 @@ void InputManager::Update()
     SDL_GameControllerUpdate();
 
     if (sdlController_) {
-        // ... (加速度・ジャイロの処理はそのまま) ...
+        // ... 加速度・ジャイロの処理 ...
         float data[3];
         bool hasData = false;
         if (SDL_GameControllerGetSensorData(sdlController_, (SDL_SensorType)SDL_SENSOR_ACCEL, data, 3) == 0) {
@@ -145,24 +145,16 @@ void InputManager::Update()
             }
         }
 
-        // -------------------------------------------------------------
-        // ★修正点1: SDLのスティック入力を取得して XInput形式 に統合
-        // -------------------------------------------------------------
-        // SDLの軸入力(-32768 ～ 32767)を取得
+        // --- SDLのスティック入力を取得して XInput形式 に統合 ---
         int16_t leftX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTX);
         int16_t leftY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTY);
         int16_t rightX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTX);
         int16_t rightY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTY);
 
-        // 値が入っている場合のみ上書き (XInput側が0の場合などを考慮)
-        // ※SDLのY軸はXInputと逆の場合が多いですが、ここでは「入力があるか」の判定に使えれば良いのでそのままでもOK
-        // 必要なら: leftY = -leftY; のように反転
         if (abs(leftX) > 0 || abs(leftY) > 0) {
             gamepadState.Gamepad.sThumbLX = leftX;
-            if (leftY <= -32768) {
-                leftY = -32767;
-            }
-            gamepadState.Gamepad.sThumbLY = (short)-leftY; // Y軸反転させておくのが一般的
+            if (leftY <= -32768) leftY = -32767;
+            gamepadState.Gamepad.sThumbLY = (short)-leftY; // Y軸反転
         }
         if (abs(rightX) > 0 || abs(rightY) > 0) {
             gamepadState.Gamepad.sThumbRX = rightX;
@@ -172,14 +164,11 @@ void InputManager::Update()
         // トリガー (ZLR)
         int16_t trigLeft = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
         int16_t trigRight = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
-        // SDLトリガー(0~32767) を XInput(0~255) に合わせるには >> 7 くらい
         if (trigLeft > 0) gamepadState.Gamepad.bLeftTrigger = (BYTE)(trigLeft >> 7);
         if (trigRight > 0) gamepadState.Gamepad.bRightTrigger = (BYTE)(trigRight >> 7);
 
 
-        // -------------------------------------------------------------
-        // B. Joy-Conのボタン入力を XInput形式 に変換して統合 (既存コード)
-        // -------------------------------------------------------------
+        // --- Joy-Conのボタン入力を XInput形式 に統合 ---
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_B)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_A;
         }
@@ -198,6 +187,12 @@ void InputManager::Update()
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN;
         }
+        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
+            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT;
+        }
+        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
+        }
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_START)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_START;
         }
@@ -211,27 +206,45 @@ void InputManager::Update()
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
         }
     }
+
+    // --- 仮想トリガーボタンの処理 ---
     const WORD VIRTUAL_BTN_LT = 0x0400;
     const WORD VIRTUAL_BTN_RT = 0x0800;
+    const BYTE TRIGGER_THRESHOLD = 30;
 
-    // トリガーの閾値（これ以上押し込んだら「ボタンを押した」と判定する）
-    const BYTE TRIGGER_THRESHOLD = 30; // 0~255の範囲。少し甘めにしておく
-
-    // 現在のフレームのLT
     if (gamepadState.Gamepad.bLeftTrigger > TRIGGER_THRESHOLD) {
-        gamepadState.Gamepad.wButtons |= VIRTUAL_BTN_LT; // 仮想ボタンをON
+        gamepadState.Gamepad.wButtons |= VIRTUAL_BTN_LT;
     }
     else {
-        gamepadState.Gamepad.wButtons &= ~VIRTUAL_BTN_LT; // 仮想ボタンをOFF
+        gamepadState.Gamepad.wButtons &= ~VIRTUAL_BTN_LT;
     }
 
-    // 現在のフレームのRT
     if (gamepadState.Gamepad.bRightTrigger > TRIGGER_THRESHOLD) {
         gamepadState.Gamepad.wButtons |= VIRTUAL_BTN_RT;
     }
     else {
         gamepadState.Gamepad.wButtons &= ~VIRTUAL_BTN_RT;
     }
+
+
+    SHORT deadzone = 16000; // 倒し込みのしきい値（最大32767）
+
+    // 左スティックのY軸 (上下)
+    if (gamepadState.Gamepad.sThumbLY > deadzone) {
+        gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_UP;
+    }
+    else if (gamepadState.Gamepad.sThumbLY < -deadzone) {
+        gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN;
+    }
+
+    // 左スティックのX軸 (左右)
+    if (gamepadState.Gamepad.sThumbLX > deadzone) {
+        gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
+    }
+    else if (gamepadState.Gamepad.sThumbLX < -deadzone) {
+        gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT;
+    }
+
 
     // =================================================================
     // 3. キャリブレーション
@@ -244,7 +257,7 @@ void InputManager::Update()
 
 
     // =================================================================
-    // 4. 操作モードの自動切り替え判定 (★修正済み)
+    // 4. 操作モードの自動切り替え判定
     // =================================================================
 
     // --- A. キーボード・マウスの入力判定 ---
@@ -258,9 +271,7 @@ void InputManager::Update()
         }
     }
 
-
     const long MOUSE_MOVE_THRESHOLD = 5;
-
     if (abs(mouseState.lX) > MOUSE_MOVE_THRESHOLD ||
         abs(mouseState.lY) > MOUSE_MOVE_THRESHOLD ||
         abs(mouseState.lZ) > MOUSE_MOVE_THRESHOLD) {
@@ -275,7 +286,6 @@ void InputManager::Update()
         }
     }
 
-    // キーボード/マウス入力があればフラグを下ろす
     if (isKeyMouseActive) {
         isGamepadMode_ = false;
     }
@@ -284,32 +294,24 @@ void InputManager::Update()
     // --- B. ゲームパッドの入力判定 ---
     bool isGamepadActive = false;
 
-    // ボタン入力チェック
     if (gamepadState.Gamepad.wButtons != 0) {
         isGamepadActive = true;
     }
 
-    //  スティックのデッドゾーン判定を「モード切替用」に甘くする
-    // モード切替検知用の閾値 (少し触れたら反応するように小さくする: 例 2000)
     const short DETECTION_DEADZONE = 2000;
-
-    // 左スティック
     if (abs(gamepadState.Gamepad.sThumbLX) > DETECTION_DEADZONE ||
         abs(gamepadState.Gamepad.sThumbLY) > DETECTION_DEADZONE) {
         isGamepadActive = true;
     }
-    // 右スティック
     if (abs(gamepadState.Gamepad.sThumbRX) > DETECTION_DEADZONE ||
         abs(gamepadState.Gamepad.sThumbRY) > DETECTION_DEADZONE) {
         isGamepadActive = true;
     }
-    // トリガー入力チェック (閾値を超える入力があるか)
     if (gamepadState.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD ||
         gamepadState.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
         isGamepadActive = true;
     }
 
-    // ゲームパッド入力があればフラグを立てる (後勝ち判定)
     if (isGamepadActive) {
         isGamepadMode_ = true;
     }
@@ -550,34 +552,39 @@ int InputManager::GetPressedMouseButton() const {
     }
     return -1; // 何も押されていない
 }
+// =================================================================
+// ★ サブキー対応版の入力判定関数群
+// =================================================================
+
 bool InputManager::IsActionPressed(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;
 
-    // ① キーボード判定
+    // ① キーボード (メインキー または サブキーが押されているか)
     if (data->keyCode != 0 && IsKeyPressed(static_cast<BYTE>(data->keyCode))) return true;
+    if (data->keyCodeSub != 0 && IsKeyPressed(static_cast<BYTE>(data->keyCodeSub))) return true;
 
-    // ② マウス判定 
+    // ② マウス
     if (data->mouseButton != -1 && IsMouseButtonPressed(data->mouseButton)) return true;
 
-    // ③ パッド判定
+    // ③ パッド
     if (data->padCode != 0 && IsGamepadButtonPressed(data->padCode)) return true;
 
     return false;
 }
 
-// アクションが「押された瞬間か」の判定
 bool InputManager::IsActionTriggered(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;
 
-    // ① キーボード判定
+    // ① キーボード (メインキー または サブキーが押された瞬間か)
     if (data->keyCode != 0 && IsKeyTriggered(static_cast<BYTE>(data->keyCode))) return true;
+    if (data->keyCodeSub != 0 && IsKeyTriggered(static_cast<BYTE>(data->keyCodeSub))) return true;
 
-    // ② マウス判定 
+    // ② マウス
     if (data->mouseButton != -1 && IsMouseButtonTriggered(data->mouseButton)) return true;
 
-    // ③ パッド判定
+    // ③ パッド
     if (data->padCode != 0 && IsGamepadButtonTriggered(data->padCode)) return true;
 
     return false;
@@ -587,8 +594,9 @@ bool InputManager::IsActionReleased(const std::string& actionName) const {
     const BindData* data = KeyConfig::GetInstance()->GetBindData(actionName);
     if (!data) return false;
 
-    // ① キーボード
+    // ① キーボード (メインキー または サブキーを離した瞬間か)
     if (data->keyCode != 0 && !(keyState[data->keyCode] & 0x80) && (prevKeyState[data->keyCode] & 0x80)) return true;
+    if (data->keyCodeSub != 0 && !(keyState[data->keyCodeSub] & 0x80) && (prevKeyState[data->keyCodeSub] & 0x80)) return true;
 
     // ② マウス (離した判定)
     if (data->mouseButton != -1 && IsMouseButtonReleased(data->mouseButton)) return true;

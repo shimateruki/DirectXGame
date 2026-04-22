@@ -3501,7 +3501,11 @@ void PlayerStateWin::ApplyPose(float t)
 	// --- 各フェーズのポーズ定義（Y軸は 180度反転した targetYAngle_） ---
 	Vector3 squatRot = { DegToRad(15.0f), targetYAngle_, 0.0f };
 	Vector3 jumpRot = { DegToRad(-10.0f), targetYAngle_, 0.0f };
-	Vector3 rtArmWin = rightArmDefaultRot_ + Vector3{ DegToRad(-150.0f), 0.0f, DegToRad(20.0f) };
+
+	Vector3 rtArmWin = rightArmDefaultRot_ + Vector3{ DegToRad(-120.0f), DegToRad(-45.0f), DegToRad(30.0f) };
+
+	// 左腕は完璧なのでそのまま維持！
+	Vector3 ltArmWin = leftArmDefaultRot_ + Vector3{ DegToRad(-40.0f), 0.0f, DegToRad(-15.0f) };
 
 	Vector3 curBodyRot, curRtArmRot, curLtArmRot, curRtFootRot, curLtFootRot, curHeadRot;
 
@@ -3517,15 +3521,16 @@ void PlayerStateWin::ApplyPose(float t)
 		curHeadRot = SafeLerpRot(headStartRot_, headDefaultRot_, nT);
 	}
 	else {
-		// =========================================================
-		// ★ 修正：B. ジャンプ中＆空中フリーズ (0.2s ～ メニュー遷移まで永遠に！)
-		// =========================================================
-		// 0.2秒～0.5秒の間でポーズを完成させ、それ以降は t=1.0 で維持される
+		// B. ジャンプ中＆空中フリーズ (0.2s ～)
 		float nT = std::clamp((animTimer_ - 0.2f) / 0.3f, 0.0f, 1.0f);
 
 		curBodyRot = SafeLerpRot(squatRot, jumpRot, nT);
+
+		// ★ 左右非対称のガッツポーズへ！
 		curRtArmRot = SafeLerpRot(rightArmDefaultRot_, rtArmWin, nT);
-		curLtArmRot = leftArmDefaultRot_ + Vector3{ 0, 0, DegToRad(-30) };
+		curLtArmRot = SafeLerpRot(leftArmDefaultRot_, ltArmWin, nT);
+
+		// 足の非対称（右足曲げ、左足伸ばし）と非常に相性が良いです
 		curRtFootRot = rightFootDefaultRot_ + Vector3{ DegToRad(30), 0, 0 };
 		curLtFootRot = leftFootDefaultRot_ + Vector3{ DegToRad(-20), 0, 0 };
 		curHeadRot = headDefaultRot_ + Vector3{ DegToRad(-15), 0, 0 };
@@ -3539,7 +3544,6 @@ void PlayerStateWin::ApplyPose(float t)
 	if (rightFootObj_) { Transform* tf = rightFootObj_->GetTransform(); tf->rotate = curRtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; rightFootObj_->UpdateWorldMatrix(); }
 	if (leftFootObj_) { Transform* tf = leftFootObj_->GetTransform(); tf->rotate = curLtFootRot; tf->quaternion = Math::EulerToQuaternion(tf->rotate); tf->isQuaternionMaster = true; leftFootObj_->UpdateWorldMatrix(); }
 }
-
 PlayerStateWinReturn::PlayerStateWinReturn(float groundY) : groundY_(groundY) {}
 // ========================================================
 // 勝利状態からの復帰 (WinReturn) 実装

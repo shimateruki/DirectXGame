@@ -1,5 +1,24 @@
 {
     "Overrides": {
+        "a": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                5.147991180419922,
+                3.3140292167663574,
+                -41.38167953491211
+            ],
+            "fixedTargetPos": [
+                4.728325366973877,
+                3.63065242767334,
+                -31.3955078125
+            ],
+            "trackEyeX": false,
+            "trackEyeY": false,
+            "trackEyeZ": false,
+            "trackTargetX": false,
+            "trackTargetY": false,
+            "trackTargetZ": false
+        },
         "camertimer": {
             "duration": 1.0,
             "fixedEyePos": [

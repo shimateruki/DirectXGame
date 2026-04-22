@@ -19,6 +19,13 @@ public:
     void SetPosition(const Vector2& basePos);
     float GetCurrentTime() const { return currentTime_; }
     void SetAlpha(float alpha);
+    void StartRollEffect() {
+        isRolling_ = true;
+        rollTimer_ = 0.0f;
+        fixedDigitCount_ = 0;
+    }
+    bool IsRolling() const { return isRolling_; }
+    void SetPosition(const Vector2& basePos, float spacingScale = 1.0f);
 private:
     // 数字(0~9)と記号のテクスチャハンドル
     uint32_t numberTexHandles_[10];
@@ -33,5 +40,9 @@ private:
     float currentTime_ = 0.0f;
     bool isRunning_ = false;
     SpriteCommon* spriteCommon_ = nullptr;
+
+    bool isRolling_ = false;
+    float rollTimer_ = 0.0f;
+    int fixedDigitCount_ = 0; // 0(全回転) ～ 6(全確定)
 
 };

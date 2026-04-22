@@ -57,12 +57,12 @@ void GameClearScene::Initialize() {
     // --- タイムUI初期化（右寄せ配置） ---
     clearTimeUI_ = std::make_unique<TimeAttackUI>();
     clearTimeUI_->Initialize(spriteCommon_.get());
-    clearTimeUI_->SetPosition({ 850.0f, 350.0f });
+    clearTimeUI_->SetPosition({ 850.0f, 350.0f }, 1.15f);
     clearTimeUI_->SetTime(clearTime);
     clearTimeUI_->SetAlpha(0.0f);
     bestTimeUI_ = std::make_unique<TimeAttackUI>();
     bestTimeUI_->Initialize(spriteCommon_.get());
-    bestTimeUI_->SetPosition({ 850.0f, 500.0f });
+    bestTimeUI_->SetPosition({ 850.0f, 500.0f }, 1.15f);
     bestTimeUI_->SetTime(bestTime);
     bestTimeUI_->SetAlpha(0.0f);
     // --- レベルデータ読み込み ---
@@ -112,6 +112,7 @@ void GameClearScene::Initialize() {
     clearState_ = ClearState::kRunIn;
     stateTimer_ = 0.0f;
     resultAlpha_ = 0.0f;
+    bestTimeAlpha_ = 0.0f; 
     menuAlpha_ = 0.0f;
 }
 
@@ -149,7 +150,7 @@ void GameClearScene::Update(float deltaTime) {
     CollisionManager::GetInstance()->Update();
 
     // ----------------------------------------------------------------
-    // 2. クリア演出シーケンス制御
+    // 2. クリア演出シーケンス制御 (ステートマシン)
     // ----------------------------------------------------------------
     stateTimer_ += deltaTime;
 
@@ -183,53 +184,82 @@ void GameClearScene::Update(float deltaTime) {
     case ClearState::kVictoryMotion:
         // --- 【フェーズ2】 勝利：ジャンプの頂点でフリーズまで待機 ---
         if (stateTimer_ > 0.6f) {
-            clearState_ = ClearState::kShowResult;
+            clearState_ = ClearState::kShowClearTime;
+            stateTimer_ = 0.0f;
+
+            // カメラ演出aを再生
+            Camera* mainCamera = CameraManager::GetInstance()->GetMainCamera();
+            if (mainCamera) {
+                CameraEditor::GetInstance()->PlayOverrideCamera(mainCamera, "a");
+            }
+
+            if (clearTimeUI_) clearTimeUI_->StartRollEffect();
+        }
+        break;
+
+    case ClearState::kShowClearTime:
+        // --- 【フェーズ3-A】 自己タイム表示（ドラムロール） ---
+        resultAlpha_ += deltaTime * 2.0f;
+        if (resultAlpha_ > 1.0f) resultAlpha_ = 1.0f;
+
+        if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
+        if (clearTimeUI_) clearTimeUI_->SetAlpha(resultAlpha_);
+
+        if (clearTimeUI_ && !clearTimeUI_->IsRolling()) {
+            clearState_ = ClearState::kShowBestTime;
+            stateTimer_ = 0.0f;
+            if (bestTimeUI_) bestTimeUI_->StartRollEffect();
+        }
+        break;
+
+    case ClearState::kShowBestTime:
+        // --- 【フェーズ3-B】 ベストタイム表示（ドラムロール） ---
+        bestTimeAlpha_ += deltaTime * 2.0f;
+        if (bestTimeAlpha_ > 1.0f) bestTimeAlpha_ = 1.0f;
+
+        if (bestTimeUI_) bestTimeUI_->SetAlpha(bestTimeAlpha_);
+
+        if (bestTimeUI_ && !bestTimeUI_->IsRolling()) {
+            clearState_ = ClearState::kWaitInput;
             stateTimer_ = 0.0f;
         }
         break;
 
-    case ClearState::kShowResult:
-        // --- 【フェーズ3】 リザルト：ロゴとタイムを表示 ＆ ボタン待ち ---
-        resultAlpha_ += deltaTime * 2.0f;
-        if (resultAlpha_ > 1.0f) resultAlpha_ = 1.0f;
+    case ClearState::kWaitInput:
+        // --- 【フェーズ3-C】 入力待ち：アクション「Jump」(Space/A)で次へ ---
+        if (inputManager_->IsActionTriggered("Jump")) {
+            if (clearTimeUI_) clearTimeUI_->SetAlpha(0.0f);
+            if (bestTimeUI_) bestTimeUI_->SetAlpha(0.0f);
 
-        if (gameClearSprite_) {
-            Vector4 c = gameClearSprite_->GetColor(); c.w = resultAlpha_;
-            gameClearSprite_->SetColor(c);
-        }
-        if (clearTimeUI_) clearTimeUI_->SetAlpha(resultAlpha_);
-        if (bestTimeUI_) bestTimeUI_->SetAlpha(resultAlpha_);
-
-        if (resultAlpha_ >= 1.0f) {
-            if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-
-                // ★ 修正：メニューへ行く瞬間にタイマーを非表示にする
-                if (clearTimeUI_) clearTimeUI_->SetAlpha(0.0f);
-                if (bestTimeUI_) bestTimeUI_->SetAlpha(0.0f);
-
-                if (player_) {
-                    player_->ChangeState(std::make_unique<PlayerStateWinReturn>(targetPlayerPos_.y));
-                }
-
-                clearState_ = ClearState::kShowMenu;
-                stateTimer_ = 0.0f;
-                DebugConsole::GetInstance()->AddLog("【RESULT】 着地開始 ＆ メニュー表示（タイマー非表示）");
+            // カメラ演出終了
+            Camera* mainCamera = CameraManager::GetInstance()->GetMainCamera();
+            if (mainCamera) {
+                mainCamera->EndOverride(1.0f);
             }
+
+            if (player_) {
+                player_->ChangeState(std::make_unique<PlayerStateWinReturn>(targetPlayerPos_.y));
+            }
+
+            clearState_ = ClearState::kShowMenu;
+            stateTimer_ = 0.0f;
         }
         break;
 
     case ClearState::kShowMenu:
-        // --- 【フェーズ4】 メニュー：リスタート / タイトルの選択 ---
+        // --- 【フェーズ4】 メニュー：左右キー(A/D、左/右、スティック)で選択 ---
         menuAlpha_ += deltaTime * 2.0f;
         if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
 
-        if (inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+        // ★ アクション名「Left」「Right」で判定！
+        if (inputManager_->IsActionTriggered("Left")) {
             currentMenuIndex_ = (int)MenuIndex::Retry;
         }
-        if (inputManager_->IsKeyTriggered(DIK_DOWN) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+        if (inputManager_->IsActionTriggered("Right")) {
             currentMenuIndex_ = (int)MenuIndex::Title;
         }
 
+        // 強調演出の更新
         {
             auto ApplyEffect = [&](Sprite* s, bool isSelected) {
                 if (!s) return;
@@ -243,7 +273,8 @@ void GameClearScene::Update(float deltaTime) {
             ApplyEffect(titleTextSprite_, currentMenuIndex_ == (int)MenuIndex::Title);
         }
 
-        if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+        // 決定：アクション「Jump」(Space/A)で選んだ方へ走り出す
+        if (inputManager_->IsActionTriggered("Jump")) {
             if (player_) {
                 float runSpeed = 15.0f;
                 float pi = 3.14159265f;
@@ -263,47 +294,29 @@ void GameClearScene::Update(float deltaTime) {
         break;
 
     case ClearState::kRunOut:
-        // --- 【フェーズ5】 退場：UI消去 ＆ 画面外へダッシュ ---
+        // --- 【フェーズ5】 退場：画面外へダッシュ ---
         resultAlpha_ -= deltaTime * 3.0f;
         menuAlpha_ -= deltaTime * 3.0f;
         if (resultAlpha_ < 0.0f) resultAlpha_ = 0.0f;
         if (menuAlpha_ < 0.0f) menuAlpha_ = 0.0f;
 
-        // ロゴなどのフェードアウト（タイマーは既に非表示なので更新しない）
         if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
-
-        if (retryTextSprite_) {
-            float a = (currentMenuIndex_ == (int)MenuIndex::Retry ? 1.0f : 0.3f) * menuAlpha_;
-            retryTextSprite_->SetColor({ 1,1,1,a });
-        }
-        if (titleTextSprite_) {
-            float a = (currentMenuIndex_ == (int)MenuIndex::Title ? 1.0f : 0.3f) * menuAlpha_;
-            titleTextSprite_->SetColor({ 1,1,1,a });
-        }
+        if (retryTextSprite_) retryTextSprite_->SetColor({ 1,1,1, (currentMenuIndex_ == 0 ? 1.0f : 0.3f) * menuAlpha_ });
+        if (titleTextSprite_) titleTextSprite_->SetColor({ 1,1,1, (currentMenuIndex_ == 1 ? 1.0f : 0.3f) * menuAlpha_ });
 
         if (stateTimer_ > 1.5f) {
-            if (currentMenuIndex_ == (int)MenuIndex::Retry) {
-                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-            }
-            else {
-                SceneManager::GetInstance()->ChangeScene("TITLE");
-            }
+            SceneManager::GetInstance()->ChangeScene(currentMenuIndex_ == 0 ? "GAMEPLAY" : "TITLE");
         }
         break;
     }
 
     // ----------------------------------------------------------------
-    // 3. 描画用データの最終更新
+    // 3. 行列更新
     // ----------------------------------------------------------------
     if (clearTimeUI_) clearTimeUI_->Update(deltaTime);
     if (bestTimeUI_) bestTimeUI_->Update(deltaTime);
-
-    for (auto& sprite : sprites_) {
-        sprite->Update();
-    }
+    for (auto& sprite : sprites_) sprite->Update();
 }
-
-
 void GameClearScene::Draw() {
     // --- 一人称視点判定 ---
     bool isFirstPerson = false;
