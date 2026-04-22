@@ -696,6 +696,10 @@ void GamePlayScene::Update(float deltaTime) {
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
+	if (boss_) {
+		boss_->ActuallySpawnShards();
+	}
+
 	//// 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {

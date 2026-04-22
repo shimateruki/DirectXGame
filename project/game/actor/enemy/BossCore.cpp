@@ -494,12 +494,23 @@ void BossCore::Update(float deltaTime) {
             UpdateIdle(deltaTime);
             break;
         case State::Attack:
-            // 攻撃クラスがあればそれを更新！終わったらIdleへ！
             if (currentAttack_) {
                 currentAttack_->Update(this, deltaTime);
+
                 if (currentAttack_->IsFinished()) {
                     currentAttack_.reset();
-                    ChangeState(State::Idle);
+
+                    if (isFinalPhase_) {
+                        // ====================================================
+                        // ★ 変更：大技が終わったら「トドメ待ち状態」にする
+                        // ====================================================
+                        isWaitingForFinisher_ = true;
+                        DebugConsole::GetInstance()->AddLog("【CHANCE】 ボスが力尽きた！トドメを刺せ！！");
+                        ChangeState(State::Idle); // 隙だらけの待機へ
+                    }
+                    else {
+                        ChangeState(State::Idle);
+                    }
                 }
             }
             break;
@@ -685,22 +696,34 @@ void BossCore::StartAppearance() {
 }
 
 void BossCore::TakeBodyDamage(float damage) {
-    // ==========================================
-    // ★ 修正1：古い変数ではなく、「すでに死亡フェーズに入っているか」で判定する！
-    // deathPhase_ が 0 以外（1, 2, 3）なら、もう倒しているのでダメージ無効。
-    // ==========================================
+    // 既に爆散演出中なら何もしない
     if (deathPhase_ != 0) return;
 
-    // ダメージを与える
+    // ====================================================
+    // ★ 追加：トドメ待ち状態の時に殴られたら、ついに撃破演出スタート！
+    // ====================================================
+    if (isWaitingForFinisher_) {
+        param_->hp = 0.0f;
+        StartDeathSequence();
+        return;
+    }
+
     param_->hp -= damage;
 
     if (param_->hp <= 0.0f) {
-        param_->hp = 0.0f;
+        if (!isFinalPhase_) {
+            // 初めてHP0になったら、1で耐えて最終攻撃(ID: 8)へ！
+            param_->hp = 1.0f;
+            isFinalPhase_ = true;
+            DebugConsole::GetInstance()->AddLog("【LAST STAND】 ボスが最後の大技を準備している…！！");
 
-        // ==========================================
-        // ★ 修正2：新しい3段演出のスタート関数を呼ぶ！
-        // ==========================================
-        StartDeathSequence();
+            if (currentAttack_) currentAttack_.reset();
+            ChangeState(State::Attack); // 自動で ID:8 が選ばれます
+        }
+        else {
+            // 大技の最中は絶対に死なない（HP1を維持）
+            param_->hp = 1.0f;
+        }
     }
 }
 
@@ -712,6 +735,25 @@ void BossCore::UpdateIdle(float deltaTime) {
     if (isWaitingForDeath_) {
         // (トドメ待ちのボロボロ処理はそのまま)
         return;
+    }
+
+    // ====================================================
+    // ★ 追加：トドメ待ち状態（ヘロヘロ状態）の演出
+    // ====================================================
+    if (isWaitingForFinisher_) {
+        SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // 暗くする
+        float shake = std::sin(s_globalIdleTimer * 40.0f) * 0.05f;
+        SetTranslate({ GetTranslate().x + shake, GetTranslate().y, GetTranslate().z }); // 震える
+
+        for (Object3d* block : armorBlocks_) {
+            if (block) {
+                Vector3 pos = block->GetTranslate();
+                if (pos.y > 0.0f) pos.y -= 10.0f * deltaTime; // ブロックを落とす
+                block->SetTranslate(pos);
+                block->SetColor({ 0.2f, 0.2f, 0.2f, 1.0f });
+            }
+        }
+        return; // これ以上何もしない
     }
 
     // ====================================================
@@ -1032,9 +1074,15 @@ void BossCore::StartDeathSequence() {
 // ★ 段階2：亀裂状態（少し隙間をあけた破片）を出現させる
 // ==========================================
 void BossCore::ShowCrackedCore() {
-    DebugConsole::GetInstance()->AddLog("【撃破】 コアに亀裂が！！");
+    DebugConsole::GetInstance()->AddLog("【撃破】 コアに亀裂が！！(生成予約)");
 
-    // 本体を非表示にする
+    // ★ 生成はここではやらず、フラグだけ立てる！
+    isShardSpawnRequested_ = true;
+}
+
+void BossCore::ActuallySpawnShards() {
+    if (!isShardSpawnRequested_) return; // 予約がなければ何もしない
+
     this->SetScale({ 0.0f, 0.0f, 0.0f });
     this->SetCollisionAttribute(0);
 
@@ -1047,8 +1095,6 @@ void BossCore::ShowCrackedCore() {
             pieceObj->Initialize(common_);
             pieceObj->SetStatic(true);
             pieceObj->SetModel("enemy_core_shards/enemy_core" + std::to_string(i + 1));
-
-            // 見た目の設定（発光を少し強くして「光が漏れてる感」を出す）
             pieceObj->SetColor({ 0.0f, 0.5946f, 1.0f, 1.0f });
             pieceObj->SetMaterialType(2);
             pieceObj->SetEmissive(2.0f);
@@ -1056,27 +1102,25 @@ void BossCore::ShowCrackedCore() {
             pieceObj->SetRoughness(0.5f);
             pieceObj->SetEnableEnvMap(true);
             pieceObj->SetEnvIntensity(1.035f);
-
             pieceObj->SetScale({ 1.0f, 1.0f, 1.0f });
             pieceObj->SetCollisionAttribute(0);
 
-            // 亀裂のズラし幅（0.2f ほど中心から離す）
             float rx = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
             float ry = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
             float rz = ((static_cast<float>(rand()) / RAND_MAX) - 0.5f) * 2.0f;
             Vector3 crackOffset = { rx * 0.2f, ry * 0.2f, rz * 0.2f };
             pieceObj->SetTranslate({ corePos.x + crackOffset.x, corePos.y + crackOffset.y, corePos.z + crackOffset.z });
 
-            // まだ飛ばさない！
             CorePiece piece;
             piece.obj = pieceObj.get();
             piece.velocity = { 0.0f, 0.0f, 0.0f };
             piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
-
             corePieces_.push_back(piece);
+
             currentScene->GetObjects().push_back(std::move(pieceObj));
         }
     }
+    isShardSpawnRequested_ = false; // 生成完了！
 }
 
 // ==========================================
