@@ -216,13 +216,6 @@ void GamePlayScene::Initialize() {
 		}
 	}
 
-	// チュートリアル用スプライトを取得して最初は非表示（透明）にする
-	tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
-	tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
-	tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
-	tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
-	tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
-
 	auto SetAlphaIfExists = [](Sprite* sprite, float a) {
 		if (sprite) {
 			Vector4 c = sprite->GetColor();
@@ -230,12 +223,38 @@ void GamePlayScene::Initialize() {
 			sprite->SetColor(c);
 		}
 		};
+
+	// --- チュートリアル用スプライトの取得（最初は非表示） ---
+	tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
+	tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
+	tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
+	tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
+	tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
+
 	SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
 	SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
 	SetAlphaIfExists(tutorialLockOnSprite_, 0.0f);
 	SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
 	SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
 
+	// --- ミッションタスクスプライトの取得（最初は非表示） ---
+	missionText_mission_ = GetSpriteByName("missionText_mission.png");
+	missionText_line_ = GetSpriteByName("missionText_line.png");
+	missionText_Mark_ = GetSpriteByName("missionText_Mark.png");
+	missionText_lever_ = GetSpriteByName("missionText_lever.png");
+	missionText_go_ = GetSpriteByName("missionText_go.png");
+	missionText_boss_ = GetSpriteByName("missionText_boss.png");
+
+	SetAlphaIfExists(missionText_mission_, 0.0f);
+	SetAlphaIfExists(missionText_line_, 0.0f);
+	SetAlphaIfExists(missionText_Mark_, 0.0f);
+	SetAlphaIfExists(missionText_lever_, 0.0f);
+	SetAlphaIfExists(missionText_go_, 0.0f);
+	SetAlphaIfExists(missionText_boss_, 0.0f);
+
+	missionInitialShown_ = false;
+	missionGoShown_ = false;
+	missionBossShown_ = false;
 
 	// =======================================================
 	// ★ 進行状況の復元：橋がすでに落ちている場合の処理
@@ -457,6 +476,20 @@ void GamePlayScene::Update(float deltaTime) {
 						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 				}
+
+				// ここで missionText_go を表示（1回だけ）
+				if (!missionGoShown_ && missionText_go_) {
+					Vector4 c = missionText_go_->GetColor();
+					c.w = 1.0f;
+					missionText_go_->SetColor(c);
+					missionGoShown_ = true;
+
+					if (missionText_lever_) {
+						Vector4 lc = missionText_lever_->GetColor();
+						lc.w = 0.0f;
+						missionText_lever_->SetColor(lc);
+					}
+				}
 			}
 		}
 
@@ -594,6 +627,20 @@ void GamePlayScene::Update(float deltaTime) {
 						c.w = 1.0f;
 						tutorialMoveSprite_->SetColor(c);
 					}
+				}
+
+				if (!missionInitialShown_) {
+					auto ShowIfExists = [](Sprite* s) {
+						if (!s) return;
+						Vector4 c = s->GetColor();
+						c.w = 1.0f;
+						s->SetColor(c);
+						};
+					ShowIfExists(missionText_mission_);
+					ShowIfExists(missionText_line_);
+					ShowIfExists(missionText_Mark_);
+					ShowIfExists(missionText_lever_);
+					missionInitialShown_ = true;
 				}
 			}
 
@@ -958,6 +1005,26 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 			boss_->StartBattle();
+
+			// ボス登場後に missionText_boss を表示（1回だけ）
+			if (!missionBossShown_ && missionText_boss_) {
+				Vector4 c = missionText_boss_->GetColor();
+				c.w = 1.0f;
+				missionText_boss_->SetColor(c);
+				missionBossShown_ = true;
+
+				// 重なり防止：以前のミッションUIを確実に非表示にする
+				if (missionText_go_) {
+					Vector4 gc = missionText_go_->GetColor();
+					gc.w = 0.0f;
+					missionText_go_->SetColor(gc);
+				}
+				if (missionText_lever_) {
+					Vector4 lc = missionText_lever_->GetColor();
+					lc.w = 0.0f;
+					missionText_lever_->SetColor(lc);
+				}
+			}
 		}
 	}
 }

@@ -210,6 +210,19 @@ private:
     Sprite* tutorialAttackSprite_ = nullptr;
     Sprite* tutorialDodgeSprite_ = nullptr;
 
+    // ミッションタスクスプライト（6枚）
+    Sprite* missionText_mission_ = nullptr;
+    Sprite* missionText_line_ = nullptr;
+    Sprite* missionText_Mark_ = nullptr;
+    Sprite* missionText_lever_ = nullptr;
+    Sprite* missionText_go_ = nullptr;    // チュートリアルドア消失で表示
+    Sprite* missionText_boss_ = nullptr;  // ボス登場後に表示
+
+    // ミッション表示状態フラグ（再表示防止用）
+    bool missionInitialShown_ = false; // 最初の4枚を表示済みか
+    bool missionGoShown_ = false;
+    bool missionBossShown_ = false;
+
     float tutorialTimer_ = 0.0f; // フェード／タイマー汎用
     bool tutorialUiCompleted_ = false;
 
