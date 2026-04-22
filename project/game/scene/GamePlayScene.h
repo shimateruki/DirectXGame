@@ -38,6 +38,7 @@ class BossCore;
 /// </summary>
 class GamePlayScene : public BaseScene {
 public:
+    static bool s_isRebooting_;
     GamePlayScene();
     ~GamePlayScene() override;
 
@@ -146,10 +147,10 @@ private:
 
     Sprite* bossHpBarSprite_ = nullptr;    // メインHPバー
     float bossHpBarMaxWidth_ = 0.0f;
-
+    Sprite* bossHpBackSprite_ = nullptr;
     Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
     float barrierHpBarMaxWidth_ = 0.0f;
-
+    Sprite* bossNameSprite_ = nullptr;
     enum class GameOverMenuIndex {
         Restart,
         Title,
@@ -180,8 +181,10 @@ private:
     Sprite* poseTextSprite_ = nullptr;
     Sprite* restartPoseTextSprite_ = nullptr;
     Sprite* titleTextPoseSprite_ = nullptr;
-
+    bool isGameClearSequence_ = false;
+    float gameClearTimer_ = 0.0f;
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
+
     bool hasBossAppeared_ = false; // ボス登場イベントが既に終わったかどうかのロックフラグ
 
     // ==========================================
@@ -225,5 +228,10 @@ private:
 
     float tutorialTimer_ = 0.0f; // フェード／タイマー汎用
     bool tutorialUiCompleted_ = false;
+
+
+    bool isRestartTransition_ = false;
+    float restartTimer_ = 0.0f;
+    bool isTitleTransition_ = false;
 
 };

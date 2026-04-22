@@ -25,12 +25,18 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
             targetMapBlocks_.clear();
             int neededCount = boss->GetNeededBlockCount();
 
-            for (MapBlock* block : MapBlock::s_activeBlocks) {
-                if (block && block->GetIsVisible()) {
-                    targetMapBlocks_.push_back(block);
-                    // ★ 必要な数に達したら、もう探さない！（11個目以降を無視）
-                    if (targetMapBlocks_.size() >= neededCount) {
-                        break;
+            // ==========================================
+            // ★ 修正：必要な数が 1 以上の時だけ探すようにする！
+            // 満タン（0個）の時は、このループ自体をスキップします。
+            // ==========================================
+            if (neededCount > 0) {
+                for (MapBlock* block : MapBlock::s_activeBlocks) {
+                    if (block && block->GetIsVisible()) {
+                        targetMapBlocks_.push_back(block);
+                        // 必要な数に達したら、もう探さない
+                        if (targetMapBlocks_.size() >= neededCount) {
+                            break;
+                        }
                     }
                 }
             }

@@ -29,6 +29,7 @@
 #include "TutorialDoll.h"
 #include"WinApp.h"
 #include "GameProgress.h"
+#include "SaveDataManager.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -48,6 +49,10 @@
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include <MeshEffectManager.h>
+#include"TimeAttackUI.h"
+#include <CinematicFade.h>
+
+bool GamePlayScene::s_isRebooting_ = false;
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -115,7 +120,8 @@ void GamePlayScene::Initialize() {
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
-
+	timeAttackUI_ = std::make_unique<TimeAttackUI>();
+	timeAttackUI_->Initialize(spriteCommon_.get());
 
 	// --- スプライトの中から探索
 	for (auto& sprite : sprites_) {
@@ -146,10 +152,20 @@ void GamePlayScene::Initialize() {
 		if (sprite->GetName() == "bossrHpBar") {
 			bossHpBarSprite_ = sprite.get();
 			bossHpBarMaxWidth_ = sprite->GetSize().x;
+			SetAlphaZero(bossHpBarSprite_);
 		}
 		else if (sprite->GetName() == "bariaHp.png") {
 			barrierHpBarSprite_ = sprite.get();
 			barrierHpBarMaxWidth_ = sprite->GetSize().x;
+			SetAlphaZero(bossHpBarSprite_);
+		}
+		else if (sprite->GetName() == "bossHpBarback") {
+			bossHpBackSprite_ = sprite.get();
+			SetAlphaZero(bossHpBackSprite_);
+		}
+		else if (sprite->GetName() == "bossText") { 
+			bossNameSprite_ = sprite.get();
+			SetAlphaZero(bossNameSprite_);
 		}
 	}
 
@@ -310,13 +326,13 @@ void GamePlayScene::Initialize() {
 				}
 				obj->UpdateWorldMatrix();
 			}
-			else if (name.find("Bridge_") != std::string::npos) {
+			else if (name.find("Bridge_") != std::string::npos) { // ブリッジ関連は全て復活させる
 				if (name.find("Bridge_Collision") == std::string::npos) {
 					obj->SetIsVisible(true);
 				}
 				obj->SetCollisionAttribute(kGround);
 			}
-			else if (name.find("Battle_Field_Collision_") != std::string::npos) {
+			else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
 				obj->SetCollisionAttribute(0);
 			}
 		}
@@ -359,6 +375,19 @@ void GamePlayScene::Initialize() {
 		}
 	}
 
+	// =======================================================
+	 // ★ リスタート演出（電脳リブート）と完全初期化
+	 // =======================================================
+	SceneManager* scm = SceneManager::GetInstance();
+	PostEffect::GetInstance()->ResetToBaseParams();
+
+	if (scm->ShouldSkipFade()) {
+		CinematicFade::GetInstance()->StartOpen(0.3f);
+		scm->ResetSkipFade();
+	}
+	else {
+		CinematicFade::GetInstance()->StartOpen(0.5f);
+	}
 	dxCommon_->FlushCommandQueue(false);
 }
 
@@ -446,7 +475,30 @@ void GamePlayScene::Update(float deltaTime) {
 		// =======================================================
 		return;
 	}
+	if (isRestartTransition_ || isTitleTransition_) {
+		restartTimer_ += deltaTime;
+		float transitionDuration = 1.0f;
+		float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
 
+		PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+
+		// ★ ここはそのまま（縦に潰れる処理）
+		postParams->crtShutdown = t;
+
+
+
+		// 完全に終了（1秒経過）したらシーンをリロード
+		if (restartTimer_ >= transitionDuration) {
+			if (isRestartTransition_) {
+				SceneManager::GetInstance()->ChangeScene("GAMEPLAY", true);
+			}
+			else {
+				SceneManager::GetInstance()->ChangeScene("TITLE", true);
+			}
+		}
+
+		return;
+	}
 	// =======================================================
 	// チュートリアルドアの処理
 	// =======================================================
@@ -469,11 +521,18 @@ void GamePlayScene::Update(float deltaTime) {
 				doorOpenProgress_ = 1.0f;
 				// ドアが完全に開いた瞬間モデルを消しておく
 				for (auto& obj : objectManager_->GetObjects()) {
-					std::string name = obj->GetName();
-					if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
+					if (obj->GetName() == "Tutorial_Door_Left") {
 						obj->SetIsVisible(false);
 						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+						obj->isDead = true; // 完全に消す
+					}
+					else if (obj->GetName() == "Tutorial_Door_Right") {
+						std::string name = obj->GetName();
+						if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
+							obj->SetIsVisible(false);
+							obj->SetCollisionAttribute(0); // 当たり判定も消す
+							obj->isDead = true; // 完全に消す
+						}
 					}
 				}
 
@@ -492,17 +551,16 @@ void GamePlayScene::Update(float deltaTime) {
 				}
 			}
 		}
-
 		for (auto& obj : objectManager_->GetObjects()) {
 			if (obj->GetName() == "Tutorial_Door_Left") {
 				Transform* trans = obj->GetTransform();
-				trans->translate.x = -5.0f - 15.0f * doorOpenProgress_; // -5 -> -15
+				trans->translate.x = -5.0f - 15.0f * doorOpenProgress_;
 				trans->isQuaternionMaster = false;
 				obj->UpdateWorldMatrix();
 			}
 			else if (obj->GetName() == "Tutorial_Door_Right") {
 				Transform* trans = obj->GetTransform();
-				trans->translate.x = 5.0f + 15.0f * doorOpenProgress_; // 5 -> +15
+				trans->translate.x = 5.0f + 15.0f * doorOpenProgress_; 
 				trans->isQuaternionMaster = false;
 				obj->UpdateWorldMatrix();
 			}
@@ -582,7 +640,7 @@ void GamePlayScene::Update(float deltaTime) {
 							obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
 						}
 					}
-					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
 						obj->SetCollisionAttribute(kGround);
 					}
 				}
@@ -800,9 +858,8 @@ void GamePlayScene::Update(float deltaTime) {
 				Vector3 ndc;
 				ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
 				ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
-
-				float screenWidth = WinApp::kClientWidth;
-				float screenHeight = WinApp::kClientHeight;
+				float screenWidth = static_cast<float>(WinApp::kClientWidth);
+				float screenHeight = static_cast<float>(WinApp::kClientHeight);
 
 				float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
 				float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
@@ -887,6 +944,13 @@ void GamePlayScene::Update(float deltaTime) {
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
+	if (boss_) {
+		boss_->ActuallySpawnShards();
+	}
+  
+	if (timeAttackUI_) {
+		timeAttackUI_->Update(deltaTime);
+	}
 	//// 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
@@ -949,22 +1013,34 @@ void GamePlayScene::Update(float deltaTime) {
 				if (titleTextSprite_) {
 					titleTextSprite_->SetColor(currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title ? selectColor : normalColor);
 				}
-
 				// 決定ボタンで遷移！
-				if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+				if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
 
-					// ★超重要: 遷移前にポストエフェクトの数値を完全に元に戻す！
-					PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
-					postParams->dangerVignette = 0.0f;
-					postParams->blackout = 0.0f;
+					// 共通のUI透明化ラムダ式
+					auto SetAlphaZero = [](Sprite* sprite) {
+						if (sprite) {
+							Vector4 color = sprite->GetColor();
+							color.w = 0.0f;
+							sprite->SetColor(color);
+						}
+						};
 
 					if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart) {
-						// 同じシーンを読み込み直してリスタート
-						SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+						isRestartTransition_ = true;
+						restartTimer_ = 0.0f;
+
+						SetAlphaZero(gameOverTextSprite_);
+						SetAlphaZero(restartTextSprite_);
+						SetAlphaZero(titleTextSprite_);
 					}
 					else if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title) {
-						// タイトルへ戻る
-						SceneManager::GetInstance()->ChangeScene("TITLE");
+					
+						isTitleTransition_ = true;
+						restartTimer_ = 0.0f;
+
+						SetAlphaZero(gameOverTextSprite_);
+						SetAlphaZero(restartTextSprite_);
+						SetAlphaZero(titleTextSprite_);
 					}
 				}
 			}
@@ -1025,6 +1101,37 @@ void GamePlayScene::Update(float deltaTime) {
 					missionText_lever_->SetColor(lc);
 				}
 			}
+
+			if (timeAttackUI_) {
+				timeAttackUI_->Start();
+			}
+		}
+	}
+	if (boss_) {
+		// ボスが完全に消滅し、かつまだクリアシーケンスに入っていなければ開始
+		if (boss_->IsCompletelyDead() && !isGameClearSequence_) {
+			isGameClearSequence_ = true;
+			gameClearTimer_ = 0.0f;
+
+			// タイマーを止める
+			if (timeAttackUI_) {
+				timeAttackUI_->Stop();
+			}
+			float clearTime = timeAttackUI_->GetCurrentTime();
+			SaveDataManager::GetInstance()->RecordClearTime(clearTime);
+
+			DebugConsole::GetInstance()->AddLog("クリアタイムを保存しました: " + std::to_string(clearTime) + " 秒");
+			DebugConsole::GetInstance()->AddLog("【GAME CLEAR】 クリア演出開始！");
+		}
+	}
+
+	// クリアシーケンス中の処理
+	if (isGameClearSequence_) {
+		gameClearTimer_ += deltaTime;
+
+		// ボス消滅から 2.0 秒後に「CLEAR」シーンへ遷移！
+		if (gameClearTimer_ > 2.0f) {
+			SceneManager::GetInstance()->ChangeScene("GAMECLEAR");
 		}
 	}
 }
@@ -1216,6 +1323,9 @@ void GamePlayScene::DrawUI() {
 	if (isDrawLockOn_ && lockOnSprite_) {
 		lockOnSprite_->Draw();
 	}
+	if (timeAttackUI_ && hasBossAppeared_ && !isBossMoviePlaying_) {
+		timeAttackUI_->Draw();
+	}
 }
 
 
@@ -1241,13 +1351,27 @@ void GamePlayScene::UpdateUI() {
 		playerHpBarSprite_->SetSize(newSize);
 	}
 	if (boss_) {
-		// A. メインHPバーの同期
+		// =======================================================
+		// ボスUIの表示・非表示制御
+		// ムービーが終了（!isBossMoviePlaying_）したら表示する
+		// =======================================================
+		float alpha = (hasBossAppeared_ && !isBossMoviePlaying_) ? 1.0f : 0.0f;
+
+		auto SetAlpha = [](Sprite* s, float a) {
+			if (s) { Vector4 c = s->GetColor(); c.w = a; s->SetColor(c); }
+			};
+
+		SetAlpha(bossHpBarSprite_, alpha);
+		SetAlpha(barrierHpBarSprite_, alpha);
+		SetAlpha(bossHpBackSprite_, alpha); 
+		SetAlpha(bossNameSprite_, alpha);   
+		// --- A. メインHPバーの同期 ---
 		if (bossHpBarSprite_) {
 			float hpRatio = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
 			bossHpBarSprite_->SetSize({ bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y });
 		}
 
-		// B. バリアHPバーの同期
+		// --- B. バリアHPバーの同期 ---
 		if (barrierHpBarSprite_) {
 			float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
 			barrierHpBarSprite_->SetSize({ barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });

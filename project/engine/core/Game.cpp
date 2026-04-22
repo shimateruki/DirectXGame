@@ -71,7 +71,7 @@ void Game::Initialize() {
 
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
     postEffectEditor_->Initialize(PostEffect::GetInstance());
-  
+    PostEffect::GetInstance()->SaveBaseParams();
     KeyConfig::GetInstance()->Initialize();
 #ifdef USE_IMGUI
 
