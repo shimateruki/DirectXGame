@@ -82,7 +82,8 @@ private:
     enum class MovieState {
         kNone,
         kBridgeDrop,
-        kBossAppearance
+        kBossAppearance,
+        kTutorialPlatformDescent // ★ 追加
     };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
@@ -135,6 +136,9 @@ private:
 	//sprite変数
     Sprite* playerHpBarSprite_ = nullptr;
     float playerHpBarMaxWidth_ = 0.0f; // 100%の時の長さ
+    Object3d* tutorialPlatform_ = nullptr; // ★ 降下させるプラットフォーム
+    float tutorialPlatformOffset_ = 0.0f; // ★ プレイヤーとのY軸オフセット
+
     // =================================================
     //  ボスUI同期用のポインタと変数を保持
     // =================================================
@@ -179,5 +183,7 @@ private:
     bool isGameClearSequence_ = false;
     float gameClearTimer_ = 0.0f;
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
+
+    bool hasBossAppeared_ = false; // ボス登場イベントが既に終わったかどうかのロックフラグ
 
 };

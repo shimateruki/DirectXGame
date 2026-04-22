@@ -89,7 +89,7 @@ public: // メンバ関数
 	uint32_t GetTextureHandle() const { return textureHandle_; }
 	void SetTextureHandle(uint32_t textureHandle) {
 		textureHandle_ = textureHandle;
-		/* AdjustTextureSize(); */
+		 AdjustTextureSize(); 
 	}
 	static uint32_t LoadTexture(const std::string& fileName);
 	// <summary>

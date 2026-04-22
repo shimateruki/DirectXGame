@@ -1,4 +1,4 @@
-﻿#include "BossCore.h"
+#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h"
@@ -39,6 +39,15 @@ namespace {
         for (Object3d* child : node->GetChildren()) {
             Object3d* result = FindWeaponRecursive(child);
             if (result) return result;
+        }
+        return nullptr;
+    }
+
+    Object3d* FindObjectByNameRecursive(Object3d* node, const std::string& name) {
+        if (!node) return nullptr;
+        if (node->GetName() == name) return node;
+        for (Object3d* child : node->GetChildren()) {
+            if (Object3d* found = FindObjectByNameRecursive(child, name)) return found;
         }
         return nullptr;
     }
@@ -169,6 +178,10 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     director_ = std::make_unique<GhostDirector>();
     if (sceneManager_) {
         director_->Initialize(sceneManager_);
+    }
+    // 登場演出用のアニメーション(JSON)を読み込む
+    if (director_) {
+        director_->LoadScenario("EntranceAnimation");
     }
 
     originalColor_ = GetColor();
@@ -307,6 +320,27 @@ void BossCore::Update(float deltaTime) {
 
     BaseEnemy::Update(deltaTime);
 
+    if (director_) {
+        director_->Update(deltaTime);
+
+        // ゴーストディレクターのアニメーション終了を待っている場合
+        if (isWaitingForDirector_ && director_->IsFinished()) {
+            isWaitingForDirector_ = false;
+
+            // アニメーションが終わったら、"Center_Collision_Box" の当たり判定を完全に消す
+            if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+                for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+                    if (Object3d* found = FindObjectByNameRecursive(obj.get(), "Center_Collision_Box")) {
+                        found->SetCollisionAttribute(0);
+                        found->SetCollisionMask(0); // マスクも念のため消しておく
+                        found->SetScale({ 0.0f, 0.0f, 0.0f }); // 見た目も消す
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     // ==========================================
     // ★ 登場演出中なら、それを更新する
     // ==========================================
@@ -369,8 +403,13 @@ void BossCore::Update(float deltaTime) {
         }
     }
 
+    // ====================================================
+     // 登場演出中か、戦闘開始後のみアニメーションタイマーを進める！
+     // ====================================================
     if (SceneManager::GetInstance()->IsPlaying()) {
-        s_globalIdleTimer += deltaTime;
+        if (isAppearing_ || isBattleStarted_) {
+            s_globalIdleTimer += deltaTime;
+        }
     }
 
     UpdateFlyingBlocks(deltaTime);
@@ -410,6 +449,44 @@ void BossCore::Update(float deltaTime) {
 
             ChangeState(State::Idle);
             isFirstFrame_ = false;
+
+            // ====================================================
+            // ★ 追加：最初のフレームで、装甲ブロックをランダムに散らかす！
+            // ====================================================
+            blockStartPos_.clear(); // ★ armorManager_ ではなく、BossCoreが直接持っている変数を使います
+            Vector3 bossPos = GetTranslate();
+
+
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                // ボスを中心に、半径15〜30の範囲に散らす
+                float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
+                float distance = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 15.0f;
+
+                // ====================================================
+                // ★ 修正：ブロックは「ボスの子供（ローカル座標）」なので計算を変えます！
+                // ボスがどんな高さにいても、(0.5f - ボスの高さ) にすることで
+                // ワールド空間での高さを強制的に 0.5f (地面) に揃えることができます！
+                // ====================================================
+                Vector3 scatterPos = {
+                    std::cos(angle) * distance, // X: 子オブジェクトなので bossPos.x を足さなくてOK！
+                    0.5f - bossPos.y,           // Y: 地面の高さ(0.5f) - ボスの高さ
+                    std::sin(angle) * distance  // Z: 子オブジェクトなので bossPos.z を足さなくてOK！
+                };
+                blockStartPos_.push_back(scatterPos);
+
+                // 初期位置にブロックをワープさせておく
+                if (armorBlocks_[i]) {
+                    armorBlocks_[i]->SetTranslate(scatterPos);
+
+                    // ただの瓦礫感を出すため、初期角度をめちゃくちゃにする！
+                    float rX = (static_cast<float>(rand()) / RAND_MAX) * 3.1415f;
+                    float rY = (static_cast<float>(rand()) / RAND_MAX) * 3.1415f;
+                    float rZ = (static_cast<float>(rand()) / RAND_MAX) * 3.1415f;
+                    armorBlocks_[i]->SetRotation({ rX, rY, rZ });
+
+                    armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                }
+            }
         }
 
         switch (state_) {
@@ -590,24 +667,14 @@ void BossCore::StartAppearance() {
     if (isAppearing_ || isBattleStarted_) return;
 
     isAppearing_ = true;
-    appearancePhase_ = 1;
-    appearanceTimer_ = 2.0f; // ★ 2秒間、ボスをドアップで映す！
 
-    DebugConsole::GetInstance()->AddLog("【EVENT】 ボス登場演出スタート！！");
+    // ====================================================
+    // ★ 変更：まずは「フェーズ0（1秒間の完全静止）」からスタート！
+    // ====================================================
+    appearancePhase_ = 0;
+    appearanceTimer_ = 1.0f; // 1秒待つ！
 
-    // ★ カメラをボスの正面に滑らかに（1秒かけて）移動させる！
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-        Camera::CameraOverrideParams params;
-        params.duration = 1.0f; // 1秒かけてスーッと寄る
-        params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
-
-        Vector3 bossPos = GetTranslate();
-        // ボスを少し見上げるような、カッコいいカメラ位置
-        params.fixedEyePos = { bossPos.x, bossPos.y + 2.0f, bossPos.z - 20.0f };
-        params.fixedTargetPos = { bossPos.x, bossPos.y + 5.0f, bossPos.z };
-
-        camera->StartOverride(params);
-    }
+    DebugConsole::GetInstance()->AddLog("【EVENT】 ボス部屋到達…（1秒間の静寂）");
 }
 
 void BossCore::TakeBodyDamage(float damage) {
@@ -636,45 +703,59 @@ void BossCore::TakeBodyDamage(float damage) {
 
 void BossCore::UpdateIdle(float deltaTime) {
     if (isWaitingForDeath_) {
-        SetColor({ 0.5f, 0.5f, 0.5f, 1.0f }); // ボロボロの色にする
-
-        // ブロックも地面に落として機能停止させる
-        for (Object3d* block : armorBlocks_) {
-            if (block) {
-                Vector3 pos = block->GetTranslate();
-                if (pos.y > 0.0f) pos.y -= 20.0f * deltaTime; // 地面に落ちる
-                block->SetTranslate(pos);
-            }
-        }
-        return; // これ以上何もしない（攻撃にも移行しない）
+        // (トドメ待ちのボロボロ処理はそのまま)
+        return;
     }
 
-    // ★ 待機中は常にブロックをランダムスケールの周回軌道に乗せる！
+    // ====================================================
+    // フェーズ1（咆哮開始）になってから、初めて合体タイマーを進める！
+    // ====================================================
+    if (appearancePhase_ == 1 || (!isBattleStarted_ && assemblyTimer_ > 0.0f)) {
+        assemblyTimer_ += deltaTime;
+    }
+    else if (isBattleStarted_) {
+        assemblyTimer_ = 3.0f; // 戦闘中はMAX(3秒)にしておく
+    }
+
+    // ====================================================
+    // ★ ここが圧倒的カッコよさの秘密！
+    // 1.8秒（咆哮が終わって元のサイズに戻る瞬間）までは 0% で完全待機。
+    // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッ！と集める！
+    // ====================================================
+    float t = 0.0f;
+    if (assemblyTimer_ > 1.8f) {
+        t = std::min((assemblyTimer_ - 1.8f) / 0.7f, 1.0f);
+    }
+
+    // カッコいいイージング計算（3乗アウト：最初は早く、ボスに近づくにつれてゆっくり）
+    float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
+
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
-        armorBlocks_[i]->SetTranslate(orbit.pos);
+
+        if (i < blockStartPos_.size()) {
+            // 散らばった位置(blockStartPos_)から、軌道の位置(orbit)へ補間！
+            Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+            armorBlocks_[i]->SetTranslate(pos);
+        }
+        else {
+            armorBlocks_[i]->SetTranslate(orbit.pos);
+        }
+
         armorBlocks_[i]->SetScale(orbit.scale);
         armorBlocks_[i]->SetRotation(orbit.rot);
         armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
     }
 
     // ==========================================
-    // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める！
+    // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める
     // ==========================================
-    //if (isBattleStarted_) {
-    //    animTimer_ += deltaTime;
+    if (isBattleStarted_) {
+        animTimer_ += deltaTime;
 
-    //    // 2.0秒待機したら攻撃へ
-    //    if (animTimer_ >= 2.0f) {
-    //        ChangeState(State::Attack);
-    //    }
-    //}
-
-    animTimer_ += deltaTime;
-
-    // 2.0秒待機したら攻撃へ
-    if (animTimer_ >= 2.0f) {
-        ChangeState(State::Attack);
+        if (animTimer_ >= 2.0f) {
+            ChangeState(State::Attack);
+        }
     }
 }
 
@@ -1110,22 +1191,64 @@ void BossCore::UpdateAppearance(float deltaTime) {
 
     appearanceTimer_ -= deltaTime;
 
-    if (appearanceTimer_ <= 0.0f) {
-        if (appearancePhase_ == 1) {
-            // ★ 2秒経過：カメラをプレイヤー（元の視点）に戻す！
-            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
-                camera->EndOverride(1.0f); // 1秒かけて戻る
-            }
+    // ====================================================
+    // ★ 追加：フェーズ0（1秒間の待機）
+    // ====================================================
+    if (appearancePhase_ == 0) {
+        if (appearanceTimer_ <= 0.0f) {
+            // 1秒の沈黙が終わった！フェーズ1（咆哮）へ移行し、カメラを動かす！
+            appearancePhase_ = 1;
+            appearanceTimer_ = 2.0f; // 咆哮の2秒間
+            DebugConsole::GetInstance()->AddLog("【EVENT】 ボス起動！！");
 
-            appearancePhase_ = 2;
-            appearanceTimer_ = 1.0f; // カメラが戻り切るまでの1秒を待つ
+            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                CameraEditor::GetInstance()->PlayOverrideCamera(camera, "a");
+            }
         }
-        else if (appearancePhase_ == 2) {
-            // ★ カメラが戻り切ったら、ついに戦闘開始！！
-            isAppearing_ = false;
-            StartBattle(); // ここで前回作った StartBattle() を呼ぶ！
-        }
+        return; // 待機中はここで処理を終わる（ボスは微動だにしない）
     }
 
-    // （※もし演出中にボスを震わせたり、オーラを強くしたりしたければここに書きます）
+    // ====================================================
+    // フェーズ1：咆哮とスケール変更
+    // ====================================================
+    float t = 2.0f - appearanceTimer_;
+    Vector3 currentScale = { 1.0f, 1.0f, 1.0f };
+
+    if (t < 0.5f) {
+        // ① 息を吸い込む
+        float p = t / 0.5f;
+        float shrink = std::sin(p * 3.1415f) * 0.2f;
+        currentScale = { 1.0f - shrink, 1.0f - shrink, 1.0f - shrink };
+    }
+    else if (t < 1.8f) {
+        // ② 咆哮・ブルブル震える
+        float p = (t - 0.5f) / 1.3f;
+        float swell = (1.0f - std::pow(p, 2.0f)) * 0.3f;
+
+        float shakeX = std::sin(t * 60.0f) * 0.05f;
+        float shakeY = std::cos(t * 65.0f) * 0.05f;
+        float shakeZ = std::sin(t * 70.0f) * 0.05f;
+
+        currentScale = { 1.0f + swell + shakeX, 1.0f + swell + shakeY, 1.0f + swell + shakeZ };
+        SetColor({ 1.0f, 0.6f, 0.6f, 1.0f });
+    }
+    else {
+        // ③ スッと元に戻る
+        currentScale = { 1.0f, 1.0f, 1.0f };
+        SetColor(originalColor_);
+    }
+
+    SetScale(currentScale);
+
+    if (appearanceTimer_ <= 0.0f) {
+        isAppearing_ = false;
+        SetScale({ 1.0f, 1.0f, 1.0f });
+        SetColor(originalColor_);
+
+        // ゴーストディレクターのアニメーション（EntranceAnimation.json）を再生
+        if (director_) {
+            director_->PlayScenario(false, false);
+            isWaitingForDirector_ = true; // 追加：アニメーション終了を待つフラグをオンにする！
+        }
+    }
 }

@@ -218,36 +218,108 @@ void GamePlayScene::Initialize() {
 			*it = std::move(newBoss);
 			break;
 		}
-		// =======================================================
-		// ★ 進行状況の復元：橋がすでに落ちている場合の処理
-		// =======================================================
-		if (GameProgress::GetInstance()->hasBridgeDropped) {
-			// 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
-			auto& objects = objectManager_->GetObjects();
-			for (auto& obj : objects) {
-				std::string name = obj->GetName();
-				// 名前が "Bridge_Block" で始まるオブジェクトを全て対象にする
-				if (name.find("Bridge_Block") != std::string::npos) {
+	}
+
+	// =======================================================
+	// ★ 進行状況の復元：橋がすでに落ちている場合の処理
+	// =======================================================
+	if (GameProgress::GetInstance()->hasBridgeDropped) {
+		// 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
+		auto& objects_ref = objectManager_->GetObjects();
+		for (auto& obj : objects_ref) {
+			std::string name = obj->GetName();
+			// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
+			if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+				obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+				if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
 					obj->SetIsVisible(false);        // 見えなくする
-					obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+					obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
 				}
 			}
-
-			// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
-			this->hasBridgeDropped_ = true;
-
-			// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
-			if (player_) {
-				// 隊長が設定したボス前の座標を適用！
-				player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
-				player_->UpdateLocalMatrix();
-				player_->UpdateWorldMatrix();
-
-				// チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
-				GameProgress::GetInstance()->hasFinishedTutorial = true;
-				this->hasFinishedTutorial_ = true;
-				this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
+			else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+				obj->SetCollisionAttribute(kGround);
 			}
+		}
+
+		// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
+		this->hasBridgeDropped_ = true;
+
+		// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
+		if (player_) {
+			// 隊長が設定したボス前の座標を適用！
+			player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
+			player_->UpdateLocalMatrix();
+			player_->UpdateWorldMatrix();
+
+			// チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
+			GameProgress::GetInstance()->hasFinishedTutorial = true;
+			this->hasFinishedTutorial_ = true;
+			this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
+		}
+	} else {
+		// 最初からプレイする場合の完全リセット
+		// エディタ等でJSONが書き換わっていた場合でも確実に復活させる
+		auto& objects_ref = objectManager_->GetObjects();
+		for (auto& obj : objects_ref) {
+			std::string name = obj->GetName();
+			if (name.find("Tutorial_") != std::string::npos && name.find("Ceiling") == std::string::npos) { // Ceilingは含まない
+				obj->SetIsVisible(true);
+				obj->SetCollisionAttribute(kGround);
+				// ドアは最初は閉まっている状態にする
+				if (name == "Tutorial_Door_Left") {
+					obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
+				}
+				else if (name == "Tutorial_Door_Right") {
+					obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
+				}
+				obj->UpdateWorldMatrix();
+			}
+			else if (name.find("Bridge_") != std::string::npos) {
+				if (name.find("Bridge_Collision") == std::string::npos) {
+					obj->SetIsVisible(true);
+				}
+				obj->SetCollisionAttribute(kGround);
+			}
+			else if (name.find("Battle_Field_Collision_") != std::string::npos) {
+				obj->SetCollisionAttribute(0);
+			}
+		}
+		this->hasBridgeDropped_ = false;
+		this->hasFinishedTutorial_ = false;
+		this->doorOpenProgress_ = 0.0f; // ドアを閉める
+
+		// =======================================================
+		// ★ チュートリアルプラットフォーム降下演出の初期化
+		// =======================================================
+		for (auto& obj : objects_ref) {
+			if (obj->GetName() == "Tutorial_Platform") {
+				this->tutorialPlatform_ = obj.get();
+				// 初期位置を y:100 に (念のため)
+				obj->GetTransform()->translate.y = 100.0f;
+				obj->UpdateWorldMatrix();
+				break;
+			}
+		}
+
+		if (this->tutorialPlatform_ && player_) {
+			// プレイヤーをプラットフォームの真上に配置
+			// 本来の重力時の位置関係を維持するため、現状の差分をオフセットとして記録
+			Vector3 platformPos = this->tutorialPlatform_->GetTransform()->translate;
+			
+			// プレイヤーを初期位置へ (x, z はプラットフォームに合わせ、y は適切な高さへ)
+			// ユーザーの 94.7f という数値は、プラットフォーム 100.0f に対して -5.3f のオフセットを示唆
+			this->tutorialPlatformOffset_ = -5.3f;
+			player_->GetTransform()->translate = { 0.0f, platformPos.y + tutorialPlatformOffset_, -244.0f };
+			player_->UpdateLocalMatrix();
+			player_->UpdateWorldMatrix();
+
+			// 演出開始
+			movieState_ = MovieState::kTutorialPlatformDescent;
+			movieTimer_ = 0.0f;
+
+			// 重力に任せると跳ねるため、物理を無効化して手動更新にする
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
 		}
 	}
 
@@ -330,7 +402,9 @@ void GamePlayScene::Update(float deltaTime) {
 				SceneManager::GetInstance()->ChangeScene("TITLE");
 			}
 		}
-
+		for (auto& sprite : sprites_) {
+			sprite->Update();
+		}
 		// =======================================================
 		// ★超重要：ポーズ中はここで関数を強制終了し、ゲームの時間を止める！
 		// =======================================================
@@ -365,6 +439,8 @@ void GamePlayScene::Update(float deltaTime) {
 						obj->isDead = true; // 完全に消す
 					}
 					else if (obj->GetName() == "Tutorial_Door_Right") {
+					std::string name = obj->GetName();
+					if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
 						obj->SetIsVisible(false);
 						obj->SetCollisionAttribute(0); // 当たり判定も消す
 						obj->isDead = true; // 完全に消す
@@ -451,51 +527,19 @@ void GamePlayScene::Update(float deltaTime) {
 			// ムービー終了判定
             // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
 			if (movieTimer_ >= 5.5f) {
-				for (auto& obj : objectManager_->GetObjects()) {
-					if (obj->GetName() == "Bridge_Block_Center") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+				auto& objects_ref = objectManager_->GetObjects();
+				for (auto& obj : objects_ref) {
+					std::string name = obj->GetName();
+					// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
+					if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+						obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+						if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
+							obj->SetIsVisible(false);        // 見えなくする
+							obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
+						}
 					}
-					if (obj->GetName() == "Bridge_Block_Center_02") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Center_03") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Back") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Back_02") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Back_03") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Front") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Front_02") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-					}
-					if (obj->GetName() == "Bridge_Block_Front_03") {
-						obj->SetIsVisible(false);
-						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+						obj->SetCollisionAttribute(kGround);
 					}
 				}
 				movieState_ = MovieState::kNone;
@@ -505,6 +549,41 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
+	}
+	else if (movieState_ == MovieState::kTutorialPlatformDescent) {
+		// =======================================================
+		// ★ チュートリアルプラットフォーム降下演出の実装
+		// =======================================================
+		if (tutorialPlatform_ && player_) {
+			// 操作無効化、重力無効（手動で吸着させるため）
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
+
+			// プラットフォームを降下させる
+			Transform* trans = tutorialPlatform_->GetTransform();
+			if (trans->translate.y > 29.6f) {
+				// 降下速度 (1秒間に約15ユニット程度。100->29.6 なので約4.7秒)
+				trans->translate.y -= 15.0f * deltaTime;
+				if (trans->translate.y < 29.6f) {
+					trans->translate.y = 29.6f;
+				}
+				tutorialPlatform_->UpdateWorldMatrix();
+			}
+			else {
+				// 到着
+				movieState_ = MovieState::kNone;
+				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true); // 物理復帰
+			}
+
+			// プレイヤーのY座標をプラットフォームに同期（重力の代わりに手動で吸着）
+			player_->GetTransform()->translate.y = trans->translate.y + tutorialPlatformOffset_;
+			player_->UpdateWorldMatrix();
+		} else {
+			// 万が一対象がいない場合は即終了
+			movieState_ = MovieState::kNone;
+			if (player_) player_->SetIsPhysicsActive(true);
+		}
 	}
 
 		// --- ロックオン & カメラ制御 ---
@@ -718,18 +797,35 @@ void GamePlayScene::Update(float deltaTime) {
 	UpdateUI();
 
 	// ========================================================
-	// ボス登場ムービー中の監視処理
+	// ★ ボス登場ムービー中の監視処理（時間で強制終了！）
 	// ========================================================
 	if (isBossMoviePlaying_ && boss_) {
-		// BossCore に「演出終わった？」と毎フレーム聞く
-		if (!boss_->IsAppearing()) {
-			// 演出が終わった（＝カメラが戻って StartBattle が呼ばれた）！！
+
+		// ★ タイマーを進める！
+		movieTimer_ += deltaTime;
+
+		// プレイヤーがズレないように固定し続ける
+		if (player_) {
+			player_->SetTranslate(movieStoredPlayerPos_);
+			player_->UpdateWorldMatrix();
+		}
+
+		// ====================================================
+		// ★ 修正：全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
+		// ====================================================
+		if (movieTimer_ >= 4.0f) {
 			isBossMoviePlaying_ = false;
 
-			// プレイヤーの操作を復活させる
+			if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+				camera->EndOverride(1.0f);
+			}
+
 			if (player_) {
 				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true);
 			}
+
+			boss_->StartBattle();
 		}
 	}
 	if (boss_) {
@@ -1010,19 +1106,36 @@ void GamePlayScene::StartBridgeDropMovie() {
 }
 
 // ========================================================
-// ★ 追加：ボス登場ムービーの開始処理
+// ★ ボス登場ムービーの開始処理
 // ========================================================
 void GamePlayScene::StartBossAppearanceMovie() {
-	// 既にムービー中、またはボスがいなければ何もしない
-	if (isBossMoviePlaying_ || !boss_) return;
+	if (isBossMoviePlaying_ || !boss_ || hasBossAppeared_) return;
 
 	isBossMoviePlaying_ = true;
+	hasBossAppeared_ = true;
+	movieTimer_ = 0.0f;
 
-	// 前回 BossCore に作った、カメラが寄る超カッコいい演出をスタート！
-	boss_->StartAppearance();
-
-	// ムービー中はプレイヤーの操作を奪う（動けなくする）
+	// プレイヤーを固定
 	if (player_) {
+		movieStoredPlayerPos_ = player_->GetWorldPosition();
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
 		player_->SetIsControlActive(false);
+		player_->SetIsPhysicsActive(false);
 	}
+
+	// ====================================================
+	// ★ 追加：a.json（カメラのアニメーション）を再生する！
+	// ====================================================
+	for (auto& obj : objectManager_->GetObjects()) {
+		if (obj->GetName() == "Cinematic_Camera_Boss") { // ボス用のシネマティックカメラオブジェクトを用意しておく
+			if (obj->recorder_) {
+				// "a" という名前のJSONを再生！
+				obj->recorder_->Play("a", false, false, true);
+			}
+			break;
+		}
+	}
+
+	// ボス側にはカメラ移動以外の演出（ブロックが集まる等）だけをやらせる
+	boss_->StartAppearance();
 }

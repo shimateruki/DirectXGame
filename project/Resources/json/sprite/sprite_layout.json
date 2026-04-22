@@ -10,6 +10,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "bossText",
             "position": [
                 768.0,
@@ -31,6 +32,7 @@
                 0.5019304752349854,
                 0.49224069714546204
             ],
+            "emissive": 1.0,
             "name": "playerHpBarback",
             "position": [
                 768.0,
@@ -52,13 +54,14 @@
                 1.0,
                 0.0
             ],
+            "emissive": 1.0,
             "name": "playerHpBar",
             "position": [
                 630.0,
                 793.0
             ],
             "size": [
-                275.0,
+                0.0,
                 32.0
             ],
             "texture": "white.png"
@@ -73,6 +76,7 @@
                 0.5019304752349854,
                 0.49224069714546204
             ],
+            "emissive": 1.0,
             "name": "bossHpBarback",
             "position": [
                 749.1428833007813,
@@ -94,6 +98,7 @@
                 0.0,
                 0.0
             ],
+            "emissive": 1.0,
             "name": "bossrHpBar",
             "position": [
                 508.0,
@@ -115,6 +120,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "bariaHp.png",
             "position": [
                 505.0,
@@ -136,10 +142,11 @@
                 0.0,
                 0.0
             ],
+            "emissive": 1.0,
             "name": "poseBack.png",
             "position": [
-                768.0,
-                396.5
+                774.8570556640625,
+                424.9820251464844
             ],
             "size": [
                 1901.0,
@@ -157,16 +164,17 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "GameOverText.png",
             "position": [
-                860.5714721679688,
-                311.05389404296875
+                790.0,
+                260.0
             ],
             "size": [
-                600.0,
-                128.0
+                720.0,
+                120.0
             ],
-            "texture": "GameOverText.png"
+            "texture": "gameover.png"
         },
         {
             "anchor": [
@@ -178,14 +186,15 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "restartText.png",
             "position": [
-                800.5714721679688,
-                477.448974609375
+                780.0,
+                475.0
             ],
             "size": [
-                300.0,
-                54.0
+                500.0,
+                100.0
             ],
             "texture": "restartText.png"
         },
@@ -195,18 +204,19 @@
                 1.0
             ],
             "color": [
-                1.0,
-                1.0,
-                1.0
+                0.5,
+                0.5,
+                0.5
             ],
+            "emissive": 1.0,
             "name": "titleText.png",
             "position": [
-                786.857177734375,
-                556.1493530273438
+                780.0,
+                660.0
             ],
             "size": [
-                300.0,
-                54.0
+                500.0,
+                100.0
             ],
             "texture": "titleText.png"
         },
@@ -220,14 +230,15 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "poseText.png",
             "position": [
-                1597.7142333984375,
-                1.4990558624267578
+                900.0,
+                160.0
             ],
             "size": [
                 300.0,
-                54.0
+                100.0
             ],
             "texture": "poseText.png"
         },
@@ -241,35 +252,37 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "restartPoseText.png",
             "position": [
-                768.0,
-                396.5
+                750.0,
+                400.0
             ],
             "size": [
                 300.0,
-                54.0
+                60.0
             ],
             "texture": "restartText.png"
         },
         {
             "anchor": [
                 0.5,
-                1.0
+                0.5
             ],
             "color": [
-                1.0,
-                1.0,
-                1.0
+                0.5,
+                0.5,
+                0.5
             ],
+            "emissive": 1.0,
             "name": "titleTextPose.png",
             "position": [
-                788.5714111328125,
-                544.1569213867188
+                750.0,
+                500.0
             ],
             "size": [
                 300.0,
-                54.0
+                60.0
             ],
             "texture": "titleText.png"
         }
