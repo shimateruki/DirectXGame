@@ -77,7 +77,8 @@ private:
     Sprite* gameClearSprite_ = nullptr;
     Sprite* retryTextSprite_ = nullptr;
     Sprite* titleTextSprite_ = nullptr;
-    // GameClearScene.h の private: 内
+    Sprite* playerTimeSprite_ = nullptr;
+    Sprite* bestTimeSprite_ = nullptr;
     enum class ClearState {
         kRunIn,
         kVictoryMotion,

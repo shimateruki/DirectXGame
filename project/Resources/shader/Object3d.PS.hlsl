@@ -280,42 +280,55 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                     output.color.a = saturate(alphaBase + fresnel + caustic * 0.5f + (totalSpecular.r * 0.5f));
                 }
             // ===========================================================
-            // 氷シェーダー
+            // 魔氷（ソリッド＆ハイコントラスト）シェーダー
             // ===========================================================
                 else if (gMaterial.materialType == 2)
                 {
                     float NdotV = saturate(dot(N, V));
-                    float iorRatio = 1.0f / 1.31f;
-                    float3 IOR_RGB = float3(iorRatio * 0.96f, iorRatio, iorRatio * 1.04f);
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
 
-                    float3 RefractR = refract(-V, N, IOR_RGB.r);
-                    float3 RefractG = refract(-V, N, IOR_RGB.g);
-                    float3 RefractB = refract(-V, N, IOR_RGB.b);
+                    // 1. 完全フェイクの「鋭い」リムライト（輪郭発光）
+                    // 以前のようなふんわりしたグラデーションではなく、
+                    // smoothstepを使って「縁だけパキッと鋭く光る」硬い質感を作ります。
+                    float rim = 1.0f - NdotV;
+                    rim = smoothstep(0.5f, 1.0f, rim); // 0.5〜1.0の間で急激に光る
+                    float3 rimColor = saturate(baseColor + float3(0.5f, 0.8f, 1.0f)) * rim * 3.0f;
 
-                    float3 envR = gEnvTexture.SampleLevel(gSampler, RefractR, 0.0f).rgb;
-                    float3 envG = gEnvTexture.SampleLevel(gSampler, RefractG, 0.0f).rgb;
-                    float3 envB = gEnvTexture.SampleLevel(gSampler, RefractB, 0.0f).rgb;
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
-                    float3 refractionColor = float3(envR.r, envG.g, envB.b) * gMaterial.envIntensity;
-                    
-                    float3 iceBaseColor = gMaterial.color.rgb * textureColor.rgb;
-                    refractionColor = lerp(refractionColor, iceBaseColor, 0.4f);
+                    // 2. 中心の深い色（透けさせない重厚感）
+                    float3 coreColor = baseColor * 0.1f;
 
-                    float F0_ice = 0.02f;
-                    float fresnel = F0_ice + (1.0f - F0_ice) * pow(1.0f - NdotV, 5.0f);
-                    float3 ReflectVec = reflect(-V, N);
-                    
-                    // ★ gDirectionalLight から gMaterial に変更
-                    float3 reflectionColor = gEnvTexture.SampleLevel(gSampler, ReflectVec, 0.0f).rgb * gMaterial.envIntensity;
+                    // 3. 環境マップを使った「内部の虹色反射」（★屈折は使いません！）
+                    // 法線ベクトルを視線方向に無理やりズラすことで、内部で乱反射しているような嘘の景色を作ります。
+                    // RGBごとにズラす幅を変えて、虹色に分解します。
+                    float3 fakeNormalR = normalize(N + V * 0.4f);
+                    float3 fakeNormalG = normalize(N + V * 0.6f);
+                    float3 fakeNormalB = normalize(N + V * 0.8f);
 
+                    float3 envR = gEnvTexture.SampleLevel(gSampler, reflect(-V, fakeNormalR), 0.0f).rgb;
+                    float3 envG = gEnvTexture.SampleLevel(gSampler, reflect(-V, fakeNormalG), 0.0f).rgb;
+                    float3 envB = gEnvTexture.SampleLevel(gSampler, reflect(-V, fakeNormalB), 0.0f).rgb;
+
+                    // 虹色を取り出しつつ、乗算でコントラストを爆上げして「ギラッ」とさせる
+                    float3 rainbowReflect = float3(envR.r, envG.g, envB.b);
+                    rainbowReflect = pow(rainbowReflect, 2.0f) * gMaterial.envIntensity * 2.5f;
+
+                    // そのギラッとした虹色を、氷のベースカラーで染める
+                    float3 internalShine = rainbowReflect * baseColor * 2.0f;
+
+                    // 4. 暴力的に鋭いハイライト（太陽光）
                     float3 L_Dir = normalize(-gDirectionalLight.direction);
                     float3 H = normalize(L_Dir + V);
-                    float3 specular = float3(1.0f, 1.0f, 1.0f) * pow(saturate(dot(N, H)), 1024.0f) * 2.0f;
+                    float3 specular = float3(1.0f, 1.0f, 1.0f) * pow(saturate(dot(N, H)), 2048.0f) * 5.0f;
 
-                    float3 bodyColor = lerp(refractionColor, reflectionColor, fresnel);
-                    output.color.rgb = bodyColor + specular;
-                    output.color.a = saturate(0.5f + fresnel + (specular.r * 0.5f));
+                    // 5. 最終合成
+                    // コア色 ＋ 内部のギラつき ＋ 鋭いエッジ発光 ＋ ハイライト
+                    output.color.rgb = coreColor + internalShine + rimColor + specular + (baseColor * gMaterial.emissive * 0.2f);
+                    
+                    // =======================================================
+                    // アルファ値（透明度）
+                    // =======================================================
+                    // シャボン玉化を完全に防ぐため、基本は「ほぼ不透明（0.85）」にする
+                    output.color.a = saturate(0.85f + rim + (specular.r * 0.5f)) * gMaterial.color.a;
                 }
             // ===========================================================
             // ホログラム・バリア

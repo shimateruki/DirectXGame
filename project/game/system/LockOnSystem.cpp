@@ -194,7 +194,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
 
     for (const auto& obj : objects) {
         if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
-            // 名前に "BossCore" が含まれていない場合のみ除外する（ボスはスルーして判定を続ける）
+            // 名前に "BossCore" が含まれていない場合のみ除外する
             if (obj->GetName().find("BossCore") == std::string::npos) {
                 continue;
             }

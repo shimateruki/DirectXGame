@@ -105,8 +105,7 @@ void GamePlayScene::Initialize() {
 	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
 	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+
 	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
@@ -130,9 +129,10 @@ void GamePlayScene::Initialize() {
 			playerHpBarMaxWidth_ = sprite->GetSize().x; // 元の長さを記憶！
 		}
 	}
+	
 	// =======================================================
-		// ゲームオーバー用UIの取得と初期化 (最初は透明にして隠す)
-		// =======================================================
+	// ゲームオーバー用UIの取得と初期化 (最初は透明にして隠す)
+	// =======================================================
 	gameOverTextSprite_ = GetSpriteByName("GameOverText.png");
 	restartTextSprite_ = GetSpriteByName("restartText.png");
 	titleTextSprite_ = GetSpriteByName("titleText.png");
@@ -274,27 +274,31 @@ void GamePlayScene::Initialize() {
 		auto& objects_ref = objectManager_->GetObjects();
 		for (auto& obj : objects_ref) {
 			std::string name = obj->GetName();
-			if (name.find("Tutorial_") != std::string::npos && name.find("Ceiling") == std::string::npos) { // Ceilingは含まない
+		if (name.find("Tutorial_") != std::string::npos && 
+            name.find("Ceiling") == std::string::npos &&
+            name.find("Doll") == std::string::npos) { 
+            
+			obj->SetIsVisible(true);
+			obj->SetCollisionAttribute(kGround); 
+            
+			// ドアは最初は閉まっている状態にする
+			if (name == "Tutorial_Door_Left") {
+				obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
+			}
+			else if (name == "Tutorial_Door_Right") {
+				obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
+			}
+			obj->UpdateWorldMatrix();
+		}
+		else if (name.find("Bridge_") != std::string::npos) {
+			if (name.find("Bridge_Collision") == std::string::npos) {
 				obj->SetIsVisible(true);
-				obj->SetCollisionAttribute(kGround);
-				// ドアは最初は閉まっている状態にする
-				if (name == "Tutorial_Door_Left") {
-					obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
-				}
-				else if (name == "Tutorial_Door_Right") {
-					obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
-				}
-				obj->UpdateWorldMatrix();
 			}
-			else if (name.find("Bridge_") != std::string::npos) {
-				if (name.find("Bridge_Collision") == std::string::npos) {
-					obj->SetIsVisible(true);
-				}
-				obj->SetCollisionAttribute(kGround);
-			}
-			else if (name.find("Battle_Field_Collision_") != std::string::npos) {
-				obj->SetCollisionAttribute(0);
-			}
+			obj->SetCollisionAttribute(kGround);
+		}
+		else if (name.find("Battle_Field_Collision_") != std::string::npos) {
+			obj->SetCollisionAttribute(0);
+		}
 		}
 		this->hasBridgeDropped_ = false;
 		this->hasFinishedTutorial_ = false;
@@ -371,7 +375,7 @@ void GamePlayScene::Update(float deltaTime) {
 	bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
 
 	// 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え
-	if (!isGameOver && (inputManager_->IsKeyTriggered(DIK_P) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START))) {
+	if (!isGameOver && inputManager_->IsActionTriggered("pose")) {
 		isPaused_ = !isPaused_; // フラグを反転
 
 		// 文字用のアルファ値 (1.0 = 完全不透明, 0.0 = 完全透明)
@@ -397,11 +401,11 @@ void GamePlayScene::Update(float deltaTime) {
 	// ---------------------------------------------------------
 	if (isPaused_) {
 		// 上下キーで項目切り替え
-		if (inputManager_->IsKeyTriggered(DIK_UP) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+		if (inputManager_->IsActionTriggered("Forward")) {
 			currentPauseMenuIndex_--;
 			if (currentPauseMenuIndex_ < 0) currentPauseMenuIndex_ = (int)PauseMenuIndex::Max - 1;
 		}
-		if (inputManager_->IsKeyTriggered(DIK_DOWN) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+		if (inputManager_->IsActionTriggered("Backward")) {
 			currentPauseMenuIndex_++;
 			if (currentPauseMenuIndex_ >= (int)PauseMenuIndex::Max) currentPauseMenuIndex_ = 0;
 		}
@@ -414,7 +418,7 @@ void GamePlayScene::Update(float deltaTime) {
 		if (titleTextPoseSprite_) titleTextPoseSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor : normalColor);
 
 		// 決定ボタンで遷移
-		if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+		if (inputManager_->IsActionTriggered("Jump")) {
 
 			PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
 			postParams->dangerVignette = 0.0f;
@@ -599,41 +603,26 @@ void GamePlayScene::Update(float deltaTime) {
 		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
 	}
 	else if (movieState_ == MovieState::kTutorialPlatformDescent) {
-		// =======================================================
-		// ★ チュートリアルプラットフォーム降下演出の実装
-		// =======================================================
 		if (tutorialPlatform_ && player_) {
-			// 操作無効化、重力無効（手動で吸着させるため）
 			player_->SetIsControlActive(false);
 			player_->SetIsPhysicsActive(false);
 
-			// プラットフォームを降下させる
 			Transform* trans = tutorialPlatform_->GetTransform();
 			if (trans->translate.y > 29.6f) {
-				// 降下速度 (1秒間に約15ユニット程度。100->29.6 なので約4.7秒)
 				trans->translate.y -= 15.0f * deltaTime;
-				if (trans->translate.y < 29.6f) {
-					trans->translate.y = 29.6f;
-				}
+				if (trans->translate.y < 29.6f) trans->translate.y = 29.6f;
 				tutorialPlatform_->UpdateWorldMatrix();
 			}
 			else {
-				// 到着
+				// ★到着！ movieState_ が kNone になるので、下のシャッター制御が「下げ」に転じます
 				movieState_ = MovieState::kNone;
 				player_->SetIsControlActive(true);
-				player_->SetIsPhysicsActive(true); // 物理復帰
+				player_->SetIsPhysicsActive(true);
 			}
-
-			// プレイヤーのY座標をプラットフォームに同期（重力の代わりに手動で吸着）
 			player_->GetTransform()->translate.y = trans->translate.y + tutorialPlatformOffset_;
 			player_->UpdateWorldMatrix();
-		} else {
-			// 万が一対象がいない場合は即終了
-			movieState_ = MovieState::kNone;
-			if (player_) player_->SetIsPhysicsActive(true);
 		}
 	}
-
 		// --- ロックオン & カメラ制御 ---
 		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
 		CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
@@ -712,7 +701,8 @@ void GamePlayScene::Update(float deltaTime) {
 		if (!CameraEditor::GetInstance()->IsEditorMode()) {
 			Camera::FollowMode currentMode = camera->GetFollowMode();
 
-			if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+			if (player_ && player_->GetHp() > 0.0f &&
+				(currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson)) {
 
 				// =======================================================
 				// ★ 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
@@ -748,6 +738,22 @@ void GamePlayScene::Update(float deltaTime) {
 #endif
 			}
 		}
+		bool isBossDying = boss_ && boss_->IsDyingSequence();
+
+		// ムービー状態、またはボス登場ムービー中、または【ボス撃破演出中】、クリア移行中なら黒帯を出す！
+		bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying ;
+
+		float targetBarHeight = isCinematicMode ? 0.12f : 0.0f;
+
+		// 現在の高さを滑らかに補間（5.0f は開閉スピード）
+		currentCinemaBarHeight_ += (targetBarHeight - currentCinemaBarHeight_) * 5.0f * deltaTime;
+
+		// ポストエフェクトに反映
+		PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+		if (postParams) {
+			postParams->cinemaBarHeight = currentCinemaBarHeight_;
+		}
+
 	// --- 全体更新 ---
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
@@ -803,11 +809,11 @@ void GamePlayScene::Update(float deltaTime) {
 				InputManager* input = InputManager::GetInstance();
 
 				// 上下キーで項目切り替え (パッドの十字キーにも対応)
-				if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+				if (input->IsActionTriggered("Forward")) {
 					currentGameOverMenuIndex_--;
 					if (currentGameOverMenuIndex_ < 0) currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Max - 1;
 				}
-				if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+				if (input->IsActionTriggered("Backward")) {
 					currentGameOverMenuIndex_++;
 					if (currentGameOverMenuIndex_ >= (int)GameOverMenuIndex::Max) currentGameOverMenuIndex_ = 0;
 				}
@@ -823,7 +829,7 @@ void GamePlayScene::Update(float deltaTime) {
 					titleTextSprite_->SetColor(currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title ? selectColor : normalColor);
 				}
 				// 決定ボタンで遷移！
-				if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+				if (input->IsActionTriggered("Jump")) {
 
 					// 共通のUI透明化ラムダ式
 					auto SetAlphaZero = [](Sprite* sprite) {

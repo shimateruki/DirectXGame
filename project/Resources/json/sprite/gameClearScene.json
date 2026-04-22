@@ -13,14 +13,14 @@
             "emissive": 1.0,
             "name": "GameClear.png",
             "position": [
-                893.142822265625,
+                773.1430053710938,
                 85.44612121582031
             ],
             "size": [
-                623.0,
-                64.0
+                600.0,
+                100.0
             ],
-            "texture": "GameClear.png"
+            "texture": "gameClear.png"
         },
         {
             "anchor": [
@@ -64,7 +64,73 @@
                 352.0,
                 88.0
             ],
-            "texture": "title.png"
+            "texture": "titleText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "playerTime.png",
+            "position": [
+                1093.71435546875,
+                228.88800048828125
+            ],
+            "size": [
+                500.0,
+                100.0
+            ],
+            "texture": "playerTime.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "bestTime.png",
+            "position": [
+                1100.5714111328125,
+                481.19659423828125
+            ],
+            "size": [
+                500.0,
+                100.0
+            ],
+            "texture": "bestTime.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "enter_text.png",
+            "position": [
+                1314.857177734375,
+                736.0359497070313
+            ],
+            "size": [
+                387.0,
+                64.0
+            ],
+            "texture": "enter_text.png"
         }
     ]
 }

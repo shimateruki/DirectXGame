@@ -323,7 +323,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             if (meteors_.size() > 10 && meteors_[10]) {
                 meteors_[10]->SetScale({ 0.0f, 0.0f, 0.0f });
                 meteors_[10]->SetCollisionAttribute(0);
-                meteors_[10]->UpdateWorldMatrix(); // ★追加
+                meteors_[10]->UpdateWorldMatrix();
                 meteors_[10]->isDead = true;
             }
             meteors_.clear();

@@ -13,36 +13,14 @@
             "emissive": 1.0,
             "name": "GameClear.png",
             "position": [
-                893.142822265625,
+                773.1430053710938,
                 85.44612121582031
             ],
             "size": [
-                623.0,
-                64.0
+                600.0,
+                100.0
             ],
-            "texture": "GameClear.png"
-        },
-        {
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                0.5,
-                0.5,
-                0.5
-            ],
-            "emissive": 1.0,
-            "name": "restartText.png",
-            "position": [
-                334.28570556640625,
-                427.2306213378906
-            ],
-            "size": [
-                320.0,
-                80.0
-            ],
-            "texture": "restartText.png"
+            "texture": "gameClear.png"
         },
         {
             "anchor": [
@@ -55,16 +33,82 @@
                 1.0
             ],
             "emissive": 1.0,
+            "name": "restartText.png",
+            "position": [
+                334.28570556640625,
+                427.2306213378906
+            ],
+            "size": [
+                352.0,
+                88.0
+            ],
+            "texture": "restartText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "emissive": 1.0,
             "name": "title.png",
             "position": [
                 1352.571533203125,
                 434.725830078125
             ],
             "size": [
-                352.0,
-                88.0
+                320.0,
+                80.0
             ],
             "texture": "title.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "playerTime.png",
+            "position": [
+                1093.71435546875,
+                228.88800048828125
+            ],
+            "size": [
+                500.0,
+                100.0
+            ],
+            "texture": "playerTime.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "bestTime.png",
+            "position": [
+                1100.5714111328125,
+                481.19659423828125
+            ],
+            "size": [
+                500.0,
+                100.0
+            ],
+            "texture": "bestTime.png"
         }
     ]
 }

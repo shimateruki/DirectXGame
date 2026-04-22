@@ -114,6 +114,7 @@ public:
     void ActuallySpawnShards();
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }
+    bool IsDyingSequence() const { return deathPhase_ > 0; }
 private:
 
     // 射出されたブロックのリスト
