@@ -22,7 +22,7 @@ public:
 
     // 毎フレーム呼ばれる（継承先で必ず実装する）
     virtual void Update(BossCore* boss, float deltaTime) = 0;
-
+    virtual void Finalize() {}
     // ボス本体に「攻撃が終わったよ」と伝えるための関数
     bool IsFinished() const { return isFinished_; }
 };
