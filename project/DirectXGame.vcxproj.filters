@@ -3,7 +3,6 @@
   <ItemGroup>
     <FxCompile Include="Resources\shader\Effect3d.PS.hlsl" />
     <FxCompile Include="Resources\shader\Effect3d.VS.hlsl" />
-    <FxCompile Include="Resources\shader\LocalFog.PS.hlsl" />
     <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
     <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
     <FxCompile Include="Resources\shader\DebugPrimitive.PS.hlsl" />
@@ -452,6 +451,7 @@
     <None Include="Resources\shader\PostEffect.PS.hlsl" />
     <None Include="Resources\shader\Sprite.PS.hlsl" />
     <None Include="Resources\shader\Sprite.VS.hlsl" />
+    <None Include="Resources\shader\LocalFog.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

@@ -68,6 +68,7 @@ public:
     bool IsLockingOn() const { return isLockingOn_; }
     void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
     void SetIsPhysicsActive(bool active) { isPhysicsActive_ = active; }
+    bool GetIsControlActive() const { return isControlActive_; }
     bool IsPhysicsActive() const { return isPhysicsActive_; }
 
     // --- コンボ：次のクリックで2段目を出すためのフラグ操作 ---
@@ -108,6 +109,8 @@ public:
     float GetDeathTimer() const { return deathTimer_; }
     void SetForceLockOnTarget(Object3d* target) { forceLockOnTarget_ = target; }
     Object3d* GetForceLockOnTarget() const { return forceLockOnTarget_; }
+
+
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先

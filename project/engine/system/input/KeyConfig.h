@@ -12,9 +12,10 @@
 // ：1つのアクションにつき「キー」と「パッド」両方を保持する構造体
 // ==================================================
 struct BindData {
-    int keyCode = 0;   // キーボードのキー (DIK_***)
+    int keyCode = 0;       // メインキー
+    int keyCodeSub = 0;    //  サブキー 
     int mouseButton = -1;
-    WORD padCode = 0;  // コントローラーのボタン (XINPUT_GAMEPAD_***)
+    WORD padCode = 0;      // コントローラーのボタン
 };
 
 class KeyConfig : public IEditable {
@@ -29,7 +30,7 @@ public:
 
     // アクション名からデータを取得する関数群
     int GetKeyCode(const std::string& actionName) const;
-    WORD GetPadCode(const std::string& actionName) const; // ★追加：パッドコード取得
+    WORD GetPadCode(const std::string& actionName) const; 
 
     // パッドの数値を「A」や「RB」などの文字列に変換する
     std::string GetKeyName(int keyCode) const;
@@ -48,7 +49,8 @@ private:
 
     // ImGuiエディタ用：現在変更待ちのアクションと、待機しているデバイス(キーかパッドか)
     std::string waitingForInputAction_ = "";
-    enum class WaitMode { None, Key, Pad } waitMode_ = WaitMode::None; // ★追加
+    enum class WaitMode { None, Key, KeySub, Mouse, Pad }; 
+    WaitMode waitMode_ = WaitMode::None;
 
     char newActionName_[64] = "";
 };
