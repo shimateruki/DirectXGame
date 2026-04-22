@@ -67,7 +67,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
                 blockTargetPos_.push_back(targetPos);
 
                 // スケールと向きも一緒にセット
-                armorBlocks[i]->SetScale({ 0.5f, 0.5f, 0.5f });
+                armorBlocks[i]->SetScale({ 1.5f, 1.5f, 1.5f });
                 armorBlocks[i]->SetRotation({ 0.0f, turnY, 0.0f });
                 armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
             }

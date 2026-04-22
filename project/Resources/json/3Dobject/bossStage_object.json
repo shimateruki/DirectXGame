@@ -119,14 +119,14 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
-                0.16028381884098053,
-                0.16162467002868652,
-                0.2471042275428772,
+                0.1201532632112503,
+                0.12754017114639282,
+                0.5984556078910828,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
-            "enableNormalMap": true,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 0.0560000017285347,
             "eventID": 0,
@@ -145,7 +145,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.9549999833106995,
+            "metallic": 0.0,
             "modelName": "map_wall_01",
             "myEventID": -1,
             "name": "Battle_Field_Dome",
@@ -173,7 +173,7 @@
                 -0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5059999823570251,
             "saveCategory": "Object",
             "scale": [
                 1.5,
@@ -3707,9 +3707,9 @@
             "collisionAttribute": 4,
             "collisionMask": 3,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.15830117464065552,
+                0.15830117464065552,
+                0.15830117464065552,
                 1.0
             ],
             "emissive": 1.0,
@@ -3799,14 +3799,14 @@
             "collisionAttribute": 4,
             "collisionMask": 3,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -3983,15 +3983,15 @@
             "collisionMask": 3,
             "color": [
                 1.0,
-                0.9411764740943909,
-                0.9411764740943909,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 1.0,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -4008,12 +4008,12 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 1.0,
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Front",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "",
             "position": [
                 -2.9802322387695313e-08,
@@ -4044,7 +4044,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -4074,14 +4074,14 @@
             "collisionAttribute": 4,
             "collisionMask": 0,
             "color": [
-                0.9411764740943909,
                 1.0,
-                0.9411764740943909,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4100,12 +4100,12 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 1.0,
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Center",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "",
             "position": [
                 0.0,
@@ -4136,7 +4136,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -4166,14 +4166,14 @@
             "collisionAttribute": 4,
             "collisionMask": 0,
             "color": [
-                0.9411764740943909,
-                0.9411764740943909,
+                1.0,
+                1.0,
                 1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4192,12 +4192,12 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 1.0,
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Back",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "",
             "position": [
                 0.0,
@@ -4228,7 +4228,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -4350,9 +4350,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
@@ -4442,14 +4442,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4534,14 +4534,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4626,9 +4626,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
@@ -4718,9 +4718,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
@@ -4810,9 +4810,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.15830117464065552,
+                0.15830117464065552,
+                0.15830117464065552,
                 1.0
             ],
             "emissive": 1.0,
@@ -4902,9 +4902,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.15830117464065552,
+                0.15830117464065552,
+                0.15830117464065552,
                 1.0
             ],
             "emissive": 1.0,
@@ -6486,7 +6486,7 @@
             "enableEnvMap": true,
             "enableNormalMap": true,
             "enemyType": "",
-            "envIntensity": 0.22499999403953552,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -6503,7 +6503,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.12399999797344208,
+            "metallic": 0.0,
             "modelName": "map_wall_02",
             "myEventID": -1,
             "name": "map_wall_02",
@@ -6569,9 +6569,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967265,
             "color": [
-                0.7451737523078918,
-                0.7451737523078918,
-                0.7451737523078918,
+                0.3629343509674072,
+                0.3629343509674072,
+                0.3629343509674072,
                 1.0
             ],
             "emissive": 1.0,
@@ -6661,9 +6661,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967265,
             "color": [
-                0.7451737523078918,
-                0.7451737523078918,
-                0.7451737523078918,
+                0.3629343509674072,
+                0.3629343509674072,
+                0.3629343509674072,
                 1.0
             ],
             "emissive": 1.0,
@@ -6753,9 +6753,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967265,
             "color": [
-                1.0,
-                1.0,
-                1.0,
+                0.15830117464065552,
+                0.15830117464065552,
+                0.15830117464065552,
                 1.0
             ],
             "emissive": 1.0,
@@ -6852,7 +6852,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -6875,8 +6875,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Front_02",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -6907,7 +6907,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -6944,7 +6944,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -6967,8 +6967,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Front_03",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -6999,7 +6999,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -7036,7 +7036,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7059,8 +7059,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Center_02",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "Bridge_Block_Center",
             "position": [
                 0.0,
@@ -7091,7 +7091,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -7128,7 +7128,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7151,8 +7151,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Center_03",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "Bridge_Block_Center",
             "position": [
                 0.0,
@@ -7183,7 +7183,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -7220,7 +7220,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7243,8 +7243,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Back_02",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "Bridge_Block_Back",
             "position": [
                 0.0,
@@ -7275,7 +7275,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -7312,7 +7312,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7335,8 +7335,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Back_03",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
+            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
             "parentName": "Bridge_Block_Back",
             "position": [
                 0.0,
@@ -7367,7 +7367,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/sprite/PBR/metal_diff.png",
             "type": "Model"
         },
         {
@@ -8041,13 +8041,13 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.4864864945411682,
-                0.34185537695884705,
-                0.34185537695884705,
+                0.16988414525985718,
+                0.16988414525985718,
+                0.16988414525985718,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 0.15800000727176666,
@@ -8313,7 +8313,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8404,7 +8404,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8677,7 +8677,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8768,7 +8768,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8950,7 +8950,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,

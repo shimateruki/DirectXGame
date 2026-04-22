@@ -43,6 +43,16 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
 		DebugConsole::GetInstance()->AddLog("LockOn Forced: Target set by Player.");
         return;
     }
+
+    // 強制解除リクエストがあればクリアする
+    if (player->ConsumeClearLockOnRequest()) {
+        isLockingOn_ = false;
+        lockOnTarget_ = nullptr;
+        camera->SetFollowMode(Camera::FollowMode::kAimable);
+        camera->SetLockOnTarget(nullptr);
+        camera->SyncRotationToCurrentView();
+        DebugConsole::GetInstance()->AddLog("LockOn Cleared by Player Request.");
+    }
     // ========================================================
     // シネマティックカメラ（演出）起動時の強制解除
     // ========================================================

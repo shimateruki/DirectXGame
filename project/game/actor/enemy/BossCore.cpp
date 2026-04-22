@@ -186,23 +186,41 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 
     originalColor_ = GetColor();
 
-    // --- 1. オーラの追加 ---
+    // --- 1. 紫 ---
     auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
     BossParticle1->Initialize("Boss1", this);
     BossParticle1->Play();
-    particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加！
+    //particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加！
 
-    // --- 2. 砂埃の追加 ---
+    // --- 2. 黒 ---
     auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
     BossParticle2->Initialize("Boss2", this);
     BossParticle2->Play();
     particleEmitters_.push_back(std::move(BossParticle2)); // 配列に追加！
 
-    // --- 3. 火花の追加 ---
+    // --- 3. 水色 ---
     auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
-    //particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
+    particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加！
+
+    // --- 4. 赤 ---
+    auto BossParticle4 = std::make_unique<GPUParticleEmitter>();
+    BossParticle4->Initialize("Boss4", this);
+    BossParticle4->Play();
+    //particleEmitters_.push_back(std::move(BossParticle4)); // 配列に追加！
+
+    // --- 5. 黄色 ---
+    auto BossParticle5 = std::make_unique<GPUParticleEmitter>();
+    BossParticle5->Initialize("Boss5", this);
+    BossParticle5->Play();
+    //particleEmitters_.push_back(std::move(BossParticle5)); // 配列に追加！
+
+    // --- 6. 緑色 ---
+    auto BossParticle6 = std::make_unique<GPUParticleEmitter>();
+    BossParticle6->Initialize("Boss6", this);
+    BossParticle6->Play();
+    //particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加！
 }
 
 void BossCore::Update(float deltaTime) {
@@ -247,25 +265,7 @@ void BossCore::Update(float deltaTime) {
             }
         }
 
-        if (deathPhase_ == 1 || deathPhase_ == 2) {
-            sequenceTimer_ -= deltaTime;
 
-            // 1秒経つごとに次のフェーズへ進む！
-            if (sequenceTimer_ <= 0.0f) {
-
-                if (deathPhase_ == 1) {
-                    // 1秒経過 ➔ 「亀裂フェーズ」へ移行し、さらに1秒待つ！
-                    deathPhase_ = 2;
-                    sequenceTimer_ = 1.0f;
-                    ShowCrackedCore();
-                }
-                else if (deathPhase_ == 2) {
-                    // さらに1秒経過 ➔ ついに「爆散フェーズ」へ！
-                    deathPhase_ = 3;
-                    BreakCore();
-                }
-            }
-        }
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
@@ -319,6 +319,29 @@ void BossCore::Update(float deltaTime) {
     float preTimer = colorResetTimer_;
 
     BaseEnemy::Update(deltaTime);
+
+    // ==========================================
+    // 死亡演出の進行ロジック
+    // ==========================================
+    if (deathPhase_ == 1 || deathPhase_ == 2) {
+        sequenceTimer_ -= deltaTime;
+
+        // 1秒経つごとに次のフェーズへ進む！
+        if (sequenceTimer_ <= 0.0f) {
+
+            if (deathPhase_ == 1) {
+                // 1秒経過 ➔ 「亀裂フェーズ」へ移行し、さらに1秒待つ！
+                deathPhase_ = 2;
+                sequenceTimer_ = 1.0f;
+                ShowCrackedCore();
+            }
+            else if (deathPhase_ == 2) {
+                // さらに1秒経過 ➔ ついに「爆散フェーズ」へ！
+                deathPhase_ = 3;
+                BreakCore();
+            }
+        }
+    }
 
     if (director_) {
         director_->Update(deltaTime);
@@ -547,7 +570,7 @@ void BossCore::ChangeState(State nextState) {
     // ==========================================
     // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
     // ==========================================
-    if (isWaitingForDeath_) {
+    if (isWaitingForDeath_||isWaitingForFinisher_) {
         coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
         blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
     }
@@ -560,7 +583,15 @@ void BossCore::ChangeState(State nextState) {
             coreAttribute = kEnemy | kGround;
         }
         else {
-            coreAttribute = kGround;
+            // ====================================================
+            // ★ 修正：戦闘が始まっていたら「kEnemy」属性を付ける！
+            // ====================================================
+            if (isBattleStarted_) {
+                coreAttribute = kEnemy | kGround; // 戦闘中は敵！
+            }
+            else {
+                coreAttribute = kGround; // 登場前・登場演出中はただの壁（無敵）
+            }
         }
         blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
     }
@@ -604,12 +635,12 @@ void BossCore::ChangeState(State nextState) {
 
         std::vector<AttackWeight> attackList = {
             { 1, 30 }, // 突進 (30%)
-            { 2, 25 }, // 射撃 (25%)
-            { 3, 20 }, // ハンマー (20%)
-            { 4, 10 }, // 壁 (10%)
-            { 5, 10 }, // 人型 (10%)
-            { 6, 5  },  // レーザー (5%) ※超大技！
-            { 7, 15 },  // 吸収 (重み15)
+            { 2, 30 }, // 射撃 (30%)
+            { 3, 30 }, // ハンマー (30%)
+            { 4, 30 }, // 壁 (30%)
+            { 5, 30 }, // 人型 (30%)
+            { 6, 30 },  // レーザー (30%) ※超大技！
+            { 7, 30 },  // 吸収 (重み30)
         };
 
         static int lastAttack = 0; // 前回撃った攻撃を記憶
@@ -800,9 +831,23 @@ void BossCore::UpdateIdle(float deltaTime) {
     // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める
     // ==========================================
     if (isBattleStarted_) {
+
+        // ====================================================
+        // ★ 修正：4, 5, 6, 7, 8秒のどれかをピッタリ選ぶ！
+        // ====================================================
+        static float targetIdleTime = 5.0f;
+        if (animTimer_ == 0.0f) {
+            // rand() % 5 は「0, 1, 2, 3, 4」のどれかになるので、それに4を足すと「4, 5, 6, 7, 8」になります！
+            int randomSeconds = 4 + (std::rand() % 5);
+            targetIdleTime = static_cast<float>(randomSeconds);
+
+            DebugConsole::GetInstance()->AddLog("【AI】 次の攻撃まで " + std::to_string(randomSeconds) + " 秒待機します");
+        }
+
         animTimer_ += deltaTime;
 
-        if (animTimer_ >= 2.0f) {
+        // タイマーが「今回決めた目標時間」を超えたら攻撃へ！
+        if (animTimer_ >= targetIdleTime) {
             ChangeState(State::Attack);
         }
     }
@@ -977,7 +1022,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
 
     DebugConsole::GetInstance()->AddLog("【HIT!】 Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " + std::to_string(maxBarrierHp_));
 
-    damageCooldownTimer_ = 0.5f;
+    damageCooldownTimer_ = 1.0f;
     colorResetTimer_ = 0.15f;
 
     // ==========================================
@@ -1223,6 +1268,11 @@ bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
 
     if (attribute & kPlayerAttack) {
+        // --- 連続ヒット帽子：クールダウン中なら無視する ---
+        if (damageCooldownTimer_ > 0.0f) {
+            return true;
+        }
+
         CollisionInfo info = CheckCollision(other);
         if (!info.isColliding) {
             return false;
@@ -1245,6 +1295,12 @@ void BossCore::StartBattle() {
     animTimer_ = 0.0f; // ★ ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
 
     DebugConsole::GetInstance()->AddLog("【BATTLE START】 ボスが行動を開始した！！！");
+
+    // ====================================================
+    // ★ 追加：戦闘開始フラグがONになったので、
+    // 現在の状態(Idle)を再セットして、即座に属性を「kEnemy」に更新する！
+    // ====================================================
+    ChangeState(state_);
 }
 
 void BossCore::UpdateAppearance(float deltaTime) {

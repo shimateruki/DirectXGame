@@ -29,7 +29,7 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
         if (block) {
             block->SetScale({ 0.0f, 0.0f, 0.0f });
             block->SetCollisionAttribute(0);
-            block->isDead = true; // エンジンの自動削除に任せる
+            //block->isDead = true; // エンジンの自動削除に任せる
         }
     }
 
@@ -166,7 +166,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 float centerZ = (i == 0 || i == 1) ? 37.5f : -37.5f;
 
                 areaWarnings_[i]->SetIsVisible(true);
-                areaWarnings_[i]->SetTranslate({ centerX, 0.05f, centerZ });
+                areaWarnings_[i]->SetTranslate({ centerX, 0.1f, centerZ });
                 areaWarnings_[i]->SetScale({ 37.5f, 0.1f, 37.5f }); // タイクラーさん指定のサイズ
                 areaWarnings_[i]->SetTexture("Resources/sprite/yazirusi1.png");
                 areaWarnings_[i]->SetMaterialType(0);
@@ -280,7 +280,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
             warning->SetTranslate({ 0.0f, 0.05f, 0.0f });
-            warning->SetScale({ 16.0f, 0.1f, 16.0f }); // 隕石サイズに合わせる
+            warning->SetScale({ 16.0f, 0.7f, 16.0f }); // 隕石サイズに合わせる
             warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
             warning->UpdateWorldMatrix();
         }
@@ -303,30 +303,75 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
     // --- Phase 86: 全ての力を使い果たし、ボスが地に落ちる ---
     else if (animPhase_ == 86) {
         animTimer_ += deltaTime;
-        float duration = 3.0f;
+        float duration = 3.0f; // 全体の演出時間は3秒
         float t = std::min(animTimer_ / duration, 1.0f);
-        float easeT = Easing::OutBounce(t);
 
         Vector3 pos = boss->GetTranslate();
-        pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
-        pos.y = Math::Lerp(animStartPos_.y, 2.0f, easeT); // 地面に落下
-        pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
-        boss->SetTranslate(pos);
 
-        boss->SetColor({ 0.2f, 0.2f, 0.2f, 1.0f });
-        boss->SetRotation({ 0.0f, 0.0f, 0.0f });
+        // ====================================================
+        // ★ カスタム落下＆バウンド計算
+        // ====================================================
+        float fallDuration = 1.2f;
+        float fallT = std::min(animTimer_ / fallDuration, 1.0f);
+
+        float easeXZ = fallT * (2.0f - fallT); // OutQuad
+        pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeXZ);
+        pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeXZ);
+
+        float groundY = 0.5f;
+
+        if (animTimer_ <= fallDuration) {
+            // 【落下中】
+            float easeY = fallT * fallT;
+            pos.y = Math::Lerp(animStartPos_.y, groundY, easeY);
+
+            // キリモミ回転
+            float spinSpeed = 20.0f;
+            boss->SetRotation({ animTimer_ * spinSpeed, 0.0f, 0.0f });
+        }
+        else {
+            // 【バウンド中】
+            float bounceTime = animTimer_ - fallDuration;
+
+            float bouncePower = 6.0f;
+            float bounceDamp = 3.0f;
+            float bounceFreq = 15.0f;
+
+            float bounceOffset = std::abs(std::sin(bounceTime * bounceFreq)) * std::exp(-bounceTime * bounceDamp) * bouncePower;
+            pos.y = groundY + bounceOffset;
+
+            // 90度倒れる
+            float angle90 = std::numbers::pi_v<float> / 2.0f;
+            boss->SetRotation({ angle90, 0.0f, 0.0f });
+        }
+
+        boss->SetTranslate(pos);
+        boss->SetColor({ 1.0f, 0.0f, 1.0f, 1.0f });
 
         if (t >= 1.0f) {
             // ==========================================
-            // ★ 修正：巨大隕石もスマートに存在を消去！
+            // ★ カメラめり込み対策：すべてのブロックを完全消去！
             // ==========================================
-            if (meteors_.size() > 10 && meteors_[10]) {
-                meteors_[10]->SetScale({ 0.0f, 0.0f, 0.0f });
-                meteors_[10]->SetCollisionAttribute(0);
-                meteors_[10]->UpdateWorldMatrix();
-                meteors_[10]->isDead = true;
+            // ① 生成した隕石（巨大隕石も含む）をすべてサイズ0にする
+            for (Object3d* meteor : meteors_) {
+                if (meteor) {
+                    meteor->SetScale({ 0.0f, 0.0f, 0.0f });
+                    meteor->SetCollisionAttribute(0);
+                    meteor->UpdateWorldMatrix();
+                    meteor->isDead = true;
+                }
+
             }
             meteors_.clear();
+
+            // ② ボスに付いている装甲ブロックもすべてサイズ0にする
+            for (Object3d* block : boss->GetArmorBlocks()) {
+                if (block) {
+                    block->SetScale({ 0.0f, 0.0f, 0.0f });
+                    block->SetCollisionAttribute(0);
+                    block->UpdateWorldMatrix(); // カメラの判定更新のために必須
+                }
+            }
 
             // ==========================================
             // ★ 予測線を完全に消去
@@ -337,10 +382,9 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
             }
 
-            boss->SetWaitingForDeath(true);
             isFinished_ = true;
 
             DebugConsole::GetInstance()->AddLog("ボスは完全に沈黙した…！今だ、トドメを刺せ！！");
         }
-    }
+        }
 }

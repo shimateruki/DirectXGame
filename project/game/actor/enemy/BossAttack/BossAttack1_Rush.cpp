@@ -151,7 +151,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             float warningAngleY = std::atan2(dir.x, dir.z);
             Vector3 warningPos = {
                 animStartPos_.x + dir.x * (dashLength * 0.5f),
-                0.05f,
+                0.7f,
                 animStartPos_.z + dir.z * (dashLength * 0.5f)
             };
 
