@@ -1017,7 +1017,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
 
     DebugConsole::GetInstance()->AddLog("【HIT!】 Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " + std::to_string(maxBarrierHp_));
 
-    damageCooldownTimer_ = 0.5f;
+    damageCooldownTimer_ = 1.0f;
     colorResetTimer_ = 0.15f;
 
     // ==========================================
@@ -1263,6 +1263,11 @@ bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
 
     if (attribute & kPlayerAttack) {
+        // --- 連続ヒット帽子：クールダウン中なら無視する ---
+        if (damageCooldownTimer_ > 0.0f) {
+            return true;
+        }
+
         CollisionInfo info = CheckCollision(other);
         if (!info.isColliding) {
             return false;
