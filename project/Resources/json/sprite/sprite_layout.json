@@ -105,7 +105,7 @@
                 41.9739990234375
             ],
             "size": [
-                485.0,
+                0.0,
                 32.0
             ],
             "texture": "white.png"
@@ -145,8 +145,8 @@
             "emissive": 1.0,
             "name": "poseBack.png",
             "position": [
-                774.8570556640625,
-                424.9820251464844
+                786.8570556640625,
+                442.970703125
             ],
             "size": [
                 1901.0,
@@ -285,6 +285,248 @@
                 60.0
             ],
             "texture": "titleText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "tutrialText_cameraControl.png",
+            "position": [
+                770.0,
+                200.0
+            ],
+            "size": [
+                300.0,
+                150.0
+            ],
+            "texture": "turrialTex/tutrialText_cameraControl.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "tutrialText_move.png",
+            "position": [
+                770.0,
+                200.0
+            ],
+            "size": [
+                300.0,
+                150.0
+            ],
+            "texture": "turrialTex/tutrialText_move.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "tutrialText_lockOn.png",
+            "position": [
+                770.0,
+                200.0
+            ],
+            "size": [
+                300.0,
+                150.0
+            ],
+            "texture": "turrialTex/tutrialText_lockOn.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "tutrialText_attak.png",
+            "position": [
+                770.0,
+                200.0
+            ],
+            "size": [
+                300.0,
+                150.0
+            ],
+            "texture": "turrialTex/tutrialText_attak.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "tutrialText_donge.png",
+            "position": [
+                770.0,
+                200.0
+            ],
+            "size": [
+                300.0,
+                150.0
+            ],
+            "texture": "turrialTex/tutrialText_donge.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "missionText_boss.png",
+            "position": [
+                220.0,
+                245.0
+            ],
+            "size": [
+                400.0,
+                96.0
+            ],
+            "texture": "missonText/missionText_boss.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "missionText_go.png",
+            "position": [
+                220.0,
+                245.0
+            ],
+            "size": [
+                400.0,
+                96.0
+            ],
+            "texture": "missonText/missionText_go.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "missionText_line.png",
+            "position": [
+                240.0,
+                250.0
+            ],
+            "size": [
+                400.0,
+                96.0
+            ],
+            "texture": "missonText/missionText_line.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "missionText_mission.png",
+            "position": [
+                150.0,
+                180.0
+            ],
+            "size": [
+                400.0,
+                96.0
+            ],
+            "texture": "missonText/missionText_mission.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "missionText_Mark.png",
+            "position": [
+                210.0,
+                245.0
+            ],
+            "size": [
+                400.0,
+                96.0
+            ],
+            "texture": "missonText/missionText_Mark.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "missionText_lever.png",
+            "position": [
+                220.0,
+                245.0
+            ],
+            "size": [
+                400.0,
+                96.0
+            ],
+            "texture": "missonText/missionText_lever.png"
         }
     ]
 }

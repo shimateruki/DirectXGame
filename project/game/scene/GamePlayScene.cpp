@@ -232,6 +232,46 @@ void GamePlayScene::Initialize() {
 		}
 	}
 
+	auto SetAlphaIfExists = [](Sprite* sprite, float a) {
+		if (sprite) {
+			Vector4 c = sprite->GetColor();
+			c.w = a;
+			sprite->SetColor(c);
+		}
+		};
+
+	// --- チュートリアル用スプライトの取得（最初は非表示） ---
+	tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
+	tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
+	tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
+	tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
+	tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
+
+	SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
+	SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
+	SetAlphaIfExists(tutorialLockOnSprite_, 0.0f);
+	SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
+	SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
+
+	// --- ミッションタスクスプライトの取得（最初は非表示） ---
+	missionText_mission_ = GetSpriteByName("missionText_mission.png");
+	missionText_line_ = GetSpriteByName("missionText_line.png");
+	missionText_Mark_ = GetSpriteByName("missionText_Mark.png");
+	missionText_lever_ = GetSpriteByName("missionText_lever.png");
+	missionText_go_ = GetSpriteByName("missionText_go.png");
+	missionText_boss_ = GetSpriteByName("missionText_boss.png");
+
+	SetAlphaIfExists(missionText_mission_, 0.0f);
+	SetAlphaIfExists(missionText_line_, 0.0f);
+	SetAlphaIfExists(missionText_Mark_, 0.0f);
+	SetAlphaIfExists(missionText_lever_, 0.0f);
+	SetAlphaIfExists(missionText_go_, 0.0f);
+	SetAlphaIfExists(missionText_boss_, 0.0f);
+
+	missionInitialShown_ = false;
+	missionGoShown_ = false;
+	missionBossShown_ = false;
+
 	// =======================================================
 	// ★ 進行状況の復元：橋がすでに落ちている場合の処理
 	// =======================================================
@@ -495,6 +535,20 @@ void GamePlayScene::Update(float deltaTime) {
 						}
 					}
 				}
+
+				// ここで missionText_go を表示（1回だけ）
+				if (!missionGoShown_ && missionText_go_) {
+					Vector4 c = missionText_go_->GetColor();
+					c.w = 1.0f;
+					missionText_go_->SetColor(c);
+					missionGoShown_ = true;
+
+					if (missionText_lever_) {
+						Vector4 lc = missionText_lever_->GetColor();
+						lc.w = 0.0f;
+						missionText_lever_->SetColor(lc);
+					}
+				}
 			}
 		}
 		for (auto& obj : objectManager_->GetObjects()) {
@@ -622,6 +676,30 @@ void GamePlayScene::Update(float deltaTime) {
 				movieState_ = MovieState::kNone;
 				player_->SetIsControlActive(true);
 				player_->SetIsPhysicsActive(true); // 物理復帰
+
+				if (!hasFinishedTutorial_) {
+					tutorialStep_ = TutorialStep::kShowMove;
+					tutorialTimer_ = 0.0f;
+					if (tutorialMoveSprite_) {
+						Vector4 c = tutorialMoveSprite_->GetColor();
+						c.w = 1.0f;
+						tutorialMoveSprite_->SetColor(c);
+					}
+				}
+
+				if (!missionInitialShown_) {
+					auto ShowIfExists = [](Sprite* s) {
+						if (!s) return;
+						Vector4 c = s->GetColor();
+						c.w = 1.0f;
+						s->SetColor(c);
+						};
+					ShowIfExists(missionText_mission_);
+					ShowIfExists(missionText_line_);
+					ShowIfExists(missionText_Mark_);
+					ShowIfExists(missionText_lever_);
+					missionInitialShown_ = true;
+				}
 			}
 
 			// プレイヤーのY座標をプラットフォームに同期（重力の代わりに手動で吸着）
@@ -633,6 +711,119 @@ void GamePlayScene::Update(float deltaTime) {
 			if (player_) player_->SetIsPhysicsActive(true);
 		}
 	}
+
+	// チュートリアル状態機（順序：移動 → カメラ → ロックオン → 攻撃 → 回避）
+	if (!tutorialUiCompleted_) {
+		switch (tutorialStep_) {
+		case TutorialStep::kShowMove:
+			// 表示済みを確認して入力待ちへ
+			tutorialStep_ = TutorialStep::kWaitForMove;
+			tutorialTimer_ = 0.0f;
+			break;
+
+		case TutorialStep::kWaitForMove:
+		{
+			bool moved = false;
+			if (inputManager_) {
+				Vector2 left = inputManager_->GetLeftStick();
+				if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f) moved = true;
+				if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_A) ||
+					inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_D)) {
+					moved = true;
+				}
+			}
+			if (!moved && player_) {
+				Vector3 vel = player_->GetVelocity();
+				float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+				if (speed > 0.1f) moved = true;
+			}
+			if (moved) {
+				// 次のカメラ説明表示へ切り替え
+				if (tutorialMoveSprite_) { Vector4 c = tutorialMoveSprite_->GetColor(); c.w = 0.0f; tutorialMoveSprite_->SetColor(c); }
+				if (tutorialCameraSprite_) { Vector4 c = tutorialCameraSprite_->GetColor(); c.w = 1.0f; tutorialCameraSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForCamera;
+				tutorialTimer_ = 0.0f;
+			}
+		}
+		break;
+
+		case TutorialStep::kWaitForCamera:
+		{
+			bool cameraUsed = false;
+			if (inputManager_) {
+				Vector2 right = inputManager_->GetRightStick();
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				if (std::abs(right.x) > 0.2f || std::abs(right.y) > 0.2f) cameraUsed = true;
+				if (std::abs(mouseDelta.x) > 2.0f || std::abs(mouseDelta.y) > 2.0f) cameraUsed = true;
+			}
+			if (cameraUsed) {
+				if (tutorialCameraSprite_) { Vector4 c = tutorialCameraSprite_->GetColor(); c.w = 0.0f; tutorialCameraSprite_->SetColor(c); }
+				if (tutorialLockOnSprite_) { Vector4 c = tutorialLockOnSprite_->GetColor(); c.w = 1.0f; tutorialLockOnSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForLockOn;
+				tutorialTimer_ = 0.0f;
+			}
+		}
+		break;
+
+		case TutorialStep::kWaitForLockOn:
+			if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
+				if (tutorialLockOnSprite_) { Vector4 c = tutorialLockOnSprite_->GetColor(); c.w = 0.0f; tutorialLockOnSprite_->SetColor(c); }
+				if (tutorialAttackSprite_) { Vector4 c = tutorialAttackSprite_->GetColor(); c.w = 1.0f; tutorialAttackSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForAttack;
+				tutorialTimer_ = 0.0f;
+			}
+			break;
+
+		case TutorialStep::kWaitForAttack:
+			if (inputManager_) {
+				// 攻撃ボタン検出（KeyConfig の "Attack" に対応）
+				if (inputManager_->IsActionTriggered("Attack")) {
+					if (tutorialAttackSprite_) { Vector4 c = tutorialAttackSprite_->GetColor(); c.w = 0.0f; tutorialAttackSprite_->SetColor(c); }
+					if (tutorialDodgeSprite_) { Vector4 c = tutorialDodgeSprite_->GetColor(); c.w = 1.0f; tutorialDodgeSprite_->SetColor(c); }
+					tutorialStep_ = TutorialStep::kWaitForDodge;
+					tutorialTimer_ = 0.0f;
+				}
+			}
+			break;
+
+		case TutorialStep::kWaitForDodge:
+			if (inputManager_) {
+				// ダッシュがトリガーされたか
+				bool dashTriggered = inputManager_->IsActionTriggered("Dash");
+
+				// 同時に移動入力があるかをチェック（左スティックまたはW/A/S/D、または速度による判定）
+				bool moveInput = false;
+				Vector2 left = inputManager_->GetLeftStick();
+				if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f) moveInput = true;
+				if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_A) ||
+					inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_D)) {
+					moveInput = true;
+				}
+				if (!moveInput && player_) {
+					Vector3 vel = player_->GetVelocity();
+					float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+					if (speed > 0.1f) moveInput = true;
+				}
+
+				// ダッシュかつ移動入力がある場合に回避完了とする
+				if (dashTriggered && moveInput) {
+					if (tutorialDodgeSprite_) {
+						Vector4 c = tutorialDodgeSprite_->GetColor();
+						c.w = 0.0f;
+						tutorialDodgeSprite_->SetColor(c);
+					}
+					tutorialStep_ = TutorialStep::kCompleted;
+					tutorialUiCompleted_ = true;
+					// 必要なら hasFinishedTutorial_ をここで true にする
+				}
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+
 
 		// --- ロックオン & カメラ制御 ---
 		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
@@ -890,6 +1081,27 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 			boss_->StartBattle();
+
+			// ボス登場後に missionText_boss を表示（1回だけ）
+			if (!missionBossShown_ && missionText_boss_) {
+				Vector4 c = missionText_boss_->GetColor();
+				c.w = 1.0f;
+				missionText_boss_->SetColor(c);
+				missionBossShown_ = true;
+
+				// 重なり防止：以前のミッションUIを確実に非表示にする
+				if (missionText_go_) {
+					Vector4 gc = missionText_go_->GetColor();
+					gc.w = 0.0f;
+					missionText_go_->SetColor(gc);
+				}
+				if (missionText_lever_) {
+					Vector4 lc = missionText_lever_->GetColor();
+					lc.w = 0.0f;
+					missionText_lever_->SetColor(lc);
+				}
+			}
+
 			if (timeAttackUI_) {
 				timeAttackUI_->Start();
 			}
