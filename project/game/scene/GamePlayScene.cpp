@@ -286,13 +286,13 @@ void GamePlayScene::Initialize() {
 				}
 				obj->UpdateWorldMatrix();
 			}
-			else if (name.find("Bridge_") != std::string::npos) {
+			else if (name.find("Bridge_") != std::string::npos) { // ブリッジ関連は全て復活させる
 				if (name.find("Bridge_Collision") == std::string::npos) {
 					obj->SetIsVisible(true);
 				}
 				obj->SetCollisionAttribute(kGround);
 			}
-			else if (name.find("Battle_Field_Collision_") != std::string::npos) {
+			else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
 				obj->SetCollisionAttribute(0);
 			}
 		}
@@ -586,7 +586,7 @@ void GamePlayScene::Update(float deltaTime) {
 							obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
 						}
 					}
-					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
 						obj->SetCollisionAttribute(kGround);
 					}
 				}

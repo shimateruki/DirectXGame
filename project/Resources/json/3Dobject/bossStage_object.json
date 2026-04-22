@@ -8313,7 +8313,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8404,7 +8404,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8495,7 +8495,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8677,7 +8677,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8768,7 +8768,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8859,7 +8859,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8950,7 +8950,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
