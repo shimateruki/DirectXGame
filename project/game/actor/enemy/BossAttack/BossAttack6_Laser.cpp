@@ -12,12 +12,14 @@
 void BossAttack6_Laser::Finalize() {
     for (Object3d* beam : activeBeams_) {
         if (beam) {
-            // ★重要：当たり判定マネージャから登録を消す！
-            CollisionManager::GetInstance()->RemoveObject(beam);
-            beam->isDead = true; // ついでに消滅フラグも立てる
+          
+            CollisionManager::GetInstance()->RemoveObject(beam); // マネージャから外す
+
+            beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 見えなくする
+            beam->SetCollisionAttribute(0);       // 当たり判定を完全に消す
         }
     }
-    activeBeams_.clear();
+    activeBeams_.clear(); // リストだけ空にしておく
 }
 
 // デストラクタも Finalize を呼ぶようにしておくとより安全です

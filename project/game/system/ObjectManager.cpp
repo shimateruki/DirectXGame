@@ -14,7 +14,7 @@ void ObjectManager::Update(float deltaTime) {
 		obj->UpdateWorldMatrix();
 	}
 
-	// 3. 保留オブジェクトの追加 (AddObjectされたものをリストへ)
+	// 3. 保留オブジェクトの追加 (AddObjectされたものをリストへ)ww
 	if (!pendingObjects_.empty()) {
 		for (auto& pendingObj : pendingObjects_) {
 			objects_.push_back(std::move(pendingObj));
