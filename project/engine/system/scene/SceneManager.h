@@ -52,7 +52,11 @@ public:
     /// <summary>
     /// ファクトリーを使って、名前で次のシーンを予約する
     /// </summary>
-    void ChangeScene(const std::string& sceneName);
+    void ChangeScene(const std::string& sceneName, bool skipFade = false);
+
+    // フェードをスキップすべきかどうかの判定
+    bool ShouldSkipFade() const { return skipFadeNextScene_; }
+    void ResetSkipFade() { skipFadeNextScene_ = false; }
 
     std::string LoadLastSceneName();
     void SaveLastSceneName(const std::string& sceneName);
@@ -78,5 +82,5 @@ private:
     const std::string kUserConfigPath = "Resources/json/user_config.json";
     bool isPlaying_ = false;
     float timeScale_ = 1.0f;
-
+    bool skipFadeNextScene_ = false;
 };
