@@ -30,4 +30,5 @@ public:
 
     void Initialize(BossCore* boss) override;
     void Update(BossCore* boss, float deltaTime) override;
+    void Finalize() override;
 };

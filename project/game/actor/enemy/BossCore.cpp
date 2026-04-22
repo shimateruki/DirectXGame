@@ -273,7 +273,10 @@ void BossCore::Update(float deltaTime) {
             s_debugForceAttack = triggerAttack;
 
             // 強制的に状態をリセットして待機(Idle)に戻す
-            if (currentAttack_) currentAttack_.reset(); // 実行中の攻撃を破棄
+            if (currentAttack_) {
+                currentAttack_->Finalize(); // ★これが必要！エフェクトや音を止める
+                currentAttack_.reset();
+            }
             ChangeState(State::Idle);
             animTimer_ = 0.0f;
 

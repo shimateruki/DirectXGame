@@ -9,10 +9,20 @@
 #include "BaseScene.h"
 #include <CollisionManager.h>
 
-BossAttack6_Laser::~BossAttack6_Laser() {
+void BossAttack6_Laser::Finalize() {
     for (Object3d* beam : activeBeams_) {
-        if (beam) beam->isDead = true;
+        if (beam) {
+            // ★重要：当たり判定マネージャから登録を消す！
+            CollisionManager::GetInstance()->RemoveObject(beam);
+            beam->isDead = true; // ついでに消滅フラグも立てる
+        }
     }
+    activeBeams_.clear();
+}
+
+// デストラクタも Finalize を呼ぶようにしておくとより安全です
+BossAttack6_Laser::~BossAttack6_Laser() {
+    Finalize();
 }
 
 void BossAttack6_Laser::Initialize(BossCore* boss) {
