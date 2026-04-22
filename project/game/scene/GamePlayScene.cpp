@@ -744,6 +744,11 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
+
+	if (boss_) {
+		boss_->ActuallySpawnShards();
+	}
+  
 	if (timeAttackUI_) {
 		timeAttackUI_->Update(deltaTime);
 	}

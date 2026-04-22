@@ -110,6 +110,9 @@ public:
 
     void StartAppearance(); // 登場演出をスタートする関数
     bool IsAppearing() const { return isAppearing_; }
+
+    void ActuallySpawnShards();
+
     bool IsCompletelyDead() const { return isCompletelyDead_; }
 private:
 
@@ -175,6 +178,10 @@ private:
     // ==========================================
     bool isFinalPhase_ = false;       // HP1になって発狂中か？
     bool isWaitingForDeath_ = false;  // 必殺技が終わってトドメ待ちか？
+    bool isWaitingForFinisher_ = false; // 大技終了後のトドメ待ちモード
+
+    // ▼ 先ほどのアクセス違反（クラッシュ）を完全に防ぐための安全装置
+    bool isShardSpawnRequested_ = false;
 
     // ==========================================
     // パーティクルのエミッターを保持
