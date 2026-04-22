@@ -110,6 +110,14 @@ public:
     void SetForceLockOnTarget(Object3d* target) { forceLockOnTarget_ = target; }
     Object3d* GetForceLockOnTarget() const { return forceLockOnTarget_; }
 
+    // ロックオンの強制解除要求
+    void RequestClearLockOn() { requestClearLockOn_ = true; }
+    bool ConsumeClearLockOnRequest() {
+        bool r = requestClearLockOn_;
+        requestClearLockOn_ = false;
+        return r;
+    }
+
 
 private:
     // --- 内部コンポーネント ---
@@ -147,5 +155,6 @@ private:
     bool isDashInvincible_ = false;
     float deathTimer_ = 0.0f;    // 死亡してからの経過時間
     Object3d* forceLockOnTarget_ = nullptr; // 強制ロックオン対象
+    bool requestClearLockOn_ = false;       // ロックオン解除要求フラグ
     void UpdateColor();
 };
