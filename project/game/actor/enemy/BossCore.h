@@ -110,7 +110,7 @@ public:
 
     void StartAppearance(); // 登場演出をスタートする関数
     bool IsAppearing() const { return isAppearing_; }
-
+    bool IsCompletelyDead() const { return isCompletelyDead_; }
 private:
 
     // 射出されたブロックのリスト
@@ -211,6 +211,7 @@ private:
     bool isWaitingForDirector_ = false; // ディレクターのアニメーション終了待ちかどうか
     int appearancePhase_ = 0;   // 演出の進行度
     float appearanceTimer_ = 0.0f;
-
+    bool isCompletelyDead_ = false;
     float assemblyTimer_ = 0.0f;
+
 };

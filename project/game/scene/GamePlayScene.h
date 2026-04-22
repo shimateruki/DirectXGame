@@ -180,7 +180,10 @@ private:
     Sprite* poseTextSprite_ = nullptr;
     Sprite* restartPoseTextSprite_ = nullptr;
     Sprite* titleTextPoseSprite_ = nullptr;
-
+    bool isGameClearSequence_ = false;
+    float gameClearTimer_ = 0.0f;
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
+
     bool hasBossAppeared_ = false; // ボス登場イベントが既に終わったかどうかのロックフラグ
+
 };

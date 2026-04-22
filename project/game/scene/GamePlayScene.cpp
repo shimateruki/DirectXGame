@@ -29,6 +29,7 @@
 #include "TutorialDoll.h"
 #include"WinApp.h"
 #include "GameProgress.h"
+#include "SaveDataManager.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -48,6 +49,7 @@
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include <MeshEffectManager.h>
+#include"TimeAttackUI.h"
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -115,7 +117,9 @@ void GamePlayScene::Initialize() {
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
-
+	timeAttackUI_ = std::make_unique<TimeAttackUI>();
+	timeAttackUI_->Initialize(spriteCommon_.get());
+	timeAttackUI_->Start(); // とりあえずシーン開始と共に計測スタート
 
 	// --- スプライトの中から探索
 	for (auto& sprite : sprites_) {
@@ -429,11 +433,17 @@ void GamePlayScene::Update(float deltaTime) {
 				doorOpenProgress_ = 1.0f;
 				// ドアが完全に開いた瞬間モデルを消しておく
 				for (auto& obj : objectManager_->GetObjects()) {
+					if (obj->GetName() == "Tutorial_Door_Left") {
+						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す
+					}
+					else if (obj->GetName() == "Tutorial_Door_Right") {
 					std::string name = obj->GetName();
 					if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
 						obj->SetIsVisible(false);
 						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+						obj->isDead = true; // 完全に消す
 					}
 				}
 			}
@@ -442,13 +452,13 @@ void GamePlayScene::Update(float deltaTime) {
 		for (auto& obj : objectManager_->GetObjects()) {
 			if (obj->GetName() == "Tutorial_Door_Left") {
 				Transform* trans = obj->GetTransform();
-				trans->translate.x = -5.0f - 15.0f * doorOpenProgress_; // -5 -> -15
+				trans->translate.x = -5.0f - 15.0f * doorOpenProgress_;
 				trans->isQuaternionMaster = false;
 				obj->UpdateWorldMatrix();
 			}
 			else if (obj->GetName() == "Tutorial_Door_Right") {
 				Transform* trans = obj->GetTransform();
-				trans->translate.x = 5.0f + 15.0f * doorOpenProgress_; // 5 -> +15
+				trans->translate.x = 5.0f + 15.0f * doorOpenProgress_; 
 				trans->isQuaternionMaster = false;
 				obj->UpdateWorldMatrix();
 			}
@@ -695,7 +705,9 @@ void GamePlayScene::Update(float deltaTime) {
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
-
+	if (timeAttackUI_) {
+		timeAttackUI_->Update(deltaTime);
+	}
 	//// 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) {
@@ -814,6 +826,33 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 			boss_->StartBattle();
+		}
+	}
+	if (boss_) {
+		// ボスが完全に消滅し、かつまだクリアシーケンスに入っていなければ開始
+		if (boss_->IsCompletelyDead() && !isGameClearSequence_) {
+			isGameClearSequence_ = true;
+			gameClearTimer_ = 0.0f;
+
+			// タイマーを止める
+			if (timeAttackUI_) {
+				timeAttackUI_->Stop();
+			}
+			float clearTime = timeAttackUI_->GetCurrentTime();
+			SaveDataManager::GetInstance()->RecordClearTime(clearTime);
+
+			DebugConsole::GetInstance()->AddLog("クリアタイムを保存しました: " + std::to_string(clearTime) + " 秒");
+			DebugConsole::GetInstance()->AddLog("【GAME CLEAR】 クリア演出開始！");
+		}
+	}
+
+	// クリアシーケンス中の処理
+	if (isGameClearSequence_) {
+		gameClearTimer_ += deltaTime;
+
+		// ボス消滅から 2.0 秒後に「CLEAR」シーンへ遷移！
+		if (gameClearTimer_ > 2.0f) {
+			SceneManager::GetInstance()->ChangeScene("GAMECLEAR");
 		}
 	}
 }
@@ -1004,6 +1043,9 @@ void GamePlayScene::DrawUI() {
 	}
 	if (isDrawLockOn_ && lockOnSprite_) {
 		lockOnSprite_->Draw();
+	}
+	if (timeAttackUI_) {
+		timeAttackUI_->Draw();
 	}
 }
 
