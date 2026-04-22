@@ -29,6 +29,8 @@
 #include <cctype>    // ::tolower
 
 #include "Easing.h" // 追加: イージング関数利用
+#include <CinematicFade.h>
+#include <PostEffect.h>
 
 void TitleScene::Initialize() {
     // --- 1. システム基盤の取得 ---
@@ -159,7 +161,21 @@ void TitleScene::Initialize() {
         }
     }
     LOG("Found %d enemy core(s) to animate.", (int)enemyCores_.size());
+    // =======================================================
+     // ★ リスタート演出（電脳リブート）と完全初期化
+     // =======================================================
+    SceneManager* scm = SceneManager::GetInstance();
 
+
+    PostEffect::GetInstance()->ResetToBaseParams();
+
+    if (scm->ShouldSkipFade()) {
+        CinematicFade::GetInstance()->StartOpen(0.3f);
+        scm->ResetSkipFade();
+    }
+    else {
+        CinematicFade::GetInstance()->StartOpen(0.5f);
+    }
     dxCommon_->FlushCommandQueue(false);
 }
 

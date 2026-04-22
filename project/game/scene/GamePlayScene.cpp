@@ -50,6 +50,9 @@
 #include <PostEffect.h>
 #include <MeshEffectManager.h>
 #include"TimeAttackUI.h"
+#include <CinematicFade.h>
+
+bool GamePlayScene::s_isRebooting_ = false;
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -323,6 +326,19 @@ void GamePlayScene::Initialize() {
 		}
 	}
 
+	// =======================================================
+	 // ★ リスタート演出（電脳リブート）と完全初期化
+	 // =======================================================
+	SceneManager* scm = SceneManager::GetInstance();
+	PostEffect::GetInstance()->ResetToBaseParams();
+
+	if (scm->ShouldSkipFade()) {
+		CinematicFade::GetInstance()->StartOpen(0.3f);
+		scm->ResetSkipFade();
+	}
+	else {
+		CinematicFade::GetInstance()->StartOpen(0.5f);
+	}
 	dxCommon_->FlushCommandQueue(false);
 }
 
@@ -410,7 +426,30 @@ void GamePlayScene::Update(float deltaTime) {
 		// =======================================================
 		return;
 	}
+	if (isRestartTransition_ || isTitleTransition_) {
+		restartTimer_ += deltaTime;
+		float transitionDuration = 1.0f;
+		float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
 
+		PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+
+		// ★ ここはそのまま（縦に潰れる処理）
+		postParams->crtShutdown = t;
+
+
+
+		// 完全に終了（1秒経過）したらシーンをリロード
+		if (restartTimer_ >= transitionDuration) {
+			if (isRestartTransition_) {
+				SceneManager::GetInstance()->ChangeScene("GAMEPLAY", true);
+			}
+			else {
+				SceneManager::GetInstance()->ChangeScene("TITLE", true);
+			}
+		}
+
+		return;
+	}
 	// =======================================================
 	// チュートリアルドアの処理
 	// =======================================================
@@ -770,22 +809,34 @@ void GamePlayScene::Update(float deltaTime) {
 				if (titleTextSprite_) {
 					titleTextSprite_->SetColor(currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title ? selectColor : normalColor);
 				}
-
 				// 決定ボタンで遷移！
-				if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+				if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
 
-					// ★超重要: 遷移前にポストエフェクトの数値を完全に元に戻す！
-					PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
-					postParams->dangerVignette = 0.0f;
-					postParams->blackout = 0.0f;
+					// 共通のUI透明化ラムダ式
+					auto SetAlphaZero = [](Sprite* sprite) {
+						if (sprite) {
+							Vector4 color = sprite->GetColor();
+							color.w = 0.0f;
+							sprite->SetColor(color);
+						}
+						};
 
 					if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart) {
-						// 同じシーンを読み込み直してリスタート
-						SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+						isRestartTransition_ = true;
+						restartTimer_ = 0.0f;
+
+						SetAlphaZero(gameOverTextSprite_);
+						SetAlphaZero(restartTextSprite_);
+						SetAlphaZero(titleTextSprite_);
 					}
 					else if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title) {
-						// タイトルへ戻る
-						SceneManager::GetInstance()->ChangeScene("TITLE");
+					
+						isTitleTransition_ = true;
+						restartTimer_ = 0.0f;
+
+						SetAlphaZero(gameOverTextSprite_);
+						SetAlphaZero(restartTextSprite_);
+						SetAlphaZero(titleTextSprite_);
 					}
 				}
 			}

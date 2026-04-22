@@ -92,3 +92,10 @@ void CinematicFade::SetSpriteCommon(SpriteCommon* common) {
     if (topSprite_) topSprite_->SetCommon(common);
     if (bottomSprite_) bottomSprite_->SetCommon(common);
 }
+
+void CinematicFade::ForceOpen() {
+    state_ = State::kIdle;
+    // 画面外に一瞬で移動させる
+    if (topSprite_) topSprite_->SetPosition({ 0.0f, -(screenHeight_ / 2.0f) });
+    if (bottomSprite_) bottomSprite_->SetPosition({ 0.0f, screenHeight_ });
+}

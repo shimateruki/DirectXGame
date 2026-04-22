@@ -47,7 +47,7 @@ public:
         float mosaicSize = 0.0f;            // ピクセルモザイクサイズ
         float dangerVignette = 0.0f;
         float blackout = 0.0f;
-        float padding1 = 0.0f;
+        float crtShutdown = 0.0f;
  
     };
 
@@ -70,6 +70,18 @@ public:
     Params* GetParams() { return paramsData_; }
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
 
+
+    void SaveBaseParams() {
+        if (paramsData_) {
+            baseParams_ = *paramsData_; // JSONを読み込んだ直後の状態をコピーして保存
+        }
+    }
+
+    void ResetToBaseParams() {
+        if (paramsData_) {
+            *paramsData_ = baseParams_; // 保存しておいた綺麗な状態に一発で戻す！
+        }
+    }
 private:
     void CreateMesh();
     void CreateRootSignature();
@@ -110,4 +122,5 @@ private:
 
     // カラーグレーディング用LUTのSRVハンドル
     uint32_t lutSrvHandle_ = 0;
+    Params baseParams_{};
 };

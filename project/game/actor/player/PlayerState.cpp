@@ -2451,11 +2451,10 @@ void PlayerStateDead::ApplyPose(float t)
 	}
 
 	// =========================================================
-	// 4. 行列適用（プレイヤー本体：地面ガード実装）
-	// =========================================================
+		// 4. 行列適用（プレイヤー本体：地面ガード実装）
+		// =========================================================
 	if (bodyObj_) {
 		Transform* tf = bodyObj_->GetTransform();
-		float engineY = tf->translate.y; // 物理重力による現在地
 
 		float s = std::sin(currentY); float c = std::cos(currentY);
 		Vector3 worldOffset;
@@ -2466,9 +2465,12 @@ void PlayerStateDead::ApplyPose(float t)
 		tf->translate.x = bodyDefaultPos_.x + worldOffset.x;
 		tf->translate.z = bodyDefaultPos_.z + worldOffset.z;
 
-		// ★地面ガード：足や体のめり込みを防ぐ最小高度
-		const float groundLevel = 0.55f;
-		tf->translate.y = (std::max)(groundLevel, engineY + worldOffset.y);
+		// ★ 修正：場所に関わらず「死んだ瞬間の足元の高さ」を地面として計算する！
+		// bodyDefaultPos_.y は立ち状態の中心座標。そこから -0.45f した位置を「現在の地面」とする
+		const float groundLevel = bodyDefaultPos_.y - 0.45f;
+
+		// 元の高さ(bodyDefaultPos_.y) からオフセットを足したものが、地面より下に行かないようにガード
+		tf->translate.y = (std::max)(groundLevel, bodyDefaultPos_.y + worldOffset.y);
 
 		tf->rotate = curBodyRot;
 		tf->quaternion = Math::EulerToQuaternion(tf->rotate);
@@ -2520,7 +2522,8 @@ void PlayerStateDead::ApplyPose(float t)
 			currentPos.y = swordDropPos_.y + (swordVelocity_.y * elapsed) - (0.5f * gravity * elapsed * elapsed);
 			currentPos.z = swordDropPos_.z + swordVelocity_.z * elapsed;
 
-			const float swordGroundY = 0.22f; // 突き刺さる高さ
+			// ★ 修正：剣が刺さる高さも、プレイヤーの足元(groundLevel)に合わせる！
+			float swordGroundY = bodyDefaultPos_.y - 0.45f;
 			if (currentPos.y <= swordGroundY) {
 				currentPos.y = swordGroundY;
 				isSwordStuck_ = true;
@@ -2532,12 +2535,17 @@ void PlayerStateDead::ApplyPose(float t)
 				stf->rotate.z = swordDropRot_.z + swordSpinSpeed_ * elapsed;
 			}
 			else {
-				stf->rotate.x = DegToRad(115.0f); // 刺さった角度
+				// スピンの捻りが残らないようにY軸も必ず0にリセット！
+				stf->rotate.y = DegToRad(0.0f);
+				 stf->rotate.x = DegToRad(0.0f);
+				 stf->rotate.z = DegToRad(-90.0f); // または -90.0f
+				 stf->translate.y += 0.6f; 
 			}
 			stf->quaternion = Math::EulerToQuaternion(stf->rotate);
 			stf->isQuaternionMaster = true;
 			swordObj_->UpdateWorldMatrix();
 		}
+	
 	}
 }
 

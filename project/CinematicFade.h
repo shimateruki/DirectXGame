@@ -14,7 +14,6 @@ public:
 
     static CinematicFade* GetInstance();
 
-    // ★ 修正：SpriteCommon* を受け取るように変更！
     void Initialize(SpriteCommon* spriteCommon);
 
     void Update(float deltaTime);
@@ -27,6 +26,7 @@ public:
 
     State GetState() const { return state_; }
     bool IsClosed() const { return state_ == State::kClosed; }
+    void ForceOpen();
 
 private:
     CinematicFade() = default;

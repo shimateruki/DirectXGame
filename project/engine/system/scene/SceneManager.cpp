@@ -62,6 +62,7 @@ void SceneManager::Finalize() {
         currentScene_.reset();
         currentScene_ = nullptr;
     }
+
 }
 
 /// <summary>
@@ -81,11 +82,7 @@ void SceneManager::Update(float deltaTime) {
     // --- 次のシーンが予約されている場合 ---
     if (nextScene_ != nullptr) {
 
-        // =========================================================
-        // ★ 修正: エディタで「停止」中などで deltaTime が 0.0f の場合、
-        // フェードの演出をスキップして即座にシーンを切り替える！
-        // （開発中の「再生・停止」のテンポを爆速にする効果もあります）
-        // =========================================================
+
         if (!isPlaying_ || deltaTime <= 0.0f) {
             DirectXCommon* dxCommon = DirectXCommon::GetInstance();
             dxCommon->WaitForGPUAndReset();
@@ -162,7 +159,7 @@ BaseScene* SceneManager::GetCurrentScene() const {
     // 保持しているカレントシーンの生ポインタを返す
     return currentScene_.get();
 }
-void SceneManager::ChangeScene(const std::string& sceneName) {
+void SceneManager::ChangeScene(const std::string& sceneName, bool skipFade) {
     if (sceneFactory_ == nullptr) {
         assert(false && "SceneFactory is not set in SceneManager.");
         return;
@@ -172,19 +169,22 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
         return;
     }
 
+
+    skipFadeNextScene_ = skipFade;
+
     // ファクトリーを使ってシーンを生成
     std::unique_ptr<BaseScene> newScene = sceneFactory_->CreateScene(sceneName);
     if (debugEditor_) {
         newScene->SetDebugEditor(debugEditor_);
     }
+
     // SetNextScene に渡して、次のフレームで遷移させる
     if (newScene) {
-        // =======================================================
-        // ★ 修正3: 新しいシーンに SceneManager 自身を登録する！
-        // =======================================================
+        // 新しいシーンに SceneManager 自身を登録する
         newScene->SetSceneManager(this);
 
         SetNextScene(std::move(newScene));
+
 #ifdef USE_IMGUI
         SaveLastSceneName(sceneName);
 #endif
