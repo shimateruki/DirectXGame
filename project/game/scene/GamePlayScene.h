@@ -147,10 +147,10 @@ private:
 
     Sprite* bossHpBarSprite_ = nullptr;    // メインHPバー
     float bossHpBarMaxWidth_ = 0.0f;
-
+    Sprite* bossHpBackSprite_ = nullptr;
     Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
     float barrierHpBarMaxWidth_ = 0.0f;
-
+    Sprite* bossNameSprite_ = nullptr;
     enum class GameOverMenuIndex {
         Restart,
         Title,

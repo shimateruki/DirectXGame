@@ -122,7 +122,6 @@ void GamePlayScene::Initialize() {
 
 	timeAttackUI_ = std::make_unique<TimeAttackUI>();
 	timeAttackUI_->Initialize(spriteCommon_.get());
-	timeAttackUI_->Start(); // とりあえずシーン開始と共に計測スタート
 
 	// --- スプライトの中から探索
 	for (auto& sprite : sprites_) {
@@ -153,10 +152,20 @@ void GamePlayScene::Initialize() {
 		if (sprite->GetName() == "bossrHpBar") {
 			bossHpBarSprite_ = sprite.get();
 			bossHpBarMaxWidth_ = sprite->GetSize().x;
+			SetAlphaZero(bossHpBarSprite_);
 		}
 		else if (sprite->GetName() == "bariaHp.png") {
 			barrierHpBarSprite_ = sprite.get();
 			barrierHpBarMaxWidth_ = sprite->GetSize().x;
+			SetAlphaZero(bossHpBarSprite_);
+		}
+		else if (sprite->GetName() == "bossHpBarback") {
+			bossHpBackSprite_ = sprite.get();
+			SetAlphaZero(bossHpBackSprite_);
+		}
+		else if (sprite->GetName() == "bossText") { 
+			bossNameSprite_ = sprite.get();
+			SetAlphaZero(bossNameSprite_);
 		}
 	}
 
@@ -881,6 +890,9 @@ void GamePlayScene::Update(float deltaTime) {
 			}
 
 			boss_->StartBattle();
+			if (timeAttackUI_) {
+				timeAttackUI_->Start();
+			}
 		}
 	}
 	if (boss_) {
@@ -1099,7 +1111,7 @@ void GamePlayScene::DrawUI() {
 	if (isDrawLockOn_ && lockOnSprite_) {
 		lockOnSprite_->Draw();
 	}
-	if (timeAttackUI_) {
+	if (timeAttackUI_ && hasBossAppeared_ && !isBossMoviePlaying_) {
 		timeAttackUI_->Draw();
 	}
 }
@@ -1127,13 +1139,27 @@ void GamePlayScene::UpdateUI() {
 		playerHpBarSprite_->SetSize(newSize);
 	}
 	if (boss_) {
-		// A. メインHPバーの同期
+		// =======================================================
+		// ボスUIの表示・非表示制御
+		// ムービーが終了（!isBossMoviePlaying_）したら表示する
+		// =======================================================
+		float alpha = (hasBossAppeared_ && !isBossMoviePlaying_) ? 1.0f : 0.0f;
+
+		auto SetAlpha = [](Sprite* s, float a) {
+			if (s) { Vector4 c = s->GetColor(); c.w = a; s->SetColor(c); }
+			};
+
+		SetAlpha(bossHpBarSprite_, alpha);
+		SetAlpha(barrierHpBarSprite_, alpha);
+		SetAlpha(bossHpBackSprite_, alpha); 
+		SetAlpha(bossNameSprite_, alpha);   
+		// --- A. メインHPバーの同期 ---
 		if (bossHpBarSprite_) {
 			float hpRatio = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
 			bossHpBarSprite_->SetSize({ bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y });
 		}
 
-		// B. バリアHPバーの同期
+		// --- B. バリアHPバーの同期 ---
 		if (barrierHpBarSprite_) {
 			float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
 			barrierHpBarSprite_->SetSize({ barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });
