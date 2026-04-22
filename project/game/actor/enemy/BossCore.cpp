@@ -818,9 +818,23 @@ void BossCore::UpdateIdle(float deltaTime) {
     // 戦闘開始フラグがONの時だけ、攻撃へのタイマーを進める
     // ==========================================
     if (isBattleStarted_) {
+
+        // ====================================================
+        // ★ 修正：4, 5, 6, 7, 8秒のどれかをピッタリ選ぶ！
+        // ====================================================
+        static float targetIdleTime = 5.0f;
+        if (animTimer_ == 0.0f) {
+            // rand() % 5 は「0, 1, 2, 3, 4」のどれかになるので、それに4を足すと「4, 5, 6, 7, 8」になります！
+            int randomSeconds = 4 + (std::rand() % 5);
+            targetIdleTime = static_cast<float>(randomSeconds);
+
+            DebugConsole::GetInstance()->AddLog("【AI】 次の攻撃まで " + std::to_string(randomSeconds) + " 秒待機します");
+        }
+
         animTimer_ += deltaTime;
 
-        if (animTimer_ >= 2.0f) {
+        // タイマーが「今回決めた目標時間」を超えたら攻撃へ！
+        if (animTimer_ >= targetIdleTime) {
             ChangeState(State::Attack);
         }
     }
