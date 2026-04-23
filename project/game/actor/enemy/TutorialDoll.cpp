@@ -2,6 +2,7 @@
 #include "TutorialDoll.h"
 #include "CollisionConfig.h"
 //#include "engine/graphics/particle/GPUParticleManager.h"
+#include "Player.h"
 #include <algorithm>
 #include <cmath>
 
@@ -40,9 +41,12 @@ void TutorialDoll::Update(float deltaTime) {
     // A. 死亡・リスポーン管理
     // -------------------------------------------------------
     if (isDead_) {
-        respawnTimer_ -= deltaTime;
-        if (respawnTimer_ <= 0.0f) {
-            Respawn();
+        // リスポーンが有効な場合のみタイマーを進める
+        if (respawnTimer_ > 0.0f) {
+            respawnTimer_ -= deltaTime;
+            if (respawnTimer_ <= 0.0f) {
+                Respawn();
+            }
         }
 
         // 消滅演出（スケールダウン）
@@ -63,7 +67,21 @@ void TutorialDoll::Update(float deltaTime) {
     if (param_->hp <= 0.0f) {
         isDead_ = true;
         hasBeenDefeatedAtLeastOnce_ = true;
-        respawnTimer_ = 5.0f; // 5秒後に復活
+
+        // プレイヤーのロックオンを強制解除
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->RequestClearLockOn();
+            }
+        }
+
+        // maxCount が 0 の場合はリスポーンしない（レバー役など）
+        if (param_->maxCount > 0) {
+            respawnTimer_ = 5.0f; // 5秒後に復活
+        } else {
+            respawnTimer_ = -1.0f; // 復活しないフラグ
+        }
+        
         deathAnimTimer_ = 0.5f;
 
         // 死亡エフェクトの発生
