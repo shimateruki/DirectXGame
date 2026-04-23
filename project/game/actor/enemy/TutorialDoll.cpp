@@ -30,9 +30,10 @@ void TutorialDoll::Initialize(Object3dCommon* common, const std::string& modelNa
 void TutorialDoll::Update(float deltaTime) {
     if (deltaTime <= 0.0f) return;
 
-    // 初回UpdateでJSONパース後の座標・スケールを確定
+    // 初回UpdateでJSONパース後の座標・回転・スケールを確定
     if (!isInitialized_) {
         basePosition_ = transform_.translate;
+        baseRotation_ = transform_.rotate;
         baseScale_ = transform_.scale;
         isInitialized_ = true;
     }
@@ -49,13 +50,24 @@ void TutorialDoll::Update(float deltaTime) {
             }
         }
 
-        // 消滅演出（スケールダウン）
+        // 死亡演出
         if (deathAnimTimer_ > 0.0f) {
             deathAnimTimer_ -= deltaTime;
             float t = std::max(0.0f, deathAnimTimer_ / 0.5f);
-            transform_.scale = baseScale_ * t;
+            
+            if (respawnTimer_ == -1.0f) {
+                // レバー役：消えずに傾く（前に約70度倒れるイメージ）
+                transform_.rotate.x = baseRotation_.x + (1.0f - t) * 1.2f;
+                transform_.isQuaternionMaster = false; // 回転の更新を強制
+            } else {
+                // 案山子役：今まで通りスケールダウンで消滅
+                transform_.scale = baseScale_ * t;
+            }
+
             if (deathAnimTimer_ <= 0.0f) {
-                SetIsVisible(false);
+                if (respawnTimer_ != -1.0f) {
+                    SetIsVisible(false);
+                }
                 SetCollisionAttribute(0); // 当たり判定を抹消
             }
         }

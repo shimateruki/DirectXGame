@@ -22,6 +22,7 @@ private:
     bool isInitialized_ = false;  // 初回Updateでの座標・スケール保持用
 
     Vector3 basePosition_ = { 0.0f, 0.0f, 0.0f }; // 初期座標を記憶
+    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f }; // 初期回転を記憶
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };    // 初期スケールを記憶
     float deathAnimTimer_ = 0.0f; // 死亡時の縮小演出用
 
