@@ -22,6 +22,7 @@
 #include "GPUParticleEditor.h"
 #include "EngineManualWindow.h"
 #include"MeshEffectEditor.h"
+#include "TrailEmitterEditor.h"
 
 class WinApp;
 
@@ -59,6 +60,7 @@ private:
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
 	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
+	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
 	EngineManualWindow engineManualWindow_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;

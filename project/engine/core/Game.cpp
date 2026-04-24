@@ -87,6 +87,8 @@ void Game::Initialize() {
     vfxSequencerEditor_->Initialize();
     meshEffectEditor_ = std::make_unique<MeshEffectEditor>();
     meshEffectEditor_->Initialize(sceneManager_.get());
+    trailEmitterEditor_ = std::make_unique<TrailEmitterEditor>();
+    trailEmitterEditor_->Initialize(sceneManager_.get());
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
     ghostDirector_ = std::make_unique<GhostDirector>();
@@ -101,10 +103,11 @@ void Game::Initialize() {
             particleEditor_.get(),
             gpuParticleEditor_.get(),
             vfxSequencerEditor_.get(),
-            ghostRecorder_.get(),   
+            ghostRecorder_.get(),
             ghostDirector_.get(),
 			LightEditor::GetInstance(),
-            meshEffectEditor_.get()
+            meshEffectEditor_.get(),
+            trailEmitterEditor_.get()
         );
     }
 
@@ -365,6 +368,8 @@ void Game::Update() {
             if (ImGui::Button ("▶ 再生")) {
                 SaveAllEditors ();
                 sceneManager_->ChangeScene (currentSceneName_);
+                // Play開始時: シーン再生成で common_ が無効になる前にエフェクトをクリア
+                MeshEffectManager::GetInstance()->Clear();
                 isPlaying_ = true;
                 if (sceneManager_) { sceneManager_->SetIsPlaying (true); }
                 CameraEditor::GetInstance ()->SetMode (CameraEditor::Mode::Game);
@@ -372,6 +377,8 @@ void Game::Update() {
         }
 
         if (prevIsPlaying != isPlaying_ && !isPlaying_) {
+            // Stop時: シーン再生成で common_ が無効になる前にエフェクトをクリア
+            MeshEffectManager::GetInstance()->Clear();
             sceneManager_->ChangeScene(currentSceneName_);
             CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
         }
@@ -423,6 +430,15 @@ void Game::Update() {
     }
     if (meshEffectEditor_) {
         meshEffectEditor_->Update(deltaTime);
+    }
+    if (trailEmitterEditor_) {
+        trailEmitterEditor_->Update(deltaTime);
+    }
+    // エディタ停止中は各エディタがUpdate()を担当するが、
+    // Play中はエディタがスキップするためGame側で明示的に呼ぶ
+    if (isPlaying_) {
+        MeshEffectManager::GetInstance()->Update(deltaTime * timeScale_);
+        GPUParticleManager::GetInstance()->Update(deltaTime * timeScale_);
     }
     // -------------------------------------------------------------------------
     // 4. エディタ描画の総仕上げ！

@@ -1,0 +1,13 @@
+{
+    "autoOrient": true,
+    "emitDistance": 0.1,
+    "emitMesh": true,
+    "emitParticle": true,
+    "gpuParticlePreset": "trail_sparks",
+    "meshEffectPreset": "trail_sword",
+    "scale": [
+        1.0,
+        1.0,
+        1.0
+    ]
+}

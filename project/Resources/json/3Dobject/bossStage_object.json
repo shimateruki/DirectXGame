@@ -24,7 +24,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 1,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -59,11 +59,114 @@
             "name": "block_0",
             "normalMapPath": "",
             "ormMapPath": "",
+            "param": {
+                "enemyType": "Goblin",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 24.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "speed": 27.700000762939453
+            },
             "parentName": "",
             "position": [
-                -0.9791829586029053,
-                4.1118292808532715,
-                -9.986017227172852
+                6.906618595123291,
+                -1.1025699377059937,
+                -1.858152151107788
+            ],
+            "quaternion": [
+                0.0,
+                0.5814281105995178,
+                0.0,
+                0.8135977387428284
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                1.2409658432006836,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Player"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    0.5,
+                    50.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "heimen",
+            "myEventID": -1,
+            "name": "heimen_1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -2.235945463180542,
+                -2.602569818496704,
+                -12.648028373718262
             ],
             "quaternion": [
                 0.0,
@@ -78,7 +181,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.5,

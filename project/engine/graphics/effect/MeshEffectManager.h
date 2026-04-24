@@ -22,8 +22,13 @@ public:
 
     void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
 
+    // ワールド座標を直接指定してエフェクトを配置する（TrailEmitter用）
+    // jsonのPosition/Rotationフィールドを無視し、worldPos/worldRotをそのまま使う
+    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
+
     // シーン切り替え時などに全てのエフェクトを消す
-    void Clear() { activeEffects_.clear(); }
+    // common_ も一緒にリセットし、次のSpawn時に自己修復させる
+    void Clear() { activeEffects_.clear(); common_ = nullptr; }
     const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
     void SetPreviewEffectForDebug(EffectObject3d* effect) { previewEffectForDebug_ = effect; }
     EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }

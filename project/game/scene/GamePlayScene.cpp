@@ -251,8 +251,19 @@ void GamePlayScene::Update(float deltaTime) {
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
 	if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
-		Vector3 effectPos = { 0.0f, 2.0f, 0.0f }; // 確認用に原点の少し上に発生
-		particleSystem_->SpawnPrimitiveHitEffect(effectPos);
+		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+		// ★課題: 星型ヒット(8個) + 斬撃(3個) を同時発動
+		particleSystem_->SpawnStarHitEffect(effectPos);
+		particleSystem_->SpawnSlashEffect(effectPos);
+	}
+	// 個別確認用 (ENTER=星型のみ, E=斬撃のみ)
+	if (inputManager_->IsKeyTriggered(DIK_RETURN)) {
+		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+		particleSystem_->SpawnStarHitEffect(effectPos);
+	}
+	if (inputManager_->IsKeyTriggered(DIK_E)) {
+		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+		particleSystem_->SpawnSlashEffect(effectPos);
 	}
 }
 

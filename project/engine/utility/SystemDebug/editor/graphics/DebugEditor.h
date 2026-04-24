@@ -39,6 +39,7 @@ class GPUParticleEditor;
 class VFXSequencerEditor;
 class LightEditor;
 class MeshEffectEditor;
+class TrailEmitterEditor;
 
 // ========================================================================
 // DebugEditor クラス
@@ -117,17 +118,19 @@ public:
         GhostRecorder* ghostRecorder,
         GhostDirector* ghostDirector,
         LightEditor* lightEditor,
-        MeshEffectEditor* meshEffectEditor)
+        MeshEffectEditor* meshEffectEditor,
+        TrailEmitterEditor* trailEmitterEditor)
     {
-        postEffectEditor_ = postEffectEditor;
-        spriteDebugEditor_ = spriteDebugEditor;
-        particleEditor_ = particleEditor;
-        gpuParticleEditor_ = gpuParticleEditor;
-        vfxSequencerEditor_ = vfxSequencerEditor;
-        ghostRecorder_ = ghostRecorder;
-        ghostDirector_ = ghostDirector;
-        lightEditor_ = lightEditor;
-        meshEffectEditor_ = meshEffectEditor;
+        postEffectEditor_    = postEffectEditor;
+        spriteDebugEditor_   = spriteDebugEditor;
+        particleEditor_      = particleEditor;
+        gpuParticleEditor_   = gpuParticleEditor;
+        vfxSequencerEditor_  = vfxSequencerEditor;
+        ghostRecorder_       = ghostRecorder;
+        ghostDirector_       = ghostDirector;
+        lightEditor_         = lightEditor;
+        meshEffectEditor_    = meshEffectEditor;
+        trailEmitterEditor_  = trailEmitterEditor;
     }
     // --------------------------------------------------------------------
     // ゲッター (Getters)
@@ -155,6 +158,7 @@ public:
 
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
+    TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
 
 private:
@@ -238,5 +242,6 @@ private:
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
     MeshEffectEditor* meshEffectEditor_ = nullptr;
+    TrailEmitterEditor* trailEmitterEditor_ = nullptr;
 
 };

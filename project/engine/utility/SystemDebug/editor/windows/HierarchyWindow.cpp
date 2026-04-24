@@ -21,6 +21,7 @@
 #include "PresetManager.h"
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
+#include "TrailEmitterEditor.h"
 #include "json.hpp"
 #include <filesystem>
 #include <algorithm> // std::transform用
@@ -85,6 +86,10 @@ void HierarchyWindow::Draw() {
      if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
             editor_->SetSelectedObject(nullptr); 
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetMeshEffectEditor());
+        }
+        if (editor_->GetTrailEmitterEditor() && ImGui::Selectable("  " ICON_FA_FIRE " トレイルエミッター (Trail Emitter)", currentObj == editor_->GetTrailEmitterEditor())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetTrailEmitterEditor());
         }
     }
 

@@ -7,6 +7,7 @@
 #include "engine/utility/math/Math.h" 
 #include <cassert>
 #include <string>
+#include <numbers>
 
 // 乱数とMathインスタンス
 static std::random_device rd;
@@ -445,5 +446,83 @@ void ParticleSystem::SpawnPrimitiveHitEffect(const Vector3& position) {
         particles_.push_back(p);
     }
 
-    // ★ ②の中心のまるフラッシュは削除しました
+        // ★ ②の中心のまるフラッシュは削除しました
+}
+
+// ==============================================================
+// ★課題エフェクト①: ランダムZ回転で星型ヒットエフェクト
+//   楕円パーティクルを8個、-π〜πのランダム回転で配置 → 星型/閃光
+// ==============================================================
+void ParticleSystem::SpawnStarHitEffect(const Vector3& position) {
+    // Z回転をランダムに (-π〜π)
+    std::uniform_real_distribution<float> distRotate(
+        -std::numbers::pi_v<float>, std::numbers::pi_v<float>);
+    // 縦方向スケールをランダムに (1.0〜3.5) ← 大きめ
+    std::uniform_real_distribution<float> distScale(1.0f, 3.5f);
+
+    constexpr int kCount = 8;
+
+    for (int i = 0; i < kCount; ++i) {
+        if (particles_.size() >= kMaxParticles) break;
+
+        Particle p;
+        p.position    = position;
+        p.velocity    = { 0.0f, 0.0f, 0.0f };
+        p.lifeTime    = 0.25f;
+        p.currentTime = 0.0f;
+
+        p.startColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        p.endColor   = { 1.0f, 1.0f, 1.0f, 0.0f };
+
+        p.startSize  = 1.5f;   // ← 大きく
+        p.endSize    = 14.0f;  // ← かなり大きく広がる
+
+        p.rotation      = distRotate(randomEngine_);
+        p.rotationSpeed = 0.0f;
+        p.acceleration  = { 0.0f, 0.0f, 0.0f };
+        p.hdrIntensity  = 5.0f; // ← 強発光
+
+        p.baseScale = { 0.04f, distScale(randomEngine_) };
+
+        particles_.push_back(p);
+    }
+}
+
+// ==============================================================
+// ★課題エフェクト②: ランダムY-scaleで斬撃エフェクト
+//   縦長パーティクルを3個、Yスケールランダム → 斬撃/スラッシュ
+// ==============================================================
+void ParticleSystem::SpawnSlashEffect(const Vector3& position, float baseRotation) {
+    // 縦方向スケールをランダムに (1.5〜4.0) ← 大きめ
+    std::uniform_real_distribution<float> distScale(1.5f, 4.0f);
+    // 回転のゆらぎ
+    std::uniform_real_distribution<float> distRotJitter(-0.4f, 0.4f);
+
+    constexpr int kCount = 3;
+
+    for (int i = 0; i < kCount; ++i) {
+        if (particles_.size() >= kMaxParticles) break;
+
+        Particle p;
+        p.position    = position;
+        p.velocity    = { 0.0f, 0.0f, 0.0f };
+        p.lifeTime    = 0.28f;
+        p.currentTime = 0.0f;
+
+        p.startColor = { 0.8f, 0.9f, 1.0f, 1.0f };
+        p.endColor   = { 0.2f, 0.3f, 1.0f, 0.0f };
+
+        p.startSize  = 1.2f;   // ← 大きく
+        p.endSize    = 12.0f;  // ← かなり大きく
+
+        float randomY   = distScale(randomEngine_);
+        p.baseScale     = { 0.06f, randomY }; // X:細い線, Y:ランダム長さ
+
+        p.rotation      = baseRotation + (i * (3.14159f / 3.0f)) + distRotJitter(randomEngine_);
+        p.rotationSpeed = 0.0f;
+        p.acceleration  = { 0.0f, 0.0f, 0.0f };
+        p.hdrIntensity  = 6.0f; // ← 強い刃の輝き
+
+        particles_.push_back(p);
+    }
 }
