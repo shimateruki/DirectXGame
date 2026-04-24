@@ -20,7 +20,7 @@ public:
         float distortionStrength;
         float distortionSpeed;
         float edgeFadeStrength;
-        float padding1;
+        float alphaReference; // ★discardの閾値 (シェーダー側の padding1 と一致)
         Vector2 screenSize;
         int enableDistortion; // 0: 加算/通常, 1: 背景歪みモード
         int enableColorRamp;  //カラーランプ有効フラグ
@@ -61,6 +61,7 @@ public:
     void SetDistortionSpeed(float s) { materialData_->distortionSpeed = s; }
     void SetEdgeFadeStrength(float s) { materialData_->edgeFadeStrength = s; }
     void SetEnableDistortion(bool enable) { materialData_->enableDistortion = enable ? 1 : 0; }
+    void SetAlphaReference(float ref) { materialData_->alphaReference = ref; }
     void SetNoiseTexture(uint32_t handle) { noiseTextureHandle_ = handle; }
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }
     void SetEnableColorRamp(bool enable) { materialData_->enableColorRamp = enable ? 1 : 0; }

@@ -26,6 +26,12 @@ public:
     // jsonのPosition/Rotationフィールドを無視し、worldPos/worldRotをそのまま使う
     void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
 
+    // 課題用: 手動コードでRing波紋エフェクト(gradationLine.png)を発生させる
+    void SpawnRingWaveEffect(const Vector3& position);
+
+    // ★課題: Cylinderを使った横UVスクロール・色アニメのポータルエフェクト
+    void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
+
     // シーン切り替え時などに全てのエフェクトを消す
     // common_ も一緒にリセットし、次のSpawn時に自己修復させる
     void Clear() { activeEffects_.clear(); common_ = nullptr; }

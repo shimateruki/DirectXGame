@@ -20,11 +20,11 @@ cbuffer EffectMaterial : register(b0)
     float distortionStrength; // 歪みの強さ
     float distortionSpeed; // 歪みの速さ（人力ノイズ用）
     float edgeFadeStrength; // 刃の縁の削れ具合 (powの指数)
-    float padding1;
+    float alphaReference; // ★discardの閾値 (0以外でdiscardしたい値を設定)
     float2 screenSize; // 画面サイズ
     int enableDistortion; // 歪み有効フラグ (0:OFF, 1:ON)
-    int enableColorRamp; // ★追加
-    int enableNoiseTexture; // ★追加
+    int enableColorRamp; // カラーランプ有効フラグ
+    int enableNoiseTexture; // ノイズテクスチャ有効フラグ
     int enableReveal;
     int proceduralType; 
     float3 padding2;
@@ -216,7 +216,9 @@ float4 main(VertexOutput input) : SV_TARGET
     }
     else
     {
-        if (glowColor.a <= 0.0f)
+        // alphaReferenceで設定した閾値以下のピクセルを破棄
+        // (0.0を指定すると完全透明のみdiscardする挙動になる)
+        if (glowColor.a <= alphaReference)
             discard;
         return glowColor;
     }

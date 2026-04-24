@@ -64,6 +64,7 @@ void EffectObject3d::CreateMaterialBuffer(ID3D12Device* device) {
     materialData_->distortionStrength = 0.05f; // 少し歪ませる
     materialData_->distortionSpeed = 15.0f;    // 少し速く
     materialData_->edgeFadeStrength = 1.5f;   // 少し削る
+    materialData_->alphaReference = 0.0f;     // デフォルト: 完全透明のみdiscard
 }
 
 void EffectObject3d::Update(float deltaTime) {

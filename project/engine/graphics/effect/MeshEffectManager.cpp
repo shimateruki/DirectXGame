@@ -402,4 +402,147 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
 
         activeEffects_.push_back(std::move(effect));
     }
+}
+
+void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
+    if (!common_) {
+        auto sm = SceneManager::GetInstance();
+        if (sm->GetCurrentScene()) {
+            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+        }
+    }
+    if (!common_) return;
+
+    auto effect = std::make_unique<EffectObject3d>();
+    effect->Initialize(common_);
+
+    // エフェクトの基本設定リセット
+    effect->SetEnableNoiseTexture(false);
+    effect->SetEnableColorRamp(false);
+    effect->SetEnableDistortion(false);
+    effect->SetEnableReveal(false);
+    effect->SetDistortionStrength(0.0f);
+    effect->SetEdgeFadeStrength(1.0f);
+
+    // ★ 課題用: リング波紋エフェクトの設定
+    effect->SetProceduralType(10); // 10: Ring
+    
+    // UVスクロールで波紋を外側に広げる (V方向スクロール)
+    // AddressV=CLAMP にしているので、1回の波で終わる
+    effect->SetScrollSpeed({ 0.0f, -1.5f }); 
+    
+    // スケールを徐々に大きくする
+    effect->SetStartScale({ 1.0f, 1.0f, 1.0f });
+    effect->SetEndScale({ 6.0f, 6.0f, 6.0f });
+    
+    // 色と透明度（青白っぽく発光しながら消える）
+    effect->SetStartColor({ 0.5f, 0.8f, 1.0f, 1.0f });
+    effect->SetEndColor({ 0.5f, 0.8f, 1.0f, 0.0f });
+    
+    // 発光の強さ
+    effect->SetIntensity(2.0f);
+    
+    // 加算合成（透けるように光らせる）
+    effect->SetBlendMode(BlendMode::kAdd);
+
+    // リングの幅を設定
+    effect->editRingInnerRadius_ = 0.5f;
+    effect->editRingOuterRadius_ = 1.5f;
+    effect->editMeshSegments_ = 32;
+
+    // メッシュを更新
+    effect->UpdateProceduralMesh();
+
+    // テクスチャ設定 (スライドの gradationLine.png)
+    if (effect->GetMeshRenderer()) {
+        effect->GetMeshRenderer()->SetTexture("Resources/sprite/gradationLine.png");
+    }
+
+    // 配置
+    effect->SetTranslate(position);
+    effect->SetRotation({ 0.0f, 0.0f, 0.0f });
+    
+    // アニメーション再生（0.6秒）
+    effect->Play(0.6f);
+    effect->Update(0.0f);
+    effect->UpdateLocalMatrix();
+    effect->UpdateWorldMatrix();
+
+    activeEffects_.push_back(std::move(effect));
+}
+
+// ==========================================================
+// ★ 課題: Cylinderポータルエフェクト
+//   - Cylinderメッシュ (ProceduralType 5)
+//   - U方向（横方向）にUVスクロール
+//   - StartColor → EndColor でポータルらしく色が変化
+//   - alphaReference = 0.0 なのでテクスチャのαが0以外なら描画
+//   - Culling=NONE, DepthWrite=ZERO (パイプライン側で設定済み)
+// ==========================================================
+void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetime) {
+    if (!common_) {
+        auto sm = SceneManager::GetInstance();
+        if (sm->GetCurrentScene()) {
+            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+        }
+    }
+    if (!common_) return;
+
+    auto effect = std::make_unique<EffectObject3d>();
+    effect->Initialize(common_);
+
+    // --- デフォルトリセット ---
+    effect->SetProceduralType(0);
+    effect->SetEnableNoiseTexture(false);
+    effect->SetEnableColorRamp(false);
+    effect->SetEnableDistortion(false);
+    effect->SetEnableReveal(false);        // Revealは使わない
+    effect->SetDistortionStrength(0.0f);
+    effect->SetEdgeFadeStrength(1.0f);
+
+    // ★ 1. Cylinder メッシュ (ProceduralType = 5)
+    effect->SetProceduralType(5);
+    effect->editCylinderRadius_ = 1.5f;   // 半径
+    effect->editCylinderHeight_ = 3.0f;   // 高さ
+    effect->editMeshSegments_   = 32;     // 分割数（スライドの kCylinderDivide と同じ）
+    // UVタイリング: U方向に4回タイリングで縞々模様に
+    effect->editUvTiling_ = { 4.0f, 1.0f };
+    effect->UpdateProceduralMesh();
+
+    // ★ 2. 横方向（U方向）にUVスクロール (scrollSpeed.x != 0)
+    effect->SetScrollSpeed({ 0.8f, 0.0f }); // 横方向スクロール
+
+    // ★ 3. ポータルらしい色アニメーション (青紫 → 水色)
+    effect->SetStartColor({ 0.3f, 0.1f, 1.0f, 0.9f }); // 青紫
+    effect->SetEndColor(  { 0.0f, 0.8f, 1.0f, 0.6f }); // 水色
+
+    // 発光強度
+    effect->SetIntensity(2.5f);
+
+    // ★ 4. alphaReference = 0.0 (完全透明のみdiscard、半透明は通す)
+    effect->SetAlphaReference(0.0f);
+
+    // 加算合成でポータルらしく光らせる
+    effect->SetBlendMode(BlendMode::kAdd);
+
+    // グラデーションラインテクスチャで縦縞を作る
+    if (effect->GetMeshRenderer()) {
+        effect->GetMeshRenderer()->SetTexture("Resources/sprite/gradationLine.png");
+    }
+
+    // ★ 5. スケールアニメーション (少し脈動させる)
+    effect->SetStartScale({ 1.0f, 1.0f, 1.0f });
+    effect->SetEndScale(  { 1.1f, 1.0f, 1.1f });
+
+    // 配置
+    effect->SetTranslate(position);
+    effect->SetRotation({ 0.0f, 0.0f, 0.0f });
+
+    // 再生
+    effect->Play(lifetime);
+    effect->Update(0.0f);
+    effect->UpdateLocalMatrix();
+    effect->UpdateWorldMatrix();
+
+    activeEffects_.push_back(std::move(effect));
 }

@@ -94,7 +94,7 @@ void Object3dCommon::CreateRootSignature() {
     D3D12_STATIC_SAMPLER_DESC shadowSampler{};
     shadowSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
     shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-    shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
     shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
     shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
     shadowSampler.MaxLOD = D3D12_FLOAT32_MAX;

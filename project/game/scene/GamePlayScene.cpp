@@ -26,6 +26,7 @@
 #include "GameRule.h"
 #include "ObjectManager.h" 
 #include "BossCore.h"
+#include"MeshEffectManager.h"
 #include"WinApp.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
@@ -256,7 +257,7 @@ void GamePlayScene::Update(float deltaTime) {
 		particleSystem_->SpawnStarHitEffect(effectPos);
 		particleSystem_->SpawnSlashEffect(effectPos);
 	}
-	// 個別確認用 (ENTER=星型のみ, E=斬撃のみ)
+	// 個別確認用 (ENTER=星型のみ, E=斬撃のみ, R=リング波紋)
 	if (inputManager_->IsKeyTriggered(DIK_RETURN)) {
 		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
 		particleSystem_->SpawnStarHitEffect(effectPos);
@@ -264,6 +265,16 @@ void GamePlayScene::Update(float deltaTime) {
 	if (inputManager_->IsKeyTriggered(DIK_E)) {
 		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
 		particleSystem_->SpawnSlashEffect(effectPos);
+	}
+	// ★課題: Rキー = 手動コード(MeshEffect)によるリング波紋エフェクト
+	if (inputManager_->IsKeyTriggered(DIK_R)) {
+		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
+		MeshEffectManager::GetInstance()->SpawnRingWaveEffect(effectPos);
+	}
+	// ★課題: Tキー = Cylinder + 横UVスクロール + 色アニメ = ポータルエフェクト
+	if (inputManager_->IsKeyTriggered(DIK_T)) {
+		Vector3 effectPos = { 0.0f, 1.5f, 0.0f };
+		MeshEffectManager::GetInstance()->SpawnPortalEffect(effectPos, 5.0f);
 	}
 }
 
