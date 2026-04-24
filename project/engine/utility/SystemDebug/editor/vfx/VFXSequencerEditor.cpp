@@ -6,6 +6,7 @@
 #include "BaseScene.h"
 #include "Object3d.h"
 #include <MeshEffectManager.h>
+#include "GPUParticleManager.h"
 namespace fs = std::filesystem;
 
 void VFXSequencerEditor::Initialize() {
@@ -30,6 +31,8 @@ void VFXSequencerEditor::Update(float deltaTime) {
     // ゲーム本編が止まっている（ポーズ中／エディタ編集中）ならエディタが更新を代行！
     if (!isGamePlaying) {
         MeshEffectManager::GetInstance()->Update(timeStep);
+        GPUParticleManager::GetInstance()->Update(timeStep);
+     
     }
 }
 // : フォルダ内の .json を自動検索
@@ -165,6 +168,11 @@ void VFXSequencerEditor::DrawImGui() {
         if (events[i].type == VFXEventType::GPUParticle) {
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " オフセット位置", &events[i].offset.x, 0.1f);
         }
+        else if (events[i].type == VFXEventType::MeshEffect) {
+            ImGui::DragFloat3(ICON_FA_ARROWS_ALT " オフセット位置", &events[i].offset.x, 0.1f);
+            ImGui::DragFloat3(ICON_FA_SYNC_ALT " 追加回転 (rad)", &events[i].rotation.x, 0.05f);
+            ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール倍率", &events[i].scale.x, 0.05f);
+        }
         else if (events[i].type == VFXEventType::MovingParticle) {
             // ★追加: 軌跡用パラメータUI
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 始点オフセット", &events[i].offset.x, 0.1f);
@@ -194,17 +202,17 @@ void VFXSequencerEditor::DrawImGui() {
 
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " パーティクル", ImVec2(btnWidth, 35))) {
         std::string def = particlePresetList_.empty() ? "" : particlePresetList_[0];
-        events.push_back({ VFXEventType::GPUParticle, def, 0.0f, {0,0,0}, false });
+        events.push_back({ VFXEventType::GPUParticle, def, 0.0f, {0,0,0}, {0,0,0}, {1,1,1}, false });
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " メッシュ", ImVec2(btnWidth, 35))) {
         std::string def = meshEffectList_.empty() ? "" : meshEffectList_[0];
-        events.push_back({ VFXEventType::MeshEffect, def, 0.0f, {0,0,0}, false });
+        events.push_back({ VFXEventType::MeshEffect, def, 0.0f, {0,0,0}, {0,0,0}, {1,1,1}, false });
     }
     ImGui::SameLine();
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " SE (効果音)", ImVec2(btnWidth, 35))) {
         std::string def = seFileList_.empty() ? "" : seFileList_[0];
-        events.push_back({ VFXEventType::SoundEffect, def, 0.0f, {0,0,0}, false });
+        events.push_back({ VFXEventType::SoundEffect, def, 0.0f, {0,0,0}, {0,0,0}, {1,1,1}, false });
     }
 
     //  軌跡用パーティクルの追加ボタン

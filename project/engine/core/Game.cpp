@@ -1,4 +1,4 @@
-﻿#include "Game.h"
+#include "Game.h"
 #include "SceneManager.h" 
 #include "ImguiManager.h"
 #include "InputManager.h"
@@ -17,6 +17,7 @@
 #include"BossCore.h"
 #include "KeyConfig.h"
 #include <IconsFontAwesome5.h>
+#include <MeshEffectManager.h>
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -516,6 +517,12 @@ void Game::Draw() {
     if (sceneManager_) { sceneManager_->Draw(); }
     if (sceneManager_) {
         sceneManager_->DrawUI();
+    }
+    // VFXSequencerが生成したエフェクトを描画
+    {
+        ID3D12Resource* pLight = LightManager::GetInstance()->GetPointLightResource();
+        ID3D12Resource* sLight = LightManager::GetInstance()->GetSpotLightResource();
+        MeshEffectManager::GetInstance()->Draw(pLight, sLight);
     }
 
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }

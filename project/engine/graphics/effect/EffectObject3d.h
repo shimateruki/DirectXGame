@@ -76,6 +76,7 @@ public:
     Object3d* GetTargetObject() const { return targetObject_; }
     void SetProceduralType(int type) { materialData_->proceduralType = type; }
     void UpdateProceduralMesh();
+    void ExportToObj(const std::string& filePath) const;
 
     // --- プロシージャルメッシュ用パラメータ ---
     float editSlashAngle_ = 360.0f; // 斬撃の角度（360度以上も可能に）
@@ -86,6 +87,24 @@ public:
     float editThrustLength_ = 5.0f; // 突きの長さ
     float editThrustRadius_ = 0.8f; // 突きの根本の太さ
     int   editMeshSegments_ = 16;   // ポリゴンの分割数（滑らかさ）
+    
+    // 基本プリミティブ用
+    float editSphereRadius_ = 1.0f;
+    int   editSphereRings_ = 16;
+    float editCylinderRadius_ = 1.0f;
+    float editCylinderHeight_ = 2.0f;
+    Vector3 editBoxSize_ = {1.0f, 1.0f, 1.0f};
+    Vector2 editPlaneSize_ = {2.0f, 2.0f};
+    int   editPlaneSubdivisions_ = 1;
+    float editTorusMajorRadius_ = 1.0f;
+    float editTorusMinorRadius_ = 0.3f;
+    float editConeRadius_ = 1.0f;
+    float editConeHeight_ = 2.0f;
+    float editRingOuterRadius_ = 1.0f;
+    float editRingInnerRadius_ = 0.5f;
+    float editTriangleSize_ = 1.0f;
+    Vector2 editUvTiling_ = {1.0f, 1.0f};
+
     bool editHasCollision_ = false;
     int editCollisionShape_ = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
     Vector3 editCollisionSize_ = { 1.0f, 1.0f, 1.0f };
@@ -117,5 +136,13 @@ private:
     // 形状別の生成ロジック
     void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
     void GenerateThrustVertices(float length, float radius, int segments);
+    void GenerateSphereVertices(float radius, int segments, int rings);
+    void GenerateCylinderVertices(float radius, float height, int segments);
+    void GenerateBoxVertices(const Vector3& size);
+    void GeneratePlaneVertices(const Vector2& size, int subdivisions);
+    void GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings);
+    void GenerateConeVertices(float radius, float height, int segments);
+    void GenerateRingVertices(float outerRad, float innerRad, int segments);
+    void GenerateTriangleVertices(float size);
 
 };

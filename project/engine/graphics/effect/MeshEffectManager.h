@@ -20,7 +20,7 @@ public:
     // 描画
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
 
-    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr);
+    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
 
     // シーン切り替え時などに全てのエフェクトを消す
     void Clear() { activeEffects_.clear(); }

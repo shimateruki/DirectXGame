@@ -17,6 +17,8 @@ struct VFXEvent {
     std::string presetName; // 呼び出すパーティクルのプリセット名
     float triggerTime;      // Play開始から何秒後に発火するか
     Vector3 offset;         // 対象からの位置ズレ（足元、頭上など）
+    Vector3 rotation = { 0.0f, 0.0f, 0.0f }; // ★追加：回転ズレ
+    Vector3 scale = { 1.0f, 1.0f, 1.0f };    // ★追加：スケール倍率
     bool hasFired = false;  // 実行済みフラグ（内部用）
     Vector3 controlPoint = { 0.0f, 5.0f, 0.0f }; // 中間点（カーブを引っ張る方向）
     Vector3 endOffset = { 0.0f, 0.0f, 10.0f };   // 終点
@@ -43,7 +45,7 @@ public:
     void Reset();
 
     // 演出をタイムラインに追加する！
-    void AddEvent(VFXEventType type, const std::string& presetName, float triggerTime, const Vector3& offset = { 0.0f, 0.0f, 0.0f });
+    void AddEvent(VFXEventType type, const std::string& presetName, float triggerTime, const Vector3& offset = { 0.0f, 0.0f, 0.0f }, const Vector3& rotation = { 0.0f, 0.0f, 0.0f }, const Vector3& scale = { 1.0f, 1.0f, 1.0f });
 
     bool IsPlaying() const { return isPlaying_; }
     void Save(const std::string& sequenceName);

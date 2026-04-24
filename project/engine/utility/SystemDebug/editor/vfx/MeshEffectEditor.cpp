@@ -315,7 +315,7 @@ void MeshEffectEditor::DrawImGui() {
         previewEffect_->SetEasingType(editEasingType_);
     }
     ImGui::Separator();
-    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)" };
+    const char* procTypes[] = { "0: 外部モデル (Tex)", "1: 斜め切り (Slash)", "2: 回転切り (Spin)", "3: 突き (Thrust)", "4: 球 (Sphere)", "5: 円柱 (Cylinder)", "6: 箱 (Box)", "7: 平面 (Plane)", "8: トーラス (Torus)", "9: 円錐 (Cone)", "10: リング (Ring)", "11: 三角形 (Triangle)" };
     if (ImGui::Combo("エフェクト形状", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes))) {
         previewEffect_->SetProceduralType(editProceduralType_);
 
@@ -348,8 +348,45 @@ void MeshEffectEditor::DrawImGui() {
             changed |= ImGui::SliderFloat("突きの長さ", &previewEffect_->editThrustLength_, 1.0f, 20.0f);
             changed |= ImGui::SliderFloat("根元の太さ", &previewEffect_->editThrustRadius_, 0.1f, 5.0f);
         }
+        else if (editProceduralType_ == 4) {
+            changed |= ImGui::SliderFloat("半径", &previewEffect_->editSphereRadius_, 0.1f, 20.0f);
+            changed |= ImGui::SliderInt("縦の分割数", &previewEffect_->editSphereRings_, 4, 64);
+        }
+        else if (editProceduralType_ == 5) {
+            changed |= ImGui::SliderFloat("半径", &previewEffect_->editCylinderRadius_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("高さ", &previewEffect_->editCylinderHeight_, 0.1f, 20.0f);
+        }
 
-        changed |= ImGui::SliderInt("ポリゴン分割数", &previewEffect_->editMeshSegments_, 4, 128);
+        else if (editProceduralType_ == 6) {
+            changed |= ImGui::DragFloat3("サイズ (W,H,D)", &previewEffect_->editBoxSize_.x, 0.1f);
+        }
+        else if (editProceduralType_ == 7) {
+            changed |= ImGui::DragFloat2("サイズ (W,D)", &previewEffect_->editPlaneSize_.x, 0.1f);
+        }
+        else if (editProceduralType_ == 8) {
+            changed |= ImGui::SliderFloat("主半径 (全体サイズ)", &previewEffect_->editTorusMajorRadius_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("副半径 (太さ)", &previewEffect_->editTorusMinorRadius_, 0.01f, 5.0f);
+            changed |= ImGui::SliderInt("断面の分割数", &previewEffect_->editSphereRings_, 3, 64);
+        }
+        else if (editProceduralType_ == 9) {
+            changed |= ImGui::SliderFloat("半径", &previewEffect_->editConeRadius_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("高さ", &previewEffect_->editConeHeight_, 0.1f, 20.0f);
+        }
+        else if (editProceduralType_ == 10) {
+            changed |= ImGui::SliderFloat("外側の半径", &previewEffect_->editRingOuterRadius_, 0.1f, 20.0f);
+            changed |= ImGui::SliderFloat("内側の半径", &previewEffect_->editRingInnerRadius_, 0.0f, 19.9f);
+        }
+        else if (editProceduralType_ == 11) {
+            changed |= ImGui::SliderFloat("サイズ", &previewEffect_->editTriangleSize_, 0.1f, 20.0f);
+        }
+
+        // 分割数を持たない形状(箱、三角形)以外で表示
+        if (editProceduralType_ != 6 && editProceduralType_ != 11) {
+            changed |= ImGui::SliderInt("基本ポリゴン分割数", &previewEffect_->editMeshSegments_, 3, 128);
+        }
+
+        ImGui::Spacing();
+        changed |= ImGui::DragFloat2("UVタイリング (Repeat)", &previewEffect_->editUvTiling_.x, 0.05f);
 
         if (changed) {
             previewEffect_->UpdateProceduralMesh();
@@ -361,11 +398,38 @@ void MeshEffectEditor::DrawImGui() {
                 ex->editSpiralPitch_ = previewEffect_->editSpiralPitch_;
                 ex->editThrustLength_ = previewEffect_->editThrustLength_;
                 ex->editThrustRadius_ = previewEffect_->editThrustRadius_;
+                ex->editSphereRadius_ = previewEffect_->editSphereRadius_;
+                ex->editSphereRings_ = previewEffect_->editSphereRings_;
+                ex->editCylinderRadius_ = previewEffect_->editCylinderRadius_;
+                ex->editCylinderHeight_ = previewEffect_->editCylinderHeight_;
+                ex->editBoxSize_ = previewEffect_->editBoxSize_;
+                ex->editPlaneSize_ = previewEffect_->editPlaneSize_;
+                ex->editTorusMajorRadius_ = previewEffect_->editTorusMajorRadius_;
+                ex->editTorusMinorRadius_ = previewEffect_->editTorusMinorRadius_;
+                ex->editConeRadius_ = previewEffect_->editConeRadius_;
+                ex->editConeHeight_ = previewEffect_->editConeHeight_;
+                ex->editRingOuterRadius_ = previewEffect_->editRingOuterRadius_;
+                ex->editRingInnerRadius_ = previewEffect_->editRingInnerRadius_;
+                ex->editTriangleSize_ = previewEffect_->editTriangleSize_;
                 ex->editMeshSegments_ = previewEffect_->editMeshSegments_;
+                ex->editUvTiling_ = previewEffect_->editUvTiling_;
                 ex->UpdateProceduralMesh();
             }
         }
         ImGui::Unindent();
+
+        // ==========================================
+        // ★ OBJ エクスポート機能
+        // ==========================================
+        ImGui::Spacing();
+        static char objName[128] = "my_custom_primitive";
+        ImGui::InputText("OBJファイル名", objName, sizeof(objName));
+        if (ImGui::Button(ICON_FA_DOWNLOAD " この形状をOBJとして保存 (Export)", ImVec2(availWidth, 30))) {
+            std::filesystem::create_directories("Resources/model");
+            std::string path = "Resources/model/" + std::string(objName) + ".obj";
+            previewEffect_->ExportToObj(path);
+            DebugConsole::GetInstance()->AddLog("Exported OBJ to " + path);
+        }
     }
     // ==========================================
     // 3. リソース設定 (メッシュ・テクスチャ)
@@ -649,7 +713,21 @@ void MeshEffectEditor::SaveToJson() {
         j["SpiralPitch"] = previewEffect_->editSpiralPitch_;
         j["ThrustLength"] = previewEffect_->editThrustLength_;
         j["ThrustRadius"] = previewEffect_->editThrustRadius_;
+        j["SphereRadius"] = previewEffect_->editSphereRadius_;
+        j["SphereRings"] = previewEffect_->editSphereRings_;
+        j["CylinderRadius"] = previewEffect_->editCylinderRadius_;
+        j["CylinderHeight"] = previewEffect_->editCylinderHeight_;
+        j["BoxSize"] = {previewEffect_->editBoxSize_.x, previewEffect_->editBoxSize_.y, previewEffect_->editBoxSize_.z};
+        j["PlaneSize"] = {previewEffect_->editPlaneSize_.x, previewEffect_->editPlaneSize_.y};
+        j["TorusMajorRadius"] = previewEffect_->editTorusMajorRadius_;
+        j["TorusMinorRadius"] = previewEffect_->editTorusMinorRadius_;
+        j["ConeRadius"] = previewEffect_->editConeRadius_;
+        j["ConeHeight"] = previewEffect_->editConeHeight_;
+        j["RingOuterRadius"] = previewEffect_->editRingOuterRadius_;
+        j["RingInnerRadius"] = previewEffect_->editRingInnerRadius_;
+        j["TriangleSize"] = previewEffect_->editTriangleSize_;
         j["MeshSegments"] = previewEffect_->editMeshSegments_;
+        j["UvTiling"] = {previewEffect_->editUvTiling_.x, previewEffect_->editUvTiling_.y};
     }
     j["Collision"]["HasCollision"] = previewEffect_->editHasCollision_;
     j["Collision"]["Shape"] = previewEffect_->editCollisionShape_;
@@ -788,6 +866,28 @@ void MeshEffectEditor::LoadFromJson() {
     // ==========================================
     if (j.contains("ProceduralType")) editProceduralType_ = j["ProceduralType"];
     if (previewEffect_) {
+        if (j.contains("SlashAngle")) previewEffect_->editSlashAngle_ = j["SlashAngle"];
+        if (j.contains("InnerRadius")) previewEffect_->editInnerRadius_ = j["InnerRadius"];
+        if (j.contains("OuterRadius")) previewEffect_->editOuterRadius_ = j["OuterRadius"];
+        if (j.contains("Thickness")) previewEffect_->editThickness_ = j["Thickness"];
+        if (j.contains("SpiralPitch")) previewEffect_->editSpiralPitch_ = j["SpiralPitch"];
+        if (j.contains("ThrustLength")) previewEffect_->editThrustLength_ = j["ThrustLength"];
+        if (j.contains("ThrustRadius")) previewEffect_->editThrustRadius_ = j["ThrustRadius"];
+        if (j.contains("SphereRadius")) previewEffect_->editSphereRadius_ = j["SphereRadius"];
+        if (j.contains("SphereRings")) previewEffect_->editSphereRings_ = j["SphereRings"];
+        if (j.contains("CylinderRadius")) previewEffect_->editCylinderRadius_ = j["CylinderRadius"];
+        if (j.contains("CylinderHeight")) previewEffect_->editCylinderHeight_ = j["CylinderHeight"];
+        if (j.contains("BoxSize")) { previewEffect_->editBoxSize_.x = j["BoxSize"][0]; previewEffect_->editBoxSize_.y = j["BoxSize"][1]; previewEffect_->editBoxSize_.z = j["BoxSize"][2]; }
+        if (j.contains("PlaneSize")) { previewEffect_->editPlaneSize_.x = j["PlaneSize"][0]; previewEffect_->editPlaneSize_.y = j["PlaneSize"][1]; }
+        if (j.contains("TorusMajorRadius")) previewEffect_->editTorusMajorRadius_ = j["TorusMajorRadius"];
+        if (j.contains("TorusMinorRadius")) previewEffect_->editTorusMinorRadius_ = j["TorusMinorRadius"];
+        if (j.contains("ConeRadius")) previewEffect_->editConeRadius_ = j["ConeRadius"];
+        if (j.contains("ConeHeight")) previewEffect_->editConeHeight_ = j["ConeHeight"];
+        if (j.contains("RingOuterRadius")) previewEffect_->editRingOuterRadius_ = j["RingOuterRadius"];
+        if (j.contains("RingInnerRadius")) previewEffect_->editRingInnerRadius_ = j["RingInnerRadius"];
+        if (j.contains("TriangleSize")) previewEffect_->editTriangleSize_ = j["TriangleSize"];
+        if (j.contains("MeshSegments")) previewEffect_->editMeshSegments_ = j["MeshSegments"];
+        if (j.contains("UvTiling")) { previewEffect_->editUvTiling_.x = j["UvTiling"][0]; previewEffect_->editUvTiling_.y = j["UvTiling"][1]; }
         if (j.contains("SlashAngle")) previewEffect_->editSlashAngle_ = j["SlashAngle"];
         if (j.contains("InnerRadius")) previewEffect_->editInnerRadius_ = j["InnerRadius"];
         if (j.contains("OuterRadius")) previewEffect_->editOuterRadius_ = j["OuterRadius"];

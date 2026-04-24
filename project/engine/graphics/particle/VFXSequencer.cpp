@@ -12,9 +12,9 @@ void VFXSequencer::Initialize(Object3d* targetObject) {
     events_.clear();
     Reset();
 }
-void VFXSequencer::AddEvent(VFXEventType type, const std::string& presetName, float triggerTime, const Vector3& offset) {
-    // 構造体の順番に合わせて { type, presetName, triggerTime, offset, hasFired } とする
-    events_.push_back({ type, presetName, triggerTime, offset, false });
+void VFXSequencer::AddEvent(VFXEventType type, const std::string& presetName, float triggerTime, const Vector3& offset, const Vector3& rotation, const Vector3& scale) {
+    // 構造体の順番に合わせて初期化する
+    events_.push_back({ type, presetName, triggerTime, offset, rotation, scale, false, {0,5,0}, {0,0,10}, 1.0f, 0, false });
 }
 
 void VFXSequencer::Play() {
@@ -66,7 +66,7 @@ void VFXSequencer::Update(float deltaTime) {
                     }
                     else if (e.type == VFXEventType::MeshEffect) {
                         std::string path = "Resources/json/effect/" + e.presetName + ".json";
-                        MeshEffectManager::GetInstance()->SpawnEffect(path);
+                        MeshEffectManager::GetInstance()->SpawnEffect(path, targetObject_, e.offset, e.rotation, e.scale);
                     }
                     else if (e.type == VFXEventType::SoundEffect) {
                         std::string path = "Resources/audio/se/" + e.presetName;
@@ -107,6 +107,11 @@ void VFXSequencer::Update(float deltaTime) {
                         spawnPos.z += worldMat.m[3][2];
                         emitMat = worldMat;
                     }
+                    
+                    // emitMat（パーティクルの基準行列）の平行移動成分を最終的なspawnPosで上書きする
+                    emitMat.m[3][0] = spawnPos.x;
+                    emitMat.m[3][1] = spawnPos.y;
+                    emitMat.m[3][2] = spawnPos.z;
 
                     // 毎フレーム Emit して軌跡を作る！
                     GPUParticleManager::GetInstance()->Emit(e.presetName, spawnPos, emitMat);
@@ -135,6 +140,12 @@ void VFXSequencer::Save(const std::string& sequenceName) {
         eventJson["presetName"] = e.presetName;
         eventJson["triggerTime"] = e.triggerTime;
         eventJson["offset"] = { e.offset.x, e.offset.y, e.offset.z };
+        eventJson["rotation"] = { e.rotation.x, e.rotation.y, e.rotation.z };
+        eventJson["scale"] = { e.scale.x, e.scale.y, e.scale.z };
+        eventJson["controlPoint"] = { e.controlPoint.x, e.controlPoint.y, e.controlPoint.z };
+        eventJson["endOffset"] = { e.endOffset.x, e.endOffset.y, e.endOffset.z };
+        eventJson["duration"] = e.duration;
+        eventJson["easingType"] = e.easingType;
         j["events"].push_back(eventJson);
     }
 
@@ -182,7 +193,46 @@ void VFXSequencer::Load(const std::string& sequenceName) {
                     e.offset.y = eventJson["offset"][1];
                     e.offset.z = eventJson["offset"][2];
                 }
+                if (eventJson.contains("rotation")) {
+                    e.rotation.x = eventJson["rotation"][0];
+                    e.rotation.y = eventJson["rotation"][1];
+                    e.rotation.z = eventJson["rotation"][2];
+                }
+                if (eventJson.contains("scale")) {
+                    e.scale.x = eventJson["scale"][0];
+                    e.scale.y = eventJson["scale"][1];
+                    e.scale.z = eventJson["scale"][2];
+                }
+                if (eventJson.contains("controlPoint")) {
+                    e.controlPoint.x = eventJson["controlPoint"][0];
+                    e.controlPoint.y = eventJson["controlPoint"][1];
+                    e.controlPoint.z = eventJson["controlPoint"][2];
+                }
+                else {
+                    e.controlPoint = { 0.0f, 5.0f, 0.0f };
+                }
+                if (eventJson.contains("endOffset")) {
+                    e.endOffset.x = eventJson["endOffset"][0];
+                    e.endOffset.y = eventJson["endOffset"][1];
+                    e.endOffset.z = eventJson["endOffset"][2];
+                }
+                else {
+                    e.endOffset = { 0.0f, 0.0f, 10.0f };
+                }
+                if (eventJson.contains("duration")) {
+                    e.duration = eventJson["duration"];
+                }
+                else {
+                    e.duration = 1.0f;
+                }
+                if (eventJson.contains("easingType")) {
+                    e.easingType = eventJson["easingType"];
+                }
+                else {
+                    e.easingType = 0;
+                }
                 e.hasFired = false;
+                e.isFinished = false;
                 events_.push_back(e);
             }
         }

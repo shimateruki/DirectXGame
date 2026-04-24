@@ -489,6 +489,12 @@ void GPUParticleManager::Emit(const std::string& presetName, const Vector3& posi
         GPUParticleConfig config = it->second;
         config.emitPos = position;
         config.emitterWorldMatrix = emitterWorldMatrix; 
+        
+        // ★修正: emitCountが0のプリセット（ループ専用など）を手動でEmitした場合は最低1個は出す
+        if (config.emitCount <= 0) {
+            config.emitCount = 1;
+        }
+
         EmitFromConfig(config);
     }
 }

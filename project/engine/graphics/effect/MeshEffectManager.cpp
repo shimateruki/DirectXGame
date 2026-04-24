@@ -49,12 +49,22 @@ void MeshEffectManager::Draw(ID3D12Resource* pLight, ID3D12Resource* sLight) {
     }
 }
 
-void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject) {
-    if (!common_) return;
+void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject, const Vector3& extOffset, const Vector3& extRot, const Vector3& extScale) {
+    // common_ が null のとき、現在シーンから自動取得を試みる（Initialize呼び忘れ対策）
+    if (!common_) {
+        SceneManager* sm = SceneManager::GetInstance();
+        if (sm && sm->GetCurrentScene()) {
+            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+        }
+    }
+    if (!common_) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] SpawnEffect ABORT: common_ is null!");
+        return;
+    }
 
     std::ifstream file(jsonFilePath);
     if (!file.is_open()) {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Failed to open effect json: " + jsonFilePath);
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[MeshEffectManager] Failed to open effect json: " + jsonFilePath);
         return;
     }
 
@@ -125,6 +135,15 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
     if (j.contains("Position")) offsetPos = { j["Position"][0], j["Position"][1], j["Position"][2] };
     if (j.contains("Rotation")) offsetRot = { j["Rotation"][0], j["Rotation"][1], j["Rotation"][2] };
 
+    // シーケンサーからの追加オフセットを合成
+    offsetPos.x += extOffset.x;
+    offsetPos.y += extOffset.y;
+    offsetPos.z += extOffset.z;
+
+    offsetRot.x += extRot.x;
+    offsetRot.y += extRot.y;
+    offsetRot.z += extRot.z;
+
     // ★超重要：エディタで作った「右側」などのオフセット位置を、プレイヤーの大元の向きに合わせて回転させる！
     float s = sinf(targetWorldY);
     float c = cosf(targetWorldY);
@@ -153,8 +172,8 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         if (j.contains("TexturePath")) { std::string tp = j["TexturePath"]; if (!tp.empty() && effect->GetMeshRenderer()) effect->GetMeshRenderer()->SetTexture(tp); }
         if (j.contains("NoiseTexturePath")) { std::string np = j["NoiseTexturePath"]; if (!np.empty()) { effect->SetNoiseTexture(TextureManager::GetInstance()->Load(np)); effect->SetEnableNoiseTexture(true); } }
         if (j.contains("RampTexturePath")) { std::string rp = j["RampTexturePath"]; if (!rp.empty()) { effect->SetRampTexture(TextureManager::GetInstance()->Load(rp)); effect->SetEnableColorRamp(true); } }
-        if (j.contains("StartScale")) effect->SetStartScale({ j["StartScale"][0], j["StartScale"][1], j["StartScale"][2] });
-        if (j.contains("EndScale")) effect->SetEndScale({ j["EndScale"][0], j["EndScale"][1], j["EndScale"][2] });
+        if (j.contains("StartScale")) effect->SetStartScale({ j["StartScale"][0] * extScale.x, j["StartScale"][1] * extScale.y, j["StartScale"][2] * extScale.z });
+        if (j.contains("EndScale")) effect->SetEndScale({ j["EndScale"][0] * extScale.x, j["EndScale"][1] * extScale.y, j["EndScale"][2] * extScale.z });
         if (j.contains("StartColor")) effect->SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });
         if (j.contains("EndColor")) effect->SetEndColor({ j["EndColor"][0], j["EndColor"][1], j["EndColor"][2], j["EndColor"][3] });
         if (j.contains("ScrollSpeed")) effect->SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
@@ -182,7 +201,21 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 if (j.contains("SpiralPitch")) effect->editSpiralPitch_ = j["SpiralPitch"];
                 if (j.contains("ThrustLength")) effect->editThrustLength_ = j["ThrustLength"];
                 if (j.contains("ThrustRadius")) effect->editThrustRadius_ = j["ThrustRadius"];
+                if (j.contains("SphereRadius")) effect->editSphereRadius_ = j["SphereRadius"];
+                if (j.contains("SphereRings")) effect->editSphereRings_ = j["SphereRings"];
+                if (j.contains("CylinderRadius")) effect->editCylinderRadius_ = j["CylinderRadius"];
+                if (j.contains("CylinderHeight")) effect->editCylinderHeight_ = j["CylinderHeight"];
+                if (j.contains("BoxSize")) { effect->editBoxSize_.x = j["BoxSize"][0]; effect->editBoxSize_.y = j["BoxSize"][1]; effect->editBoxSize_.z = j["BoxSize"][2]; }
+                if (j.contains("PlaneSize")) { effect->editPlaneSize_.x = j["PlaneSize"][0]; effect->editPlaneSize_.y = j["PlaneSize"][1]; }
+                if (j.contains("TorusMajorRadius")) effect->editTorusMajorRadius_ = j["TorusMajorRadius"];
+                if (j.contains("TorusMinorRadius")) effect->editTorusMinorRadius_ = j["TorusMinorRadius"];
+                if (j.contains("ConeRadius")) effect->editConeRadius_ = j["ConeRadius"];
+                if (j.contains("ConeHeight")) effect->editConeHeight_ = j["ConeHeight"];
+                if (j.contains("RingOuterRadius")) effect->editRingOuterRadius_ = j["RingOuterRadius"];
+                if (j.contains("RingInnerRadius")) effect->editRingInnerRadius_ = j["RingInnerRadius"];
+                if (j.contains("TriangleSize")) effect->editTriangleSize_ = j["TriangleSize"];
                 if (j.contains("MeshSegments")) effect->editMeshSegments_ = j["MeshSegments"];
+                if (j.contains("UvTiling")) { effect->editUvTiling_.x = j["UvTiling"][0]; effect->editUvTiling_.y = j["UvTiling"][1]; }
 
                 effect->UpdateProceduralMesh();
             }
