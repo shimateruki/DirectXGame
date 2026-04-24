@@ -123,7 +123,7 @@ void GamePlayScene::Initialize() {
 	// ★課題用アニメーションモデルの生成
 	animatedCube_ = std::make_unique<Object3d>();
 	animatedCube_->Initialize(object3dCommon_.get());
-	animatedCube_->SetModel("AnimatedCube"); 
+	animatedCube_->SetModel("walk"); 
 	
 	// モデルが持つ最初のアニメーション名を自動で取得して設定する
 	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
@@ -131,7 +131,7 @@ void GamePlayScene::Initialize() {
 	}
 	
 	animatedCube_->isAnimLoop_ = true;
-	animatedCube_->SetTranslate({0.0f, 5.0f, 0.0f}); // 空中に配置
+	animatedCube_->SetTranslate({0.0f, 0.0f, 0.0f}); // 少し位置を調整
 	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
 
 	dxCommon_->FlushCommandQueue(false);
