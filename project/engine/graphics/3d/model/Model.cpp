@@ -144,16 +144,17 @@ void Model::CreateBoneBuffer() {
 void Model::UpdateBoneBuffer() {
     // ボーンごとに計算
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
-        // ボーン名に対応するNodeを探す
-        Node* node = FindNode(modelData_.rootNode, modelData_.bones[i].name);
+        // ボーン名に対応するJointを探す
+        auto it = modelData_.skeleton.jointMap.find(modelData_.bones[i].name);
 
-        // FinalMatrix = InverseBindPose * GlobalMatrix
-        if (node) {
+        // FinalMatrix = InverseBindPose * SkeletonSpaceMatrix
+        if (it != modelData_.skeleton.jointMap.end()) {
+            const Joint& joint = modelData_.skeleton.joints[it->second];
             boneMappedData_[i].finalMatrix =
-                math_.Multiply(modelData_.bones[i].inverseBindPoseMatrix, node->globalMatrix);
+                math_.Multiply(modelData_.bones[i].inverseBindPoseMatrix, joint.skeletonSpaceMatrix);
         }
         else {
-            // ノードが見つからない(ダミーボーンなど)場合は単位行列を入れる
+            // ノードが見つからない場合は単位行列を入れる
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
         }
     }
@@ -445,6 +446,8 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         }
         modelData.animations.push_back(animation);
     }
+    // ★ 追加: 読み込んだノードツリーからSkeleton(1次元配列)を作成する
+    modelData.skeleton = CreateSkeleton(modelData.rootNode);
 
     return modelData;
 }
@@ -458,6 +461,14 @@ Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
     result.localMatrix.m[1][0] = transform.a2; result.localMatrix.m[1][1] = transform.b2; result.localMatrix.m[1][2] = transform.c2; result.localMatrix.m[1][3] = transform.d2;
     result.localMatrix.m[2][0] = transform.a3; result.localMatrix.m[2][1] = transform.b3; result.localMatrix.m[2][2] = transform.c3; result.localMatrix.m[2][3] = transform.d3;
     result.localMatrix.m[3][0] = transform.a4; result.localMatrix.m[3][1] = transform.b4; result.localMatrix.m[3][2] = transform.c4; result.localMatrix.m[3][3] = transform.d4;
+    
+    aiVector3D scale, translate;
+    aiQuaternion rotate;
+    transform.Decompose(scale, rotate, translate);
+    result.transform.scale = {scale.x, scale.y, scale.z};
+    result.transform.rotate = {rotate.x, rotate.y, rotate.z, rotate.w};
+    result.transform.translate = {translate.x, translate.y, translate.z};
+
     nodes.push_back(result);
     result.children.resize(node->mNumChildren);
     for (unsigned int i = 0; i < node->mNumChildren; ++i) {
@@ -466,20 +477,11 @@ Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
     return result;
 }
 
-// ノード行列の更新
-void Model::UpdateNodeMatrix(Node& node, const Matrix4x4& parentMatrix) {
-    // 自分のワールド行列 = 親のワールド行列 × 自分のローカル行列
-    node.globalMatrix = math_.Multiply(node.localMatrix, parentMatrix);
 
-    for (auto& child : node.children) {
-        UpdateNodeMatrix(child, node.globalMatrix);
-    }
-}
 
 // 毎フレーム呼ぶ更新処理
 void Model::Update() {
-    Matrix4x4 identity = math_.MakeIdentity4x4();
-    UpdateNodeMatrix(modelData_.rootNode, identity);
+    UpdateSkeleton(modelData_.skeleton);
 
     //  ボーン情報の更新
     UpdateBoneBuffer();
@@ -554,24 +556,7 @@ Model::Node* Model::FindNode(Node& node, const std::string& name) {
 }
 
 void Model::ApplyAnimation(const Animation& animation, float time) {
-    for (const auto& nodeAnim : animation.nodeAnimations) {
-        Node* targetNode = FindNode(modelData_.rootNode, nodeAnim.name);
-        if (!targetNode) {
-            std::string log = "Node Missing: " + nodeAnim.name + "\n";
-            DebugConsole::GetInstance()->AddLog("owata");
-            continue; // 次の骨へ
-        }
-
-        Vector3 scale = CalculateValue(nodeAnim.scale, time);
-        Quaternion rotate = CalculateValue(nodeAnim.rotate, time);
-        Vector3 translate = CalculateValue(nodeAnim.translate, time);
-
-        Matrix4x4 mS = math_.MakeScaleMatrix(scale);
-        Matrix4x4 mR = Math::MakeRotateQuaternionMatrix(rotate);
-        Matrix4x4 mT = math_.MakeTranslateMatrix(translate);
-
-        targetNode->localMatrix = math_.Multiply(mS, math_.Multiply(mR, mT));
-    }
+    ApplyAnimationToSkeleton(modelData_.skeleton, animation, time);
 }
 const Model::Animation* Model::GetAnimation(const std::string& name) const {
     for (const auto& animation : modelData_.animations) {
@@ -702,4 +687,78 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
     mesh.indexBufferView.SizeInBytes = ibSize;
     mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+}
+
+// ==========================================
+// Skeleton & Joint の実装 (深さ優先探索)
+// ==========================================
+int32_t Model::CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints) {
+    Joint joint;
+    joint.name = node.name;
+    joint.localMatrix = node.localMatrix;
+    
+    Math math;
+    joint.skeletonSpaceMatrix = math.MakeIdentity4x4();
+    joint.transform = node.transform;
+    joint.index = int32_t(joints.size()); // 現在登録されている数をIndexに
+    joint.parent = parent;
+
+    joints.push_back(joint); // SkeletonのJoint列に追加
+
+    for (const Node& child : node.children) {
+        // 子Jointを作成し、そのIndexを登録
+        int32_t childIndex = CreateJoint(child, joint.index, joints);
+        joints[joint.index].children.push_back(childIndex);
+    }
+    
+    // 自身のIndexを返す
+    return joint.index;
+}
+
+Model::Skeleton Model::CreateSkeleton(const Node& rootNode) {
+    Skeleton skeleton;
+    skeleton.root = CreateJoint(rootNode, std::nullopt, skeleton.joints);
+    
+    // Joint名をキーにしてIndexを引けるMapを作る
+    for (const Joint& joint : skeleton.joints) {
+        skeleton.jointMap[joint.name] = joint.index;
+    }
+    
+    return skeleton;
+}
+
+void Model::UpdateSkeleton(Skeleton& skeleton) {
+    Math math;
+    // すべてのJointを更新。親が若いので通常ループで処理可能になっている
+    for (Joint& joint : skeleton.joints) {
+        if (joint.parent) {
+            // 親がいれば親の行列を掛ける
+            joint.skeletonSpaceMatrix = math.Multiply(joint.localMatrix, skeleton.joints[*joint.parent].skeletonSpaceMatrix);
+        } else {
+            // 親がいないのでlocalMatrixとskeletonSpaceMatrixは一致する
+            joint.skeletonSpaceMatrix = joint.localMatrix;
+        }
+    }
+}
+
+void Model::ApplyAnimationToSkeleton(Skeleton& skeleton, const Animation& animation, float time) {
+    Math math;
+    for (Joint& joint : skeleton.joints) {
+        // 対象のJointのAnimationがあれば、値の適用を行う。
+        auto it = std::find_if(animation.nodeAnimations.begin(), animation.nodeAnimations.end(),
+            [&joint](const NodeAnimation& na) { return na.name == joint.name; });
+            
+        if (it != animation.nodeAnimations.end()) {
+            const NodeAnimation& rootNodeAnimation = *it;
+            joint.transform.translate = CalculateValue(rootNodeAnimation.translate, time);
+            joint.transform.rotate = CalculateValue(rootNodeAnimation.rotate, time);
+            joint.transform.scale = CalculateValue(rootNodeAnimation.scale, time);
+            
+            // アニメーションがある場合のみlocalMatrixを更新する
+            Matrix4x4 mS = math.MakeScaleMatrix(joint.transform.scale);
+            Matrix4x4 mR = math.MakeRotateQuaternionMatrix(joint.transform.rotate);
+            Matrix4x4 mT = math.MakeTranslateMatrix(joint.transform.translate);
+            joint.localMatrix = math.Multiply(mS, math.Multiply(mR, mT));
+        }
+    }
 }

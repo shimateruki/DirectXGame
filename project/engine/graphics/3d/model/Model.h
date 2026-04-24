@@ -10,6 +10,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <map>
+#include <optional>
 
 class Object3d;
 
@@ -60,8 +62,30 @@ public:
         float padding2[2];         // 8 byte (アライメント調整)
 
     };
+    struct QuaternionTransform {
+        Vector3 scale = {1.0f, 1.0f, 1.0f};
+        Quaternion rotate = {0.0f, 0.0f, 0.0f, 1.0f};
+        Vector3 translate = {0.0f, 0.0f, 0.0f};
+    };
+
+    struct Joint {
+        QuaternionTransform transform;
+        Matrix4x4 localMatrix;
+        Matrix4x4 skeletonSpaceMatrix;
+        std::string name;
+        std::vector<int32_t> children;
+        int32_t index;
+        std::optional<int32_t> parent;
+    };
+
+    struct Skeleton {
+        int32_t root;
+        std::map<std::string, int32_t> jointMap;
+        std::vector<Joint> joints;
+    };
 
     struct Node {
+        QuaternionTransform transform;
         Matrix4x4 localMatrix;
         Matrix4x4 globalMatrix; // ★追加: アニメーション計算結果(ワールド行列)用
         std::string name;
@@ -103,6 +127,7 @@ public:
         std::vector<Node> nodes;
         std::vector<Bone> bones;
         std::vector<Animation> animations;
+        Skeleton skeleton; // ★追加
     };
 
     struct BoneForGPU {
@@ -155,7 +180,6 @@ public: // メンバ関数
 private: // 内部処理関数
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);
-    void UpdateNodeMatrix(Node& node, const Matrix4x4& parentMatrix);
 
     static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);
 
@@ -164,6 +188,12 @@ private: // 内部処理関数
     // キーフレームから値を計算する（補間）
     static Vector3 CalculateValue(const std::vector<KeyframeVector3>& keyframes, float time);
     static Quaternion CalculateValue(const std::vector<KeyframeQuaternion>& keyframes, float time);
+
+    // --- Skeleton アニメーション ---
+    static int32_t CreateJoint(const Node& node, const std::optional<int32_t>& parent, std::vector<Joint>& joints);
+    static Skeleton CreateSkeleton(const Node& rootNode);
+    void UpdateSkeleton(Skeleton& skeleton);
+    void ApplyAnimationToSkeleton(Skeleton& skeleton, const Animation& animation, float time);
 
     // ボーンバッファ関連
     void CreateBoneBuffer();
