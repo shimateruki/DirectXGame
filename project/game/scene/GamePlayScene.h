@@ -127,4 +127,7 @@ private:
     bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
     std::unique_ptr<Skybox> skybox_;
     uint32_t skyboxTextureHandle_ = 0;
+
+    // ★課題用アニメーションモデル
+    std::unique_ptr<Object3d> animatedCube_;
 };

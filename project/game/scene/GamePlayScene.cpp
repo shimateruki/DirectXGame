@@ -120,6 +120,20 @@ void GamePlayScene::Initialize() {
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
+	// ★課題用アニメーションモデルの生成
+	animatedCube_ = std::make_unique<Object3d>();
+	animatedCube_->Initialize(object3dCommon_.get());
+	animatedCube_->SetModel("AnimatedCube"); 
+	
+	// モデルが持つ最初のアニメーション名を自動で取得して設定する
+	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
+		animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;
+	}
+	
+	animatedCube_->isAnimLoop_ = true;
+	animatedCube_->SetTranslate({0.0f, 5.0f, 0.0f}); // 空中に配置
+	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
+
 	dxCommon_->FlushCommandQueue(false);
 }
 
@@ -276,6 +290,10 @@ void GamePlayScene::Update(float deltaTime) {
 		Vector3 effectPos = { 0.0f, 1.5f, 0.0f };
 		MeshEffectManager::GetInstance()->SpawnPortalEffect(effectPos, 5.0f);
 	}
+
+	if (animatedCube_) {
+		animatedCube_->Update(deltaTime);
+	}
 }
 
 
@@ -328,6 +346,10 @@ void GamePlayScene::Draw() {
 
 		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
 		obj->Draw(pointLightRes, spotLightRes);
+	}
+
+	if (animatedCube_) {
+		animatedCube_->Draw(pointLightRes, spotLightRes);
 	}
 
 	// --- 2. 中間描画 (弾・デバッグ) ---

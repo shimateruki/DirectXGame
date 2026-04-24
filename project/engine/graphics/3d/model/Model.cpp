@@ -361,8 +361,16 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
     // =========================================================
     if (modelData.bones.empty()) {
         // 1. ダミーボーンを作る (単位行列)
+        // アニメーションが適用されるNode名（多くの場合ルートの最初の子）と同じ名前にすることで、
+        // ボーン無しの剛体アニメーションも正しく動作するようにする
         Bone dummyBone;
-        dummyBone.name = "DummyBone";
+        if (scene->mNumAnimations > 0 && scene->mAnimations[0]->mNumChannels > 0) {
+            dummyBone.name = scene->mAnimations[0]->mChannels[0]->mNodeName.C_Str();
+        } else if (scene->mRootNode && scene->mRootNode->mNumChildren > 0) {
+            dummyBone.name = scene->mRootNode->mChildren[0]->mName.C_Str();
+        } else {
+            dummyBone.name = "DummyBone";
+        }
         Math math;
         dummyBone.inverseBindPoseMatrix = math.MakeIdentity4x4();
         modelData.bones.push_back(dummyBone);
