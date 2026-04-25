@@ -11,19 +11,19 @@ cbuffer CameraData : register(b0)
     row_major matrix billboardMatrix;
     row_major matrix projection;
     float softParticleFade;
-    int blendMode; // ★追加
-    float2 screenSize; // ★追加
+    int blendMode; 
+    float2 screenSize; 
 };
 
 Texture2D tex : register(t1);
 Texture2D<float> depthTex : register(t2);
-Texture2D grabTex : register(t3); // ★追加: コピーした背景
+Texture2D grabTex : register(t3); // コピーした背景
 
 SamplerState smp : register(s0);
 
 float4 main(VSOutput input) : SV_TARGET
 {
-    // ソフトパーティクルの計算 (前回と同じ)
+    // ソフトパーティクルの計算
     float linearParticleDepth = input.pos.w;
     float bgDepthZ = depthTex.Load(int3(input.pos.xy, 0));
     float m22 = projection._m22;

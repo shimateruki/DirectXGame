@@ -5,6 +5,8 @@
 #include "DebugConsole.h"
 #include <TextureManager.h>
 #include "IconsFontAwesome5.h"
+#include "GPUParticleSystem.h"
+
 using json = nlohmann::json;
 
 void GPUParticleEditor::Initialize() {
@@ -14,7 +16,7 @@ void GPUParticleEditor::Initialize() {
 void GPUParticleEditor::Update(float deltaTime) {
     // エディタのプレビュー間隔もスローモーションに対応させる
     float scaledDelta = deltaTime * GPUParticleManager::GetInstance()->GetTimeScale();
-    
+
     if (config_.isLooping) {
         emitTimer_ += scaledDelta;
         if (emitTimer_ >= config_.emitInterval) {
@@ -87,7 +89,7 @@ void GPUParticleEditor::DrawImGui() {
             ImGui::DragFloat("広がり角度 (Angle)", &config_.shapeAngle, 1.0f, 0.0f, 90.0f);
         }
         else if (config_.shapeType == 4) {
-        
+
             ImGui::DragFloat("ハートの大きさ (Radius)", &config_.shapeRadius, 0.1f, 0.0f, 100.0f);
             ImGui::DragFloat("厚み (Thickness)", &config_.emitArea.x, 0.1f, 0.0f, 50.0f);
             ImGui::DragFloat("輪郭の太さ (Line Thickness)", &config_.emitArea.y, 0.01f, 0.0f, 1.0f);
@@ -95,7 +97,7 @@ void GPUParticleEditor::DrawImGui() {
         ImGui::Separator();
 
         ImGui::DragFloat3(ICON_FA_TACHOMETER_ALT " 初期速度 (Velocity)", &config_.emitVelocity.x, 0.1f);
-        ImGui::DragInt(ICON_FA_SORT_NUMERIC_UP " 発生数 (Count)", &config_.emitCount, 10, 1, GPUParticleManager::kMaxParticles);
+        ImGui::DragInt(ICON_FA_SORT_NUMERIC_UP " 発生数 (Count)", &config_.emitCount, 10, 1, GPUParticleSystem::kMaxParticles);
         ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 寿命 (Life Time)", &config_.emitLife, 0.05f, 0.1f, 10.0f);
         ImGui::DragFloat(ICON_FA_RANDOM " 速度のばらつき (Variance)", &config_.velocityVariance, 0.1f, 0.0f, 50.0f);
         ImGui::DragFloat(ICON_FA_SYNC " 回転スピード (Rot Speed)", &config_.rotSpeed, 0.05f, 0.0f, 20.0f);
@@ -129,7 +131,6 @@ void GPUParticleEditor::DrawImGui() {
         if (!texNames.empty()) {
             if (ImGui::Combo(ICON_FA_IMAGE " テクスチャ画像", &currentIndex, texNames.data(), static_cast<int>(texNames.size()))) {
                 config_.texturePath = filteredPaths[currentIndex];
-                GPUParticleManager::GetInstance()->SetCurrentTexture(config_.texturePath);
             }
         }
 
@@ -298,8 +299,6 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("colorIntensity")) config_.colorIntensity = j["colorIntensity"];
         if (j.contains("texturePath")) {
             config_.texturePath = j["texturePath"];
-            // 読み込んだらマネージャーにも教える
-            GPUParticleManager::GetInstance()->SetCurrentTexture(config_.texturePath);
         }
         if (DebugConsole::GetInstance()) {
             DebugConsole::GetInstance()->AddLog("Loaded GPU Particle Preset: " + presetName);

@@ -8,7 +8,22 @@ struct Particle
     float scale;
     float rotation;
     float rotSpeed;
-    float padding;
+    uint configIndex;
+    float4 memBaseColor;
+    float4 memMidColor;
+    float4 memEndColor;
+    float memBaseSize;
+    float memMidSize;
+    float memEndSize;
+    float memColorMidTime;
+    float memSizeMidTime;
+    uint memColorEaseType;
+    uint memSizeEaseType;
+    float memColorIntensity;
+    float3 memGravity;
+    float memDrag;
+    float3 memWind;
+    float memTurbulence;
 };
 
 RWStructuredBuffer<Particle> particles : register(u0);
@@ -75,7 +90,8 @@ cbuffer Config : register(b0)
     uint enableCollision;
     float restitution;
     float colorIntensity;
-    float3 padding_col;
+    uint currentConfigIndex;
+    float2 padding_col;
 };
 struct BoneData
 {
@@ -344,6 +360,10 @@ float3 GetWorldPosFromDepth(float2 uv, float depth, matrix invViewProj)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     uint index = DTid.x;
+
+    if (index >= 10000)
+        return;
+
     Particle p = particles[index];
 
     // 1. エミット対象かチェック
@@ -351,19 +371,20 @@ void main(uint3 DTid : SV_DispatchThreadID)
     if (emitCount > 0)
     {
         uint endIndex = startIndex + emitCount;
-        if (endIndex <= 100000)
+        
+
+        if (endIndex <= 10000)
         {
             if (index >= startIndex && index < endIndex)
                 shouldEmit = true;
         }
         else
         {
-            if (index >= startIndex || index < (endIndex % 100000))
+            if (index >= startIndex || index < (endIndex % 10000))
                 shouldEmit = true;
         }
     }
-
-    // 2. 状態に応じた処理
+    // 2. 状態に}応じた処理
     if (shouldEmit)
     {
         p.life = emitLife;
@@ -382,36 +403,26 @@ void main(uint3 DTid : SV_DispatchThreadID)
         // ========================================================
         if (shapeType == 1) // 🟢 Sphere (球体)
         {
-            // 球の内部にランダム配置
             float3 dir = normalize(float3(rX, rY, rZ));
             float dist = rand(float2(index, time * 0.5f)) * shapeRadius;
             p.position = emitPos + dir * dist;
-
-            // 外側に向かって弾け飛ぶ！(初期速度 + 放射状の速度)
             p.velocity = emitVelocity + (dir * velocityVariance);
         }
         else if (shapeType == 2) // 🔺 Cone (円錐)
         {
             float theta = rand(float2(time, index * 2.1f)) * 6.28318f;
             float rad = sqrt(rand(float2(index, time * 3.4f)));
-
-            // 円錐の広がり角度からベクトルを計算
             float spread = tan(radians(shapeAngle));
             float2 localCircle = float2(cos(theta), sin(theta)) * rad;
             float3 localDir = normalize(float3(localCircle.x * spread, localCircle.y * spread, 1.0f));
 
-            // 指定された emitVelocity の方向を「前(Z)」とする基底ベクトルを作成
             float3 forward = length(emitVelocity) > 0.001f ? normalize(emitVelocity) : float3(0, 1, 0);
             float3 right = abs(forward.y) < 0.999f ? normalize(cross(float3(0, 1, 0), forward)) : float3(1, 0, 0);
             float3 upAxis = cross(forward, right);
 
-            // ローカルの円錐方向をワールドの向いている方向に回転させる
             float3 worldDir = localDir.x * right + localDir.y * upAxis + localDir.z * forward;
-
-            // 発生位置は円錐の根本 (少し散らす場合はRadiusを使う)
             p.position = emitPos + (localCircle.x * right + localCircle.y * upAxis) * shapeRadius;
 
-            // 速度は Velocity の長さを基準に、ワールド方向へ飛ばす
             float speed = length(emitVelocity) + r1 * velocityVariance;
             p.velocity = worldDir * speed;
         }
@@ -420,12 +431,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
             uint vIndex = (uint) (rand(float2(index, time)) * meshVertexCount) % max(meshVertexCount, 1);
             uint byteOffset = vIndex * meshVertexStride;
             
-            // ★ VertexData構造体のメモリ配置通りに、座標・重み・骨番号を読み取る！
             float3 localPos = asfloat(emitterMesh.Load3(byteOffset));
-            float4 weights = asfloat(emitterMesh.Load4(byteOffset + 48)); // オフセット48番地 (boneWeights)
-            float4 indices = asfloat(emitterMesh.Load4(byteOffset + 64)); // オフセット64番地 (boneIndices)
+            float4 weights = asfloat(emitterMesh.Load4(byteOffset + 48));
+            float4 indices = asfloat(emitterMesh.Load4(byteOffset + 64));
             
-            // ★ スキニング計算（ボーンによる変形）
             matrix boneMat =
                 boneMatrices[(int) indices.x].finalMatrix * weights.x +
                 boneMatrices[(int) indices.y].finalMatrix * weights.y +
@@ -433,42 +442,30 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 boneMatrices[(int) indices.w].finalMatrix * weights.w;
                 
             float3 skinnedPos = mul(float4(localPos, 1.0f), boneMat).xyz;
-            
-            // ★ ワールド行列で最終的な座標（スケール・回転・位置）を適用！
             float3 worldPos = mul(float4(skinnedPos, 1.0f), emitterWorldMatrix).xyz;
             
             p.position = worldPos;
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
-        else if (shapeType == 4)
+        else if (shapeType == 4) // ハート
         {
-            // 0.0 ～ 2PI (約6.28) のランダムな角度を生成
             float theta = rand(float2(index, time)) * 6.28318f;
-            
-            // ハートの基本数式 (カージオイドの応用)
             float hx = 16.0f * pow(sin(theta), 3.0f);
             float hy = 13.0f * cos(theta) - 5.0f * cos(2.0f * theta) - 2.0f * cos(3.0f * theta) - cos(4.0f * theta);
             
-            // 大きさを shapeRadius で調整 (計算結果が大きめなので 0.05 を掛けて丁度よくする)
             hx *= 0.05f * shapeRadius;
             hy *= 0.05f * shapeRadius;
             
-            // C++側で「厚み」と「線の太さ」として設定した emitArea を使う
             float thickness = emitArea.x;
             float lineThickness = emitArea.y;
             
-            // 既に上で計算されている乱数(rX, rY, rZ)を使って、少し散らばらせる
             float noiseX = rX * lineThickness;
             float noiseY = rY * lineThickness;
-            float noiseZ = rZ * thickness; // Z軸(奥行き)には厚みを適用
+            float noiseZ = rZ * thickness;
             
-            // 最終的な座標を決定 (ハートの形 ＋ ノイズ散らばり)
             p.position = emitPos + float3(hx + noiseX, hy + noiseY, noiseZ);
-            
-            // 速度は上に昇る基本Velocity ＋ ランダムな散らばり
             p.velocity = emitVelocity + float3(r1, r2, r3) * velocityVariance;
         }
-    
         else // 🟦 Box (四角形 - デフォルト)
         {
             p.position = emitPos + float3(rX, rY, rZ) * emitArea;
@@ -483,13 +480,28 @@ void main(uint3 DTid : SV_DispatchThreadID)
         p.rotation = rand(float2(index, time)) * 6.28318f;
         p.rotSpeed = (rand(float2(time, index)) * 2.0f - 1.0f) * rotSpeedVariance;
         p.scale = baseSize;
+        p.memBaseColor = baseColor;
+        p.memMidColor = midColor;
+        p.memEndColor = endColor;
+        p.memBaseSize = baseSize;
+        p.memMidSize = midSize;
+        p.memEndSize = endSize;
+        p.memColorMidTime = colorMidTime;
+        p.memSizeMidTime = sizeMidTime;
+        p.memColorEaseType = colorEaseType;
+        p.memSizeEaseType = sizeEaseType;
+        p.memColorIntensity = colorIntensity;
+        p.memGravity = gravity;
+        p.memDrag = drag;
+        p.memWind = wind;
+        p.memTurbulence = turbulence;
     }
     else if (p.life > 0.0f)
     {
         p.life -= deltaTime;
         
-        p.velocity += gravity * deltaTime;
-        p.velocity += wind * deltaTime;
+        p.velocity += p.memGravity * deltaTime;
+        p.velocity += p.memWind * deltaTime;
         
         float3 noiseVec = float3(
             rand(p.position.xy + time) * 2.0f - 1.0f,
@@ -497,39 +509,24 @@ void main(uint3 DTid : SV_DispatchThreadID)
             rand(p.position.zx + time) * 2.0f - 1.0f
         );
         p.rotation += p.rotSpeed * deltaTime;
-        p.velocity += noiseVec * turbulence * deltaTime;
+        p.velocity += noiseVec * p.memTurbulence * deltaTime;
         
-        // ========================================================
-        // ★修正1: 空気抵抗を「自然な減速」に変更！
-        // これで風(Wind)や重力が正しく効くようになります。
-        // ========================================================
-        p.velocity *= saturate(1.0f - drag * deltaTime);
-        
-        // 移動！
+        p.velocity *= saturate(1.0f - p.memDrag * deltaTime);
         p.position += p.velocity * deltaTime;
 
-        // ========================================================
-        // ★ 深度バッファ・コリジョン（地形との衝突判定＆反射）
-        // ========================================================
+        // 深度バッファ・コリジョン
         if (enableCollision > 0)
         {
-            // 1. パーティクルの現在座標を、画面上の座標(UVと深度)に変換
             float4 clipPos = mul(float4(p.position, 1.0f), viewProj);
             float3 ndcPos = clipPos.xyz / clipPos.w;
             float2 uv = ndcPos.xy * float2(0.5f, -0.5f) + 0.5f;
 
-            // 画面の範囲内かチェック
             if (uv.x > 0.0f && uv.x < 1.0f && uv.y > 0.0f && uv.y < 1.0f && ndcPos.z < 1.0f)
             {
                 float bgDepth = depthTex.SampleLevel(smp, uv, 0);
                 
-                // ========================================================
-                // ★修正2: すり抜け防止＆裏側ワープ防止（厚み判定）
-                // 地面より「わずかに奥(0.05f)」にいる時だけ衝突させる！
-                // ========================================================
                 if (ndcPos.z >= bgDepth && ndcPos.z < bgDepth + 0.05f && bgDepth < 1.0f)
                 {
-                    // めり込む直前の位置まで戻す
                     p.position -= p.velocity * deltaTime;
 
                     float2 offset = 1.0f / screenSize;
@@ -540,64 +537,48 @@ void main(uint3 DTid : SV_DispatchThreadID)
                     float3 p1 = GetWorldPosFromDepth(uv + float2(offset.x, 0), depthX, inverseViewProj);
                     float3 p2 = GetWorldPosFromDepth(uv + float2(0, offset.y), depthY, inverseViewProj);
 
-                    // 地面の法線（傾き）を計算
                     float3 normal = normalize(cross(p2 - p0, p1 - p0));
 
-                    // ========================================================
-                    //  法線が裏返って地面に突き刺さるのを防止！
-                    // ========================================================
                     if (dot(normal, p.velocity) > 0.0f)
                     {
                         normal = -normal;
                     }
 
-                    // 反射！
                     p.velocity = reflect(p.velocity, normal) * restitution;
-                    
-                    // 地面との摩擦で横滑りを抑える
                     p.velocity.xz *= 0.8f;
-                    
-                    // 反射後の新しい座標へ
                     p.position += p.velocity * deltaTime;
                 }
             }
         }
-        // ========================================================
-        // ★ 魔法: 3点カーブ ＋ 31種類のイージング（時間経過の支配）
-        // ========================================================
-        // 0.0 (発生直後) ～ 1.0 (消滅寸前) の進行度を計算
+
         float ageRatio = saturate(1.0f - (p.life / p.maxLife));
         
         // 1. サイズのイージングカーブ適用
-        float sizeRatio = ApplyEasing(sizeEaseType, ageRatio);
-        if (sizeRatio < sizeMidTime)
+        float sizeRatio = ApplyEasing(p.memSizeEaseType, ageRatio);
+        if (sizeRatio < p.memSizeMidTime)
         {
-            // Base -> Mid へ向かうフェーズ
-            float t = sizeRatio / max(sizeMidTime, 0.001f);
-            p.scale = lerp(baseSize, midSize, t);
+            float t = sizeRatio / max(p.memSizeMidTime, 0.001f);
+            p.scale = lerp(p.memBaseSize, p.memMidSize, t);
         }
         else
         {
-            // Mid -> End へ向かうフェーズ
-            float t = (sizeRatio - sizeMidTime) / max(1.0f - sizeMidTime, 0.001f);
-            p.scale = lerp(midSize, endSize, t);
+            float t = (sizeRatio - p.memSizeMidTime) / max(1.0f - p.memSizeMidTime, 0.001f);
+            p.scale = lerp(p.memMidSize, p.memEndSize, t);
         }
         
         // 2. カラー＆透明度（Alpha）のイージングカーブ適用
-        float colorRatio = ApplyEasing(colorEaseType, ageRatio);
-        if (colorRatio < colorMidTime)
+        float colorRatio = ApplyEasing(p.memColorEaseType, ageRatio);
+        if (colorRatio < p.memColorMidTime)
         {
-            // Base -> Mid へ向かうフェーズ
-            float t = colorRatio / max(colorMidTime, 0.001f);
-            p.color = lerp(baseColor, midColor, t);
+            float t = colorRatio / max(p.memColorMidTime, 0.001f);
+            p.color = lerp(p.memBaseColor, p.memMidColor, t);
         }
         else
         {
-            // Mid -> End へ向かうフェーズ
-            float t = (colorRatio - colorMidTime) / max(1.0f - colorMidTime, 0.001f);
-            p.color = lerp(midColor, endColor, t);
+            float t = (colorRatio - p.memColorMidTime) / max(1.0f - p.memColorMidTime, 0.001f);
+            p.color = lerp(p.memMidColor, p.memEndColor, t);
         }
-        p.color.rgb *= colorIntensity;
+        p.color.rgb *= p.memColorIntensity;
     }
 
     particles[index] = p;

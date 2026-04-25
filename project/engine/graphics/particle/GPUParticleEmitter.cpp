@@ -17,11 +17,14 @@ Object3d* FindModelObject(Object3d* obj) {
 void GPUParticleEmitter::Initialize(const std::string& presetName, Object3d* targetObject) {
     presetName_ = presetName; targetObject_ = targetObject; isPlaying_ = false; emitTimer_ = 0.0f;
 }
+
+
 void GPUParticleEmitter::Update(float deltaTime) {
     if (!isPlaying_ || presetName_.empty()) return;
     emitTimer_ += deltaTime;
     if (emitTimer_ >= emitInterval_) { EmitOnce(); emitTimer_ = fmod(emitTimer_, emitInterval_); }
 }
+
 void GPUParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
 void GPUParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
 
@@ -44,7 +47,8 @@ void GPUParticleEmitter::EmitOnce() {
                 vStride = sizeof(Model::VertexData);
                 boneSrv = model->GetBoneSrvIndex(); // ★ ボーン情報を取得！
             }
-        } else {
+        }
+        else {
             worldMat = targetObject_->GetWorldMatrix();
         }
         Math math;
@@ -52,7 +56,8 @@ void GPUParticleEmitter::EmitOnce() {
         spawnPos.x = worldMat.m[3][0] + worldOffset.x;
         spawnPos.y = worldMat.m[3][1] + worldOffset.y;
         spawnPos.z = worldMat.m[3][2] + worldOffset.z;
-    } else {
+    }
+    else {
         spawnPos = offset_;
     }
 

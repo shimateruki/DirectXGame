@@ -273,6 +273,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\graphics\effect\TrailEmitter.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\TrailEmitterEditor.cpp" />
     <ClCompile Include="engine\graphics\3d\Skybox.cpp" />
+    <ClCompile Include="engine\graphics\particle\GPUParticleSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -701,6 +702,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\graphics\effect\MeshEffectManager.h" />
     <ClInclude Include="engine\graphics\effect\TrailEmitter.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\TrailEmitterEditor.h" />
+    <ClInclude Include="engine\graphics\particle\GPUParticleSystem.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\SceneSerializer.h" />

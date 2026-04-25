@@ -68,7 +68,7 @@ void GameClearScene::Initialize() {
 
     // ★追加: GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets();
+    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
     // --- 5. 固定スプライトの生成 (必要であれば) ---
