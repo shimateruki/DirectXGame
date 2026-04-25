@@ -1,19 +1,25 @@
-struct VSInput
-{
-    float3 pos : POSITION;
-    float2 uv : TEXCOORD;
-};
-
 struct VSOutput
 {
     float4 svpos : SV_POSITION;
     float2 uv : TEXCOORD;
 };
 
-VSOutput main(VSInput input)
+static const float4 kPositions[3] = {
+    float4(-1.0f, 1.0f, 0.0f, 1.0f),  // 左上
+    float4(3.0f, 1.0f, 0.0f, 1.0f),   // 右上
+    float4(-1.0f, -3.0f, 0.0f, 1.0f), // 左下
+};
+
+static const float2 kTexcoords[3] = {
+    float2(0.0f, 0.0f), // 左上
+    float2(2.0f, 0.0f), // 右上
+    float2(0.0f, 2.0f), // 左下
+};
+
+VSOutput main(uint vertexID : SV_VertexID)
 {
     VSOutput output;
-    output.svpos = float4(input.pos, 1.0f);
-    output.uv = input.uv;
+    output.svpos = kPositions[vertexID];
+    output.uv = kTexcoords[vertexID];
     return output;
 }

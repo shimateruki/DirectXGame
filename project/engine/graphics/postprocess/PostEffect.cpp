@@ -9,7 +9,6 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     renderTextures_.resize(6);
-    CreateMesh();
     CreateConstBuffer();
     CreateRootSignature();
     CreatePipelineState();
@@ -31,25 +30,6 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
     CreateRenderTexture(5, WinApp::kClientWidth / 16, WinApp::kClientHeight / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
-void PostEffect::CreateMesh() {
-    // 画面全体を覆う板ポリゴン（Zは0）
-    VertexPosUv vertices[] = {
-        {{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}}, // 左下
-        {{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}}, // 左上
-        {{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}}, // 右下
-        {{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}}, // 右上
-    };
-
-    vertexBuffer_ = dxCommon_->CreateBufferResource(sizeof(vertices));
-    vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-    vertexBufferView_.SizeInBytes = sizeof(vertices);
-    vertexBufferView_.StrideInBytes = sizeof(VertexPosUv);
-
-    void* mappedData = nullptr;
-    vertexBuffer_->Map(0, nullptr, &mappedData);
-    memcpy(mappedData, vertices, sizeof(vertices));
-    vertexBuffer_->Unmap(0, nullptr);
-}
 
 void PostEffect::CreateRootSignature() {
     RootSignatureBuilder builder;
@@ -91,17 +71,12 @@ void PostEffect::CreatePipelineState() {
     auto psAdd = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainAdd");
     auto psComposite = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainComposite");
 
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
-
     // ==========================================================
     // --- 共通設定 ---
     // ==========================================================
     GraphicsPipelineBuilder builder;
     builder.SetRootSignature(rootSignature_.Get());
-    builder.SetInputLayout(inputLayout, _countof(inputLayout));
+    builder.SetInputLayout(nullptr, 0); // 頂点バッファレス方式に変更！
 
     // カリングなし、Zテストなし
     builder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
@@ -211,8 +186,8 @@ void PostEffect::PreDrawScene(ID3D12GraphicsCommandList* commandList, int target
 void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex) {
     commandList->SetGraphicsRootSignature(rootSignature_.Get());
     commandList->SetPipelineState(pipelineStates_[psoIndex].Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 3頂点で全画面を覆う
+    // commandList->IASetVertexBuffers() はいらない！
     commandList->SetGraphicsRootConstantBufferView(0, constBuffer_->GetGPUVirtualAddress());
 
     // [1] t0 のセット (メイン画像)
@@ -222,7 +197,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     uint32_t currentLutHandle = (lutSrvHandle_ > 0) ? lutSrvHandle_ : srvHandle;
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, currentLutHandle);
 
-    commandList->DrawInstanced(4, 1, 0, 0);
+    commandList->DrawInstanced(3, 1, 0, 0); // 3頂点に変更
 }
 void PostEffect::CreateConstBuffer() {
     // 定数バッファは256バイトアラインメントが必要
