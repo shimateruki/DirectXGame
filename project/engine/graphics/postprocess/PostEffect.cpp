@@ -30,6 +30,11 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
     CreateRenderTexture(5, WinApp::kClientWidth / 16, WinApp::kClientHeight / 16, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
+void PostEffect::Update(float deltaTime) {
+    // 時間を進める（ノイズのアニメーション用）
+    paramsData_->time += deltaTime;
+}
+
 
 void PostEffect::CreateRootSignature() {
     RootSignatureBuilder builder;
@@ -47,12 +52,21 @@ void PostEffect::CreateRootSignature() {
     // [2] LUT画像 (DescriptorTable t1 - PixelShader用)
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 
+    // [3] 深度テクスチャ (DescriptorTable t2 - PixelShader用)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    // [4] ノイズテクスチャ (DescriptorTable t3 - PixelShader用)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+
     // =================================================================
     // 2. サンプラーの設定
     // =================================================================
 
     // s0: テクスチャサンプラー (リニア補間、クランプ - PixelShader用)
     builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+
+    // s1: ポイントサンプラー (ポイント補間、クランプ - PixelShader用)
+    builder.AddStaticSampler(1, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
     // =================================================================
     // 3. ビルド実行
@@ -196,6 +210,13 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     // [2] t1 のセット (LUT画像) 
     uint32_t currentLutHandle = (lutSrvHandle_ > 0) ? lutSrvHandle_ : srvHandle;
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, currentLutHandle);
+
+    // [3] t2 のセット (深度テクスチャ)
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, dxCommon_->GetDepthSrvHandle());
+
+    // [4] t3 のセット (ノイズテクスチャ)
+    uint32_t currentNoiseHandle = (noiseSrvHandle_ > 0) ? noiseSrvHandle_ : srvHandle;
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, currentNoiseHandle);
 
     commandList->DrawInstanced(3, 1, 0, 0); // 3頂点に変更
 }

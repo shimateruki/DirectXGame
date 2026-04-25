@@ -17,12 +17,14 @@ cbuffer PostEffectParams : register(b0)
     float vignetteIntensity;
     float chromaticAberration;
     float filmGrainIntensity;
+    float vignettePower;
+
     float time;
     
     float radialCenterX;
     float radialCenterY;
     float radialIntensity;
-    float radialPadding;
+    int radialBlurSamples;
     
     float lutIntensity;
     float damageFlash;
@@ -33,11 +35,27 @@ cbuffer PostEffectParams : register(b0)
     float mosaicSize;
     float dangerVignette;
     float blackout;
-    float padding1;
+    float grayscaleIntensity;
+    float sepiaIntensity;
+    int boxFilterSize;
+    int gaussianFilterSize;
+    float gaussianSigma;
+    float luminanceOutlineIntensity;
+    float depthOutlineIntensity;
+    float dissolveThreshold;
+    float dissolveEdgeWidth;
+    float randomIntensity;
+    float padding_m1;
+    float3 dissolveEdgeColor;
+    float padding_m2;
+    float4x4 projectionInverse;
 
 };
 
 Texture2D<float4> lutTex : register(t1);
+Texture2D<float4> depthTex : register(t2);
+Texture2D<float> noiseTex : register(t3);
+SamplerState pointSmp : register(s1);
 
 // --- 1. Copy ---
 float4 mainCopy(PSInput input) : SV_TARGET
@@ -116,6 +134,64 @@ float3 ApplyLUT(float3 color)
     return lerp(color1, color2, fracBlue);
 }
 
+float Luminance(float3 v)
+{
+    return dot(v, float3(0.2125f, 0.7154f, 0.0721f));
+}
+
+// ガウス関数 (資料に基づいた実装)
+float gauss(float x, float y, float sigma)
+{
+    float sigma2 = sigma * sigma;
+    return (1.0f / (2.0f * 3.14159265f * sigma2)) * exp(-(x * x + y * y) / (2.0f * sigma2));
+}
+
+// ぼかし（Box/Gaussian Filter）を含めたサンプリング関数
+float3 SampleScene(float2 uv)
+{
+    uint w, h;
+    tex.GetDimensions(w, h);
+    float2 stepSize = 1.0f / float2(w, h);
+
+    // 1. Gaussian Filter (資料に基づいた実装)
+    if (gaussianFilterSize > 0)
+    {
+        float3 blurColor = float3(0, 0, 0);
+        float totalWeight = 0.0f;
+        int n = gaussianFilterSize;
+        
+        for (int x = -n; x <= n; ++x)
+        {
+            for (int y = -n; y <= n; ++y)
+            {
+                float weight = gauss((float)x, (float)y, gaussianSigma);
+                blurColor += tex.Sample(smp, uv + float2(x, y) * stepSize).rgb * weight;
+                totalWeight += weight;
+            }
+        }
+        return blurColor / totalWeight;
+    }
+
+    // 2. Box Filter (資料に基づいた実装)
+    if (boxFilterSize > 0)
+    {
+        float3 blurColor = float3(0, 0, 0);
+        int n = boxFilterSize; // 1:3x3, 2:5x5...
+        float kernelCount = (n * 2 + 1) * (n * 2 + 1);
+        
+        for (int x = -n; x <= n; ++x)
+        {
+            for (int y = -n; y <= n; ++y)
+            {
+                blurColor += tex.Sample(smp, uv + float2(x, y) * stepSize).rgb;
+            }
+        }
+        return blurColor / kernelCount;
+    }
+    
+    return tex.Sample(smp, uv).rgb;
+}
+
 // --- 5. Final Composite ---
 float4 mainComposite(PSInput input) : SV_TARGET
 {
@@ -147,22 +223,24 @@ float4 mainComposite(PSInput input) : SV_TARGET
 
     if (radialIntensity > 0.0)
     {
-        float step = radialIntensity / (float) NUM_SAMPLES;
-        for (int i = 0; i < NUM_SAMPLES; i++)
+        // 放射ブラー (資料に基づいた実装)
+        float step = radialIntensity / (float) radialBlurSamples;
+        for (int i = 0; i < radialBlurSamples; i++)
         {
             float2 offsetUv = uv - radialDir * (i * step);
+            // 色収差も含めてサンプリング
             float r = tex.Sample(smp, offsetUv - dir * chromaticAberration).r;
             float g = tex.Sample(smp, offsetUv).g;
             float b = tex.Sample(smp, offsetUv + dir * chromaticAberration).b;
             baseColor += float4(r, g, b, 1.0);
         }
-        baseColor /= (float) NUM_SAMPLES;
+        baseColor /= (float) radialBlurSamples;
     }
     else
     {
-        float r = tex.Sample(smp, uv - dir * chromaticAberration).r;
-        float g = tex.Sample(smp, uv).g;
-        float b = tex.Sample(smp, uv + dir * chromaticAberration).b;
+        float r = SampleScene(uv - dir * chromaticAberration).r;
+        float g = SampleScene(uv).g;
+        float b = SampleScene(uv + dir * chromaticAberration).b;
         baseColor = float4(r, g, b, 1.0);
     }
 
@@ -206,14 +284,125 @@ float4 mainComposite(PSInput input) : SV_TARGET
         // 4. 元の映像に、血の色をブレンドする
         finalColor.rgb = lerp(finalColor.rgb, bloodColor, edgeMask * dangerVignette * pulse);
     }
+
+    // Outline (資料に基づいた実装)
+    if (luminanceOutlineIntensity > 0.0 || depthOutlineIntensity > 0.0)
+    {
+        uint w, h;
+        tex.GetDimensions(w, h);
+        float2 stepSize = 1.0f / float2(w, h);
+        
+        float2 diffL = 0; // Luminance difference
+        float2 diffD = 0; // Depth difference
+        
+        static const float kPrewittH[3][3] =
+        {
+            {-1.0f / 6.0f, 0.0f, 1.0f / 6.0f},
+            {-1.0f / 6.0f, 0.0f, 1.0f / 6.0f},
+            {-1.0f / 6.0f, 0.0f, 1.0f / 6.0f}
+        };
+        static const float kPrewittV[3][3] =
+        {
+            {-1.0f / 6.0f, -1.0f / 6.0f, -1.0f / 6.0f},
+            {0.0f, 0.0f, 0.0f},
+            {1.0f / 6.0f, 1.0f / 6.0f, 1.0f / 6.0f}
+        };
+        
+        for (int x = 0; x < 3; ++x)
+        {
+            for (int y = 0; y < 3; ++y)
+            {
+                float2 offsetUv = uv + float2(x - 1, y - 1) * stepSize;
+                
+                // 1. 輝度ベース
+                if (luminanceOutlineIntensity > 0.0)
+                {
+                    float3 fetch = tex.Sample(smp, offsetUv).rgb;
+                    float l = Luminance(fetch);
+                    diffL.x += l * kPrewittH[x][y];
+                    diffL.y += l * kPrewittV[x][y];
+                }
+                
+                // 2. 深度ベース
+                if (depthOutlineIntensity > 0.0)
+                {
+                    float ndcDepth = depthTex.Sample(pointSmp, offsetUv).r;
+                    float4 viewSpace = mul(float4(0, 0, ndcDepth, 1.0f), projectionInverse);
+                    float viewZ = viewSpace.z / viewSpace.w;
+                    diffD.x += viewZ * kPrewittH[x][y];
+                    diffD.y += viewZ * kPrewittV[x][y];
+                }
+            }
+        }
+        
+        float edgeL = length(diffL);
+        float edgeD = length(diffD);
+        
+        // 資料に基づいた重み調整
+        float weightL = saturate(edgeL * 6.0f) * luminanceOutlineIntensity;
+        float weightD = saturate(edgeD) * depthOutlineIntensity;
+        
+        float weight = max(weightL, weightD);
+        // 黒い縁取りとして合成
+        finalColor.rgb = lerp(finalColor.rgb, float3(0, 0, 0), weight);
+    }
+
+    // Dissolve (資料に基づいた実装)
+    if (dissolveThreshold > 0.0)
+    {
+        float mask = noiseTex.Sample(smp, uv).r;
+        
+        // 1. しきい値以下を抜く
+        if (mask <= dissolveThreshold)
+        {
+            discard;
+        }
+        
+        // 2. エッジ（境界線）の色付け
+        float edge = 1.0f - smoothstep(dissolveThreshold, dissolveThreshold + dissolveEdgeWidth, mask);
+        finalColor.rgb += edge * dissolveEdgeColor;
+    }
+
+    // Random (資料に基づいた実装)
+    if (randomIntensity > 0.0)
+    {
+        // 昔のテレビのような砂嵐（高周波なノイズ）を再現
+        // UVに大きな値を掛け、時間を加算することで、激しいチラつきを作る
+        float2 seed = uv * 1000.0f + float2(time * 10.0f, -time * 7.0f);
+        float noise = rand(seed);
+        finalColor.rgb = lerp(finalColor.rgb, float3(noise, noise, noise), randomIntensity);
+    }
+
     // Vignette & Film Grain
-    float v = 1.0 - dot(dir, dir) * vignetteIntensity;
-    finalColor.rgb *= saturate(v);
+    // Vignette 
+    float2 correct = uv * (1.0f - uv.yx);
+    float v = correct.x * correct.y * 16.0f;
+    v = saturate(pow(v, vignettePower));
+    // vignetteIntensity で適用度を調整
+    finalColor.rgb *= lerp(1.0f, v, vignetteIntensity);
+
     finalColor.rgb -= rand(uv + time) * filmGrainIntensity;
     if (blackout > 0.0)
     {
         // 画面全体を黒に近づける（1.0 で完全な漆黒になる）
         finalColor.rgb *= (1.0 - saturate(blackout));
+    }
+
+    // Grayscale / Sepia (資料に基づいた実装)
+    if (grayscaleIntensity > 0.0 || sepiaIntensity > 0.0)
+    {
+        // 人間の目の感度に基づいた輝度計算 (BT709)
+        float gray = dot(finalColor.rgb, float3(0.2125f, 0.7154f, 0.0721f));
+        
+        // 1. Grayscaleを適用
+        float3 grayscale = float3(gray, gray, gray);
+        finalColor.rgb = lerp(finalColor.rgb, grayscale, grayscaleIntensity);
+        
+        // 2. Sepiaを適用 (Grayscale化した色にセピアの色調を乗算)
+        // RGB(107, 74, 43) を赤成分が1.0になるように正規化した比率
+        float3 sepiaScale = float3(1.0f, 74.0f / 107.0f, 43.0f / 107.0f);
+        float3 sepia = grayscale * sepiaScale;
+        finalColor.rgb = lerp(finalColor.rgb, sepia, sepiaIntensity);
     }
     // Scanline (ブラウン管)
     if (scanlineIntensity > 0.0)

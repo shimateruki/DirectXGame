@@ -28,13 +28,15 @@ public:
         float vignetteIntensity = 1.0f;     // 周辺減光の強さ
         float chromaticAberration = 0.02f;  // 色収差のズレ幅
         float filmGrainIntensity = 0.03f;   // フィルム粒子の強さ
+        float vignettePower = 0.8f;         // 周辺減光の丸み (資料)
         float time = 0.0f;                  // 時間経過（ノイズアニメ用）
+
 
         // --- Radial Blur ---
         float radialCenterX = 0.5f;         // 放射ブラー中心X
         float radialCenterY = 0.5f;         // 放射ブラー中心Y
         float radialIntensity = 0.0f;       // 放射ブラー強度
-        float radialPadding = 0.0f;
+        int32_t radialBlurSamples = 8;      // サンプリング数 (資料)
 
         // --- Color Grading & Action ---
         float lutIntensity = 0.0f;          // LUT適用強度
@@ -47,12 +49,33 @@ public:
         float mosaicSize = 0.0f;            // ピクセルモザイクサイズ
         float dangerVignette = 0.0f;
         float blackout = 0.0f;
-        float padding1 = 0.0f;
+        float grayscaleIntensity = 0.0f;
+        float sepiaIntensity = 0.0f;
+        int32_t boxFilterSize = 0;          // 0:Off, 1:3x3, 2:5x5... (資料)
+        int32_t gaussianFilterSize = 0;     // 0:Off, 1:3x3, 2:5x5... (資料)
+        float gaussianSigma = 1.0f;         // ガウス関数のシグマ (資料)
+        float luminanceOutlineIntensity = 0.0f; // 輝度ベースのアウトライン (資料)
+        float depthOutlineIntensity = 0.0f;     // 深度ベースのアウトライン (資料)
+        
+        // --- Dissolve & Random ---
+        float dissolveThreshold = 0.0f;     // ディゾルブのしきい値 (資料)
+        float dissolveEdgeWidth = 0.02f;    // エッジの幅 (資料)
+        float randomIntensity = 0.0f;       // GPUによる乱数生成の強度 (資料)
+        float padding_m1 = 0.0f;            // 128バイト境界に合わせる
+
+        Vector3 dissolveEdgeColor = { 1.0f, 0.4f, 0.3f }; // エッジの色 (資料)
+        float padding_m2 = 0.0f;            // 144バイト境界に合わせる
+        
+        Matrix4x4 projectionInverse;            // 深度復元用の逆行列 (資料)
+
  
     };
 
     // 初期化: 各パス用のリソースとPSOを生成
     void Initialize(DirectXCommon* dxCommon);
+
+    // 更新: 時間の進行などを処理
+    void Update(float deltaTime);
 
     // 描画実行: 指定したPSOとSRVを用いてパスを実行
     void Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle, int psoIndex = 0);
@@ -69,6 +92,7 @@ public:
     ID3D12Resource* GetRenderTexture(int texIndex = 0) const { return renderTextures_[texIndex].resource.Get(); }
     Params* GetParams() { return paramsData_; }
     void SetLUTTexture(uint32_t srvHandle) { lutSrvHandle_ = srvHandle; }
+    void SetNoiseTexture(uint32_t srvHandle) { noiseSrvHandle_ = srvHandle; }
 
 private:
     void CreateMesh();
@@ -110,4 +134,5 @@ private:
 
     // カラーグレーディング用LUTのSRVハンドル
     uint32_t lutSrvHandle_ = 0;
+    uint32_t noiseSrvHandle_ = 0;
 };

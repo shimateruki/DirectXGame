@@ -52,7 +52,8 @@ void PostEffectEditor::DrawImGui() {
     // シネマティック効果
     // ==========================================================
     ImGui::Text(ICON_FA_FILM " Cinematic Effects");
-    ImGui::DragFloat(ICON_FA_MOON " Vignette (周辺減光)", &params->vignetteIntensity, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat(ICON_FA_MOON " Vignette (周辺減光強度)", &params->vignetteIntensity, 0.01f, 0.0f, 5.0f);
+    ImGui::DragFloat(" Vignette Power (減光の丸み)", &params->vignettePower, 0.01f, 0.0f, 5.0f);
     ImGui::DragFloat(ICON_FA_COINS " Chromatic Aberration (色収差)", &params->chromaticAberration, 0.001f, 0.0f, 0.1f);
     ImGui::DragFloat(ICON_FA_BROADCAST_TOWER " Film Grain (ノイズ)", &params->filmGrainIntensity, 0.001f, 0.0f, 0.5f);
 
@@ -61,6 +62,7 @@ void PostEffectEditor::DrawImGui() {
     ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " Radial Blur (集中線の強さ)", &params->radialIntensity, 0.01f, 0.0f, 1.0f);
     ImGui::DragFloat(" Radial Center X", &params->radialCenterX, 0.01f, 0.0f, 1.0f);
     ImGui::DragFloat(" Radial Center Y", &params->radialCenterY, 0.01f, 0.0f, 1.0f);
+    ImGui::DragInt(" Radial Blur Samples (サンプリング数)", &params->radialBlurSamples, 0.1f, 1, 64);
 
     ImGui::Spacing();
     ImGui::Text(ICON_FA_GAMEPAD " Action Game Effects");
@@ -79,6 +81,27 @@ void PostEffectEditor::DrawImGui() {
     ImGui::Spacing();
     ImGui::Text(ICON_FA_HEARTBEAT " Danger / Health Effects");
     ImGui::DragFloat(" Danger Vignette (瀕死赤枠)", &params->dangerVignette, 0.01f, 0.0f, 2.0f);
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_PALETTE " Color Effect");
+    ImGui::DragFloat(" Grayscale (モノクロ)", &params->grayscaleIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(" Sepia (セピア調)", &params->sepiaIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_CLOUD " Blur Effects (資料)");
+    ImGui::DragInt(" Box Filter Size (0:Off, 1:3x3...)", &params->boxFilterSize, 0.1f, 0, 10);
+    ImGui::DragInt(" Gaussian Filter Size (0:Off, 1:3x3...)", &params->gaussianFilterSize, 0.1f, 0, 10);
+    ImGui::DragFloat(" Gaussian Sigma", &params->gaussianSigma, 0.01f, 0.1f, 10.0f);
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_SQUARE " Outline Effects (資料)");
+    ImGui::DragFloat(" Luminance Outline (輝度ベース)", &params->luminanceOutlineIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(" Depth Outline (深度ベース)", &params->depthOutlineIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_FIRE " Dissolve (資料)");
+    ImGui::DragFloat(" Dissolve Threshold", &params->dissolveThreshold, 0.001f, 0.0f, 1.1f);
+    ImGui::DragFloat(" Dissolve Edge Width", &params->dissolveEdgeWidth, 0.001f, 0.0f, 0.5f);
+    ImGui::ColorEdit3(" Dissolve Edge Color", &params->dissolveEdgeColor.x);
+    ImGui::Spacing();
+    ImGui::Text(ICON_FA_DICE " Random (資料)");
+    ImGui::DragFloat(" Random Intensity", &params->randomIntensity, 0.01f, 0.0f, 1.0f);
     ImGui::Separator();
 
     // ==========================================================
@@ -113,9 +136,11 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["spread"] = params->spread;
     j["enableToneMapping"] = params->enableToneMapping;
     j["vignetteIntensity"] = params->vignetteIntensity;
+    j["vignettePower"] = params->vignettePower;
     j["chromaticAberration"] = params->chromaticAberration;
     j["filmGrainIntensity"] = params->filmGrainIntensity;
     j["radialIntensity"] = params->radialIntensity;
+    j["radialBlurSamples"] = params->radialBlurSamples;
     j["radialCenterX"] = params->radialCenterX;
     j["radialCenterY"] = params->radialCenterY;
     j["lutIntensity"] = params->lutIntensity;
@@ -124,6 +149,17 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["wobbleIntensity"] = params->wobbleIntensity;
     j["scanlineIntensity"] = params->scanlineIntensity;
     j["mosaicSize"] = params->mosaicSize;
+    j["grayscaleIntensity"] = params->grayscaleIntensity;
+    j["sepiaIntensity"] = params->sepiaIntensity;
+    j["boxFilterSize"] = params->boxFilterSize;
+    j["gaussianFilterSize"] = params->gaussianFilterSize;
+    j["gaussianSigma"] = params->gaussianSigma;
+    j["luminanceOutlineIntensity"] = params->luminanceOutlineIntensity;
+    j["depthOutlineIntensity"] = params->depthOutlineIntensity;
+    j["dissolveThreshold"] = params->dissolveThreshold;
+    j["dissolveEdgeWidth"] = params->dissolveEdgeWidth;
+    j["dissolveEdgeColor"] = { params->dissolveEdgeColor.x, params->dissolveEdgeColor.y, params->dissolveEdgeColor.z };
+    j["randomIntensity"] = params->randomIntensity;
     std::ofstream file(filename);
     if (file.is_open()) {
         file << j.dump(4); // インデント4で綺麗に出力
@@ -147,9 +183,11 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
         if (j.contains("spread")) params->spread = j["spread"];
         if (j.contains("enableToneMapping")) params->enableToneMapping = j["enableToneMapping"];
         if (j.contains("vignetteIntensity")) params->vignetteIntensity = j["vignetteIntensity"];
+        if (j.contains("vignettePower")) params->vignettePower = j["vignettePower"];
         if (j.contains("chromaticAberration")) params->chromaticAberration = j["chromaticAberration"];
         if (j.contains("filmGrainIntensity")) params->filmGrainIntensity = j["filmGrainIntensity"];
         if (j.contains("radialIntensity")) params->radialIntensity = j["radialIntensity"];
+        if (j.contains("radialBlurSamples")) params->radialBlurSamples = j["radialBlurSamples"];
         if (j.contains("radialCenterX")) params->radialCenterX = j["radialCenterX"];
         if (j.contains("radialCenterY")) params->radialCenterY = j["radialCenterY"];
         if (j.contains("lutIntensity")) params->lutIntensity = j["lutIntensity"];
@@ -158,6 +196,21 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
         if (j.contains("wobbleIntensity")) params->wobbleIntensity = j["wobbleIntensity"];
         if (j.contains("scanlineIntensity")) params->scanlineIntensity = j["scanlineIntensity"];
         if (j.contains("mosaicSize")) params->mosaicSize = j["mosaicSize"];
+        if (j.contains("grayscaleIntensity")) params->grayscaleIntensity = j["grayscaleIntensity"];
+        if (j.contains("sepiaIntensity")) params->sepiaIntensity = j["sepiaIntensity"];
+        if (j.contains("boxFilterSize")) params->boxFilterSize = j["boxFilterSize"];
+        if (j.contains("gaussianFilterSize")) params->gaussianFilterSize = j["gaussianFilterSize"];
+        if (j.contains("gaussianSigma")) params->gaussianSigma = j["gaussianSigma"];
+        if (j.contains("luminanceOutlineIntensity")) params->luminanceOutlineIntensity = j["luminanceOutlineIntensity"];
+        if (j.contains("depthOutlineIntensity")) params->depthOutlineIntensity = j["depthOutlineIntensity"];
+        if (j.contains("dissolveThreshold")) params->dissolveThreshold = j["dissolveThreshold"];
+        if (j.contains("dissolveEdgeWidth")) params->dissolveEdgeWidth = j["dissolveEdgeWidth"];
+        if (j.contains("dissolveEdgeColor")) {
+            params->dissolveEdgeColor.x = j["dissolveEdgeColor"][0];
+            params->dissolveEdgeColor.y = j["dissolveEdgeColor"][1];
+            params->dissolveEdgeColor.z = j["dissolveEdgeColor"][2];
+        }
+        if (j.contains("randomIntensity")) params->randomIntensity = j["randomIntensity"];
 
     }
     catch (...) {

@@ -151,6 +151,13 @@ void GamePlayScene::Finalize() {
 
 void GamePlayScene::Update(float deltaTime) {
 
+	// --- ポストエフェクト更新 ---
+	PostEffect::GetInstance()->Update(deltaTime);
+	Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+	if (activeCamera) {
+		PostEffect::GetInstance()->GetParams()->projectionInverse = Math::Inverse(activeCamera->GetProjectionMatrix());
+	}
+
 	static Math math;
 	LightEditor::GetInstance()->Update();
 
