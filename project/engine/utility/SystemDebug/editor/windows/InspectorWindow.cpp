@@ -193,6 +193,10 @@ void InspectorWindow::Draw() {
                     selectedObject->SetColliderConfig(colConfig);
                 }
             }
+            else {
+                // なしの時も一応反映
+                if (isColChanged) selectedObject->SetColliderConfig(colConfig);
+            }
             ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_PALETTE " グラフィックス (Material)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 bool isGraphicsChanged = false;
@@ -498,7 +502,7 @@ void InspectorWindow::Draw() {
 
             ImGui::Separator();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "--- Object Type Settings ---");
-            const char* classItems[] = { "Model", "Spawner", "Player", "Enemy", "InvisibleBox", "Block" };
+            const char* classItems[] = { "Model", "Spawner", "Player", "Enemy", "Gimmick", "InvisibleBox", "Block" };
             std::string currentClass = selectedObject->GetClassName();
             int currentClassIndex = 0;
             for (int i = 0; i < IM_ARRAYSIZE(classItems); i++) {
@@ -519,24 +523,48 @@ void InspectorWindow::Draw() {
             if (selectedObject->GetClassName() == "Enemy") {
                 ImGui::Indent(); DrawEnemyTypeSelector(); ImGui::Unindent();
             }
-
-            if (!selectedObject->param_.has_value()) {
-                if (ImGui::Button(ICON_FA_PLUS_CIRCLE " ステータスを追加", ImVec2(-1, 0))) selectedObject->param_.emplace();
+            if (selectedObject->GetClassName() == "Gimmick") {
+                ImGui::Indent(); DrawGimmickTypeSelector(); ImGui::Unindent();
             }
-            else {
-                auto& p = selectedObject->param_.value();
-                ImGui::Text("エンティティ・ステータス:");
-                ImGui::Indent();
-                ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
-                ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
-                ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
-                ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
-                ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
-                ImGui::Unindent();
 
-                ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
-                if (ImGui::Button(ICON_FA_TRASH_ALT " ステータスを削除", ImVec2(-1, 0))) selectedObject->param_ = std::nullopt;
-                ImGui::PopStyleColor();
+            if (selectedObject->GetClassName() == "Enemy" || selectedObject->GetClassName() == "Player") {
+                if (!selectedObject->param_.has_value()) {
+                    if (ImGui::Button(ICON_FA_PLUS_CIRCLE " ステータスを追加", ImVec2(-1, 0))) selectedObject->param_.emplace();
+                }
+                else {
+                    auto& p = selectedObject->param_.value();
+                    ImGui::Text("キャラクター・ステータス:");
+                    ImGui::Indent();
+                    ImGui::DragFloat(ICON_FA_HEART " HP (体力)", &p.hp, 1.0f, 0.0f, 9999.0f);
+                    ImGui::DragFloat(ICON_FA_HEARTBEAT " Max HP", &p.maxHp, 1.0f, 1.0f, 9999.0f);
+                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
+                    ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
+                    ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
+                    ImGui::Unindent();
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));
+                    if (ImGui::Button(ICON_FA_TRASH_ALT " ステータスを削除", ImVec2(-1, 0))) selectedObject->param_ = std::nullopt;
+                    ImGui::PopStyleColor();
+                }
+            }
+            else if (selectedObject->GetClassName() == "Gimmick") {
+                if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+                auto& p = selectedObject->param_.value();
+                
+                ImGui::Text(ICON_FA_TOOLS " ギミック設定:");
+                ImGui::Indent();
+                
+                std::string gType = selectedObject->GetGimmickType();
+                if (gType == "Trampoline") {
+                    ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力 (Jump Power)", &p.jumpPower, 1.0f, 0.0f, 100.0f);
+                }
+                else if (gType == "MovingFloor") {
+                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
+                }
+                else {
+                    ImGui::TextDisabled("(この種類には個別設定がありません)");
+                }
+                ImGui::Unindent();
             }
         }
 
@@ -634,6 +662,35 @@ void InspectorWindow::DrawEnemyTypeSelector() {
         ImGui::EndCombo();
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成される敵クラスを指定します。\nEmptyの場合はただの箱になります。");
+#endif
+}
+
+void InspectorWindow::DrawGimmickTypeSelector() {
+#ifdef USE_IMGUI
+    Object3d* selectedObject = editor_->GetSelectedObject();
+    if (!selectedObject) return;
+
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline" };
+    std::string currentType = selectedObject->GetGimmickType();
+
+    int currentIndex = 0;
+    for (int i = 0; i < IM_ARRAYSIZE(gimmickTypes); i++) {
+        if (currentType == gimmickTypes[i]) {
+            currentIndex = i;
+            break;
+        }
+    }
+
+    if (ImGui::Combo("ギミックの種類 (Gimmick Type)", &currentIndex, gimmickTypes, IM_ARRAYSIZE(gimmickTypes))) {
+        selectedObject->SetGimmickType(gimmickTypes[currentIndex]);
+        
+        if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+        selectedObject->param_->gimmickType = gimmickTypes[currentIndex];
+        
+        selectedObject->SetName("Gimmick_" + std::string(gimmickTypes[currentIndex]));
+    }
+    
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成されるギミッククラスを指定します。");
 #endif
 }
 

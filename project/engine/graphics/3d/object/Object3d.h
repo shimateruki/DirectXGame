@@ -35,6 +35,7 @@ public:
         float maxFallSpeed = 60.0f;
         float jumpPower = 10.0f;
         std::string enemyType = "Goblin";
+        std::string gimmickType = "";
         float interval = 3.0f;
         int maxCount = 5;
         EntityParameter() = default;
@@ -167,6 +168,8 @@ public:
     void CopyFrom(const Object3d* other);
     void SetEnemyType(const std::string& type) { enemyType_ = type; }
     std::string GetEnemyType() const { return enemyType_; }
+    void SetGimmickType(const std::string& type) { gimmickType_ = type; }
+    std::string GetGimmickType() const { return gimmickType_; }
     virtual void OnRecordEvent(int eventID) {}
     // ゲッター・セッターがいっぱい並んでいるあたりに追加
     void SetEnableNormalMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableNormalMap(enable); }
@@ -224,6 +227,7 @@ protected:
     int eventID_ = -1;
     int targetID_ = -1;
     std::string enemyType_ = "";
+    std::string gimmickType_ = "";
 
     std::string particleName_ = ""; // JSONファイル名
     float particleTimer_ = 0.0f;    // 発射タイミング管理用

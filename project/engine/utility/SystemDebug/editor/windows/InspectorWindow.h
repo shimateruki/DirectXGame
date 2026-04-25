@@ -17,6 +17,7 @@ private:
     // Inspector専用のUIヘルパー関数群
     void DrawSpawnerSettings();
     void DrawEnemyTypeSelector();
+    void DrawGimmickTypeSelector();
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
 
     DebugEditor* editor_ = nullptr;

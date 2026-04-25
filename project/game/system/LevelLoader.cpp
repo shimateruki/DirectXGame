@@ -12,6 +12,8 @@
 #include "EnemyFactory.h"
 #include "EnemySpawner.h"
 #include "BaseEnemy.h"
+#include "GimmickFactory.h"
+#include "BaseGimmick.h"
 #include "MoveStrategy3D.h"
 #include "GhostRecorder.h"
 // マネージャ系
@@ -138,6 +140,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         type = objData["type"].get<std::string>();
                     }
 
+                    std::string gimmickType = "";
+                    if (objData.contains("gimmickType") && objData["gimmickType"].is_string()) {
+                        gimmickType = objData["gimmickType"].get<std::string>();
+                    }
+
                     // --- 生成分岐 ---
 
                     // パターンA: 敵 (Factory)
@@ -199,6 +206,15 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             });
                         newObj = std::move(spawner);
                     }
+                    // パターンD: ギミック (Factory)
+                    else if (!gimmickType.empty() || type == "Gimmick") {
+                        // type == "Gimmick" だが gimmickType が空の場合はデフォルト名で作成
+                        std::string gType = gimmickType.empty() ? "DefaultGimmick" : gimmickType;
+                        auto gimmick = GimmickFactory::GetInstance()->CreateGimmick(gType, object3dCommon);
+                        if (gimmick) {
+                            newObj = std::move(gimmick);
+                        }
+                    }
                     // パターンE: 通常オブジェクト
                     else {
                         newObj = std::make_unique<Object3d>();
@@ -208,7 +224,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (newObj) {
                         newObj->SetName(name);
                         std::string currentClass = newObj->GetClassName();
-                        if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner") {
+                        if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner" && currentClass != "Gimmick") {
                             newObj->SetClassName(type);
                         }
 
@@ -360,6 +376,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("jumpPower")) param.jumpPower = p["jumpPower"];
                     if (p.contains("maxFallSpeed")) param.maxFallSpeed = p["maxFallSpeed"];
                     if (p.contains("enemyType")) param.enemyType = p["enemyType"];
+                    if (p.contains("gimmickType")) param.gimmickType = p["gimmickType"];
                     if (p.contains("interval")) param.interval = p["interval"];
                     if (p.contains("maxCount")) param.maxCount = p["maxCount"];
                 }

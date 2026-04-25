@@ -460,6 +460,7 @@ json Object3d::ExportToJson() {
     d["type"] = className_;
     d["saveCategory"] = saveCategory_;
     d["enemyType"] = enemyType_;
+    d["gimmickType"] = gimmickType_;
     d["isVisible"] = isVisible_;
     d["isLocked"] = isLocked_;
 
@@ -495,6 +496,7 @@ json Object3d::ExportToJson() {
         d["param"]["jumpPower"] = p.jumpPower;
         d["param"]["maxFallSpeed"] = p.maxFallSpeed;
         d["param"]["enemyType"] = p.enemyType;
+        d["param"]["gimmickType"] = p.gimmickType;
         d["param"]["interval"] = p.interval;
         d["param"]["maxCount"] = p.maxCount;
     }
@@ -545,6 +547,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("type")) className_ = j["type"];
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
+    if (j.contains("gimmickType")) gimmickType_ = j["gimmickType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
 
@@ -592,6 +595,7 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("jumpPower")) p.jumpPower = jp["jumpPower"];
         if (jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
         if (jp.contains("enemyType")) p.enemyType = jp["enemyType"];
+        if (jp.contains("gimmickType")) p.gimmickType = jp["gimmickType"];
         if (jp.contains("interval")) p.interval = jp["interval"];
         if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
         param_ = p;
