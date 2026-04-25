@@ -27,6 +27,8 @@ struct Particle
 };
 
 RWStructuredBuffer<Particle> particles : register(u0);
+RWStructuredBuffer<int> gFreeListIndex : register(u1);
+RWStructuredBuffer<uint> gFreeList : register(u2);
 ByteAddressBuffer emitterMesh : register(t0);
 
 cbuffer Config : register(b0)
@@ -356,47 +358,47 @@ float3 GetWorldPosFromDepth(float2 uv, float depth, matrix invViewProj)
     float4 worldPos = mul(ndc, invViewProj);
     return worldPos.xyz / worldPos.w;
 }
-[numthreads(256, 1, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
+[numthreads(1024, 1, 1)]
+void InitCS(uint3 DTid : SV_DispatchThreadID)
 {
     uint index = DTid.x;
+    if (index < 10000)
+    {
+        Particle p = (Particle)0;
+        particles[index] = p;
+        gFreeList[index] = index;
+    }
+    if (index == 0)
+    {
+        gFreeListIndex[0] = 10000 - 1;
+    }
+}
 
-    if (index >= 10000)
+[numthreads(256, 1, 1)]
+void EmitCS(uint3 DTid : SV_DispatchThreadID)
+{
+    uint threadIndex = DTid.x;
+    if (threadIndex >= emitCount)
         return;
 
-    Particle p = particles[index];
+    int freeListPos;
+    InterlockedAdd(gFreeListIndex[0], -1, freeListPos);
 
-    // 1. エミット対象かチェック
-    bool shouldEmit = false;
-    if (emitCount > 0)
+    if (freeListPos >= 0)
     {
-        uint endIndex = startIndex + emitCount;
-        
-
-        if (endIndex <= 10000)
-        {
-            if (index >= startIndex && index < endIndex)
-                shouldEmit = true;
-        }
-        else
-        {
-            if (index >= startIndex || index < (endIndex % 10000))
-                shouldEmit = true;
-        }
-    }
-    // 2. 状態に}応じた処理
-    if (shouldEmit)
-    {
-        p.life = emitLife;
-        p.maxLife = emitLife;
+        uint pIndex = gFreeList[freeListPos];
+        Particle p = particles[pIndex];
 
         // 共通で使う乱数
-        float rX = rand(float2(index * 1.34f, time)) * 2.0f - 1.0f;
-        float rY = rand(float2(time * 1.57f, index)) * 2.0f - 1.0f;
-        float rZ = rand(float2(index * 1.89f, time * 2.13f)) * 2.0f - 1.0f;
-        float r1 = rand(float2(index + 1.0f, time * 1.1f)) * 2.0f - 1.0f;
-        float r2 = rand(float2(time + 1.2f, index * 1.3f)) * 2.0f - 1.0f;
-        float r3 = rand(float2(index * time + 1.4f, 1.5f)) * 2.0f - 1.0f;
+        float rX = rand(float2(pIndex * 1.34f, time)) * 2.0f - 1.0f;
+        float rY = rand(float2(time * 1.57f, pIndex)) * 2.0f - 1.0f;
+        float rZ = rand(float2(pIndex * 1.89f, time * 2.13f)) * 2.0f - 1.0f;
+        float r1 = rand(float2(pIndex + 1.0f, time * 1.1f)) * 2.0f - 1.0f;
+        float r2 = rand(float2(time + 1.2f, pIndex * 1.3f)) * 2.0f - 1.0f;
+        float r3 = rand(float2(pIndex * time + 1.4f, 1.5f)) * 2.0f - 1.0f;
+
+        p.life = emitLife;
+        p.maxLife = emitLife;
 
         // ========================================================
         // ★ 形状ごとの発生アルゴリズム
@@ -404,14 +406,14 @@ void main(uint3 DTid : SV_DispatchThreadID)
         if (shapeType == 1) // 🟢 Sphere (球体)
         {
             float3 dir = normalize(float3(rX, rY, rZ));
-            float dist = rand(float2(index, time * 0.5f)) * shapeRadius;
+            float dist = rand(float2(pIndex, time * 0.5f)) * shapeRadius;
             p.position = emitPos + dir * dist;
             p.velocity = emitVelocity + (dir * velocityVariance);
         }
         else if (shapeType == 2) // 🔺 Cone (円錐)
         {
-            float theta = rand(float2(time, index * 2.1f)) * 6.28318f;
-            float rad = sqrt(rand(float2(index, time * 3.4f)));
+            float theta = rand(float2(time, pIndex * 2.1f)) * 6.28318f;
+            float rad = sqrt(rand(float2(pIndex, time * 3.4f)));
             float spread = tan(radians(shapeAngle));
             float2 localCircle = float2(cos(theta), sin(theta)) * rad;
             float3 localDir = normalize(float3(localCircle.x * spread, localCircle.y * spread, 1.0f));
@@ -428,7 +430,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
         else if (shapeType == 3) // 🔷 Mesh (3Dモデルの表面)
         {
-            uint vIndex = (uint) (rand(float2(index, time)) * meshVertexCount) % max(meshVertexCount, 1);
+            uint vIndex = (uint) (rand(float2(pIndex, time)) * meshVertexCount) % max(meshVertexCount, 1);
             uint byteOffset = vIndex * meshVertexStride;
             
             float3 localPos = asfloat(emitterMesh.Load3(byteOffset));
@@ -449,7 +451,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
         else if (shapeType == 4) // ハート
         {
-            float theta = rand(float2(index, time)) * 6.28318f;
+            float theta = rand(float2(pIndex, time)) * 6.28318f;
             float hx = 16.0f * pow(sin(theta), 3.0f);
             float hy = 13.0f * cos(theta) - 5.0f * cos(2.0f * theta) - 2.0f * cos(3.0f * theta) - cos(4.0f * theta);
             
@@ -477,8 +479,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
         p.color = baseColor;
         p.color.a = 0.0f; // フェードイン準備
         
-        p.rotation = rand(float2(index, time)) * 6.28318f;
-        p.rotSpeed = (rand(float2(time, index)) * 2.0f - 1.0f) * rotSpeedVariance;
+        p.rotation = rand(float2(pIndex, time)) * 6.28318f;
+        p.rotSpeed = (rand(float2(time, pIndex)) * 2.0f - 1.0f) * rotSpeedVariance;
         p.scale = baseSize;
         p.memBaseColor = baseColor;
         p.memMidColor = midColor;
@@ -495,8 +497,27 @@ void main(uint3 DTid : SV_DispatchThreadID)
         p.memDrag = drag;
         p.memWind = wind;
         p.memTurbulence = turbulence;
+
+        particles[pIndex] = p;
     }
-    else if (p.life > 0.0f)
+    else
+    {
+        // 取れるパーティクルが無かった場合は、デクリメントをキャンセル（元に戻す）
+        InterlockedAdd(gFreeListIndex[0], 1);
+    }
+}
+
+[numthreads(256, 1, 1)]
+void UpdateCS(uint3 DTid : SV_DispatchThreadID)
+{
+    uint index = DTid.x;
+
+    if (index >= 10000)
+        return;
+
+    Particle p = particles[index];
+
+    if (p.life > 0.0f)
     {
         p.life -= deltaTime;
         
@@ -579,7 +600,18 @@ void main(uint3 DTid : SV_DispatchThreadID)
             p.color = lerp(p.memMidColor, p.memEndColor, t);
         }
         p.color.rgb *= p.memColorIntensity;
-    }
 
-    particles[index] = p;
+        if (p.life <= 0.0f)
+        {
+            // Particle just died! Return to FreeList
+            int freeListPos;
+            InterlockedAdd(gFreeListIndex[0], 1, freeListPos);
+            if (freeListPos + 1 < 10000)
+            {
+                gFreeList[freeListPos + 1] = index;
+            }
+        }
+
+        particles[index] = p;
+    }
 }

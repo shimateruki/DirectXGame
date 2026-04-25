@@ -3,6 +3,7 @@ struct VSOutput
     float4 pos : SV_POSITION;
     float2 uv : TEXCOORD;
     float4 color : COLOR;
+    float4 projPos : TEXCOORD1; // ★追加：ソフトパーティクル用
 };
 
 cbuffer CameraData : register(b0)
@@ -24,7 +25,8 @@ SamplerState smp : register(s0);
 float4 main(VSOutput input) : SV_TARGET
 {
     // ソフトパーティクルの計算
-    float linearParticleDepth = input.pos.w;
+    // SV_POSITIONのwは 1/w_clip なので、逆数をとると線形深度になる
+    float linearParticleDepth = 1.0f / input.pos.w;
     float bgDepthZ = depthTex.Load(int3(input.pos.xy, 0));
     float m22 = projection._m22;
     float m32 = projection._m32;

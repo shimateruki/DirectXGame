@@ -147,7 +147,12 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> particleBuffer_;
     uint32_t uavIndex_ = 0;
+    uint32_t freeListIndexUav_ = 0;
+    uint32_t freeListUav_ = 0;
     uint32_t srvIndex_ = 0;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> freeListIndexBuffer_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> freeListBuffer_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> configBuffer_;
     CSConfig* configData_ = nullptr;
@@ -160,7 +165,9 @@ private:
     uint32_t dummyBoneSrvIndex_ = 0;
 
     Microsoft::WRL::ComPtr<ID3D12RootSignature> computeRootSignature_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateInit_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateUpdate_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineStateEmit_;
 
     Microsoft::WRL::ComPtr<ID3D12RootSignature> graphicsRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAdd_;
@@ -168,7 +175,7 @@ private:
 
     std::vector<EmitRequest> emitRequests_;
     CSConfig lastConfig_ = {};
-    uint32_t currentParticleIndex_ = 0;
+    bool isInitialized_ = false;
 
     float totalTime_ = 0.0f;
     float frameDeltaTime_ = 0.0f;

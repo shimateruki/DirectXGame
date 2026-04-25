@@ -43,7 +43,23 @@ void GPUParticleSystem::CreateBuffer() {
     );
     assert(SUCCEEDED(hr));
 
+    resDesc.Width = sizeof(int32_t);
+    hr = device->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&freeListIndexBuffer_)
+    );
+    assert(SUCCEEDED(hr));
+
+    resDesc.Width = sizeof(uint32_t) * kMaxParticles;
+    hr = device->CreateCommittedResource(
+        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&freeListBuffer_)
+    );
+    assert(SUCCEEDED(hr));
+
     uavIndex_ = SRVManager::GetInstance()->Allocate();
+    freeListIndexUav_ = SRVManager::GetInstance()->Allocate();
+    freeListUav_ = SRVManager::GetInstance()->Allocate();
     srvIndex_ = SRVManager::GetInstance()->Allocate();
 
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -53,6 +69,14 @@ void GPUParticleSystem::CreateBuffer() {
     uavDesc.Buffer.StructureByteStride = sizeof(Particle);
     device->CreateUnorderedAccessView(particleBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(uavIndex_));
 
+    uavDesc.Buffer.NumElements = 1;
+    uavDesc.Buffer.StructureByteStride = sizeof(int32_t);
+    device->CreateUnorderedAccessView(freeListIndexBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(freeListIndexUav_));
+
+    uavDesc.Buffer.NumElements = kMaxParticles;
+    uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
+    device->CreateUnorderedAccessView(freeListBuffer_.Get(), nullptr, &uavDesc, SRVManager::GetInstance()->GetCPUDescriptorHandle(freeListUav_));
+
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = DXGI_FORMAT_UNKNOWN;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -61,7 +85,7 @@ void GPUParticleSystem::CreateBuffer() {
     srvDesc.Buffer.StructureByteStride = sizeof(Particle);
     SRVManager::GetInstance()->CreateSRVforResource(srvIndex_, particleBuffer_.Get(), srvDesc);
 
-    configBuffer_ = dxCommon_->CreateBufferResource(sizeof(CSConfig) * kMaxEmitRequests);
+    configBuffer_ = dxCommon_->CreateBufferResource(sizeof(CSConfig) * (kMaxEmitRequests + 1));
     configBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&configData_));
     configData_->deltaTime = 0.0f;
     configData_->time = 0.0f;
@@ -100,7 +124,7 @@ void GPUParticleSystem::CreateBuffer() {
 void GPUParticleSystem::CreateComputePipeline() {
     auto device = dxCommon_->GetDevice();
     RootSignatureBuilder rsBuilder;
-    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
+    rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 0, 3, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddCBV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSRV(0, 0, D3D12_SHADER_VISIBILITY_ALL);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
@@ -108,17 +132,33 @@ void GPUParticleSystem::CreateComputePipeline() {
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_ALL, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
     rsBuilder.Build(device, computeRootSignature_.GetAddressOf());
 
-    Microsoft::WRL::ComPtr<ID3DBlob> csBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> csBlobInit;
+    Microsoft::WRL::ComPtr<ID3DBlob> csBlobUpdate;
+    Microsoft::WRL::ComPtr<ID3DBlob> csBlobEmit;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
-    HRESULT hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "cs_5_0", 0, 0, &csBlob, &errorBlob);
-    if (FAILED(hr)) {
-        OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-        assert(false);
-    }
+
+    HRESULT hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "InitCS", "cs_5_0", 0, 0, &csBlobInit, &errorBlob);
+    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
+
+    hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "UpdateCS", "cs_5_0", 0, 0, &csBlobUpdate, &errorBlob);
+    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
+
+    hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "EmitCS", "cs_5_0", 0, 0, &csBlobEmit, &errorBlob);
+    if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
+
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = computeRootSignature_.Get();
-    psoDesc.CS = { csBlob->GetBufferPointer(), csBlob->GetBufferSize() };
-    hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineState_));
+
+    psoDesc.CS = { csBlobInit->GetBufferPointer(), csBlobInit->GetBufferSize() };
+    hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateInit_));
+    assert(SUCCEEDED(hr));
+
+    psoDesc.CS = { csBlobUpdate->GetBufferPointer(), csBlobUpdate->GetBufferSize() };
+    hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateUpdate_));
+    assert(SUCCEEDED(hr));
+
+    psoDesc.CS = { csBlobEmit->GetBufferPointer(), csBlobEmit->GetBufferSize() };
+    hr = device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&computePipelineStateEmit_));
     assert(SUCCEEDED(hr));
 }
 
@@ -162,60 +202,98 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
 
     // --- Compute Shader ---
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
-    commandList->SetPipelineState(computePipelineState_.Get());
     commandList->SetComputeRootSignature(computeRootSignature_.Get());
     SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 0, uavIndex_);
+
+    if (!isInitialized_) {
+        commandList->SetPipelineState(computePipelineStateInit_.Get());
+        UINT groupCountInit = (kMaxParticles + 1023) / 1024;
+        commandList->Dispatch(groupCountInit, 1, 1);
+        
+        D3D12_RESOURCE_BARRIER barriers[3] = {};
+        barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[0].UAV.pResource = particleBuffer_.Get();
+        barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[1].UAV.pResource = freeListIndexBuffer_.Get();
+        barriers[2].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[2].UAV.pResource = freeListBuffer_.Get();
+        commandList->ResourceBarrier(3, barriers);
+
+        isInitialized_ = true;
+    }
 
     static Math math;
     Matrix4x4 vp = math.Multiply(viewMatrix, projectionMatrix);
 
-    if (emitRequests_.empty()) {
-        EmitRequest dummy = {};
-        dummy.config = lastConfig_;
-        dummy.config.emitCount = 0;
-        dummy.vb = dummyVertexBuffer_.Get();
-        dummy.vCount = 1;
-        dummy.vStride = sizeof(Vector3);
-        dummy.boneSrv = dummyBoneSrvIndex_;
-        emitRequests_.push_back(dummy);
+    // 1. Update Pass
+    commandList->SetPipelineState(computePipelineStateUpdate_.Get());
+    
+    CSConfig updateConfig = lastConfig_;
+    updateConfig.deltaTime = frameDeltaTime_;
+    updateConfig.time = totalTime_;
+    updateConfig.viewProj = vp;
+    updateConfig.inverseViewProj = math.Inverse(vp);
+    updateConfig.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+    
+    configData_[0] = updateConfig;
+    D3D12_GPU_VIRTUAL_ADDRESS updateCbvAddress = configBuffer_->GetGPUVirtualAddress();
+    commandList->SetComputeRootConstantBufferView(1, updateCbvAddress);
+    
+    // Bind dummy buffers for Update Pass (just to fill the slots)
+    commandList->SetComputeRootShaderResourceView(2, dummyVertexBuffer_->GetGPUVirtualAddress());
+    SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, dummyBoneSrvIndex_);
+    if (depthSrvHandle > 0) {
+        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
     }
-    else {
+    
+    UINT groupCountUpdate = (kMaxParticles + 1023) / 1024;
+    commandList->Dispatch(groupCountUpdate, 1, 1);
+    
+    D3D12_RESOURCE_BARRIER updateBarriers[3] = {};
+    updateBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[0].UAV.pResource = particleBuffer_.Get();
+    updateBarriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[1].UAV.pResource = freeListIndexBuffer_.Get();
+    updateBarriers[2].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[2].UAV.pResource = freeListBuffer_.Get();
+    commandList->ResourceBarrier(3, updateBarriers);
+
+    // 2. Emit Pass
+    if (!emitRequests_.empty()) {
+        commandList->SetPipelineState(computePipelineStateEmit_.Get());
+
+        for (size_t i = 0; i < emitRequests_.size(); ++i) {
+            auto& req = emitRequests_[i];
+            req.config.viewProj = vp;
+            req.config.inverseViewProj = math.Inverse(vp);
+            req.config.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
+            req.config.deltaTime = 0.0f; // Emit pass does not progress physics
+            req.config.time = totalTime_;
+            req.config.meshVertexCount = req.vb ? req.vCount : 1;
+            req.config.meshVertexStride = req.vb ? req.vStride : sizeof(Vector3);
+
+            // Start storing configs at index 1 since index 0 is used by Update Pass
+            configData_[i + 1] = req.config;
+            D3D12_GPU_VIRTUAL_ADDRESS cbvAddress = configBuffer_->GetGPUVirtualAddress() + ((i + 1) * sizeof(CSConfig));
+            commandList->SetComputeRootConstantBufferView(1, cbvAddress);
+
+            ID3D12Resource* targetVB = req.vb ? req.vb : dummyVertexBuffer_.Get();
+            commandList->SetComputeRootShaderResourceView(2, targetVB->GetGPUVirtualAddress());
+
+            uint32_t boneSrv = (req.boneSrv > 0) ? req.boneSrv : dummyBoneSrvIndex_;
+            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, boneSrv);
+
+            if (depthSrvHandle > 0) {
+                SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+            }
+
+            UINT groupCountEmit = (req.config.emitCount + 255) / 256;
+            commandList->Dispatch(groupCountEmit, 1, 1);
+
+            commandList->ResourceBarrier(3, updateBarriers); // Use the same 3 barriers
+        }
+        
         lastConfig_ = emitRequests_.back().config;
-    }
-
-    for (size_t i = 0; i < emitRequests_.size(); ++i) {
-        auto& req = emitRequests_[i];
-        req.config.viewProj = vp;
-        req.config.inverseViewProj = math.Inverse(vp);
-        req.config.screenSize = { (float)WinApp::kClientWidth, (float)WinApp::kClientHeight };
-        req.config.deltaTime = (i == 0) ? frameDeltaTime_ : 0.0f;
-        req.config.time = totalTime_;
-        req.config.meshVertexCount = req.vb ? req.vCount : 1;
-        req.config.meshVertexStride = req.vb ? req.vStride : sizeof(Vector3);
-
-        configData_[i] = req.config;
-        D3D12_GPU_VIRTUAL_ADDRESS cbvAddress = configBuffer_->GetGPUVirtualAddress() + (i * sizeof(CSConfig));
-        commandList->SetComputeRootConstantBufferView(1, cbvAddress);
-
-        ID3D12Resource* targetVB = req.vb ? req.vb : dummyVertexBuffer_.Get();
-        commandList->SetComputeRootShaderResourceView(2, targetVB->GetGPUVirtualAddress());
-
-        uint32_t boneSrv = (req.boneSrv > 0) ? req.boneSrv : dummyBoneSrvIndex_;
-        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, boneSrv);
-
-        if (depthSrvHandle > 0) {
-            SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
-        }
-
-        UINT groupCountX = (kMaxParticles + 255) / 256;
-        commandList->Dispatch(groupCountX, 1, 1);
-
-        if (i < emitRequests_.size() - 1) {
-            D3D12_RESOURCE_BARRIER uavBarrier{};
-            uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            uavBarrier.UAV.pResource = particleBuffer_.Get();
-            commandList->ResourceBarrier(1, &uavBarrier);
-        }
     }
 
     emitRequests_.clear();
@@ -287,7 +365,6 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     if (emitRequests_.size() >= kMaxEmitRequests) return;
 
     CSConfig reqConfig = {};
-    reqConfig.startIndex = currentParticleIndex_;
     reqConfig.emitPos = config.emitPos;
     reqConfig.emitArea = config.emitArea;
     reqConfig.emitVelocity = config.emitVelocity;
@@ -326,11 +403,8 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
 
     emitRequests_.push_back(request);
 
-    SetCurrentTexture(config.texturePath);
     blendModeIndex_ = config.blendModeIndex;
     softParticleFade_ = config.softParticleFade;
-
-    currentParticleIndex_ = (currentParticleIndex_ + config.emitCount) % kMaxParticles;
 }
 
 void GPUParticleSystem::SetCurrentTexture(const std::string& path) {
