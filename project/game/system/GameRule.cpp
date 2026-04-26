@@ -5,6 +5,8 @@
 #include "Event.h" 
 #include "Player.h"
 #include "GamePlayScene.h"
+#include "GameDataManager.h"
+#include "SceneManager.h"
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
@@ -48,6 +50,40 @@ void GameRule::Initialize(BaseScene* scene) {
             }
             break;
 
+        case EventType::Checkpoint:
+        {
+            if (Player* player = dynamic_cast<Player*>(whoHit)) {
+                // 中間地点の座標をリスポーン地点として記憶
+                player->SetRespawnPosition(objectHit->GetWorldPosition());
+                DebugConsole::GetInstance()->AddLog("Checkpoint! Respawn point updated.");
+            }
+        }
+        break;
+
+        case EventType::Goal:
+        {
+            if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
+                gps->SetIsGoal(true);
+                DebugConsole::GetInstance()->AddLog("GOAL! Stage Cleared. Press Space to Select.");
+            }
+        }
+        break;
+
+        case EventType::StarCoin:
+        {
+            if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
+                // TargetID をコインの番号 (0, 1, 2) として扱う
+                int coinIdx = objectHit->GetTargetID();
+                gps->CollectStarCoin(coinIdx);
+
+                // 演出を開始して消す (Object3d側で上昇回転する)
+                objectHit->StartCollectionAnimation();
+
+                DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIdx) + " Collected!");
+            }
+        }
+        break;
+
         case EventType::None:
         default:
             int tID = objectHit->GetTargetID();
@@ -68,6 +104,24 @@ void GameRule::Initialize(BaseScene* scene) {
         // 汎用関数 ApplyDamage を呼ぶだけ！
         ApplyDamage(event.target, event.damageAmount);
         });
+
+    // ========================================================
+    // ★ プレイヤー死亡時の処理
+    // ========================================================
+    EventManager::GetInstance()->Subscribe([this](const PlayerDeathEvent& event) {
+        GameDataManager::GetInstance()->SubtractLife();
+        int lives = GameDataManager::GetInstance()->GetLives();
+
+        DebugConsole::GetInstance()->AddLog("Player Died! Remaining Lives: " + std::to_string(lives));
+
+        if (lives <= 0) {
+            // 残機ゼロならゲームオーバー
+            SceneManager::GetInstance()->ChangeScene("GAMEOVER");
+        } else {
+            // 残機があるならステージをリロードして再開
+            SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+        }
+    });
 }
 
 // ▼ 汎用ダメージ関数 

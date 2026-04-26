@@ -44,6 +44,7 @@ public:
     // --- 物理・姿勢 ---
     Vector3 GetVelocity() const { return velocity_; }
     void SetVelocity(const Vector3& v) { velocity_ = v; }
+    void SetRespawnPosition(const Vector3& pos) { respawnPosition_ = pos; }
 
     Vector3 GetRotation() const { return transform_.rotate; }
 
@@ -139,4 +140,8 @@ private:
     bool isDashInvincible_ = false;
     float deathTimer_ = 0.0f;    // 死亡してからの経過時間
     void UpdateColor();
+
+    // 落下復帰用
+    Vector3 respawnPosition_ = { 0, 0, 0 };
+    bool isFirstUpdate_ = true;
 };

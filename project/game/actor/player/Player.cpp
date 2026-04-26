@@ -8,6 +8,8 @@
 #include "IMoveStrategy.h"
 #include "PlayerState.h"
 #include "PostEffect.h"
+#include "GameDataManager.h"
+#include "SceneManager.h"
 #include <DebugConsole.h>
 #include <algorithm>
 
@@ -37,6 +39,12 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
 void Player::Update(float deltaTime)
 {
+    // 初回更新時に初期位置を記録
+    if (isFirstUpdate_) {
+        respawnPosition_ = transform_.translate;
+        isFirstUpdate_ = false;
+    }
+
     // 時間が進んでいる（ポーズ中ではない）時だけ、操作や状態を更新
     if (deltaTime > 0.0f)
     {
@@ -73,11 +81,36 @@ void Player::Update(float deltaTime)
             ChangeState(std::make_unique<PlayerStateDead>());
             DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡状態へ移行");
 
+            // 死亡イベントを発行
+            PlayerDeathEvent deathEvent;
+            deathEvent.player = this;
+            EventManager::GetInstance()->Dispatch(deathEvent);
+        }
 
+        // 5. 落下判定
+        if (transform_.translate.y < -40.0f) {
+            // 残機を減らす
+            GameDataManager::GetInstance()->SubtractLife();
+
+            if (GameDataManager::GetInstance()->GetLives() <= 0) {
+                // 残機なし：ゲームオーバーシーンへ
+                SceneManager::GetInstance()->ChangeScene("GAMEOVER");
+            }
+            else {
+                // 残機あり：初期地点にワープして復帰
+                transform_.translate = respawnPosition_;
+                velocity_ = { 0, 0, 0 };
+
+                // 復帰後の無敵時間を付与
+                damageCooldownTimer_ = 1.0f;
+                SetDamageInvincible(true);
+
+                DebugConsole::GetInstance()->AddLog("Fell out of bounds! Life subtracted and teleported to start.");
+            }
         }
     }
 
-    // 5. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
+    // 6. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
     Character::Update(deltaTime);
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)

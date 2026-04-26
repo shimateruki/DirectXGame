@@ -48,6 +48,7 @@
 #include <SrvManager.h>
 #include <PostEffect.h>
 #include "StageManager.h"
+#include "GameDataManager.h"
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -153,6 +154,26 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::Update(float deltaTime) {
+	// ゴール時の処理
+	if (isGoal_) {
+		// クリア状況を保存
+		int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
+		GameDataManager::GetInstance()->MarkStageCleared(currentStage);
+
+		// スターコインの保存
+		for (int i = 0; i < 3; i++) {
+			if (sessionStarCoins_[i]) {
+				GameDataManager::GetInstance()->MarkStarCoinCollected(currentStage, i);
+			}
+		}
+
+		deltaTime = 0.0f; // 時を止める
+
+		if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
+			SceneManager::GetInstance()->ChangeScene("SELECT");
+			return;
+		}
+	}
 
 	// --- ポストエフェクト更新 ---
 	PostEffect::GetInstance()->Update(deltaTime);
@@ -502,6 +523,29 @@ void GamePlayScene::DrawImGui() {
         }
     }
 
+    if (ImGui::CollapsingHeader(ICON_FA_TROPHY " Stage Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+        int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
+        bool isCleared = GameDataManager::GetInstance()->IsStageCleared(currentStage);
+
+        ImGui::Text("Stage ID: %d", currentStage);
+        ImGui::SameLine();
+        if (isCleared) ImGui::TextColored(ImVec4(0, 1, 0, 1), "[ CLEARED ]");
+        else ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "[ NOT CLEARED ]");
+
+        ImGui::Separator();
+        ImGui::Text("Star Coins (Session):");
+        for (int i = 0; i < 3; i++) {
+            ImGui::SameLine();
+            if (sessionStarCoins_[i]) {
+                ImGui::TextColored(ImVec4(1, 0.9f, 0, 1), ICON_FA_STAR);
+            }
+            else {
+                ImGui::TextDisabled(ICON_FA_STAR);
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Star Coin %d", i);
+        }
+    }
+
     if (ImGui::CollapsingHeader(ICON_FA_USER " Player Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (player_) {
             Vector3 pos = player_->GetTranslate();
@@ -510,6 +554,13 @@ void GamePlayScene::DrawImGui() {
             float hp = player_->GetHp();
             float maxHp = player_->GetMaxHp();
             ImGui::ProgressBar(hp / maxHp, ImVec2(-1, 0), "HP");
+
+            ImGui::Separator();
+            int lives = GameDataManager::GetInstance()->GetLives();
+            ImGui::Text(ICON_FA_HEART " Remaining Lives: %d", lives);
+            if (ImGui::Button("Reset Lives to 3")) {
+                GameDataManager::GetInstance()->ResetLives();
+            }
         }
         else {
             ImGui::TextDisabled("Player not found");

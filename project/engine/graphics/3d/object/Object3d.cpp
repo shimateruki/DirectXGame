@@ -45,6 +45,10 @@ void Object3d::Initialize(Object3dCommon* common) {
 
     // レコーダー
     InitializeRecorder(nullptr);
+
+    isCollecting_ = false;
+    collectTimer_ = 0.0f;
+    isDead = false;
 }
 
 // ========================================================================
@@ -52,6 +56,17 @@ void Object3d::Initialize(Object3dCommon* common) {
 // ========================================================================
 
 void Object3d::Update(float deltaTime) {
+    // 収集アニメーション
+    if (isCollecting_) {
+        collectTimer_ += deltaTime;
+        transform_.translate.y += 10.0f * deltaTime; // 上昇
+        transform_.rotate.y += 15.0f * deltaTime;    // 回転
+        if (collectTimer_ >= 0.5f) {
+            isCollecting_ = false;
+            isVisible_ = false;
+            isDead = true; // 完全に消去
+        }
+    }
 
     if (meshRenderer_ && meshRenderer_->GetModel()) {
         // アニメーション更新

@@ -24,9 +24,18 @@ struct DamageEvent {
     Object3d* attacker = nullptr; // 攻撃した人（今回はプレイヤーの剣）
     float damageAmount = 0.0f;    // ダメージ量
 };
+
+struct PlayerDeathEvent {
+    class Player* player;
+};
+
 enum class EventType {
-    None = 0,       // 何もなし
-    Damage,         // 触れるとダメージ
-    Warp,
-	Movie_Bridge,   // 映像イベント（橋が落ちる）
+    None = 0,       // なし
+    Damage,         // ダメージ
+    Warp,           // ワープ
+    Movie_Bridge,   // 映像演出
+    Checkpoint,     // 中間地点
+    Goal,           // ゴール
+    StageSelect,    // ステージセレクト
+    StarCoin,       // スターコイン
 };

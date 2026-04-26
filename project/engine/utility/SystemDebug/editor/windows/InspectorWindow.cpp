@@ -503,7 +503,7 @@ void InspectorWindow::Draw() {
         if (ImGui::CollapsingHeader(ICON_FA_GAMEPAD " ゲームデータ (Stats)", ImGuiTreeNodeFlags_DefaultOpen)) {
             EventType currentType = selectedObject->GetEventType();
             int currentItemIndex = static_cast<int>(currentType);
-            const char* eventNames[] = { "なし", "ダメージ", "ワープ","中間ポイント","ゴール","ステージセレクト" };
+            const char* eventNames[] = { "なし", "ダメージ", "ワープ", "映像演出 (橋落ち)", "中間地点 (Checkpoint)", "ゴール", "ステージセレクト", "スターコイン (StarCoin)" };
             if (ImGui::Combo(ICON_FA_FLAG " イベント種類", &currentItemIndex, eventNames, IM_ARRAYSIZE(eventNames))) {
                 selectedObject->SetEventType(static_cast<EventType>(currentItemIndex));
             }

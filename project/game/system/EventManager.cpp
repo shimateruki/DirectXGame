@@ -42,8 +42,19 @@ void EventManager::Dispatch(const DamageEvent& event) {
     }
 }
 
+void EventManager::Subscribe(std::function<void(const PlayerDeathEvent&)> callback) {
+    playerDeathListeners_.push_back(callback);
+}
+
+void EventManager::Dispatch(const PlayerDeathEvent& event) {
+    for (auto& listener : playerDeathListeners_) {
+        listener(event);
+    }
+}
+
 void EventManager::ClearAllListeners() {
     playerHitListeners_.clear();
     bulletHitListeners_.clear();
     damageListeners_.clear();
+    playerDeathListeners_.clear();
 }

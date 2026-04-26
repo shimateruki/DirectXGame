@@ -19,6 +19,7 @@
 #include "StageManager.h"
 #include <IconsFontAwesome5.h>
 #include <MeshEffectManager.h>
+#include "GameDataManager.h"
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -26,6 +27,7 @@ void Game::Initialize() {
     TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
     ModelManager::GetInstance()->LoadAllModels();
     StageManager::GetInstance()->Initialize();
+    GameDataManager::GetInstance()->Initialize();
     sceneFactory_ = std::make_unique<SceneFactory>();
     //  SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();

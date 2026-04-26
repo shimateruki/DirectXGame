@@ -161,6 +161,9 @@ public:
     void SetParticleName(const std::string& name) { particleName_ = name; }
     const std::string& GetParticleName() const { return particleName_; }
 
+    void StartCollectionAnimation() { isCollecting_ = true; collectTimer_ = 0.0f; }
+    bool IsCollecting() const { return isCollecting_; }
+
     json ExportToJson();
     void ImportFromJson(const json& j);
 
@@ -235,4 +238,6 @@ protected:
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;
+    bool isCollecting_ = false;
+    float collectTimer_ = 0.0f;
 };

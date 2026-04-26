@@ -75,6 +75,17 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
+    // ゴール判定
+    void SetIsGoal(bool isGoal) { isGoal_ = isGoal; }
+    bool IsGoal() const { return isGoal_; }
+
+    // スターコイン
+    void CollectStarCoin(int coinIndex) {
+        if (coinIndex >= 0 && coinIndex < 3) {
+            sessionStarCoins_[coinIndex] = true;
+        }
+    }
+
 
 
 
@@ -134,4 +145,7 @@ private:
 
     // ★課題用アニメーションモデル
     std::unique_ptr<Object3d> animatedCube_;
+
+    bool isGoal_ = false;
+    bool sessionStarCoins_[3] = { false, false, false };
 };
