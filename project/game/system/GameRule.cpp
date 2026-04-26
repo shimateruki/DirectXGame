@@ -7,6 +7,7 @@
 #include "GamePlayScene.h"
 #include "GameDataManager.h"
 #include "SceneManager.h"
+#include <PlayerState.h>
 
 void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
@@ -91,6 +92,29 @@ void GameRule::Initialize(BaseScene* scene) {
                 scene_->TriggerEvent(tID);
             }
             break;
+        }
+
+        // ========================================================
+        // 🚨 ギミック個別の特殊処理 (Trampoline など)
+        // ========================================================
+        std::string gimmickType = objectHit->GetGimmickType();
+        if (gimmickType == "Trampoline") {
+            if (Player* player = dynamic_cast<Player*>(whoHit)) {
+                // 上から踏んだ（地面からの押し返しが上方向）場合に発動
+                if (event.normal.y > 0.5f) {
+                    float jumpPower = 20.0f; // デフォルト値
+                    if (objectHit->param_.has_value()) {
+                        jumpPower = objectHit->param_->jumpPower;
+                    }
+
+                    Vector3 vel = player->GetVelocity();
+                    vel.y = jumpPower;
+                    player->SetVelocity(vel);
+                    player->ChangeState(std::make_unique<PlayerStateJump>());
+
+                    DebugConsole::GetInstance()->AddLog("Trampoline Jump!");
+                }
+            }
         }
 
         });
