@@ -1,4 +1,110 @@
 {
+    "move": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 1,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 2
+        },
+        "collisionAttribute": 4,
+        "collisionMask": 4294967295,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "MovingFloor",
+        "isLocked": false,
+        "isVisible": true,
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "metallic": 0.0,
+        "modelName": "block",
+        "myEventID": -1,
+        "name": "Gimmick_MovingFloor",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "enemyType": "Goblin",
+            "gimmickType": "MovingFloor",
+            "gravity": 50.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "jumpPower": 100.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "speed": 1.0
+        },
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            -0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "targetID": -1,
+        "texturePath": "",
+        "translate": [
+            -21.00454330444336,
+            0.0,
+            5.417048454284668
+        ],
+        "type": "Gimmick"
+    },
     "player": {
         "animation": {
             "animName": "",

@@ -45,3 +45,17 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
     // JSONデータをオブジェクトに流し込む
     obj->ImportFromJson(presets_[presetName]);
 }
+
+void PresetManager::RemovePreset(const std::string& presetName) {
+    if (presets_.erase(presetName)) {
+        SavePresets();
+    }
+}
+
+void PresetManager::RenamePreset(const std::string& oldName, const std::string& newName) {
+    if (presets_.find(oldName) != presets_.end() && !newName.empty()) {
+        presets_[newName] = presets_[oldName];
+        presets_.erase(oldName);
+        SavePresets();
+    }
+}

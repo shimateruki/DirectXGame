@@ -17,6 +17,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#include <PresetManager.h>
 static const float PI = (float)M_PI;
 static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
 static float ToDegrees(float radians) { return radians * (180.0f / PI); }
@@ -125,6 +126,13 @@ void InspectorWindow::Draw() {
                     ModelManager::GetInstance()->LoadModel(modelName);
                     selectedObject->SetModel(modelName);
                     DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
+                }
+                
+                // ★ プリセットのドロップにも対応！
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+                    const char* presetName = (const char*)payload->Data;
+                    PresetManager::GetInstance()->ApplyPresetToObject(presetName, selectedObject);
+                    DebugConsole::GetInstance()->AddLog("Applied preset: " + std::string(presetName));
                 }
                 ImGui::EndDragDropTarget();
             }

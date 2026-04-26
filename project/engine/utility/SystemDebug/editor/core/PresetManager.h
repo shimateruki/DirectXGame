@@ -22,6 +22,12 @@ public:
     // 指定したオブジェクトに、プリセットの設定を適用する
     void ApplyPresetToObject(const std::string& presetName, Object3d* obj);
 
+    // プリセットの削除
+    void RemovePreset(const std::string& presetName);
+
+    // プリセットの名前変更
+    void RenamePreset(const std::string& oldName, const std::string& newName);
+
     // プリセット名の一覧を取得（ImGui用）
     const std::map<std::string, json>& GetPresets() const { return presets_; }
 

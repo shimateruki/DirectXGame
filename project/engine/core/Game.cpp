@@ -289,6 +289,18 @@ void Game::Update() {
                     }
                 }
 
+                // [C] プリセットが落ちてきた場合
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+                    const char* droppedPresetName = (const char*)payload->Data;
+
+                    if (debugEditor_) {
+                        ImVec2 mPos = ImGui::GetIO().MousePos;
+                        debugEditor_->SetGameViewMousePos({ mPos.x - imageScreenPos.x, mPos.y - imageScreenPos.y });
+
+                        debugEditor_->InstantiatePresetAtCursor(droppedPresetName);
+                    }
+                }
+
                 ImGui::EndDragDropTarget();
             }
             // =======================================================

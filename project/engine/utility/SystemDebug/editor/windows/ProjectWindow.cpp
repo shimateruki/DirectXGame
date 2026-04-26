@@ -13,7 +13,9 @@
 #include "WinApp.h"
 #include "CameraManager.h"
 #include "Object3dCommon.h"
+#include "IconsFontAwesome5.h"
 #include <filesystem>
+
 
 namespace fs = std::filesystem;
 
@@ -67,6 +69,54 @@ void ProjectWindow::CreateThumbnailResource(const std::string& modelName) {
     device->CreateRenderTargetView(data.resource.Get(), &rtvDesc, data.rtvHeap->GetCPUDescriptorHandleForHeapStart());
 
     // 3. SRV（ImGuiに表示するための画像ハンドル）
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = resDesc.Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Texture2D.MipLevels = 1;
+    data.srvHandle = SRVManager::GetInstance()->CreateSRV(data.resource.Get(), srvDesc);
+
+    data.isCaptured = false;
+}
+
+void ProjectWindow::CreatePresetThumbnailResource(const std::string& presetName) {
+    if (!dxCommon_) return;
+    auto device = dxCommon_->GetDevice();
+    ThumbnailData& data = presetThumbnailAlbum_[presetName];
+
+    // 画用紙（テクスチャ）の作成
+    D3D12_RESOURCE_DESC resDesc{};
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resDesc.Width = kThumbnailSize;
+    resDesc.Height = kThumbnailSize;
+    resDesc.DepthOrArraySize = 1;
+    resDesc.MipLevels = 1;
+    resDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    resDesc.SampleDesc.Count = 1;
+    resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    D3D12_HEAP_PROPERTIES heapProps{};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    D3D12_CLEAR_VALUE clearValue{};
+    clearValue.Format = resDesc.Format;
+    clearValue.Color[0] = 0.2f; clearValue.Color[1] = 0.2f; clearValue.Color[2] = 0.25f; clearValue.Color[3] = 1.0f; // プリセット用は少し色を変える
+
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &clearValue, IID_PPV_ARGS(&data.resource));
+
+    // RTV
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtvHeapDesc.NumDescriptors = 1;
+    device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&data.rtvHeap));
+
+    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
+    rtvDesc.Format = resDesc.Format;
+    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    device->CreateRenderTargetView(data.resource.Get(), &rtvDesc, data.rtvHeap->GetCPUDescriptorHandleForHeapStart());
+
+    // SRV
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = resDesc.Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -139,13 +189,15 @@ void ProjectWindow::CapturePendingThumbnails() {
     originalScissor.top = 0;
     originalScissor.bottom = WinApp::kClientHeight;
 
-    Camera studioCamera;
-    studioCamera.Initialize();           // 初期値: eye(0,5,-20) -> target(0,0,0)
-    studioCamera.SetInputEnabled(false); // エラー回避のため入力を無視
-    studioCamera.Update();               // 行列を計算
+    if (!isStudioCameraInitialized_) {
+        studioCamera_.Initialize();
+        studioCamera_.SetInputEnabled(false);
+        isStudioCameraInitialized_ = true;
+    }
+    studioCamera_.Update(); // 行列を計算
 
     // メインカメラから、このスタジオ用カメラにすり替える！
-    CameraManager::GetInstance()->SetActiveCamera(&studioCamera);
+    CameraManager::GetInstance()->SetActiveCamera(&studioCamera_);
     // =================================================================
 
     for (auto& pair : thumbnailAlbum_) {
@@ -232,6 +284,78 @@ void ProjectWindow::CapturePendingThumbnails() {
         targetObj->UpdateWorldMatrix();
 
         targetObj->Draw(nullptr, nullptr);
+
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        commandList->ResourceBarrier(1, &barrier);
+
+        data.isCaptured = true;
+    }
+
+    // --- プリセットの撮影ループ ---
+    for (auto& pair : presetThumbnailAlbum_) {
+        std::string presetName = pair.first;
+        ThumbnailData& data = pair.second;
+        if (data.isCaptured) continue;
+
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = data.resource.Get();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        commandList->ResourceBarrier(1, &barrier);
+
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = data.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = s_studioDsvHeap->GetCPUDescriptorHandleForHeapStart();
+        commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+
+        const float clearColor[] = { 0.2f, 0.2f, 0.25f, 1.0f };
+        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+        commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+        D3D12_VIEWPORT viewport = { 0, 0, (float)kThumbnailSize, (float)kThumbnailSize, 0.0f, 1.0f };
+        commandList->RSSetViewports(1, &viewport);
+        D3D12_RECT scissor = { 0, 0, kThumbnailSize, kThumbnailSize };
+        commandList->RSSetScissorRects(1, &scissor);
+
+        objCommon->SetGraphicsCommand();
+        objCommon->SetPipelineState(BlendMode::kNormal);
+
+        if (!data.previewObject) {
+            data.previewObject = std::make_shared<Object3d>();
+            data.previewObject->Initialize(objCommon);
+            data.previewObject->SetIsUIPreview(true);
+        }
+
+        // プリセットの設定を適用！
+        PresetManager::GetInstance()->ApplyPresetToObject(presetName, data.previewObject.get());
+
+        // プレビュー用に姿勢を微調整（くるくる回す）
+        static float rotationY = 0.0f;
+        rotationY += 0.02f;
+        data.previewObject->GetTransform()->rotate.y = rotationY;
+        data.previewObject->GetTransform()->rotate.x = -0.2f;
+
+        // モデルの自動フィット計算 (モデルが設定されている場合のみ)
+        if (!data.previewObject->GetModelName().empty()) {
+            Model* model = ModelManager::GetInstance()->LoadModel(data.previewObject->GetModelName());
+            if (model) {
+                Vector3 modelSize = model->GetSize();
+                Vector3 modelCenter = model->GetCenter();
+                float maxDim = (std::max)({ modelSize.x, modelSize.y, modelSize.z });
+                if (maxDim > 0.001f) {
+                    float autoScale = 8.0f / maxDim;
+                    data.previewObject->GetTransform()->scale = { autoScale, autoScale, autoScale };
+                    data.previewObject->GetTransform()->translate.x = -modelCenter.x * autoScale;
+                    data.previewObject->GetTransform()->translate.y = -modelCenter.y * autoScale + 1.1f;
+                    data.previewObject->GetTransform()->translate.z = -modelCenter.z * autoScale;
+                }
+            }
+        }
+
+        data.previewObject->UpdateLocalMatrix();
+        data.previewObject->UpdateWorldMatrix();
+        data.previewObject->Draw(nullptr, nullptr);
 
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -352,24 +476,24 @@ void ProjectWindow::Draw() {
     // =================================================================================
     if (ImGui::CollapsingHeader("Presets (Configured)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "▼ Create New Preset");
+        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_PLUS_SQUARE " Create New Preset");
+        ImGui::TextDisabled(" (Use '/' in name for folders, e.g. 'Enemy/Slime')");
 
         if (editor_->GetSelectedObject()) {
             static char presetNameBuf[64] = "NewPreset";
-            ImGui::PushItemWidth(150);
+            ImGui::PushItemWidth(200);
             ImGui::InputText("##PresetName", presetNameBuf, 64);
             ImGui::PopItemWidth();
 
             ImGui::SameLine();
 
-            if (ImGui::Button("Save Selection")) {
+            if (ImGui::Button(ICON_FA_SAVE " Save Selection")) {
                 if (strlen(presetNameBuf) > 0) {
-                    PresetManager::GetInstance()->AddPresetFromObject(presetNameBuf, editor_->GetSelectedObject());
-                    DebugConsole::GetInstance()->AddLog("Saved Preset: " + std::string(presetNameBuf));
+                    std::string pName = presetNameBuf;
+                    PresetManager::GetInstance()->AddPresetFromObject(pName, editor_->GetSelectedObject());
+                    if (presetThumbnailAlbum_.count(pName)) presetThumbnailAlbum_[pName].isCaptured = false;
+                    DebugConsole::GetInstance()->AddLog("Saved Preset: " + pName);
                 }
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Save the currently selected object's settings as a new preset.");
             }
         }
         else {
@@ -385,34 +509,115 @@ void ProjectWindow::Draw() {
             ImGui::TextDisabled("(No Presets Saved)");
         }
         else {
-            // プリセット一覧も Table でレスポンシブに綺麗に並べるように改良
-            float buttonWidth = 100.0f;
-            float padding = ImGui::GetStyle().ItemSpacing.x;
-            float panelWidth = ImGui::GetContentRegionAvail().x;
-            int presetCols = std::max(1, (int)(panelWidth / (buttonWidth + padding)));
+            // プリセットをフォルダ（スラッシュ区切り）で分類
+            std::map<std::string, std::vector<std::string>> folders;
+            std::vector<std::string> rootPresets;
 
-            if (ImGui::BeginTable("PresetTable", presetCols)) {
-                for (const auto& [name, data] : presets) {
-                    ImGui::TableNextColumn();
-
-                    ImGui::PushID(name.c_str());
-                    ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.3f, 0.6f, 0.6f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(0.3f, 0.7f, 0.7f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(0.3f, 0.8f, 0.8f));
-
-                    ImGui::Button(name.c_str(), ImVec2(buttonWidth, 0));
-
-                    ImGui::PopStyleColor(3);
-
-                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
-                        ImGui::SetDragDropPayload("PRESET_ASSET", name.c_str(), name.size() + 1);
-                        ImGui::Text("Preset: %s", name.c_str());
-                        ImGui::EndDragDropSource();
-                    }
-
-                    ImGui::PopID();
+            for (const auto& [name, data] : presets) {
+                size_t slashPos = name.find('/');
+                if (slashPos != std::string::npos) {
+                    folders[name.substr(0, slashPos)].push_back(name);
+                } else {
+                    rootPresets.push_back(name);
                 }
-                ImGui::EndTable();
+            }
+
+            // 描画用ヘルパーラムダ
+            auto DrawPresetGrid = [&](const std::vector<std::string>& list, const char* tableId) {
+                float thumbnailSize = 80.0f;
+                float padding = 16.0f;
+                float cellSize = thumbnailSize + padding;
+                float panelWidth = ImGui::GetContentRegionAvail().x;
+                int cols = std::max(1, (int)(panelWidth / cellSize));
+
+                if (ImGui::BeginTable(tableId, cols)) {
+                    for (const std::string& name : list) {
+                        ImGui::TableNextColumn();
+                        if (presetThumbnailAlbum_.find(name) == presetThumbnailAlbum_.end()) CreatePresetThumbnailResource(name);
+                        
+                        uint32_t srvHandle = presetThumbnailAlbum_[name].srvHandle;
+                        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
+
+                        ImGui::PushID(name.c_str());
+                        ImGui::BeginGroup();
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.1f, 0.15f, 1.0f));
+                        ImGui::ImageButton(name.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
+                        ImGui::PopStyleColor();
+
+                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                            ImGui::SetDragDropPayload("PRESET_ASSET", name.c_str(), name.size() + 1);
+                            ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
+                            ImGui::SameLine(); ImGui::Text("Preset: %s", name.c_str());
+                            ImGui::EndDragDropSource();
+                        }
+
+                        size_t lastSlash = name.find_last_of('/');
+                        std::string shortName = (lastSlash != std::string::npos) ? name.substr(lastSlash + 1) : name;
+                        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                        ImGui::TextWrapped("%s", shortName.c_str());
+                        ImGui::PopTextWrapPos();
+
+                        // コンテキストメニュー
+                        if (ImGui::BeginPopupContextItem("PresetContextMenu")) {
+                            if (ImGui::MenuItem(ICON_FA_EDIT " Rename")) ImGui::OpenPopup("RenamePresetPopup");
+                            if (ImGui::MenuItem(ICON_FA_SAVE " Overwrite")) {
+                                if (editor_->GetSelectedObject()) {
+                                    PresetManager::GetInstance()->AddPresetFromObject(name, editor_->GetSelectedObject());
+                                    presetThumbnailAlbum_[name].isCaptured = false;
+                                }
+                            }
+                            if (ImGui::MenuItem(ICON_FA_CAMERA " Update Thumbnail")) presetThumbnailAlbum_[name].isCaptured = false;
+                            ImGui::Separator();
+                            if (ImGui::MenuItem(ICON_FA_TRASH_ALT " Delete")) {
+                                PresetManager::GetInstance()->RemovePreset(name);
+                                presetThumbnailAlbum_.erase(name);
+                                ImGui::EndPopup(); ImGui::EndGroup(); ImGui::PopID();
+                                continue;
+                            }
+                            ImGui::EndPopup();
+                        }
+
+                        // 名前変更ポップアップ
+                        if (ImGui::BeginPopup("RenamePresetPopup")) {
+                            static char renameBuf[64] = "";
+                            if (!ImGui::IsAnyItemActive()) strncpy_s(renameBuf, name.c_str(), sizeof(renameBuf));
+                            ImGui::Text("New Name:");
+                            if (ImGui::InputText("##NewName", renameBuf, sizeof(renameBuf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                                std::string newName = renameBuf;
+                                if (!newName.empty() && newName != name) {
+                                    PresetManager::GetInstance()->RenamePreset(name, newName);
+                                    if (presetThumbnailAlbum_.count(name)) {
+                                        presetThumbnailAlbum_[newName] = std::move(presetThumbnailAlbum_[name]);
+                                        presetThumbnailAlbum_.erase(name);
+                                    }
+                                }
+                                ImGui::CloseCurrentPopup();
+                            }
+                            if (ImGui::Button("OK")) { ImGui::CloseCurrentPopup(); }
+                            ImGui::SameLine(); if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+                            ImGui::EndPopup();
+                        }
+                        ImGui::EndGroup();
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
+                }
+            };
+
+            // フォルダごとの表示
+            for (const auto& [folderName, list] : folders) {
+                if (ImGui::TreeNodeEx(folderName.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                    DrawPresetGrid(list, folderName.c_str());
+                    ImGui::TreePop();
+                }
+            }
+            // ルート直下の表示
+            if (!rootPresets.empty()) {
+                if (folders.empty()) DrawPresetGrid(rootPresets, "RootPresetsTable");
+                else if (ImGui::TreeNodeEx("Others", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    DrawPresetGrid(rootPresets, "RootPresetsTable");
+                    ImGui::TreePop();
+                }
             }
         }
     }

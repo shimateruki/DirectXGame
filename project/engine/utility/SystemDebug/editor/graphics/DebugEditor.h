@@ -91,6 +91,7 @@ public:
     void PerformRedo();           // やり直し
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
+    void InstantiatePresetAtCursor(const std::string& presetName);
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------
