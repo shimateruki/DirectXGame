@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "Camera.h"
 #include "WinApp.h" 
+#include "DirectXCommon.h"
 #include <algorithm> // std::min, std::max
 #include "imgui.h"
 #include "ImGuizmo.h"
@@ -12,12 +13,13 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// 修正: 明示的に float にキャスト
+// 明示的に float にキャスト
 const float PI = (float)M_PI;
 static Math math;
 
-void Camera::ConfigFixedPoint(const Vector3& position) {
+void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
     fixedPointPos_ = position;
+    fixedPointAngle_ = angle;
 }
 
 void Camera::UpdateProjectionMatrix() {
@@ -47,14 +49,12 @@ void Camera::Initialize() {
     distance_ = 10.0f;
 
     isInputEnabled_ = true;
-    auto dxCommon = DirectXCommon::GetInstance();
-    // 必要なサイズを計算（16バイト境界に合わせる）
-    size_t sizeInBytes = (sizeof(CameraData) + 0xFF) & ~0xFF;
-    constantBuffer_ = dxCommon->CreateBufferResource(sizeInBytes);
 
-    // 常時 Map しておく（Unmap はデストラクタ等で行うか、放置でも可）
-    constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
+    // 定数バッファ作成
+    constBuffer_ = DirectXCommon::GetInstance()->CreateBufferResource(sizeof(CameraVP));
+    constBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&constMap_));
 }
+
 
 void Camera::Update() {
     static Math math;
@@ -69,8 +69,8 @@ void Camera::Update() {
         Vector3 playerPos = followObject_->GetWorldPosition();
 
         // -----------------------------------------------------------------
-        // (A) 注視点 (Target) の計算
-        // -----------------------------------------------------------------
+         // (A) 注視点 (Target) の計算
+         // -----------------------------------------------------------------
         Vector3 targetPos = playerPos;
         targetPos.y += aimHeight_; // 基本はプレイヤーの足元 + 設定された高さ
 
@@ -79,23 +79,29 @@ void Camera::Update() {
             Vector3 playerFocus = playerPos;
             playerFocus.y += aimHeight_ * 0.5f;
 
-            // プレイヤーと敵の「ちょうど真ん中」を真っ直ぐ見つめる
-            targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.5f;
-            targetPos.y = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.5f;
-            targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.5f;
+            // XZは敵寄りを注視 (0.7f)
+            targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.7f;
+            targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.7f;
+
+            float distXZ = std::sqrt((enemyPos.x - playerFocus.x) * (enemyPos.x - playerFocus.x) +
+                (enemyPos.z - playerFocus.z) * (enemyPos.z - playerFocus.z));
+
+            float maxY = playerFocus.y + std::min(3.0f, distXZ * 0.4f);
+            float idealY = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.5f;
+
+            targetPos.y = std::min(idealY, maxY);
         }
         else if (followMode_ == FollowMode::kFirstPerson) {
             targetPos = playerPos + firstPersonOffset_;
         }
 
-        
-        if (!isCameraInitialized_) {
-            smoothTarget_ = targetPos;
-            isCameraInitialized_ = true;
-        }
-        // 0.1fだと遅すぎて酔うため、少し追従を速める (0.25f程度がおすすめ)
-        smoothTarget_ = LerpVec3(smoothTarget_, targetPos, 0.25f);
-        target_ = smoothTarget_; // 以降の処理はすべて「スムーズになった注視点」を基準にする！
+        // =========================================================
+        // ★ 修正1: プレイヤーとカメラの1フレームのズレを完全に無くす！
+        // =========================================================
+        // TargetのLerpを完全に排除し、プレイヤーの位置に100%即座に追従させる。
+        // これにより、アニメーションの揺れとカメラが喧嘩してカクつくのを防ぎます。
+        smoothTarget_ = targetPos;
+        target_ = smoothTarget_;
 
         // -----------------------------------------------------------------
         // (B) カメラ位置 (Eye) の計算
@@ -111,10 +117,19 @@ void Camera::Update() {
                 Vector3 toEnemy = enemyPos - playerPos;
 
                 float distanceXZ = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.z * toEnemy.z);
+
+                float heightDiff = std::max(0.0f, enemyPos.y - playerPos.y);
+                float heightZoom = heightDiff * 0.8f;
+
+                float closeZoomOut = 0.0f;
+                if (distanceXZ < 8.0f) {
+                    closeZoomOut = (8.0f - distanceXZ) * 0.7f;
+                }
+
                 float zoom = std::max(0.0f, distanceXZ - 10.0f) * 0.5f;
                 zoom = std::min(zoom, 25.0f);
 
-                Vector3 dynamicOffset = lockOnOffset_;
+                Vector3 dynamicOffset = { 2.0f, 2.0f + (closeZoomOut * 0.3f), -6.5f - closeZoomOut - heightZoom };
                 dynamicOffset.z -= zoom;
                 dynamicOffset.y += zoom * 0.15f;
 
@@ -131,9 +146,7 @@ void Camera::Update() {
                 Matrix4x4 rotateMat = math.MakeRotateYMatrix(rotation_.y);
                 Vector3 rotatedOffset = math.TransformNormal(dynamicOffset, rotateMat);
 
-                // 基準点をplayerPosではなく、スムーズなtarget_の足元にする
-                Vector3 smoothBase = target_;
-                smoothBase.y -= aimHeight_;
+                Vector3 smoothBase = playerPos;
                 desiredEye = smoothBase + rotatedOffset;
             }
             else {
@@ -143,10 +156,12 @@ void Camera::Update() {
         }
         case FollowMode::kAimable:
         {
+
+
             Matrix4x4 rotateMat = math.MakeRotateZMatrix(rotation_.z) * math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
             Vector3 offset = { 0.0f, 0.0f, -aimDistance_ };
             offset = math.TransformNormal(offset, rotateMat);
-            desiredEye = target_ + offset; // スムーズなtarget_を使うので距離が崩れない！
+            desiredEye = target_ + offset;
             break;
         }
         case FollowMode::kFixed:
@@ -162,10 +177,10 @@ void Camera::Update() {
         }
         case FollowMode::kFirstPerson:
         {
-            desiredEye = target_; // Target(頭の位置)をそのままEyeにする
+            desiredEye = target_;
             Matrix4x4 rotateMatFP = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
             Vector3 forwardFP = math.TransformNormal({ 0, 0, 1 }, rotateMatFP);
-            target_ = desiredEye + forwardFP; // Targetを前方に押し出す
+            target_ = desiredEye + forwardFP;
             break;
         }
         case FollowMode::kOrbit:
@@ -179,26 +194,37 @@ void Camera::Update() {
         case FollowMode::kFixedPoint:
         {
             desiredEye = fixedPointPos_;
+            float pitch = fixedPointAngle_.x;
+            float yaw = fixedPointAngle_.y;
+            Vector3 forward;
+            forward.x = std::sin(yaw) * std::cos(pitch);
+            forward.y = -std::sin(pitch);
+            forward.z = std::cos(yaw) * std::cos(pitch);
+
+            target_ = desiredEye + forward * 10.0f;
             break;
         }
         }
 
-        // ★独立したEyeの補間(Lerp)を削除（Targetが滑らかなので自動的にEyeも滑らかになる）
         eye_ = desiredEye;
 
         if (!isEyeFrozen_) {
-            if (followMode_ != FollowMode::kFirstPerson) {
-                Vector3 toEye = desiredEye - target_;
+            if (followMode_ != FollowMode::kFirstPerson && followMode_ != FollowMode::kFixedPoint) {
+
+
+                Vector3 rayStartPos = playerPos;
+                rayStartPos.y += aimHeight_ * 0.5f; // 胸の高さ
+
+                Vector3 toEye = desiredEye - rayStartPos;
                 float dist = math.Length(toEye);
                 Vector3 direction = (dist > 0.001f) ? math.Normalize(toEye) : Vector3{ 0,0,1 };
 
                 if (dist > 0.1f) {
                     RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                        target_, direction, dist, kGround
+                        rayStartPos, direction, dist, kGround
                     );
 
                     if (hit.isHit) {
-                        // ★修正3: 押し出しの強さ(kEpsilon)も昔の 0.2f に戻す
                         const float kEpsilon = 0.2f;
                         eye_ = hit.hitPoint - (direction * kEpsilon);
                     }
@@ -210,19 +236,18 @@ void Camera::Update() {
                     eye_ = desiredEye;
                 }
 
-                // 最強の高さストッパー（足元+0.5mより下に行かせない）
                 float groundLimitY = playerPos.y + 0.5f;
                 if (eye_.y < groundLimitY) {
                     eye_.y = groundLimitY;
                 }
             }
             else {
-                eye_ = desiredEye; // 1人称の場合はそのまま
+                eye_ = desiredEye;
             }
         }
 
         // -----------------------------------------------------------------
-        // (D) 近距離フェード（プレイヤーが画面を埋め尽くす問題の解決）
+        // (D) 近距離フェード
         // -----------------------------------------------------------------
         Vector3 playerPosForDist = followObject_->GetWorldPosition();
         playerPosForDist.y += aimHeight_ * 0.5f;
@@ -244,10 +269,10 @@ void Camera::Update() {
                 child->SetColor({ cColor.x, cColor.y, cColor.z, alpha });
             }
         }
-    } // <-- if (followObject_) の終了
+    }
 
     // =================================================================
-    // [2] 動的カメラオーバーライドの補間処理（シネマティック演出用）
+    // [2] 動的カメラオーバーライドの補間処理
     // =================================================================
     Vector3 normalEye = eye_;
     Vector3 normalTarget = target_;
@@ -267,16 +292,14 @@ void Camera::Update() {
 
         overrideTimer_ = std::max(0.0f, std::min(overrideTimer_, overrideDuration_));
         float t = overrideTimer_ / overrideDuration_;
-        overrideWeight_ = t * t * (3.0f - 2.0f * t); // イージング
+        overrideWeight_ = t * t * (3.0f - 2.0f * t);
 
         if (overrideWeight_ > 0.0f) {
-            // 目標地点(Target)の計算
             Vector3 finalEndTarget = overrideParams_.fixedTargetPos;
             if (overrideParams_.trackTargetX) finalEndTarget.x = normalTarget.x;
             if (overrideParams_.trackTargetY) finalEndTarget.y = normalTarget.y;
             if (overrideParams_.trackTargetZ) finalEndTarget.z = normalTarget.z;
 
-            // カメラ位置(Eye)の計算（プレイヤー基準からのオフセット維持）
             Vector3 finalEndEye = overrideParams_.fixedEyePos;
             if (overrideParams_.trackEyeX) {
                 float offsetX = overrideParams_.fixedEyePos.x - overrideParams_.fixedTargetPos.x;
@@ -291,14 +314,11 @@ void Camera::Update() {
                 finalEndEye.z = normalTarget.z + offsetZ;
             }
 
-            // 行きか戻りかでLerpの始点と終点を変える
             if (isOverridden_) {
-                // 行き：記憶した固定スタート地点から、目標地点へ
                 eye_ = LerpVec3(overrideStartEye_, finalEndEye, overrideWeight_);
                 target_ = LerpVec3(overrideStartTarget_, finalEndTarget, overrideWeight_);
             }
             else {
-                // 戻り：現在の追従カメラから、オーバーライドの終点へ（逆向きにブレンド）
                 eye_ = LerpVec3(normalEye, finalEndEye, overrideWeight_);
                 target_ = LerpVec3(normalTarget, finalEndTarget, overrideWeight_);
             }
@@ -306,7 +326,6 @@ void Camera::Update() {
         }
     }
     else {
-        // durationが0の場合は一瞬で切り替え
         if (isOverridden_) {
             Vector3 finalEndTarget = overrideParams_.fixedTargetPos;
             if (overrideParams_.trackTargetX) finalEndTarget.x = normalTarget.x;
@@ -338,26 +357,29 @@ void Camera::Update() {
     }
 
     // =================================================================
-    // [3] 最終行列の更新 (真下・真上を向いた時のジンバルロック対策)
+    // [3] 最終行列の更新
     // =================================================================
     Vector3 forward = { target_.x - eye_.x, target_.y - eye_.y, target_.z - eye_.z };
-    Vector3 currentUp = up_; // 通常は {0, 1, 0}
+    Vector3 currentUp = up_;
 
-    // XとZの差がほぼ無い（＝真下か真上を向いている）場合
     if (std::abs(forward.x) < 0.001f && std::abs(forward.z) < 0.001f) {
         if (forward.y < 0.0f) {
-            currentUp = { 0.0f, 0.0f, 1.0f }; // 真下を向いている時は Z軸の奥を「上」とする
+            currentUp = { 0.0f, 0.0f, 1.0f };
         }
         else {
-            currentUp = { 0.0f, 0.0f, -1.0f }; // 真上を向いている時は Z軸の手前を「上」とする
+            currentUp = { 0.0f, 0.0f, -1.0f };
         }
     }
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, currentUp);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
-    if (mappedData_) {
-        mappedData_->view = viewMatrix_;
-        mappedData_->projection = projectionMatrix_;
+    Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
+    frustum_ = math.ExtractFrustumPlanes(vp);
+
+    // 定数バッファ更新
+    if (constMap_) {
+        constMap_->view = viewMatrix_;
+        constMap_->projection = projectionMatrix_;
     }
 }
 
@@ -394,39 +416,34 @@ void Camera::AddRotation(const Vector2& mouseDelta) {
     if (rotation_.y > PI) { rotation_.y -= 2.0f * PI; }
     if (rotation_.y < -PI) { rotation_.y += 2.0f * PI; }
 }
-
 void Camera::SyncRotationToCurrentView() {
     static Math math;
 
-    // (A) 注視点 (Target) を決定する
-    Vector3 targetPos;
-    if (targetObject_) {
-        targetPos = targetObject_->GetWorldPosition();
-    }
-    else if (followObject_) {
-        targetPos = followObject_->GetWorldPosition();
-    }
-    else {
-        targetPos = target_;
-    }
+    Vector3 currentTarget = target_;
 
-    // (B) Eye から Target への「前方ベクトル」を計算
-    Vector3 forward = targetPos - eye_;
-    if (math.Length(forward) < 0.001f) {
+    // 現在のカメラ位置(eye_)から、注視点(currentTarget)への方向ベクトル
+    Vector3 forward = currentTarget - eye_;
+    float dist = math.Length(forward);
+
+    // 距離が近すぎる場合の安全対策
+    if (dist < 0.001f) {
         forward = { 0.0f, 0.0f, 1.0f };
     }
     else {
         forward = math.Normalize(forward);
     }
 
-    // (C) 前方ベクトルからヨー(Y軸回転)とピッチ(X軸回転)を逆算
+    // 方向ベクトルから、ヨー(Y軸)とピッチ(X軸)の角度を逆算
     rotation_.y = std::atan2(forward.x, forward.z);
     rotation_.x = std::asin(-forward.y);
 
+    // 真上・真下を向きすぎないように制限
     const float pitchLimit = PI / 2.0f - 0.01f;
     rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
-}
 
+    // カメラの距離も現在の距離に同期する（一瞬で近づくのを防ぐ）
+    aimDistance_ = dist;
+}
 void Camera::StartOverride(const CameraOverrideParams& params) {
     isOverridden_ = true;
     overrideParams_ = params;

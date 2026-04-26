@@ -108,7 +108,15 @@ void MeshRenderer::Update() {
             wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
             cameraData_->worldPosition = camera->GetEye();
             localFogData_->cameraPos = camera->GetEye();
-            localFogData_->inverseViewProj = math.Inverse(viewProj);
+            
+            // 軽量化: ViewProjの逆行列はカメラ共通なのでキャッシュする
+            static Matrix4x4 lastVP;
+            static Matrix4x4 cachedInvVP;
+            if (std::memcmp(&lastVP, &viewProj, sizeof(Matrix4x4)) != 0) {
+                lastVP = viewProj;
+                cachedInvVP = math.Inverse(viewProj);
+            }
+            localFogData_->inverseViewProj = cachedInvVP;
         } else {
             wvpData_->WVP = Math::MakeIdentity4x4();
             wvpData_->world = Math::MakeIdentity4x4();
@@ -322,6 +330,17 @@ void MeshRenderer::DrawShadow() {
     common_->SetShadowPipelineState();
 
     // 軽量版のドローコールを呼ぶ
+    model_->DrawShadow(shadowWvpResource_.Get());
+}
+
+void MeshRenderer::SetShadowCommonState() {
+    if (!common_) return;
+    common_->SetShadowGraphicsCommand();
+    common_->SetShadowPipelineState();
+}
+
+void MeshRenderer::DrawShadowOnly() {
+    if (!model_ || !shadowWvpResource_) return;
     model_->DrawShadow(shadowWvpResource_.Get());
 }
 

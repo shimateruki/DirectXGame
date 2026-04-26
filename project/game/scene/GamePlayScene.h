@@ -148,4 +148,7 @@ private:
 
     bool isGoal_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+
+    // フラスタムカリング判定
+    bool IsVisible(Object3d* obj);
 };

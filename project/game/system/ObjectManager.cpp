@@ -27,9 +27,12 @@ void ObjectManager::Update(float deltaTime) {
 }
 
 void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) {
+	// 管理している全オブジェクトを描画する
+	// ※GamePlayScene側で object3dCommon_->SetGraphicsCommand() 等を呼んでいる前提
+	
 	// 不透明描画
 	for (auto& obj : objects_) {
-		if (obj->GetMaterialType() != 1) { // 1=透明でなければ
+		if (obj->GetMaterialType() != 1 && obj->GetMaterialType() != 7 && obj->GetMaterialType() < 8) {
 			obj->Draw(pointLight, spotLight);
 		}
 	}
@@ -80,9 +83,20 @@ void ObjectManager::ProcessRemovals() {
 }
 
 void ObjectManager::DrawShadow() {
+	if (objects_.empty()) return;
+
+	// ★ 軽量化: 共通の状態設定はループの外で1回だけ行う
+	bool isFirst = true;
+
 	// 管理している全オブジェクトの影を描画する
 	for (auto& obj : objects_) {
 		if (obj->GetMaterialType() == 7) continue;
-		obj->DrawShadow();
+
+		if (isFirst) {
+			obj->SetShadowCommonState();
+			isFirst = false;
+		}
+
+		obj->DrawShadowOnly();
 	}
 }

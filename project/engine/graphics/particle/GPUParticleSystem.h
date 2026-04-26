@@ -181,6 +181,10 @@ private:
     float frameDeltaTime_ = 0.0f;
     float timeScale_ = 1.0f;
 
+    // 軽量化用: 最後にEmitしてからどれくらい経ったか
+    float lastEmitTimer_ = 0.0f;
+    const float kIdleKillTime = 5.0f; // 5秒間何も出なかったら一旦止める
+
     uint32_t emitCountThisFrame_ = 0;
     float softParticleFade_ = 5.0f;
     uint32_t blendModeIndex_ = 0;

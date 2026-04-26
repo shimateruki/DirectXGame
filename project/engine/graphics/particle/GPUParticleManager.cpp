@@ -3,6 +3,7 @@
 #include <fstream>
 #include "json.hpp"
 #include "DebugConsole.h"
+#include "SRVManager.h"
 #include <d3d12.h>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -39,8 +40,13 @@ void GPUParticleManager::Update(float deltaTime) {
 }
 
 void GPUParticleManager::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummy, uint32_t depthSrvHandle) {
-    // ★ 全ての部隊(System)に描画命令を出す（各部隊が自分のテクスチャとブレンドを使う）
+    if (systems_.empty()) return;
+
+    // ★ 共通の状態設定はループの外で行う（軽量化）
+    SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
+
     for (auto& pair : systems_) {
+        // 各部隊が自分のテクスチャとブレンドを使う
         pair.second->Draw(commandList, viewMatrix, projectionMatrix, dummy, depthSrvHandle);
     }
 }

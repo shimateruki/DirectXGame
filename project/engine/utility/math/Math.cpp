@@ -415,7 +415,8 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 	if (std::abs(ray.diff.x) < 1e-6f) {
 		// レイの始点が箱の外にあったら、絶対に当たらない
 		if (ray.origin.x < minBox.x || ray.origin.x > maxBox.x) return false;
-	} else {
+	}
+	else {
 		// スラブ法による判定
 		float invD = 1.0f / ray.diff.x;
 		float t1 = (minBox.x - ray.origin.x) * invD;
@@ -429,7 +430,8 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 	// --- Y軸の判定 ---
 	if (std::abs(ray.diff.y) < 1e-6f) {
 		if (ray.origin.y < minBox.y || ray.origin.y > maxBox.y) return false;
-	} else {
+	}
+	else {
 		float invD = 1.0f / ray.diff.y;
 		float t1 = (minBox.y - ray.origin.y) * invD;
 		float t2 = (maxBox.y - ray.origin.y) * invD;
@@ -442,7 +444,8 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 	// --- Z軸の判定 ---
 	if (std::abs(ray.diff.z) < 1e-6f) {
 		if (ray.origin.z < minBox.z || ray.origin.z > maxBox.z) return false;
-	} else {
+	}
+	else {
 		float invD = 1.0f / ray.diff.z;
 		float t1 = (minBox.z - ray.origin.z) * invD;
 		float t2 = (maxBox.z - ray.origin.z) * invD;
@@ -479,6 +482,18 @@ bool Math::IntersectRayAABB(const Ray& ray, const Vector3& minBox, const Vector3
 	}
 
 	return true;
+}
+
+float Math::LerpShortAngle(float a, float b, float t) {
+	float diff = b - a;
+	const float PI = 3.1415926535f;
+	const float PI2 = PI * 2.0f;
+
+	// 角度を [-PI, PI] の範囲に補正
+	while (diff < -PI) diff += PI2;
+	while (diff > PI) diff -= PI2;
+
+	return a + diff * t;
 }
 
 // Vector3のLerp
@@ -550,18 +565,6 @@ Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
 	return m;
 }
 
-float Math::LerpShortAngle(float a, float b, float t) {
-	// 角度を -PI ～ PI の範囲に正規化
-	auto normalizeAngle = [](float angle) {
-		while (angle <= -3.141592f) angle += 6.283185f;
-		while (angle > 3.141592f) angle -= 6.283185f;
-		return angle;
-	};
-
-	float diff = normalizeAngle(b - a);
-	return a + diff * t;
-}
-
 Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, float farZ) {
 	Matrix4x4 result{}; // ゼロ初期化
 
@@ -615,7 +618,8 @@ Vector3 Math::MatrixToEuler(const Matrix4x4& m) {
 	if (std::abs(rmat.m[1][2]) < 0.9999f) {
 		euler.y = std::atan2(rmat.m[0][2], rmat.m[2][2]);
 		euler.z = std::atan2(rmat.m[1][0], rmat.m[1][1]);
-	} else {
+	}
+	else {
 		// ジンバルロック時は Zを0に固定し、Yだけで表現する
 		euler.y = std::atan2(-rmat.m[2][0], rmat.m[0][0]);
 		euler.z = 0.0f;
@@ -646,19 +650,22 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 		q.x = (rmat.m[1][2] - rmat.m[2][1]) / s;
 		q.y = (rmat.m[2][0] - rmat.m[0][2]) / s;
 		q.z = (rmat.m[0][1] - rmat.m[1][0]) / s;
-	} else if ((rmat.m[0][0] >= rmat.m[1][1]) && (rmat.m[0][0] >= rmat.m[2][2])) {
+	}
+	else if ((rmat.m[0][0] >= rmat.m[1][1]) && (rmat.m[0][0] >= rmat.m[2][2])) {
 		float s = std::sqrt(1.0f + rmat.m[0][0] - rmat.m[1][1] - rmat.m[2][2]) * 2.0f;
 		q.w = (rmat.m[1][2] - rmat.m[2][1]) / s;
 		q.x = 0.25f * s;
 		q.y = (rmat.m[0][1] + rmat.m[1][0]) / s;
 		q.z = (rmat.m[2][0] + rmat.m[0][2]) / s;
-	} else if (rmat.m[1][1] >= rmat.m[2][2]) {
+	}
+	else if (rmat.m[1][1] >= rmat.m[2][2]) {
 		float s = std::sqrt(1.0f + rmat.m[1][1] - rmat.m[0][0] - rmat.m[2][2]) * 2.0f;
 		q.w = (rmat.m[2][0] - rmat.m[0][2]) / s;
 		q.x = (rmat.m[0][1] + rmat.m[1][0]) / s;
 		q.y = 0.25f * s;
 		q.z = (rmat.m[1][2] + rmat.m[2][1]) / s;
-	} else {
+	}
+	else {
 		float s = std::sqrt(1.0f + rmat.m[2][2] - rmat.m[0][0] - rmat.m[1][1]) * 2.0f;
 		q.w = (rmat.m[0][1] - rmat.m[1][0]) / s;
 		q.x = (rmat.m[2][0] + rmat.m[0][2]) / s;
@@ -673,9 +680,62 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 		q.y /= len;
 		q.z /= len;
 		q.w /= len;
-	} else {
+	}
+	else {
 		q = { 0.0f, 0.0f, 0.0f, 1.0f }; // 安全な初期値
 	}
 
 	return q;
+}
+
+
+Frustum Math::ExtractFrustumPlanes(const Matrix4x4& vp) {
+	Frustum f;
+	// 左
+	f.planes[0].normal.x = vp.m[0][3] + vp.m[0][0]; f.planes[0].normal.y = vp.m[1][3] + vp.m[1][0];
+	f.planes[0].normal.z = vp.m[2][3] + vp.m[2][0]; f.planes[0].distance = vp.m[3][3] + vp.m[3][0];
+	// 右
+	f.planes[1].normal.x = vp.m[0][3] - vp.m[0][0]; f.planes[1].normal.y = vp.m[1][3] - vp.m[1][0];
+	f.planes[1].normal.z = vp.m[2][3] - vp.m[2][0]; f.planes[1].distance = vp.m[3][3] - vp.m[3][0];
+	// 下
+	f.planes[2].normal.x = vp.m[0][3] + vp.m[0][1]; f.planes[2].normal.y = vp.m[1][3] + vp.m[1][1];
+	f.planes[2].normal.z = vp.m[2][3] + vp.m[2][1]; f.planes[2].distance = vp.m[3][3] + vp.m[3][1];
+	// 上
+	f.planes[3].normal.x = vp.m[0][3] - vp.m[0][1]; f.planes[3].normal.y = vp.m[1][3] - vp.m[1][1];
+	f.planes[3].normal.z = vp.m[2][3] - vp.m[2][1]; f.planes[3].distance = vp.m[3][3] - vp.m[3][1];
+	// 近 (DirectX12は0〜w)
+	f.planes[4].normal.x = vp.m[0][2]; f.planes[4].normal.y = vp.m[1][2];
+	f.planes[4].normal.z = vp.m[2][2]; f.planes[4].distance = vp.m[3][2];
+	// 遠
+	f.planes[5].normal.x = vp.m[0][3] - vp.m[0][2]; f.planes[5].normal.y = vp.m[1][3] - vp.m[1][2];
+	f.planes[5].normal.z = vp.m[2][3] - vp.m[2][2]; f.planes[5].distance = vp.m[3][3] - vp.m[3][2];
+
+	// 正規化
+	for (int i = 0; i < 6; ++i) {
+		float length = std::sqrt(f.planes[i].normal.x * f.planes[i].normal.x +
+			f.planes[i].normal.y * f.planes[i].normal.y +
+			f.planes[i].normal.z * f.planes[i].normal.z);
+		if (length > 0.0f) {
+			f.planes[i].normal = f.planes[i].normal / length;
+			f.planes[i].distance /= length;
+		}
+	}
+	return f;
+}
+
+bool Math::IntersectFrustumAABB(const Frustum& f, const Vector3& minBox, const Vector3& maxBox) {
+	for (int i = 0; i < 6; ++i) {
+		// AABBの中で一番「平面の法線方向にある点(p)」を調べる
+		Vector3 p = minBox;
+		if (f.planes[i].normal.x >= 0) p.x = maxBox.x;
+		if (f.planes[i].normal.y >= 0) p.y = maxBox.y;
+		if (f.planes[i].normal.z >= 0) p.z = maxBox.z;
+
+		// pが面よりも外側にあれば、箱全体が外側にあると確定！
+		float dot = f.planes[i].normal.x * p.x + f.planes[i].normal.y * p.y + f.planes[i].normal.z * p.z;
+		if (dot + f.planes[i].distance < 0) {
+			return false;
+		}
+	}
+	return true;
 }

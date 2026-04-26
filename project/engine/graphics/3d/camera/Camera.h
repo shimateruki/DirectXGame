@@ -3,6 +3,9 @@
 #include "InputManager.h"
 #include "Object3d.h" 
 #include <map>
+#include <d3d12.h>
+#include <wrl.h>
+
 /// <summary>
 /// 3Dシーンの視点を管理するカメラクラス
 /// </summary>
@@ -39,12 +42,6 @@ public:
     };
 
 public:
-
-    struct CameraData {
-        Matrix4x4 view;
-        Matrix4x4 projection;
-    };
-
     // ==================================================
     // 初期化・更新
     // ==================================================
@@ -96,7 +93,7 @@ public:
     void ConfigFixed(const Vector3& offset);
     void ConfigAimable(float distance, float height, const Vector3& angle);
     void ConfigFirstPerson(const Vector3& eyeOffset);
-    void ConfigFixedPoint(const Vector3& position);
+    void ConfigFixedPoint(const Vector3& position, const Vector3& angle);
 
     void SetOrbitParams(float radius, float height, float speed) {
         orbitRadius_ = radius;
@@ -118,7 +115,19 @@ public:
     void EndOverride(float duration);
     bool IsOverridden() const { return isOverridden_; }
     float GetOverrideWeight() const { return overrideWeight_; }
-    ID3D12Resource* GetConstantBuffer() const { return constantBuffer_.Get(); }
+    const Frustum& GetFrustum() const { return frustum_; }
+
+    // ==================================================
+    // 定数バッファ
+    // ==================================================
+    ID3D12Resource* GetConstantBuffer() const { return constBuffer_.Get(); }
+
+private:
+    struct CameraVP {
+        Matrix4x4 view;
+        Matrix4x4 projection;
+    };
+
 private:
     // ==================================================
     // メンバ変数
@@ -181,6 +190,9 @@ private:
     float overrideWeight_ = 0.0f;         // 0.0(通常) ～ 1.0(完全オーバーライド)
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
-    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-    CameraData* mappedData_ = nullptr;
+    Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
+    Frustum frustum_;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> constBuffer_;
+    CameraVP* constMap_ = nullptr;
 };

@@ -27,12 +27,13 @@ public:
         float orbitRadius = 15.0f;
         float orbitHeight = 5.0f;
         float orbitSpeed = 0.005f;
-
+        int cameraSensitivity = 0;
         // --- Editorモード用パラメータ ---
         float moveSpeed = 0.5f;
         float boostSpeed = 2.0f;
         float mouseSensitivity = 0.003f;
         Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
+        Vector3 fixedPointAngle = { 0.0f, 0.0f, 0.0f };
     };
 
 public:
@@ -61,6 +62,13 @@ public:
     /// 保存されている名前を呼び出すだけで、指定カメラを自動でオーバーライドさせる
     /// </summary>
     bool PlayOverrideCamera(Camera* camera, const std::string& cameraName);
+    int GetCameraSensitivity() const { return settings_.cameraSensitivity; }
+    void SetCameraSensitivity(int val) {
+        settings_.cameraSensitivity = val;
+        SaveSettings(); // 変更された瞬間に自動セーブ！
+    }
+
+
 private:
     void UpdateFreeCamera(Camera* camera);
 

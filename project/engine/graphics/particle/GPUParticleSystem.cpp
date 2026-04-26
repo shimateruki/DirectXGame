@@ -195,10 +195,17 @@ void GPUParticleSystem::Update(float deltaTime) {
     float scaledDeltaTime = deltaTime * timeScale_;
     totalTime_ += scaledDeltaTime;
     frameDeltaTime_ = scaledDeltaTime;
+
+    // 軽量化タイマー更新
+    lastEmitTimer_ += deltaTime;
 }
 
 void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTex, uint32_t depthSrvHandle) {
     if (!commandList) return;
+
+    // 軽量化: 一定時間(例:5秒)以上何も発生していなければ、GPU側の処理も完全にスキップ！
+    // (パーティクルが残っている可能性はあるが、5秒あれば寿命1.0sのエフェクトは消えているはず)
+    if (lastEmitTimer_ > kIdleKillTime) return;
 
     // --- Compute Shader ---
     SRVManager::GetInstance()->SetDescriptorHeaps(commandList);
@@ -363,6 +370,9 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
 }
 void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
     if (emitRequests_.size() >= kMaxEmitRequests) return;
+
+    // 軽量化タイマーをリセット (活動開始！)
+    lastEmitTimer_ = 0.0f;
 
     CSConfig reqConfig = {};
     reqConfig.emitPos = config.emitPos;

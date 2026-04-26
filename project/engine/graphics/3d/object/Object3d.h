@@ -52,6 +52,8 @@ public:
     void UpdateParticle();
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawShadow();
+    void SetShadowCommonState(); // 共通の状態を設定
+    void DrawShadowOnly();       // 設定済みの状態で描画だけ行う
     void DrawLocalFog(uint32_t depthSrvHandle);
 
     MeshRenderer::LocalFogData* GetLocalFogData();
@@ -132,6 +134,7 @@ public:
     float GetRoughness() const { return meshRenderer_ ? meshRenderer_->GetRoughness() : 0.3f; }
     AABB GetAABB() const;
     OBB GetOBB() const;
+    AABB GetModelWorldAABB() const; // モデルデータに基づいたワールド空間AABB
 
     CollisionInfo CheckCollision(Object3d* other);
     virtual bool OnCollision(Object3d* other) { (void)other; return false; }

@@ -140,7 +140,10 @@ public:
     void SetEnvIntensity(float intensity);
     float GetEnvIntensity() const;
 
-    void DrawShadow(); 
+    void DrawShadow();
+
+    void SetShadowCommonState(); // 共通設定のみ
+    void DrawShadowOnly();      // 描画実行のみ
     void DrawLocalFog(uint32_t depthSrvHandle);
     LocalFogData* GetLocalFogData() { return localFogData_; } // 後でエディタから操作するため
     ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }

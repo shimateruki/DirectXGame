@@ -361,7 +361,11 @@ void GamePlayScene::Draw() {
 	auto& objects = objectManager_->GetObjects();
 
 	// --- 1. 不透明描画 ---
+	object3dCommon_->SetGraphicsCommand();
+	object3dCommon_->SetPipelineState(BlendMode::kNone); // 不透明設定
+
 	for (auto& obj : objects) {
+		if (!IsVisible(obj.get())) continue;
 		// =========================================================
 		//  プレイヤー本体だけでなく「子パーツ（緑のブロック等）」も巻き込んで消す！
 		// =========================================================
@@ -580,4 +584,14 @@ void GamePlayScene::DrawImGui() {
 
 void GamePlayScene::StartBridgeDropMovie() {
 
+}
+bool GamePlayScene::IsVisible(Object3d* obj) {
+    if (!obj) return false;
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) return true;
+
+    // モデルデータに基づいた正確なワールド空間AABBを取得
+    AABB worldAabb = obj->GetModelWorldAABB();
+
+    return Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
 }

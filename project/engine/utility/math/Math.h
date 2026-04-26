@@ -79,7 +79,14 @@ Vector3 operator-(const Vector3& v);
 
 Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2);
 Vector3& operator+=(Vector3& v1, const Vector3& v2);
+struct Plane {
+	Vector3 normal;
+	float distance;
+};
 
+struct Frustum {
+	Plane planes[6]; // 左右上下・近遠の6面
+};
 class Math
 {
 
@@ -132,6 +139,9 @@ public:
 	// Vector3 の線形補間 (座標の移動用)
 	static Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t);
 
+	// 最短経路での角度補間
+	static float LerpShortAngle(float a, float b, float t);
+
 	// クォータニオンの球面線形補間 (回転のアニメーション用)
 	static Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
 
@@ -142,5 +152,8 @@ public:
 	static Quaternion EulerToQuaternion(const Vector3& rot);
 	static Vector3 MatrixToEuler(const Matrix4x4& m);
 	static Quaternion MatrixToQuaternion(const Matrix4x4& m);
-	static float LerpShortAngle(float a, float b, float t);
+	//  ビュープロジェクション行列からフラスタムを抽出
+	static Frustum ExtractFrustumPlanes(const Matrix4x4& vp);
+	//  フラスタムとAABB（箱）の交差判定
+	static bool IntersectFrustumAABB(const Frustum& frustum, const Vector3& minBox, const Vector3& maxBox);
 };

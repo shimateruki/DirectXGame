@@ -341,6 +341,46 @@ OBB Object3d::GetOBB() const {
     return collider_ ? collider_->GetOBB() : OBB{};
 }
 
+AABB Object3d::GetModelWorldAABB() const {
+    Model* model = GetModel();
+    if (!model) {
+        // モデルがない場合は位置を基準にデフォルトサイズ
+        return { {transform_.translate.x - 0.5f, transform_.translate.y - 0.5f, transform_.translate.z - 0.5f},
+                 {transform_.translate.x + 0.5f, transform_.translate.y + 0.5f, transform_.translate.z + 0.5f} };
+    }
+
+    Vector3 min = model->GetLocalAabbMin();
+    Vector3 max = model->GetLocalAabbMax();
+
+    // 8つの頂点をトランスフォーム
+    Vector3 corners[8] = {
+        {min.x, min.y, min.z},
+        {min.x, min.y, max.z},
+        {min.x, max.y, min.z},
+        {min.x, max.y, max.z},
+        {max.x, min.y, min.z},
+        {max.x, min.y, max.z},
+        {max.x, max.y, min.z},
+        {max.x, max.y, max.z}
+    };
+
+    AABB worldAABB;
+    worldAABB.min = { FLT_MAX, FLT_MAX, FLT_MAX };
+    worldAABB.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+    for (int i = 0; i < 8; ++i) {
+        Vector3 worldPos = Math::Transform(corners[i], transform_.matWorld);
+        worldAABB.min.x = (std::min)(worldAABB.min.x, worldPos.x);
+        worldAABB.min.y = (std::min)(worldAABB.min.y, worldPos.y);
+        worldAABB.min.z = (std::min)(worldAABB.min.z, worldPos.z);
+        worldAABB.max.x = (std::max)(worldAABB.max.x, worldPos.x);
+        worldAABB.max.y = (std::max)(worldAABB.max.y, worldPos.y);
+        worldAABB.max.z = (std::max)(worldAABB.max.z, worldPos.z);
+    }
+
+    return worldAABB;
+}
+
 CollisionInfo Object3d::CheckCollision(Object3d* other) {
     if (!collider_ || !other || !other->GetCollider()) {
         CollisionInfo info;
@@ -376,6 +416,16 @@ std::unique_ptr<Object3d> Object3d::Clone() const {
 void Object3d::DrawShadow() {
     if (meshRenderer_) {
         meshRenderer_->DrawShadow();
+    }
+}
+void Object3d::SetShadowCommonState() {
+    if (meshRenderer_) {
+        meshRenderer_->SetShadowCommonState();
+    }
+}
+void Object3d::DrawShadowOnly() {
+    if (meshRenderer_) {
+        meshRenderer_->DrawShadowOnly();
     }
 }
 
