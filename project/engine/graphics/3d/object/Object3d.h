@@ -34,10 +34,11 @@ public:
         float gravity = 50.0f;
         float maxFallSpeed = 60.0f;
         float jumpPower = 10.0f;
-        std::string enemyType = "Goblin";
+        std::string enemyType = "";
         std::string gimmickType = "";
         float interval = 3.0f;
         int maxCount = 5;
+        float detectionRange = 20.0f;
         EntityParameter() = default;
     };
 
@@ -207,6 +208,7 @@ public:
     std::string GetSaveCategory() const { return saveCategory_; }
     bool GetIsLocked() const { return isLocked_; }
     void SetIsLocked(bool locked) { isLocked_ = locked; }
+
 protected:
     Object3dCommon* common_ = nullptr;
     std::string name_ = "Object";

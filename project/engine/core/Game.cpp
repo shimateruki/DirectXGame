@@ -410,7 +410,7 @@ void Game::Update() {
         }
 
         if (ImGui::BeginMenu("シーン切り替え")) {
-            const char* sceneNames[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
+            const char* sceneNames[] = { "TITLE", "SELECT", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
             for (int i = 0; i < _countof(sceneNames); i++) {
                 if (ImGui::MenuItem(sceneNames[i])) sceneManager_->ChangeScene(sceneNames[i]);
             }

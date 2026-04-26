@@ -446,6 +446,28 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         else {
             primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
         }
+        // =========================================================
+        // ★ 検知範囲の可視化 (敵のみ)
+        // =========================================================
+        if (obj->GetClassName() == "Enemy") {
+            float range = 0.0f;
+            if (obj->param_.has_value()) {
+                range = obj->param_->detectionRange;
+            }
+
+            // インスタンス描画の上限チェック
+            if (instanceCount < kMaxDrawLimit && range > 0.0f) {
+                Matrix4x4 matScale = math.MakeScaleMatrix({ range * 2.0f, range * 2.0f, range * 2.0f });
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(obj->GetWorldPosition());
+                Matrix4x4 rangeWorldMatrix = math.Multiply(matScale, matTrans);
+                
+                // 検知範囲は薄い赤色
+                Vector4 rangeColor = { 1.0f, 0.0f, 0.0f, 0.3f };
+                primitiveDrawer_.DrawWireSphere(commandList, rangeWorldMatrix, rangeColor, instanceCount);
+                instanceCount++;
+            }
+        }
+
         instanceCount++;
     }
 

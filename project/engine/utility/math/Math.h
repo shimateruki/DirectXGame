@@ -142,4 +142,5 @@ public:
 	static Quaternion EulerToQuaternion(const Vector3& rot);
 	static Vector3 MatrixToEuler(const Matrix4x4& m);
 	static Quaternion MatrixToQuaternion(const Matrix4x4& m);
+	static float LerpShortAngle(float a, float b, float t);
 };

@@ -9,4 +9,8 @@ public:
     // 動きを上書きする
     void Update(float deltaTime) override;
     std::unique_ptr<Object3d> Clone() const override;
+
+private:
+    float jumpTimer_ = 0.0f;     // 次に跳ねるまでの待ち時間
+    bool isHopping_ = false;     // 空中に跳ねている最中か
 };

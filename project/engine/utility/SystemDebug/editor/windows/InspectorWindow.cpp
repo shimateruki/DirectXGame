@@ -548,6 +548,7 @@ void InspectorWindow::Draw() {
                     ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
                     ImGui::DragFloat(ICON_FA_ARROW_DOWN " 重力 (Gravity)", &p.gravity, 0.01f, -10.0f, 10.0f);
                     ImGui::DragFloat(ICON_FA_ARROW_UP " ジャンプ力", &p.jumpPower, 0.1f, 0.0f, 100.0f);
+                    ImGui::DragFloat(ICON_FA_SEARCH " 検知範囲 (Detection)", &p.detectionRange, 0.5f, 0.0f, 500.0f);
                     ImGui::Unindent();
 
                     ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(0.0f, 0.6f, 0.6f));

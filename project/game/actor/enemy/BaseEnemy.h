@@ -18,8 +18,12 @@ public:
     // プレイヤーを追いかけるためにターゲットを登録する関数
     void SetTarget(Object3d* target) { target_ = target; }
 
+    void SetDetectionRange(float range) { detectionRange_ = range; }
+    float GetDetectionRange() const { return detectionRange_; }
+
 protected:
     Object3d* target_ = nullptr; // 追いかける対象（プレイヤー）
+    float detectionRange_ = 20.0f; // 検知範囲
     float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ無敵タイマー
     float colorResetTimer_ = 0.0f;     // 赤色から元に戻すためのタイマー
     Vector4 defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 元の色を記憶

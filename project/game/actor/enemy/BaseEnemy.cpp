@@ -19,6 +19,11 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
 }
 
 void BaseEnemy::Update(float deltaTime) {
+    // 0. パラメータ(JSON)との同期
+    if (param_.has_value()) {
+        detectionRange_ = param_->detectionRange;
+    }
+
     // 重力処理などは親クラス(Character)に任せる
     Character::Update(deltaTime);
     // ① 連続ヒット防止タイマーを減らす

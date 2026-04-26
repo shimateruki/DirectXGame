@@ -550,6 +550,18 @@ Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
 	return m;
 }
 
+float Math::LerpShortAngle(float a, float b, float t) {
+	// 角度を -PI ～ PI の範囲に正規化
+	auto normalizeAngle = [](float angle) {
+		while (angle <= -3.141592f) angle += 6.283185f;
+		while (angle > 3.141592f) angle -= 6.283185f;
+		return angle;
+	};
+
+	float diff = normalizeAngle(b - a);
+	return a + diff * t;
+}
+
 Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, float farZ) {
 	Matrix4x4 result{}; // ゼロ初期化
 

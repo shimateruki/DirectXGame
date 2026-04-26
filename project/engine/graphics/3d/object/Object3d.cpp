@@ -492,13 +492,19 @@ json Object3d::ExportToJson() {
         d["param"]["hp"] = p.hp;
         d["param"]["maxHp"] = p.maxHp;
         d["param"]["speed"] = p.speed;
-        d["param"]["gravity"] = p.gravity;
-        d["param"]["jumpPower"] = p.jumpPower;
-        d["param"]["maxFallSpeed"] = p.maxFallSpeed;
-        d["param"]["enemyType"] = p.enemyType;
-        d["param"]["gimmickType"] = p.gimmickType;
-        d["param"]["interval"] = p.interval;
-        d["param"]["maxCount"] = p.maxCount;
+        json jp;
+        jp["hp"] = p.hp;
+        jp["maxHp"] = p.maxHp;
+        jp["speed"] = p.speed;
+        jp["gravity"] = p.gravity;
+        jp["jumpPower"] = p.jumpPower;
+        jp["maxFallSpeed"] = p.maxFallSpeed;
+        jp["enemyType"] = p.enemyType;
+        jp["gimmickType"] = p.gimmickType;
+        jp["interval"] = p.interval;
+        jp["maxCount"] = p.maxCount;
+        jp["detectionRange"] = p.detectionRange;
+        d["param"] = jp;
     }
 
     // 6. グラフィックス・マテリアル
@@ -598,6 +604,7 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("gimmickType")) p.gimmickType = jp["gimmickType"];
         if (jp.contains("interval")) p.interval = jp["interval"];
         if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
+        if (jp.contains("detectionRange")) p.detectionRange = jp["detectionRange"];
         param_ = p;
     }
 

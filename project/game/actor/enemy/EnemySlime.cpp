@@ -3,33 +3,80 @@
 #include <cmath> // atan2用
 
 void EnemySlime::Update(float deltaTime) {
-    // [削除] ここで呼んでいた BaseEnemy::Update(deltaTime); を消す
+    if (!target_ || !param_.has_value()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
 
-    // 1. 先にAIロジックで「どう動くか（velocity_）」を決める
-    if (target_) {
-        Vector3 myPos = transform_.translate;
-        Vector3 targetPos = target_->GetWorldPosition();
-        Vector3 toTarget = targetPos - myPos;
-        toTarget.y = 0.0f;
+    static Math math;
+    Vector3 myPos = transform_.translate;
+    Vector3 targetPos = target_->GetWorldPosition();
+    Vector3 toTarget = targetPos - myPos;
+    toTarget.y = 0.0f;
+    float length = math.Length(toTarget);
 
-        static Math math;
-        float length = math.Length(toTarget);
+    // --- 1. 接地状態での待機 & 跳躍準備 ---
+    if (isGrounded_) {
+        // 地面に着いている間は水平速度を徐々に落とす（摩擦の代わり）
+        velocity_.x *= 0.8f;
+        velocity_.z *= 0.8f;
 
-        if (length < 20.0f && length > 1.0f) {
+        // 検知範囲内なら跳躍タイマーを進める
+        if (length < detectionRange_ && length > 1.0f) {
+            jumpTimer_ += deltaTime;
+
+            // 向きだけはプレイヤーの方をじわじわ向く
             Vector3 dir = math.Normalize(toTarget);
-            float speed = 3.0f;
+            float targetRotY = std::atan2(dir.x, dir.z);
+            // 簡易的な線形補間で回転（パッと向かないように）
+            transform_.rotate.y = math.LerpShortAngle(transform_.rotate.y, targetRotY, 0.1f);
 
-            velocity_.x = dir.x * speed;
-            velocity_.z = dir.z * speed;
+            // 一定時間経過したらジャンプ！
+            if (jumpTimer_ > 1.0f) {
+                float speed = param_->speed;
+                float jumpPower = param_->jumpPower > 0.0f ? param_->jumpPower : 15.0f;
 
-            transform_.rotate.y = std::atan2(dir.x, dir.z);
+                velocity_.x = dir.x * speed * 5.0f; // 跳ねる瞬間に勢いをつける
+                velocity_.z = dir.z * speed * 5.0f;
+                velocity_.y = jumpPower;
+
+                jumpTimer_ = 0.0f;
+                isHopping_ = true;
+            }
         } else {
-            velocity_.x = 0.0f;
-            velocity_.z = 0.0f;
+            jumpTimer_ = 0.0f;
+        }
+    } else {
+        // 空中にいる間は向きを変えない、または移動方向に合わせる
+    }
+
+    // --- 3. 見た目の演出 (スライムらしい伸縮) ---
+    // 本来のスケールを基準に変形させる
+    Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
+    if (param_.has_value()) {
+        // JSONで設定されたスケールがあればそれをベースにする（今は一旦固定値でデモ）
+    }
+
+    if (!isGrounded_) {
+        // 空中：縦に伸びる (Stretch)
+        transform_.scale.y = math.Lerp(transform_.scale.y, baseScale.y * 1.3f, 0.1f);
+        transform_.scale.x = math.Lerp(transform_.scale.x, baseScale.x * 0.8f, 0.1f);
+        transform_.scale.z = transform_.scale.x;
+    } else {
+        if (jumpTimer_ > 0.8f) {
+            // ジャンプ直前：力を溜めて潰れる (Squash)
+            transform_.scale.y = math.Lerp(transform_.scale.y, baseScale.y * 0.6f, 0.2f);
+            transform_.scale.x = math.Lerp(transform_.scale.x, baseScale.x * 1.4f, 0.2f);
+            transform_.scale.z = transform_.scale.x;
+        } else {
+            // 通常時：元のサイズに戻る
+            transform_.scale.y = math.Lerp(transform_.scale.y, baseScale.y, 0.2f);
+            transform_.scale.x = math.Lerp(transform_.scale.x, baseScale.x, 0.2f);
+            transform_.scale.z = transform_.scale.x;
         }
     }
 
-    // 2. 最後に親クラスを呼んで、決定した速度で移動させる！
+    // 2. 最後に親クラスを呼んで、重力適用と座標更新を実行！
     BaseEnemy::Update(deltaTime); 
 }
 
@@ -40,5 +87,6 @@ std::unique_ptr<Object3d> EnemySlime::Clone() const {
     // 2. 親クラス(Object3d)の機能を使って、座標やモデル設定をコピーしてもらう
     newSlime->CopyFrom(this);
     newSlime->SetTarget(this->target_);
+    newSlime->SetDetectionRange(this->detectionRange_);
     return newSlime;
 }
