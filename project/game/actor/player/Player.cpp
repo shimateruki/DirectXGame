@@ -135,26 +135,48 @@ bool Player::OnCollision(Object3d* other)
     }
 
     // =======================================================
-    // 2. ダメージ処理 (敵の攻撃に当たった時)
+    // 2. ダメージ処理 / 踏みつけ攻撃
     // =======================================================
-    // 属性が「kEnemyAttack」の時のみダメージ判定を行います。
-    if (attribute & kEnemyAttack)
+    if (attribute & (kEnemy | kEnemyAttack))
     {
-        // タイマーと「総合的な無敵状態」の両方をチェック
+        // ★ 踏みつけ判定: 敵の本体(kEnemy)かつ、上方向から衝突したか
+        // 判定を安定させるため、法線のしきい値を0.5(60度)に広げ、速度条件も緩和します
+        bool isAbove = GetWorldPosition().y > other->GetWorldPosition().y;
+        if ((attribute & kEnemy) && info.normal.y > 0.5f && isAbove)
+        {
+            // 敵にダメージ (踏みつけ成功！)
+            DamageEvent enemyDmg;
+            enemyDmg.target = other;
+            enemyDmg.attacker = this;
+            enemyDmg.damageAmount = 10.0f;
+            EventManager::GetInstance()->Dispatch(enemyDmg);
+
+            // プレイヤーを上に跳ね返らせる
+            Vector3 v = GetVelocity();
+            v.y = 15.0f; // 跳ね返り力を少し強化
+            SetVelocity(v);
+            ChangeState(std::make_unique<PlayerStateJump>());
+
+            DebugConsole::GetInstance()->AddLog("Stomp Success!");
+            return true; // 踏みつけ成功時は自身のダメージ処理をスキップ
+        }
+
+        // 通常のダメージ処理 (被弾)
         if (damageCooldownTimer_ <= 0.0f && !IsInvincible())
         {
-            // ダメージイベントを発行（GameRule.cpp で HP 減少等が処理されます）
+            // ダメージイベントを発行 (GameRule で HP 減少が処理される)
             DamageEvent dmgEvent;
             dmgEvent.target = this;
             dmgEvent.attacker = other;
-            dmgEvent.damageAmount = 20.0f;
+            dmgEvent.damageAmount = 1.0f; // ★ 1ダメージ
             EventManager::GetInstance()->Dispatch(dmgEvent);
 
             // 無敵時間をセット
-            damageCooldownTimer_ = 1.5f;
-
-            // ★重要: ダメージ用の無敵フラグのみを立てる (赤色になる)
+            damageCooldownTimer_ = 1.0f;
             SetDamageInvincible(true);
+
+            // ★ ノックバック状態へ移行 (衝突法線を利用)
+            ChangeState(std::make_unique<PlayerStateDamage>(info.normal));
         }
     }
 

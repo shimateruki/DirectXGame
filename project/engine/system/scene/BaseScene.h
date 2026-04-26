@@ -15,12 +15,18 @@ class ParticleSystem;
 class DebugEditor;
 class Player; // ★追加: LevelLoader対応
 
+#include "engine/utility/state/IEditable.h"
+
 /// <summary>
 /// シーンの基底クラス
 /// </summary>
-class BaseScene {
+class BaseScene : public IEditable {
 public:
     virtual ~BaseScene() = default;
+
+    // --- IEditableの実装 ---
+    virtual std::string GetName() override { return "Scene Settings"; }
+    virtual void DrawImGui() override {}
 
     // --- 必須オーバーライド関数 ---
     virtual void Initialize() = 0;

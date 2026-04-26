@@ -97,3 +97,35 @@ void PlayerStateDead::Update(Player* player) {
 }
 
 void PlayerStateDead::Exit(Player* player) {}
+
+// ========================================================
+// 被弾・ノックバック状態 (Damage)
+// ========================================================
+void PlayerStateDamage::Enter(Player* player) {
+    DebugConsole::GetInstance()->AddLog("Enter: Damage (Knockback)");
+    if (player) {
+        player->SetIsControlActive(false); // 操作不能にする
+        
+        // 初速をノックバック方向に与える
+        float force = 15.0f;
+        Vector3 v = knockbackDir_ * force;
+        v.y = 8.0f; // 少し浮かす
+        player->SetVelocity(v);
+    }
+}
+
+void PlayerStateDamage::Update(Player* player) {
+    if (!player) return;
+
+    timer_ += 1.0f / 60.0f;
+
+    // 時間経過で操作可能に戻し、Idleへ
+    if (timer_ >= duration_) {
+        player->SetIsControlActive(true);
+        player->ChangeState(std::make_unique<PlayerStateIdle>());
+    }
+}
+
+void PlayerStateDamage::Exit(Player* player) {
+    if (player) player->SetIsControlActive(true);
+}

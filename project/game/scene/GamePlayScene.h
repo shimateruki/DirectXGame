@@ -49,6 +49,10 @@ public:
     void DrawUI() override;
     void DrawShadow() override;
 
+    // --- IEditableの実装 ---
+    std::string GetName() override { return "Game Play Scene"; }
+    void DrawImGui() override;
+
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
 

@@ -446,6 +446,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         else {
             primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
         }
+        instanceCount++; // あたり判定を描画したのでカウントを進める
+
         // =========================================================
         // ★ 検知範囲の可視化 (敵のみ)
         // =========================================================
@@ -464,11 +466,10 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 // 検知範囲は薄い赤色
                 Vector4 rangeColor = { 1.0f, 0.0f, 0.0f, 0.3f };
                 primitiveDrawer_.DrawWireSphere(commandList, rangeWorldMatrix, rangeColor, instanceCount);
-                instanceCount++;
+                instanceCount++; // 検知範囲を描画したのでカウントを進める
             }
         }
 
-        instanceCount++;
     }
 
     // =========================================================

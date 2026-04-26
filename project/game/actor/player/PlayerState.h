@@ -1,5 +1,6 @@
 #pragma once
 #include "IAnimationState.h"
+#include "engine/utility/math/Math.h"
 
 // --------------------------------------------------------
 // 待機状態 (Idle)
@@ -56,4 +57,20 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+};
+
+// --------------------------------------------------------
+// 被弾・ノックバック状態 (Damage)
+// --------------------------------------------------------
+class PlayerStateDamage : public IAnimationState
+{
+public:
+    PlayerStateDamage(const Vector3& knockbackDir) : knockbackDir_(knockbackDir) {}
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+private:
+    Vector3 knockbackDir_;
+    float timer_ = 0.0f;
+    const float duration_ = 0.5f; // ノックバック時間
 };

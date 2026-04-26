@@ -28,6 +28,7 @@
 #include "BossCore.h"
 #include"MeshEffectManager.h"
 #include"WinApp.h"
+#include "IconsFontAwesome5.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -46,6 +47,7 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
+#include "StageManager.h"
 
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
@@ -60,7 +62,8 @@ void GamePlayScene::Initialize() {
 
 	LOG("Game Initialized!");
 
-	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+	const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
+	bgmHandle_ = audioPlayer_->LoadSoundFile(currentStage.bgmPath);
 
 	// --- 2. 各種マネージャ初期化 ---
 	EventManager::GetInstance()->ClearAllListeners();
@@ -114,8 +117,8 @@ void GamePlayScene::Initialize() {
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
-	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
-	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
+	levelLoader_->LoadObjectLayout(this, currentStage.levelPath);
+	levelLoader_->LoadSpriteLayout(this, currentStage.spritePath);
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
@@ -474,6 +477,54 @@ void GamePlayScene::DrawShadow() {
 
 void GamePlayScene::UpdateUI() {
 
+}
+
+
+
+void GamePlayScene::DrawImGui() {
+#ifdef USE_IMGUI
+    ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: GamePlay");
+    ImGui::Separator();
+
+    if (ImGui::CollapsingHeader(ICON_FA_MAP " Stage Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const auto& stages = StageManager::GetInstance()->GetStages();
+        int currentIndex = StageManager::GetInstance()->GetCurrentStageIndex();
+
+        std::vector<const char*> stageNames;
+        for (const auto& s : stages) stageNames.push_back(s.name.c_str());
+
+        if (ImGui::Combo("Select Stage", &currentIndex, stageNames.data(), (int)stageNames.size())) {
+            StageManager::GetInstance()->SetCurrentStage(currentIndex);
+        }
+
+        if (ImGui::Button(ICON_FA_SYNC " Reload Scene with Selected Stage", ImVec2(-1, 30))) {
+            SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+        }
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_USER " Player Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (player_) {
+            Vector3 pos = player_->GetTranslate();
+            ImGui::Text("Position: (%.2f, %.2f, %.2f)", pos.x, pos.y, pos.z);
+            
+            float hp = player_->GetHp();
+            float maxHp = player_->GetMaxHp();
+            ImGui::ProgressBar(hp / maxHp, ImVec2(-1, 0), "HP");
+        }
+        else {
+            ImGui::TextDisabled("Player not found");
+        }
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_GHOST " Scene Events", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button(ICON_FA_PLAY " Start Bridge Drop Movie", ImVec2(-1, 30))) {
+            StartBridgeDropMovie();
+        }
+    }
+    
+    ImGui::Separator();
+    ImGui::TextDisabled("※この項目は GamePlayScene::DrawImGui() で編集可能です");
+#endif
 }
 
 void GamePlayScene::StartBridgeDropMovie() {
