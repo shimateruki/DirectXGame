@@ -1,5 +1,6 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
+#include "engine/graphics/postprocess/Fade.h"
 
 #include "DirectXCommon.h"
 #include <cassert>
@@ -66,6 +67,27 @@ void SceneManager::Finalize() {
 /// 更新
 /// </summary>
 void SceneManager::Update(float deltaTime) {
+    // --- シーン遷移の進行状況をチェック ---
+    if (!nextSceneName_.empty()) {
+        // フェードアウト中なら何もしない
+        if (Fade::GetInstance()->GetStatus() == Fade::Status::FadeOut) {
+            if (!Fade::GetInstance()->IsFinished()) {
+                return; // フェードが終わるまで待つ
+            }
+        }
+        
+        // フェードアウトが完了したら、次のシーンのインスタンスを生成して予約
+        std::unique_ptr<BaseScene> newScene = sceneFactory_->CreateScene(nextSceneName_);
+        if (debugEditor_) {
+            newScene->SetDebugEditor(debugEditor_);
+        }
+        SetNextScene(std::move(newScene));
+        
+        // フェードインを開始
+        Fade::GetInstance()->StartFadeIn(1.0f);
+        nextSceneName_ = "";
+    }
+
     // --- 次のシーンが予約されている場合 ---
     if (nextScene_ != nullptr) {
 
@@ -119,23 +141,18 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
         assert(false && "SceneFactory is not set in SceneManager.");
         return;
     }
-    if (nextScene_ != nullptr) {
+    if (!nextSceneName_.empty() || nextScene_ != nullptr) {
         // 既にシーン遷移中なので、新しいリクエストは無視
         return;
     }
 
-    // ファクトリーを使ってシーンを生成
-    std::unique_ptr<BaseScene> newScene = sceneFactory_->CreateScene(sceneName);
-    if (debugEditor_) {
-        newScene->SetDebugEditor(debugEditor_);
-    }
-    // SetNextScene に渡して、次のフレームで遷移させる
-    if (newScene) {
-        SetNextScene(std::move(newScene));
+    // 次のシーン名を保存し、フェードアウトを開始する
+    nextSceneName_ = sceneName;
+    Fade::GetInstance()->StartFadeOut(1.0f);
+
 #ifdef USE_IMGUI
-        SaveLastSceneName(sceneName);
+    SaveLastSceneName(sceneName);
 #endif
-    }
 }
 
 void SceneManager::SaveLastSceneName(const std::string& sceneName) {

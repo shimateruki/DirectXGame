@@ -3,6 +3,9 @@
 #include "InputManager.h"
 #include "engine/utility/math/Math.h"
 #include "DebugConsole.h"
+#include "engine/graphics/postprocess/Fade.h"
+#include "engine/graphics/postprocess/PostEffect.h"
+#include "engine/graphics/3d/camera/CameraManager.h"
 #include <memory>
 
 // ========================================================
@@ -128,4 +131,93 @@ void PlayerStateDamage::Update(Player* player) {
 
 void PlayerStateDamage::Exit(Player* player) {
     if (player) player->SetIsControlActive(true);
+}
+
+// ========================================================
+// 落下演出状態 (FallingOut)
+// ========================================================
+void PlayerStateFallingOut::Enter(Player* player) {
+    if (!player) return;
+    player->SetIsControlActive(false);
+
+    // カメラの座標追従を停止 (位置固定・角度のみ追従)
+    CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(true);
+
+    phase_ = Phase::Waiting;
+    waitTimer_ = 0.0f;
+}
+
+void PlayerStateFallingOut::Update(Player* player) {
+    if (!player) return;
+
+    // 共通処理: アイリスの中心をプレイヤーに合わせ続ける (IrisOut/IrisIn中)
+    if (phase_ == Phase::IrisOut || phase_ == Phase::IrisIn) {
+        Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+        Matrix4x4 vp = cam->GetViewProjectionMatrix();
+        Vector3 worldPos = player->GetWorldPosition();
+        worldPos.y += 1.0f;
+
+        Vector3 ndc = Math::Transform(worldPos, vp);
+        PostEffect::GetInstance()->GetParams()->irisCenterX = (ndc.x + 1.0f) * 0.5f;
+        PostEffect::GetInstance()->GetParams()->irisCenterY = (1.0f - ndc.y) * 0.5f;
+    }
+
+    // フェーズごとの処理
+    switch (phase_) {
+    case Phase::Waiting:
+        waitTimer_ += 1.0f / 60.0f;
+        if (waitTimer_ >= 0.6f) {
+            // アイリスアウト開始
+            Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+            Matrix4x4 vp = cam->GetViewProjectionMatrix();
+            Vector3 worldPos = player->GetWorldPosition();
+            worldPos.y += 1.0f;
+            Vector3 ndc = Math::Transform(worldPos, vp);
+            Vector2 irisCenter = { (ndc.x + 1.0f) * 0.5f, (1.0f - ndc.y) * 0.5f };
+
+            Fade::GetInstance()->StartIrisOut(1.0f, irisCenter);
+            phase_ = Phase::IrisOut;
+        }
+        break;
+
+    case Phase::IrisOut:
+        if (Fade::GetInstance()->IsFinished()) {
+            // 画面が閉じきった -> ワープ
+            player->SetTranslate(player->GetRespawnPosition());
+            player->SetVelocity({ 0,0,0 });
+
+            // カメラの座標追従を一時的に戻して位置を同期
+            CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
+            CameraManager::GetInstance()->GetActiveCamera()->Update();
+            CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(true); // 再び固定(演出用)
+
+            // アイリスイン開始
+            Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+            Matrix4x4 vp = cam->GetViewProjectionMatrix();
+            Vector3 worldPos = player->GetWorldPosition();
+            worldPos.y += 1.0f;
+            Vector3 ndc = Math::Transform(worldPos, vp);
+            Vector2 irisCenter = { (ndc.x + 1.0f) * 0.5f, (1.0f - ndc.y) * 0.5f };
+
+            Fade::GetInstance()->StartIrisIn(0.5f, irisCenter);
+            phase_ = Phase::IrisIn;
+        }
+        break;
+
+    case Phase::IrisIn:
+        if (Fade::GetInstance()->IsFinished()) {
+            // 全ての演出終了
+            Fade::GetInstance()->Stop();
+            player->ChangeState(std::make_unique<PlayerStateIdle>());
+            player->SetIsControlActive(true);
+        }
+        break;
+    }
+}
+
+void PlayerStateFallingOut::Exit(Player* player) {
+    if (player) {
+        player->SetIsControlActive(true);
+    }
+    CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
 }

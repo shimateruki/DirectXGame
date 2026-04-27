@@ -228,6 +228,12 @@ void PostEffect::CreateConstBuffer() {
     paramsData_->threshold = 0.8f;
     paramsData_->bloomIntensity = 2.0f;
     paramsData_->spread = 2.0f;
+    paramsData_->slimeFadeIntensity = 0.0f;
+    paramsData_->slimeDensity = 1.0f;
+    paramsData_->slimeColor = { 0.18f, 0.8f, 0.44f };
+    paramsData_->irisFadeIntensity = 0.0f;
+    paramsData_->irisCenterX = 0.5f;
+    paramsData_->irisCenterY = 0.5f;
 }
 
 void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_FORMAT format) {

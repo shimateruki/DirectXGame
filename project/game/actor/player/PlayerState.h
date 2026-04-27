@@ -74,3 +74,22 @@ private:
     float timer_ = 0.0f;
     const float duration_ = 0.5f; // ノックバック時間
 };
+
+// --------------------------------------------------------
+// 落下演出状態 (FallingOut)
+// --------------------------------------------------------
+class PlayerStateFallingOut : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+private:
+    enum class Phase {
+        Waiting,  // 落下を見せる待機時間
+        IrisOut,  // 画面を閉じる
+        IrisIn    // 画面を開く
+    };
+    Phase phase_ = Phase::Waiting;
+    float waitTimer_ = 0.0f;
+};

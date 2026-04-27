@@ -50,6 +50,19 @@ cbuffer PostEffectParams : register(b0)
     float padding_m2;
     float4x4 projectionInverse;
 
+    // --- Slime Fade ---
+    float slimeFadeIntensity;
+    float slimeDensity;
+    float padding_s1;
+    float padding_s2;
+    float3 slimeColor;
+    float padding_s3;
+
+    // --- Iris Out ---
+    float irisFadeIntensity;
+    float irisCenterX;
+    float irisCenterY;
+    float padding_i1;
 };
 
 Texture2D<float4> lutTex : register(t1);
@@ -388,6 +401,36 @@ float4 mainComposite(PSInput input) : SV_TARGET
         finalColor.rgb *= (1.0 - saturate(blackout));
     }
 
+    // Slime Fade (Drip)
+    if (slimeFadeIntensity > 0.0)
+    {
+        // 1. ノイズをサンプリング
+        // 縦方向に滴る感じを出すために、横方向の波打つ境界を作る
+        float2 noiseUv = float2(uv.x * slimeDensity, time * 0.1);
+        float noise = noiseTex.Sample(smp, noiseUv).r;
+        
+        // 2. しきい値の計算
+        // slimeFadeIntensity (0.0 -> 1.0) に応じて、上からスライムが降りてくる
+        // 1.2 を掛けているのは、ノイズの振幅分を含めて完全に画面を覆うため
+        float dripProgress = slimeFadeIntensity * 1.2;
+        float yThreshold = dripProgress - (noise * 0.2);
+        
+        // 3. マスクの生成
+        // uv.y が yThreshold より小さければスライム（上から垂れてくる）
+        float mask = 1.0 - smoothstep(yThreshold - 0.05, yThreshold + 0.05, uv.y);
+        
+        // 4. 背景の歪み
+        float edgeDistortion = mask * (1.0 - mask) * 4.0;
+        float2 distortedUv = uv + (noise - 0.5) * 0.03 * edgeDistortion;
+        float3 background = tex.Sample(smp, distortedUv).rgb;
+        
+        // 5. 色の合成
+        finalColor.rgb = lerp(finalColor.rgb, slimeColor, mask);
+        
+        // 6. ハイライト（境界線を明るくしてヌルヌル感を出す）
+        finalColor.rgb += edgeDistortion * 0.2 * slimeColor;
+    }
+
     // Grayscale / Sepia (資料に基づいた実装)
     if (grayscaleIntensity > 0.0 || sepiaIntensity > 0.0)
     {
@@ -415,6 +458,28 @@ float4 mainComposite(PSInput input) : SV_TARGET
     if (damageFlash > 0.0)
     {
         finalColor.rgb = lerp(finalColor.rgb, float3(1.0, 0.0, 0.0), damageFlash);
+    }
+
+    // Iris Out (Mario Galaxy style)
+    if (irisFadeIntensity > 0.0)
+    {
+        float2 irisCenter = float2(irisCenterX, irisCenterY);
+        float2 toCenter = input.uv - irisCenter;
+        
+        // アスペクト比補正 (画面が横長なので、そのまま計算すると楕円になる)
+        uint w, h;
+        tex.GetDimensions(w, h);
+        toCenter.x *= (float)w / (float)h;
+        
+        float dist = length(toCenter);
+        
+        // irisFadeIntensity (0.0 -> 1.0) に応じて半径を小さくする
+        // 1.0 (対角線より少し大きい) -> 0.0
+        float radius = (1.0 - irisFadeIntensity) * 0.8;
+        
+        // 円の外側を黒く塗る
+        float circleMask = smoothstep(radius, radius - 0.01, dist);
+        finalColor.rgb *= circleMask;
     }
 
     // Cinema Bars (元のUVを使って歪みを防ぐ)

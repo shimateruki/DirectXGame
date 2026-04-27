@@ -4,6 +4,7 @@
 #include <fstream>
 #include <filesystem>
 #include "IconsFontAwesome5.h"
+#include "Fade.h"
 using json = nlohmann::json;
 
 void PostEffectEditor::Initialize(PostEffect* postEffect) {
@@ -105,6 +106,41 @@ void PostEffectEditor::DrawImGui() {
     ImGui::Separator();
 
     // ==========================================================
+    // スライムフェードの設定
+    // ==========================================================
+    ImGui::Text(ICON_FA_WATER " Slime Fade Settings");
+    ImGui::DragFloat(" Slime Intensity", &params->slimeFadeIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(" Slime Density", &params->slimeDensity, 0.1f, 0.1f, 10.0f);
+    ImGui::ColorEdit3(" Slime Color", &params->slimeColor.x);
+    
+    ImGui::Spacing();
+    if (ImGui::Button("Start Fade In")) {
+        Fade::GetInstance()->StartFadeIn(1.5f);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Start Fade Out")) {
+        Fade::GetInstance()->StartFadeOut(1.5f);
+    }
+    ImGui::Separator();
+
+    // ==========================================================
+    // アイリスフェードの設定
+    // ==========================================================
+    ImGui::Text(ICON_FA_DOT_CIRCLE " Iris Fade Settings");
+    ImGui::DragFloat(" Iris Intensity", &params->irisFadeIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat2(" Iris Center", &params->irisCenterX, 0.01f, 0.0f, 1.0f);
+    
+    ImGui::Spacing();
+    if (ImGui::Button("Start Iris In")) {
+        Fade::GetInstance()->StartIrisIn(1.0f);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Start Iris Out")) {
+        Fade::GetInstance()->StartIrisOut(1.0f);
+    }
+    ImGui::Separator();
+
+    // ==========================================================
     // セーブ・ロードボタン
     // ==========================================================
     if (ImGui::Button(ICON_FA_SAVE " Save JSON")) {
@@ -160,6 +196,11 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["dissolveEdgeWidth"] = params->dissolveEdgeWidth;
     j["dissolveEdgeColor"] = { params->dissolveEdgeColor.x, params->dissolveEdgeColor.y, params->dissolveEdgeColor.z };
     j["randomIntensity"] = params->randomIntensity;
+    j["slimeFadeIntensity"] = params->slimeFadeIntensity;
+    j["slimeDensity"] = params->slimeDensity;
+    j["slimeColor"] = { params->slimeColor.x, params->slimeColor.y, params->slimeColor.z };
+    j["irisFadeIntensity"] = params->irisFadeIntensity;
+    j["irisCenter"] = { params->irisCenterX, params->irisCenterY };
     std::ofstream file(filename);
     if (file.is_open()) {
         file << j.dump(4); // インデント4で綺麗に出力
@@ -211,6 +252,18 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
             params->dissolveEdgeColor.z = j["dissolveEdgeColor"][2];
         }
         if (j.contains("randomIntensity")) params->randomIntensity = j["randomIntensity"];
+        if (j.contains("slimeFadeIntensity")) params->slimeFadeIntensity = j["slimeFadeIntensity"];
+        if (j.contains("slimeDensity")) params->slimeDensity = j["slimeDensity"];
+        if (j.contains("slimeColor")) {
+            params->slimeColor.x = j["slimeColor"][0];
+            params->slimeColor.y = j["slimeColor"][1];
+            params->slimeColor.z = j["slimeColor"][2];
+        }
+        if (j.contains("irisFadeIntensity")) params->irisFadeIntensity = j["irisFadeIntensity"];
+        if (j.contains("irisCenter")) {
+            params->irisCenterX = j["irisCenter"][0];
+            params->irisCenterY = j["irisCenter"][1];
+        }
 
     }
     catch (...) {

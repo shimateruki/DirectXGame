@@ -76,4 +76,5 @@ private:
     DebugEditor* debugEditor_ = nullptr;
     const std::string kUserConfigPath = "Resources/json/user_config.json";
     bool isPlaying_ = false;
+    std::string nextSceneName_ = "";
 };

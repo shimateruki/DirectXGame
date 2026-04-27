@@ -88,7 +88,10 @@ void Player::Update(float deltaTime)
         }
 
         // 5. 落下判定
-        if (transform_.translate.y < -40.0f) {
+        if (transform_.translate.y < -40.0f && !isDead && isControlActive_) {
+            // 落下演出状態へ移行
+            ChangeState(std::make_unique<PlayerStateFallingOut>());
+            
             // 残機を減らす
             GameDataManager::GetInstance()->SubtractLife();
 
@@ -97,15 +100,7 @@ void Player::Update(float deltaTime)
                 SceneManager::GetInstance()->ChangeScene("GAMEOVER");
             }
             else {
-                // 残機あり：初期地点にワープして復帰
-                transform_.translate = respawnPosition_;
-                velocity_ = { 0, 0, 0 };
-
-                // 復帰後の無敵時間を付与
-                damageCooldownTimer_ = 1.0f;
-                SetDamageInvincible(true);
-
-                DebugConsole::GetInstance()->AddLog("Fell out of bounds! Life subtracted and teleported to start.");
+                DebugConsole::GetInstance()->AddLog("Fell out of bounds! Life subtracted. Starting Iris Out.");
             }
         }
     }

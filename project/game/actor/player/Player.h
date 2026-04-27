@@ -45,6 +45,7 @@ public:
     Vector3 GetVelocity() const { return velocity_; }
     void SetVelocity(const Vector3& v) { velocity_ = v; }
     void SetRespawnPosition(const Vector3& pos) { respawnPosition_ = pos; }
+    Vector3 GetRespawnPosition() const { return respawnPosition_; }
 
     Vector3 GetRotation() const { return transform_.rotate; }
 

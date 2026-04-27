@@ -20,6 +20,7 @@
 #include <IconsFontAwesome5.h>
 #include <MeshEffectManager.h>
 #include "GameDataManager.h"
+#include "engine/graphics/postprocess/Fade.h"
 
 void Game::Initialize() {
     // Frameworkの初期化処理
@@ -72,6 +73,7 @@ void Game::Initialize() {
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
     postEffectEditor_->Initialize(PostEffect::GetInstance());
   
+    Fade::GetInstance()->Initialize();
     KeyConfig::GetInstance()->Initialize();
 #ifdef USE_IMGUI
 
@@ -500,6 +502,7 @@ void Game::Update() {
     if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
     LightManager::GetInstance()->Update();
     GPUParticleManager::GetInstance()->Update(deltaTime);
+    Fade::GetInstance()->Update(deltaTime);
     PostEffect::GetInstance()->GetParams()->time += deltaTime;
 
     if (sceneManager_) {

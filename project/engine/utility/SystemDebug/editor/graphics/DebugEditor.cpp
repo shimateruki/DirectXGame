@@ -77,14 +77,23 @@ void DebugEditor::Update() {
     Math math;
 
     // =========================================================
-    // 1. エディタ状態の同期と更新
+    // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
+    // =========================================================
+    if (lastUpdatedScene_ != currentScene) {
+        selectedObject_ = nullptr;
+        previewObject_ = nullptr;
+        lastUpdatedScene_ = currentScene;
+        EditorManager::GetInstance()->ClearSelection();
+    }
+
+    // =========================================================
+    // 2. エディタ状態の同期と更新
     // =========================================================
     IEditable* current = EditorManager::GetInstance()->GetSelectedObject();
     static std::string s_lastSyncedSceneFilename = "";
     std::string currentLoadedName = currentScene->GetLoadedFilename();
 
     // ファイル名が前フレームから変わった時「だけ」同期する
-    // （コンボボックスでの手動切り替え操作を邪魔しないための工夫）
     if (!currentLoadedName.empty() && s_lastSyncedSceneFilename != currentLoadedName) {
         SetSceneFilename(currentLoadedName);
         s_lastSyncedSceneFilename = currentLoadedName;
@@ -98,13 +107,6 @@ void DebugEditor::Update() {
         if (obj) {
             selectedObject_ = obj;
         }
-    }
-
-    // シーン変更リセット
-    if (lastUpdatedScene_ != currentScene) {
-        selectedObject_ = nullptr;
-        previewObject_ = nullptr;
-        lastUpdatedScene_ = currentScene;
     }
 
     // --- カメラ制御 (設置モード用) ---

@@ -68,7 +68,19 @@ public:
         
         Matrix4x4 projectionInverse;            // 深度復元用の逆行列 (資料)
 
- 
+        // --- Slime Fade ---
+        float slimeFadeIntensity = 0.0f;    // スライムフェードの進捗 (0.0 - 1.0)
+        float slimeDensity = 1.0f;          // スライムの密度（ノイズのスケール）
+        float padding_s1 = 0.0f;
+        float padding_s2 = 0.0f;
+        Vector3 slimeColor = { 0.18f, 0.8f, 0.44f }; // スライムの色 (Emerald Green)
+        float padding_s3 = 0.0f;
+
+        // --- Iris Out ---
+        float irisFadeIntensity = 0.0f;     // アイリスフェードの進捗 (0.0: 開, 1.0: 閉)
+        float irisCenterX = 0.5f;           // 中心X
+        float irisCenterY = 0.5f;           // 中心Y
+        float padding_i1 = 0.0f;
     };
 
     // 初期化: 各パス用のリソースとPSOを生成

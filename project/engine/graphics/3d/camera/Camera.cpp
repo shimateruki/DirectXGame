@@ -206,7 +206,9 @@ void Camera::Update() {
         }
         }
 
-        eye_ = desiredEye;
+        if (!isEyeFrozen_) {
+            eye_ = desiredEye;
+        }
 
         if (!isEyeFrozen_) {
             if (followMode_ != FollowMode::kFirstPerson && followMode_ != FollowMode::kFixedPoint) {

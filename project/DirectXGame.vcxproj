@@ -258,6 +258,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
     <ClCompile Include="game\actor\player\PlayerMover.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.cpp" />
+    <ClCompile Include="engine\graphics\postprocess\Fade.cpp" />
     <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\PostEffectEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\GPUParticleEditor.cpp" />
@@ -701,6 +702,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\graphics\particle\ParticleManager.h" />
     <ClInclude Include="game\actor\player\PlayerMover.h" />
     <ClInclude Include="game\actor\player\PlayerState.h" />
+    <ClInclude Include="engine\graphics\postprocess\Fade.h" />
     <ClInclude Include="engine\graphics\postprocess\PostEffect.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\PostEffectEditor.h" />
     <ClInclude Include="engine\component\Transform.h" />
