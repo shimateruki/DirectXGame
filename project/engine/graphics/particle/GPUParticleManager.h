@@ -28,6 +28,7 @@ public:
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
     void StopAutoEmitter(uint32_t id);
     void ClearAllAutoEmitters();
+    bool IsEmpty() const { return systems_.empty(); }
 
     void SetEmitterMesh(ID3D12Resource* vb, uint32_t vCount, uint32_t vStride, uint32_t boneSrvIndex) {
         meshVb_ = vb; meshVCount_ = vCount; meshVStride_ = vStride; meshBoneSrv_ = boneSrvIndex;

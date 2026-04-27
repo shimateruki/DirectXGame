@@ -1,5 +1,7 @@
 #include "ObjectManager.h"
 #include "CollisionManager.h"
+#include "CameraManager.h"
+#include "engine/utility/math/Math.h"
 #include <algorithm> // remove_if用
 
 void ObjectManager::Update(float deltaTime) {
@@ -85,12 +87,23 @@ void ObjectManager::ProcessRemovals() {
 void ObjectManager::DrawShadow() {
 	if (objects_.empty()) return;
 
+	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+	if (!camera) return;
+	const Frustum& frustum = camera->GetFrustum();
+
 	// ★ 軽量化: 共通の状態設定はループの外で1回だけ行う
 	bool isFirst = true;
 
 	// 管理している全オブジェクトの影を描画する
 	for (auto& obj : objects_) {
 		if (obj->GetMaterialType() == 7) continue;
+
+		// 視錐台カリング（影についてもカメラから見えないものは描画スキップ）
+		// 本来はライト視点のカリングが望ましいが、簡易的な軽量化として有効
+		AABB worldAabb = obj->GetModelWorldAABB();
+		if (!Math::IntersectFrustumAABB(frustum, worldAabb.min, worldAabb.max)) {
+			continue;
+		}
 
 		if (isFirst) {
 			obj->SetShadowCommonState();

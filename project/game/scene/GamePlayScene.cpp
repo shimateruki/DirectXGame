@@ -435,48 +435,50 @@ void GamePlayScene::Draw() {
 		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 10) hasFluid = true;
 	}
 
-	if (hasFluid) {
-		// 画面をキャプチャしてテクスチャにする
+
+	// =======================================================
+	// 5. GPUパーティクル / 流体 (水・マグマ・氷) の描画！
+	// =======================================================
+	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
+	if (hasFluid || hasGPUParticles) {
+		// 画面をキャプチャしてテクスチャにする (必要な時だけ1回呼ぶ)
 		dxCommon_->UpdateGrabTexture();
 
-		for (auto& obj : objects) {
-			bool isPlayerPart = false;
-			if (isFirstPerson) {
-				Object3d* current = obj.get();
-				while (current) {
-					if (current == player_) { isPlayerPart = true; break; }
-					current = current->GetParent();
+		if (hasFluid) {
+			for (auto& obj : objects) {
+				bool isPlayerPart = false;
+				if (isFirstPerson) {
+					Object3d* current = obj.get();
+					while (current) {
+						if (current == player_) { isPlayerPart = true; break; }
+						current = current->GetParent();
+					}
+				}
+				if (isPlayerPart) continue;
+
+				int matType = obj->GetMaterialType();
+				if (matType == 8) {
+					obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				else if (matType == 9) {
+					obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				else if (matType == 10) {
+					obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				}
 			}
-			if (isPlayerPart) continue;
+		}
 
-			int matType = obj->GetMaterialType();
-			if (matType == 8) {
-				obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			}
-			else if (matType == 9) {
-				obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			}
-			else if (matType == 10) {
-				obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			}
+		if (hasGPUParticles) {
+			GPUParticleManager::GetInstance()->Draw(
+				dxCommon_->GetCommandList(),
+				camera->GetViewMatrix(),
+				camera->GetProjectionMatrix(),
+				gpuParticleTexHandle_,
+				dxCommon_->GetDepthSrvHandle()
+			);
 		}
 	}
-	// =======================================================
-	// 5. GPUパーティクルの描画！
-	// =======================================================
-	dxCommon_->UpdateGrabTexture();
-	dxCommon_->PreDrawLocalFog();
-
-	GPUParticleManager::GetInstance()->Draw(
-		dxCommon_->GetCommandList(),
-		camera->GetViewMatrix(),
-		camera->GetProjectionMatrix(),
-		gpuParticleTexHandle_,
-		dxCommon_->GetDepthSrvHandle()
-	);
-
-	dxCommon_->PostDrawLocalFog();
 }
 // ====================================================================
 // UI描画専用の関数
