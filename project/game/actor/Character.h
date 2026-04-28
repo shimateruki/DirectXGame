@@ -19,6 +19,9 @@ public:
 
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
+    Vector3 GetVelocity() const { return velocity_; }
+    void SetVelocity(const Vector3& v) { velocity_ = v; }
+
     bool IsGrounded() const { return isGrounded_; }
     /// <summary>
      /// このキャラクターに適用される重力を設定する

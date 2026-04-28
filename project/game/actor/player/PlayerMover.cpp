@@ -34,6 +34,10 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 
     // デフォルト戦略
     strategy_ = std::make_unique<MoveStrategy3D>();
+    
+    // 基本スケールを保存 (基準は2.0)
+    baseScale_ = { 2.0f, 2.0f, 2.0f };
+    if (player_) player_->GetTransform()->scale = baseScale_;
 }
 
 void PlayerMover::Update(float deltaTime)
@@ -78,7 +82,9 @@ void PlayerMover::Update(float deltaTime)
             dashDirection_.y = 0.0f;
             dashDirection_.z = inputMove.z / len;
             isDashing_ = true;
-            dashTimer_ = dashDuration_;
+            currentDashSpeed_ = dashSpeed_; // 通常速度
+            currentDashDuration_ = dashDuration_; // 通常時間
+            dashTimer_ = currentDashDuration_;
 
             // クールタイム開始
             dashAvailable_ = false;
@@ -119,8 +125,8 @@ void PlayerMover::Update(float deltaTime)
     // --- 5. 速度の決定 (ダッシュ中 or 通常) ---
     if (isDashing_)
     {
-        float tRatio = dashTimer_ / dashDuration_; // 1.0 -> 0.0
-        float currentSpeed = dashSpeed_ * (tRatio * tRatio);
+        float tRatio = dashTimer_ / currentDashDuration_; // 1.0 -> 0.0
+        float currentSpeed = currentDashSpeed_ * (tRatio * tRatio);
 
         velocity.x = dashDirection_.x * currentSpeed;
         velocity.z = dashDirection_.z * currentSpeed;
@@ -173,12 +179,56 @@ void PlayerMover::Update(float deltaTime)
         player_->SetRotationY(NormalizeAngle(newY));
     }
 
-    // --- 7. ジャンプ処理 ---
-    if (player_->IsGrounded())
-    {
-        if (inputManager_->IsActionTriggered("Jump"))
-        {
-            velocity.y = player_->GetJumpPower();
+    // --- 7. ジャンプ処理 (チャージ対応) ---
+    if (player_->IsGrounded()) {
+        if (inputManager_->IsActionPressed("Jump")) {
+            // チャージ中
+            isJumpCharging_ = true;
+            jumpChargeTimer_ += deltaTime;
+            if (jumpChargeTimer_ > maxChargeTime_) jumpChargeTimer_ = maxChargeTime_;
+            
+            // --- 追加: チャージ中の左クリックで「突進」 (0.4秒以上の溜めが必要) ---
+            if (inputManager_->IsMouseButtonTriggered(0) && jumpChargeTimer_ >= 0.4f) {
+                float yaw = player_->GetRotation().y;
+                
+                // ダッシュ（慣性移動）の仕組みに乗せる
+                float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
+                // 低チャージ時の性能を大幅に抑え、溜めによる伸びを強調
+                currentDashSpeed_ = dashSpeed_ * (0.5f + chargeRatio * 1.5f); // 0.5倍 〜 2.0倍
+                currentDashDuration_ = dashDuration_ * (0.3f + chargeRatio * 1.2f); // 0.3倍 〜 1.5倍
+                
+                dashDirection_ = { std::sin(yaw), 0.0f, std::cos(yaw) };
+                isDashing_ = true;
+                dashTimer_ = currentDashDuration_;
+                
+                // チャージリセット
+                isJumpCharging_ = false;
+                jumpChargeTimer_ = 0.0f;
+
+                // ダッシュ状態へ遷移
+                if (player_) player_->ChangeState(std::make_unique<PlayerStateDash>());
+
+                // 突進エフェクト
+                if (particleSystem_) {
+                    Vector3 pos = player_->GetWorldPosition();
+                    particleSystem_->SpawnParticles(
+                        pos, 20, 2.0f, &dashDirection_, 40.0f,
+                        { 0.4f, 0.8f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
+                        0.1f, 0.3f, 0.5f, 0.05f
+                    );
+                }
+            }
+            else if (!isDashing_) {
+                // 通常のチャージ中かつダッシュ中でない場合のみ、移動速度を大幅に落とす
+                velocity.x *= 0.2f;
+                velocity.z *= 0.2f;
+            }
+        }
+        else if (isJumpCharging_) {
+            // 解放！
+            float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
+            float powerMult = 1.0f + chargeRatio; // 最大2倍
+            velocity.y = player_->GetJumpPower() * powerMult;
 
             // ジャンプイベントを発行
             PlayerJumpEvent jumpEvent;
@@ -186,46 +236,114 @@ void PlayerMover::Update(float deltaTime)
             player_->IncrementJumpCount();
             EventManager::GetInstance()->Dispatch(jumpEvent);
 
-            // ジャンプ時の土煙エフェクト
-            if (particleSystem_)
-            {
+            // ジャンプ時の土煙エフェクト（チャージ量に応じて増やす）
+            if (particleSystem_) {
                 Vector3 footPos = player_->GetWorldPosition();
                 footPos.y -= 1.0f;
+                int pCount = 10 + (int)(chargeRatio * 15.0f);
                 particleSystem_->SpawnParticles(
-                    footPos, 10, 0.5f, nullptr, 0.5f,
+                    footPos, pCount, 0.5f + chargeRatio, nullptr, 0.5f + chargeRatio,
                     { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
                     0.2f, 0.5f, 1.0f, 0.1f
                 );
             }
 
             // 水平方向の速度を「プレイヤーの向き」に合わせる
-            // - 移動入力があればその方向を優先して速度を与える（正規化して moveSpeed を乗算）
-            // - 無入力ならプレイヤーの向き（Y回転）に沿って moveSpeed を与える
-            if (hasMoveInput)
-            {
+            if (hasMoveInput) {
                 float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
-                if (len > 0.001f)
-                {
+                if (len > 0.001f) {
                     float s = player_->GetMoveSpeed() / len;
-                    velocity.x = inputMove.x * s;
-                    velocity.z = inputMove.z * s;
+                    velocity.x = inputMove.x * s * (1.0f + chargeRatio * 0.5f);
+                    velocity.z = inputMove.z * s * (1.0f + chargeRatio * 0.5f);
                 }
-            }
-            else
-            {
+            } else {
                 float yaw = player_->GetRotation().y;
-                velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
-                velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
+                velocity.x = std::sin(yaw) * player_->GetMoveSpeed() * (1.0f + chargeRatio * 0.5f);
+                velocity.z = std::cos(yaw) * player_->GetMoveSpeed() * (1.0f + chargeRatio * 0.5f);
             }
 
-            // 追加: ジャンプ専用アニメーション状態へ遷移
-            if (player_) {
-                player_->ChangeState(std::make_unique<PlayerStateJump>());
-            }
+            // 状態遷移
+            if (player_) player_->ChangeState(std::make_unique<PlayerStateJump>());
+
+            // チャージリセット
+            isJumpCharging_ = false;
+            jumpChargeTimer_ = 0.0f;
         }
+    } else {
+        // 空中ではチャージリセット
+        isJumpCharging_ = false;
+        jumpChargeTimer_ = 0.0f;
     }
 
-    // --- 8. 最終的な速度をプレイヤーへ適用 ---
+    // --- 8. スライム特有のホッピング移動 ---
+    if (player_->IsGrounded() && hasMoveInput && !isDashing_) {
+        hopTimer_ += deltaTime;
+        if (hopTimer_ > 0.4f) { // 0.4秒おきに跳ねる
+            velocity.y = 5.0f;  // 小ジャンプ
+            hopTimer_ = 0.0f;
+            
+            // 跳ねる瞬間の土煙（少し控えめ）
+            if (particleSystem_) {
+                Vector3 footPos = player_->GetWorldPosition();
+                footPos.y -= 1.0f;
+                particleSystem_->SpawnParticles(footPos, 3, 0.3f, nullptr, 0.2f,
+                    { 1,1,1,1 }, { 1,1,1,0 }, 0.1f, 0.3f, 0.5f, 0.02f);
+            }
+        }
+    } else if (!hasMoveInput) {
+        hopTimer_ = 0.3f; // 次の移動開始時にすぐ跳ねるように調整
+    }
+
+    // --- 9. Squash & Stretch (伸縮アニメーション) ---
+    slimeTimer_ += deltaTime;
+    Vector3 targetScale = baseScale_;
+    
+    // チャージ中の潰れ
+    if (isJumpCharging_) {
+        float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
+        float squash = chargeRatio * 1.2f; // 最大で1.2（基準2.0から1.2引いて0.8になる）
+        targetScale.y -= squash;
+        targetScale.x += squash * 0.4f;
+        targetScale.z += squash * 0.4f;
+    }
+
+    float vy = velocity.y;
+    // 上昇・下降による伸縮
+    if (std::abs(vy) > 0.1f) {
+        float stretch = 0.0f;
+        if (vy > 0.0f) {
+            stretch = vy * 0.08f; // 上昇時は勢いよく伸ばす
+        } else {
+            stretch = std::abs(vy) * 0.02f; // 落下時も少しだけ伸ばして「落下感」を出す（潰さない）
+        }
+        targetScale.y += stretch;
+        targetScale.x -= stretch * 0.5f;
+        targetScale.z -= stretch * 0.5f;
+        
+        // 潰れ・伸びの限界値を設定 (最小1.2, 最大3.5くらい)
+        targetScale.y = std::clamp(targetScale.y, 1.2f, 3.5f);
+        targetScale.x = std::clamp(targetScale.x, 1.0f, 2.5f);
+        targetScale.z = std::clamp(targetScale.z, 1.0f, 2.5f);
+    } 
+    // 接地中の「ぷるぷる」
+    else if (player_->IsGrounded()) {
+        // 着地時の潰れを再現
+        float wobble = std::sin(slimeTimer_ * 15.0f) * 0.15f; // 基準2.0に合わせて少し強化
+        if (hasMoveInput) wobble *= 1.2f; 
+        
+        targetScale.y += wobble;
+        targetScale.x -= wobble * 0.5f;
+        targetScale.z -= wobble * 0.5f;
+    }
+
+    // スケールをなめらかに適用 (Lerp)
+    float scaleLerpSpeed = 15.0f;
+    Vector3 currentScale = player_->GetTransform()->scale;
+    player_->GetTransform()->scale.x += (targetScale.x - currentScale.x) * (1.0f - std::expf(-scaleLerpSpeed * deltaTime));
+    player_->GetTransform()->scale.y += (targetScale.y - currentScale.y) * (1.0f - std::expf(-scaleLerpSpeed * deltaTime));
+    player_->GetTransform()->scale.z += (targetScale.z - currentScale.z) * (1.0f - std::expf(-scaleLerpSpeed * deltaTime));
+
+    // --- 10. 最終的な速度をプレイヤーへ適用 ---
     player_->SetVelocity(velocity);
 }
 

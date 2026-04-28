@@ -20,9 +20,10 @@ struct BulletHitEvent {
 // ダメージイベント (Enemyへの攻撃時などに発行する)
 // =========================================================
 struct DamageEvent {
-    Object3d* target = nullptr;   // ダメージを受ける人（今回は敵）
-    Object3d* attacker = nullptr; // 攻撃した人（今回はプレイヤーの剣）
+    Object3d* target = nullptr;   // ダメージを受ける人
+    Object3d* attacker = nullptr; // 攻撃した人
     float damageAmount = 0.0f;    // ダメージ量
+    Vector3 knockbackVelocity = { 0,0,0 }; // 追加：吹き飛ばしベクトル
 };
 
 struct PlayerDeathEvent {

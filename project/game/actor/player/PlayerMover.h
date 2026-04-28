@@ -34,6 +34,8 @@ public:
 	/// </summary>
 	void SetStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
+	bool IsDashing() const { return isDashing_; }
+
 private:
 	// 参照用ポインタ
 	Player* player_ = nullptr;
@@ -58,4 +60,18 @@ private:
 
 	// 子オブジェクトの元の衝突属性を保存して復元するためのマップ
 	std::unordered_map<Object3d*, uint32_t> childOriginalAttributes_;
+
+	// --- スライム挙動関連 ---
+	float slimeTimer_ = 0.0f;       // 伸縮アニメーション用タイマー
+	float hopTimer_ = 0.0f;         // ホッピング（小ジャンプ）用周期タイマー
+	Vector3 baseScale_ = { 2.0f, 2.0f, 2.0f }; // 基本スケール
+
+	// --- チャージジャンプ関連 ---
+	bool isJumpCharging_ = false;   // ジャンプ溜め中か
+	float jumpChargeTimer_ = 0.0f;  // 溜め時間
+	const float maxChargeTime_ = 1.0f; // 最大溜め時間
+
+	// --- 動的ダッシュパラメータ ---
+	float currentDashSpeed_ = 120.0f;
+	float currentDashDuration_ = 0.20f;
 };

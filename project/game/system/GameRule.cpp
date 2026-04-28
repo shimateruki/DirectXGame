@@ -125,9 +125,19 @@ void GameRule::Initialize(BaseScene* scene) {
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target) return;
 
-        // 汎用関数 ApplyDamage を呼ぶだけ！
+        // 汎用関数 ApplyDamage を呼ぶ！
         ApplyDamage(event.target, event.damageAmount);
-        });
+
+        // ノックバック（吹き飛ばし）があれば適用
+        if (std::abs(event.knockbackVelocity.x) > 0.001f || 
+            std::abs(event.knockbackVelocity.y) > 0.001f || 
+            std::abs(event.knockbackVelocity.z) > 0.001f) 
+        {
+            if (Character* character = dynamic_cast<Character*>(event.target)) {
+                character->SetVelocity(event.knockbackVelocity);
+            }
+        }
+    });
 
     // ========================================================
     // ★ プレイヤー死亡時の処理

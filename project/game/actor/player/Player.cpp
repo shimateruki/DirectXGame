@@ -164,10 +164,30 @@ bool Player::OnCollision(Object3d* other)
     }
 
     // =======================================================
-    // 2. ダメージ処理 / 踏みつけ攻撃
+    // 2. ダメージ処理 / 踏みつけ攻撃 / 突進攻撃
     // =======================================================
     if (attribute & (kEnemy | kEnemyAttack))
     {
+        // ★ 突進（タックル）判定
+        if ((attribute & kEnemy) && mover_->IsDashing())
+        {
+            // 敵に大ダメージ
+            DamageEvent tackleDmg;
+            tackleDmg.target = other;
+            tackleDmg.attacker = this;
+            tackleDmg.damageAmount = 30.0f; // 踏みつけより強力！
+
+            // 吹き飛ばしベクトル：向いている方向に斜め上に弾き飛ばす
+            float yaw = transform_.rotate.y;
+            Vector3 pushDir = { std::sin(yaw), 0.4f, std::cos(yaw) };
+            tackleDmg.knockbackVelocity = pushDir * 50.0f; // 結構な勢いで飛ばす
+
+            EventManager::GetInstance()->Dispatch(tackleDmg);
+
+            DebugConsole::GetInstance()->AddLog("Slime Tackle! Enemy Blasted.");
+            return true; // 突進中はダメージを受けず、相手を倒す
+        }
+
         // ★ 踏みつけ判定: 敵の本体(kEnemy)かつ、上方向から衝突したか
         // 判定を安定させるため、法線のしきい値を0.5(60度)に広げ、速度条件も緩和します
         bool isAbove = GetWorldPosition().y > other->GetWorldPosition().y;

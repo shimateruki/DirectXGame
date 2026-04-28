@@ -67,12 +67,12 @@
                 "fallDuration": 2.0,
                 "gimmickType": "",
                 "gravity": 50.0,
-                "hp": 99.0,
+                "hp": 6.0,
                 "interval": 3.0,
                 "jumpPower": 24.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
+                "maxHp": 6.0,
                 "shakeDuration": 1.0,
                 "speed": 27.700000762939453
             },
@@ -521,9 +521,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8186222910881042,
-                1.2720668315887451,
-                0.8186222910881042
+                0.8255449533462524,
+                1.2616827487945557,
+                0.8255449533462524
             ],
             "targetID": -1,
             "texturePath": "",
