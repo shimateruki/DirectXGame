@@ -495,6 +495,9 @@ void GamePlayScene::DrawUI() {
 	if (isDrawLockOn_ && lockOnSprite_) {
 		lockOnSprite_->Draw();
 	}
+	if (player_) {
+		player_->DrawUI();
+	}
 }
 
 

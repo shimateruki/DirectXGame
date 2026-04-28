@@ -8,6 +8,9 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "PlayerClone.h"
+#include "Sprite.h"
+#include "SpriteCommon.h"
 
 class IMoveStrategy; // 前方宣言
 
@@ -18,9 +21,10 @@ public:
     // ==================================================
     // 基本サイクル
     // ==================================================
-    void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem);
+    void Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon = nullptr);
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
+    void DrawUI(); // スプライト描画用
 
     // ==================================================
     // 衝突判定
@@ -111,6 +115,11 @@ public:
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
+
+    // --- 分身システム用 ---
+    PlayerClone* GetActiveClone() const { return activeClone_.get(); }
+    float GetCloneCooldown() const { return cloneCooldownTimer_; }
+
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先
@@ -132,7 +141,7 @@ private:
 
     // --- 攻撃入力バッファ（Run→Attack の踏み逃がし防止） ---
     bool attackInputBuffered_ = false;               // バッファに入力があるか
-    bool attackBufferUsedForStateStart_ = false;    // 「そのバッファが遷移開始で使われた」フラグ
+    bool attackBufferUsedForStateStart_ = false;    // 「そのバッフラが遷移開始で使われた」フラグ
     float attackInputBufferTimer_ = 0.0f;           // バッファの残り時間（秒）
 
     // --- 無敵関連 ---
@@ -153,4 +162,13 @@ private:
 
     // ギミック同期用
     uint32_t jumpCount_ = 0;
+
+    // --- 分身システム ---
+    std::unique_ptr<PlayerClone> activeClone_ = nullptr;
+    float cloneCooldownTimer_ = 0.0f;
+    bool isAimingClone_ = false;
+
+    // --- レティクル ---
+    std::unique_ptr<Sprite> reticleSprite_ = nullptr;
+    SpriteCommon* spriteCommon_ = nullptr;
 };

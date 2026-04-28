@@ -10,14 +10,17 @@
 #include "PostEffect.h"
 #include "GameDataManager.h"
 #include "SceneManager.h"
+#include"Winapp.h"
 #include <DebugConsole.h>
 #include <algorithm>
+#include <CollisionManager.h>
+#include "DirectXCommon.h"
 
 // =================================================================
 // 初期化・更新・描画
 // =================================================================
 
-void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem)
+void Player::Initialize(Object3dCommon* common, InputManager* inputManager, ParticleSystem* particleSystem, SpriteCommon* spriteCommon)
 {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
@@ -25,6 +28,20 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 外部システムの依存注入
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
+    spriteCommon_ = spriteCommon;
+
+    // レティクルの初期化
+    if (spriteCommon_) {
+        // 確実に存在するロックオン用の画像を代用してテストする
+        uint32_t reticleTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png");
+        reticleSprite_ = std::make_unique<Sprite>();
+        reticleSprite_->Initialize(spriteCommon_, reticleTex);
+        reticleSprite_->SetAnchorPoint({ 0.5f, 0.5f });
+        reticleSprite_->SetPosition({ (float)WinApp::kClientWidth / 2.0f, (float)WinApp::kClientHeight / 2.0f });
+        reticleSprite_->SetSize({ 128.0f, 128.0f }); // 少し大きく
+        reticleSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 不透明な白
+        DebugConsole::GetInstance()->AddLog("Reticle Initialized.");
+    }
 
     // 自機としての基本設定
     SetClassName("Player");
@@ -108,10 +125,106 @@ void Player::Update(float deltaTime)
 
     // 6. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
     Character::Update(deltaTime);
+
+    // --- 7. 分身システムの更新 ---
+    // クールタイムの更新
+    if (cloneCooldownTimer_ > 0.0f) {
+        cloneCooldownTimer_ -= deltaTime;
+    }
+
+    // 操作
+    if (isControlActive_) {
+        // 右クリック中
+        if (inputManager_->IsMouseButtonPressed(1)) {
+            // 分身がいなくてクールタイムも終わっていれば「狙い」状態
+            if (!activeClone_ && cloneCooldownTimer_ <= 0.0f) {
+                isAimingClone_ = true;
+            }
+            // 分身がいて、速度がほぼ落ちている（または接地している）なら「テレポート」
+            else if (activeClone_ && (activeClone_->IsGrounded() || std::abs(activeClone_->GetVelocity().y) < 0.1f)) {
+                // テレポート実行
+                Vector3 targetPos = activeClone_->GetWorldPosition();
+                transform_.translate = targetPos;
+                
+                // 勢いをリセット
+                velocity_ = { 0, 0, 0 };
+                
+                // CollisionManagerから解除してから消す！
+                CollisionManager::GetInstance()->RemoveObject(activeClone_.get());
+                activeClone_ = nullptr;
+                cloneCooldownTimer_ = 3.0f;
+                
+                // テレポート演出（パーティクル）
+                if (particleSystem_) {
+                    particleSystem_->SpawnParticles(targetPos, 20, 1.0f, nullptr, 1.0f,
+                        { 0.5f, 0.8f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
+                        0.1f, 0.5f, 1.0f, 0.1f);
+                }
+                
+                DebugConsole::GetInstance()->AddLog("Teleported to Clone! Cooldown started.");
+            }
+        }
+        
+        // 右クリックを離したとき（狙い解除 ＋ 射出）
+        if (isAimingClone_ && inputManager_->IsMouseButtonReleased(1)) {
+            // カメラの視線方向を計算
+            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+            Vector3 eye = camera->GetEye();
+            Vector3 target = camera->GetTargetPoint();
+            Vector3 shootDir = Math::Normalize(target - eye);
+            
+            float shootSpeed = 40.0f;
+            
+            // 生成位置を少し高くする（足元だと即座に接地判定されるため）
+            Vector3 spawnPos = transform_.translate;
+            spawnPos.y += 1.0f;
+            
+            activeClone_ = std::make_unique<PlayerClone>();
+            activeClone_->Initialize(common_, spawnPos, shootDir * shootSpeed);
+            
+            // ★プレイヤー本体の当たり判定設定（サイズやオフセットなど）を分身にコピー
+            activeClone_->SetColliderConfig(GetColliderConfig());
+            
+            // 生成時に一度だけ衝突判定に登録
+            CollisionManager::GetInstance()->AddObject(activeClone_.get());
+            
+            isAimingClone_ = false;
+            DebugConsole::GetInstance()->AddLog("Clone Launched!");
+        }
+    }
+
+    // 最後に分身の更新と管理を行う（入力判定の後にしないと、接地フラグがリセットされてしまうため）
+    if (activeClone_) {
+        activeClone_->Update(deltaTime);
+
+        if (activeClone_->IsExpired()) {
+            CollisionManager::GetInstance()->RemoveObject(activeClone_.get());
+            activeClone_ = nullptr;
+            cloneCooldownTimer_ = 3.0f; // 自然消滅したらクールタイム開始
+            DebugConsole::GetInstance()->AddLog("Clone Expired. Cooldown started.");
+        }
+    }
+}
+
+void Player::DrawUI()
+{
+    if (isAimingClone_ && reticleSprite_ && spriteCommon_) {
+        // スプライトの行列・頂点計算を更新（これがないと描画されない）
+        reticleSprite_->Update();
+        
+        // パイプラインを自己責任でセットして確実に描画する
+        spriteCommon_->SetPipeline(DirectXCommon::GetInstance()->GetCommandList());
+        reticleSprite_->Draw();
+    }
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {
     Character::Draw(pointLightResource, spotLightResource);
+    
+    // 分身がいれば描画
+    if (activeClone_) {
+        activeClone_->Draw(pointLightResource, spotLightResource);
+    }
 }
 
 // =================================================================

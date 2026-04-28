@@ -168,7 +168,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     // パターンB: プレイヤー
                     else if (type == "Player" || name == "Player") {
                         auto player = std::make_unique<Player>();
-                        player->Initialize(object3dCommon, InputManager::GetInstance(), scene->GetParticleSystem());
+                        player->Initialize(object3dCommon, InputManager::GetInstance(), scene->GetParticleSystem(), scene->GetSpriteCommon());
                         player->SetMoveStrategy(std::make_unique<MoveStrategy3D>());
 
                         // シーンにプレイヤーを登録
