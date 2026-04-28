@@ -129,6 +129,10 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["param"]["gimmickType"] = p.gimmickType;
         d["param"]["interval"] = p.interval;
         d["param"]["maxCount"] = p.maxCount;
+        d["param"]["shakeDuration"] = p.shakeDuration;
+        d["param"]["fallDuration"] = p.fallDuration;
+        d["param"]["colorType"] = p.colorType;
+        d["param"]["detectionRange"] = p.detectionRange;
     }
 
     // 8. グラフィックス

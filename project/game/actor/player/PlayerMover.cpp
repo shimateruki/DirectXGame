@@ -7,6 +7,7 @@
 #include "Object3d.h"
 #include <cmath>
 #include <PlayerState.h>
+#include "EventManager.h"
 
 PlayerMover::PlayerMover() {}
 
@@ -178,6 +179,12 @@ void PlayerMover::Update(float deltaTime)
         if (inputManager_->IsActionTriggered("Jump"))
         {
             velocity.y = player_->GetJumpPower();
+
+            // ジャンプイベントを発行
+            PlayerJumpEvent jumpEvent;
+            jumpEvent.player = player_;
+            player_->IncrementJumpCount();
+            EventManager::GetInstance()->Dispatch(jumpEvent);
 
             // ジャンプ時の土煙エフェクト
             if (particleSystem_)

@@ -39,6 +39,9 @@ public:
         float interval = 3.0f;
         int maxCount = 5;
         float detectionRange = 20.0f;
+        float shakeDuration = 1.0f;
+        float fallDuration = 2.0f;
+        int colorType = 0; // 0: Blue, 1: Red
         EntityParameter() = default;
     };
 

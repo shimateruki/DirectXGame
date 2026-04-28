@@ -15,4 +15,6 @@ public:
 
     // 衝突判定
     virtual bool OnCollision(Object3d* other) override;
+
+    std::unique_ptr<Object3d> Clone() const override;
 };

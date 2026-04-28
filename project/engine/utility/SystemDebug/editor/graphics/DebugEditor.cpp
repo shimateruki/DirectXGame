@@ -39,6 +39,7 @@
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
 #include <PresetManager.h>
+#include <PresetEditor.h>
 #include <MeshEffectManager.h>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
@@ -54,7 +55,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     dxCommon_ = dxCommon;
     selectedObject_ = nullptr;
     lastUpdatedScene_ = nullptr;
-    PresetManager::GetInstance()->LoadPresets();
+    PresetManager::GetInstance()->Initialize();
     hierarchyWindow_.Initialize(this);
     projectWindow_.Initialize(this, dxCommon);
     inspectorWindow_.Initialize(this);

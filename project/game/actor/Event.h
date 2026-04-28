@@ -29,6 +29,10 @@ struct PlayerDeathEvent {
     class Player* player;
 };
 
+struct PlayerJumpEvent {
+    class Player* player = nullptr;
+};
+
 enum class EventType {
     None = 0,       // なし
     Damage,         // ダメージ

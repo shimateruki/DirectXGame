@@ -28,6 +28,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
     // 自機としての基本設定
     SetClassName("Player");
+    jumpCount_ = 0;
 
     // 移動コンポーネントの構築
     mover_ = std::make_unique<PlayerMover>();

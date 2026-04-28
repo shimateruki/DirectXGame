@@ -61,7 +61,10 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
                 "enemyType": "Goblin",
+                "fallDuration": 2.0,
                 "gimmickType": "",
                 "gravity": 50.0,
                 "hp": 99.0,
@@ -70,6 +73,7 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "shakeDuration": 1.0,
                 "speed": 27.700000762939453
             },
             "parentName": "",
@@ -259,7 +263,10 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
                 "enemyType": "Goblin",
+                "fallDuration": 2.0,
                 "gimmickType": "MovingFloor",
                 "gravity": 50.0,
                 "hp": 100.0,
@@ -268,12 +275,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "shakeDuration": 1.0,
                 "speed": 1.0
             },
             "parentName": "",
             "position": [
                 -21.00454330444336,
-                2.839388847351074,
+                0.0,
                 5.417048454284668
             ],
             "quaternion": [
@@ -364,7 +372,10 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
                 "enemyType": "Goblin",
+                "fallDuration": 2.0,
                 "gimmickType": "MovingFloor",
                 "gravity": 50.0,
                 "hp": 100.0,
@@ -373,12 +384,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "shakeDuration": 1.0,
                 "speed": 1.0
             },
             "parentName": "",
             "position": [
                 -1.2122493982315063,
-                2.839388847351074,
+                0.0,
                 -10.007573127746582
             ],
             "quaternion": [
@@ -469,7 +481,10 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
                 "enemyType": "",
+                "fallDuration": 2.0,
                 "gimmickType": "",
                 "gravity": 50.0,
                 "hp": 100.0,
@@ -478,12 +493,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "shakeDuration": 1.0,
                 "speed": 1.0
             },
             "parentName": "",
             "position": [
                 2.7634358406066895,
-                -2.097102642059326,
+                -2.095599889755249,
                 -9.739256858825684
             ],
             "quaternion": [
@@ -499,15 +515,15 @@
             },
             "rotation": [
                 0.0,
-                1.979936957359314,
+                -0.0,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.9999998807907104,
-                1.000000238418579,
-                0.9999998807907104
+                0.8229904770851135,
+                1.2655144929885864,
+                0.8229904770851135
             ],
             "targetID": -1,
             "texturePath": "",
@@ -853,7 +869,10 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
                 "enemyType": "",
+                "fallDuration": 2.0,
                 "gimmickType": "Trampoline",
                 "gravity": 50.0,
                 "hp": 100.0,
@@ -862,6 +881,7 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "shakeDuration": 1.0,
                 "speed": 1.0
             },
             "parentName": "",
@@ -869,6 +889,442 @@
                 -3.5187578201293945,
                 2.3014276027679443,
                 -18.147869110107422
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.001757591962814331,
+                    0.3655702769756317,
+                    -0.0006781518459320068
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5137262344360352,
+                    0.3710375130176544,
+                    0.5139153003692627
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 134,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "Slime",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "slime.gltf",
+            "myEventID": -1,
+            "name": "Slime_9",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                -2.116698980331421,
+                3.898792266845703,
+                -38.68240737915039
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.8000003099441528,
+                1.299999475479126,
+                0.8000003099441528
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "ChikuwaBlock",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Gimmick_ChikuwaBlock",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "ChikuwaBlock",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                -57.65082550048828,
+                -0.6610406637191772,
+                -30.06475830078125
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                0.8500000238418579,
+                6.150000095367432
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.0,
+                1.0,
+                0.7799227237701416,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "BlinkBlock",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Gimmick_BlinkBlock",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "BlinkBlock",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                -1.2451549768447876,
+                -0.36015361547470093,
+                -43.3726692199707
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.30000001192092896,
+                0.30000001192092896,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "BlinkBlock",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Gimmick_BlinkBlock1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 1,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "BlinkBlock",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                5.142672538757324,
+                -1.2505073547363281,
+                -43.07912063598633
             ],
             "quaternion": [
                 0.0,

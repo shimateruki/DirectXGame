@@ -448,6 +448,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->className_ = other->className_;
     this->saveCategory_ = other->saveCategory_;
     this->enemyType_ = other->enemyType_;
+    this->gimmickType_ = other->gimmickType_;
     this->isVisible_ = other->isVisible_;
     this->isLocked_ = other->isLocked_;
     if (!other->GetModelName().empty()) {
@@ -569,6 +570,9 @@ json Object3d::ExportToJson() {
         jp["interval"] = p.interval;
         jp["maxCount"] = p.maxCount;
         jp["detectionRange"] = p.detectionRange;
+        jp["colorType"] = p.colorType;
+        jp["shakeDuration"] = p.shakeDuration;
+        jp["fallDuration"] = p.fallDuration;
         d["param"] = jp;
     }
 
@@ -670,6 +674,9 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("interval")) p.interval = jp["interval"];
         if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
         if (jp.contains("detectionRange")) p.detectionRange = jp["detectionRange"];
+        if (jp.contains("colorType")) p.colorType = jp["colorType"];
+        if (jp.contains("shakeDuration")) p.shakeDuration = jp["shakeDuration"];
+        if (jp.contains("fallDuration")) p.fallDuration = jp["fallDuration"];
         param_ = p;
     }
 

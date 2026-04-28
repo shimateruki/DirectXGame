@@ -570,6 +570,18 @@ void InspectorWindow::Draw() {
                 else if (gType == "MovingFloor") {
                     ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度 (Speed)", &p.speed, 0.1f, 0.0f, 100.0f);
                 }
+                else if (gType == "ChikuwaBlock") {
+                    ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 震え時間 (Shake)", &p.shakeDuration, 0.1f, 0.0f, 10.0f, "%.1f s");
+                    ImGui::DragFloat(ICON_FA_ARROW_DOWN " 落下時間 (Fall)", &p.fallDuration, 0.1f, 0.0f, 10.0f, "%.1f s");
+                    ImGui::DragFloat(ICON_FA_RECYCLE " リスポーン間隔", &p.interval, 0.1f, 0.0f, 10.0f, "%.1f s");
+                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 落下速度 (Gravity)", &p.gravity, 1.0f, 0.0f, 200.0f);
+                }
+                else if (gType == "BlinkBlock") {
+                    ImGui::Text(ICON_FA_PALETTE " ブロックの色設定:");
+                    ImGui::RadioButton("青 (Blue: Jump Even)", &p.colorType, 0);
+                    ImGui::SameLine();
+                    ImGui::RadioButton("赤 (Red: Jump Odd)", &p.colorType, 1);
+                }
                 else {
                     ImGui::TextDisabled("(この種類には個別設定がありません)");
                 }
@@ -679,7 +691,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock" };
     std::string currentType = selectedObject->GetGimmickType();
 
     int currentIndex = 0;

@@ -20,6 +20,7 @@
 #include "ModelManager.h"
 #include "CollisionManager.h"
 #include "InputManager.h"
+#include "PresetManager.h"
 
 using json = nlohmann::json;
 
@@ -28,6 +29,9 @@ using json = nlohmann::json;
 // 1. 自動で3つのファイルを読み込み、無ければ旧仕様で読み込み、最後に親子関係を解決する
 // ========================================================================
 void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename) {
+    // ロード前にプリセットを最新の状態にする
+    PresetManager::GetInstance()->Initialize();
+
     std::string justName = filename;
     size_t slashPos = justName.find_last_of("/\\");
     if (slashPos != std::string::npos) {
@@ -152,6 +156,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         auto enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon);
                         if (enemy) {
                             enemy->SetEnemyType(enemyType);
+                            // ★ 追加: プリセットで上書き
+                            PresetManager::GetInstance()->ApplyPresetToObject(enemyType, enemy.get());
+
                             if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
                                 base->SetTarget(scene->GetPlayer());
                             }
@@ -212,6 +219,10 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         std::string gType = gimmickType.empty() ? "DefaultGimmick" : gimmickType;
                         auto gimmick = GimmickFactory::GetInstance()->CreateGimmick(gType, object3dCommon);
                         if (gimmick) {
+                            gimmick->SetGimmickType(gType);
+                            // ★ 追加: プリセットで上書き
+                            PresetManager::GetInstance()->ApplyPresetToObject(gType, gimmick.get());
+
                             newObj = std::move(gimmick);
                         }
                     }
@@ -379,6 +390,10 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("gimmickType")) param.gimmickType = p["gimmickType"];
                     if (p.contains("interval")) param.interval = p["interval"];
                     if (p.contains("maxCount")) param.maxCount = p["maxCount"];
+                    if (p.contains("shakeDuration")) param.shakeDuration = p["shakeDuration"];
+                    if (p.contains("fallDuration")) param.fallDuration = p["fallDuration"];
+                    if (p.contains("colorType")) param.colorType = p["colorType"];
+                    if (p.contains("detectionRange")) param.detectionRange = p["detectionRange"];
                 }
 
                 // ==========================================

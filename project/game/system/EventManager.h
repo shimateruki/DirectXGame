@@ -48,6 +48,16 @@ public:
     /// PlayerDeathEvent を発行（ディスパッチ）する
     /// </summary>
     void Dispatch(const PlayerDeathEvent& event);
+    
+    /// <summary>
+    /// PlayerJumpEvent のリスナー（購読者）を登録する
+    /// </summary>
+    void Subscribe(std::function<void(const PlayerJumpEvent&)> callback);
+    
+    /// <summary>
+    /// PlayerJumpEvent を発行（ディスパッチ）する
+    /// </summary>
+    void Dispatch(const PlayerJumpEvent& event);
 
     void ClearAllListeners();
 private:
@@ -63,4 +73,5 @@ private:
     std::list<std::function<void(const BulletHitEvent&)>> bulletHitListeners_;
     std::list<std::function<void(const DamageEvent&)>> damageListeners_;
     std::list<std::function<void(const PlayerDeathEvent&)>> playerDeathListeners_;
+    std::list<std::function<void(const PlayerJumpEvent&)>> playerJumpListeners_;
 };

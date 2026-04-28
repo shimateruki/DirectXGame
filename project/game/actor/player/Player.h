@@ -68,7 +68,12 @@ public:
     // --- 状態フラグ ---
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
-    void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
+    void SetIsControlActive(bool active) { isControlActive_ = active; }
+    bool IsControlActive() const { return isControlActive_; }
+
+    uint32_t GetJumpCount() const { return jumpCount_; }
+    void IncrementJumpCount() { jumpCount_++; }
+    void ResetJumpCount() { jumpCount_ = 0; }
 
     // --- コンボ：次のクリックで2段目を出すためのフラグ操作 ---
     void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
@@ -145,4 +150,7 @@ private:
     // 落下復帰用
     Vector3 respawnPosition_ = { 0, 0, 0 };
     bool isFirstUpdate_ = true;
+
+    // ギミック同期用
+    uint32_t jumpCount_ = 0;
 };

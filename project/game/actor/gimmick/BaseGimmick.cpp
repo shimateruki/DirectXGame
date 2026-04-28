@@ -31,3 +31,11 @@ bool BaseGimmick::OnCollision(Object3d* other) {
     (void)other;
     return false;
 }
+
+std::unique_ptr<Object3d> BaseGimmick::Clone() const {
+    auto newObj = std::make_unique<BaseGimmick>();
+    assert(common_ != nullptr);
+    newObj->Initialize(common_, GetModelName());
+    newObj->CopyFrom(this);
+    return newObj;
+}

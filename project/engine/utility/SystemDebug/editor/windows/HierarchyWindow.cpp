@@ -19,6 +19,7 @@
 #include "ModelManager.h"
 #include "DebugConsole.h"
 #include "PresetManager.h"
+#include "PresetEditor.h"
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
 #include "TrailEmitterEditor.h"
@@ -90,6 +91,10 @@ void HierarchyWindow::Draw() {
         if (editor_->GetTrailEmitterEditor() && ImGui::Selectable("  " ICON_FA_FIRE " トレイルエミッター (Trail Emitter)", currentObj == editor_->GetTrailEmitterEditor())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetTrailEmitterEditor());
+        }
+        if (ImGui::Selectable("  " ICON_FA_DATABASE " プリセットエディタ (Preset Editor)", EditorManager::GetInstance()->GetSelectedObject() == PresetEditor::GetInstance())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(PresetEditor::GetInstance());
         }
         ImGui::Separator();
         if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {

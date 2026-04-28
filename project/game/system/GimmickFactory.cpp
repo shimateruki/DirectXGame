@@ -2,6 +2,8 @@
 #include "SceneManager.h"
 #include "GimmickMovingFloor.h"
 #include "GimmickTrampoline.h"
+#include "GimmickChikuwaBlock.h"
+#include "GimmickBlinkBlock.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -27,6 +29,18 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto trampoline = std::make_unique<GimmickTrampoline>();
         trampoline->Initialize(common, "cube"); // とりあえず立方体
         newGimmick = std::move(trampoline);
+    }
+    // ちくわブロックの場合
+    else if (gimmickName == "ChikuwaBlock") {
+        auto chikuwa = std::make_unique<GimmickChikuwaBlock>();
+        chikuwa->Initialize(common, "block"); // 足場用のモデル
+        newGimmick = std::move(chikuwa);
+    }
+    // 点滅ブロックの場合
+    else if (gimmickName == "BlinkBlock") {
+        auto blink = std::make_unique<GimmickBlinkBlock>();
+        blink->Initialize(common, "block");
+        newGimmick = std::move(blink);
     }
 
     // 該当するギミックがない場合、またはベースを直接生成する場合
