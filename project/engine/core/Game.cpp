@@ -26,6 +26,7 @@ void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
     TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
+    TextureManager::GetInstance()->LoadAllTexture("Resources/texture/PBR/");
     ModelManager::GetInstance()->LoadAllModels();
     StageManager::GetInstance()->Initialize();
     GameDataManager::GetInstance()->Initialize();

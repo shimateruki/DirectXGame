@@ -204,6 +204,7 @@ public:
     void DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);  
+    void DrawFire(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;

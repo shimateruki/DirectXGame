@@ -44,6 +44,7 @@ void InspectorWindow::Draw() {
         ImGui::Separator();
         // ★ ゲッターを使って安全にポインタアクセス
         ImGui::Checkbox(ICON_FA_EYE " コライダー枠を描画", editor_->GetDrawCollidersPtr());
+        ImGui::Checkbox(ICON_FA_FINGERPRINT " イベントIDを表示", editor_->GetDrawEventIDsPtr());
     }
     else {
         // --- 名前表示 ---
@@ -212,11 +213,11 @@ void InspectorWindow::Draw() {
                                          "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
                                          "ホログラム (Hologram)", "消滅 (Dissolve)", "旧マグマ (Emissive)",
                                          "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
-                                         "水 (Water)", "新マグマ (Magma)", "分厚い氷 (Ice)" 
+                                         "水 (Water)", "新マグマ (Magma)", "分厚い氷 (Ice)", "炎 (Fire)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 10) currentMatType = 0; 
+                if (currentMatType > 11) currentMatType = 0; 
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -249,7 +250,7 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
-                if (currentMatType >= 8 && currentMatType <= 10) {
+                if (currentMatType >= 8 && currentMatType <= 11) {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ICON_FA_TINT " --- Water Settings ---");
 
@@ -287,7 +288,7 @@ void InspectorWindow::Draw() {
 
                     if (!isListInitialized) {
                         texturePaths.clear();
-                        std::string targetDir = "Resources/sprite/";
+                        std::string targetDir = "Resources/texture/PBR/";
                         if (std::filesystem::exists(targetDir)) {
                             for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
                                 if (entry.is_regular_file()) {

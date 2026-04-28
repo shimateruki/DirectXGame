@@ -521,9 +521,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8229904770851135,
-                1.2655144929885864,
-                0.8229904770851135
+                0.8186222910881042,
+                1.2720668315887451,
+                0.8186222910881042
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1352,6 +1352,115 @@
             "targetID": -1,
             "texturePath": "",
             "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -9.5367431640625e-07,
+                    0.0,
+                    -2.8734655380249023
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    28.618576049804688,
+                    5.73111629486084,
+                    27.217884063720703
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 4294967295,
+            "color": [
+                0.7722008228302002,
+                1.0,
+                0.0,
+                1.0
+            ],
+            "emissive": 1.600000023841858,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 7,
+            "gimmickType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "star.gltf",
+            "myEventID": -1,
+            "name": "star.gltf_13",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "position": [
+                -6.70865535736084,
+                0.09478132426738739,
+                -51.2886848449707
+            ],
+            "quaternion": [
+                0.6615578532218933,
+                0.13260416686534882,
+                -0.20545656979084015,
+                0.7089040279388428
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                1.4698195457458496,
+                0.477826327085495,
+                -0.13083212077617645
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.05000000074505806,
+                0.050000064074993134,
+                0.05000001937150955
+            ],
+            "targetID": 0,
+            "texturePath": "",
+            "type": "Model"
         }
     ]
 }

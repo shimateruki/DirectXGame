@@ -20,6 +20,7 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreateWaterPipeline();
     CreateMagmaPipeline();
     CreateIcePipeline();
+    CreateFirePipeline();
 
     CreateSkyboxPipeline();
 }
@@ -491,6 +492,39 @@ void Object3dCommon::SetIceGraphicsCommand() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(icePipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::CreateFirePipeline() {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Fire.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Fire.PS.hlsl", L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(waterRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+
+    // 炎は裏側からも見えるようにカリングなし、半透明合成
+    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
+    psoBuilder.SetBlendMode(BlendMode::kNormal);
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    psoBuilder.Build(dxCommon_->GetDevice(), firePipelineState_.GetAddressOf());
+}
+
+void Object3dCommon::SetFireGraphicsCommand() {
+    if (!firePipelineState_) return; // NULLチェック追加
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(firePipelineState_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 

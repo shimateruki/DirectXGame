@@ -247,6 +247,18 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     model_->DrawMeshOnly();
 }
+void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    if (!model_ || !common_ || !waterParamResource_) return;
+
+    common_->SetFireGraphicsCommand();
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    model_->DrawMeshOnly();
+}
 void MeshRenderer::SetModel(const std::string& modelName) {
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);

@@ -52,8 +52,10 @@ public:
    void SetWaterGraphicsCommand();
    void CreateMagmaPipeline();
    void CreateIcePipeline();
+   void CreateFirePipeline();
    void SetMagmaGraphicsCommand();
    void SetIceGraphicsCommand();
+   void SetFireGraphicsCommand();
 
    void CreateSkyboxPipeline();
    ID3D12RootSignature* GetSkyboxRootSignature() const { return skyboxRootSignature_.Get(); }
@@ -84,6 +86,7 @@ private:
    Microsoft::WRL::ComPtr<ID3D12PipelineState> waterPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> magmaPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> icePipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> firePipelineState_;
    Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;

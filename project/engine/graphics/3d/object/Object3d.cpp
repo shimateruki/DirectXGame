@@ -218,6 +218,11 @@ void Object3d::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
         meshRenderer_->DrawIce(depthSrvHandle, colorSrvHandle);
     }
 }
+void Object3d::DrawFire(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawFire(depthSrvHandle, grabSrvHandle);
+    }
+}
 Model* Object3d::GetModel() const {
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }

@@ -1,0 +1,70 @@
+{
+    "sprites": [
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "gameStartText.png",
+            "position": [
+                872.5714721679688,
+                592.1266479492188
+            ],
+            "size": [
+                600.0,
+                240.0
+            ],
+            "texture": "gameStartText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "setting.png",
+            "position": [
+                810.857177734375,
+                604.1190795898438
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "setting.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "titleText.png",
+            "position": [
+                771.4285888671875,
+                133.41586303710938
+            ],
+            "size": [
+                300.0,
+                54.0
+            ],
+            "texture": "titleText.png"
+        }
+    ]
+}

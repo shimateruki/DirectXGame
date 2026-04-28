@@ -161,6 +161,7 @@ public:
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
+    bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
 private:
     // --------------------------------------------------------------------
@@ -170,6 +171,7 @@ private:
     bool IntersectRayPlane(const Ray& ray, Vector3& intersectOut);
     Vector3 WorldToScreen(const Vector3& worldPos);
     void Draw3DIcons();
+    void DrawEventIDOverlay();
 private:
     // ====================================================================
     // メンバ変数
@@ -186,6 +188,7 @@ private:
     BaseScene* lastUpdatedScene_ = nullptr;
 
     bool drawColliders_ = true;
+    bool drawEventIDs_ = true;
     bool isPathEditMode_ = false;
 
     // --- ファイル関連 ---

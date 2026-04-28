@@ -317,6 +317,7 @@ void DebugEditor::Update() {
     // =========================================================
     DrawSaveNotification();
     Draw3DIcons();
+    DrawEventIDOverlay();
 #endif
 }
 // ========================================================================
@@ -1054,6 +1055,49 @@ void DebugEditor::Draw3DIcons() {
                 // 本体の描画
                 drawList->AddText(ImGui::GetFont(), fontSize, pos, iconColor, iconStr);
             }
+        }
+    }
+#endif
+}
+
+// ========================================================================
+// イベントIDのオーバーレイ描画
+// ========================================================================
+void DebugEditor::DrawEventIDOverlay() {
+#ifdef USE_IMGUI
+    if (!drawEventIDs_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
+    for (const auto& obj : objects) {
+        if (!obj->GetIsVisible()) continue;
+
+        // イベント関連のIDを取得
+        int myID = obj->GetEventID();
+        int targetID = obj->GetTargetID();
+
+        // 描画テキストの構築
+        std::string label = "";
+        if (myID != -1) label += "[ID: " + std::to_string(myID) + "] ";
+        if (targetID != -1) label += "[Target: " + std::to_string(targetID) + "]";
+
+        if (label.empty()) continue;
+
+        // 3D座標の取得と変換（頭上に表示）
+        Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
+        worldPos.y += obj->GetTransform()->scale.y + 0.5f;
+
+        Vector3 screenPos = WorldToScreen(worldPos);
+
+        if (screenPos.z >= 0.0f) {
+            ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
+            ImU32 color = (myID != -1) ? IM_COL32(255, 255, 0, 255) : IM_COL32(100, 200, 255, 255);
+            
+            // アウトライン
+            drawList->AddText(NULL, 0.0f, ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 255), label.c_str());
+            // 本体
+            drawList->AddText(NULL, 0.0f, pos, color, label.c_str());
         }
     }
 #endif

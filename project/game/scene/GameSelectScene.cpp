@@ -290,7 +290,7 @@ void GameSelectScene::Draw() {
 
 	// 5. 流体描画
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 10) hasFluid = true;
+	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) hasFluid = true;
 	if (hasFluid) {
 		dxCommon_->UpdateGrabTexture();
 		for (auto& obj : objects) {
@@ -298,6 +298,7 @@ void GameSelectScene::Draw() {
 			if (matType == 8) obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
 	}
 

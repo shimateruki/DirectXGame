@@ -154,6 +154,7 @@ public:
     void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle); 
     void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);   
+    void DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
     // 依存オブジェクト
