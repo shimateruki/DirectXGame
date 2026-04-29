@@ -172,6 +172,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12RootSignature> graphicsRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAdd_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateAlpha_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineStateDistortion_;
 
     std::vector<EmitRequest> emitRequests_;
     CSConfig lastConfig_ = {};

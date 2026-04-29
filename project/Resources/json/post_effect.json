@@ -1,18 +1,47 @@
 {
     "bloomIntensity": 0.10000000149011612,
+    "boxFilterSize": 0,
     "chromaticAberration": 0.0,
     "cinemaBarHeight": 0.0,
     "damageFlash": 0.0,
+    "depthOutlineIntensity": 0.0,
+    "dissolveEdgeColor": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "dissolveEdgeWidth": 0.0,
+    "dissolveThreshold": 0.0,
     "enableToneMapping": 0,
     "filmGrainIntensity": 0.029999999329447746,
+    "gaussianFilterSize": 0,
+    "gaussianSigma": 0.0,
+    "grayscaleIntensity": 0.0,
+    "irisCenter": [
+        0.5,
+        0.5
+    ],
+    "irisFadeIntensity": 0.0,
+    "luminanceOutlineIntensity": 0.0,
     "lutIntensity": 0.0,
     "mosaicSize": 0.0,
+    "radialBlurSamples": 0,
     "radialCenterX": 0.0,
     "radialCenterY": 0.0,
     "radialIntensity": 0.0,
+    "randomIntensity": 0.0,
     "scanlineIntensity": 0.0,
+    "sepiaIntensity": 0.0,
+    "slimeColor": [
+        0.18000000715255737,
+        0.800000011920929,
+        0.4399999976158142
+    ],
+    "slimeDensity": 1.0,
+    "slimeFadeIntensity": 0.0,
     "spread": 1.0,
-    "threshold": 1.0,
+    "threshold": 100.0,
     "vignetteIntensity": 0.0,
+    "vignettePower": 0.0,
     "wobbleIntensity": 0.0
 }

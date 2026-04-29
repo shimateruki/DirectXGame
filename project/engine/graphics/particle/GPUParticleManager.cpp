@@ -4,6 +4,7 @@
 #include "json.hpp"
 #include "DebugConsole.h"
 #include "SRVManager.h"
+#include <TextureManager.h>
 #include <d3d12.h>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -15,6 +16,10 @@ GPUParticleManager* GPUParticleManager::GetInstance() {
 
 void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
+    
+    // パーティクルでよく使う画像は描画ループ前に事前ロードしておく
+    TextureManager::GetInstance()->Load("Resources/sprite/particle/particle.png");
+    TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
 }
 
 void GPUParticleManager::Update(float deltaTime) {
@@ -74,6 +79,7 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
 
     // メッシュ情報をその部隊に渡してから発生させる
     targetSystem->SetEmitterMesh(meshVb_, meshVCount_, meshVStride_, meshBoneSrv_);
+    targetSystem->SetCurrentTexture(config.texturePath);
     targetSystem->EmitFromConfig(config);
 }
 
