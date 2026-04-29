@@ -16,10 +16,24 @@ GPUParticleManager* GPUParticleManager::GetInstance() {
 
 void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
+    // パーティクル用のディレクトリをスキャンして、すべての画像を自動で事前ロードする
+    std::string particleDir = "Resources/sprite/particle";
+    if (fs::exists(particleDir)) {
+        for (const auto& entry : fs::directory_iterator(particleDir)) {
+            if (entry.path().extension() == ".png") {
+                // Windowsのパス区切り(\)を(/)に統一してロード
+                std::string path = entry.path().string();
+                std::replace(path.begin(), path.end(), '\\', '/');
+                TextureManager::GetInstance()->Load(path);
+            }
+        }
+    }
     
-    // パーティクルでよく使う画像は描画ループ前に事前ロードしておく
-    TextureManager::GetInstance()->Load("Resources/sprite/particle/particle.png");
+    // 万が一フォルダが空だった場合などの最低限の保険
     TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
+
+    // 全てのプリセットJSONを読み込む
+    LoadAllPresets("Resources/json/gpu_particles/");
 }
 
 void GPUParticleManager::Update(float deltaTime) {

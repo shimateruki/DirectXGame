@@ -404,31 +404,55 @@ float4 mainComposite(PSInput input) : SV_TARGET
     // Slime Fade (Drip)
     if (slimeFadeIntensity > 0.0)
     {
-        // 1. ノイズをサンプリング
-        // 縦方向に滴る感じを出すために、横方向の波打つ境界を作る
-        float2 noiseUv = float2(uv.x * slimeDensity, time * 0.1);
-        float noise = noiseTex.Sample(smp, noiseUv).r;
+        // --- 1. 有機的な滴り形状の計算 ---
+        // 複数のサイン波を重ねて「ポテッ」とした厚みのある滴りを作る
+        float dripShape = sin(uv.x * 5.0) * 0.05 + sin(uv.x * 12.0) * 0.02;
+        dripShape += noiseTex.Sample(smp, float2(uv.x * 0.5, time * 0.05)).r * 0.1;
         
-        // 2. しきい値の計算
-        // slimeFadeIntensity (0.0 -> 1.0) に応じて、上からスライムが降りてくる
-        // 1.2 を掛けているのは、ノイズの振幅分を含めて完全に画面を覆うため
-        float dripProgress = slimeFadeIntensity * 1.2;
-        float yThreshold = dripProgress - (noise * 0.2);
+        // 進捗 (0.0 -> 1.0) に合わせて上から降りてくる。少し余裕を持たせて完全に覆う。
+        float progress = slimeFadeIntensity * 1.3; 
+        float thresholdY = progress - 0.15 + dripShape;
         
-        // 3. マスクの生成
-        // uv.y が yThreshold より小さければスライム（上から垂れてくる）
-        float mask = 1.0 - smoothstep(yThreshold - 0.05, yThreshold + 0.05, uv.y);
+        // 境界線のマイルドなぼかし
+        float mask = smoothstep(thresholdY - 0.02, thresholdY + 0.02, uv.y);
+        mask = 1.0 - mask; // 上から下へ
         
-        // 4. 背景の歪み
-        float edgeDistortion = mask * (1.0 - mask) * 4.0;
-        float2 distortedUv = uv + (noise - 0.5) * 0.03 * edgeDistortion;
-        float3 background = tex.Sample(smp, distortedUv).rgb;
-        
-        // 5. 色の合成
-        finalColor.rgb = lerp(finalColor.rgb, slimeColor, mask);
-        
-        // 6. ハイライト（境界線を明るくしてヌルヌル感を出す）
-        finalColor.rgb += edgeDistortion * 0.2 * slimeColor;
+        if (mask > 0.0)
+        {
+            // --- 2. 屈折と歪み ---
+            // エッジ付近を強く歪ませて液体のレンズ効果を出す
+            float distortionIntensity = mask * (1.0 - mask) * 4.0;
+            float2 distort = float2(
+                sin(uv.y * 20.0 + time * 2.0),
+                cos(uv.x * 20.0 + time * 2.0)
+            ) * 0.01 * distortionIntensity;
+            
+            float3 background = tex.Sample(smp, uv + distort).rgb;
+            
+            // --- 3. スライムの色と透明度 ---
+            // 中心部は濃く、エッジは少し透けるように
+            float3 baseSlime = slimeColor;
+            float interior = smoothstep(0.0, 0.3, mask);
+            float3 finalSlime = lerp(background, baseSlime, interior * 0.9);
+            
+            // --- 4. 気泡 (Bubbles) ---
+            // 擬似的な気泡を描画
+            float2 bubbleUv = uv * float2(10.0, 5.0) + float2(0, time * 0.2);
+            float bNoise = rand(floor(bubbleUv));
+            if (bNoise > 0.95) { // 5%の確率で泡
+                float2 bPos = frac(bubbleUv) - 0.5;
+                float bDist = length(bPos);
+                float bubble = smoothstep(0.1, 0.08, bDist); // 小さな丸
+                finalSlime += bubble * 0.3 * (1.0 - interior); // 泡を白っぽく
+            }
+            
+            // --- 5. 光沢・ハイライト (Gloss) ---
+            // 滴りの先端（エッジ）にヌルヌルした光沢を入れる
+            float gloss = pow(distortionIntensity, 3.0) * 0.5;
+            finalSlime += gloss * float3(1, 1, 1);
+            
+            finalColor.rgb = finalSlime;
+        }
     }
 
     // Grayscale / Sepia (資料に基づいた実装)

@@ -191,8 +191,76 @@ void GPUParticleEditor::DrawImGui() {
             config_.emitVelocity = { 0.0f, 2.0f, 0.0f };
             config_.velocityVariance = 3.0f;
             config_.envGravity = { 0.0f, -0.5f, 0.0f };
-            config_.texturePath = "Resources/sprite/star.png";
+            config_.texturePath = "Resources/sprite/particle/particle.png";
             config_.rotSpeed = 5.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("✨ コイン待機 (Idle)", ImVec2(150, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 1.5f;
+            config_.emitCount = 15;     // 少なめで上品に
+            config_.emitLife = 2.5f;
+            config_.baseColor = { 1.0f, 1.0f, 0.5f, 1.0f }; // Pale Yellow
+            config_.midColor = { 1.0f, 0.8f, 0.2f, 1.0f };  // Gold
+            config_.endColor = { 1.0f, 0.5f, 0.0f, 0.0f };
+            config_.colorMidTime = 0.5f;
+            config_.colorIntensity = 3.0f;
+            config_.baseSize = 0.1f;    // 小さめから
+            config_.midSize = 0.4f;     // ふわっと大きくなる
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.5f;
+            config_.emitVelocity = { 0.0f, 0.2f, 0.0f }; // ゆっくり上に
+            config_.velocityVariance = 0.5f;
+            config_.envGravity = { 0.0f, 0.3f, 0.0f }; // フワッと浮上
+            config_.texturePath = "Resources/sprite/particle/particle.png";
+            config_.rotSpeed = 2.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("🌟 コイン取得 (Burst)", ImVec2(150, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 0.5f; // 中心から
+            config_.emitCount = 150;    // 一気にたくさん
+            config_.emitLife = 0.8f;    // 短命で派手に
+            config_.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // Flash White
+            config_.midColor = { 1.0f, 0.9f, 0.0f, 1.0f };  // Bright Gold
+            config_.endColor = { 1.0f, 0.5f, 0.0f, 0.0f };
+            config_.colorMidTime = 0.3f;
+            config_.colorIntensity = 10.0f; // まぶしく
+            config_.baseSize = 0.6f;
+            config_.midSize = 0.3f;
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.3f;
+            config_.emitVelocity = { 0.0f, 0.0f, 0.0f }; 
+            config_.velocityVariance = 12.0f; // 四方八方に高速で弾ける
+            config_.envGravity = { 0.0f, -2.0f, 0.0f }; // 重力で落ちる
+            config_.envDrag = 0.9f;     // 失速して消える
+            config_.texturePath = "Resources/sprite/particle/particle.png";
+            config_.rotSpeed = 10.0f;
+        }
+
+        // --- 2段目 ---
+        if (ImGui::Button("💫 オーラ (Aura)", ImVec2(120, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 2.0f; // 広め
+            config_.emitCount = 60;
+            config_.emitLife = 1.5f;
+            config_.baseColor = { 0.3f, 0.7f, 1.0f, 0.0f }; // 水色
+            config_.midColor = { 0.1f, 0.4f, 1.0f, 1.0f };
+            config_.endColor = { 0.0f, 0.0f, 1.0f, 0.0f };
+            config_.colorMidTime = 0.5f;
+            config_.colorIntensity = 2.0f;
+            config_.baseSize = 2.0f;    // 大きくぼんやり
+            config_.midSize = 0.8f;
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.5f;
+            config_.emitVelocity = { 0.0f, 0.0f, 0.0f }; 
+            config_.velocityVariance = 0.3f; // ほとんど動かない
+            config_.envGravity = { 0.0f, 0.0f, 0.0f };
+            config_.texturePath = "Resources/sprite/particle/white.png";
+            config_.rotSpeed = 1.0f;
         }
         ImGui::SameLine();
         if (ImGui::Button("🔥 焚き火 (Fire)", ImVec2(120, 30))) {
@@ -212,8 +280,8 @@ void GPUParticleEditor::DrawImGui() {
             config_.sizeMidTime = 0.6f;
             config_.emitVelocity = { 0.0f, 5.0f, 0.0f };
             config_.velocityVariance = 1.5f;
-            config_.envGravity = { 0.0f, 2.0f, 0.0f }; // Rise up
-            config_.texturePath = "Resources/sprite/circle.png";
+            config_.envGravity = { 0.0f, 2.0f, 0.0f };
+            config_.texturePath = "Resources/sprite/particle/particle.png";
         }
         ImGui::SameLine();
         if (ImGui::Button("💨 煙 (Smoke)", ImVec2(120, 30))) {
@@ -234,7 +302,7 @@ void GPUParticleEditor::DrawImGui() {
             config_.emitVelocity = { 0.0f, 1.0f, 0.0f };
             config_.velocityVariance = 0.5f;
             config_.envWind = { 1.0f, 0.0f, 0.0f };
-            config_.texturePath = "Resources/sprite/smoke.png";
+            config_.texturePath = "Resources/sprite/particle/white.png";
         }
     }
 

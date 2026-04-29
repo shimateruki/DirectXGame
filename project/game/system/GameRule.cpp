@@ -7,6 +7,7 @@
 #include "GamePlayScene.h"
 #include "GameDataManager.h"
 #include "SceneManager.h"
+#include "GPUParticleManager.h"
 #include <PlayerState.h>
 
 void GameRule::Initialize(BaseScene* scene) {
@@ -79,6 +80,9 @@ void GameRule::Initialize(BaseScene* scene) {
 
                 // 演出を開始して消す (Object3d側で上昇回転する)
                 objectHit->StartCollectionAnimation();
+
+                // ★GPUパーティクルで取得演出を出す
+                GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
 
                 DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIdx) + " Collected!");
             }

@@ -83,6 +83,10 @@ void Object3d::Update(float deltaTime) {
             gpuEmitter_->SetInterval(0.1f); // 放出間隔
             gpuEmitter_->Play();
         }
+    }
+
+    // スターコイン用のエミッターがあれば、収集アニメーション中も常に更新して追尾させる
+    if (gpuEmitter_) {
         gpuEmitter_->Update(deltaTime);
     }
 
