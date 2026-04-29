@@ -17,6 +17,7 @@ using json = nlohmann::json;
 
 class GhostRecorder;
 class SceneManager;
+#include "GPUParticleEmitter.h"
 
 class Object3d {
 public:
@@ -247,4 +248,5 @@ protected:
     bool isLocked_ = false;
     bool isCollecting_ = false;
     float collectTimer_ = 0.0f;
+    std::unique_ptr<GPUParticleEmitter> gpuEmitter_ = nullptr;
 };

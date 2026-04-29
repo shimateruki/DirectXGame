@@ -9,6 +9,8 @@
 #include <cassert>
 #include <algorithm> // min, max
 #include <ParticleManager.h>
+#include <GPUParticleManager.h>
+#include <GPUParticleEmitter.h>
 #include <DebugConsole.h>
 
 Object3d::~Object3d() {
@@ -48,6 +50,7 @@ void Object3d::Initialize(Object3dCommon* common) {
 
     isCollecting_ = false;
     collectTimer_ = 0.0f;
+    gpuEmitter_ = nullptr;
     isDead = false;
 }
 
@@ -66,6 +69,21 @@ void Object3d::Update(float deltaTime) {
             isVisible_ = false;
             isDead = true; // 完全に消去
         }
+    }
+    else if (eventType_ == EventType::StarCoin && isVisible_) {
+        // --- スターコインの常駐演出 ---
+        // 1. くるくる回転
+        transform_.rotate.y += 3.0f * deltaTime;
+        transform_.isQuaternionMaster = false;
+
+        // 2. GPUパーティクル（エミッター経由）
+        if (!gpuEmitter_) {
+            gpuEmitter_ = std::make_unique<GPUParticleEmitter>();
+            gpuEmitter_->Initialize("star_sparkle", this);
+            gpuEmitter_->SetInterval(0.1f); // 放出間隔
+            gpuEmitter_->Play();
+        }
+        gpuEmitter_->Update(deltaTime);
     }
 
     if (meshRenderer_ && meshRenderer_->GetModel()) {

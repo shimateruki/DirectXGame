@@ -53,9 +53,6 @@ private:
 	float dashSpeed_ = 120.0f;       // ダッシュ速度
 	float dashDuration_ = 0.20f;    // ダッシュ継続時間（秒）
 	float dashTimer_ = 0.0f;        // 残りダッシュ時間
-	float dashCooldown_ = 1.0f;     // ダッシュクールダウン（秒）
-	float dashCooldownTimer_ = 0.0f;// クールダウン残り時間
-	bool dashAvailable_ = true;     // ダッシュが使えるかどうか
 	Vector3 dashDirection_{};       // 値初期化（{0,0,0}）
 
 	// 子オブジェクトの元の衝突属性を保存して復元するためのマップ
@@ -66,10 +63,11 @@ private:
 	float hopTimer_ = 0.0f;         // ホッピング（小ジャンプ）用周期タイマー
 	Vector3 baseScale_ = { 2.0f, 2.0f, 2.0f }; // 基本スケール
 
-	// --- チャージジャンプ関連 ---
-	bool isJumpCharging_ = false;   // ジャンプ溜め中か
+	// --- チャージ（突進用）関連 ---
+	bool isJumpCharging_ = false;   // 溜め中か
 	float jumpChargeTimer_ = 0.0f;  // 溜め時間
 	const float maxChargeTime_ = 1.0f; // 最大溜め時間
+	bool hasAirDashed_ = false;     // 空中ダッシュ済みか
 
 	// --- 動的ダッシュパラメータ ---
 	float currentDashSpeed_ = 120.0f;

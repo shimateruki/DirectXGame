@@ -38,7 +38,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         reticleSprite_->Initialize(spriteCommon_, reticleTex);
         reticleSprite_->SetAnchorPoint({ 0.5f, 0.5f });
         reticleSprite_->SetPosition({ (float)WinApp::kClientWidth / 2.0f, (float)WinApp::kClientHeight / 2.0f });
-        reticleSprite_->SetSize({ 128.0f, 128.0f }); // 少し大きく
+        reticleSprite_->SetSize({ 64.0f, 64.0f }); // 小さく調整
         reticleSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 不透明な白
         DebugConsole::GetInstance()->AddLog("Reticle Initialized.");
     }
@@ -139,9 +139,10 @@ void Player::Update(float deltaTime)
             // 分身がいなくてクールタイムも終わっていれば「狙い」状態
             if (!activeClone_ && cloneCooldownTimer_ <= 0.0f) {
                 isAimingClone_ = true;
+                if (reticleSprite_) reticleSprite_->Update();
             }
-            // 分身がいて、速度がほぼ落ちている（または接地している）なら「テレポート」
-            else if (activeClone_ && (activeClone_->IsGrounded() || std::abs(activeClone_->GetVelocity().y) < 0.1f)) {
+            // 分身がいれば「テレポート」（空中でも可能）
+            else if (activeClone_) {
                 // テレポート実行
                 Vector3 targetPos = activeClone_->GetWorldPosition();
                 transform_.translate = targetPos;
@@ -173,7 +174,7 @@ void Player::Update(float deltaTime)
             Vector3 target = camera->GetTargetPoint();
             Vector3 shootDir = Math::Normalize(target - eye);
             
-            float shootSpeed = 40.0f;
+            float shootSpeed = 65.0f; // 飛距離アップ (40.0 -> 65.0)
             
             // 生成位置を少し高くする（足元だと即座に接地判定されるため）
             Vector3 spawnPos = transform_.translate;
@@ -208,12 +209,8 @@ void Player::Update(float deltaTime)
 
 void Player::DrawUI()
 {
-    if (isAimingClone_ && reticleSprite_ && spriteCommon_) {
-        // スプライトの行列・頂点計算を更新（これがないと描画されない）
-        reticleSprite_->Update();
-        
-        // パイプラインを自己責任でセットして確実に描画する
-        spriteCommon_->SetPipeline(DirectXCommon::GetInstance()->GetCommandList());
+    // 狙い中、または分身が存在する間はレティクルを表示
+    if ((isAimingClone_ || activeClone_) && reticleSprite_) {
         reticleSprite_->Draw();
     }
 }
