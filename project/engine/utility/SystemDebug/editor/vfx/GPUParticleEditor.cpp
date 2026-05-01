@@ -110,19 +110,22 @@ void GPUParticleEditor::DrawImGui() {
 
         std::vector<std::string> allPaths = TextureManager::GetInstance()->GetLoadedTexturePaths();
         static std::vector<std::string> filteredPaths;
+        static std::vector<std::string> fileNames;
         filteredPaths.clear();
+        fileNames.clear();
 
         for (const auto& path : allPaths) {
-            if (path.find("Resources/sprite/") != std::string::npos) {
+            // spriteフォルダの中の particle フォルダのみを参照するように絞り込み
+            if (path.find("Resources/sprite/particle/") != std::string::npos) {
                 filteredPaths.push_back(path);
+                fileNames.push_back(std::filesystem::path(path).filename().string());
             }
         }
 
         std::vector<const char*> texNames;
         int currentIndex = 0;
         for (int i = 0; i < filteredPaths.size(); ++i) {
-            std::string fileName = std::filesystem::path(filteredPaths[i]).filename().string();
-            texNames.push_back(filteredPaths[i].c_str());
+            texNames.push_back(fileNames[i].c_str());
             if (config_.texturePath == filteredPaths[i]) {
                 currentIndex = i;
             }
@@ -131,6 +134,8 @@ void GPUParticleEditor::DrawImGui() {
         if (!texNames.empty()) {
             if (ImGui::Combo(ICON_FA_IMAGE " テクスチャ画像", &currentIndex, texNames.data(), static_cast<int>(texNames.size()))) {
                 config_.texturePath = filteredPaths[currentIndex];
+                // ここで無理に SetTexture を呼ばなくても、EmitFromConfig 時に
+                // 新しいテクスチャ用のシステムが自動で選択・更新されるようになります。
             }
         }
 
@@ -161,6 +166,143 @@ void GPUParticleEditor::DrawImGui() {
             ImGui::Indent();
             ImGui::DragFloat("発生間隔 (Interval)", &config_.emitInterval, 0.01f, 0.01f, 2.0f);
             ImGui::Unindent();
+        }
+    }
+
+    // 🚀 クイック・プリセット (Quick Presets)
+    if (ImGui::CollapsingHeader(ICON_FA_BOLT " クイック・プリセット (Quick Presets)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("ボタン一つで標準的な設定を流し込みます。");
+        
+        if (ImGui::Button("⭐ スター (Star)", ImVec2(120, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 2.0f;
+            config_.emitCount = 300;
+            config_.emitLife = 1.2f;
+            config_.baseColor = { 1.0f, 0.9f, 0.2f, 1.0f }; // Yellowish
+            config_.midColor = { 1.0f, 0.5f, 0.1f, 1.0f };  // Orange
+            config_.endColor = { 1.0f, 0.0f, 0.0f, 0.0f };  // Red fade
+            config_.colorMidTime = 0.5f;
+            config_.colorIntensity = 5.0f;
+            config_.baseSize = 0.5f;
+            config_.midSize = 0.8f;
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.5f;
+            config_.emitVelocity = { 0.0f, 2.0f, 0.0f };
+            config_.velocityVariance = 3.0f;
+            config_.envGravity = { 0.0f, -0.5f, 0.0f };
+            config_.texturePath = "Resources/sprite/particle/particle.png";
+            config_.rotSpeed = 5.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("✨ コイン待機 (Idle)", ImVec2(150, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 1.5f;
+            config_.emitCount = 15;     // 少なめで上品に
+            config_.emitLife = 2.5f;
+            config_.baseColor = { 1.0f, 1.0f, 0.5f, 1.0f }; // Pale Yellow
+            config_.midColor = { 1.0f, 0.8f, 0.2f, 1.0f };  // Gold
+            config_.endColor = { 1.0f, 0.5f, 0.0f, 0.0f };
+            config_.colorMidTime = 0.5f;
+            config_.colorIntensity = 3.0f;
+            config_.baseSize = 0.1f;    // 小さめから
+            config_.midSize = 0.4f;     // ふわっと大きくなる
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.5f;
+            config_.emitVelocity = { 0.0f, 0.2f, 0.0f }; // ゆっくり上に
+            config_.velocityVariance = 0.5f;
+            config_.envGravity = { 0.0f, 0.3f, 0.0f }; // フワッと浮上
+            config_.texturePath = "Resources/sprite/particle/particle.png";
+            config_.rotSpeed = 2.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("🌟 コイン取得 (Burst)", ImVec2(150, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 0.5f; // 中心から
+            config_.emitCount = 150;    // 一気にたくさん
+            config_.emitLife = 0.8f;    // 短命で派手に
+            config_.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // Flash White
+            config_.midColor = { 1.0f, 0.9f, 0.0f, 1.0f };  // Bright Gold
+            config_.endColor = { 1.0f, 0.5f, 0.0f, 0.0f };
+            config_.colorMidTime = 0.3f;
+            config_.colorIntensity = 10.0f; // まぶしく
+            config_.baseSize = 0.6f;
+            config_.midSize = 0.3f;
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.3f;
+            config_.emitVelocity = { 0.0f, 0.0f, 0.0f }; 
+            config_.velocityVariance = 12.0f; // 四方八方に高速で弾ける
+            config_.envGravity = { 0.0f, -2.0f, 0.0f }; // 重力で落ちる
+            config_.envDrag = 0.9f;     // 失速して消える
+            config_.texturePath = "Resources/sprite/particle/particle.png";
+            config_.rotSpeed = 10.0f;
+        }
+
+        // --- 2段目 ---
+        if (ImGui::Button("💫 オーラ (Aura)", ImVec2(120, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 2.0f; // 広め
+            config_.emitCount = 60;
+            config_.emitLife = 1.5f;
+            config_.baseColor = { 0.3f, 0.7f, 1.0f, 0.0f }; // 水色
+            config_.midColor = { 0.1f, 0.4f, 1.0f, 1.0f };
+            config_.endColor = { 0.0f, 0.0f, 1.0f, 0.0f };
+            config_.colorMidTime = 0.5f;
+            config_.colorIntensity = 2.0f;
+            config_.baseSize = 2.0f;    // 大きくぼんやり
+            config_.midSize = 0.8f;
+            config_.endSize = 0.0f;
+            config_.sizeMidTime = 0.5f;
+            config_.emitVelocity = { 0.0f, 0.0f, 0.0f }; 
+            config_.velocityVariance = 0.3f; // ほとんど動かない
+            config_.envGravity = { 0.0f, 0.0f, 0.0f };
+            config_.texturePath = "Resources/sprite/particle/white.png";
+            config_.rotSpeed = 1.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("🔥 焚き火 (Fire)", ImVec2(120, 30))) {
+            config_.blendModeIndex = 0; // Additive
+            config_.shapeType = 1;      // Sphere
+            config_.shapeRadius = 1.0f;
+            config_.emitCount = 500;
+            config_.emitLife = 1.0f;
+            config_.baseColor = { 1.0f, 0.3f, 0.1f, 1.0f };
+            config_.midColor = { 1.0f, 0.1f, 0.0f, 1.0f };
+            config_.endColor = { 0.2f, 0.0f, 0.0f, 0.0f };
+            config_.colorMidTime = 0.4f;
+            config_.colorIntensity = 8.0f;
+            config_.baseSize = 0.8f;
+            config_.midSize = 1.2f;
+            config_.endSize = 0.2f;
+            config_.sizeMidTime = 0.6f;
+            config_.emitVelocity = { 0.0f, 5.0f, 0.0f };
+            config_.velocityVariance = 1.5f;
+            config_.envGravity = { 0.0f, 2.0f, 0.0f };
+            config_.texturePath = "Resources/sprite/particle/particle.png";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("💨 煙 (Smoke)", ImVec2(120, 30))) {
+            config_.blendModeIndex = 1; // Alpha
+            config_.shapeType = 0;      // Box
+            config_.emitArea = { 2.0f, 0.1f, 2.0f };
+            config_.emitCount = 100;
+            config_.emitLife = 3.0f;
+            config_.baseColor = { 0.3f, 0.3f, 0.3f, 0.5f };
+            config_.midColor = { 0.5f, 0.5f, 0.5f, 0.3f };
+            config_.endColor = { 0.8f, 0.8f, 0.8f, 0.0f };
+            config_.colorMidTime = 0.5f;
+            config_.colorIntensity = 1.0f;
+            config_.baseSize = 1.0f;
+            config_.midSize = 3.0f;
+            config_.endSize = 5.0f;
+            config_.sizeMidTime = 0.5f;
+            config_.emitVelocity = { 0.0f, 1.0f, 0.0f };
+            config_.velocityVariance = 0.5f;
+            config_.envWind = { 1.0f, 0.0f, 0.0f };
+            config_.texturePath = "Resources/sprite/particle/white.png";
         }
     }
 

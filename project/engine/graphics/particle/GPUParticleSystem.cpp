@@ -119,6 +119,11 @@ void GPUParticleSystem::CreateBuffer() {
 
     dummyBoneSrvIndex_ = SRVManager::GetInstance()->Allocate();
     SRVManager::GetInstance()->CreateSRVforResource(dummyBoneSrvIndex_, dummyBoneBuffer_.Get(), boneSrvDesc);
+
+    // ★追加: 初期状態で真っ白なテクスチャをロードしておく（テクスチャ未設定によるクラッシュ防止）
+    currentTextureHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
+
+    CreateGraphicsPipeline();
 }
 
 void GPUParticleSystem::CreateComputePipeline() {
@@ -181,7 +186,7 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     psoBuilder.SetInputLayout(nullptr, 0);
     psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
-    psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
     DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
     psoBuilder.SetRenderTargets(1, rtvFormats, DXGI_FORMAT_UNKNOWN);
 
@@ -189,6 +194,7 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     psoBuilder.Build(device, graphicsPipelineStateAdd_.GetAddressOf());
     psoBuilder.SetBlendMode(::BlendMode::kNormal);
     psoBuilder.Build(device, graphicsPipelineStateAlpha_.GetAddressOf());
+    psoBuilder.Build(device, graphicsPipelineStateDistortion_.GetAddressOf());
 }
 
 void GPUParticleSystem::Update(float deltaTime) {
@@ -247,12 +253,17 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     
     // Bind dummy buffers for Update Pass (just to fill the slots)
     commandList->SetComputeRootShaderResourceView(2, dummyVertexBuffer_->GetGPUVirtualAddress());
-    SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, dummyBoneSrvIndex_);
+    
+    uint32_t updateBoneSrv = (dummyBoneSrvIndex_ > 0) ? dummyBoneSrvIndex_ : 0; // dummyBoneSrvIndex_ should be valid
+    SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 3, updateBoneSrv);
+    
     if (depthSrvHandle > 0) {
         SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+    } else {
+        SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
     }
     
-    UINT groupCountUpdate = (kMaxParticles + 1023) / 1024;
+    UINT groupCountUpdate = (kMaxParticles + 255) / 256;
     commandList->Dispatch(groupCountUpdate, 1, 1);
     
     D3D12_RESOURCE_BARRIER updateBarriers[3] = {};
@@ -291,6 +302,8 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
 
             if (depthSrvHandle > 0) {
                 SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, depthSrvHandle);
+            } else {
+                SRVManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
             }
 
             UINT groupCountEmit = (req.config.emitCount + 255) / 256;
@@ -327,8 +340,11 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     if (blendModeIndex_ == 0) {
         commandList->SetPipelineState(graphicsPipelineStateAdd_.Get());
     }
-    else {
+    else if (blendModeIndex_ == 1) {
         commandList->SetPipelineState(graphicsPipelineStateAlpha_.Get());
+    }
+    else if (blendModeIndex_ == 2) {
+        commandList->SetPipelineState(graphicsPipelineStateDistortion_.Get());
     }
 
     commandList->SetGraphicsRootSignature(graphicsRootSignature_.Get());
@@ -347,15 +363,21 @@ void GPUParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const Matri
     uint32_t texToUse = (currentTextureHandle_ > 0) ? currentTextureHandle_ : dummyTex;
     if (texToUse > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, texToUse);
+    } else {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, dummyTex);
     }
 
     if (depthSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    } else {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, dummyTex);
     }
 
     uint32_t grabSrvHandle = dxCommon_->GetGrabSrvHandle();
     if (grabSrvHandle > 0) {
         SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, grabSrvHandle);
+    } else {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, dummyTex);
     }
 
     commandList->DrawInstanced(4, kMaxParticles, 0, 0);
@@ -417,8 +439,16 @@ void GPUParticleSystem::EmitFromConfig(const GPUParticleConfig& config) {
 }
 
 void GPUParticleSystem::SetCurrentTexture(const std::string& path) {
-    uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);
-    if (handle > 0) {
-        currentTextureHandle_ = handle;
+    if (!path.empty()) {
+        // 描画ループ中のLoadはGPUクラッシュを引き起こすため、GetSrvHandleを使用
+        uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);
+        if (handle > 0) {
+            currentTextureHandle_ = handle;
+        } else {
+            // ロードされていない場合は、安全な白画像またはparticle画像を使う
+            uint32_t fallback = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/particle/particle.png");
+            if (fallback == 0) fallback = TextureManager::GetInstance()->GetSrvHandle("Resources/sprite/particle/white.png");
+            if (fallback > 0) currentTextureHandle_ = fallback;
+        }
     }
 }

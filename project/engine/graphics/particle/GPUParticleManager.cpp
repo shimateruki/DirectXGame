@@ -4,6 +4,7 @@
 #include "json.hpp"
 #include "DebugConsole.h"
 #include "SRVManager.h"
+#include <TextureManager.h>
 #include <d3d12.h>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -15,6 +16,24 @@ GPUParticleManager* GPUParticleManager::GetInstance() {
 
 void GPUParticleManager::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
+    // パーティクル用のディレクトリをスキャンして、すべての画像を自動で事前ロードする
+    std::string particleDir = "Resources/sprite/particle";
+    if (fs::exists(particleDir)) {
+        for (const auto& entry : fs::directory_iterator(particleDir)) {
+            if (entry.path().extension() == ".png") {
+                // Windowsのパス区切り(\)を(/)に統一してロード
+                std::string path = entry.path().string();
+                std::replace(path.begin(), path.end(), '\\', '/');
+                TextureManager::GetInstance()->Load(path);
+            }
+        }
+    }
+    
+    // 万が一フォルダが空だった場合などの最低限の保険
+    TextureManager::GetInstance()->Load("Resources/sprite/particle/white.png");
+
+    // 全てのプリセットJSONを読み込む
+    LoadAllPresets("Resources/json/gpu_particles/");
 }
 
 void GPUParticleManager::Update(float deltaTime) {
@@ -74,6 +93,7 @@ void GPUParticleManager::EmitFromConfig(const GPUParticleConfig& config) {
 
     // メッシュ情報をその部隊に渡してから発生させる
     targetSystem->SetEmitterMesh(meshVb_, meshVCount_, meshVStride_, meshBoneSrv_);
+    targetSystem->SetCurrentTexture(config.texturePath);
     targetSystem->EmitFromConfig(config);
 }
 

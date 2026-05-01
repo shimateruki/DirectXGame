@@ -3,6 +3,7 @@
 
 void PlayerClone::Initialize(Object3dCommon* common, const Vector3& position, const Vector3& velocity) {
     Character::Initialize(common);
+    SetClassName("PlayerClone"); // ★ 追加：カメラフェードから除外するため
     
     // 重力などのパラメータを設定（これをしないとCharacter::Updateで重力が無視される）
     SetGravity(50.0f);

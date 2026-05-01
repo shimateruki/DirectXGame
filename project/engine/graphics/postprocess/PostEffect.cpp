@@ -229,8 +229,8 @@ void PostEffect::CreateConstBuffer() {
     paramsData_->bloomIntensity = 2.0f;
     paramsData_->spread = 2.0f;
     paramsData_->slimeFadeIntensity = 0.0f;
-    paramsData_->slimeDensity = 1.0f;
-    paramsData_->slimeColor = { 0.18f, 0.8f, 0.44f };
+    paramsData_->slimeDensity = 1.5f; // 少し密度を上げてディテールを出す
+    paramsData_->slimeColor = { 0.1f, 0.9f, 0.2f }; // よりスライムらしい色味へ
     paramsData_->irisFadeIntensity = 0.0f;
     paramsData_->irisCenterX = 0.5f;
     paramsData_->irisCenterY = 0.5f;

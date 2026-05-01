@@ -51,76 +51,14 @@ void PlayerMover::Update(float deltaTime)
         return;
     }
 
-    // --- 1. ダッシュのクールダウン更新 ---
-    if (dashCooldownTimer_ > 0.0f)
-    {
-        dashCooldownTimer_ -= deltaTime;
-        if (dashCooldownTimer_ <= 0.0f)
-        {
-            dashCooldownTimer_ = 0.0f;
-            dashAvailable_ = true;
-        }
-    }
-
     // --- 2. 現在の速度を取得 (Character クラスの重力計算等は別) ---
     Vector3 velocity = player_->GetVelocity();
 
     // --- 3. 入力に基づく移動ベクトルの計算 ---
     Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
-    // --- 4. ダッシュ(回避)開始判定 ---
-    bool shiftTriggered = inputManager_->IsKeyTriggered(DIK_LSHIFT) || inputManager_->IsKeyTriggered(DIK_RSHIFT);
+    // --- 4. 移動入力の有無を確認 ---
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
-
-    if (shiftTriggered && hasMoveInput && !isDashing_ && dashAvailable_)
-    {
-        float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
-        if (len > 0.001f)
-        {
-            // ダッシュ方向とタイマー初期化
-            dashDirection_.x = inputMove.x / len;
-            dashDirection_.y = 0.0f;
-            dashDirection_.z = inputMove.z / len;
-            isDashing_ = true;
-            currentDashSpeed_ = dashSpeed_; // 通常速度
-            currentDashDuration_ = dashDuration_; // 通常時間
-            dashTimer_ = currentDashDuration_;
-
-            // クールタイム開始
-            dashAvailable_ = false;
-            dashCooldownTimer_ = dashCooldown_;
-
-            if (player_)
-            {
-                // 回避専用の無敵フラグを ON
-                player_->SetDashInvincible(true);
-                // ダッシュアニメーションへ強制遷移
-                player_->ChangeState(std::make_unique<PlayerStateDash>());
-            }
-
-            // 子パーツの衝突属性を一時退避して無効化
-            childOriginalAttributes_.clear();
-            for (Object3d* child : player_->GetChildren())
-            {
-                if (!child) continue;
-                uint32_t orig = child->GetCollisionAttribute();
-                childOriginalAttributes_.emplace(child, orig);
-                child->SetCollisionAttribute(0);
-            }
-
-            // パーティクル（エフェクト）
-            if (particleSystem_)
-            {
-                Vector3 pos = player_->GetWorldPosition();
-                pos.y -= 1.0f;
-                particleSystem_->SpawnParticles(
-                    pos, 6, 1.0f, &dashDirection_, 20.0f,
-                    { 1.0f, 0.8f, 0.2f, 1.0f }, { 1.0f, 0.8f, 0.2f, 0.0f },
-                    0.1f, 0.4f, 0.6f, 0.05f
-                );
-            }
-        }
-    }
 
     // --- 5. 速度の決定 (ダッシュ中 or 通常) ---
     if (isDashing_)
@@ -179,34 +117,65 @@ void PlayerMover::Update(float deltaTime)
         player_->SetRotationY(NormalizeAngle(newY));
     }
 
-    // --- 7. ジャンプ処理 (チャージ対応) ---
-    if (player_->IsGrounded()) {
-        if (inputManager_->IsActionPressed("Jump")) {
-            // チャージ中
+    // --- 7. ジャンプ・溜め攻撃処理 ---
+    bool isGrounded = player_->IsGrounded();
+    if (isGrounded) {
+        hasAirDashed_ = false; // 地面に着いたら空中ダッシュ権をリセット
+    }
+
+    if (inputManager_->IsActionPressed("Jump")) {
+        // 地上、または空中かつダッシュ未実行ならチャージ可能
+        if (isGrounded || (!isGrounded && !hasAirDashed_)) {
             isJumpCharging_ = true;
             jumpChargeTimer_ += deltaTime;
             if (jumpChargeTimer_ > maxChargeTime_) jumpChargeTimer_ = maxChargeTime_;
-            
-            // --- 追加: チャージ中の左クリックで「突進」 (0.4秒以上の溜めが必要) ---
-            if (inputManager_->IsMouseButtonTriggered(0) && jumpChargeTimer_ >= 0.4f) {
+
+            if (!isDashing_) {
+                // 移動速度を落とす（空中でも溜め中は少し減速させる）
+                velocity.x *= 0.2f;
+                velocity.z *= 0.2f;
+            }
+        }
+    }
+    else if (isJumpCharging_) {
+        // 解放！
+        float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
+
+        // 溜めが十分か判定
+        if (jumpChargeTimer_ >= 0.4f) {
+            // 空中なら使用済みフラグをチェック
+            if (isGrounded || !hasAirDashed_) {
                 float yaw = player_->GetRotation().y;
                 
                 // ダッシュ（慣性移動）の仕組みに乗せる
-                float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
-                // 低チャージ時の性能を大幅に抑え、溜めによる伸びを強調
-                currentDashSpeed_ = dashSpeed_ * (0.5f + chargeRatio * 1.5f); // 0.5倍 〜 2.0倍
-                currentDashDuration_ = dashDuration_ * (0.3f + chargeRatio * 1.2f); // 0.3倍 〜 1.5倍
+                currentDashSpeed_ = dashSpeed_ * (0.5f + chargeRatio * 1.5f);
+                currentDashDuration_ = dashDuration_ * (0.3f + chargeRatio * 1.2f);
                 
                 dashDirection_ = { std::sin(yaw), 0.0f, std::cos(yaw) };
                 isDashing_ = true;
                 dashTimer_ = currentDashDuration_;
-                
-                // チャージリセット
-                isJumpCharging_ = false;
-                jumpChargeTimer_ = 0.0f;
 
-                // ダッシュ状態へ遷移
-                if (player_) player_->ChangeState(std::make_unique<PlayerStateDash>());
+                // 空中なら使用済みフラグを立てる
+                if (!isGrounded) {
+                    hasAirDashed_ = true;
+                    // 空中ダッシュ時は少しだけ上方向にベクトルを足して滞空時間を稼ぐ（お好みで）
+                    velocity.y = 2.0f; 
+                }
+
+                // 突進状態へ遷移
+                if (player_) {
+                    player_->SetDashInvincible(true);
+                    player_->ChangeState(std::make_unique<PlayerStateDash>());
+
+                    // 子パーツの衝突属性を一時退避して無効化
+                    childOriginalAttributes_.clear();
+                    for (Object3d* child : player_->GetChildren()) {
+                        if (!child) continue;
+                        uint32_t orig = child->GetCollisionAttribute();
+                        childOriginalAttributes_.emplace(child, orig);
+                        child->SetCollisionAttribute(0);
+                    }
+                }
 
                 // 突進エフェクト
                 if (particleSystem_) {
@@ -218,17 +187,10 @@ void PlayerMover::Update(float deltaTime)
                     );
                 }
             }
-            else if (!isDashing_) {
-                // 通常のチャージ中かつダッシュ中でない場合のみ、移動速度を大幅に落とす
-                velocity.x *= 0.2f;
-                velocity.z *= 0.2f;
-            }
         }
-        else if (isJumpCharging_) {
-            // 解放！
-            float chargeRatio = jumpChargeTimer_ / maxChargeTime_;
-            float powerMult = 1.0f + chargeRatio; // 最大2倍
-            velocity.y = player_->GetJumpPower() * powerMult;
+        else if (isGrounded) {
+            // 地上で溜め不足なら通常ジャンプ
+            velocity.y = player_->GetJumpPower();
 
             // ジャンプイベントを発行
             PlayerJumpEvent jumpEvent;
@@ -236,43 +198,41 @@ void PlayerMover::Update(float deltaTime)
             player_->IncrementJumpCount();
             EventManager::GetInstance()->Dispatch(jumpEvent);
 
-            // ジャンプ時の土煙エフェクト（チャージ量に応じて増やす）
+            // ジャンプ時の土煙エフェクト
             if (particleSystem_) {
                 Vector3 footPos = player_->GetWorldPosition();
                 footPos.y -= 1.0f;
-                int pCount = 10 + (int)(chargeRatio * 15.0f);
                 particleSystem_->SpawnParticles(
-                    footPos, pCount, 0.5f + chargeRatio, nullptr, 0.5f + chargeRatio,
+                    footPos, 15, 1.0f, nullptr, 1.0f,
                     { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
                     0.2f, 0.5f, 1.0f, 0.1f
                 );
             }
 
-            // 水平方向の速度を「プレイヤーの向き」に合わせる
+            // 水平方向の速度を現在の向きに合わせる
             if (hasMoveInput) {
                 float len = std::sqrt(inputMove.x * inputMove.x + inputMove.z * inputMove.z);
                 if (len > 0.001f) {
                     float s = player_->GetMoveSpeed() / len;
-                    velocity.x = inputMove.x * s * (1.0f + chargeRatio * 0.5f);
-                    velocity.z = inputMove.z * s * (1.0f + chargeRatio * 0.5f);
+                    velocity.x = inputMove.x * s;
+                    velocity.z = inputMove.z * s;
                 }
             } else {
                 float yaw = player_->GetRotation().y;
-                velocity.x = std::sin(yaw) * player_->GetMoveSpeed() * (1.0f + chargeRatio * 0.5f);
-                velocity.z = std::cos(yaw) * player_->GetMoveSpeed() * (1.0f + chargeRatio * 0.5f);
+                velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
+                velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
             }
 
             // 状態遷移
             if (player_) player_->ChangeState(std::make_unique<PlayerStateJump>());
-
-            // チャージリセット
-            isJumpCharging_ = false;
-            jumpChargeTimer_ = 0.0f;
         }
-    } else {
-        // 空中ではチャージリセット
+
+        // チャージリセット
         isJumpCharging_ = false;
         jumpChargeTimer_ = 0.0f;
+    }
+    else {
+        // チャージ中でない場合、空中ではフラグ管理のみ（着地リセットは上記で行っている）
     }
 
     // --- 8. スライム特有のホッピング移動 ---

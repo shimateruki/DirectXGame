@@ -38,7 +38,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         reticleSprite_->Initialize(spriteCommon_, reticleTex);
         reticleSprite_->SetAnchorPoint({ 0.5f, 0.5f });
         reticleSprite_->SetPosition({ (float)WinApp::kClientWidth / 2.0f, (float)WinApp::kClientHeight / 2.0f });
-        reticleSprite_->SetSize({ 128.0f, 128.0f }); // 少し大きく
+        reticleSprite_->SetSize({ 64.0f, 64.0f }); // 小さく調整
         reticleSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 不透明な白
         DebugConsole::GetInstance()->AddLog("Reticle Initialized.");
     }
@@ -67,39 +67,32 @@ void Player::Update(float deltaTime)
     if (deltaTime > 0.0f)
     {
         // 1. 無敵タイマーの管理 (ダメージ被弾時)
-        if (damageCooldownTimer_ > 0.0f)
-        {
+        if (damageCooldownTimer_ > 0.0f) {
             damageCooldownTimer_ -= deltaTime;
-            if (damageCooldownTimer_ <= 0.0f)
-            {
+            if (damageCooldownTimer_ <= 0.0f) {
                 damageCooldownTimer_ = 0.0f;
-                // 被弾無敵フラグを解除 (赤色が消える)
-                SetDamageInvincible(false);
+                SetDamageInvincible(false); // 被弾無敵フラグを解除
             }
         }
 
-        // 2. 移動制御の更新 (PlayerMover)
-        if (isControlActive_ && mover_)
-        {
+        // 2. 移動制御の更新
+        // エイム中（isAimingClone_）は移動入力を受け付けないようにする
+        if (isControlActive_ && mover_ && !isAimingClone_) {
             mover_->Update(deltaTime);
         }
 
         // 3. 状態(State)の更新
-        if (state_)
-        {
+        if (state_) {
             state_->Update(this);
         }
 
         // 4. 死亡判定
-        // ※画面の暗転演出などはプレイヤー内でやらず、HPの状態だけ見てステートを変える
-        if (GetHp() <= 0.0f && !isDead)
-        {
+        if (GetHp() <= 0.0f && !isDead) {
             isDead = true;
             deathTimer_ = 0.0f;
             ChangeState(std::make_unique<PlayerStateDead>());
             DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡状態へ移行");
 
-            // 死亡イベントを発行
             PlayerDeathEvent deathEvent;
             deathEvent.player = this;
             EventManager::GetInstance()->Dispatch(deathEvent);
@@ -107,14 +100,10 @@ void Player::Update(float deltaTime)
 
         // 5. 落下判定
         if (transform_.translate.y < -40.0f && !isDead && isControlActive_) {
-            // 落下演出状態へ移行
             ChangeState(std::make_unique<PlayerStateFallingOut>());
-            
-            // 残機を減らす
             GameDataManager::GetInstance()->SubtractLife();
 
             if (GameDataManager::GetInstance()->GetLives() <= 0) {
-                // 残機なし：ゲームオーバーシーンへ
                 SceneManager::GetInstance()->ChangeScene("GAMEOVER");
             }
             else {
@@ -127,95 +116,164 @@ void Player::Update(float deltaTime)
     Character::Update(deltaTime);
 
     // --- 7. 分身システムの更新 ---
-    // クールタイムの更新
     if (cloneCooldownTimer_ > 0.0f) {
         cloneCooldownTimer_ -= deltaTime;
     }
 
-    // 操作
     if (isControlActive_) {
-        // 右クリック中
+        // 右クリック入力処理
         if (inputManager_->IsMouseButtonPressed(1)) {
-            // 分身がいなくてクールタイムも終わっていれば「狙い」状態
+            // 分身未生成かつクールタイム終了時は「エイム（狙い）」状態へ
             if (!activeClone_ && cloneCooldownTimer_ <= 0.0f) {
                 isAimingClone_ = true;
+                velocity_ = { 0.0f, 0.0f, 0.0f };
+                SetGravity(10.0f);
             }
-            // 分身がいて、速度がほぼ落ちている（または接地している）なら「テレポート」
-            else if (activeClone_ && (activeClone_->IsGrounded() || std::abs(activeClone_->GetVelocity().y) < 0.1f)) {
-                // テレポート実行
+            // すでに分身が存在する場合は「テレポート」を実行
+            else if (activeClone_) {
+                isAimingClone_ = false;
+                SetGravity(50.0f);
+
                 Vector3 targetPos = activeClone_->GetWorldPosition();
                 transform_.translate = targetPos;
-                
-                // 勢いをリセット
-                velocity_ = { 0, 0, 0 };
-                
-                // CollisionManagerから解除してから消す！
+                velocity_ = { 0.0f, 0.0f, 0.0f };
+
                 CollisionManager::GetInstance()->RemoveObject(activeClone_.get());
                 activeClone_ = nullptr;
                 cloneCooldownTimer_ = 3.0f;
-                
-                // テレポート演出（パーティクル）
+
                 if (particleSystem_) {
-                    particleSystem_->SpawnParticles(targetPos, 20, 1.0f, nullptr, 1.0f,
+                    particleSystem_->SpawnParticles(
+                        targetPos, 20, 1.0f, nullptr, 1.0f,
                         { 0.5f, 0.8f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
-                        0.1f, 0.5f, 1.0f, 0.1f);
+                        0.1f, 0.5f, 1.0f, 0.1f
+                    );
                 }
-                
                 DebugConsole::GetInstance()->AddLog("Teleported to Clone! Cooldown started.");
             }
         }
-        
-        // 右クリックを離したとき（狙い解除 ＋ 射出）
-        if (isAimingClone_ && inputManager_->IsMouseButtonReleased(1)) {
-            // カメラの視線方向を計算
+
+        // ★ エイム中のカメラ連動 ＆ 軌道予測線の描画
+        if (isAimingClone_) {
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            Vector3 eye = camera->GetEye();
-            Vector3 target = camera->GetTargetPoint();
-            Vector3 shootDir = Math::Normalize(target - eye);
-            
-            float shootSpeed = 40.0f;
-            
-            // 生成位置を少し高くする（足元だと即座に接地判定されるため）
+            if (camera) {
+                // 1. プレイヤーの向きをカメラに合わせる
+                SetRotationY(camera->GetRotation().y);
+
+                // 2. ★追加：見上げすぎてカメラが地面にめり込むのを防ぐ（Pitch制限）
+                Vector3 camRot = camera->GetRotation();
+                float maxLookUp = -0.6f;   // 見上げ限界 (約 -34度)
+                float maxLookDown = 1.2f;  // 見下ろし限界 (約 68度)
+
+                if (camRot.x < maxLookUp) {
+                    camRot.x = maxLookUp;
+                    camera->SetRotation(camRot);
+                }
+                else if (camRot.x > maxLookDown) {
+                    camRot.x = maxLookDown;
+                    camera->SetRotation(camRot);
+                }
+
+                // 3. 射出ベクトル（正面）と 右方向ベクトル を計算
+                Vector3 shootDir = {
+                    std::sin(camRot.y) * std::cos(camRot.x),
+                    -std::sin(camRot.x),
+                    std::cos(camRot.y) * std::cos(camRot.x)
+                };
+                shootDir = Math::Normalize(shootDir);
+
+                Vector3 rightDir = { std::cos(camRot.y), 0.0f, -std::sin(camRot.y) };
+
+                // 4. ★修正：発射位置(spawnPos)を「右肩」にずらして、キャラ被りを防ぐ
+                Vector3 spawnPos = transform_.translate;
+                spawnPos.y += 1.5f; // 高さを頭〜肩のあたりに
+                spawnPos.x += rightDir.x * 1.0f + shootDir.x * 0.5f; // 右に1.0m、前に0.5mずらす
+                spawnPos.z += rightDir.z * 1.0f + shootDir.z * 0.5f;
+
+                // 5. 軌道予測線の描画
+                if (particleSystem_) {
+                    float shootSpeed = 30.0f;
+                    Vector3 v0 = shootDir * shootSpeed;
+                    float g = 80.0f;
+
+                    for (float t = 0.05f; t <= 0.8f; t += 0.05f) {
+                        Vector3 predPos;
+                        predPos.x = spawnPos.x + v0.x * t;
+                        predPos.z = spawnPos.z + v0.z * t;
+                        predPos.y = spawnPos.y + v0.y * t - 0.5f * g * t * t;
+
+                        if (predPos.y < 0.0f) break;
+
+                        particleSystem_->SpawnParticles(
+                            predPos, 1, 0.15f, nullptr, 0.0f,
+                            { 0.4f, 0.7f, 1.0f, 0.8f }, { 0.4f, 0.7f, 1.0f, 0.0f },
+                            0.5f, 0.2f, 0.0f, 0.0f
+                        );
+                    }
+                }
+            }
+        }
+
+        // 右クリックを離したとき（エイム解除 ＋ 分身射出）
+        if (isAimingClone_ && inputManager_->IsMouseButtonReleased(1)) {
+            SetGravity(50.0f);
+
+            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+            Vector3 shootDir = { 0.0f, 0.0f, 1.0f };
             Vector3 spawnPos = transform_.translate;
-            spawnPos.y += 1.0f;
-            
+            spawnPos.y += 1.5f;
+
+            // ★修正：予測線と全く同じ「右肩オフセット」で実際の分身を射出する
+            if (camera) {
+                Vector3 camRot = camera->GetRotation();
+                shootDir = {
+                    std::sin(camRot.y) * std::cos(camRot.x),
+                    -std::sin(camRot.x),
+                    std::cos(camRot.y) * std::cos(camRot.x)
+                };
+                shootDir = Math::Normalize(shootDir);
+
+                Vector3 rightDir = { std::cos(camRot.y), 0.0f, -std::sin(camRot.y) };
+                spawnPos.x += rightDir.x * 1.0f + shootDir.x * 0.5f;
+                spawnPos.z += rightDir.z * 1.0f + shootDir.z * 0.5f;
+            }
+
+            float shootSpeed = 30.0f;
+
             activeClone_ = std::make_unique<PlayerClone>();
             activeClone_->Initialize(common_, spawnPos, shootDir * shootSpeed);
-            
-            // ★プレイヤー本体の当たり判定設定（サイズやオフセットなど）を分身にコピー
+            activeClone_->SetGravity(80.0f);
+
             activeClone_->SetColliderConfig(GetColliderConfig());
-            
-            // 生成時に一度だけ衝突判定に登録
             CollisionManager::GetInstance()->AddObject(activeClone_.get());
-            
+
             isAimingClone_ = false;
             DebugConsole::GetInstance()->AddLog("Clone Launched!");
         }
     }
 
-    // 最後に分身の更新と管理を行う（入力判定の後にしないと、接地フラグがリセットされてしまうため）
     if (activeClone_) {
         activeClone_->Update(deltaTime);
 
         if (activeClone_->IsExpired()) {
             CollisionManager::GetInstance()->RemoveObject(activeClone_.get());
             activeClone_ = nullptr;
-            cloneCooldownTimer_ = 3.0f; // 自然消滅したらクールタイム開始
+            cloneCooldownTimer_ = 3.0f;
             DebugConsole::GetInstance()->AddLog("Clone Expired. Cooldown started.");
         }
     }
 }
 
+
 void Player::DrawUI()
 {
-    if (isAimingClone_ && reticleSprite_ && spriteCommon_) {
-        // スプライトの行列・頂点計算を更新（これがないと描画されない）
-        reticleSprite_->Update();
-        
-        // パイプラインを自己責任でセットして確実に描画する
-        spriteCommon_->SetPipeline(DirectXCommon::GetInstance()->GetCommandList());
+    // ロックオンアイコン（レティクル）を廃止：
+    // バイオ方式のカメラと軌道予測線（今後実装）で狙わせるため
+    /*
+    if ((isAimingClone_ || activeClone_) && reticleSprite_) {
         reticleSprite_->Draw();
     }
+    */
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {
