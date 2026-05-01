@@ -329,7 +329,7 @@ void GamePlayScene::Update(float deltaTime) {
 
 
 void GamePlayScene::Draw() {
-	// --- 一人称視点判定 ---
+	// --- 一人称視点（カメラのめり込み）判定 ---
 	bool isFirstPerson = false;
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 #ifndef _DEBUG
@@ -339,7 +339,7 @@ void GamePlayScene::Draw() {
 #endif
 
 	// =========================================================
-	// ★ カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
+	// カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする
 	// =========================================================
 	if (!isFirstPerson && player_ && camera) {
 		Vector3 pPos = player_->GetWorldPosition();
@@ -348,7 +348,7 @@ void GamePlayScene::Draw() {
 		Vector3 toCam = { cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z };
 		float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
-		// 距離が 3.0m 未満なら、プレイヤーを完全に消す！
+		// 距離が 3.0m 未満なら、プレイヤーを完全に消す判定フラグを立てる
 		if (dist < 3.0f) {
 			isFirstPerson = true;
 		}
@@ -356,19 +356,19 @@ void GamePlayScene::Draw() {
 
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
-	object3dCommon_->SetGraphicsCommand();
 
 	auto& objects = objectManager_->GetObjects();
 
-	// --- 1. 不透明描画 ---
+	// =======================================================
+	// 1. 不透明モデル描画
+	// =======================================================
 	object3dCommon_->SetGraphicsCommand();
 	object3dCommon_->SetPipelineState(BlendMode::kNone); // 不透明設定
 
 	for (auto& obj : objects) {
 		if (!IsVisible(obj.get())) continue;
-		// =========================================================
-		//  プレイヤー本体だけでなく「子パーツ（緑のブロック等）」も巻き込んで消す！
-		// =========================================================
+
+		// プレイヤー本体および「子パーツ（緑のブロック等）」かどうかの判定
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
 			Object3d* current = obj.get();
@@ -377,9 +377,19 @@ void GamePlayScene::Draw() {
 				current = current->GetParent();
 			}
 		}
-		if (isPlayerPart) continue; // プレイヤーの一部なら描画をスキップ！
 
+		// プレイヤーの一部なら描画をスキップ（ただし分身は救済する）
+		if (isPlayerPart) {
+			// ★修正箇所：プレイヤー自身が非表示判定でも、射出中の分身があれば分身だけは描画する！
+			if (obj.get() == player_ && player_->GetActiveClone()) {
+				player_->GetActiveClone()->Draw(pointLightRes, spotLightRes);
+			}
+			continue;
+		}
+
+		// 半透明マテリアル(1)、ローカルフォグ(7)、流体マテリアル(8以上)はここでは描画しない
 		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
+
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 
@@ -387,16 +397,20 @@ void GamePlayScene::Draw() {
 		animatedCube_->Draw(pointLightRes, spotLightRes);
 	}
 
-	// --- 2. 中間描画 (弾・デバッグ) ---
+	// =======================================================
+	// 2. 中間描画 (弾・デバッグUI・背景など)
+	// =======================================================
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
 	if (skybox_) {
 		skybox_->Draw(camera->GetConstantBuffer());
 	}
-	// --- 3. 透明描画 ---
+
+	// =======================================================
+	// 3. 半透明モデル描画
+	// =======================================================
 	for (auto& obj : objects) {
-		// ここでも同じくプレイヤー関連をスキップ
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
 			Object3d* current = obj.get();
@@ -405,20 +419,30 @@ void GamePlayScene::Draw() {
 				current = current->GetParent();
 			}
 		}
-		if (isPlayerPart) continue;
 
-		if (obj->GetMaterialType() == 1) { // 透明のみ描画
+		if (isPlayerPart) {
+			// 分身が半透明マテリアルに設定された場合への備え
+			if (obj.get() == player_ && player_->GetActiveClone() && player_->GetActiveClone()->GetMaterialType() == 1) {
+				player_->GetActiveClone()->Draw(pointLightRes, spotLightRes);
+			}
+			continue;
+		}
+
+		if (obj->GetMaterialType() == 1) { // 半透明マテリアルのみ描画
 			obj->Draw(pointLightRes, spotLightRes);
 		}
 	}
 	particleSystem_->Draw();
 
 	// =======================================================
-	// 4. ローカルフォグ (霧の箱) の描画！
+	// 4. ローカルフォグ (霧の箱) の描画
 	// =======================================================
 	bool hasFog = false;
 	for (auto& obj : objects) {
-		if (obj->GetMaterialType() == 7) hasFog = true;
+		if (obj->GetMaterialType() == 7) {
+			hasFog = true;
+			break;
+		}
 	}
 
 	if (hasFog) {
@@ -430,18 +454,21 @@ void GamePlayScene::Draw() {
 		}
 		dxCommon_->PostDrawLocalFog();
 	}
+
+	// =======================================================
+	// 5. GPUパーティクル / 流体 (水・マグマ・氷) の描画
+	// =======================================================
 	bool hasFluid = false;
 	for (auto& obj : objects) {
-		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) hasFluid = true;
+		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) {
+			hasFluid = true;
+			break;
+		}
 	}
 
-
-	// =======================================================
-	// 5. GPUパーティクル / 流体 (水・マグマ・氷) の描画！
-	// =======================================================
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
 	if (hasFluid || hasGPUParticles) {
-		// 画面をキャプチャしてテクスチャにする (必要な時だけ1回呼ぶ)
+		// 画面をキャプチャして背景テクスチャにする (必要な時だけ1回呼ぶ)
 		dxCommon_->UpdateGrabTexture();
 
 		if (hasFluid) {
@@ -454,7 +481,7 @@ void GamePlayScene::Draw() {
 						current = current->GetParent();
 					}
 				}
-				if (isPlayerPart) continue;
+				if (isPlayerPart) continue; // 流体の場合は分身になることはないので単純スキップ
 
 				int matType = obj->GetMaterialType();
 				if (matType == 8) {
