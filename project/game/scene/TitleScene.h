@@ -77,6 +77,13 @@ private:
     Player* player_ = nullptr;
 
     uint32_t bgmHandle_ = 0;
+    // --- スプライト演出用 ---
+    bool spritesAppear_ = false; // フェード後にスプライトを浮かび上がらせる演出開始
+    float spritesAppearTimer_ = 0.0f; // 演出タイマー
+    const float spritesAppearDuration_ = 0.6f; // 演出時間（秒）
+    std::vector<int> menuSpriteIndices_; // メニュー項目スプライトのインデックス
+    std::vector<float> spriteBaseYs_;    // スプライトの初期Y座標
+
 
     // --- ライト・GPUリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
@@ -113,28 +120,6 @@ private:
     };
     int currentOptionIndex_ = (int)OptionIndex::Sound;
 
-    // ==========================================
-    // スプライトのポインタ保持
-    // ==========================================
-    Sprite* titleSprite_ = nullptr;
-    Sprite* startTextSprite_ = nullptr;
-    Sprite* settingTextSprite_ = nullptr;
-
-    std::unique_ptr<OptionUI> optionUI_ = nullptr;
-
-    // ==========================================
-    // イントロ（黒帯）後のフェード＆浮上演出用
-    // ==========================================
-    bool introPlaying_ = true;   // trueの間はメニュー入力を受け付けない
-    float introTimer_ = 0.0f;    // イントロ経過時間
-    float introDelay_ = 1.0f;    // 黒帯等の演出待ち時間（秒）
-    float introDuration_ = 0.7f; // フェード＋浮上の所要時間（秒）
-
-    // 開始位置（下） / 目標位置（レイアウトから読み取り）
-    Vector2 titleStartPos_ = {0.0f, 0.0f};
-    Vector2 titleTargetPos_ = {0.0f, 0.0f};
-    Vector2 startTextStartPos_ = {0.0f, 0.0f};
-    Vector2 startTextTargetPos_ = {0.0f, 0.0f};
 
     // ==========================================
     // enemy_core を上下に動かすための変数（複数対応）
