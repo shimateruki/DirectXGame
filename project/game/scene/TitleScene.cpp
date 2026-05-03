@@ -87,36 +87,19 @@ void TitleScene::Initialize() {
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile("title_camera.json");
 
-    // --- スプライト参照取得 ---
-    titleSprite_ = GetSpriteByName("title.png");
-    startTextSprite_ = GetSpriteByName("gameStartText.png");
-    settingTextSprite_ = GetSpriteByName("setting.png");
-    optionUI_ = std::make_unique<OptionUI>();
-    optionUI_->Initialize(this, spriteCommon_.get());
-
-    // --- イントロ演出: 初期位置・透明度をセット ---
-    introPlaying_ = true;
-    introTimer_ = 0.0f;
-    // 読み込み直後のレイアウト位置を目標にする
-    if (titleSprite_) {
-        titleTargetPos_ = titleSprite_->GetPosition();
-        titleStartPos_ = titleTargetPos_;
-        titleStartPos_.y += 40.0f; // 下から上に浮かび上がる
-        titleSprite_->SetPosition(titleStartPos_);
-        Vector4 col = titleSprite_->GetColor();
-        col.w = 0.0f;
-        titleSprite_->SetColor(col);
+    // --- メニュー項目スプライトのインデックスと初期Y座標を特定 ---
+    menuSpriteIndices_.clear();
+    spriteBaseYs_.clear();
+    for (int i = 0; i < (int)sprites_.size(); ++i) {
+        const std::string& name = sprites_[i]->GetName();
+        if (name == "gameStartText.png" || name == "optionText.png" || name == "exit.png") {
+            menuSpriteIndices_.push_back(i);
+        }
+        spriteBaseYs_.push_back(sprites_[i]->GetPosition().y);
     }
-    if (startTextSprite_) {
-        startTextTargetPos_ = startTextSprite_->GetPosition();
-        startTextStartPos_ = startTextTargetPos_;
-        startTextStartPos_.y += 30.0f;
-        startTextSprite_->SetPosition(startTextStartPos_);
-        Vector4 col = startTextSprite_->GetColor();
-        col.w = 0.0f;
-        startTextSprite_->SetColor(col);
-    }
-
+    spritesAppear_ = false;
+    spritesAppearTimer_ = 0.0f;
+ 
     // --- オブジェクト一覧をログ出力して調査（デバッグ用） ---
     LOG("TitleScene: listing loaded objects:");
     if (objectManager_) {
@@ -192,108 +175,86 @@ void TitleScene::Finalize() {
 }
 
 void TitleScene::Update(float deltaTime) {
-
     InputManager* input = InputManager::GetInstance();
-    Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f }; // 非選択時は少し暗くする
-    Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 選択時は明るく白！
 
-    // --- イントロ演出の更新（黒帯が消える演出後にタイトル等をフェード＋浮上） ---
-    if (introPlaying_) {
-        introTimer_ += deltaTime;
-        // 黒帯等の演出待ち時間が終わったらフェード＆浮上を開始
-        if (introTimer_ >= introDelay_) {
-            float t = (introTimer_ - introDelay_) / introDuration_;
-            if (t > 1.0f) t = 1.0f;
-            float ease = Easing::OutCubic(t);
-
-            // タイトル
-            if (titleSprite_) {
-                Vector2 p = titleSprite_->GetPosition();
-                p.y = Math::Lerp(titleStartPos_.y, titleTargetPos_.y, ease);
-                titleSprite_->SetPosition(p);
-                Vector4 c = titleSprite_->GetColor();
-                c.w = ease;
-                titleSprite_->SetColor(c);
-            }
-            // スタートテキスト
-            if (startTextSprite_) {
-                Vector2 p = startTextSprite_->GetPosition();
-                p.y = Math::Lerp(startTextStartPos_.y, startTextTargetPos_.y, ease);
-                startTextSprite_->SetPosition(p);
-                Vector4 c = startTextSprite_->GetColor();
-                c.w = ease;
-                startTextSprite_->SetColor(c);
-            }
-
-            if (t >= 1.0f) {
-                introPlaying_ = false; // 演出終了、以降通常の入力受付
-            }
-        }
-        // イントロ中はメニュー入力や選択の処理をスキップする（だが他の更新は続行）
+    // --- フェード終了後にスプライト演出を開始 ---
+    if (!spritesAppear_) {
+        spritesAppear_ = true;
+        spritesAppearTimer_ = 0.0f;
     }
-    else {
-        // =================================================
-        // ステートに応じた入力・UI操作処理
-        // =================================================
-        switch (currentState_) {
-        case TitleState::MainMenu:
-            // 上下選択
-            if (input->IsActionTriggered("Forward")) {
-                do {
-                    currentMenuIndex_--;
-                    if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
-                } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
-            }
-            if (input->IsActionTriggered("Backward")) {
-                do {
-                    currentMenuIndex_++;
-                    if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
-                } while (currentMenuIndex_ == (int)MenuIndex::Setting && !settingEnabled_);
-            }
+    if (!spritesAppear_) {
+        // フェード中はスプライトを非表示にする
+        for (auto& sprite : sprites_) sprite->SetVisible(false);
+    } else {
+        for (auto& sprite : sprites_) sprite->SetVisible(true);
+    }
 
-            // 色の更新
-            if (startTextSprite_) startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
-            if (settingTextSprite_) {
-                // 設定が無効なら常に非選択カラーにする（視覚的に選べないことを示す）
-                if (!settingEnabled_) settingTextSprite_->SetColor(normalColor);
-                else settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
-            }
-
-            // 決定 (Spaceキーのみ)
-            if (input->IsActionTriggered("Jump")) {
-                if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
-                    // ゲーム開始！
-                    GameProgress::GetInstance()->Reset();
-                    SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-                }
-                else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
-                    // 設定が有効なときのみ遷移（通常はここに来ない）
-                    if (settingEnabled_) {
-                        currentState_ = TitleState::OptionMenu;
-                    }
-                }
-            }
-            break;
-
-        case TitleState::OptionMenu:
-            // ★ OptionUI に処理を丸投げ！ 戻る要求(true)が返ってきたらメインに戻す
-            if (optionUI_ && optionUI_->Update(deltaTime)) {
-                currentState_ = TitleState::MainMenu;
-            }
-            break;
+    // --- スプライト浮上演出 ---
+    float appearT = std::min(spritesAppearTimer_ / spritesAppearDuration_, 1.0f);
+    float easeT = Easing::OutCubic(appearT);
+    if (spritesAppear_) {
+        spritesAppearTimer_ += deltaTime;
+        for (size_t i = 0; i < sprites_.size(); ++i) {
+            auto& sprite = sprites_[i];
+            float baseY = (i < spriteBaseYs_.size()) ? spriteBaseYs_[i] : sprite->GetPosition().y;
+            float offsetY = (1.0f - easeT) * 60.0f; // 60px下から浮かぶ
+            Vector2 newPos = sprite->GetPosition();
+            newPos.y = baseY + offsetY;
+            sprite->SetPosition(newPos);
+            Vector4 color = sprite->GetColor();
+            color.w = easeT; // アルファ
+            sprite->SetColor(color);
         }
     }
 
-    // =================================================
-    // 常に実行される更新処理
-    // =================================================
+    // --- メニュー選択（W/Sキー）---
+    if (spritesAppear_ && appearT >= 1.0f) {
+        if (input->IsKeyTriggered(DIK_W)) {
+            currentMenuIndex_--;
+            if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)menuSpriteIndices_.size() - 1;
+        }
+        if (input->IsKeyTriggered(DIK_S)) {
+            currentMenuIndex_++;
+            if (currentMenuIndex_ >= (int)menuSpriteIndices_.size()) currentMenuIndex_ = 0;
+        }
+        // --- メニュー決定（Enter/Spaceキー）---
+        if (input->IsKeyTriggered(DIK_RETURN) || input->IsKeyTriggered(DIK_SPACE)) {
+            // メニューインデックス順: 0=ゲームスタート, 1=設定, 2=終了
+            switch (currentMenuIndex_) {
+            case 0: // ゲームスタート
+                GameProgress::GetInstance()->Reset();
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+                break;
+            case 1: // 設定（未実装）
+                // TODO: 設定画面に遷移（後で実装）
+                break;
+            case 2: // 終了
+                PostQuitMessage(0);
+                break;
+            }
+        }
+    }
+
+    // --- メニュー色分け（毎フレーム更新）---
+    for (size_t i = 0; i < sprites_.size(); ++i) {
+        Sprite* sp = sprites_[i].get();
+        auto it = std::find(menuSpriteIndices_.begin(), menuSpriteIndices_.end(), (int)i);
+        if (it != menuSpriteIndices_.end()) {
+            int menuIdx = (int)std::distance(menuSpriteIndices_.begin(), it);
+            if (menuIdx == currentMenuIndex_) {
+                sp->SetColor({1.0f, 1.0f, 1.0f, sp->GetColor().w}); // 白
+            } else {
+                sp->SetColor({0.5f, 0.5f, 0.5f, sp->GetColor().w}); // 灰色
+            }
+        }
+    }
+
+    // --- 既存の更新処理 ---
     LightEditor::GetInstance()->Update();
     Object3d* cameraTarget = player_;
     if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
         cameraTarget = objectManager_->GetObjects().front().get();
     }
-
-
     CameraEditor::GetInstance()->Update(cameraTarget, false);
     CameraManager::GetInstance()->Update();
 
@@ -304,25 +265,20 @@ void TitleScene::Update(float deltaTime) {
             Object3d* core = enemyCores_[i];
             if (!core) continue;
             float baseY = (i < enemyCoreBaseYs_.size()) ? enemyCoreBaseYs_[i] : core->GetWorldPosition().y;
-            // 少し位相ずらすことで複数並んだときに同調しないようにする
             float phase = enemyCoreTimer_ + static_cast<float>(i) * 0.7f;
             float newY = baseY + std::sin(phase) * enemyCoreAmplitude_;
-            Vector3 pos = core->GetTranslate(); // コピー
+            Vector3 pos = core->GetTranslate();
             pos.y = newY;
             core->SetTranslate(pos);
             core->UpdateWorldMatrix();
         }
     }
 
-    // オブジェクト一括更新 (ObjectManagerに委譲)
     if (objectManager_) objectManager_->Update(deltaTime);
     if (particleSystem_) particleSystem_->Update(deltaTime);
-
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
-
-    // 各種グローバル更新
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
 }
@@ -331,26 +287,8 @@ void TitleScene::Update(float deltaTime) {
 
 void TitleScene::DrawUI() {
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
-    for (auto& sprite : sprites_) {
-        Sprite* sp = sprite.get();
-
-        if (currentState_ == TitleState::MainMenu) {
-            // メインメニュー時：OptionUI管轄のスプライトなら描画をスキップ
-            if (optionUI_ && optionUI_->IsOptionSprite(sp)) {
-                continue;
-            }
-        }
-        else if (currentState_ == TitleState::OptionMenu) {
-            // オプションメニュー時：メインメニュー用の文字なら描画をスキップ
-            if (sp == startTextSprite_ || sp == settingTextSprite_) {
-                continue;
-            }
-        }
-
-        sprite->Draw();
-    }
-    if (currentState_ == TitleState::OptionMenu && optionUI_) {
-        optionUI_->DrawKeyIcons();
+    for (size_t i = 0; i < sprites_.size(); ++i) {
+        sprites_[i]->Draw();
     }
 }
 
