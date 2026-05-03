@@ -172,6 +172,7 @@ private:
 
     enum class PauseMenuIndex {
         Restart,
+        Option,
         Title,
         Max
     };
@@ -180,6 +181,7 @@ private:
     Sprite* poseBackSprite_ = nullptr;
     Sprite* poseTextSprite_ = nullptr;
     Sprite* restartPoseTextSprite_ = nullptr;
+    Sprite* optionPoseTextSprite_ = nullptr; // 追加: optionText.png
     Sprite* titleTextPoseSprite_ = nullptr;
     bool isGameClearSequence_ = false;
     float gameClearTimer_ = 0.0f;

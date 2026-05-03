@@ -178,6 +178,7 @@ void GamePlayScene::Initialize() {
 	poseTextSprite_ = GetSpriteByName("poseText.png");
 	restartPoseTextSprite_ = GetSpriteByName("restartPoseText.png");
 	titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
+	optionPoseTextSprite_ = GetSpriteByName("optionText.png");
 
 	auto SetAlpha = [](Sprite* sprite, float alpha) {
 		if (sprite) {
@@ -191,6 +192,7 @@ void GamePlayScene::Initialize() {
 	SetAlpha(poseTextSprite_, 0.0f);
 	SetAlpha(restartPoseTextSprite_, 0.0f);
 	SetAlpha(titleTextPoseSprite_, 0.0f);
+	SetAlpha(optionPoseTextSprite_, 0.0f);
 	isPaused_ = false;
 
 
@@ -204,11 +206,11 @@ void GamePlayScene::Initialize() {
 
 			// 2. 新しい BossCore を準備（まだリストには入れない）
 			auto newBoss = std::make_unique<BossCore> ();
-			newBoss->SetSceneManager (SceneManager::GetInstance ());
-			newBoss->Initialize (object3dCommon_.get (), oldAddress->GetModelName ());
+			newBoss->SetSceneManager (SceneManager::GetInstance ());    // シーンマネージャの設定
+			newBoss->Initialize (object3dCommon_.get (), oldAddress->GetModelName ()); // 新しいモデルで初期化
 			newBoss->CopyFrom (oldAddress); // 座標などをコピー
-			newBoss->SetTarget (player_);
-			this->boss_ = newBoss.get();
+			newBoss->SetTarget (player_);    // プレイヤーをターゲットに設定
+			this->boss_ = newBoss.get();    // コントロール用ポインタを保存
 			BossCore *newAddress = newBoss.get ();
 
 			// ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
@@ -291,8 +293,8 @@ void GamePlayScene::Initialize() {
 		auto& objects_ref = objectManager_->GetObjects();
 		for (auto& obj : objects_ref) {
 			std::string name = obj->GetName();
-			// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
-			if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+			// 名前が "Bridge_"" で始まるオブジェクトを全て対象にする
+			if (name.find("Bridge_") != std::string::npos) {
 				obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
 				if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
 					obj->SetIsVisible(false);        // 見えなくする
@@ -475,17 +477,26 @@ void GamePlayScene::Update(float deltaTime) {
 		Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 		if (restartPoseTextSprite_) restartPoseTextSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart ? selectColor : normalColor);
-		if (titleTextPoseSprite_) titleTextPoseSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor : normalColor);
+		if (optionPoseTextSprite_)  optionPoseTextSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Option ? selectColor : normalColor);
+		if (titleTextPoseSprite_)   titleTextPoseSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor : normalColor);
+
+		// optionTextはポーズメニュー時のみ表示
+		if (optionPoseTextSprite_) {
+			Vector4 color = optionPoseTextSprite_->GetColor();
+			color.w = 1.0f;
+			optionPoseTextSprite_->SetColor(color);
+		}
 
 		// 決定ボタンで遷移
 		if (inputManager_->IsActionTriggered("Jump")) {
-
 			PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
 			postParams->dangerVignette = 0.0f;
 			postParams->blackout = 0.0f;
-
 			if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart) {
 				SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+			}
+			else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Option) {
+				// 設定画面遷移（未実装）
 			}
 			else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Title) {
 				SceneManager::GetInstance()->ChangeScene("TITLE");
@@ -494,34 +505,15 @@ void GamePlayScene::Update(float deltaTime) {
 		for (auto& sprite : sprites_) {
 			sprite->Update();
 		}
-		// =======================================================
-		// ★超重要：ポーズ中はここで関数を強制終了し、ゲームの時間を止める！
-		// =======================================================
+		// optionTextはポーズメニュー以外は非表示
 		return;
-	}
-	if (isRestartTransition_ || isTitleTransition_) {
-		restartTimer_ += deltaTime;
-		float transitionDuration = 1.0f;
-		float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
-
-		PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
-
-		// ★ ここはそのまま（縦に潰れる処理）
-		postParams->crtShutdown = t;
-
-
-
-		// 完全に終了（1秒経過）したらシーンをリロード
-		if (restartTimer_ >= transitionDuration) {
-			if (isRestartTransition_) {
-				SceneManager::GetInstance()->ChangeScene("GAMEPLAY", true);
-			}
-			else {
-				SceneManager::GetInstance()->ChangeScene("TITLE", true);
-			}
+	} else {
+		// ポーズメニュー以外はoptionText.pngを非表示
+		if (optionPoseTextSprite_) {
+			Vector4 color = optionPoseTextSprite_->GetColor();
+			color.w = 0.0f;
+			optionPoseTextSprite_->SetColor(color);
 		}
-
-		return;
 	}
 	// =======================================================
 	// チュートリアルドアの処理
@@ -548,14 +540,14 @@ void GamePlayScene::Update(float deltaTime) {
 					if (obj->GetName() == "Tutorial_Door_Left") {
 						obj->SetIsVisible(false);
 						obj->SetCollisionAttribute(0); // 当たり判定も消す
-						obj->isDead = true; // 完全に消す
+						obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 					}
 					else if (obj->GetName() == "Tutorial_Door_Right") {
 						std::string name = obj->GetName();
 						if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
 							obj->SetIsVisible(false);
 							obj->SetCollisionAttribute(0); // 当たり判定も消す
-							obj->isDead = true; // 完全に消す
+							obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
 						}
 					}
 				}
@@ -656,8 +648,8 @@ void GamePlayScene::Update(float deltaTime) {
 				auto& objects_ref = objectManager_->GetObjects();
 				for (auto& obj : objects_ref) {
 					std::string name = obj->GetName();
-					// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
-					if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+					// 名前が "Bridge_"" で始まるオブジェクトを全て対象にする
+					if (name.find("Bridge_") != std::string::npos) {
 						obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
 						if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
 							obj->SetIsVisible(false);        // 見えなくする
@@ -1062,12 +1054,12 @@ void GamePlayScene::Update(float deltaTime) {
 					}
 					else if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title) {
 					
-						isTitleTransition_ = true;
-						restartTimer_ = 0.0f;
+					 isTitleTransition_ = true;
+					 restartTimer_ = 0.0f;
 
-						SetAlphaZero(gameOverTextSprite_);
-						SetAlphaZero(restartTextSprite_);
-						SetAlphaZero(titleTextSprite_);
+					 SetAlphaZero(gameOverTextSprite_);
+					 SetAlphaZero(restartTextSprite_);
+					 SetAlphaZero(titleTextSprite_);
 					}
 				}
 			}
@@ -1332,7 +1324,6 @@ void GamePlayScene::Draw() {
 		gpuParticleTexHandle_,
 		dxCommon_->GetDepthSrvHandle()
 	);
-
 
 
 	// ★ カリングがどれくらい効いているか確認用のログ 
