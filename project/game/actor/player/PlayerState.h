@@ -93,3 +93,29 @@ private:
     Phase phase_ = Phase::Waiting;
     float waitTimer_ = 0.0f;
 };
+
+// --------------------------------------------------------
+// フック移動状態 (Hook)
+// --------------------------------------------------------
+class PlayerStateHook : public IAnimationState
+{
+public:
+    PlayerStateHook(const Vector3& targetPos) : targetPos_(targetPos) {}
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+private:
+    Vector3 targetPos_;
+    float speed_ = 60.0f; // フックの移動速度
+    float oldGravity_ = 0.0f;
+    float wobbleTimer_ = 0.0f;
+    float oldFovY_ = 0.45f;   // Enter時に元のFOVを退避
+    float spawnTimer_ = 0.0f; // パーティクル生成タイマー
+    enum class Phase {
+        kShootHook,  // 腕（フック）を目標に向けて飛ばしている状態
+        kPullPlayer  // フックが刺さり、プレイヤー本体が引っ張られている状態
+    };
+    Phase phase_ = Phase::kShootHook;
+    Vector3 hookTipPos_;            // フック先端の現在位置
+    float hookShootSpeed_ = 250.0f; // フックが飛んでいく速度（超高速！）
+};

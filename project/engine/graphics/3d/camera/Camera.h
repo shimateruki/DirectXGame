@@ -84,6 +84,10 @@ public:
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
     void SetFreezeEye(bool freeze) { isEyeFrozen_ = freeze; }
 
+    // FOV（視野角）の動的変更
+    void SetFovY(float fov) { fovY_ = fov; }
+    float GetFovY() const { return fovY_; }
+
     // ==================================================
     // モード管理・設定
     // ==================================================
@@ -195,4 +199,5 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> constBuffer_;
     CameraVP* constMap_ = nullptr;
+    float aimTransition_ = 0.0f;
 };

@@ -8,11 +8,9 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include "PlayerClone.h"
-#include "Sprite.h"
-#include "SpriteCommon.h"
 
 class IMoveStrategy; // 前方宣言
+class SpriteCommon;
 
 // プレイヤーキャラクターの統合制御クラス
 class Player : public Character
@@ -92,8 +90,9 @@ public:
     void MarkAttackBufferUsedForStateStart();             // そのバッファを「遷移開始で使われた」とマークする
     bool ConsumeBufferedAttackInput();                    // バッファに未使用の入力があれば消費して true を返す
 
-    // --- 各種パラメータ取得 ---
+    // --- 外部システム取得 ---
     InputManager* GetInputManager() { return inputManager_; }
+    ParticleSystem* GetParticleSystem() { return particleSystem_; }
 
     float GetJumpPower() const
     {
@@ -116,9 +115,6 @@ public:
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
 
-    // --- 分身システム用 ---
-    PlayerClone* GetActiveClone() const { return activeClone_.get(); }
-    float GetCloneCooldown() const { return cloneCooldownTimer_; }
 
 private:
     // --- 内部コンポーネント ---
@@ -157,18 +153,17 @@ private:
     void UpdateColor();
 
     // 落下復帰用
-    Vector3 respawnPosition_ = { 0, 0, 0 };
+    Vector3 respawnPosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f }; // 初期回転（モデルの姿勢補正用）
     bool isFirstUpdate_ = true;
+
+    // フックマーカー
+    std::unique_ptr<Object3d> hookMarker_;
+
+public:
+    Object3d* GetHookMarker() const { return hookMarker_.get(); }
+private:
 
     // ギミック同期用
     uint32_t jumpCount_ = 0;
-
-    // --- 分身システム ---
-    std::unique_ptr<PlayerClone> activeClone_ = nullptr;
-    float cloneCooldownTimer_ = 0.0f;
-    bool isAimingClone_ = false;
-
-    // --- レティクル ---
-    std::unique_ptr<Sprite> reticleSprite_ = nullptr;
-    SpriteCommon* spriteCommon_ = nullptr;
 };

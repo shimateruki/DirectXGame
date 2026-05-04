@@ -156,12 +156,34 @@ void Camera::Update() {
         }
         case FollowMode::kAimable:
         {
-
-
             Matrix4x4 rotateMat = math.MakeRotateZMatrix(rotation_.z) * math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
-            Vector3 offset = { 0.0f, 0.0f, -aimDistance_ };
+
+            // =========================================================
+            // ★ 修正：滑らかに1人称へズームイン！
+            // =========================================================
+            float deltaTime = 1.0f / 60.0f; // Updateが固定フレーム想定のため
+
+            if (inputManager_ && inputManager_->IsMouseButtonPressed(1)) {
+                // 約0.16秒でスッとズームイン
+                aimTransition_ += deltaTime * 6.0f;
+            }
+            else {
+                // 約0.16秒でスッと元に戻る
+                aimTransition_ -= deltaTime * 6.0f;
+            }
+            // 0.0(通常) ～ 1.0(エイム中) の範囲に収める
+            aimTransition_ = std::max(0.0f, std::min(aimTransition_, 1.0f));
+
+            // aimTransition_ が 1.0 (右クリック中) のとき、距離が0になるように計算
+            float currentDistance = aimDistance_ * (1.0f - aimTransition_);
+
+            Vector3 offset = { 0.0f, 0.0f, -currentDistance };
             offset = math.TransformNormal(offset, rotateMat);
             desiredEye = target_ + offset;
+
+            Vector3 forwardDir = math.TransformNormal({ 0.0f, 0.0f, 1.0f }, rotateMat);
+            target_ = desiredEye + forwardDir * 10.0f;
+
             break;
         }
         case FollowMode::kFixed:

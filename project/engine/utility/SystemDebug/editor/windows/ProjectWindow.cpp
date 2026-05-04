@@ -387,20 +387,19 @@ void ProjectWindow::Draw() {
             ImGui::TextDisabled("Drag & Drop to Scene to Place");
             ImGui::Separator();
 
-            // ★ サムネイル用レイアウトの計算
+            // サムネイル用レイアウトの計算
             float thumbnailSize = 64.0f;
             float padding = 16.0f;
             float cellSize = thumbnailSize + padding;
             float panelWidth = ImGui::GetContentRegionAvail().x;
             int columnCount = std::max(1, (int)(panelWidth / cellSize));
 
-            // ★ テーブルを使った自動折り返しのグリッドレイアウト
+            // テーブルを使った自動折り返しのグリッドレイアウト
             if (ImGui::BeginTable("ModelAssetTable", columnCount)) {
                 for (const auto& entry : fs::directory_iterator(baseDirectory)) {
                     std::string displayModelName = ""; // ボタン表示名
                     std::string payloadName = "";      // ロード用パス/名前
 
-                    // 隊長の拡張子解析ロジック（そのまま活かします！）
                     if (entry.is_directory()) {
                         std::string folderName = entry.path().filename().string();
                         for (const auto& subEntry : fs::directory_iterator(entry.path())) {
@@ -424,10 +423,6 @@ void ProjectWindow::Draw() {
                     if (!displayModelName.empty()) {
                         ImGui::TableNextColumn(); // 次のマスへ移動
 
-                        // ==========================================================
-                        // ★ フェーズ1の魔法: 画用紙の準備と表示
-                        // ==========================================================
-
                         // 1. アルバムにこのモデル用の画用紙が無ければ作る
                         if (thumbnailAlbum_.find(displayModelName) == thumbnailAlbum_.end()) {
                             CreateThumbnailResource(displayModelName);
@@ -440,12 +435,12 @@ void ProjectWindow::Draw() {
                         ImGui::PushID(displayModelName.c_str());
                         ImGui::BeginGroup(); // 画像とテキストをグループ化
 
-                        // 3. 画用紙を表示！（フェーズ2でここにモデルが写ります）
+                        // 3. 画用紙を表示
                         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0)); // 背景透過
                         ImGui::ImageButton(displayModelName.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
                         ImGui::PopStyleColor();
 
-                        // ドラッグ＆ドロップ処理（プレビューにも画像を表示！）
+                        // ドラッグ＆ドロップ処理
                         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                             ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
                             ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
@@ -517,7 +512,8 @@ void ProjectWindow::Draw() {
                 size_t slashPos = name.find('/');
                 if (slashPos != std::string::npos) {
                     folders[name.substr(0, slashPos)].push_back(name);
-                } else {
+                }
+                else {
                     rootPresets.push_back(name);
                 }
             }
@@ -534,7 +530,7 @@ void ProjectWindow::Draw() {
                     for (const std::string& name : list) {
                         ImGui::TableNextColumn();
                         if (presetThumbnailAlbum_.find(name) == presetThumbnailAlbum_.end()) CreatePresetThumbnailResource(name);
-                        
+
                         uint32_t srvHandle = presetThumbnailAlbum_[name].srvHandle;
                         D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
 
@@ -557,9 +553,13 @@ void ProjectWindow::Draw() {
                         ImGui::TextWrapped("%s", shortName.c_str());
                         ImGui::PopTextWrapPos();
 
+                        bool openRename = false; // リネーム画面を開くフラグ
+
                         // コンテキストメニュー
                         if (ImGui::BeginPopupContextItem("PresetContextMenu")) {
-                            if (ImGui::MenuItem(ICON_FA_EDIT " Rename")) ImGui::OpenPopup("RenamePresetPopup");
+                            if (ImGui::MenuItem(ICON_FA_EDIT " Rename")) {
+                                openRename = true; // 直接開かずフラグを立てる
+                            }
                             if (ImGui::MenuItem(ICON_FA_SAVE " Overwrite")) {
                                 if (editor_->GetSelectedObject()) {
                                     PresetManager::GetInstance()->AddPresetFromObject(name, editor_->GetSelectedObject());
@@ -567,22 +567,41 @@ void ProjectWindow::Draw() {
                                 }
                             }
                             if (ImGui::MenuItem(ICON_FA_CAMERA " Update Thumbnail")) presetThumbnailAlbum_[name].isCaptured = false;
+
                             ImGui::Separator();
+
                             if (ImGui::MenuItem(ICON_FA_TRASH_ALT " Delete")) {
                                 PresetManager::GetInstance()->RemovePreset(name);
-                                presetThumbnailAlbum_.erase(name);
+                                // presetThumbnailAlbum_.erase(name); // GPUクラッシュ防止のため意図的に残さない
                                 ImGui::EndPopup(); ImGui::EndGroup(); ImGui::PopID();
                                 continue;
                             }
                             ImGui::EndPopup();
                         }
 
-                        // 名前変更ポップアップ
+                        // フラグが立ったらポップアップを開く
+                        if (openRename) {
+                            ImGui::OpenPopup("RenamePresetPopup");
+                        }
+
+                        // 名前変更ポップアップの実処理
                         if (ImGui::BeginPopup("RenamePresetPopup")) {
                             static char renameBuf[64] = "";
-                            if (!ImGui::IsAnyItemActive()) strncpy_s(renameBuf, name.c_str(), sizeof(renameBuf));
+
+                            // 開いた瞬間だけ文字列をコピーして初期化する
+                            if (openRename) {
+                                strncpy_s(renameBuf, name.c_str(), sizeof(renameBuf));
+                            }
+
                             ImGui::Text("New Name:");
-                            if (ImGui::InputText("##NewName", renameBuf, sizeof(renameBuf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                            bool isEnter = ImGui::InputText("##NewName", renameBuf, sizeof(renameBuf), ImGuiInputTextFlags_EnterReturnsTrue);
+
+                            bool isOk = ImGui::Button("OK");
+                            ImGui::SameLine();
+                            bool isCancel = ImGui::Button("Cancel");
+
+                            // エンターかOKが押されたらリネーム実行
+                            if (isEnter || isOk) {
                                 std::string newName = renameBuf;
                                 if (!newName.empty() && newName != name) {
                                     PresetManager::GetInstance()->RenamePreset(name, newName);
@@ -593,16 +612,18 @@ void ProjectWindow::Draw() {
                                 }
                                 ImGui::CloseCurrentPopup();
                             }
-                            if (ImGui::Button("OK")) { ImGui::CloseCurrentPopup(); }
-                            ImGui::SameLine(); if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+                            else if (isCancel) {
+                                ImGui::CloseCurrentPopup();
+                            }
                             ImGui::EndPopup();
                         }
+
                         ImGui::EndGroup();
                         ImGui::PopID();
                     }
                     ImGui::EndTable();
                 }
-            };
+                };
 
             // フォルダごとの表示
             for (const auto& [folderName, list] : folders) {

@@ -378,12 +378,8 @@ void GamePlayScene::Draw() {
 			}
 		}
 
-		// プレイヤーの一部なら描画をスキップ（ただし分身は救済する）
+		// プレイヤーの一部なら描画をスキップ
 		if (isPlayerPart) {
-			// ★修正箇所：プレイヤー自身が非表示判定でも、射出中の分身があれば分身だけは描画する！
-			if (obj.get() == player_ && player_->GetActiveClone()) {
-				player_->GetActiveClone()->Draw(pointLightRes, spotLightRes);
-			}
 			continue;
 		}
 
@@ -391,6 +387,11 @@ void GamePlayScene::Draw() {
 		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
 
 		obj->Draw(pointLightRes, spotLightRes);
+	}
+	
+	// フックマーカーの描画（プレイヤーがカメラ外に判定されて非表示になってもマーカーだけは描画する）
+	if (player_ && player_->GetHookMarker()) {
+		player_->GetHookMarker()->Draw(pointLightRes, spotLightRes);
 	}
 
 	if (animatedCube_) {
@@ -421,10 +422,6 @@ void GamePlayScene::Draw() {
 		}
 
 		if (isPlayerPart) {
-			// 分身が半透明マテリアルに設定された場合への備え
-			if (obj.get() == player_ && player_->GetActiveClone() && player_->GetActiveClone()->GetMaterialType() == 1) {
-				player_->GetActiveClone()->Draw(pointLightRes, spotLightRes);
-			}
 			continue;
 		}
 

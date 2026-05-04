@@ -12,12 +12,31 @@ PresetManager* PresetManager::GetInstance() {
 
 void PresetManager::Initialize() {
     presets_.clear();
-    // すべてのプリセットファイルを一括で読み込む
-    LoadPresets("Resources/json/preset/presets.json");
-    LoadPresets("Resources/json/preset/EnemyPresets.json");
-    LoadPresets("Resources/json/preset/GimmickPresets.json");
-}
 
+    // 1. まずメインの統合ファイルを読み込む
+    LoadPresets("Resources/json/preset/presets.json");
+
+    bool needsMigration = false; // お引越しが必要かどうかのフラグ
+
+    // 2. 古いファイルが残っていたら読み込む
+    if (std::filesystem::exists("Resources/json/preset/EnemyPresets.json")) {
+        LoadPresets("Resources/json/preset/EnemyPresets.json");
+        needsMigration = true;
+    }
+    if (std::filesystem::exists("Resources/json/preset/GimmickPresets.json")) {
+        LoadPresets("Resources/json/preset/GimmickPresets.json");
+        needsMigration = true;
+    }
+
+    // 3. お引越しが必要な場合のみ、統合セーブしてから古い家を壊す！
+    if (needsMigration) {
+        SaveAll(); // ★ここで全員を presets.json に書き込む！
+
+        std::filesystem::remove("Resources/json/preset/EnemyPresets.json");
+        std::filesystem::remove("Resources/json/preset/GimmickPresets.json");
+
+    }
+}
 void PresetManager::LoadPresets(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) return;
@@ -36,40 +55,8 @@ void PresetManager::LoadPresets(const std::string& filename) {
 }
 
 void PresetManager::SaveAll() {
-    json enemyRoot = json::object();
-    json gimmickRoot = json::object();
 
-    for (auto& [name, data] : presets_) {
-        // 保存先の判定（型チェックを厳密に行う）
-        bool isEnemy = false;
-        if (data.contains("type") && data["type"].is_string()) {
-            if (data["type"] == "Enemy") isEnemy = true;
-        }
-        
-        // typeで判定できなかった場合のフォールバック
-        if (!isEnemy && data.contains("param") && data["param"].is_object()) {
-            if (data["param"].contains("enemyType")) isEnemy = true;
-        }
-
-        if (isEnemy) {
-            enemyRoot[name] = data;
-        } else {
-            gimmickRoot[name] = data;
-        }
-    }
-
-    auto saveFunc = [](const std::string& path, const json& root) {
-        try {
-            fs::create_directories(fs::path(path).parent_path());
-            std::ofstream file(path);
-            if (file.is_open()) {
-                file << root.dump(4);
-            }
-        } catch (...) {}
-    };
-
-    saveFunc("Resources/json/preset/EnemyPresets.json", enemyRoot);
-    saveFunc("Resources/json/preset/GimmickPresets.json", gimmickRoot);
+    SavePresets("Resources/json/preset/presets.json");
 }
 
 void PresetManager::SavePresets(const std::string& filename) {

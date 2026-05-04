@@ -221,3 +221,178 @@ void PlayerStateFallingOut::Exit(Player* player) {
     }
     CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
 }
+// ========================================================
+// フック移動状態 (Hook)
+// ========================================================
+void PlayerStateHook::Enter(Player* player) {
+    DebugConsole::GetInstance()->AddLog("Enter: Hook");
+    if (player) {
+        player->SetIsControlActive(false);
+        if (player->param_.has_value()) {
+            oldGravity_ = player->param_->gravity;
+            player->param_->gravity = 0.0f;
+        }
+        // ★ フックを撃っている間、プレイヤーは空中でピタッと静止する
+        player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+    }
+
+    // FOV退避
+    auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+    if (cam) {
+        oldFovY_ = cam->GetFovY();
+    }
+    spawnTimer_ = 0.0f;
+    wobbleTimer_ = 0.0f;
+
+    // ===============================================
+    // ★ フック射出フェーズの初期化
+    // ===============================================
+    phase_ = Phase::kShootHook;
+    if (player) {
+        hookTipPos_ = player->GetWorldPosition();
+
+        // 予測線用だったマーカーを「スライムの伸びる手」として再利用！
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            marker->SetIsVisible(true);
+            marker->GetTransform()->translate = hookTipPos_;
+            marker->GetTransform()->scale = { 1.5f, 1.5f, 1.5f }; // 少し大きめの手にする
+        }
+    }
+}
+
+void PlayerStateHook::Update(Player* player) {
+    if (!player) return;
+
+    float deltaTime = 1.0f / 60.0f; // Updateは固定フレーム想定
+
+    if (phase_ == Phase::kShootHook) {
+        // ===================================================
+        // フェーズ1：フック（腕）が目標地点へ飛んでいく！
+        // ===================================================
+        Vector3 toTarget = targetPos_ - hookTipPos_;
+        float dist = Math::Length(toTarget);
+
+        if (dist < 5.0f) {
+            // 目標に到達したらフェーズ2へ！
+            hookTipPos_ = targetPos_;
+            phase_ = Phase::kPullPlayer;
+        }
+        else {
+            // フック先端の移動 (スピードは150.0fくらいがおすすめ)
+            Vector3 dir = Math::Normalize(toTarget);
+            float moveDist = 150.0f * deltaTime;
+            hookTipPos_ = hookTipPos_ + dir * moveDist;
+        }
+
+        // ★ 魔法のコード：マーカーを「スライムから先端まで伸びる腕」に変形させる！
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            Vector3 startPos = player->GetWorldPosition();
+            Vector3 diff = hookTipPos_ - startPos;
+            float len = Math::Length(diff);
+
+            // 本体と先端の中間地点に配置する
+            marker->GetTransform()->translate = {
+                startPos.x + diff.x * 0.5f,
+                startPos.y + diff.y * 0.5f,
+                startPos.z + diff.z * 0.5f
+            };
+
+            // 先端の方向に向かせる
+            float angleY = std::atan2(diff.x, diff.z);
+            float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
+            marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
+            marker->GetTransform()->isQuaternionMaster = false;
+
+            // 長さを距離に合わせる (太さは0.5にしてスライムの腕っぽく)
+            marker->GetTransform()->scale = { 0.5f, 0.5f, len };
+
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
+        }
+    }
+    else if (phase_ == Phase::kPullPlayer) {
+        // ===================================================
+        // フェーズ2：プレイヤー本体が目標地点へ引っ張られる！
+        // ===================================================
+        Vector3 currentPos = player->GetWorldPosition();
+        Vector3 toTarget = targetPos_ - currentPos;
+        float dist = Math::Length(toTarget);
+
+        if (dist < 2.0f) {
+            player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+            player->ChangeState(std::make_unique<PlayerStateIdle>());
+            return;
+        }
+
+        Vector3 dir = Math::Normalize(toTarget);
+        player->SetVelocity(dir * speed_);
+
+        float targetAngle = std::atan2(dir.x, dir.z);
+        player->SetRotationY(targetAngle);
+
+        wobbleTimer_ += deltaTime;
+        float wobble = std::sin(wobbleTimer_ * 20.0f) * 0.2f;
+        Vector3 hookScale = { 1.0f + wobble, 1.0f + wobble, 4.5f - wobble * 2.0f };
+        Vector3 currentScale = player->GetTransform()->scale;
+        currentScale.x = Math::Lerp(currentScale.x, hookScale.x, 0.3f);
+        currentScale.y = Math::Lerp(currentScale.y, hookScale.y, 0.3f);
+        currentScale.z = Math::Lerp(currentScale.z, hookScale.z, 0.3f);
+        player->SetScale(currentScale);
+
+        // ★ 引っ張られている間も腕をピンと張ったまま繋いでおく！
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            Vector3 startPos = player->GetWorldPosition();
+            Vector3 diff = targetPos_ - startPos;
+            float len = Math::Length(diff);
+
+            marker->GetTransform()->translate = {
+                startPos.x + diff.x * 0.5f,
+                startPos.y + diff.y * 0.5f,
+                startPos.z + diff.z * 0.5f
+            };
+            float angleY = std::atan2(diff.x, diff.z);
+            float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
+            marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
+            marker->GetTransform()->isQuaternionMaster = false;
+            marker->GetTransform()->scale = { 0.5f, 0.5f, len };
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
+        }
+
+        auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+        if (cam) {
+            float targetFov = oldFovY_ + 0.3f;
+            cam->SetFovY(Math::Lerp(cam->GetFovY(), targetFov, 0.12f));
+        }
+    }
+}
+
+void PlayerStateHook::Exit(Player* player) {
+    if (player) {
+        player->SetIsControlActive(true);
+        if (player->param_.has_value()) {
+            player->param_->gravity = oldGravity_;
+        }
+        // 到達後に少し上に跳ねる
+        Vector3 v = player->GetVelocity();
+        player->SetVelocity({ v.x, 15.0f, v.z });
+        player->SetScale({ 3.0f, 1.0f, 3.0f });
+
+        // ★ 腕として使っていたマーカーを隠し、形を「元の球体」にリセットする！
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            marker->SetIsVisible(false);
+            marker->GetTransform()->scale = { 1.0f, 1.0f, 1.0f }; // ←スケールを元に戻す（必要に応じて0.5fなどに調整してください）
+            marker->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f }; // ←回転をリセット
+        }
+    }
+
+    // FOVを元に戻す
+    auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+    if (cam) {
+        cam->SetFovY(oldFovY_);
+    }
+}

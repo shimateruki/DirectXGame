@@ -28,20 +28,6 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 外部システムの依存注入
     inputManager_ = inputManager;
     particleSystem_ = particleSystem;
-    spriteCommon_ = spriteCommon;
-
-    // レティクルの初期化
-    if (spriteCommon_) {
-        // 確実に存在するロックオン用の画像を代用してテストする
-        uint32_t reticleTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png");
-        reticleSprite_ = std::make_unique<Sprite>();
-        reticleSprite_->Initialize(spriteCommon_, reticleTex);
-        reticleSprite_->SetAnchorPoint({ 0.5f, 0.5f });
-        reticleSprite_->SetPosition({ (float)WinApp::kClientWidth / 2.0f, (float)WinApp::kClientHeight / 2.0f });
-        reticleSprite_->SetSize({ 64.0f, 64.0f }); // 小さく調整
-        reticleSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 不透明な白
-        DebugConsole::GetInstance()->AddLog("Reticle Initialized.");
-    }
 
     // 自機としての基本設定
     SetClassName("Player");
@@ -53,13 +39,29 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
+
+    // フック用の到達地点マーカーを初期化
+    if (common) {
+        hookMarker_ = std::make_unique<Object3d>();
+        hookMarker_->Initialize(common);
+        hookMarker_->SetModel("slimeBody.gltf");
+        // スライムっぽい半透明な緑色
+        hookMarker_->SetColor({ 0.3f, 1.0f, 0.5f, 0.6f });
+        hookMarker_->SetIsVisible(false);
+        // 当たり判定は不要
+        hookMarker_->SetCollisionAttribute(0);
+        hookMarker_->SetCollisionMask(0);
+        // マーカーサイズを少し小さめに
+        hookMarker_->GetTransform()->scale = { 0.5f, 0.5f, 0.5f };
+    }
 }
 
 void Player::Update(float deltaTime)
 {
-    // 初回更新時に初期位置を記録
+    // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
         respawnPosition_ = transform_.translate;
+        baseRotation_ = transform_.rotate; // モデルの初期回転（逆さま防止など）を保存
         isFirstUpdate_ = false;
     }
 
@@ -76,9 +78,86 @@ void Player::Update(float deltaTime)
         }
 
         // 2. 移動制御の更新
-        // エイム中（isAimingClone_）は移動入力を受け付けないようにする
-        if (isControlActive_ && mover_ && !isAimingClone_) {
-            mover_->Update(deltaTime);
+        if (isControlActive_ && mover_) {
+            // 右クリック中は移動入力を受け付けず、水平移動を停止させる
+            if (inputManager_->IsMouseButtonPressed(1)) {
+                // 水平速度をゼロにしてその場に留まる（空中浮遊感）
+                Vector3 v = GetVelocity();
+                SetVelocity({ 0.0f, v.y, 0.0f });
+
+                // フックの狙いをつけるため、プレイヤーの向きをカメラの向いている方向に合わせる
+                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                if (camera) {
+                    Vector3 camRot = camera->GetRotation();
+                    // Z軸・X軸の「初期の補正回転（逆さま防止など）」を維持した上で、カメラのピッチとヨーを合成
+                    SetRotation({ baseRotation_.x + camRot.x, camRot.y, baseRotation_.z });
+
+                    // --- フック到達地点の計算とマーカー表示 ---
+                    if (hookMarker_) {
+                        Vector3 start = camera->GetEye();
+
+                        // カメラの実際の向き(Forwardベクトル)を計算してレイを飛ばす
+                        Vector3 dir;
+                        dir.x = std::sin(camRot.y) * std::cos(camRot.x);
+                        dir.y = -std::sin(camRot.x);
+                        dir.z = std::cos(camRot.y) * std::cos(camRot.x);
+
+                        // 念のため正規化
+                        float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+                        if (length > 0.0f) {
+                            dir.x /= length; dir.y /= length; dir.z /= length;
+                        }
+
+                        // フックの最大距離
+                        float maxDistance = 150.0f;
+                        // 壁(kAllSolid)や敵(kEnemy)を対象にする
+                        uint32_t mask = kAllSolid | kEnemy;
+
+                        RaycastHit hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
+
+                        if (hit.isHit) {
+                            hookMarker_->SetIsVisible(true);
+                            hookMarker_->GetTransform()->translate = hit.hitPoint;
+                            hookMarker_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+                            hookMarker_->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+                            char buf[256];
+                            const char* tag = (hit.hitPoint.y < -1.0f) ? "[FLOOR]" : "[WALL?]";
+                            snprintf(buf, sizeof(buf), "Hook: HIT %s start(%.1f, %.1f, %.1f) dir(%.2f, %.2f, %.2f) point(%.1f, %.1f, %.1f)",
+                                tag, start.x, start.y, start.z, dir.x, dir.y, dir.z, hit.hitPoint.x, hit.hitPoint.y, hit.hitPoint.z);
+                            DebugConsole::GetInstance()->AddLog(buf);
+                        }
+                        else {
+                            // 何も当たらない場合は非表示にする
+                            hookMarker_->SetIsVisible(false);
+                            DebugConsole::GetInstance()->AddLog("Hook: MISS in air");
+                        }
+
+                        // マーカーの行列更新
+                        hookMarker_->Update(deltaTime);
+                        hookMarker_->UpdateLocalMatrix();
+                        hookMarker_->UpdateWorldMatrix();
+                    }
+                }
+            }
+            else {
+                // 右クリック解除時にマーカーを非表示にしつつフック移動へ
+                if (hookMarker_) {
+                    if (hookMarker_->GetIsVisible()) {
+                        Vector3 targetPos = hookMarker_->GetTransform()->translate;
+                        ChangeState(std::make_unique<PlayerStateHook>(targetPos));
+                    }
+ /*                   hookMarker_->SetIsVisible(false);*/
+                }
+
+                // 通常移動時はX軸（ピッチ）とZ軸（ロール）の回転を初期値に戻す
+                Vector3 rot = GetRotation();
+                rot.x = baseRotation_.x;
+                rot.z = baseRotation_.z;
+                SetRotation(rot);
+
+                mover_->Update(deltaTime);
+
+            }
         }
 
         // 3. 状態(State)の更新
@@ -112,177 +191,29 @@ void Player::Update(float deltaTime)
         }
     }
 
+    if (isControlActive_) {
+        // 右クリック入力処理：重力を弱める
+        if (inputManager_->IsMouseButtonPressed(1)) {
+            SetGravity(10.0f);
+        }
+        else {
+            SetGravity(50.0f);
+        }
+    }
+
     // 6. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
     Character::Update(deltaTime);
-
-    // --- 7. 分身システムの更新 ---
-    if (cloneCooldownTimer_ > 0.0f) {
-        cloneCooldownTimer_ -= deltaTime;
-    }
-
-    if (isControlActive_) {
-        // 右クリック入力処理
-        if (inputManager_->IsMouseButtonPressed(1)) {
-            // 分身未生成かつクールタイム終了時は「エイム（狙い）」状態へ
-            if (!activeClone_ && cloneCooldownTimer_ <= 0.0f) {
-                isAimingClone_ = true;
-                velocity_ = { 0.0f, 0.0f, 0.0f };
-                SetGravity(10.0f);
-            }
-            // すでに分身が存在する場合は「テレポート」を実行
-            else if (activeClone_) {
-                isAimingClone_ = false;
-                SetGravity(50.0f);
-
-                Vector3 targetPos = activeClone_->GetWorldPosition();
-                transform_.translate = targetPos;
-                velocity_ = { 0.0f, 0.0f, 0.0f };
-
-                CollisionManager::GetInstance()->RemoveObject(activeClone_.get());
-                activeClone_ = nullptr;
-                cloneCooldownTimer_ = 3.0f;
-
-                if (particleSystem_) {
-                    particleSystem_->SpawnParticles(
-                        targetPos, 20, 1.0f, nullptr, 1.0f,
-                        { 0.5f, 0.8f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
-                        0.1f, 0.5f, 1.0f, 0.1f
-                    );
-                }
-                DebugConsole::GetInstance()->AddLog("Teleported to Clone! Cooldown started.");
-            }
-        }
-
-        // ★ エイム中のカメラ連動 ＆ 軌道予測線の描画
-        if (isAimingClone_) {
-            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            if (camera) {
-                // 1. プレイヤーの向きをカメラに合わせる
-                SetRotationY(camera->GetRotation().y);
-
-                // 2. ★追加：見上げすぎてカメラが地面にめり込むのを防ぐ（Pitch制限）
-                Vector3 camRot = camera->GetRotation();
-                float maxLookUp = -0.6f;   // 見上げ限界 (約 -34度)
-                float maxLookDown = 1.2f;  // 見下ろし限界 (約 68度)
-
-                if (camRot.x < maxLookUp) {
-                    camRot.x = maxLookUp;
-                    camera->SetRotation(camRot);
-                }
-                else if (camRot.x > maxLookDown) {
-                    camRot.x = maxLookDown;
-                    camera->SetRotation(camRot);
-                }
-
-                // 3. 射出ベクトル（正面）と 右方向ベクトル を計算
-                Vector3 shootDir = {
-                    std::sin(camRot.y) * std::cos(camRot.x),
-                    -std::sin(camRot.x),
-                    std::cos(camRot.y) * std::cos(camRot.x)
-                };
-                shootDir = Math::Normalize(shootDir);
-
-                Vector3 rightDir = { std::cos(camRot.y), 0.0f, -std::sin(camRot.y) };
-
-                // 4. ★修正：発射位置(spawnPos)を「右肩」にずらして、キャラ被りを防ぐ
-                Vector3 spawnPos = transform_.translate;
-                spawnPos.y += 1.5f; // 高さを頭〜肩のあたりに
-                spawnPos.x += rightDir.x * 1.0f + shootDir.x * 0.5f; // 右に1.0m、前に0.5mずらす
-                spawnPos.z += rightDir.z * 1.0f + shootDir.z * 0.5f;
-
-                // 5. 軌道予測線の描画
-                if (particleSystem_) {
-                    float shootSpeed = 30.0f;
-                    Vector3 v0 = shootDir * shootSpeed;
-                    float g = 80.0f;
-
-                    for (float t = 0.05f; t <= 0.8f; t += 0.05f) {
-                        Vector3 predPos;
-                        predPos.x = spawnPos.x + v0.x * t;
-                        predPos.z = spawnPos.z + v0.z * t;
-                        predPos.y = spawnPos.y + v0.y * t - 0.5f * g * t * t;
-
-                        if (predPos.y < 0.0f) break;
-
-                        particleSystem_->SpawnParticles(
-                            predPos, 1, 0.15f, nullptr, 0.0f,
-                            { 0.4f, 0.7f, 1.0f, 0.8f }, { 0.4f, 0.7f, 1.0f, 0.0f },
-                            0.5f, 0.2f, 0.0f, 0.0f
-                        );
-                    }
-                }
-            }
-        }
-
-        // 右クリックを離したとき（エイム解除 ＋ 分身射出）
-        if (isAimingClone_ && inputManager_->IsMouseButtonReleased(1)) {
-            SetGravity(50.0f);
-
-            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            Vector3 shootDir = { 0.0f, 0.0f, 1.0f };
-            Vector3 spawnPos = transform_.translate;
-            spawnPos.y += 1.5f;
-
-            // ★修正：予測線と全く同じ「右肩オフセット」で実際の分身を射出する
-            if (camera) {
-                Vector3 camRot = camera->GetRotation();
-                shootDir = {
-                    std::sin(camRot.y) * std::cos(camRot.x),
-                    -std::sin(camRot.x),
-                    std::cos(camRot.y) * std::cos(camRot.x)
-                };
-                shootDir = Math::Normalize(shootDir);
-
-                Vector3 rightDir = { std::cos(camRot.y), 0.0f, -std::sin(camRot.y) };
-                spawnPos.x += rightDir.x * 1.0f + shootDir.x * 0.5f;
-                spawnPos.z += rightDir.z * 1.0f + shootDir.z * 0.5f;
-            }
-
-            float shootSpeed = 30.0f;
-
-            activeClone_ = std::make_unique<PlayerClone>();
-            activeClone_->Initialize(common_, spawnPos, shootDir * shootSpeed);
-            activeClone_->SetGravity(80.0f);
-
-            activeClone_->SetColliderConfig(GetColliderConfig());
-            CollisionManager::GetInstance()->AddObject(activeClone_.get());
-
-            isAimingClone_ = false;
-            DebugConsole::GetInstance()->AddLog("Clone Launched!");
-        }
-    }
-
-    if (activeClone_) {
-        activeClone_->Update(deltaTime);
-
-        if (activeClone_->IsExpired()) {
-            CollisionManager::GetInstance()->RemoveObject(activeClone_.get());
-            activeClone_ = nullptr;
-            cloneCooldownTimer_ = 3.0f;
-            DebugConsole::GetInstance()->AddLog("Clone Expired. Cooldown started.");
-        }
-    }
 }
 
 
 void Player::DrawUI()
 {
-    // ロックオンアイコン（レティクル）を廃止：
-    // バイオ方式のカメラと軌道予測線（今後実装）で狙わせるため
-    /*
-    if ((isAimingClone_ || activeClone_) && reticleSprite_) {
-        reticleSprite_->Draw();
-    }
-    */
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {
     Character::Draw(pointLightResource, spotLightResource);
-    
-    // 分身がいれば描画
-    if (activeClone_) {
-        activeClone_->Draw(pointLightResource, spotLightResource);
-    }
+    // ※フックマーカーはプレイヤーがカメラ外（フラスタムカリング）になった時でも
+    // 描画されるように、GamePlayScene 側で直接描画するように変更しました。
 }
 
 // =================================================================
