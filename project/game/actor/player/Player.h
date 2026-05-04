@@ -115,6 +115,10 @@ public:
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
 
+ 
+
+    void SetCarriedEnemy(Object3d* enemy) { carriedEnemy_ = enemy; } // ← Object3d* に変更！
+    Object3d* GetCarriedEnemy() const { return carriedEnemy_; } // ← Object3d* に変更！
 
 private:
     // --- 内部コンポーネント ---
@@ -159,7 +163,9 @@ private:
 
     // フックマーカー
     std::unique_ptr<Object3d> hookMarker_;
-
+    // 現在頭に乗せているキャラクター（敵）のポインタ
+    Object3d* carriedEnemy_ = nullptr;
+    Object3d* aimTargetObject_ = nullptr;  // エイム中にレイが当たっている対象
 public:
     Object3d* GetHookMarker() const { return hookMarker_.get(); }
 private:

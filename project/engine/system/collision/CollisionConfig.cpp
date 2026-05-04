@@ -295,7 +295,128 @@ CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b) {
     obbA.orientations[0] = { 1.0f, 0.0f, 0.0f };
     obbA.orientations[1] = { 0.0f, 1.0f, 0.0f };
     obbA.orientations[2] = { 0.0f, 0.0f, 1.0f };
-
     // OBB同士として判定
     return CheckOBBCollision(obbA, b);
+}
+// -----------------------------------------------------------------
+// Ring vs Sphere
+// -----------------------------------------------------------------
+CollisionInfo CheckRingSphereCollision(const Ring& ring, const Vector3& spherePos, float sphereRadius) {
+    CollisionInfo info = { false, {0,0,0}, 0.0f };
+    Math math;
+
+    // 1. 球の中心からリング平面への垂直距離と、平面上の投影点Pを求める
+    Vector3 v = spherePos - ring.center;
+    float distPlane = math.Dot(v, ring.normal); // 平面からの垂直距離
+    Vector3 P = spherePos - ring.normal * distPlane; // 平面上の投影点
+
+    // 2. 厚み（高さ）の考慮
+    // 平面からの距離を高さの範囲にクランプ
+    float halfH = ring.height * 0.5f;
+    float clampedH = std::clamp(distPlane, -halfH, halfH);
+    
+    // 3. 平面上の点Pからリング中心までの距離を求める
+    Vector3 centerToP = P - ring.center;
+    float distCenterToP = math.Length(centerToP);
+
+    Vector3 closestPointOnAnnulus;
+    if (distCenterToP < 0.0001f) {
+        // 中心と重なっている場合
+        closestPointOnAnnulus = ring.center;
+        if (ring.innerRadius > 0.0f) {
+            Vector3 axis = { 1, 0, 0 };
+            if (std::abs(math.Dot(axis, ring.normal)) > 0.99f) axis = { 0, 0, 1 };
+            Vector3 dir = math.Normalize(math.Cross(ring.normal, axis));
+            closestPointOnAnnulus += dir * ring.innerRadius;
+        }
+    } else {
+        // リングの半径範囲にクランプ
+        float clampedRadius = std::clamp(distCenterToP, ring.innerRadius, ring.outerRadius);
+        closestPointOnAnnulus = ring.center + math.Normalize(centerToP) * clampedRadius;
+    }
+
+    // 厚み分を戻す
+    closestPointOnAnnulus += ring.normal * clampedH;
+
+    // 4. リング上の最短点と球の中心との距離をチェック
+    Vector3 diff = spherePos - closestPointOnAnnulus;
+    float distance = math.Length(diff);
+
+    if (distance <= sphereRadius) {
+        info.isColliding = true;
+        if (distance > 0.0001f) {
+            info.penetration = sphereRadius - distance;
+            info.normal = diff / distance;
+        } else {
+            // 完全に一致している場合は法線方向
+            info.penetration = sphereRadius;
+            info.normal = ring.normal;
+        }
+    }
+
+    return info;
+}
+
+// -----------------------------------------------------------------
+// Ring vs OBB
+// -----------------------------------------------------------------
+CollisionInfo CheckRingOBBCollision(const Ring& ring, const OBB& obb) {
+    // 簡易化：OBBの中心に対してリング上の最短点を求め、その点がOBB内部にあるか判定
+    // あるいは、球としての判定に飛ばす（OBBのサイズを考慮した球として）
+    // ここでは一番シンプルな「中心点への最短距離」ベース
+    Math math;
+    return CheckRingSphereCollision(ring, obb.center, math.Length(obb.size)); 
+}
+
+// -----------------------------------------------------------------
+// Cylinder vs Sphere
+// -----------------------------------------------------------------
+CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const Vector3& spherePos, float sphereRadius) {
+    CollisionInfo info = { false, {0,0,0}, 0.0f };
+    Math math;
+
+    // 円柱の中心軸上の最短点 P を求める
+    Vector3 d = spherePos - cyl.center;
+    float distOnAxis = math.Dot(d, cyl.axis);
+    
+    // 高さ方向にクランプ
+    float clampedH = std::clamp(distOnAxis, -cyl.height * 0.5f, cyl.height * 0.5f);
+    Vector3 P = cyl.center + cyl.axis * clampedH;
+
+    // P から球の中心への距離
+    Vector3 diff = spherePos - P;
+    float dist = math.Length(diff);
+
+    if (dist <= cyl.radius + sphereRadius) {
+        info.isColliding = true;
+        info.penetration = (cyl.radius + sphereRadius) - dist;
+        if (dist > 0.0001f) {
+            info.normal = diff / dist;
+        } else {
+            info.normal = { 0, 1, 0 };
+        }
+    }
+    return info;
+}
+
+// -----------------------------------------------------------------
+// Cylinder vs OBB
+// -----------------------------------------------------------------
+CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb) {
+    // 簡易化：円柱をOBBに変換して判定するか、中心点ベースで判定
+    // ここでは円柱をその向きのOBBとして近似して判定に投げる
+    Math math;
+    OBB cylObb;
+    cylObb.center = cyl.center;
+    cylObb.orientations[1] = cyl.axis;
+    
+    // axisと直交する2軸を作る
+    Vector3 axisX = { 1, 0, 0 };
+    if (std::abs(math.Dot(axisX, cyl.axis)) > 0.99f) axisX = { 0, 0, 1 };
+    cylObb.orientations[0] = math.Normalize(math.Cross(cyl.axis, axisX));
+    cylObb.orientations[2] = math.Normalize(math.Cross(cylObb.orientations[0], cyl.axis));
+    
+    cylObb.size = { cyl.radius, cyl.height * 0.5f, cyl.radius };
+
+    return CheckOBBCollision(cylObb, obb);
 }

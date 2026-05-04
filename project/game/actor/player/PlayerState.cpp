@@ -6,6 +6,7 @@
 #include "engine/graphics/postprocess/Fade.h"
 #include "engine/graphics/postprocess/PostEffect.h"
 #include "engine/graphics/3d/camera/CameraManager.h"
+#include"BaseEnemy.h"
 #include <memory>
 
 // ========================================================
@@ -394,5 +395,155 @@ void PlayerStateHook::Exit(Player* player) {
     auto* cam = CameraManager::GetInstance()->GetActiveCamera();
     if (cam) {
         cam->SetFovY(oldFovY_);
+    }
+}
+
+// ========================================================
+// 敵引き寄せ状態 (Pull Enemy)
+// ========================================================
+void PlayerStatePullEnemy::Enter(Player* player) {
+    if (!player || !targetEnemy_) return;
+
+    player->SetIsControlActive(false);
+    player->SetVelocity({ 0.0f, 0.0f, 0.0f }); // プレイヤー自身はその場で停止
+
+    phase_ = Phase::kShootHook;
+    hookTipPos_ = player->GetWorldPosition();
+
+    Object3d* marker = player->GetHookMarker();
+    if (marker) {
+        marker->SetIsVisible(true);
+        marker->GetTransform()->translate = hookTipPos_;
+    }
+}
+
+void PlayerStatePullEnemy::Update(Player* player) {
+    if (!player || !targetEnemy_) {
+        player->ChangeState(std::make_unique<PlayerStateIdle>());
+        return;
+    }
+
+    float deltaTime = 1.0f / 60.0f;
+    Vector3 playerPos = player->GetWorldPosition();
+
+    if (phase_ == Phase::kShootHook) {
+        // --- 腕が敵に向かって伸びる ---
+        Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
+        Vector3 toTarget = enemyPos - hookTipPos_;
+        float dist = Math::Length(toTarget);
+
+        if (dist < 5.0f) {
+            hookTipPos_ = enemyPos;
+            phase_ = Phase::kPullEnemy;
+        }
+        else {
+            Vector3 dir = Math::Normalize(toTarget);
+            hookTipPos_ = hookTipPos_ + dir * (150.0f * deltaTime);
+        }
+
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            Vector3 diff = hookTipPos_ - playerPos;
+            marker->GetTransform()->translate = {
+                playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f, playerPos.z + diff.z * 0.5f
+            };
+            float angleY = std::atan2(diff.x, diff.z);
+            float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
+            marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
+            marker->GetTransform()->isQuaternionMaster = false;
+            marker->GetTransform()->scale = { 0.5f, 0.5f, Math::Length(diff) };
+
+            // ===============================================
+            // ★追加: フェーズ1のフック描画更新！これを忘れていました！
+            // ===============================================
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
+        }
+    }
+    else if (phase_ == Phase::kPullEnemy) {
+        // --- 敵を自分の手元へ引っ張る ---
+        Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
+        Vector3 toPlayer = playerPos - enemyPos;
+        float dist = Math::Length(toPlayer);
+
+        if (dist < 3.0f) {
+            player->SetCarriedEnemy(targetEnemy_);
+
+            BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_);
+            if (enemyBase) {
+                enemyBase->SetCarried(true);
+            }
+
+            player->ChangeState(std::make_unique<PlayerStateIdle>());
+            return;
+        }
+
+        Vector3 dir = Math::Normalize(toPlayer);
+        targetEnemy_->GetTransform()->translate = enemyPos + dir * (80.0f * deltaTime);
+
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            Vector3 diff = enemyPos - playerPos;
+            marker->GetTransform()->translate = {
+                playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f, playerPos.z + diff.z * 0.5f
+            };
+            float angleY = std::atan2(diff.x, diff.z);
+            float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
+            marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
+            marker->GetTransform()->isQuaternionMaster = false;
+            marker->GetTransform()->scale = { 0.5f, 0.5f, Math::Length(diff) };
+
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
+        }
+    }
+}
+void PlayerStatePullEnemy::Exit(Player* player) {
+    player->SetIsControlActive(true);
+    if (player) {
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            marker->SetIsVisible(false);
+            marker->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+            marker->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
+        }
+    }
+}
+// ========================================================
+// 敵持ち運び状態 (Carry)
+// ========================================================
+void PlayerStateCarry::Enter(Player* player) {
+    if (player) {
+        player->SetIsControlActive(true); // 持ち運び中もプレイヤーは動ける！
+
+        Object3d* enemy = player->GetCarriedEnemy();
+        if (enemy) {
+            // ★ 敵の当たり判定を消して無力化する（kNoneなどに変更）
+            // ※ColliderのSetAttribute等があればここで当たり判定を無効化します
+            // enemy->GetCollider()->SetAttribute(0); 
+        }
+    }
+}
+
+void PlayerStateCarry::Update(Player* player) {
+    if (!player) return;
+
+    Object3d* enemy = player->GetCarriedEnemy();
+    if (enemy) {
+        // ★ 敵の座標を常に「プレイヤーの頭の上」に固定する！
+        Vector3 playerPos = player->GetWorldPosition();
+        // スライムの高さに合わせてY軸のオフセットを調整（例: 2.5f）
+        enemy->GetTransform()->translate = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+    }
+
+    // （※ここに後で「左クリックで投げる」処理を追加します）
+}
+
+void PlayerStateCarry::Exit(Player* player) {
+    // 投げた時などに呼ばれる
+    if (player) {
+        player->SetCarriedEnemy(nullptr);
     }
 }

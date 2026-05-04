@@ -46,7 +46,6 @@ public:
     }
 
 
-
     void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
     std::unique_ptr<Object3d> Clone() const override;

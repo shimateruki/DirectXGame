@@ -1,7 +1,7 @@
 #pragma once
 #include "IAnimationState.h"
 #include "engine/utility/math/Math.h"
-
+class Object3d; // 前方宣言
 // --------------------------------------------------------
 // 待機状態 (Idle)
 // --------------------------------------------------------
@@ -118,4 +118,40 @@ private:
     Phase phase_ = Phase::kShootHook;
     Vector3 hookTipPos_;            // フック先端の現在位置
     float hookShootSpeed_ = 250.0f; // フックが飛んでいく速度（超高速！）
+};
+
+
+// --------------------------------------------------------
+// 敵引き寄せ状態 (Pull Enemy)
+// --------------------------------------------------------
+class PlayerStatePullEnemy : public IAnimationState
+{
+public:
+    PlayerStatePullEnemy(Object3d* targetEnemy, const Vector3& targetPos)
+        : targetEnemy_(targetEnemy), targetPos_(targetPos) {
+    }
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+private:
+    Object3d* targetEnemy_ = nullptr;
+    Vector3 targetPos_;
+    Vector3 hookTipPos_;
+
+    enum class Phase {
+        kShootHook,  // 腕が敵に向かって飛んでいる
+        kPullEnemy   // 敵が自分に向かって引っ張られている
+    };
+    Phase phase_ = Phase::kShootHook;
+};
+
+// --------------------------------------------------------
+// 敵持ち運び状態 (Carry)
+// --------------------------------------------------------
+class PlayerStateCarry : public IAnimationState
+{
+public:
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
 };

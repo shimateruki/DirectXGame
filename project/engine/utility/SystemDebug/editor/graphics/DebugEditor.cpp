@@ -433,7 +433,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             case ColliderType::kOBB:    color = { 1.0f, 0.2f, 0.2f, 1.0f }; break; // 赤
             case ColliderType::kAABB:   color = { 0.0f, 1.0f, 0.0f, 1.0f }; break; // 緑
             case ColliderType::kSphere: color = { 0.0f, 0.5f, 1.0f, 1.0f }; break; // 青
-            case ColliderType::kCylinder: color = { 1.0f, 0.5f, 0.0f, 1.0f }; break; // オレンジ色
+            case ColliderType::kCylinder: color = { 1.0f, 0.5f, 0.0f, 1.0f }; break; // オレンジ
+            case ColliderType::kRing:   color = { 1.0f, 1.0f, 0.0f, 1.0f }; break; // 黄色
             default:                    color = { 1.0f, 1.0f, 1.0f, 1.0f }; break; // 白
             }
         }
@@ -446,6 +447,67 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         }
         else if (type == ColliderType::kCylinder) {
             primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+        }
+        else if (type == ColliderType::kRing) {
+            // リング形状の描画 (クリーン版)
+            Ring ring = obj->GetCollider()->GetRing();
+            float outerR = ring.outerRadius;
+            float innerR = ring.innerRadius;
+
+            float halfH = (obj->GetColliderConfig().size.y > 0.01f) ? obj->GetColliderConfig().size.y : 0.1f;
+            halfH *= std::abs(obj->GetTransform()->scale.y);
+
+            // 基準行列 (回転 * 平行移動 * オブジェクトのワールド(スケール抜き))
+            Matrix4x4 matRotX = math.MakeRotateXMatrix(obj->GetColliderConfig().rotation.x);
+            Matrix4x4 matRotY = math.MakeRotateYMatrix(obj->GetColliderConfig().rotation.y);
+            Matrix4x4 matRotZ = math.MakeRotateZMatrix(obj->GetColliderConfig().rotation.z);
+            Matrix4x4 matCollRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+            
+            Matrix4x4 matObjWorldNoScale = obj->GetWorldMatrix();
+            for (int i = 0; i < 3; ++i) {
+                Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                matObjWorldNoScale.m[i][0] = axis.x; matObjWorldNoScale.m[i][1] = axis.y; matObjWorldNoScale.m[i][2] = axis.z;
+            }
+            Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(obj->GetColliderConfig().center)), matObjWorldNoScale);
+
+            // 1. 外周・内周のワイヤーフレーム (上下の円)
+            if (instanceCount < kMaxDrawLimit) {
+                // 外周
+                Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                primitiveDrawer_.DrawWireCylinder(commandList, matOuter, color, instanceCount++);
+            }
+            if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
+                // 内周
+                Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                primitiveDrawer_.DrawWireCylinder(commandList, matInner, { color.x, color.y * 0.5f, 0, 1 }, instanceCount++);
+            }
+
+            // 2. 断面をつなぐ線 (上下それぞれ8方向)
+            const int kLineCount = 8;
+            for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
+                float angle = (2.0f * 3.14159265f / kLineCount) * i;
+                float s = std::sin(angle);
+                float c = std::cos(angle);
+
+                // 上下の断面をつなぐ線 (内径から外径へ)
+                for (float h : {-halfH, halfH}) {
+                    Vector3 pInner = { innerR * c, h, innerR * s };
+                    Vector3 pOuter = { outerR * c, h, outerR * s };
+                    
+                    // 線を細い箱で代用 (PrimitiveDrawerにDrawLineがあればそちらが良いが、無ければ極小Box)
+                    Vector3 center = (pInner + pOuter) * 0.5f;
+                    Vector3 diff = pOuter - pInner;
+                    float len = math.Length(diff);
+                    
+                    Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
+                    Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                    Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                    Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+                    
+                    primitiveDrawer_.DrawWireCube(commandList, lineWorld, color, instanceCount++);
+                }
+            }
+            continue;
         }
         else {
             primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
@@ -599,6 +661,77 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
                     Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+
+                // =========================================================
+                // ★ Ring形状の場合 (クリーン版)
+                // =========================================================
+                if (type == ColliderType::kRing) {
+                    Ring ring;
+                    if (effect->GetCollider()) {
+                        ring = effect->GetCollider()->GetRing();
+                    } else {
+                        // コライダーがない場合(エフェクト単体)の救済
+                        ring.center = effect->GetWorldPosition();
+                        ring.normal = { 0, 1, 0 };
+                        ring.innerRadius = effect->editRingInnerRadius_;
+                        ring.outerRadius = effect->editRingOuterRadius_;
+                    }
+                    float outerR = ring.outerRadius;
+                    float innerR = ring.innerRadius;
+                    if (innerR > outerR) std::swap(innerR, outerR);
+
+                    float halfH = (config.size.y > 0.01f) ? config.size.y : 0.1f;
+                    halfH *= std::abs(effect->GetTransform()->scale.y);
+
+                    // リングの基準行列
+                    Matrix4x4 matCollRot = math.MakeIdentity4x4();
+                    if (effect->GetCollider()) {
+                        Matrix4x4 mRX = math.MakeRotateXMatrix(config.rotation.x);
+                        Matrix4x4 mRY = math.MakeRotateYMatrix(config.rotation.y);
+                        Matrix4x4 mRZ = math.MakeRotateZMatrix(config.rotation.z);
+                        matCollRot = math.Multiply(mRZ, math.Multiply(mRX, mRY));
+                    }
+                    
+                    Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
+                    for (int i = 0; i < 3; ++i) {
+                        Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                        matObjWorldNoScale.m[i][0] = axis.x; matObjWorldNoScale.m[i][1] = axis.y; matObjWorldNoScale.m[i][2] = axis.z;
+                    }
+                    Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(config.center)), matObjWorldNoScale);
+
+                    Vector4 ringColor = { 1.0f, 1.0f, 0.0f, 1.0f };
+
+                    // 1. シリンダー (外周・内周)
+                    if (instanceCount < kMaxDrawLimit) {
+                        Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                        primitiveDrawer_.DrawWireCylinder(commandList, matOuter, { 1.0f, 0.9f, 0.0f, 0.8f }, instanceCount++);
+                    }
+                    if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
+                        Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                        primitiveDrawer_.DrawWireCylinder(commandList, matInner, { 1.0f, 0.5f, 0.0f, 0.8f }, instanceCount++);
+                    }
+
+                    // 2. 断面をつなぐ線
+                    const int kLineCount = 8;
+                    for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
+                        float angle = (2.0f * 3.14159265f / kLineCount) * i;
+                        float s = std::sin(angle);
+                        float c = std::cos(angle);
+                        for (float h : { -halfH, halfH }) {
+                            Vector3 pInner = { innerR * c, h, innerR * s };
+                            Vector3 pOuter = { outerR * c, h, outerR * s };
+                            Vector3 center = (pInner + pOuter) * 0.5f;
+                            Vector3 diff = pOuter - pInner;
+                            float len = math.Length(diff);
+                            Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
+                            Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                            Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                            Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+                            primitiveDrawer_.DrawWireCube(commandList, lineWorld, ringColor, instanceCount++);
+                        }
+                    }
+                    continue;
                 }
 
                 if (type == ColliderType::kSphere) {

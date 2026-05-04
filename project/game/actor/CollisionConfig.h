@@ -30,7 +30,8 @@ enum class ColliderType {
     kSphere, // 球
     kAABB,   // AABB（回転しない箱）
     kOBB,
-    kCylinder
+    kCylinder,
+    kRing    // リング（ドーナツ型・衝撃波用）
 };
 
 // AABB構造体
@@ -44,6 +45,23 @@ struct OBB {
     Vector3 center;          // 中心点
     Vector3 orientations[3]; // 座標軸 (正規化された X, Y, Z 軸)
     Vector3 size;            // 中心からの半サイズ (width/2, height/2, depth/2)
+};
+
+// リング構造体 (中心、向き、内径、外径)
+struct Ring {
+    Vector3 center;
+    Vector3 normal = { 0, 1, 0 }; // リングが乗っている面の法線
+    float innerRadius;
+    float outerRadius;
+    float height; // 厚み (中心から上下に height/2)
+};
+
+// 円柱構造体
+struct Cylinder {
+    Vector3 center;
+    Vector3 axis = { 0, 1, 0 }; // 軸方向 (正規化)
+    float radius;
+    float height; // 全長 (中心から上下に height/2)
 };
 
 // 衝突情報（結果）を格納する構造体
@@ -83,3 +101,11 @@ CollisionInfo CheckOBBCollision(const OBB& obb1, const OBB& obb2);
 /// AABBとOBBの衝突判定 (AABBをOBBに変換して判定)
 /// </summary>
 CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b);
+
+// --- リング関連の衝突判定 ---
+CollisionInfo CheckRingSphereCollision(const Ring& ring, const Vector3& spherePos, float sphereRadius);
+CollisionInfo CheckRingOBBCollision(const Ring& ring, const OBB& obb);
+
+// --- 円柱関連の衝突判定 ---
+CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const Vector3& spherePos, float sphereRadius);
+CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb);

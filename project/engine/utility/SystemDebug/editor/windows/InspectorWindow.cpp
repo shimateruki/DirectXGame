@@ -169,11 +169,11 @@ void InspectorWindow::Draw() {
             Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
             bool isColChanged = false;
 
-            const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)" };
+            const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)", "円柱 (Cylinder)", "リング (Ring)" };
             int currentTypeIndex = (int)colConfig.type;
             if (ImGui::Combo(ICON_FA_SHAPES " 形状タイプ", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
-                if (colConfig.type == ColliderType::kOBB && colConfig.size.x == 0.0f) {
+                if ((colConfig.type == ColliderType::kOBB || colConfig.type == ColliderType::kRing) && colConfig.size.x == 0.0f) {
                     colConfig.size = { 1.0f, 1.0f, 1.0f };
                 }
                 isColChanged = true;
@@ -188,10 +188,17 @@ void InspectorWindow::Draw() {
                         isColChanged = true;
                     }
                 }
+                else if (colConfig.type == ColliderType::kRing) {
+                    if (ImGui::DragFloat("外径 (Outer Radius)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("内径 (Inner Radius)", &colConfig.size.z, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    // 厚み(Y)
+                    if (ImGui::DragFloat("厚み (Thickness)", &colConfig.size.y, 0.05f, 0.0f, 10.0f)) isColChanged = true;
+                }
                 else {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
-                if (colConfig.type == ColliderType::kOBB) {
+
+                if (colConfig.type == ColliderType::kOBB || colConfig.type == ColliderType::kRing) {
                     Vector3 rotDegObj = { ToDegrees(colConfig.rotation.x), ToDegrees(colConfig.rotation.y), ToDegrees(colConfig.rotation.z) };
                     if (ImGui::DragFloat3("回転 (Rotation)", &rotDegObj.x, 1.0f, -360.0f, 360.0f)) {
                         colConfig.rotation = { ToRadians(rotDegObj.x), ToRadians(rotDegObj.y), ToRadians(rotDegObj.z) };

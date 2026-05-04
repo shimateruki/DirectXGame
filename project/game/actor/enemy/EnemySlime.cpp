@@ -1,8 +1,13 @@
 #include "EnemySlime.h"
 #include "engine/utility/math/Math.h" // Vector3の計算用
 #include <cmath> // atan2用
-
+#include <PlayerState.h>
+#include"Player.h"
+#include <DebugConsole.h>
 void EnemySlime::Update(float deltaTime) {
+    if (isCarried_) {
+        return;
+    }
     if (!target_ || !param_.has_value()) {
         BaseEnemy::Update(deltaTime);
         return;
@@ -89,4 +94,25 @@ std::unique_ptr<Object3d> EnemySlime::Clone() const {
     newSlime->SetTarget(this->target_);
     newSlime->SetDetectionRange(this->detectionRange_);
     return newSlime;
+}
+
+void EnemySlime::ExecuteAbility(Player* player) {
+    if (!player) return;
+
+    // ① プレイヤーを遥か上空へ吹っ飛ばす！（通常のジャンプ力を超える値）
+    Vector3 v = player->GetVelocity();
+    v.y = 35.0f; // トランポリンジャンプ！
+    player->SetVelocity(v);
+
+    // ジャンプ状態へ移行
+    player->ChangeState(std::make_unique<PlayerStateJump>());
+
+    DebugConsole::GetInstance()->AddLog("Ability Activated: Slime Super Jump!");
+
+    // ② 能力を使ったら、スライム自身は力を使い果たして消滅する
+    player->SetCarriedEnemy(nullptr);
+    if (param_.has_value()) {
+        param_->hp = 0.0f;
+    }
+    SetIsVisible(false);
 }

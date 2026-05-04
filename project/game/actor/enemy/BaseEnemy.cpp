@@ -19,6 +19,9 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
 }
 
 void BaseEnemy::Update(float deltaTime) {
+    if (isCarried_) {
+        return; // 重力も、タイマーの減少も全てストップ
+    }
     // 0. パラメータ(JSON)との同期
     if (param_.has_value()) {
         detectionRange_ = param_->detectionRange;
@@ -86,4 +89,28 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     }
 
     return true;
+}
+// ==========================================
+// 持ち運び状態の切り替え
+// ==========================================
+void BaseEnemy::SetCarried(bool isCarried) {
+    isCarried_ = isCarried;
+
+    if (isCarried_) {
+        // --- 無力化 ---
+        // ★ 修正: Object3d の関数を使って完全に当たり判定を消滅させる！
+        SetCollisionAttribute(0);
+        SetCollisionMask(0);
+
+        // 引っ張られるので速度も強制ゼロに
+        SetVelocity({ 0.0f, 0.0f, 0.0f });
+    }
+    else {
+        // --- 復活（地面に投げ出された時など） ---
+   
+        SetCollisionAttribute(kEnemy);
+        SetCollisionMask(kPlayer | kAllSolid | kAttributePlayerBullet | kPlayerAttack); // 念のため kAllSolid にしておく
+    }
+}
+void BaseEnemy::ExecuteAbility(Player* player) {
 }

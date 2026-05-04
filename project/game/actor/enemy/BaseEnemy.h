@@ -20,6 +20,10 @@ public:
 
     void SetDetectionRange(float range) { detectionRange_ = range; }
     float GetDetectionRange() const { return detectionRange_; }
+    virtual void SetCarried(bool isCarried);
+    bool IsCarried() const { return isCarried_; }
+    virtual void ExecuteAbility(class Player* player);
+
 
 protected:
     Object3d* target_ = nullptr; // 追いかける対象（プレイヤー）
@@ -27,4 +31,5 @@ protected:
     float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ無敵タイマー
     float colorResetTimer_ = 0.0f;     // 赤色から元に戻すためのタイマー
     Vector4 defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 元の色を記憶
+    bool isCarried_ = false;
 };

@@ -15,7 +15,7 @@
 #include <algorithm>
 #include <CollisionManager.h>
 #include "DirectXCommon.h"
-
+#include"BaseEnemy.h"
 // =================================================================
 // 初期化・更新・描画
 // =================================================================
@@ -55,13 +55,12 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
         hookMarker_->GetTransform()->scale = { 0.5f, 0.5f, 0.5f };
     }
 }
-
 void Player::Update(float deltaTime)
 {
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
         respawnPosition_ = transform_.translate;
-        baseRotation_ = transform_.rotate; // モデルの初期回転（逆さま防止など）を保存
+        baseRotation_ = transform_.rotate;
         isFirstUpdate_ = false;
     }
 
@@ -73,7 +72,7 @@ void Player::Update(float deltaTime)
             damageCooldownTimer_ -= deltaTime;
             if (damageCooldownTimer_ <= 0.0f) {
                 damageCooldownTimer_ = 0.0f;
-                SetDamageInvincible(false); // 被弾無敵フラグを解除
+                SetDamageInvincible(false);
             }
         }
 
@@ -81,36 +80,29 @@ void Player::Update(float deltaTime)
         if (isControlActive_ && mover_) {
             // 右クリック中は移動入力を受け付けず、水平移動を停止させる
             if (inputManager_->IsMouseButtonPressed(1)) {
-                // 水平速度をゼロにしてその場に留まる（空中浮遊感）
                 Vector3 v = GetVelocity();
                 SetVelocity({ 0.0f, v.y, 0.0f });
 
-                // フックの狙いをつけるため、プレイヤーの向きをカメラの向いている方向に合わせる
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                 if (camera) {
                     Vector3 camRot = camera->GetRotation();
-                    // Z軸・X軸の「初期の補正回転（逆さま防止など）」を維持した上で、カメラのピッチとヨーを合成
                     SetRotation({ baseRotation_.x + camRot.x, camRot.y, baseRotation_.z });
 
                     // --- フック到達地点の計算とマーカー表示 ---
                     if (hookMarker_) {
                         Vector3 start = camera->GetEye();
 
-                        // カメラの実際の向き(Forwardベクトル)を計算してレイを飛ばす
                         Vector3 dir;
                         dir.x = std::sin(camRot.y) * std::cos(camRot.x);
                         dir.y = -std::sin(camRot.x);
                         dir.z = std::cos(camRot.y) * std::cos(camRot.x);
 
-                        // 念のため正規化
                         float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
                         if (length > 0.0f) {
                             dir.x /= length; dir.y /= length; dir.z /= length;
                         }
 
-                        // フックの最大距離
                         float maxDistance = 150.0f;
-                        // 壁(kAllSolid)や敵(kEnemy)を対象にする
                         uint32_t mask = kAllSolid | kEnemy;
 
                         RaycastHit hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
@@ -120,19 +112,15 @@ void Player::Update(float deltaTime)
                             hookMarker_->GetTransform()->translate = hit.hitPoint;
                             hookMarker_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
                             hookMarker_->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
-                            char buf[256];
-                            const char* tag = (hit.hitPoint.y < -1.0f) ? "[FLOOR]" : "[WALL?]";
-                            snprintf(buf, sizeof(buf), "Hook: HIT %s start(%.1f, %.1f, %.1f) dir(%.2f, %.2f, %.2f) point(%.1f, %.1f, %.1f)",
-                                tag, start.x, start.y, start.z, dir.x, dir.y, dir.z, hit.hitPoint.x, hit.hitPoint.y, hit.hitPoint.z);
-                            DebugConsole::GetInstance()->AddLog(buf);
+
+                            // 対象を記憶する
+                            aimTargetObject_ = hit.hitObject;
                         }
                         else {
-                            // 何も当たらない場合は非表示にする
                             hookMarker_->SetIsVisible(false);
-                            DebugConsole::GetInstance()->AddLog("Hook: MISS in air");
+                            aimTargetObject_ = nullptr;
                         }
 
-                        // マーカーの行列更新
                         hookMarker_->Update(deltaTime);
                         hookMarker_->UpdateLocalMatrix();
                         hookMarker_->UpdateWorldMatrix();
@@ -140,13 +128,19 @@ void Player::Update(float deltaTime)
                 }
             }
             else {
-                // 右クリック解除時にマーカーを非表示にしつつフック移動へ
+                // 右クリック解除時にフックアクションへ移行
                 if (hookMarker_) {
                     if (hookMarker_->GetIsVisible()) {
                         Vector3 targetPos = hookMarker_->GetTransform()->translate;
-                        ChangeState(std::make_unique<PlayerStateHook>(targetPos));
+
+                        // 当たった対象が「敵」なら引き寄せ、それ以外なら自分が飛ぶ
+                        if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
+                            ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
+                        }
+                        else {
+                            ChangeState(std::make_unique<PlayerStateHook>(targetPos));
+                        }
                     }
- /*                   hookMarker_->SetIsVisible(false);*/
                 }
 
                 // 通常移動時はX軸（ピッチ）とZ軸（ロール）の回転を初期値に戻す
@@ -156,7 +150,6 @@ void Player::Update(float deltaTime)
                 SetRotation(rot);
 
                 mover_->Update(deltaTime);
-
             }
         }
 
@@ -170,7 +163,6 @@ void Player::Update(float deltaTime)
             isDead = true;
             deathTimer_ = 0.0f;
             ChangeState(std::make_unique<PlayerStateDead>());
-            DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡状態へ移行");
 
             PlayerDeathEvent deathEvent;
             deathEvent.player = this;
@@ -185,9 +177,6 @@ void Player::Update(float deltaTime)
             if (GameDataManager::GetInstance()->GetLives() <= 0) {
                 SceneManager::GetInstance()->ChangeScene("GAMEOVER");
             }
-            else {
-                DebugConsole::GetInstance()->AddLog("Fell out of bounds! Life subtracted. Starting Iris Out.");
-            }
         }
     }
 
@@ -201,8 +190,61 @@ void Player::Update(float deltaTime)
         }
     }
 
-    // 6. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
+    // 6. 親クラスの更新
     Character::Update(deltaTime);
+    if (carriedEnemy_ && inputManager_->IsMouseButtonPressed(0)) {
+        BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+        if (enemyBase) {
+            // ① カメラの向いている方向（投げる方向）を計算
+            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+            Vector3 throwDir = { 0.0f, 0.5f, 1.0f }; // デフォルト
+            if (camera) {
+                Vector3 camRot = camera->GetRotation();
+                throwDir.x = std::sin(camRot.y) * std::cos(camRot.x);
+                // ★少し上向き（+0.3f）に補正して、綺麗な放物線を描かせる！
+                throwDir.y = -std::sin(camRot.x) + 0.3f;
+                throwDir.z = std::cos(camRot.y) * std::cos(camRot.x);
+
+                // 正規化（長さを1にする）
+                float len = std::sqrt(throwDir.x * throwDir.x + throwDir.y * throwDir.y + throwDir.z * throwDir.z);
+                if (len > 0.0f) { throwDir.x /= len; throwDir.y /= len; throwDir.z /= len; }
+            }
+
+            // ② プレイヤーに自爆ヒットしないように、少し前方にずらして配置
+            Vector3 playerPos = GetWorldPosition();
+            enemyBase->GetTransform()->translate = {
+                playerPos.x + throwDir.x * 4.0f,
+                playerPos.y + throwDir.y * 4.0f + 1.0f, // 頭の高さから投げる
+                playerPos.z + throwDir.z * 4.0f
+            };
+
+            // ③ 無力化を解除（当たり判定復活）して、初速（Velocity）を与える！
+            enemyBase->SetCarried(false);
+
+            // 勢いよくぶん投げる！（120.0f はスピード。お好みで調整してください）
+            enemyBase->SetVelocity({ throwDir.x * 120.0f, throwDir.y * 120.0f, throwDir.z * 120.0f });
+        }
+
+        // ★ 手放す！
+        carriedEnemy_ = nullptr;
+        DebugConsole::GetInstance()->AddLog("Throw Enemy!");
+    }
+    else if (carriedEnemy_ && inputManager_->IsKeyPressed(DIK_E)) {
+        BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+        if (enemyBase) {
+            // 乗せている敵の「固有能力」を呼び出す！
+            enemyBase->ExecuteAbility(this);
+        }
+    }
+    if (carriedEnemy_) {
+        Vector3 playerPos = GetWorldPosition();
+        // スライムの高さに合わせてY軸のオフセットを調整（例: 2.5f）
+        carriedEnemy_->GetTransform()->translate = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+
+        // 行列を強制更新して、1フレームの遅れもなくピタッと追従させる
+        carriedEnemy_->UpdateLocalMatrix();
+        carriedEnemy_->UpdateWorldMatrix();
+    }
 }
 
 
