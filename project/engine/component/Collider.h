@@ -40,11 +40,13 @@ public:
     // --- 形状計算 (Object3dから移動) ---
     AABB GetAABB() const;
     OBB GetOBB() const;
+    Ring GetRing() const;
+    Cylinder GetCylinder() const;
 
     // --- 衝突判定 (Object3dから移動) ---
     // 相手も Object3d ではなく Collider として受け取るように変更
     CollisionInfo CheckCollision(const Collider* other) const;
-    Cylinder GetCylinder() const;
+
 private:
     // このコライダーの持ち主（座標計算に使う）
     Transform* transform_ = nullptr;

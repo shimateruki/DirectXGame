@@ -536,6 +536,22 @@ void GamePlayScene::Update(float deltaTime) {
 				if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
 					hasFinishedTutorial_ = true;
 
+					// ★ チュートリアルUIを強制終了・非表示にする
+					tutorialUiCompleted_ = true;
+					tutorialStep_ = TutorialStep::kCompleted;
+					auto hideSprite = [](Sprite* s) {
+						if (s) {
+							Vector4 c = s->GetColor();
+							c.w = 0.0f;
+							s->SetColor(c);
+						}
+					};
+					hideSprite(tutorialMoveSprite_);
+					hideSprite(tutorialCameraSprite_);
+					hideSprite(tutorialLockOnSprite_);
+					hideSprite(tutorialAttackSprite_);
+					hideSprite(tutorialDodgeSprite_);
+
 					if (!tutorialMovieStarted_) {
 						CameraEditor::GetInstance()->PlayOverrideCamera(CameraManager::GetInstance()->GetMainCamera(), "tutorial movie");
 						tutorialMovieStarted_ = true;
@@ -1283,7 +1299,7 @@ void GamePlayScene::Draw() {
 		}
 		if (isPlayerPart) continue; // プレイヤーの一部なら描画をスキップ！
 
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() == 9) continue;
 		
 		totalCount++;
 		// ★ カリング判定！
@@ -1312,7 +1328,7 @@ void GamePlayScene::Draw() {
 		}
 		if (isPlayerPart) continue;
 
-		if (obj->GetMaterialType() == 1) { // 透明のみ描画
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 9) { // 透明のみ描画
 			totalCount++;
 			// ★ カリング判定！
 			if (IsVisible(obj.get())) {
@@ -1506,4 +1522,81 @@ void GamePlayScene::StartBossAppearanceMovie() {
 
 	// ボス側にはカメラ移動以外の演出（ブロックが集まる等）だけをやらせる
 	boss_->StartAppearance();
+}
+
+void GamePlayScene::DrawImGui() {
+#ifdef USE_IMGUI
+	// ★ Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
+	if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
+		
+		if (ImGui::TreeNode("Player/Enemy Status")) {
+			if (ImGui::Button("Player HP -> 0")) {
+				if (player_ && player_->param_.has_value()) {
+					player_->param_->hp = 0.0f;
+				}
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::Button("Boss HP -> 25%")) {
+				if (boss_ && boss_->param_.has_value()) {
+					boss_->param_->hp = boss_->param_->maxHp * 0.25f;
+				}
+			}
+
+			if (ImGui::Button("Boss HP -> 0% (Force Death)")) {
+				if (boss_) {
+					if (boss_->param_.has_value()) {
+						boss_->param_->hp = 0.0f;
+					}
+					boss_->StartDeathSequence();
+				}
+			}
+			ImGui::TreePop();
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::Button("Skip Tutorial", ImVec2(-1, 30))) {
+			if (player_) {
+				// 1. 速度と座標のリセット
+				player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+				player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
+				player_->UpdateLocalMatrix();
+				player_->UpdateWorldMatrix();
+
+				// 2. カメラを即座にワープ地点へ同期（ラグを防ぐ）
+				Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+				if (camera) {
+					camera->SetTarget(player_->GetWorldPosition());
+					camera->Update();
+				}
+
+				// 3. 各種フラグを「完了」にセット
+				hasFinishedTutorial_ = true;
+				hasBridgeDropped_ = true; // 橋の状態も同期
+				GameProgress::GetInstance()->hasFinishedTutorial = true;
+				doorOpenProgress_ = 1.0f;
+				missionInitialShown_ = true;
+				missionGoShown_ = true;
+
+				// 4. チュートリアル関連のオブジェクト削除 ＆ ボスエリアの床を有効化
+				for (auto& obj : objectManager_->GetObjects()) {
+					std::string name = obj->GetName();
+
+					// チュートリアル関係は消す
+					if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+						obj->SetIsVisible(false);
+						obj->isDead = true;
+					}
+					// ボスエリアの地面の当たり判定をONにする
+					else if (name.find("Battle_Field_Collision_Box_") != std::string::npos) {
+						obj->SetCollisionAttribute(kGround);
+					}
+				}
+				DebugConsole::GetInstance()->AddLog("【DEBUG】 チュートリアルをスキップしました");
+			}
+		}
+	}
+#endif
 }

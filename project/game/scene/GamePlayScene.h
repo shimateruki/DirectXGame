@@ -49,7 +49,7 @@ public:
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
-
+    void DrawImGui() override;
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
     void StartBossAppearanceMovie(); // ★ 追加：ボス登場の合図を受け取る関数
