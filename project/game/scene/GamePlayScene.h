@@ -96,6 +96,8 @@ private:
     // --- チュートリアルドア用 ---
     bool hasFinishedTutorial_ = false;
     float doorOpenProgress_ = 0.0f;
+    bool tutorialMovieStarted_ = false;
+    float tutorialMovieTimer_ = 0.0f;
 
 private:
     // --- エンジンシステムへのポインタ ---

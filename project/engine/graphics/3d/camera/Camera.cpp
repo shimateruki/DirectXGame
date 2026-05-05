@@ -91,11 +91,17 @@ void Camera::Update() {
         }
 
         // =========================================================
-        // ★ 修正1: プレイヤーとカメラの1フレームのズレを完全に無くす！
+        // ★ 修正1: プレイヤーとカメラの補間を調整
         // =========================================================
-        // TargetのLerpを完全に排除し、プレイヤーの位置に100%即座に追従させる。
-        // これにより、アニメーションの揺れとカメラが喧嘩してカクつくのを防ぎます。
-        smoothTarget_ = targetPos;
+        // ロックオンの切り替えなどをスムーズにするため、適度な補間を入れます。
+        // 初回のみ即座に位置を確定させ、以降はLerpで追従。
+        if (!isCameraInitialized_) {
+            smoothTarget_ = targetPos;
+            smoothEye_ = eye_; // 初期位置
+            isCameraInitialized_ = true;
+        }
+
+        smoothTarget_ = LerpVec3(smoothTarget_, targetPos, 0.2f);
         target_ = smoothTarget_;
 
         // -----------------------------------------------------------------
@@ -201,7 +207,9 @@ void Camera::Update() {
         }
         }
 
-        eye_ = desiredEye;
+        // 目標位置への補間（Eye）
+        smoothEye_ = LerpVec3(smoothEye_, desiredEye, 0.15f);
+        eye_ = smoothEye_;
 
         if (!isEyeFrozen_) {
             if (followMode_ != FollowMode::kFirstPerson && followMode_ != FollowMode::kFixedPoint) {

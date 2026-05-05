@@ -616,6 +616,27 @@ void CameraEditor::LoadSettings() {
 }
 
 
+void CameraEditor::SyncSettingsFromCamera() {
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) return;
+
+    Vector3 rot = camera->GetRotation();
+    float toDeg = 180.0f / 3.14159265f;
+
+    // 角度を同期 (ラジアン -> 度)
+    settings_.angle.x = rot.x * toDeg;
+    settings_.angle.y = rot.y * toDeg;
+    settings_.angle.z = rot.z * toDeg;
+
+    // 距離を同期
+    Vector3 eye = camera->GetEye();
+    Vector3 target = camera->GetTargetPoint();
+    float dx = eye.x - target.x;
+    float dy = eye.y - target.y;
+    float dz = eye.z - target.z;
+    settings_.distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
 void CameraEditor::LoadFile(const std::string& fileName) {
     // 1. ファイル名バッファを更新
     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), fileName.c_str());

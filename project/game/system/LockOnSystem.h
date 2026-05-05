@@ -44,6 +44,7 @@ public:
 	/// <param name="target">強制するターゲット（nullなら強制解除）</param>
 	/// <param name="isForced">強制中フラグ</param>
 	void SetForceLockOn(Object3d* target, bool isForced);
+
 private:
 	/// <summary>
 	/// 最も適したターゲットを検索する内部関数
