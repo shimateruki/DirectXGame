@@ -44,6 +44,12 @@ public:
 	/// <param name="target">強制するターゲット（nullなら強制解除）</param>
 	/// <param name="isForced">強制中フラグ</param>
 	void SetForceLockOn(Object3d* target, bool isForced);
+
+	/// <summary>
+	/// ロックオン機能の有効・無効を設定する
+	/// </summary>
+	void SetEnabled(bool enabled) { isEnabled_ = enabled; }
+
 private:
 	/// <summary>
 	/// 最も適したターゲットを検索する内部関数
@@ -60,4 +66,5 @@ private:
 	const float kMinLockOnDot_ = 0.0f;
 	float lostSightTimer_ = 0.0f;
 	bool isForced_ = false; // 強制ロックオン中か
+	bool isEnabled_ = true; // システム自体が有効か
 };

@@ -150,6 +150,8 @@ void GamePlayScene::Initialize() {
 	SetAlphaZero(restartTextSprite_);
 	SetAlphaZero(titleTextSprite_);
 	isGameOverUiReady_ = false; // フラグのリセット
+	tutorialMovieStarted_ = false;
+	tutorialMovieTimer_ = 0.0f;
 	for (auto& sprite : sprites_) {
 		if (sprite->GetName() == "bossrHpBar") {
 			bossHpBarSprite_ = sprite.get();
@@ -526,15 +528,33 @@ void GamePlayScene::Update(float deltaTime) {
 	// =======================================================
 	// チュートリアルドアの処理
 	// =======================================================
+	// ★ チュートリアル終了時にムービーを開始
 	if (!hasFinishedTutorial_) {
 		for (auto& obj : objectManager_->GetObjects()) {
 			if (obj->GetName() == "Tutorial_Doll_Lever") {
 				TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
 				if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
 					hasFinishedTutorial_ = true;
+
+					if (!tutorialMovieStarted_) {
+						CameraEditor::GetInstance()->PlayOverrideCamera(CameraManager::GetInstance()->GetMainCamera(), "tutorial movie");
+						tutorialMovieStarted_ = true;
+						tutorialMovieTimer_ = 2.0f; 
+						if (player_) player_->SetIsControlActive(false); // 操作禁止
+					}
 					break;
 				}
 			}
+		}
+	}
+
+	// ★ チュートリアルムービーのタイマー処理
+	if (tutorialMovieTimer_ > 0.0f) {
+		tutorialMovieTimer_ -= deltaTime;
+		if (tutorialMovieTimer_ <= 0.0f) {
+			// 2秒経過したらカメラの固定を解除
+			CameraManager::GetInstance()->GetMainCamera()->EndOverride(1.0f);
+			if (player_) player_->SetIsControlActive(true); // 操作復帰
 		}
 	}
 
@@ -835,6 +855,14 @@ void GamePlayScene::Update(float deltaTime) {
 
 
 
+		// --- シネマティック演出中かどうかの判定（黒帯が出る条件） ---
+		bool isBossDying = boss_ && boss_->IsDyingSequence();
+		// ムービー状態、ボス演出、チュートリアル演出、またはカメラのオーバーライド中ならシネマティックモードとする
+		bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying || (tutorialMovieTimer_ > 0.0f) || camera->IsOverridden();
+
+		// ムービー中（黒帯表示中）はロックオンを禁止＆解除
+		lockOnSystem_->SetEnabled(!isCinematicMode);
+
 		// --- ロックオン & カメラ制御 ---
 		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
 		CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
@@ -950,10 +978,6 @@ void GamePlayScene::Update(float deltaTime) {
 #endif
 			}
 		}
-		bool isBossDying = boss_ && boss_->IsDyingSequence();
-
-		// ムービー状態、またはボス登場ムービー中、または【ボス撃破演出中】、クリア移行中なら黒帯を出す！
-		bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying ;
 
 		float targetBarHeight = isCinematicMode ? 0.12f : 0.0f;
 
