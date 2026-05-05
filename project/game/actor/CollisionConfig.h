@@ -8,8 +8,8 @@ enum CollisionAttribute : uint32_t {
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
     kAttributePlayerBullet = 1 << 3,
-	kTrigger = 1 << 4, // トリガー 
-	kMapBlock = 1 << 5, // ボスが吸収可能なブロック
+    kTrigger = 1 << 4, // トリガー 
+    kMapBlock = 1 << 5, // ボスが吸収可能なブロック
     kPlayerAttack = 1 << 6, // プレイヤーの近接攻撃（剣など）
     kEnemyAttack = 1 << 7, // 敵の近接攻撃
 };
@@ -31,6 +31,7 @@ enum class ColliderType {
     kAABB,   // AABB（回転しない箱）
     kOBB,
     kCylinder,
+    kRing    // リング（ドーナツ型・衝撃波用）
 };
 
 // AABB構造体
@@ -45,11 +46,24 @@ struct OBB {
     Vector3 orientations[3]; // 座標軸 (正規化された X, Y, Z 軸)
     Vector3 size;            // 中心からの半サイズ (width/2, height/2, depth/2)
 };
-struct Cylinder {
-    Vector3 center; // 中心座標（高さの真ん中）
-    float radius;   // 半径
-    float height;   // 高さ全体
+
+// リング構造体 (中心、向き、内径、外径)
+struct Ring {
+    Vector3 center;
+    Vector3 normal = { 0, 1, 0 }; // リングが乗っている面の法線
+    float innerRadius;
+    float outerRadius;
+    float height; // 厚み (中心から上下に height/2)
 };
+
+// 円柱構造体
+struct Cylinder {
+    Vector3 center;
+    Vector3 axis = { 0, 1, 0 }; // 軸方向 (正規化)
+    float radius;
+    float height; // 全長 (中心から上下に height/2)
+};
+
 // 衝突情報（結果）を格納する構造体
 struct CollisionInfo {
     bool isColliding = false;      // 衝突しているか
@@ -83,11 +97,15 @@ CollisionInfo CheckSphereCollision(const Vector3& posA, float rA, const Vector3&
 CollisionInfo CheckSphereAABBCollision(const Vector3& spherePos, float sphereRadius, const AABB& aabb);
 CollisionInfo CheckSphereOBBCollision(const Vector3& spherePos, float sphereRadius, const OBB& obb);
 CollisionInfo CheckOBBCollision(const OBB& obb1, const OBB& obb2);
-CollisionInfo CheckSphereCylinderCollision(const Vector3& sphereCenter, float sphereRadius, const Cylinder& cylinder);
-CollisionInfo CheckCylinderCollision(const Cylinder& a, const Cylinder& b);
 /// <summary>
 /// AABBとOBBの衝突判定 (AABBをOBBに変換して判定)
 /// </summary>
 CollisionInfo CheckAABBOBBCollision(const AABB& a, const OBB& b);
-CollisionInfo CheckAABBCylinderCollision(const AABB& aabb, const Cylinder& cylinder);
-CollisionInfo CheckOBBCylinderCollision(const OBB& obb, const Cylinder& cylinder);
+
+// --- リング関連の衝突判定 ---
+CollisionInfo CheckRingSphereCollision(const Ring& ring, const Vector3& spherePos, float sphereRadius);
+CollisionInfo CheckRingOBBCollision(const Ring& ring, const OBB& obb);
+
+// --- 円柱関連の衝突判定 ---
+CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const Vector3& spherePos, float sphereRadius);
+CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb);

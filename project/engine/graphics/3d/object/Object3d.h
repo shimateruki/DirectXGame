@@ -62,7 +62,7 @@ public:
     Transform* GetTransform() { return &transform_; }
     const Transform& GetTransform() const { return transform_; }
 
-    const Vector3& GetWorldPosition() const { return transform_.translate; }
+    Vector3 GetWorldPosition() const { return { transform_.matWorld.m[3][0], transform_.matWorld.m[3][1], transform_.matWorld.m[3][2] }; }
     const Matrix4x4& GetWorldMatrix() const { return transform_.matWorld; }
     const Vector3& GetScale() const { return transform_.scale; }
     const Vector3& GetRotation() const { return transform_.rotate; }

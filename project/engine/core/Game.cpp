@@ -17,24 +17,23 @@
 #include"BossCore.h"
 #include "KeyConfig.h"
 #include <IconsFontAwesome5.h>
+#include <MeshEffectManager.h>
+
 
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
     TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
+    TextureManager::GetInstance()->LoadAllTexture("Resources/texture/PBR/");
     ModelManager::GetInstance()->LoadAllModels();
-    for (int i = 0; i < 18; ++i) {
-        ModelManager::GetInstance()->LoadModel(
-            ("enemy_core_shards/enemy_core" + std::to_string(i + 1))
-        );
-    }
+
     sceneFactory_ = std::make_unique<SceneFactory>();
     //  SceneManager を作成して初期化
     sceneManager_ = std::make_unique<SceneManager>();
     // =========================================================
     //  ローカル設定を見て開始シーンを決める
     // =========================================================
-    std::string startScene = "TITLE"; // デフォルト
+    std::string startScene = "GAMEPLAY"; // デフォルト
 
 #ifdef USE_IMGUI
     std::string lastScene = sceneManager_->LoadLastSceneName();
@@ -72,6 +71,7 @@ void Game::Initialize() {
     postEffectEditor_ = std::make_unique<PostEffectEditor>();
     postEffectEditor_->Initialize(PostEffect::GetInstance());
     PostEffect::GetInstance()->SaveBaseParams();
+
     KeyConfig::GetInstance()->Initialize();
 #ifdef USE_IMGUI
 
@@ -91,6 +91,8 @@ void Game::Initialize() {
     vfxSequencerEditor_->Initialize();
     meshEffectEditor_ = std::make_unique<MeshEffectEditor>();
     meshEffectEditor_->Initialize(sceneManager_.get());
+    trailEmitterEditor_ = std::make_unique<TrailEmitterEditor>();
+    trailEmitterEditor_->Initialize(sceneManager_.get());
     LightEditor::GetInstance()->Initialize();
     DebugConsole::GetInstance()->Initialize();
     ghostDirector_ = std::make_unique<GhostDirector>();
@@ -105,10 +107,11 @@ void Game::Initialize() {
             particleEditor_.get(),
             gpuParticleEditor_.get(),
             vfxSequencerEditor_.get(),
-            ghostRecorder_.get(),   
+            ghostRecorder_.get(),
             ghostDirector_.get(),
-			LightEditor::GetInstance(),
-            meshEffectEditor_.get()
+            LightEditor::GetInstance(),
+            meshEffectEditor_.get(),
+            trailEmitterEditor_.get()
         );
     }
 
@@ -118,7 +121,7 @@ void Game::Initialize() {
 #else
     isPlaying_ = true;  // リリース時は最初から再生
     WinApp::SetCursorVisibility(false);
-	winApp_->SetCursorClipping(true);
+    winApp_->SetCursorClipping(true);
     winApp_->SetCursorLocked(true);
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 #endif
@@ -138,14 +141,14 @@ void Game::Finalize() {
         sceneManager_->Finalize();
     }
 #ifdef USE_IMGUI
-    particleEditor_.reset(); 
+    particleEditor_.reset();
     spriteDebugEditor_.reset();
     debugEditor_.reset();
     ghostRecorder_.reset();
     ghostDirector_.reset();
     gpuParticleEditor_.reset();
     vfxSequencerEditor_.reset();
-   DebugConsole::GetInstance()->Finalize();
+    DebugConsole::GetInstance()->Finalize();
 #endif
 
     // ★ 基底クラスの終了処理を呼ぶ
@@ -198,7 +201,7 @@ void Game::Update() {
         ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_left_id);
         // ★追加: 3D用と同じ "dock_bottom_left_id" に入れることで自動的にタブ化される！
         ImGui::DockBuilderDockWindow(ICON_FA_FOLDER_OPEN " Sprite Assets", dock_bottom_left_id);
-    
+
 
         // ★下部・左側にアセットを配置
         ImGui::DockBuilderDockWindow("Project (Assets)", dock_bottom_left_id);
@@ -290,6 +293,18 @@ void Game::Update() {
                     }
                 }
 
+                // [C] プリセットが落ちてきた場合
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
+                    const char* droppedPresetName = (const char*)payload->Data;
+
+                    if (debugEditor_) {
+                        ImVec2 mPos = ImGui::GetIO().MousePos;
+                        debugEditor_->SetGameViewMousePos({ mPos.x - imageScreenPos.x, mPos.y - imageScreenPos.y });
+
+                        debugEditor_->InstantiatePresetAtCursor(droppedPresetName);
+                    }
+                }
+
                 ImGui::EndDragDropTarget();
             }
             // =======================================================
@@ -361,21 +376,26 @@ void Game::Update() {
     if (ImGui::BeginMainMenuBar()) {
         static bool prevIsPlaying = isPlaying_;
         if (isPlaying_) {
-            if (ImGui::Button ("■ 停止")) {
+            if (ImGui::Button("■ 停止")) {
                 isPlaying_ = false;
-                if (sceneManager_) { sceneManager_->SetIsPlaying (false); }
+                if (sceneManager_) { sceneManager_->SetIsPlaying(false); }
             }
-        } else {
-            if (ImGui::Button ("▶ 再生")) {
-                SaveAllEditors ();
-                sceneManager_->ChangeScene (currentSceneName_);
+        }
+        else {
+            if (ImGui::Button("▶ 再生")) {
+                SaveAllEditors();
+                sceneManager_->ChangeScene(currentSceneName_);
+                // Play開始時: シーン再生成で common_ が無効になる前にエフェクトをクリア
+                MeshEffectManager::GetInstance()->Clear();
                 isPlaying_ = true;
-                if (sceneManager_) { sceneManager_->SetIsPlaying (true); }
-                CameraEditor::GetInstance ()->SetMode (CameraEditor::Mode::Game);
+                if (sceneManager_) { sceneManager_->SetIsPlaying(true); }
+                CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
             }
         }
 
         if (prevIsPlaying != isPlaying_ && !isPlaying_) {
+            // Stop時: シーン再生成で common_ が無効になる前にエフェクトをクリア
+            MeshEffectManager::GetInstance()->Clear();
             sceneManager_->ChangeScene(currentSceneName_);
             CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
         }
@@ -386,7 +406,7 @@ void Game::Update() {
             ImGui::MenuItem("Hierarchy / Inspector 表示", NULL, &showDebugWindows_);
             ImGui::Separator();
 
-          
+
 
             ImGui::MenuItem("デバッグログ", NULL, &showDebugConsole_);
             ImGui::MenuItem("ステータス", NULL, &showTimeController_);
@@ -395,7 +415,7 @@ void Game::Update() {
         }
 
         if (ImGui::BeginMenu("シーン切り替え")) {
-            const char* sceneNames[] = { "TITLE", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
+            const char* sceneNames[] = { "TITLE", "SELECT", "GAMEPLAY", "GAMEOVER", "GAMECLEAR" };
             for (int i = 0; i < _countof(sceneNames); i++) {
                 if (ImGui::MenuItem(sceneNames[i])) sceneManager_->ChangeScene(sceneNames[i]);
             }
@@ -409,22 +429,6 @@ void Game::Update() {
         }
         ImGui::EndMainMenuBar();
     }
-
-    if (ImGui::BeginMainMenuBar()) {
-        // WinAppのウィンドウサイズを取得 
-     
-        std::string sizeText = "Screen: " + std::to_string(WinApp::kClientWidth) + " x " + std::to_string(WinApp::kClientHeight);
-
-        // 文字列の横幅を計算し、メニューバーの右端にスナップさせる
-        float textWidth = ImGui::CalcTextSize(sizeText.c_str()).x;
-        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth - 15.0f);
-
-        // 目立つように色付き（明るい緑など）で表示
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", sizeText.c_str());
-
-        ImGui::EndMainMenuBar();
-    }
-
 #endif
 
     // --- deltaTime計算 ---
@@ -443,6 +447,15 @@ void Game::Update() {
     }
     if (meshEffectEditor_) {
         meshEffectEditor_->Update(deltaTime);
+    }
+    if (trailEmitterEditor_) {
+        trailEmitterEditor_->Update(deltaTime);
+    }
+    // エディタ停止中は各エディタがUpdate()を担当するが、
+    // Play中はエディタがスキップするためGame側で明示的に呼ぶ
+    if (isPlaying_) {
+        MeshEffectManager::GetInstance()->Update(deltaTime * timeScale_);
+        GPUParticleManager::GetInstance()->Update(deltaTime * timeScale_);
     }
     // -------------------------------------------------------------------------
     // 4. エディタ描画の総仕上げ！
@@ -537,6 +550,12 @@ void Game::Draw() {
     if (sceneManager_) { sceneManager_->Draw(); }
     if (sceneManager_) {
         sceneManager_->DrawUI();
+    }
+    // VFXSequencerが生成したエフェクトを描画
+    {
+        ID3D12Resource* pLight = LightManager::GetInstance()->GetPointLightResource();
+        ID3D12Resource* sLight = LightManager::GetInstance()->GetSpotLightResource();
+        MeshEffectManager::GetInstance()->Draw(pLight, sLight);
     }
 
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
@@ -671,7 +690,7 @@ void Game::Draw() {
     // HDRからSDRへの変換と最終エフェクトの適用
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
 
-  
+
     // ★ GPUストップウォッチ終了！ (PostDrawの直前)
     dxCommon_->EndGpuProfile();
 
