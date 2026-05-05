@@ -2,6 +2,7 @@
 #include "TutorialDoll.h"
 #include "CollisionConfig.h"
 //#include "engine/graphics/particle/GPUParticleManager.h"
+#include "Player.h"
 #include <algorithm>
 #include <cmath>
 
@@ -29,9 +30,10 @@ void TutorialDoll::Initialize(Object3dCommon* common, const std::string& modelNa
 void TutorialDoll::Update(float deltaTime) {
     if (deltaTime <= 0.0f) return;
 
-    // 初回UpdateでJSONパース後の座標・スケールを確定
+    // 初回UpdateでJSONパース後の座標・回転・スケールを確定
     if (!isInitialized_) {
         basePosition_ = transform_.translate;
+        baseRotation_ = transform_.rotate;
         baseScale_ = transform_.scale;
         isInitialized_ = true;
     }
@@ -40,18 +42,32 @@ void TutorialDoll::Update(float deltaTime) {
     // A. 死亡・リスポーン管理
     // -------------------------------------------------------
     if (isDead_) {
-        respawnTimer_ -= deltaTime;
-        if (respawnTimer_ <= 0.0f) {
-            Respawn();
+        // リスポーンが有効な場合のみタイマーを進める
+        if (respawnTimer_ > 0.0f) {
+            respawnTimer_ -= deltaTime;
+            if (respawnTimer_ <= 0.0f) {
+                Respawn();
+            }
         }
 
-        // 消滅演出（スケールダウン）
+        // 死亡演出
         if (deathAnimTimer_ > 0.0f) {
             deathAnimTimer_ -= deltaTime;
             float t = std::max(0.0f, deathAnimTimer_ / 0.5f);
-            transform_.scale = baseScale_ * t;
+            
+            if (respawnTimer_ == -1.0f) {
+                // レバー役：消えずに傾く（前に約70度倒れるイメージ）
+                transform_.rotate.x = baseRotation_.x + (1.0f - t) * 1.2f;
+                transform_.isQuaternionMaster = false; // 回転の更新を強制
+            } else {
+                // 案山子役：今まで通りスケールダウンで消滅
+                transform_.scale = baseScale_ * t;
+            }
+
             if (deathAnimTimer_ <= 0.0f) {
-                SetIsVisible(false);
+                if (respawnTimer_ != -1.0f) {
+                    SetIsVisible(false);
+                }
                 SetCollisionAttribute(0); // 当たり判定を抹消
             }
         }
@@ -63,7 +79,21 @@ void TutorialDoll::Update(float deltaTime) {
     if (param_->hp <= 0.0f) {
         isDead_ = true;
         hasBeenDefeatedAtLeastOnce_ = true;
-        respawnTimer_ = 5.0f; // 5秒後に復活
+
+        // プレイヤーのロックオンを強制解除
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->RequestClearLockOn();
+            }
+        }
+
+        // maxCount が 0 の場合はリスポーンしない（レバー役など）
+        if (param_->maxCount > 0) {
+            respawnTimer_ = 5.0f; // 5秒後に復活
+        } else {
+            respawnTimer_ = -1.0f; // 復活しないフラグ
+        }
+        
         deathAnimTimer_ = 0.5f;
 
         // 死亡エフェクトの発生

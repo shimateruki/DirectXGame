@@ -299,7 +299,7 @@ void GamePlayScene::Initialize() {
 					obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
 				}
 			}
-			else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+			else if (name.find("Battle_Field_Collision_Box_") != std::string::npos) {
 				obj->SetCollisionAttribute(kGround);
 			}
 		}
@@ -326,40 +326,39 @@ void GamePlayScene::Initialize() {
 		auto& objects_ref = objectManager_->GetObjects();
 		for (auto& obj : objects_ref) {
 			std::string name = obj->GetName();
-		if (name.find("Tutorial_") != std::string::npos && 
-            name.find("Ceiling") == std::string::npos &&
-            name.find("Doll") == std::string::npos) { 
-            
-			obj->SetIsVisible(true);
-			obj->SetCollisionAttribute(kGround); 
-            
-			// ドアは最初は閉まっている状態にする
-			if (name == "Tutorial_Door_Left") {
-				obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
-			}
-			else if (name == "Tutorial_Door_Right") {
-				obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
-			}
-			obj->UpdateWorldMatrix();
-		}
-		else if (name.find("Bridge_") != std::string::npos) {
-			if (name.find("Bridge_Collision") == std::string::npos) {
+			if (name.find("Tutorial_") != std::string::npos &&
+				name.find("Ceiling") == std::string::npos &&
+				name.find("Doll") == std::string::npos) {
+
 				obj->SetIsVisible(true);
+				obj->SetCollisionAttribute(kGround);
+
+				// ドアは最初は閉まっている状態にする
+				if (name == "Tutorial_Door_Left") {
+					obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
+				}
+				else if (name == "Tutorial_Door_Right") {
+					obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
+				}
+				obj->UpdateWorldMatrix();
 			}
-			else if (name.find("Bridge_") != std::string::npos) { // ブリッジ関連は全て復活させる
+			if (name.find("Bridge_") != std::string::npos) {
 				if (name.find("Bridge_Collision") == std::string::npos) {
 					obj->SetIsVisible(true);
 				}
+				else if (name.find("Bridge_") != std::string::npos) { // ブリッジ関連は全て復活させる
+					if (name.find("Bridge_Collision") == std::string::npos) {
+						obj->SetIsVisible(true);
+					}
+					obj->SetCollisionAttribute(kGround);
+				}
+			}
+			if (name.find("Battle_Field_Collision_") != std::string::npos) {
 				obj->SetCollisionAttribute(kGround);
+				if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
+					obj->SetCollisionAttribute(0);
+				}
 			}
-			else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
-				obj->SetCollisionAttribute(0);
-			}
-			obj->SetCollisionAttribute(kGround);
-		}
-		else if (name.find("Battle_Field_Collision_") != std::string::npos) {
-			obj->SetCollisionAttribute(0);
-		}
 		}
 		this->hasBridgeDropped_ = false;
 		this->hasFinishedTutorial_ = false;
@@ -529,7 +528,7 @@ void GamePlayScene::Update(float deltaTime) {
 	// =======================================================
 	if (!hasFinishedTutorial_) {
 		for (auto& obj : objectManager_->GetObjects()) {
-			if (obj->GetName() == "Tutorial_Doll") {
+			if (obj->GetName() == "Tutorial_Doll_Lever") {
 				TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
 				if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
 					hasFinishedTutorial_ = true;
