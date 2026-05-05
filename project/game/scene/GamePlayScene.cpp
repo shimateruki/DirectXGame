@@ -860,6 +860,8 @@ void GamePlayScene::Update(float deltaTime) {
 		// ムービー状態、ボス演出、チュートリアル演出、またはカメラのオーバーライド中ならシネマティックモードとする
 		bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying || (tutorialMovieTimer_ > 0.0f) || camera->IsOverridden();
 
+		// ムービー中（黒帯表示中）はロックオンを禁止＆解除
+		lockOnSystem_->SetEnabled(!isCinematicMode);
 
 		// --- ロックオン & カメラ制御 ---
 		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);

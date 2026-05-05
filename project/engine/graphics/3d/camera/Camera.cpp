@@ -439,7 +439,7 @@ void Camera::SyncRotationToCurrentView() {
     rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
 
     // カメラの距離も現在の距離に同期する（一瞬で近づくのを防ぐ）
-    aimDistance_ = dist;
+    // aimDistance_ = dist;
 }
 void Camera::StartOverride(const CameraOverrideParams& params) {
     isOverridden_ = true;

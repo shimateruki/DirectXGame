@@ -33,6 +33,19 @@ void LockOnSystem::Initialize(InputManager* inputManager) {
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
 
+    // システムが無効な場合はロックオンを解除して終了
+    if (!isEnabled_) {
+        if (isLockingOn_) {
+            isLockingOn_ = false;
+            lockOnTarget_ = nullptr;
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            camera->SetLockOnTarget(nullptr);
+            camera->SyncRotationToCurrentView();
+            CameraEditor::GetInstance()->SyncSettingsFromCamera();
+            lostSightTimer_ = 0.0f;
+        }
+        return;
+    }
 
     Object3d* forceTarget = player->GetForceLockOnTarget();
     if (forceTarget) {
@@ -213,10 +226,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
 
     for (const auto& obj : objects) {
         if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
-            // 名前に "BossCore" が含まれていない場合のみ除外する
-            if (obj->GetName().find("BossCore") == std::string::npos) {
-                continue;
-            }
+            continue;
         }
         
 
