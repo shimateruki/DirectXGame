@@ -77,8 +77,9 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     slime->SetTranslate(spawnPos);
 
     // 4. マネージャーとシーンへの登録
-    CollisionManager::GetInstance()->AddObject(slime.get());
-    currentScene->GetObjects().push_back(std::move(slime));
+    // ⭕ 正解: BaseScene の AddObject を使う
+    // これにより内部で ObjectManager::AddObject が呼ばれ、pendingObjects_ に入り、次のフレームの冒頭で安全に追加されます
+    currentScene->AddObject(std::move(slime));
 
     DebugConsole::GetInstance()->AddLog("【召喚】 スライムが現れた！");
 }
