@@ -8,6 +8,12 @@ public:
     void Load();
     void Save();
 
+    // 設定関連
+    float GetMasterVolume() const { return masterVolume_; }
+    void SetMasterVolume(float volume) { masterVolume_ = volume; }
+    int GetCameraSensitivity() const { return cameraSensitivity_; }
+    void SetCameraSensitivity(int sensitivity) { cameraSensitivity_ = sensitivity; }
+
     // クリアタイムを記録し、ベストタイムなら更新する
     void RecordClearTime(float time);
 
@@ -21,5 +27,10 @@ private:
     // 初期値はすごく遅いタイム（9999秒など）にしておく
     float bestTime_ = 9999.0f;
     float latestClearTime_ = 0.0f;
+
+    // 設定
+    float masterVolume_ = 1.0f;
+    int cameraSensitivity_ = 0;
+
     std::string saveFilePath_ = "Resources/json/save/savedata.json";
 };

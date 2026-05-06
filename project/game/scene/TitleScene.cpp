@@ -1,366 +1,428 @@
 #define NOMINMAX
 #include "TitleScene.h"
-#include "DirectXCommon.h"
-#include "InputManager.h"
 #include "AudioPlayer.h"
-#include "Object3dCommon.h"
-#include "SpriteCommon.h"
-#include "Object3d.h"
-#include "Sprite.h"
-#include "ModelManager.h"
-#include "TextureManager.h"
+#include "BulletManager.h"
+#include "CameraEditor.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
-#include "ParticleSystem.h"
-#include "imgui.h"
-#include "LightManager.h"
-#include "SceneManager.h"
 #include "DebugConsole.h"
-#include "BulletManager.h"
-#include "LevelLoader.h"
-#include "GameRule.h"
-#include "CameraEditor.h"
-#include "LightEditor.h"
-#include "ParticleManager.h"
+#include "DirectXCommon.h"
 #include "GPUParticleManager.h"
 #include "GameProgress.h"
-#include <cmath>    // std::sin
+#include "GameRule.h"
+#include "InputManager.h"
+#include "LevelLoader.h"
+#include "LightEditor.h"
+#include "LightManager.h"
+#include "ModelManager.h"
+#include "Object3d.h"
+#include "Object3dCommon.h"
+#include "ParticleManager.h"
+#include "ParticleSystem.h"
+#include "SceneManager.h"
+#include "Sprite.h"
+#include "SpriteCommon.h"
+#include "TextureManager.h"
+#include "imgui.h"
 #include <algorithm> // std::transform
 #include <cctype>    // ::tolower
+#include <cmath>     // std::sin
+
 
 #include "Easing.h" // 追加: イージング関数利用
 #include <CinematicFade.h>
 #include <PostEffect.h>
 
 void TitleScene::Initialize() {
-    // --- 1. システム基盤の取得 ---
-    dxCommon_ = DirectXCommon::GetInstance();
-    inputManager_ = InputManager::GetInstance();
-    audioPlayer_ = AudioPlayer::GetInstance();
+  // --- 1. システム基盤の取得 ---
+  dxCommon_ = DirectXCommon::GetInstance();
+  inputManager_ = InputManager::GetInstance();
+  audioPlayer_ = AudioPlayer::GetInstance();
 
-    // --- 2. モデルのプリロード ---
-    ModelManager::GetInstance()->LoadModel("player");
-    ModelManager::GetInstance()->LoadModel("teapot");
-    LOG("TitleScene Initialized!");
+  // --- 2. モデルのプリロード ---
+  ModelManager::GetInstance()->LoadModel("player");
+  ModelManager::GetInstance()->LoadModel("teapot");
+  LOG("TitleScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+  bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
-    // --- 3. マネージャ・共通クラスの初期化 ---
-    CameraManager::GetInstance()->Initialize();
-    CameraManager::GetInstance()->SetInputManager(inputManager_);
+  // --- 3. マネージャ・共通クラスの初期化 ---
+  CameraManager::GetInstance()->Initialize();
+  CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-    object3dCommon_ = std::make_unique<Object3dCommon>();
-    object3dCommon_->Initialize(dxCommon_);
+  object3dCommon_ = std::make_unique<Object3dCommon>();
+  object3dCommon_->Initialize(dxCommon_);
 
-    spriteCommon_ = std::make_unique<SpriteCommon>();
-    spriteCommon_->Initialize(dxCommon_);
+  spriteCommon_ = std::make_unique<SpriteCommon>();
+  spriteCommon_->Initialize(dxCommon_);
 
-    particleCommon_ = std::make_unique<ParticleCommon>();
-    particleCommon_->Initialize(dxCommon_);
+  particleCommon_ = std::make_unique<ParticleCommon>();
+  particleCommon_->Initialize(dxCommon_);
 
-    particleSystem_ = std::make_unique<ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
+  particleSystem_ = std::make_unique<ParticleSystem>();
+  particleSystem_->Initialize(particleCommon_.get(),
+                              "Resources/sprite/white.png");
 
-    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
-    ParticleManager::GetInstance()->Initialize(particleSystem_.get());
+  // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+  ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
-    LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+  LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-    // --- 4. サブシステムの生成 ---
-    objectManager_ = std::make_unique<ObjectManager>();
-    levelLoader_ = std::make_unique<LevelLoader>();
-    gameRule_ = std::make_unique<GameRule>();
-    gameRule_->Initialize(this);
+  GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+  GPUParticleManager::GetInstance()->LoadAllPresets(
+      "Resources/json/gpu_particles/");
+  // --- 4. サブシステムの生成 ---
+  objectManager_ = std::make_unique<ObjectManager>();
+  levelLoader_ = std::make_unique<LevelLoader>();
+  gameRule_ = std::make_unique<GameRule>();
+  gameRule_->Initialize(this);
 
-    BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
+  BulletManager::GetInstance()->Initialize(object3dCommon_.get(),
+                                           CollisionManager::GetInstance());
 
-    //  GPUパーティクルの初期化
-    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+  //  GPUパーティクルの初期化
+  gpuParticleTexHandle_ =
+      TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
-    // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
-    levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/titleScene.json");
-    levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
+  // --- 6. レイアウトの読み込み (LevelLoaderへ委譲) ---
+  levelLoader_->LoadObjectLayout(this,
+                                 "Resources/json/3Dobject/titleScene.json");
+  levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
+  levelLoader_->LoadSpriteLayout(
+      this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
 
-    LightManager::GetInstance()->LoadState("Resources/json/light/titleScene.json");
-    CameraEditor::GetInstance()->Initialize();
-    CameraEditor::GetInstance()->LoadFile("title_camera.json");
+  LightManager::GetInstance()->LoadState(
+      "Resources/json/light/titleScene.json");
+  CameraEditor::GetInstance()->Initialize();
+  CameraEditor::GetInstance()->LoadFile("title_camera.json");
 
-    // --- メニュー項目スプライトのインデックスと初期Y座標を特定 ---
-    menuSpriteIndices_.clear();
-    spriteBaseYs_.clear();
-    for (int i = 0; i < (int)sprites_.size(); ++i) {
-        const std::string& name = sprites_[i]->GetName();
-        if (name == "gameStartText.png" || name == "optionText.png" || name == "exit.png") {
-            menuSpriteIndices_.push_back(i);
+  // --- メニュー項目スプライトのインデックスと初期Y座標を特定 ---
+  menuSpriteIndices_.clear();
+  spriteBaseYs_.clear();
+  for (int i = 0; i < (int)sprites_.size(); ++i) {
+    const std::string &name = sprites_[i]->GetName();
+    if (name == "gameStartText.png" || name == "optionText.png" ||
+        name == "exit.png") {
+      menuSpriteIndices_.push_back(i);
+    }
+    spriteBaseYs_.push_back(sprites_[i]->GetPosition().y);
+  }
+  spritesAppear_ = false;
+  spritesAppearTimer_ = 0.0f;
+
+  // --- オブジェクト一覧をログ出力して調査（デバッグ用） ---
+  LOG("TitleScene: listing loaded objects:");
+  if (objectManager_) {
+    for (auto &obj : objectManager_->GetObjects()) {
+      if (!obj)
+        continue;
+      LOG(" - name:\"%s\" class:\"%s\" enemyType:\"%s\"",
+          obj->GetName().c_str(), obj->GetClassName().c_str(),
+          obj->GetEnemyType().c_str());
+    }
+  }
+
+  // --- enemy_core をシーン内から探して初期化（複数対応・名前バリエーション）
+  // ---
+  enemyCores_.clear();
+  enemyCoreBaseYs_.clear();
+  if (objectManager_) {
+    for (auto &objPtr : objectManager_->GetObjects()) {
+      if (!objPtr)
+        continue;
+      const std::string &nm = objPtr->GetName();
+      std::string lower = nm;
+      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+      bool matched = false;
+      // 直接一致候補
+      if (lower.find("enemy__core") != std::string::npos ||
+          lower.find("enemy_core") != std::string::npos) {
+        matched = true;
+      }
+      // 汎用: 名前に enemy と core が含まれる場合
+      if (!matched && lower.find("enemy") != std::string::npos &&
+          lower.find("core") != std::string::npos) {
+        matched = true;
+      }
+      // 敵タイプ（Factoryで生成された場合など）
+      if (!matched) {
+        std::string et = objPtr->GetEnemyType();
+        std::transform(et.begin(), et.end(), et.begin(), ::tolower);
+        if (et.find("bosscore") != std::string::npos ||
+            et.find("boss") != std::string::npos) {
+          matched = true;
         }
-        spriteBaseYs_.push_back(sprites_[i]->GetPosition().y);
+      }
+
+      if (matched) {
+        enemyCores_.push_back(objPtr.get());
+        enemyCoreBaseYs_.push_back(objPtr->GetWorldPosition().y);
+      }
     }
-    spritesAppear_ = false;
-    spritesAppearTimer_ = 0.0f;
- 
-    // --- オブジェクト一覧をログ出力して調査（デバッグ用） ---
-    LOG("TitleScene: listing loaded objects:");
-    if (objectManager_) {
-        for (auto& obj : objectManager_->GetObjects()) {
-            if (!obj) continue;
-            LOG(" - name:\"%s\" class:\"%s\" enemyType:\"%s\"", obj->GetName().c_str(), obj->GetClassName().c_str(), obj->GetEnemyType().c_str());
-        }
-    }
+  }
+  LOG("Found %d enemy core(s) to animate.", (int)enemyCores_.size());
 
-    // --- enemy_core をシーン内から探して初期化（複数対応・名前バリエーション） ---
-    enemyCores_.clear();
-    enemyCoreBaseYs_.clear();
-    if (objectManager_) {
-        for (auto& objPtr : objectManager_->GetObjects()) {
-            if (!objPtr) continue;
-            const std::string& nm = objPtr->GetName();
-            std::string lower = nm;
-            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+  // OptionUI の初期化
+  optionUI_.Initialize(this, spriteCommon_.get());
 
-            bool matched = false;
-            // 直接一致候補
-            if (lower.find("enemy__core") != std::string::npos || lower.find("enemy_core") != std::string::npos) {
-                matched = true;
-            }
-            // 汎用: 名前に enemy と core が含まれる場合
-            if (!matched && lower.find("enemy") != std::string::npos && lower.find("core") != std::string::npos) {
-                matched = true;
-            }
-            // 敵タイプ（Factoryで生成された場合など）
-            if (!matched) {
-                std::string et = objPtr->GetEnemyType();
-                std::transform(et.begin(), et.end(), et.begin(), ::tolower);
-                if (et.find("bosscore") != std::string::npos || et.find("boss") != std::string::npos) {
-                    matched = true;
-                }
-            }
+  // =======================================================
+  // ★ リスタート演出（電脳リブート）と完全初期化
+  // =======================================================
+  SceneManager *scm = SceneManager::GetInstance();
 
-            if (matched) {
-                enemyCores_.push_back(objPtr.get());
-                enemyCoreBaseYs_.push_back(objPtr->GetWorldPosition().y);
-            }
-        }
-    }
-    LOG("Found %d enemy core(s) to animate.", (int)enemyCores_.size());
-    // =======================================================
-     // ★ リスタート演出（電脳リブート）と完全初期化
-     // =======================================================
-    SceneManager* scm = SceneManager::GetInstance();
+  PostEffect::GetInstance()->ResetToBaseParams();
 
-
-    PostEffect::GetInstance()->ResetToBaseParams();
-
-    if (scm->ShouldSkipFade()) {
-        CinematicFade::GetInstance()->StartOpen(0.3f);
-        scm->ResetSkipFade();
-    }
-    else {
-        CinematicFade::GetInstance()->StartOpen(0.5f);
-    }
-    dxCommon_->FlushCommandQueue(false);
+  if (scm->ShouldSkipFade()) {
+    CinematicFade::GetInstance()->StartOpen(0.3f);
+    scm->ResetSkipFade();
+  } else {
+    CinematicFade::GetInstance()->StartOpen(0.5f);
+  }
+  dxCommon_->FlushCommandQueue(false);
 }
 
 void TitleScene::Finalize() {
-    CollisionManager::GetInstance()->ClearObjects();
-    BulletManager::GetInstance()->Finalize();
+  CollisionManager::GetInstance()->ClearObjects();
+  BulletManager::GetInstance()->Finalize();
 
-    objectManager_.reset();
-    sprites_.clear();
-    particleSystem_.reset();
-    particleCommon_.reset();
-    spriteCommon_.reset();
-    object3dCommon_.reset();
+  objectManager_.reset();
+  sprites_.clear();
+  particleSystem_.reset();
+  particleCommon_.reset();
+  spriteCommon_.reset();
+  object3dCommon_.reset();
 }
 
 void TitleScene::Update(float deltaTime) {
-    InputManager* input = InputManager::GetInstance();
+  InputManager *input = InputManager::GetInstance();
 
-    // --- フェード終了後にスプライト演出を開始 ---
-    if (!spritesAppear_) {
-        spritesAppear_ = true;
-        spritesAppearTimer_ = 0.0f;
-    }
-    if (!spritesAppear_) {
-        // フェード中はスプライトを非表示にする
-        for (auto& sprite : sprites_) sprite->SetVisible(false);
+  // ---------------------------------------------------------
+  // 0. ESCキーでの強制終了（オプション画面以外）
+  // ---------------------------------------------------------
+  if (currentState_ != TitleState::OptionMenu &&
+      input->IsKeyTriggered(DIK_ESCAPE)) {
+    PostQuitMessage(0);
+    return;
+  }
+
+  // --- フェード終了後にスプライト演出を開始 ---
+  if (!spritesAppear_) {
+    spritesAppear_ = true;
+    spritesAppearTimer_ = 0.0f;
+  }
+
+  // スプライトの表示切り替え（オプション中は他のUIを隠す）
+  for (auto &sprite : sprites_) {
+    bool isOpt = optionUI_.IsOptionSprite(sprite.get());
+    if (currentState_ == TitleState::OptionMenu) {
+      sprite->SetVisible(isOpt);
     } else {
-        for (auto& sprite : sprites_) sprite->SetVisible(true);
+      if (isOpt) {
+        sprite->SetVisible(false);
+      } else {
+        sprite->SetVisible(spritesAppear_);
+      }
     }
+  }
 
-    // --- スプライト浮上演出 ---
-    float appearT = std::min(spritesAppearTimer_ / spritesAppearDuration_, 1.0f);
-    float easeT = Easing::OutCubic(appearT);
-    if (spritesAppear_) {
-        spritesAppearTimer_ += deltaTime;
-        for (size_t i = 0; i < sprites_.size(); ++i) {
-            auto& sprite = sprites_[i];
-            float baseY = (i < spriteBaseYs_.size()) ? spriteBaseYs_[i] : sprite->GetPosition().y;
-            float offsetY = (1.0f - easeT) * 60.0f; // 60px下から浮かぶ
-            Vector2 newPos = sprite->GetPosition();
-            newPos.y = baseY + offsetY;
-            sprite->SetPosition(newPos);
-            Vector4 color = sprite->GetColor();
-            color.w = easeT; // アルファ
-            sprite->SetColor(color);
-        }
+  // --- スプライト浮上演出 ---
+  float appearT = std::min(spritesAppearTimer_ / spritesAppearDuration_, 1.0f);
+  float easeT = Easing::OutCubic(appearT);
+  if (spritesAppear_) {
+    spritesAppearTimer_ += deltaTime;
+    for (size_t i = 0; i < sprites_.size(); ++i) {
+      auto &sprite = sprites_[i];
+      float baseY = (i < spriteBaseYs_.size()) ? spriteBaseYs_[i]
+                                               : sprite->GetPosition().y;
+      float offsetY = (1.0f - easeT) * 60.0f; // 60px下から浮かぶ
+      Vector2 newPos = sprite->GetPosition();
+      newPos.y = baseY + offsetY;
+      sprite->SetPosition(newPos);
+      Vector4 color = sprite->GetColor();
+      color.w = easeT; // アルファ
+      sprite->SetColor(color);
     }
+  }
 
+  // --- 状態ごとの更新 ---
+  if (currentState_ == TitleState::MainMenu) {
     // --- メニュー選択（W/Sキー）---
     if (spritesAppear_ && appearT >= 1.0f) {
-        if (input->IsKeyTriggered(DIK_W)) {
-            currentMenuIndex_--;
-            if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)menuSpriteIndices_.size() - 1;
+      if (input->IsKeyTriggered(DIK_W)) {
+        currentMenuIndex_--;
+        if (currentMenuIndex_ < 0)
+          currentMenuIndex_ = (int)menuSpriteIndices_.size() - 1;
+      }
+      if (input->IsKeyTriggered(DIK_S)) {
+        currentMenuIndex_++;
+        if (currentMenuIndex_ >= (int)menuSpriteIndices_.size())
+          currentMenuIndex_ = 0;
+      }
+      // --- メニュー決定（Enter/Spaceキー）---
+      if (input->IsKeyTriggered(DIK_RETURN) ||
+          input->IsKeyTriggered(DIK_SPACE)) {
+        // メニューインデックス順: 0=ゲームスタート, 1=設定, 2=終了
+        switch (currentMenuIndex_) {
+        case 0: // ゲームスタート
+          GameProgress::GetInstance()->Reset();
+          SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+          break;
+        case 1: // 設定
+          currentState_ = TitleState::OptionMenu;
+          break;
+        case 2: // 終了
+          PostQuitMessage(0);
+          break;
         }
-        if (input->IsKeyTriggered(DIK_S)) {
-            currentMenuIndex_++;
-            if (currentMenuIndex_ >= (int)menuSpriteIndices_.size()) currentMenuIndex_ = 0;
-        }
-        // --- メニュー決定（Enter/Spaceキー）---
-        if (input->IsKeyTriggered(DIK_RETURN) || input->IsKeyTriggered(DIK_SPACE)) {
-            // メニューインデックス順: 0=ゲームスタート, 1=設定, 2=終了
-            switch (currentMenuIndex_) {
-            case 0: // ゲームスタート
-                GameProgress::GetInstance()->Reset();
-                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-                break;
-            case 1: // 設定（未実装）
-                // TODO: 設定画面に遷移（後で実装）
-                break;
-            case 2: // 終了
-                PostQuitMessage(0);
-                break;
-            }
-        }
+      }
     }
+  } else if (currentState_ == TitleState::OptionMenu) {
+    if (optionUI_.Update(deltaTime)) {
+      currentState_ = TitleState::MainMenu;
+    }
+  }
 
-    // --- メニュー色分け（毎フレーム更新）---
-    for (size_t i = 0; i < sprites_.size(); ++i) {
-        Sprite* sp = sprites_[i].get();
-        auto it = std::find(menuSpriteIndices_.begin(), menuSpriteIndices_.end(), (int)i);
-        if (it != menuSpriteIndices_.end()) {
-            int menuIdx = (int)std::distance(menuSpriteIndices_.begin(), it);
-            if (menuIdx == currentMenuIndex_) {
-                sp->SetColor({1.0f, 1.0f, 1.0f, sp->GetColor().w}); // 白
-            } else {
-                sp->SetColor({0.5f, 0.5f, 0.5f, sp->GetColor().w}); // 灰色
-            }
-        }
+  // --- メニュー色分け（毎フレーム更新）---
+  for (size_t i = 0; i < sprites_.size(); ++i) {
+    Sprite *sp = sprites_[i].get();
+    auto it =
+        std::find(menuSpriteIndices_.begin(), menuSpriteIndices_.end(), (int)i);
+    if (it != menuSpriteIndices_.end()) {
+      int menuIdx = (int)std::distance(menuSpriteIndices_.begin(), it);
+      if (menuIdx == currentMenuIndex_) {
+        sp->SetColor({1.0f, 1.0f, 1.0f, sp->GetColor().w}); // 白
+      } else {
+        sp->SetColor({0.5f, 0.5f, 0.5f, sp->GetColor().w}); // 灰色
+      }
     }
+  }
 
-    // --- 既存の更新処理 ---
-    LightEditor::GetInstance()->Update();
-    Object3d* cameraTarget = player_;
-    if (!cameraTarget && objectManager_ && !objectManager_->GetObjects().empty()) {
-        cameraTarget = objectManager_->GetObjects().front().get();
-    }
-    CameraEditor::GetInstance()->Update(cameraTarget, false);
-    CameraManager::GetInstance()->Update();
+  // --- 既存の更新処理 ---
+  LightEditor::GetInstance()->Update();
+  Object3d *cameraTarget = player_;
+  if (!cameraTarget && objectManager_ &&
+      !objectManager_->GetObjects().empty()) {
+    cameraTarget = objectManager_->GetObjects().front().get();
+  }
+  CameraEditor::GetInstance()->Update(cameraTarget, false);
+  CameraManager::GetInstance()->Update();
 
-    // --- enemy_core を上下移動（複数対応） ---
-    if (!enemyCores_.empty()) {
-        enemyCoreTimer_ += deltaTime * enemyCoreSpeed_;
-        for (size_t i = 0; i < enemyCores_.size(); ++i) {
-            Object3d* core = enemyCores_[i];
-            if (!core) continue;
-            float baseY = (i < enemyCoreBaseYs_.size()) ? enemyCoreBaseYs_[i] : core->GetWorldPosition().y;
-            float phase = enemyCoreTimer_ + static_cast<float>(i) * 0.7f;
-            float newY = baseY + std::sin(phase) * enemyCoreAmplitude_;
-            Vector3 pos = core->GetTranslate();
-            pos.y = newY;
-            core->SetTranslate(pos);
-            core->UpdateWorldMatrix();
-        }
+  // --- enemy_core を上下移動（複数対応） ---
+  if (!enemyCores_.empty()) {
+    enemyCoreTimer_ += deltaTime * enemyCoreSpeed_;
+    for (size_t i = 0; i < enemyCores_.size(); ++i) {
+      Object3d *core = enemyCores_[i];
+      if (!core)
+        continue;
+      float baseY = (i < enemyCoreBaseYs_.size()) ? enemyCoreBaseYs_[i]
+                                                  : core->GetWorldPosition().y;
+      float phase = enemyCoreTimer_ + static_cast<float>(i) * 0.7f;
+      float newY = baseY + std::sin(phase) * enemyCoreAmplitude_;
+      Vector3 pos = core->GetTranslate();
+      pos.y = newY;
+      core->SetTranslate(pos);
+      core->UpdateWorldMatrix();
     }
+  }
 
-    if (objectManager_) objectManager_->Update(deltaTime);
-    if (particleSystem_) particleSystem_->Update(deltaTime);
-    for (auto& sprite : sprites_) {
-        sprite->Update();
-    }
-    BulletManager::GetInstance()->Update(deltaTime);
-    CollisionManager::GetInstance()->Update();
+  if (objectManager_)
+    objectManager_->Update(deltaTime);
+  if (particleSystem_)
+    particleSystem_->Update(deltaTime);
+  for (auto &sprite : sprites_) {
+    sprite->Update();
+  }
+  BulletManager::GetInstance()->Update(deltaTime);
+  CollisionManager::GetInstance()->Update();
 }
 
-
-
 void TitleScene::DrawUI() {
-    spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
-    for (size_t i = 0; i < sprites_.size(); ++i) {
-        sprites_[i]->Draw();
-    }
+  spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+  for (size_t i = 0; i < sprites_.size(); ++i) {
+    // 表示設定がONのものだけ描画（BaseSceneやSpriteクラスの仕様に合わせる）
+    sprites_[i]->Draw();
+  }
+
+  // オプションメニュー時は追加のアイコン（動的生成分）を描画
+  if (currentState_ == TitleState::OptionMenu) {
+    optionUI_.DrawKeyIcons();
+  }
 }
 
 void TitleScene::Draw() {
-    // --- 一人称視点判定 ---
-    bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+  // --- 一人称視点判定 ---
+  bool isFirstPerson = false;
+  Camera *camera = CameraManager::GetInstance()->GetMainCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
-        isFirstPerson = true;
-    }
+  if (camera->GetFollowTarget() &&
+      camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+    isFirstPerson = true;
+  }
 #endif
 
-    ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
-    object3dCommon_->SetGraphicsCommand();
+  ID3D12Resource *pointLightRes =
+      LightManager::GetInstance()->GetPointLightResource();
+  ID3D12Resource *spotLightRes =
+      LightManager::GetInstance()->GetSpotLightResource();
+  object3dCommon_->SetGraphicsCommand();
 
-    auto& objects = objectManager_->GetObjects();
+  auto &objects = objectManager_->GetObjects();
 
-    // --- 1. 不透明描画 ---
-    for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // ★修正: フォグ(7)も不透明パスから除外
-        obj->Draw(pointLightRes, spotLightRes);
+  // --- 1. 不透明描画 ---
+  for (auto &obj : objects) {
+    if (isFirstPerson && obj.get() == player_)
+      continue;
+    if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7)
+      continue; // ★修正: フォグ(7)も不透明パスから除外
+    obj->Draw(pointLightRes, spotLightRes);
+  }
+
+  // --- 2. 中間描画 (弾・デバッグ) ---
+  BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+  LightEditor::GetInstance()->Draw3D();
+
+  // --- 3. 透明描画 ---
+  for (auto &obj : objects) {
+    if (isFirstPerson && obj.get() == player_)
+      continue;
+    if (obj->GetMaterialType() == 1) { // 透明のみ描画
+      obj->Draw(pointLightRes, spotLightRes);
     }
+  }
+  particleSystem_->Draw();
 
-    // --- 2. 中間描画 (弾・デバッグ) ---
-    BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
-    LightEditor::GetInstance()->Draw3D();
+  // =======================================================
+  // 4. ローカルフォグ (霧の箱) の描画！
+  // =======================================================
+  bool hasFog = false;
+  for (auto &obj : objects) {
+    if (obj->GetMaterialType() == 7)
+      hasFog = true;
+  }
 
-    // --- 3. 透明描画 ---
-    for (auto& obj : objects) {
-        if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1) { // 透明のみ描画
-            obj->Draw(pointLightRes, spotLightRes);
-        }
-    }
-    particleSystem_->Draw();
-
-    // =======================================================
-    // 4. ローカルフォグ (霧の箱) の描画！
-    // =======================================================
-    bool hasFog = false;
-    for (auto& obj : objects) {
-        if (obj->GetMaterialType() == 7) hasFog = true;
-    }
-
-    if (hasFog) {
-        dxCommon_->PreDrawLocalFog();
-        for (auto& obj : objects) {
-            if (obj->GetMaterialType() == 7) {
-                obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-            }
-        }
-        dxCommon_->PostDrawLocalFog();
-    }
-
-    // =======================================================
-    // 5. GPUパーティクルの描画！
-    // =======================================================
-    dxCommon_->UpdateGrabTexture();
+  if (hasFog) {
     dxCommon_->PreDrawLocalFog();
-    if (camera) {
-        GPUParticleManager::GetInstance()->Draw(
-            dxCommon_->GetCommandList(),
-            camera->GetViewMatrix(),
-            camera->GetProjectionMatrix(),
-            gpuParticleTexHandle_,
-            dxCommon_->GetDepthSrvHandle()
-        );
+    for (auto &obj : objects) {
+      if (obj->GetMaterialType() == 7) {
+        obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+      }
     }
     dxCommon_->PostDrawLocalFog();
+  }
+
+  // =======================================================
+  // 5. GPUパーティクルの描画！
+  // =======================================================
+  dxCommon_->UpdateGrabTexture();
+  dxCommon_->PreDrawLocalFog();
+  if (camera) {
+    GPUParticleManager::GetInstance()->Draw(
+        dxCommon_->GetCommandList(), camera->GetViewMatrix(),
+        camera->GetProjectionMatrix(), gpuParticleTexHandle_,
+        dxCommon_->GetDepthSrvHandle());
+  }
+  dxCommon_->PostDrawLocalFog();
 }
 
 // ====================================================================
@@ -369,7 +431,7 @@ void TitleScene::Draw() {
 
 // シャドウマップ描画の実装
 void TitleScene::DrawShadow() {
-    if (objectManager_) {
-        objectManager_->DrawShadow();
-    }
+  if (objectManager_) {
+    objectManager_->DrawShadow();
+  }
 }

@@ -17,6 +17,7 @@
 #include "TimeAttackUI.h"
 #include "ObjectManager.h"
 #include "DebugEditor.h" 
+#include "OptionUI.h"
 #include <GhostRecorder.h>
 
 #include <memory>
@@ -177,6 +178,9 @@ private:
         Max
     };
     int currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
+
+    OptionUI optionUI_;
+    bool isOptionMenu_ = false; // オプションメニューを開いているか
 
     Sprite* poseBackSprite_ = nullptr;
     Sprite* poseTextSprite_ = nullptr;

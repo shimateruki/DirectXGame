@@ -25,8 +25,14 @@ private:
     void RefreshKeyIcons();
     void UpdateSensitivityBar();        // バーの座標を更新する関数
 private:
-    enum class MenuState { Top, KeyConfig, WaitInput };
+    enum class MenuState { Top, KeyConfig, WaitInput, SoundConfig };
     MenuState currentState_ = MenuState::Top;
+
+    enum class SoundOptionIndex { Volume, Sensitivity, Max };
+    int currentSoundOptionIndex_ = (int)SoundOptionIndex::Volume;
+    bool isFocusOnSoundSetting_ = false;
+
+    void UpdateVolumeBar();        // ボリュームバーの座標を更新する関数
 
     enum class OptionIndex { Sound, KeyConfig, Max };
     int currentOptionIndex_ = (int)OptionIndex::Sound;
@@ -58,6 +64,8 @@ private:
     std::vector<std::unique_ptr<Sprite>> keyIconSprites_; // 実際に描画する綺麗な画像
     SpriteCommon* spriteCommon_ = nullptr;
     Sprite* sensitivityBarSprite_ = nullptr;
+    Sprite* volumeBarSprite_ = nullptr;         // 音量バーのスプライト（エディタ配置）
+    Sprite* soundConfigCursorSprite_ = nullptr; // サウンド設定画面での項目選択カーソル（エディタ配置）
     bool isFocusOnSensitivity_ = false; // 現在感度バーを操作中かどうか
  
 };
