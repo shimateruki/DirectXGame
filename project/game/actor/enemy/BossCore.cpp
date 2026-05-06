@@ -23,6 +23,7 @@
 #include "BossAttack/BossAttack6_Laser.h"
 #include "BossAttack/BossAttack7_Absorb.h"
 #include "BossAttack/BossAttack8_Final.h"
+#include "BossAttack/BossAttack9_Spawn.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -570,15 +571,13 @@ void BossCore::ChangeState(State nextState) {
 
     uint32_t coreAttribute;
     uint32_t blockAttribute;
-    // ==========================================
-    // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
-    // ==========================================
-    if (isWaitingForDeath_||isWaitingForFinisher_) {
-        coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
-        blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
+
+    // トドメ待ち状態の判定
+    if (isWaitingForDeath_ || isWaitingForFinisher_) {
+        coreAttribute = kEnemy;
+        blockAttribute = 0;
     }
     else {
-        // 今までの通常の処理
         if (state_ == State::Attack) {
             coreAttribute = kEnemyAttack | kGround;
         }
@@ -586,14 +585,11 @@ void BossCore::ChangeState(State nextState) {
             coreAttribute = kEnemy | kGround;
         }
         else {
-            // ====================================================
-            // ★ 修正：戦闘が始まっていたら「kEnemy」属性を付ける！
-            // ====================================================
             if (isBattleStarted_) {
-                coreAttribute = kEnemy | kGround; // 戦闘中は敵！
+                coreAttribute = kEnemy | kGround;
             }
             else {
-                coreAttribute = kGround; // 登場前・登場演出中はただの壁（無敵）
+                coreAttribute = kGround;
             }
         }
         blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
@@ -610,8 +606,6 @@ void BossCore::ChangeState(State nextState) {
         SetColor(originalColor_);
     }
 
-    //uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
-
     for (Object3d* block : armorBlocks_) {
         if (block) {
             block->SetCollisionAttribute(blockAttribute);
@@ -627,46 +621,28 @@ void BossCore::ChangeState(State nextState) {
         break;
 
     case State::Attack: {
-        // ==========================================
-        // ★ 攻撃の確率（重み）設定
-        // 数値を大きくするほど、その攻撃が出やすくなります！
-        // ==========================================
         struct AttackWeight {
-            int id;      // 攻撃番号
-            int weight;  // 出やすさ（重み）
+            int id;
+            int weight;
         };
 
         std::vector<AttackWeight> attackList = {
-            { 1, 30 }, // 突進 (30%)
-            { 2, 30 }, // 射撃 (30%)
-            { 3, 30 }, // ハンマー (30%)
-            { 4, 30 }, // 壁 (30%)
-            { 5, 30 }, // 人型 (30%)
-            { 6, 30 },  // レーザー (30%) ※超大技！
-            { 7, 30 },  // 吸収 (重み30)
+            { 1, 30 }, { 2, 30 }, { 3, 30 }, { 4, 30 },
+            { 5, 30 }, { 6, 30 }, { 7, 30 }, { 9, 25 },
         };
 
-        static int lastAttack = 0; // 前回撃った攻撃を記憶
+        static int lastAttack = 0;
         int totalWeight = 0;
         std::vector<AttackWeight> candidates;
 
-        // 前回と同じ攻撃を除外しながら、有効な攻撃の合計重みを計算
         for (const auto& a : attackList) {
-            // 1. 前回と同じ攻撃は選ばない
             if (a.id == lastAttack) continue;
-
-            // 2. 吸収攻撃(ID: 7)の場合、装甲が満タン(10個)なら候補から外す！
-            // ※IsArmorFull() は以前作った「10個あって壊れていないか」を判定する関数です
-            if (a.id == 7 && IsArmorFull()) {
-                continue;
-            }
-
+            if (a.id == 7 && IsArmorFull()) continue;
             candidates.push_back(a);
             totalWeight += a.weight;
         }
 
-        // 重みに基づいた抽選
-        int nextAttack = 1; // デフォルト
+        int nextAttack = 1;
         if (totalWeight > 0) {
             int randomVal = std::rand() % totalWeight;
             int currentSum = 0;
@@ -679,9 +655,8 @@ void BossCore::ChangeState(State nextState) {
             }
         }
 
-        lastAttack = nextAttack; // 記憶更新
+        lastAttack = nextAttack;
 
-        // デバッグ用強制上書き
         if (s_debugForceAttack != 0) {
             nextAttack = s_debugForceAttack;
             s_debugForceAttack = 0;
@@ -691,10 +666,11 @@ void BossCore::ChangeState(State nextState) {
             nextAttack = 8;
         }
 
+        nextAttack = 9;
+
         animTimer_ = 0.0f;
 
-        // 攻撃インスタンスの生成
-        if (nextAttack == 1)      currentAttack_ = std::make_unique<BossAttack1_Rush>();
+        if (nextAttack == 1) currentAttack_ = std::make_unique<BossAttack1_Rush>();
         else if (nextAttack == 2) currentAttack_ = std::make_unique<BossAttack2_Shoot>();
         else if (nextAttack == 3) currentAttack_ = std::make_unique<BossAttack3_Hammer>();
         else if (nextAttack == 4) currentAttack_ = std::make_unique<BossAttack4_Wall>();
@@ -702,6 +678,7 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
         else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
         else if (nextAttack == 8) currentAttack_ = std::make_unique<BossAttack8_Final>();
+        else if (nextAttack == 9) currentAttack_ = std::make_unique<BossAttack9_Spawn>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
