@@ -25,18 +25,37 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
     cursorBasePos_ = cursorSprite_->GetPosition();
   }
 
-  currentState_ = MenuState::Top;
+  cameraSoundUISprite_ = scene->GetSpriteByName("option/cameraSaundUI.png");
+  selectLeftSprite_ = scene->GetSpriteByName("option/UI_selectLeft.png");
+  selectRightSprite_ = scene->GetSpriteByName("option/UI_selectRight.png");
+
+  bgmSelectSprite_ = scene->GetSpriteByName("option/BGM_select.png");
+  seSelectSprite_ = scene->GetSpriteByName("option/SE_select.png");
+  cameraSelectSprite_ = scene->GetSpriteByName("option/camera_select.png");
+  bgmBarSprite_ = scene->GetSpriteByName("option/BGM_bar.png"); // 仮の名前
+  seBarSprite_ = scene->GetSpriteByName("option/SE_bar.png"); // 仮の名前
+
+  currentTopTab_ = (int)TopTab::AudioCamera;
+  currentState_ = MenuState::TabSelect; 
+  currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
   currentOptionIndex_ = (int)OptionIndex::Sound;
   currentConfigIndex_ = 0;
-  sensitivityBarSprite_ = scene->GetSpriteByName("UI/pole.png");
+  sensitivityBarSprite_ = scene->GetSpriteByName("option/camera_pole.png"); // 仮
+  if (!sensitivityBarSprite_) sensitivityBarSprite_ = scene->GetSpriteByName("UI/pole.png");
 
-  // サウンド用（ユーザーが配置する予定のスプライト名）
+  // サウンド用
   volumeBarSprite_ = scene->GetSpriteByName("UI/volume_pole.png");
   soundConfigCursorSprite_ = scene->GetSpriteByName("UI/sound_cursor.png");
 
   SaveDataManager::GetInstance()->Load();
+
+  bgmBarMaxPosX_ = bgmBarSprite_ ? bgmBarSprite_->GetPosition().x : 750.0f;
+  seBarMaxPosX_ = seBarSprite_ ? seBarSprite_->GetPosition().x : 750.0f;
+  cameraCenterPosX_ = sensitivityBarSprite_ ? sensitivityBarSprite_->GetPosition().x : 1168.0f;
+
   UpdateSensitivityBar();
-  UpdateVolumeBar();
+  UpdateBGMBar();
+  UpdateSEBar();
   // ========================================================
   // ★ エディタ配置スプライトは「目印」なので、透明にして隠す！
   // ========================================================
@@ -57,280 +76,126 @@ bool OptionUI::Update(float deltaTime) {
   Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
   Vector4 selectColor = {1.0f, 1.0f, 1.0f, 1.0f};
 
+  // --- タブなどの表示状態を更新 ---
+  auto UpdateSelectHighlights = [&]() {
+      if (bgmSelectSprite_) bgmSelectSprite_->SetVisible(currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM);
+      if (seSelectSprite_) seSelectSprite_->SetVisible(currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == (int)SoundOptionIndex::SE);
+      if (cameraSelectSprite_) cameraSelectSprite_->SetVisible(currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera);
+
+      // アクティブな状態のときに色を濃くする（赤色など）
+      if (currentState_ == MenuState::ValueAdjust) {
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM && bgmSelectSprite_) bgmSelectSprite_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 決定時は赤
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE && seSelectSprite_) seSelectSprite_->SetColor({1.0f, 0.0f, 0.0f, 1.0f});
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera && cameraSelectSprite_) cameraSelectSprite_->SetColor({1.0f, 0.0f, 0.0f, 1.0f});
+      } else {
+          if (bgmSelectSprite_) bgmSelectSprite_->SetColor({1.0f, 1.0f, 0.0f, 1.0f}); // 選択中は黄色
+          if (seSelectSprite_) seSelectSprite_->SetColor({1.0f, 1.0f, 0.0f, 1.0f});
+          if (cameraSelectSprite_) cameraSelectSprite_->SetColor({1.0f, 1.0f, 0.0f, 1.0f});
+      }
+  };
+
   switch (currentState_) {
-  case MenuState::Top: {
-    if (input->IsKeyTriggered(DIK_LEFT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
-      currentOptionIndex_--;
-      if (currentOptionIndex_ < 0)
-        currentOptionIndex_ = (int)OptionIndex::Max - 1;
-    }
-    if (input->IsKeyTriggered(DIK_RIGHT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
-      currentOptionIndex_++;
-      if (currentOptionIndex_ >= (int)OptionIndex::Max)
-        currentOptionIndex_ = 0;
-    }
-
-    if (soundSprite_)
-      soundSprite_->SetColor(currentOptionIndex_ == (int)OptionIndex::Sound
-                                 ? selectColor
-                                 : normalColor);
-    if (keyboardSprite_)
-      keyboardSprite_->SetColor(
-          currentOptionIndex_ == (int)OptionIndex::KeyConfig ? selectColor
-                                                             : normalColor);
-
-    if (cursorSprite_)
-      cursorSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
-
-    if (input->IsKeyTriggered(DIK_BACKSPACE) ||
-        input->IsKeyTriggered(DIK_ESCAPE))
-      return true;
-    if (input->IsKeyTriggered(DIK_SPACE)) {
-      if (currentOptionIndex_ == (int)OptionIndex::KeyConfig) {
-        currentState_ = MenuState::KeyConfig;
-        currentConfigIndex_ = 0;
-        RefreshKeyIcons();
-      } else if (currentOptionIndex_ == (int)OptionIndex::Sound) {
-        currentState_ = MenuState::SoundConfig;
-        currentSoundOptionIndex_ = (int)SoundOptionIndex::Volume;
-        isFocusOnSoundSetting_ = false;
+  case MenuState::TabSelect: {
+      if (input->IsKeyTriggered(DIK_A)) {
+          currentTopTab_ = (int)TopTab::AudioCamera;
       }
-    }
-    break;
-  }
-
-  case MenuState::KeyConfig: {
-    // 感度バーの色を強調（操作中なら赤くする）
-    if (sensitivityBarSprite_) {
-      sensitivityBarSprite_->SetColor(isFocusOnSensitivity_
-                                          ? Vector4{1.0f, 0.3f, 0.3f, 1.0f}
-                                          : Vector4{1.0f, 1.0f, 1.0f, 1.0f});
-    }
-
-    if (!isFocusOnSensitivity_) {
-      // --- 左側のリストを操作中 ---
-      if (input->IsKeyTriggered(DIK_UP) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-        currentConfigIndex_--;
-        if (currentConfigIndex_ < 0)
-          currentConfigIndex_ = (int)configActions_.size() - 1;
-      }
-      if (input->IsKeyTriggered(DIK_DOWN) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-        currentConfigIndex_++;
-        if (currentConfigIndex_ >= (int)configActions_.size())
-          currentConfigIndex_ = 0;
+      if (input->IsKeyTriggered(DIK_D)) {
+          currentTopTab_ = (int)TopTab::Credit;
       }
 
-      // 右キーで感度調整へ
-      if (input->IsKeyTriggered(DIK_RIGHT) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
-        isFocusOnSensitivity_ = true;
+      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+          SaveDataManager::GetInstance()->Save();
+          return true; // オプションを閉じる
       }
 
-      if (cursorSprite_ && currentConfigIndex_ < actionSprites_.size()) {
-        cursorSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-        Vector2 newPos = cursorBasePos_;
-        if (actionSprites_[currentConfigIndex_])
-          newPos.y = actionSprites_[currentConfigIndex_]->GetPosition().y;
-        cursorSprite_->SetPosition(newPos);
+      if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+          if (currentTopTab_ == (int)TopTab::AudioCamera) {
+              currentState_ = MenuState::ItemSelect;
+          }
       }
-
-      if (input->IsKeyTriggered(DIK_BACKSPACE) ||
-          input->IsKeyTriggered(DIK_ESCAPE))
-        currentState_ = MenuState::Top;
-      if (input->IsKeyTriggered(DIK_SPACE))
-        currentState_ = MenuState::WaitInput;
-    } else {
-      // --- 右側の感度バーを操作中 ---
-      if (cursorSprite_)
-        cursorSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
-
-      int currentSens = CameraEditor::GetInstance()->GetCameraSensitivity();
-      bool isChanged = false;
-
-      if (input->IsKeyTriggered(DIK_RIGHT) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
-        if (currentSens < 5) {
-          currentSens++;
-          isChanged = true;
-        }
-      }
-      if (input->IsKeyTriggered(DIK_LEFT) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
-        if (currentSens > -5) {
-          currentSens--;
-          isChanged = true;
-        }
-      }
-
-      // ★ここを改善！ 戻るときは「左端(-5)」ではなく、Backspace か Space か ESC
-      // で戻る
-      if (input->IsKeyTriggered(DIK_BACKSPACE) ||
-          input->IsKeyTriggered(DIK_ESCAPE) ||
-          input->IsKeyTriggered(DIK_SPACE) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-        isFocusOnSensitivity_ = false;
-      }
-
-      if (isChanged) {
-        CameraEditor::GetInstance()->SetCameraSensitivity(currentSens);
-        UpdateSensitivityBar();
-      }
-    }
-    break;
-  }
-
-  case MenuState::WaitInput: {
-    if (cursorSprite_)
-      cursorSprite_->SetColor({1.0f, 0.3f, 0.3f, 1.0f});
-    if (input->IsKeyTriggered(DIK_ESCAPE)) {
-      currentState_ = MenuState::KeyConfig;
+      UpdateSelectHighlights();
       break;
-    }
-
-    const auto &pressedKeys = input->GetPressedKeys();
-    for (int newKey : pressedKeys) {
-      if (input->IsKeyTriggered(newKey)) {
-        if (IsValidKey(newKey)) {
-          std::string targetAction = configActions_[currentConfigIndex_];
-          int oldKey = KeyConfig::GetInstance()->GetKeyCode(targetAction);
-          for (const auto &otherAction : configActions_) {
-            if (otherAction != targetAction &&
-                KeyConfig::GetInstance()->GetKeyCode(otherAction) == newKey) {
-              KeyConfig::GetInstance()->SetKeyCode(otherAction, oldKey);
-              break;
-            }
-          }
-          KeyConfig::GetInstance()->SetKeyCode(targetAction, newKey);
-          RefreshKeyIcons();
-          currentState_ = MenuState::KeyConfig;
-          break;
-        }
-      }
-    }
-    break;
   }
-
-  case MenuState::SoundConfig: {
-    // 音量・感度設定画面
-    if (!isFocusOnSoundSetting_) {
-      // 項目選択
-      if (input->IsKeyTriggered(DIK_UP) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-        currentSoundOptionIndex_--;
-        if (currentSoundOptionIndex_ < 0)
-          currentSoundOptionIndex_ = (int)SoundOptionIndex::Max - 1;
+  case MenuState::ItemSelect: {
+      if (input->IsKeyTriggered(DIK_W)) {
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
       }
-      if (input->IsKeyTriggered(DIK_DOWN) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-        currentSoundOptionIndex_++;
-        if (currentSoundOptionIndex_ >= (int)SoundOptionIndex::Max)
-          currentSoundOptionIndex_ = 0;
+      if (input->IsKeyTriggered(DIK_S)) {
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM) currentSoundOptionIndex_ = (int)SoundOptionIndex::SE;
+      }
+      if (input->IsKeyTriggered(DIK_A)) {
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera) currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+      }
+      if (input->IsKeyTriggered(DIK_D)) {
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM || currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) {
+              currentSoundOptionIndex_ = (int)SoundOptionIndex::Camera;
+          }
       }
 
-      if (input->IsKeyTriggered(DIK_RIGHT) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ||
-          input->IsKeyTriggered(DIK_SPACE) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-        isFocusOnSoundSetting_ = true;
+      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+          currentState_ = MenuState::TabSelect;
       }
 
-      if (input->IsKeyTriggered(DIK_BACKSPACE) ||
-          input->IsKeyTriggered(DIK_ESCAPE) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
-        currentState_ = MenuState::Top;
-        SaveDataManager::GetInstance()->Save(); // 変更を保存
+      if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+          currentState_ = MenuState::ValueAdjust;
       }
-
-      // カーソルの表示と位置更新
-      if (soundConfigCursorSprite_) {
-        soundConfigCursorSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-        Vector2 pos = soundConfigCursorSprite_->GetPosition();
-        // ※ ここはスプライト配置後にY座標を調整する想定
-        if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Volume)
-          pos.y = 300.0f;
-        else if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Sensitivity)
-          pos.y = 400.0f;
-        soundConfigCursorSprite_->SetPosition(pos);
-      }
-      if (volumeBarSprite_)
-        volumeBarSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-      if (sensitivityBarSprite_)
-        sensitivityBarSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-    } else {
-      // 値の変更
-      if (soundConfigCursorSprite_)
-        soundConfigCursorSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.5f});
+      UpdateSelectHighlights();
+      break;
+  }
+  case MenuState::ValueAdjust: {
       bool isChanged = false;
-
-      if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Volume) {
-        if (volumeBarSprite_)
-          volumeBarSprite_->SetColor(
-              {1.0f, 0.3f, 0.3f, 1.0f}); // 操作中アピール
-        if (sensitivityBarSprite_)
-          sensitivityBarSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-
-        float vol = SaveDataManager::GetInstance()->GetMasterVolume();
-        if (input->IsKeyPressed(DIK_RIGHT) ||
-            input->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_RIGHT)) {
-          vol += 0.01f;
-          if (vol > 1.0f)
-            vol = 1.0f;
-          isChanged = true;
-        }
-        if (input->IsKeyPressed(DIK_LEFT) ||
-            input->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_LEFT)) {
-          vol -= 0.01f;
-          if (vol < 0.0f)
-            vol = 0.0f;
-          isChanged = true;
-        }
-        if (isChanged) {
-          SaveDataManager::GetInstance()->SetMasterVolume(vol);
-          UpdateVolumeBar();
-        }
-      } else if (currentSoundOptionIndex_ ==
-                 (int)SoundOptionIndex::Sensitivity) {
-        if (sensitivityBarSprite_)
-          sensitivityBarSprite_->SetColor({1.0f, 0.3f, 0.3f, 1.0f});
-        if (volumeBarSprite_)
-          volumeBarSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
-
-        int sens = SaveDataManager::GetInstance()->GetCameraSensitivity();
-        if (input->IsKeyTriggered(DIK_RIGHT) ||
-            input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
-          if (sens < 5) {
-            sens++;
-            isChanged = true;
+      if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM) {
+          float vol = SaveDataManager::GetInstance()->GetBGMVolume();
+          if (input->IsKeyPressed(DIK_D) || input->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_RIGHT)) {
+              vol += 0.01f;
+              if (vol > 1.0f) vol = 1.0f;
+              isChanged = true;
           }
-        }
-        if (input->IsKeyTriggered(DIK_LEFT) ||
-            input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
-          if (sens > -5) {
-            sens--;
-            isChanged = true;
+          if (input->IsKeyPressed(DIK_A) || input->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_LEFT)) {
+              vol -= 0.01f;
+              if (vol < 0.0f) vol = 0.0f;
+              isChanged = true;
           }
-        }
-        if (isChanged) {
-          SaveDataManager::GetInstance()->SetCameraSensitivity(sens);
-          CameraEditor::GetInstance()->SetCameraSensitivity(sens);
-          UpdateSensitivityBar();
-        }
+          if (isChanged) {
+              SaveDataManager::GetInstance()->SetBGMVolume(vol);
+              UpdateBGMBar();
+          }
+      } else if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) {
+          float vol = SaveDataManager::GetInstance()->GetSEVolume();
+          if (input->IsKeyPressed(DIK_D) || input->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_RIGHT)) {
+              vol += 0.01f;
+              if (vol > 1.0f) vol = 1.0f;
+              isChanged = true;
+          }
+          if (input->IsKeyPressed(DIK_A) || input->IsGamepadButtonPressed(XINPUT_GAMEPAD_DPAD_LEFT)) {
+              vol -= 0.01f;
+              if (vol < 0.0f) vol = 0.0f;
+              isChanged = true;
+          }
+          if (isChanged) {
+              SaveDataManager::GetInstance()->SetSEVolume(vol);
+              UpdateSEBar();
+          }
+      } else if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera) {
+          int sens = SaveDataManager::GetInstance()->GetCameraSensitivity();
+          if (input->IsKeyTriggered(DIK_D) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
+              if (sens < 5) { sens++; isChanged = true; }
+          }
+          if (input->IsKeyTriggered(DIK_A) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
+              if (sens > -5) { sens--; isChanged = true; }
+          }
+          if (isChanged) {
+              SaveDataManager::GetInstance()->SetCameraSensitivity(sens);
+              CameraEditor::GetInstance()->SetCameraSensitivity(sens);
+              UpdateSensitivityBar();
+          }
       }
 
-      if (input->IsKeyTriggered(DIK_BACKSPACE) ||
-          input->IsKeyTriggered(DIK_ESCAPE) ||
-          input->IsKeyTriggered(DIK_SPACE) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) ||
-          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-        isFocusOnSoundSetting_ = false;
+      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+          currentState_ = MenuState::ItemSelect;
       }
-    }
-    break;
+      UpdateSelectHighlights();
+      break;
   }
   }
   return false;
@@ -359,6 +224,32 @@ bool OptionUI::IsOptionSprite(Sprite *sp) const {
       return true;
   }
   return false;
+}
+
+bool OptionUI::IsSpriteVisibleInCurrentTab(Sprite* sp) const {
+    if (!sp) return false;
+
+    // 常に表示する背景など
+    if (sp == bgSprite_ || sp == titleSprite_) return true;
+
+    // タブに依存するスプライト
+    bool isAudio = (currentTopTab_ == (int)TopTab::AudioCamera);
+
+    if (sp == selectLeftSprite_) return isAudio;
+    if (sp == selectRightSprite_) return !isAudio;
+    if (sp == cameraSoundUISprite_) return isAudio;
+
+    // オーディオ/カメラタブの場合のみ表示
+    if (sp == volumeBarSprite_ || sp == sensitivityBarSprite_ || sp == soundConfigCursorSprite_ ||
+        sp == bgmSelectSprite_ || sp == seSelectSprite_ || sp == cameraSelectSprite_ ||
+        sp == bgmBarSprite_ || sp == seBarSprite_) {
+        // OptionUI内部の選択状態によって非表示にするものはここで判定してもよいが、
+        // 基本的には親タブが開いていれば true を返し、個別の表示非表示は Update() で制御する。
+        return isAudio;
+    }
+
+    // 基本的に上記以外はタブに関わらず表示を許可（上位で制御）
+    return true;
 }
 
 void OptionUI::RefreshKeyIcons() {
@@ -541,26 +432,44 @@ void OptionUI::UpdateSensitivityBar() {
 
   int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
 
-  float centerPosX = 1168.0f; // 感度が「0」のときの棒の X座標
-  float stepX = 45.0f;        // 1メモリ（感度1）あたりの移動ピクセル数
+  float offset = 0.0f;
+  if (sens > 0) {
+      offset = 45.0f + 50.0f * (sens - 1);
+  } else if (sens < 0) {
+      offset = -45.0f - 50.0f * (-sens - 1);
+  }
 
   Vector2 pos = sensitivityBarSprite_->GetPosition();
-  pos.x = centerPosX + (sens * stepX);
+  pos.x = cameraCenterPosX_ + offset;
   sensitivityBarSprite_->SetPosition(pos);
 }
 
-void OptionUI::UpdateVolumeBar() {
-  if (!volumeBarSprite_)
+void OptionUI::UpdateBGMBar() {
+  if (!bgmBarSprite_)
     return;
 
-  float vol = SaveDataManager::GetInstance()->GetMasterVolume();
+  float vol = SaveDataManager::GetInstance()->GetBGMVolume();
 
-  float minPosX =
-      1168.0f -
-      (5.0f * 45.0f); // 最小音量(0.0)のときのX座標（感度バーに合わせる想定）
-  float maxPosX = 1168.0f + (5.0f * 45.0f); // 最大音量(1.0)のときのX座標
+  // BGMバーの座標
+  float minPosX = 300.0f; 
+  float maxPosX = bgmBarMaxPosX_; 
 
-  Vector2 pos = volumeBarSprite_->GetPosition();
+  Vector2 pos = bgmBarSprite_->GetPosition();
   pos.x = minPosX + (maxPosX - minPosX) * vol;
-  volumeBarSprite_->SetPosition(pos);
+  bgmBarSprite_->SetPosition(pos);
+}
+
+void OptionUI::UpdateSEBar() {
+  if (!seBarSprite_)
+    return;
+
+  float vol = SaveDataManager::GetInstance()->GetSEVolume();
+
+  // SEバーの座標
+  float minPosX = 300.0f; 
+  float maxPosX = seBarMaxPosX_; 
+
+  Vector2 pos = seBarSprite_->GetPosition();
+  pos.x = minPosX + (maxPosX - minPosX) * vol;
+  seBarSprite_->SetPosition(pos);
 }

@@ -16,6 +16,7 @@ public:
     void Initialize(BaseScene* scene, SpriteCommon* spriteCommon);
     bool Update(float deltaTime);
     bool IsOptionSprite(Sprite* sp) const;
+    bool IsSpriteVisibleInCurrentTab(Sprite* sp) const;
 
     void DrawKeyIcons();
 
@@ -25,14 +26,17 @@ private:
     void RefreshKeyIcons();
     void UpdateSensitivityBar();        // バーの座標を更新する関数
 private:
-    enum class MenuState { Top, KeyConfig, WaitInput, SoundConfig };
-    MenuState currentState_ = MenuState::Top;
+    enum class MenuState { TabSelect, ItemSelect, ValueAdjust, Top, KeyConfig, WaitInput };
+    MenuState currentState_ = MenuState::TabSelect;
 
-    enum class SoundOptionIndex { Volume, Sensitivity, Max };
-    int currentSoundOptionIndex_ = (int)SoundOptionIndex::Volume;
-    bool isFocusOnSoundSetting_ = false;
+    enum class TopTab { AudioCamera, Credit, Max };
+    int currentTopTab_ = (int)TopTab::AudioCamera;
 
-    void UpdateVolumeBar();        // ボリュームバーの座標を更新する関数
+    enum class SoundOptionIndex { BGM, SE, Camera, Max };
+    int currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+
+    void UpdateBGMBar();
+    void UpdateSEBar();
 
     enum class OptionIndex { Sound, KeyConfig, Max };
     int currentOptionIndex_ = (int)OptionIndex::Sound;
@@ -51,6 +55,20 @@ private:
     Sprite* cursorSprite_ = nullptr;
     Vector2 cursorBasePos_ = { 0.0f, 0.0f };
 
+    Sprite* cameraSoundUISprite_ = nullptr;
+    Sprite* selectLeftSprite_ = nullptr;
+    Sprite* selectRightSprite_ = nullptr;
+
+    Sprite* bgmSelectSprite_ = nullptr;
+    Sprite* seSelectSprite_ = nullptr;
+    Sprite* cameraSelectSprite_ = nullptr;
+    Sprite* bgmBarSprite_ = nullptr;
+    Sprite* seBarSprite_ = nullptr;
+
+    float bgmBarMaxPosX_ = 0.0f;
+    float seBarMaxPosX_ = 0.0f;
+    float cameraCenterPosX_ = 0.0f;
+
     // ==========================================
     // ★ 目印用（エディタ配置）と 実体（手動生成）
     // ==========================================
@@ -64,8 +82,6 @@ private:
     std::vector<std::unique_ptr<Sprite>> keyIconSprites_; // 実際に描画する綺麗な画像
     SpriteCommon* spriteCommon_ = nullptr;
     Sprite* sensitivityBarSprite_ = nullptr;
-    Sprite* volumeBarSprite_ = nullptr;         // 音量バーのスプライト（エディタ配置）
-    Sprite* soundConfigCursorSprite_ = nullptr; // サウンド設定画面での項目選択カーソル（エディタ配置）
-    bool isFocusOnSensitivity_ = false; // 現在感度バーを操作中かどうか
- 
+    Sprite* volumeBarSprite_ = nullptr;         // 音量バーのスプライト（エディタ配置、古い用）
+    Sprite* soundConfigCursorSprite_ = nullptr; // サウンド設定画面での項目選択カーソル（エディタ配置、古い用）
 };

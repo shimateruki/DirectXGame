@@ -213,17 +213,21 @@ void TitleScene::Update(float deltaTime) {
   }
 
   // スプライトの表示切り替え（オプション中は他のUIを隠す）
-  for (auto &sprite : sprites_) {
-    bool isOpt = optionUI_.IsOptionSprite(sprite.get());
-    if (currentState_ == TitleState::OptionMenu) {
-      sprite->SetVisible(isOpt);
-    } else {
-      if (isOpt) {
-        sprite->SetVisible(false);
+  for (auto& sprite : sprites_) {
+      bool isOpt = optionUI_.IsOptionSprite(sprite.get());
+      if (currentState_ == TitleState::OptionMenu) {
+          if (isOpt) {
+              sprite->SetVisible(optionUI_.IsSpriteVisibleInCurrentTab(sprite.get()));
+          } else {
+              sprite->SetVisible(false);
+          }
       } else {
-        sprite->SetVisible(spritesAppear_);
+          if (isOpt) {
+              sprite->SetVisible(false);
+          } else {
+              sprite->SetVisible(spritesAppear_);
+          }
       }
-    }
   }
 
   // --- スプライト浮上演出 ---

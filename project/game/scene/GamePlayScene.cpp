@@ -584,7 +584,11 @@ void GamePlayScene::Update(float deltaTime) {
   for (auto &sprite : sprites_) {
     bool isOpt = optionUI_.IsOptionSprite(sprite.get());
     if (isOptionMenu_) {
-      sprite->SetVisible(isOpt);
+      if (isOpt) {
+          sprite->SetVisible(optionUI_.IsSpriteVisibleInCurrentTab(sprite.get()));
+      } else {
+          sprite->SetVisible(false);
+      }
     } else {
       if (isOpt) {
         sprite->SetVisible(false);

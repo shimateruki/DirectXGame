@@ -18,6 +18,8 @@ void SaveDataManager::Load() {
         if (j.contains("bestTime")) bestTime_ = j["bestTime"];
         if (j.contains("latestClearTime")) latestClearTime_ = j["latestClearTime"];
         if (j.contains("masterVolume")) masterVolume_ = j["masterVolume"];
+        if (j.contains("bgmVolume")) bgmVolume_ = j["bgmVolume"];
+        if (j.contains("seVolume")) seVolume_ = j["seVolume"];
         if (j.contains("cameraSensitivity")) cameraSensitivity_ = j["cameraSensitivity"];
         file.close();
     }
@@ -29,6 +31,8 @@ void SaveDataManager::Save() {
     j["bestTime"] = bestTime_;
     j["latestClearTime"] = latestClearTime_;
     j["masterVolume"] = masterVolume_;
+    j["bgmVolume"] = bgmVolume_;
+    j["seVolume"] = seVolume_;
     j["cameraSensitivity"] = cameraSensitivity_;
 
     std::ofstream file(saveFilePath_);
