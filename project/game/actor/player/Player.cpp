@@ -178,6 +178,15 @@ void Player::Update(float deltaTime)
                 SceneManager::GetInstance()->ChangeScene("GAMEOVER");
             }
         }
+
+        // 6. ポストエフェクト：HPが1の時に赤枠（ピンチ演出）を出す
+        if (!isDead && GetHp() <= 1.0f && GetHp() > 0.0f) {
+            // 脈打つ赤枠を有効化 (1.0f だと少し強いかもしれないので 0.8f 程度に調整)
+            PostEffect::GetInstance()->GetParams()->dangerVignette = 0.8f;
+        }
+        else {
+            PostEffect::GetInstance()->GetParams()->dangerVignette = 0.0f;
+        }
     }
 
     if (isControlActive_) {

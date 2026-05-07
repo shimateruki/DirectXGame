@@ -591,6 +591,19 @@ void GamePlayScene::DrawImGui() {
             float maxHp = player_->GetMaxHp();
             ImGui::ProgressBar(hp / maxHp, ImVec2(-1, 0), "HP");
 
+            // --- Debug HP Control ---
+            if (ImGui::Button(ICON_FA_AMBULANCE " HPを1にする (Debug)")) {
+                if (player_->param_.has_value()) {
+                    player_->param_->hp = 1.0f;
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_SKULL " HPを0にする (Debug)")) {
+                if (player_->param_.has_value()) {
+                    player_->param_->hp = 0.0f;
+                }
+            }
+
             ImGui::Separator();
             int lives = GameDataManager::GetInstance()->GetLives();
             ImGui::Text(ICON_FA_HEART " Remaining Lives: %d", lives);
