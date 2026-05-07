@@ -12,21 +12,20 @@
 void BossAttack6_Laser::Finalize() {
     for (Object3d* beam : activeBeams_) {
         if (beam) {
-          
-            CollisionManager::GetInstance()->RemoveObject(beam); // マネージャから外す
-
-            beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 見えなくする
-            beam->SetCollisionAttribute(0);       // 当たり判定を完全に消す
+            CollisionManager::GetInstance()->RemoveObject(beam);
+            beam->SetParent(nullptr);
+            beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 透明にして隠すだけ！
+            beam->SetCollisionAttribute(0);
+            // ★ isDead = true は絶対に書かない！（使い回すため）
         }
     }
-    activeBeams_.clear(); // リストだけ空にしておく
+    activeBeams_.clear();
 }
 
-// デストラクタも Finalize を呼ぶようにしておくとより安全です
+// ※デストラクタは Finalize() を呼ぶだけでOKです
 BossAttack6_Laser::~BossAttack6_Laser() {
     Finalize();
 }
-
 void BossAttack6_Laser::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
 
@@ -179,66 +178,67 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ == 0.0f) {
             BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
 
+
+            std::vector<Object3d*> beamPool;
+            if (currentScene) {
+                for (auto& obj : currentScene->GetObjects()) {
+                    if (obj->GetName() == "Beam_Cylinder") {
+                        beamPool.push_back(obj.get());
+                    }
+                }
+            }
+
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 if (!armorBlocks[i]) continue;
 
-                auto laser = std::make_unique<Object3d>();
-                laser->Initialize(boss->GetCommon());
-                laser->SetModel("Cylinder");
-                laser->SetName("Beam_Cylinder");
+                Object3d* laser = nullptr;
 
-                // =========================================================
-                // ★ ビームの視覚エフェクト設定（初期化）
-                // =========================================================
+       
+                if (i < beamPool.size()) {
+                    laser = beamPool[i]; // 前回のを使い回す！
+                }
+                else {
+                    auto newLaser = std::make_unique<Object3d>();
+                    laser = newLaser.get();
+                    laser->Initialize(boss->GetCommon());
+                    laser->SetModel("Cylinder");
+                    laser->SetName("Beam_Cylinder");
+                    if (currentScene) {
+                        currentScene->GetObjects().push_back(std::move(newLaser));
+                    }
+                }
 
-                // 1. ブレンドモードを加算（光の重なり）にして透明感を出す
+                // --- ここから下は今まで通り、レーザーの設定を上書き ---
                 laser->SetBlendMode(BlendMode::kAdd);
-
-                // 2. 影を無視して強烈に発光させる
                 laser->SetEmissive(5.0f);
                 laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
                 laser->SetTexture("Resources/sprite/beamNoice.png");
-                laser->SetMaterialType(9); // さっき作ったレーザー専用シェーダー
-                // 4. UVスケール設定（テクスチャが縦にビローンと伸びるのを防ぎ、15回繰り返す）
+                laser->SetMaterialType(9);
+
                 static Math math;
                 Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
                 Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
                 laser->SetUVTransform(uvMat);
 
-
-                // =========================================================
-                // ★ 当たり判定の設定とマネージャーへの登録
-                // =========================================================
-                laser->SetColliderType(ColliderType::kOBB);
-
-                // サイズを明示的に指定してあげる
                 Object3d::ColliderConfig cConfig = laser->GetColliderConfig();
                 cConfig.type = ColliderType::kOBB;
-                cConfig.size = { 1.0f, 1.0f, 1.0f }; // 基本サイズ（スケールで伸びるので1.0でOK）
+                cConfig.size = { 1.0f, 1.0f, 1.0f };
                 laser->SetColliderConfig(cConfig);
 
-                laser->SetScale({ 0.1f, 80.0f, 0.1f }); // まずは予兆の細いレーザーとして生成
-
-                // 予兆中は当たらないように属性を0にする
+                laser->SetScale({ 0.1f, 80.0f, 0.1f });
                 laser->SetCollisionAttribute(0);
 
-                // マネージャーに登録して、実際に当たり判定の世界に存在させる
-                CollisionManager::GetInstance()->AddObject(laser.get());
+                // 安全のため一度外してから入れ直す
+                CollisionManager::GetInstance()->RemoveObject(laser);
+                CollisionManager::GetInstance()->AddObject(laser);
 
-
-                // 座標をブロックに追従させる（※子供リストには入れないから安全！）
                 laser->SetParent(armorBlocks[i]);
 
                 float rotX90 = std::numbers::pi_v<float> / 2.0f;
                 laser->SetRotation({ rotX90, 0.0f, 0.0f });
                 laser->GetTransform()->isQuaternionMaster = false;
 
-                activeBeams_.push_back(laser.get()); // リストに記憶
-
-                // シーンの世界に正式登録（所有権を渡す）
-                if (currentScene) {
-                    currentScene->GetObjects().push_back(std::move(laser));
-                }
+                activeBeams_.push_back(laser);
             }
         }
 
@@ -301,13 +301,14 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animPhase_ = 65;
             animTimer_ = 0.0f;
             animStartRot_ = boss->GetRotation();
-
-            // 撃ち終わったビームを即座に消滅(isDead)させる！
             for (Object3d* beam : activeBeams_) {
                 if (beam) {
+                    // ★ ここにも3点セットを追加！
+                    CollisionManager::GetInstance()->RemoveObject(beam); // 当たり判定解除
+                    beam->SetParent(nullptr);                            // 親との縁を切る
+
                     beam->SetScale({ 0.0f, 0.0f, 0.0f });
                     beam->SetCollisionAttribute(0);
-                    beam->isDead = true; // エンジンの自動削除に任せる
                 }
             }
             activeBeams_.clear(); // リストも空にする

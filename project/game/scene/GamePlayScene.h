@@ -50,7 +50,7 @@ public:
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
-
+    void DrawImGui() override;
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
     void StartBossAppearanceMovie(); // ★ 追加：ボス登場の合図を受け取る関数
@@ -97,6 +97,8 @@ private:
     // --- チュートリアルドア用 ---
     bool hasFinishedTutorial_ = false;
     float doorOpenProgress_ = 0.0f;
+    bool tutorialMovieStarted_ = false;
+    float tutorialMovieTimer_ = 0.0f;
 
 private:
     // --- エンジンシステムへのポインタ ---

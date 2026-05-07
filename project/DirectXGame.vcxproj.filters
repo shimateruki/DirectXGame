@@ -127,6 +127,8 @@
     <ClCompile Include="GPUParticleSystem.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack8_Final.cpp" />
     <ClCompile Include="GameProgress.cpp" />
+    <ClCompile Include="TrailEmitter.cpp" />
+    <ClCompile Include="TrailEmitterEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
@@ -427,6 +429,8 @@
     <ClInclude Include="GPUParticleSystem.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack8_Final.h" />
     <ClInclude Include="GameProgress.h" />
+    <ClInclude Include="TrailEmitter.h" />
+    <ClInclude Include="TrailEmitterEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectXGame.rc" />

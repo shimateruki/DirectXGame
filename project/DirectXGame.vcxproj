@@ -288,6 +288,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="OptionUI.cpp" />
     <ClCompile Include="SaveDataManager.cpp" />
     <ClCompile Include="TimeAttackUI.cpp" />
+    <ClCompile Include="TrailEmitter.cpp" />
+    <ClCompile Include="TrailEmitterEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -693,6 +695,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
     <ClInclude Include="SaveDataManager.h" />
     <ClInclude Include="TimeAttackUI.h" />
+    <ClInclude Include="TrailEmitter.h" />
+    <ClInclude Include="TrailEmitterEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

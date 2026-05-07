@@ -22,8 +22,8 @@
 #include "GPUParticleEditor.h"
 #include "EngineManualWindow.h"
 #include"MeshEffectEditor.h"
-#include "GPUParticleEmitter.h"
-#include <vector>
+#include "TrailEmitterEditor.h"
+
 class WinApp;
 
 class Game : public Framework {
@@ -51,10 +51,6 @@ private:
 	int timeHistoryIndex_ = 0;
 	float drawTimeMs_ = 0.0f;
 	float drawTimeHistory_[120] = { 0 };
-	// 複数のエミッターをまとめて管理する配列！
-	std::unique_ptr<GPUParticleEmitter> testEmitter1_;
-	std::unique_ptr<GPUParticleEmitter> testEmitter2_;
-	std::unique_ptr<GPUParticleEmitter> testEmitter3_;
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
@@ -64,6 +60,7 @@ private:
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
 	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
+	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
 	EngineManualWindow engineManualWindow_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;
@@ -73,7 +70,7 @@ private:
 	bool showCameraEditor = false;
 	bool showGhostRecorder_ = false;
 	bool showTimeController_ = true;
-	bool showPostEffectEditor_ = false; 
+	bool showPostEffectEditor_ = false;
 	bool showBossDebug_ = false;
 	ImVec2 lastGameViewSize_ = { 0, 0 };
 #endif

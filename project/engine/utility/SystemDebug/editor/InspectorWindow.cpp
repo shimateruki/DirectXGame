@@ -180,17 +180,15 @@ void InspectorWindow::Draw() {
                         isColChanged = true;
                     }
                 }
-                // ★ 円柱の分岐をここに入れる（else if にする）
                 else if (colConfig.type == ColliderType::kCylinder) {
-                    // if文にして isColChanged = true をつける！
-                    if (ImGui::DragFloat("Radius (X)", &colConfig.size.x, 0.1f, 0.0f, 100.0f)) isColChanged = true;
-                    if (ImGui::DragFloat("Height (Y)", &colConfig.size.y, 0.1f, 0.0f, 100.0f)) isColChanged = true;
-
-                    // Z軸を強制的に半径(X)と同期させておく
-                    colConfig.size.z = colConfig.size.x;
-                    ImGui::TextDisabled("※Z軸の値は半径(X)と同期します");
+                    if (ImGui::DragFloat("半径 (Radius)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("高さ (1/2 Height)", &colConfig.size.y, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }
-                // 箱(AABB)や回転箱(OBB)の場合
+                else if (colConfig.type == ColliderType::kRing) {
+                    if (ImGui::DragFloat("外径 (Outer)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("内径 (Inner)", &colConfig.size.z, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                    if (ImGui::DragFloat("厚み (1/2 Height)", &colConfig.size.y, 0.05f, 0.0f, 100.0f)) isColChanged = true;
+                }
                 else {
                     if (ImGui::DragFloat3("サイズ (Size)", &colConfig.size.x, 0.05f, 0.0f, 100.0f)) isColChanged = true;
                 }

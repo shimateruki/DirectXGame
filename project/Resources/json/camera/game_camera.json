@@ -95,6 +95,25 @@
             "trackTargetY": false,
             "trackTargetZ": true
         },
+        "tutorial movie": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                0.38418835401535034,
+                33.01767349243164,
+                -241.37237548828125
+            ],
+            "fixedTargetPos": [
+                0.23484916985034943,
+                32.089012145996094,
+                -231.41671752929688
+            ],
+            "trackEyeX": false,
+            "trackEyeY": false,
+            "trackEyeZ": false,
+            "trackTargetX": false,
+            "trackTargetY": false,
+            "trackTargetZ": false
+        },
         "up": {
             "duration": 1.0,
             "fixedEyePos": [

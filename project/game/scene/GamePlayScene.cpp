@@ -60,380 +60,367 @@ GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
 
 void GamePlayScene::Initialize() {
-  using json = nlohmann::json;
+	using json = nlohmann::json;
 
-  // --- 1. エンジン基盤・リソース初期化 ---
-  dxCommon_ = DirectXCommon::GetInstance();
-  inputManager_ = InputManager::GetInstance();
-  audioPlayer_ = AudioPlayer::GetInstance();
+	// --- 1. エンジン基盤・リソース初期化 ---
+	dxCommon_ = DirectXCommon::GetInstance();
+	inputManager_ = InputManager::GetInstance();
+	audioPlayer_ = AudioPlayer::GetInstance();
 
-  LOG("Game Initialized!");
+	LOG("Game Initialized!");
 
-  bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
-  // --- 2. 各種マネージャ初期化 ---
-  EventManager::GetInstance()->ClearAllListeners();
-  CameraManager::GetInstance()->Initialize();
-  CameraManager::GetInstance()->SetInputManager(inputManager_);
+	// --- 2. 各種マネージャ初期化 ---
+	EventManager::GetInstance()->ClearAllListeners();
+	CameraManager::GetInstance()->Initialize();
+	CameraManager::GetInstance()->SetInputManager(inputManager_);
 
-  spriteCommon_ = std::make_unique<SpriteCommon>();
-  spriteCommon_->Initialize(dxCommon_);
+	spriteCommon_ = std::make_unique<SpriteCommon>();
+	spriteCommon_->Initialize(dxCommon_);
 
-  object3dCommon_ = std::make_unique<Object3dCommon>();
-  object3dCommon_->Initialize(dxCommon_);
+	object3dCommon_ = std::make_unique<Object3dCommon>();
+	object3dCommon_->Initialize(dxCommon_);
 
-  particleCommon_ = std::make_unique<ParticleCommon>();
-  particleCommon_->Initialize(dxCommon_);
+	particleCommon_ = std::make_unique<ParticleCommon>();
+	particleCommon_->Initialize(dxCommon_);
 
-  particleSystem_ = std::make_unique<ParticleSystem>();
-  particleSystem_->Initialize(particleCommon_.get(),
-                              "Resources/sprite/white.png");
+	particleSystem_ = std::make_unique<ParticleSystem>();
+	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
-  ParticleManager::GetInstance()->Initialize(particleSystem_.get());
+	ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
-  gameRule_ = std::make_unique<GameRule>();
-  gameRule_->Initialize(this);
-  GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-  GPUParticleManager::GetInstance()->LoadAllPresets(
-      "Resources/json/gpu_particles/");
-  //
-  LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
+	gameRule_ = std::make_unique<GameRule>();
+	gameRule_->Initialize(this);
+	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
+	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+	//
+	LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
-  // --- 3. サブシステム初期化 ---
-  objectManager_ = std::make_unique<ObjectManager>();
+	// --- 3. サブシステム初期化 ---
+	objectManager_ = std::make_unique<ObjectManager>();
 
-  lockOnSystem_ = std::make_unique<LockOnSystem>();
-  lockOnSystem_->Initialize(inputManager_);
-  uint32_t lockOnTex =
-      TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png");
-  lockOnSprite_ = std::make_unique<Sprite>();
-  lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
-  lockOnSprite_->SetAnchorPoint({0.5f, 0.5f}); // 画像の中心を基準にする
-  lockOnSprite_->SetSize({64.0f, 64.0f});      // アイコンのサイズ（適宜調整！）
-  BulletManager::GetInstance()->Initialize(object3dCommon_.get(),
-                                           CollisionManager::GetInstance());
+	lockOnSystem_ = std::make_unique<LockOnSystem>();
+	lockOnSystem_->Initialize(inputManager_);
+	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png");
+	lockOnSprite_ = std::make_unique<Sprite>();
+	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
+	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
+	lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
+	BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-  MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
-  // パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
-  gpuParticleTexHandle_ =
-      TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
-  // --- 5. レベルデータ読み込み (JSON) ---
-  levelLoader_ = std::make_unique<LevelLoader>();
-  levelLoader_->LoadObjectLayout(this,
-                                 "Resources/json/3Dobject/bossStage.json");
-  levelLoader_->LoadSpriteLayout(this,
-                                 "Resources/json/sprite/sprite_layout.json");
-  levelLoader_->LoadSpriteLayout(
-      this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
-  LightManager::GetInstance()->LoadState(
-      "Resources/json/light/light_layout.json");
-  CameraEditor::GetInstance()->Initialize();
-  CameraEditor::GetInstance()->LoadFile("game_camera.json");
+	MeshEffectManager::GetInstance()->Initialize(object3dCommon_.get());
+	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
+	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
-  timeAttackUI_ = std::make_unique<TimeAttackUI>();
-  timeAttackUI_->Initialize(spriteCommon_.get());
 
-  // --- スプライトの中から探索
-  for (auto &sprite : sprites_) {
-    if (sprite->GetName() == "playerHpBar") {
-      playerHpBarSprite_ = sprite.get();
-      playerHpBarMaxWidth_ = sprite->GetSize().x; // 元の長さを記憶！
-    }
-  }
+	// --- 5. レベルデータ読み込み (JSON) ---
+	levelLoader_ = std::make_unique<LevelLoader>();
+	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
+	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
+	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
+  levelLoader_->LoadSpriteLayout(	this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
+	CameraEditor::GetInstance()->Initialize();
+	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
-  // =======================================================
-  // ゲームオーバー用UIの取得と初期化 (最初は透明にして隠す)
-  // =======================================================
-  gameOverTextSprite_ = GetSpriteByName("GameOverText.png");
-  restartTextSprite_ = GetSpriteByName("restartText.png");
-  titleTextSprite_ = GetSpriteByName("titleText.png");
+	timeAttackUI_ = std::make_unique<TimeAttackUI>();
+	timeAttackUI_->Initialize(spriteCommon_.get());
 
-  auto SetAlphaZero = [](Sprite *sprite) {
-    if (sprite) {
-      Vector4 color = sprite->GetColor();
-      color.w = 0.0f; // 透明度(Alpha)を0に
-      sprite->SetColor(color);
-    }
-  };
-  SetAlphaZero(gameOverTextSprite_);
-  SetAlphaZero(restartTextSprite_);
-  SetAlphaZero(titleTextSprite_);
-  isGameOverUiReady_ = false; // フラグのリセット
-  for (auto &sprite : sprites_) {
-    if (sprite->GetName() == "bossrHpBar") {
-      bossHpBarSprite_ = sprite.get();
-      bossHpBarMaxWidth_ = sprite->GetSize().x;
-      SetAlphaZero(bossHpBarSprite_);
-    } else if (sprite->GetName() == "bariaHp.png") {
-      barrierHpBarSprite_ = sprite.get();
-      barrierHpBarMaxWidth_ = sprite->GetSize().x;
-      SetAlphaZero(bossHpBarSprite_);
-    } else if (sprite->GetName() == "bossHpBarback") {
-      bossHpBackSprite_ = sprite.get();
-      SetAlphaZero(bossHpBackSprite_);
-    } else if (sprite->GetName() == "bossText") {
-      bossNameSprite_ = sprite.get();
-      SetAlphaZero(bossNameSprite_);
-    }
-  }
+	// --- スプライトの中から探索
+	for (auto& sprite : sprites_) {
+		if (sprite->GetName() == "playerHpBar") {
+			playerHpBarSprite_ = sprite.get();
+			playerHpBarMaxWidth_ = sprite->GetSize().x; // 元の長さを記憶！
+		}
+	}
+	
+	// =======================================================
+	// ゲームオーバー用UIの取得と初期化 (最初は透明にして隠す)
+	// =======================================================
+	gameOverTextSprite_ = GetSpriteByName("GameOverText.png");
+	restartTextSprite_ = GetSpriteByName("restartText.png");
+	titleTextSprite_ = GetSpriteByName("titleText.png");
 
-  // =======================================================
-  // ポーズ用UIの取得と初期化 (最初は透明にして隠す)
-  // =======================================================
-  poseBackSprite_ = GetSpriteByName("poseBack.png");
-  poseTextSprite_ = GetSpriteByName("poseText.png");
-  restartPoseTextSprite_ = GetSpriteByName("restartPoseText.png");
-  titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
+	auto SetAlphaZero = [](Sprite* sprite) {
+		if (sprite) {
+			Vector4 color = sprite->GetColor();
+			color.w = 0.0f; // 透明度(Alpha)を0に
+			sprite->SetColor(color);
+		}
+		};
+	SetAlphaZero(gameOverTextSprite_);
+	SetAlphaZero(restartTextSprite_);
+	SetAlphaZero(titleTextSprite_);
+	isGameOverUiReady_ = false; // フラグのリセット
+	tutorialMovieStarted_ = false;
+	tutorialMovieTimer_ = 0.0f;
+	for (auto& sprite : sprites_) {
+		if (sprite->GetName() == "bossrHpBar") {
+			bossHpBarSprite_ = sprite.get();
+			bossHpBarMaxWidth_ = sprite->GetSize().x;
+			SetAlphaZero(bossHpBarSprite_);
+		}
+		else if (sprite->GetName() == "bariaHp.png") {
+			barrierHpBarSprite_ = sprite.get();
+			barrierHpBarMaxWidth_ = sprite->GetSize().x;
+			SetAlphaZero(bossHpBarSprite_);
+		}
+		else if (sprite->GetName() == "bossHpBarback") {
+			bossHpBackSprite_ = sprite.get();
+			SetAlphaZero(bossHpBackSprite_);
+		}
+		else if (sprite->GetName() == "bossText") { 
+			bossNameSprite_ = sprite.get();
+			SetAlphaZero(bossNameSprite_);
+		}
+	}
+
+	// =======================================================
+	// ポーズ用UIの取得と初期化 (最初は透明にして隠す)
+	// =======================================================
+	poseBackSprite_ = GetSpriteByName("poseBack.png");
+	poseTextSprite_ = GetSpriteByName("poseText.png");
+	restartPoseTextSprite_ = GetSpriteByName("restartPoseText.png");
+	titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
   optionPoseTextSprite_ = GetSpriteByName("optionText.png");
+	auto SetAlpha = [](Sprite* sprite, float alpha) {
+		if (sprite) {
+			Vector4 color = sprite->GetColor();
+			color.w = alpha;
+			sprite->SetColor(color);
+		}
+		};
 
-  auto SetAlpha = [](Sprite *sprite, float alpha) {
-    if (sprite) {
-      Vector4 color = sprite->GetColor();
-      color.w = alpha;
-      sprite->SetColor(color);
-    }
-  };
+	SetAlpha(poseBackSprite_, 0.0f);
+	SetAlpha(poseTextSprite_, 0.0f);
+	SetAlpha(restartPoseTextSprite_, 0.0f);
+	SetAlpha(titleTextPoseSprite_, 0.0f);
+	isPaused_ = false;
 
-  SetAlpha(poseBackSprite_, 0.0f);
-  SetAlpha(poseTextSprite_, 0.0f);
-  SetAlpha(restartPoseTextSprite_, 0.0f);
-  SetAlpha(titleTextPoseSprite_, 0.0f);
-  SetAlpha(optionPoseTextSprite_, 0.0f);
-  isPaused_ = false;
 
-  // ★ 1. まず objectManager からオブジェクトのリストを取得する！
-  auto &objects = objectManager_->GetObjects();
+	// ★ 1. まず objectManager からオブジェクトのリストを取得する！
+	auto& objects = objectManager_->GetObjects();
 
-  for (auto it = objects.begin(); it != objects.end(); ++it) {
-    if ((*it)->GetName() == "Enemy_BossCore") {
-      // 1. 古いボスの「今の住所」をメモ（まだ消さない）
-      Object3d *oldAddress = it->get();
+	for (auto it = objects.begin(); it != objects.end(); ++it) {
+		if ((*it)->GetName() == "Enemy_BossCore") {
+			// 1. 古いボスの「今の住所」をメモ（まだ消さない）
+			Object3d* oldAddress = it->get();
 
-      // 2. 新しい BossCore を準備（まだリストには入れない）
-      auto newBoss = std::make_unique<BossCore>();
-      newBoss->SetSceneManager(
-          SceneManager::GetInstance()); // シーンマネージャの設定
-      newBoss->Initialize(object3dCommon_.get(),
-                          oldAddress->GetModelName()); // 新しいモデルで初期化
-      newBoss->CopyFrom(oldAddress);                   // 座標などをコピー
-      newBoss->SetTarget(player_); // プレイヤーをターゲットに設定
-      this->boss_ = newBoss.get(); // コントロール用ポインタを保存
-      BossCore *newAddress = newBoss.get();
+			// 2. 新しい BossCore を準備（まだリストには入れない）
+			auto newBoss = std::make_unique<BossCore> ();
+			newBoss->SetSceneManager (SceneManager::GetInstance ());
+			newBoss->Initialize (object3dCommon_.get (), oldAddress->GetModelName ());
+			newBoss->CopyFrom (oldAddress); // 座標などをコピー
+			newBoss->SetTarget (player_);
+			this->boss_ = newBoss.get();
+			BossCore *newAddress = newBoss.get ();
 
-      // ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
+			// ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
 
-      // (A) 当たり判定マネージャから古いボスを抹消し、新しいボスを登録する
-      // ※ もし Remove/Add 関数がない場合は、後述の「強硬手段」を使ってください
-      CollisionManager::GetInstance()->RemoveObject(oldAddress);
-      CollisionManager::GetInstance()->AddObject(newAddress);
+			// (A) 当たり判定マネージャから古いボスを抹消し、新しいボスを登録する
+			// ※ もし Remove/Add 関数がない場合は、後述の「強硬手段」を使ってください
+			CollisionManager::GetInstance()->RemoveObject(oldAddress);
+			CollisionManager::GetInstance()->AddObject(newAddress);
 
-      // (B) 子供たちの親を、古い住所から新しい住所へ書き換える
-      for (auto &obj : objects) {
-        if (obj->GetParent() == oldAddress) {
-          obj->SetParent(newAddress);
+			// (B) 子供たちの親を、古い住所から新しい住所へ書き換える
+			for (auto& obj : objects) {
+				if (obj->GetParent() == oldAddress) {
+					obj->SetParent(newAddress);
 
-          // ★ ここを追加！新しいボスにパーツを登録する
-          newAddress->AddArmorBlock(obj.get());
-        }
-      }
+					// ★ ここを追加！新しいボスにパーツを登録する
+					newAddress->AddArmorBlock(obj.get());
+				}
+			}
 
-      // 3. 最後に実体を差し替える。ここで oldAddress は安全に消滅する
-      *it = std::move(newBoss);
-      break;
-    }
-  }
+			// 3. 最後に実体を差し替える。ここで oldAddress は安全に消滅する
+			*it = std::move(newBoss);
+			break;
+		}
+	}
 
-  auto SetAlphaIfExists = [](Sprite *sprite, float a) {
-    if (sprite) {
-      Vector4 c = sprite->GetColor();
-      c.w = a;
-      sprite->SetColor(c);
-    }
-  };
+	auto SetAlphaIfExists = [](Sprite* sprite, float a) {
+		if (sprite) {
+			Vector4 c = sprite->GetColor();
+			c.w = a;
+			sprite->SetColor(c);
+		}
+		};
 
-  // --- チュートリアル用スプライトの取得（最初は非表示） ---
-  tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
-  tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
-  tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
-  tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
-  tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
+	// --- チュートリアル用スプライトの取得（最初は非表示） ---
+	tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
+	tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
+	tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
+	tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
+	tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
 
-  SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
-  SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
-  SetAlphaIfExists(tutorialLockOnSprite_, 0.0f);
-  SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
-  SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
+	SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
+	SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
+	SetAlphaIfExists(tutorialLockOnSprite_, 0.0f);
+	SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
+	SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
 
-  for (auto &sprite : sprites_) {
-    // 既存のHPバー取得
-    if (sprite->GetName() == "playerHpBar") {
-      playerHpBarSprite_ = sprite.get();
-      playerHpBarMaxWidth_ = sprite->GetSize().x;
-    }
-    // ★ ミッション用スプライトを名前で一致させて変数に保存する
-    else if (sprite->GetName() == "missionText_mission.png")
-      missionText_mission_ = sprite.get();
-    else if (sprite->GetName() == "missionText_line.png")
-      missionText_line_ = sprite.get();
-    else if (sprite->GetName() == "missionText_Mark.png")
-      missionText_Mark_ = sprite.get();
-    else if (sprite->GetName() == "missionText_lever.png")
-      missionText_lever_ = sprite.get();
-    else if (sprite->GetName() == "missionText_go.png")
-      missionText_go_ = sprite.get();
-    else if (sprite->GetName() == "missionText_boss.png")
-      missionText_boss_ = sprite.get();
-  }
 
-  SetAlphaZero(missionText_mission_);
-  SetAlphaZero(missionText_line_);
-  SetAlphaZero(missionText_Mark_);
-  SetAlphaZero(missionText_lever_);
-  SetAlphaZero(missionText_go_);
-  SetAlphaZero(missionText_boss_);
+	for (auto& sprite : sprites_) {
+		// 既存のHPバー取得
+		if (sprite->GetName() == "playerHpBar") {
+			playerHpBarSprite_ = sprite.get();
+			playerHpBarMaxWidth_ = sprite->GetSize().x;
+		}
+		// ★ ミッション用スプライトを名前で一致させて変数に保存する
+		else if (sprite->GetName() == "missionText_mission.png") missionText_mission_ = sprite.get();
+		else if (sprite->GetName() == "missionText_line.png")    missionText_line_ = sprite.get();
+		else if (sprite->GetName() == "missionText_Mark.png")    missionText_Mark_ = sprite.get();
+		else if (sprite->GetName() == "missionText_lever.png")   missionText_lever_ = sprite.get();
+		else if (sprite->GetName() == "missionText_go.png")      missionText_go_ = sprite.get();
+		else if (sprite->GetName() == "missionText_boss.png")    missionText_boss_ = sprite.get();
+	}
 
-  missionInitialShown_ = false;
-  missionGoShown_ = false;
-  missionBossShown_ = false;
+	
+	SetAlphaZero(missionText_mission_);
+	SetAlphaZero(missionText_line_);
+	SetAlphaZero(missionText_Mark_);
+	SetAlphaZero(missionText_lever_);
+	SetAlphaZero(missionText_go_);
+	SetAlphaZero(missionText_boss_);
 
-  // =======================================================
-  // ★ 進行状況の復元：橋がすでに落ちている場合の処理
-  // =======================================================
-  if (GameProgress::GetInstance()->hasBridgeDropped) {
-    // 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
-    auto &objects_ref = objectManager_->GetObjects();
-    for (auto &obj : objects_ref) {
-      std::string name = obj->GetName();
-      // 名前が "Bridge_"" で始まるオブジェクトを全て対象にする
-      if (name.find("Bridge_") != std::string::npos) {
-        obj->SetCollisionAttribute(0); // 当たり判定を完全に消す
-        if (name.find("Bridge_Block") !=
-            std::string::npos) {    // ブリッジブロックは完全に消す
-          obj->SetIsVisible(false); // 見えなくする
-          obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
-        }
-      } else if (name.find("Battle_Field_Collision_Box_") !=
-                 std::string::npos) {
-        obj->SetCollisionAttribute(kGround);
-      }
-    }
+	missionInitialShown_ = false;
+	missionGoShown_ = false;
+	missionBossShown_ = false;
 
-    // 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
-    this->hasBridgeDropped_ = true;
-    this->missionInitialShown_ = true; // チュートリアルミッションは表示済み
-    this->missionGoShown_ = true;      // 次の「GO」を表示する状態にする
-    // 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
-    if (player_) {
-      // 隊長が設定したボス前の座標を適用！
-      player_->GetTransform()->translate = {0.0f, 1.3f, -68.0f};
-      player_->UpdateLocalMatrix();
-      player_->UpdateWorldMatrix();
+	// =======================================================
+	// ★ 進行状況の復元：橋がすでに落ちている場合の処理
+	// =======================================================
+	if (GameProgress::GetInstance()->hasBridgeDropped) {
+		// 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
+		auto& objects_ref = objectManager_->GetObjects();
+		for (auto& obj : objects_ref) {
+			std::string name = obj->GetName();
+			// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
+			if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+				obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+				if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
+					obj->SetIsVisible(false);        // 見えなくする
+					obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
+				}
+			}
+			else if (name.find("Battle_Field_Collision_Box_") != std::string::npos) {
+				obj->SetCollisionAttribute(kGround);
+			}
+		}
 
-      // チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
-      GameProgress::GetInstance()->hasFinishedTutorial = true;
-      this->hasFinishedTutorial_ = true;
-      this->doorOpenProgress_ =
-          1.0f; // チュートリアル部屋のドアも全開にしておく
-    }
-  } else {
-    // 最初からプレイする場合の完全リセット
-    // エディタ等でJSONが書き換わっていた場合でも確実に復活させる
-    auto &objects_ref = objectManager_->GetObjects();
-    for (auto &obj : objects_ref) {
-      std::string name = obj->GetName();
-      if (name.find("Tutorial_") != std::string::npos &&
-          name.find("Ceiling") == std::string::npos &&
-          name.find("Doll") == std::string::npos) {
+		// 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
+		this->hasBridgeDropped_ = true;
+		this->missionInitialShown_ = true; // チュートリアルミッションは表示済み
+		this->missionGoShown_ = true;      // 次の「GO」を表示する状態にする
+		// 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
+		if (player_) {
+			// 隊長が設定したボス前の座標を適用！
+			player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
+			player_->UpdateLocalMatrix();
+			player_->UpdateWorldMatrix();
 
-        obj->SetIsVisible(true);
-        obj->SetCollisionAttribute(kGround);
+			// チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
+			GameProgress::GetInstance()->hasFinishedTutorial = true;
+			this->hasFinishedTutorial_ = true;
+			this->doorOpenProgress_ = 1.0f; // チュートリアル部屋のドアも全開にしておく
+		}
+	} else {
+		// 最初からプレイする場合の完全リセット
+		// エディタ等でJSONが書き換わっていた場合でも確実に復活させる
+		auto& objects_ref = objectManager_->GetObjects();
+		for (auto& obj : objects_ref) {
+			std::string name = obj->GetName();
+			if (name.find("Tutorial_") != std::string::npos &&
+				name.find("Ceiling") == std::string::npos &&
+				name.find("Doll") == std::string::npos) {
 
-        // ドアは最初は閉まっている状態にする
-        if (name == "Tutorial_Door_Left") {
-          obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
-        } else if (name == "Tutorial_Door_Right") {
-          obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
-        }
-        obj->UpdateWorldMatrix();
-      }
-      if (name.find("Bridge_") != std::string::npos) {
-        if (name.find("Bridge_Collision") == std::string::npos) {
-          obj->SetIsVisible(true);
-        } else if (name.find("Bridge_") !=
-                   std::string::npos) { // ブリッジ関連は全て復活させる
-          if (name.find("Bridge_Collision") == std::string::npos) {
-            obj->SetIsVisible(true);
-          }
-          obj->SetCollisionAttribute(kGround);
-        }
-      }
-      if (name.find("Battle_Field_Collision_") != std::string::npos) {
-        obj->SetCollisionAttribute(kGround);
-        if (name.find("Battle_Field_Collision_Box_South") !=
-            std::string::
-                npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
-          obj->SetCollisionAttribute(0);
-        }
-      }
-    }
-    this->hasBridgeDropped_ = false;
-    this->hasFinishedTutorial_ = false;
-    this->doorOpenProgress_ = 0.0f; // ドアを閉める
+				obj->SetIsVisible(true);
+				obj->SetCollisionAttribute(kGround);
 
-    // =======================================================
-    // ★ チュートリアルプラットフォーム降下演出の初期化
-    // =======================================================
-    for (auto &obj : objects_ref) {
-      if (obj->GetName() == "Tutorial_Platform") {
-        this->tutorialPlatform_ = obj.get();
-        // 初期位置を y:100 に (念のため)
-        obj->GetTransform()->translate.y = 100.0f;
-        obj->UpdateWorldMatrix();
-        break;
-      }
-    }
+				// ドアは最初は閉まっている状態にする
+				if (name == "Tutorial_Door_Left") {
+					obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
+				}
+				else if (name == "Tutorial_Door_Right") {
+					obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
+				}
+				obj->UpdateWorldMatrix();
+			}
+			if (name.find("Bridge_") != std::string::npos) {
+				if (name.find("Bridge_Collision") == std::string::npos) {
+					obj->SetIsVisible(true);
+				}
+				else if (name.find("Bridge_") != std::string::npos) { // ブリッジ関連は全て復活させる
+					if (name.find("Bridge_Collision") == std::string::npos) {
+						obj->SetIsVisible(true);
+					}
+					obj->SetCollisionAttribute(kGround);
+				}
+			}
+			if (name.find("Battle_Field_Collision_") != std::string::npos) {
+				obj->SetCollisionAttribute(kGround);
+				if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
+					obj->SetCollisionAttribute(0);
+				}
+			}
+		}
+		this->hasBridgeDropped_ = false;
+		this->hasFinishedTutorial_ = false;
+		this->doorOpenProgress_ = 0.0f; // ドアを閉める
 
-    if (this->tutorialPlatform_ && player_) {
-      // プレイヤーをプラットフォームの真上に配置
-      // 本来の重力時の位置関係を維持するため、現状の差分をオフセットとして記録
-      Vector3 platformPos = this->tutorialPlatform_->GetTransform()->translate;
+		// =======================================================
+		// ★ チュートリアルプラットフォーム降下演出の初期化
+		// =======================================================
+		for (auto& obj : objects_ref) {
+			if (obj->GetName() == "Tutorial_Platform") {
+				this->tutorialPlatform_ = obj.get();
+				// 初期位置を y:100 に (念のため)
+				obj->GetTransform()->translate.y = 100.0f;
+				obj->UpdateWorldMatrix();
+				break;
+			}
+		}
 
-      // プレイヤーを初期位置へ (x, z はプラットフォームに合わせ、y
-      // は適切な高さへ) ユーザーの 94.7f という数値は、プラットフォーム 100.0f
-      // に対して -5.3f のオフセットを示唆
-      this->tutorialPlatformOffset_ = -5.3f;
-      player_->GetTransform()->translate = {
-          0.0f, platformPos.y + tutorialPlatformOffset_, -244.0f};
-      player_->UpdateLocalMatrix();
-      player_->UpdateWorldMatrix();
+		if (this->tutorialPlatform_ && player_) {
+			// プレイヤーをプラットフォームの真上に配置
+			// 本来の重力時の位置関係を維持するため、現状の差分をオフセットとして記録
+			Vector3 platformPos = this->tutorialPlatform_->GetTransform()->translate;
+			
+			// プレイヤーを初期位置へ (x, z はプラットフォームに合わせ、y は適切な高さへ)
+			// ユーザーの 94.7f という数値は、プラットフォーム 100.0f に対して -5.3f のオフセットを示唆
+			this->tutorialPlatformOffset_ = -5.3f;
+			player_->GetTransform()->translate = { 0.0f, platformPos.y + tutorialPlatformOffset_, -244.0f };
+			player_->UpdateLocalMatrix();
+			player_->UpdateWorldMatrix();
 
-      // 演出開始
-      movieState_ = MovieState::kTutorialPlatformDescent;
-      movieTimer_ = 0.0f;
+			// 演出開始
+			movieState_ = MovieState::kTutorialPlatformDescent;
+			movieTimer_ = 0.0f;
 
-      // 重力に任せると跳ねるため、物理を無効化して手動更新にする
-      player_->SetIsControlActive(false);
-      player_->SetIsPhysicsActive(false);
-    }
-  }
-
-  // OptionUIの初期化
+			// 重力に任せると跳ねるため、物理を無効化して手動更新にする
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
+		}
+	}
+  
+  // OptionUIの初期化	
   optionUI_.Initialize(this, spriteCommon_.get());
-
+	
   // =======================================================
-  // ★ リスタート演出（電脳リブート）と完全初期化
-  // =======================================================
-  SceneManager *scm = SceneManager::GetInstance();
-  PostEffect::GetInstance()->ResetToBaseParams();
+	 // ★ リスタート演出（電脳リブート）と完全初期化
+	 // =======================================================
+	SceneManager* scm = SceneManager::GetInstance();
+	PostEffect::GetInstance()->ResetToBaseParams();
 
-  if (scm->ShouldSkipFade()) {
-    CinematicFade::GetInstance()->StartOpen(0.3f);
-    scm->ResetSkipFade();
-  } else {
-    CinematicFade::GetInstance()->StartOpen(0.5f);
-  }
-  dxCommon_->FlushCommandQueue(false);
+	if (scm->ShouldSkipFade()) {
+		CinematicFade::GetInstance()->StartOpen(0.3f);
+		scm->ResetSkipFade();
+	}
+	else {
+		CinematicFade::GetInstance()->StartOpen(0.5f);
+	}
+	dxCommon_->FlushCommandQueue(false);
 }
 
 void GamePlayScene::Finalize() {
@@ -450,128 +437,114 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::Update(float deltaTime) {
-  // ---------------------------------------------------------
-  // 0. ESCキーでの強制終了（オプション画面以外）
-  // ---------------------------------------------------------
-  if (!isOptionMenu_ && inputManager_->IsKeyTriggered(DIK_ESCAPE)) {
-    if (isPaused_) {
-      // ポーズ中ならポーズを閉じる
-      isPaused_ = false;
-      auto SetAlpha = [](Sprite *sprite, float a) {
-        if (sprite) {
-          Vector4 c = sprite->GetColor();
-          c.w = a;
-          sprite->SetColor(c);
-        }
-      };
-      SetAlpha(poseBackSprite_, 0.0f);
-      SetAlpha(poseTextSprite_, 0.0f);
-      SetAlpha(restartPoseTextSprite_, 0.0f);
-      SetAlpha(titleTextPoseSprite_, 0.0f);
-      currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
-    } else {
-      // ゲームプレイ中なら今まで通り終了
-      PostQuitMessage(0);
-    }
-    return;
-  }
-
-  // ---------------------------------------------------------
-  // 1. ポーズの切り替え判定 (ゲームオーバー・ムービー中はポーズ不可)
-  // ---------------------------------------------------------
-  bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
-  bool isMoviePlaying =
-      (movieState_ != MovieState::kNone) || isBossMoviePlaying_;
-
-  // 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え
-  if (!isGameOver && !isMoviePlaying &&
-      inputManager_->IsActionTriggered("pose")) {
-    if (isOptionMenu_) {
-      isOptionMenu_ = false; // オプション中ならオプションを閉じる
-    } else {
-      isPaused_ = !isPaused_; // フラグを反転
-
-      // 文字用のアルファ値 (1.0 = 完全不透明, 0.0 = 完全透明)
-      float textAlpha = isPaused_ ? 1.0f : 0.0f;
-
-      // 背景用のアルファ値 (0.6 = 半透明。もっと薄くしたければ 0.4 や 0.5 に！)
-      float backAlpha = isPaused_ ? 0.6f : 0.0f;
-      auto SetAlpha = [](Sprite *sprite, float a) {
-        if (sprite) {
-          Vector4 c = sprite->GetColor();
-          c.w = a;
-          sprite->SetColor(c);
-        }
-      };
-      // ★背景だけ backAlpha を使うように変更
-      SetAlpha(poseBackSprite_, backAlpha);
-      SetAlpha(poseTextSprite_, textAlpha);
-      SetAlpha(restartPoseTextSprite_, textAlpha);
-      SetAlpha(titleTextPoseSprite_, textAlpha);
-
-      // 選択位置をリセット
-      currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
-    }
-  }
-
-  // ---------------------------------------------------------
-  // 2. ポーズ中のUI操作と遷移
-  // ---------------------------------------------------------
-  if (isOptionMenu_) {
-    if (optionUI_.Update(deltaTime)) {
-      isOptionMenu_ = false; // バック等で戻る
-    }
-  } else if (isPaused_) {
-    // 上下キーで項目切り替え
-    if (inputManager_->IsActionTriggered("Forward")) {
-      currentPauseMenuIndex_--;
-      if (currentPauseMenuIndex_ < 0)
-        currentPauseMenuIndex_ = (int)PauseMenuIndex::Max - 1;
-    }
-    if (inputManager_->IsActionTriggered("Backward")) {
-      currentPauseMenuIndex_++;
-      if (currentPauseMenuIndex_ >= (int)PauseMenuIndex::Max)
-        currentPauseMenuIndex_ = 0;
-    }
-
-    // 選択中の項目をハイライト
-    Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
-    Vector4 selectColor = {1.0f, 1.0f, 1.0f, 1.0f};
-
-    if (restartPoseTextSprite_)
-      restartPoseTextSprite_->SetColor(
-          currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart ? selectColor
-                                                                 : normalColor);
-    if (optionPoseTextSprite_)
-      optionPoseTextSprite_->SetColor(
-          currentPauseMenuIndex_ == (int)PauseMenuIndex::Option ? selectColor
-                                                                : normalColor);
-    if (titleTextPoseSprite_)
-      titleTextPoseSprite_->SetColor(
-          currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor
-                                                               : normalColor);
-
-    // optionTextはポーズメニュー時のみ表示
-    if (optionPoseTextSprite_) {
-      Vector4 color = optionPoseTextSprite_->GetColor();
-      color.w = 1.0f;
-      optionPoseTextSprite_->SetColor(color);
-    }
-
-    // 決定ボタンで遷移
-    if (inputManager_->IsActionTriggered("Jump")) {
-      PostEffect::Params *postParams = PostEffect::GetInstance()->GetParams();
-      postParams->dangerVignette = 0.0f;
-      postParams->blackout = 0.0f;
-      if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart) {
-        SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-      } else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Option) {
-        isOptionMenu_ = true; // 設定画面遷移
-      } else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Title) {
-        SceneManager::GetInstance()->ChangeScene("TITLE");
-      }
-    }
+  
+  // ---------------------------------------------------------	
+// 0. ESCキーでの強制終了（オプション画面以外）	
+// ---------------------------------------------------------	
+if (!isOptionMenu_ && inputManager_->IsKeyTriggered(DIK_ESCAPE)) {	
+if (isPaused_) {	
+// ポーズ中ならポーズを閉じる	
+isPaused_ = false;	
+auto SetAlpha = [](Sprite *sprite, float a) {	
+if (sprite) {	
+Vector4 c = sprite->GetColor();	
+c.w = a;	
+sprite->SetColor(c);	
+}	
+};	
+SetAlpha(poseBackSprite_, 0.0f);	
+SetAlpha(poseTextSprite_, 0.0f);	
+SetAlpha(restartPoseTextSprite_, 0.0f);	
+SetAlpha(titleTextPoseSprite_, 0.0f);	
+currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;	
+} else {	
+// ゲームプレイ中なら今まで通り終了	
+PostQuitMessage(0);	
+}	
+return;	
+}
+  
+	// ---------------------------------------------------------
+	// 1. ポーズの切り替え判定 (ゲームオーバー時はポーズ不可)
+	// ---------------------------------------------------------
+	bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
+  bool isMoviePlaying =	(movieState_ != MovieState::kNone) || isBossMoviePlaying_;
+  
+	// 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え
+	if (!isGameOver && inputManager_->IsActionTriggered("pose")) {
+    if (isOptionMenu_) {	
+  isOptionMenu_ = false; // オプション中ならオプションを閉じる	
   } else {
+    
+		isPaused_ = !isPaused_; // フラグを反転
+
+		// 文字用のアルファ値 (1.0 = 完全不透明, 0.0 = 完全透明)
+		float textAlpha = isPaused_ ? 1.0f : 0.0f;
+
+		// 背景用のアルファ値 (0.6 = 半透明。もっと薄くしたければ 0.4 や 0.5 に！)
+		float backAlpha = isPaused_ ? 0.6f : 0.0f;
+		auto SetAlpha = [](Sprite* sprite, float a) {
+			if (sprite) { Vector4 c = sprite->GetColor(); c.w = a; sprite->SetColor(c); }
+			};
+		// ★背景だけ backAlpha を使うように変更
+		SetAlpha(poseBackSprite_, backAlpha);
+		SetAlpha(poseTextSprite_, textAlpha);
+		SetAlpha(restartPoseTextSprite_, textAlpha);
+		SetAlpha(titleTextPoseSprite_, textAlpha);
+
+		// 選択位置をリセット
+		currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
+      }
+	}
+
+	// ---------------------------------------------------------
+	// 2. ポーズ中のUI操作と遷移
+	// ---------------------------------------------------------
+	if (isOptionMenu_) {	
+if (optionUI_.Update(deltaTime)) {	
+isOptionMenu_ = false; // バック等で戻る	
+}	
+} else if (isPaused_) {
+		// 上下キーで項目切り替え
+		if (inputManager_->IsActionTriggered("Forward")) {
+			currentPauseMenuIndex_--;
+			if (currentPauseMenuIndex_ < 0) currentPauseMenuIndex_ = (int)PauseMenuIndex::Max - 1;
+		}
+		if (inputManager_->IsActionTriggered("Backward")) {
+			currentPauseMenuIndex_++;
+			if (currentPauseMenuIndex_ >= (int)PauseMenuIndex::Max) currentPauseMenuIndex_ = 0;
+		}
+
+		// 選択中の項目をハイライト
+		Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+		Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		if (restartPoseTextSprite_) restartPoseTextSprite_->SetColor(currentPauseMenuIndex_ ==  (int)PauseMenuIndex::Restart ? selectColor: normalColor);	
+    if (optionPoseTextSprite_)optionPoseTextSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Option ? selectColor:normalColor);
+		if (titleTextPoseSprite_) titleTextPoseSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor : normalColor);
+ 
+    // optionTextはポーズメニュー時のみ表示	
+  if (optionPoseTextSprite_) {	
+  Vector4 color = optionPoseTextSprite_->GetColor();	
+  color.w = 1.0f;	
+  optionPoseTextSprite_->SetColor(color);	
+  }
+		// 決定ボタンで遷移
+		if (inputManager_->IsActionTriggered("Jump")) {
+
+			PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+			postParams->dangerVignette = 0.0f;
+			postParams->blackout = 0.0f;
+
+			if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart) {
+				SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+			} else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Option) {
+        isOptionMenu_ = true; // 設定画面遷移	
+      }else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Title) {
+				SceneManager::GetInstance()->ChangeScene("TITLE");
+			}
+		}
+   } else {
     // ポーズメニュー以外はoptionText.pngを非表示
     if (optionPoseTextSprite_) {
       Vector4 color = optionPoseTextSprite_->GetColor();
@@ -579,7 +552,7 @@ void GamePlayScene::Update(float deltaTime) {
       optionPoseTextSprite_->SetColor(color);
     }
   }
-
+  
   // UI表示切り替え（オプション中は他のUIを隠す）
   for (auto &sprite : sprites_) {
     bool isOpt = optionUI_.IsOptionSprite(sprite.get());
@@ -598,474 +571,494 @@ void GamePlayScene::Update(float deltaTime) {
     }
   }
 
-  if (isPaused_ || isOptionMenu_) {
-    for (auto &sprite : sprites_) {
-      sprite->Update();
-    }
-    return;
-  }
-  // =======================================================
-  // チュートリアルドアの処理
-  // =======================================================
-  if (!hasFinishedTutorial_) {
-    for (auto &obj : objectManager_->GetObjects()) {
-      if (obj->GetName() == "Tutorial_Doll_Lever") {
-        TutorialDoll *doll = dynamic_cast<TutorialDoll *>(obj.get());
-        if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
-          hasFinishedTutorial_ = true;
-          break;
-        }
-      }
-    }
-  }
+    
+		for (auto& sprite : sprites_) {
+			sprite->Update();
+		}
+		// =======================================================
+		// ★超重要：ポーズ中はここで関数を強制終了し、ゲームの時間を止める！
+		// =======================================================
+		return;
+	}
 
-  if (hasFinishedTutorial_) {
-    if (doorOpenProgress_ < 1.0f) {
-      doorOpenProgress_ += deltaTime * 0.5f; // 2秒で開く
-      if (doorOpenProgress_ > 1.0f) {
-        doorOpenProgress_ = 1.0f;
-        // ドアが完全に開いた瞬間モデルを消しておく
-        for (auto &obj : objectManager_->GetObjects()) {
-          if (obj->GetName() == "Tutorial_Door_Left") {
-            obj->SetIsVisible(false);
-            obj->SetCollisionAttribute(0); // 当たり判定も消す
-            obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-          } else if (obj->GetName() == "Tutorial_Door_Right") {
-            std::string name = obj->GetName();
-            if (name.find("Tutorial_Door") != std::string::npos &&
-                name.find("Wall") == std::string::npos) { // Wallは残す
-              obj->SetIsVisible(false);
-              obj->SetCollisionAttribute(0); // 当たり判定も消す
-              obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-            }
-          }
-        }
+	if (isRestartTransition_ || isTitleTransition_) {
+		restartTimer_ += deltaTime;
+		float transitionDuration = 1.0f;
+		float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
 
-        // ここで missionText_go を表示（1回だけ）
-        if (!missionGoShown_ && missionText_go_) {
-          Vector4 c = missionText_go_->GetColor();
-          c.w = 1.0f;
-          missionText_go_->SetColor(c);
-          missionGoShown_ = true;
+		PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
 
-          if (missionText_lever_) {
-            Vector4 lc = missionText_lever_->GetColor();
-            lc.w = 0.0f;
-            missionText_lever_->SetColor(lc);
-          }
-        }
-      }
-    }
-    for (auto &obj : objectManager_->GetObjects()) {
-      if (obj->GetName() == "Tutorial_Door_Left") {
-        Transform *trans = obj->GetTransform();
-        trans->translate.x = -5.0f - 15.0f * doorOpenProgress_;
-        trans->isQuaternionMaster = false;
-        obj->UpdateWorldMatrix();
-      } else if (obj->GetName() == "Tutorial_Door_Right") {
-        Transform *trans = obj->GetTransform();
-        trans->translate.x = 5.0f + 15.0f * doorOpenProgress_;
-        trans->isQuaternionMaster = false;
-        obj->UpdateWorldMatrix();
-      }
-    }
-  }
+		// ★ ここはそのまま（縦に潰れる処理）
+		postParams->crtShutdown = t;
 
-  static Math math;
-  LightEditor::GetInstance()->Update();
 
-  Camera *camera = CameraManager::GetInstance()->GetMainCamera();
 
-  // =================================================================
-  // ムービーの制御
-  // =================================================================
-  if (movieState_ == MovieState::kBridgeDrop) {
-    // ムービー開始時の初期化
-    if (movieTimer_ == 0.0f) {
-      movieStoredPlayerPos_ = player_->GetWorldPosition();
-      player_->SetVelocity({0.0f, 0.0f, 0.0f});
-      player_->SetIsControlActive(false);
-      player_->SetIsPhysicsActive(false);
-    }
+		// 完全に終了（1秒経過）したらシーンをリロード
+		if (restartTimer_ >= transitionDuration) {
+			if (isRestartTransition_) {
+				SceneManager::GetInstance()->ChangeScene("GAMEPLAY", true);
+			}
+			else {
+				SceneManager::GetInstance()->ChangeScene("TITLE", true);
+			}
+		}
 
-    movieTimer_ += deltaTime;
+		return;
+	}
+	// =======================================================
+	// チュートリアルドアの処理
+	// =======================================================
+	// ★ チュートリアル終了時にムービーを開始
+	if (!hasFinishedTutorial_) {
+		for (auto& obj : objectManager_->GetObjects()) {
+			if (obj->GetName() == "Tutorial_Doll_Lever") {
+				TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
+				if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
+					hasFinishedTutorial_ = true;
 
-    // プレイヤーの座標を強制固定
-    // (Player::Update側でも物理が無効化されているため)
-    player_->SetTranslate(movieStoredPlayerPos_);
+					// ★ チュートリアルUIを強制終了・非表示にする
+					tutorialUiCompleted_ = true;
+					tutorialStep_ = TutorialStep::kCompleted;
+					auto hideSprite = [](Sprite* s) {
+						if (s) {
+							Vector4 c = s->GetColor();
+							c.w = 0.0f;
+							s->SetColor(c);
+						}
+					};
+					hideSprite(tutorialMoveSprite_);
+					hideSprite(tutorialCameraSprite_);
+					hideSprite(tutorialLockOnSprite_);
+					hideSprite(tutorialAttackSprite_);
+					hideSprite(tutorialDodgeSprite_);
 
-    // ムービー開始から1.5秒後にブリッジブロックの崩落演出を開始する
+					if (!tutorialMovieStarted_) {
+						CameraEditor::GetInstance()->PlayOverrideCamera(CameraManager::GetInstance()->GetMainCamera(), "tutorial movie");
+						tutorialMovieStarted_ = true;
+						tutorialMovieTimer_ = 2.0f; 
+						if (player_) player_->SetIsControlActive(false); // 操作禁止
+					}
+					break;
+				}
+			}
+		}
+	}
 
-    // カメラ制御は GhostRecorder に任せるため、ブロックの崩落演出のみ実行する
-    if (movieTimer_ > 1.5f) {
-      // まず親の当たり判定を無効化する（プレイヤーが落ちるように）
-      for (auto &obj : objectManager_->GetObjects()) {
-        if (obj->GetName() == "Bridge_Block_Front") {
-          obj->SetCollisionAttribute(0);
-        }
-      }
+	// ★ チュートリアルムービーのタイマー処理
+	if (tutorialMovieTimer_ > 0.0f) {
+		tutorialMovieTimer_ -= deltaTime;
+		if (tutorialMovieTimer_ <= 0.0f) {
+			// 2秒経過したらカメラの固定を解除
+			CameraManager::GetInstance()->GetMainCamera()->EndOverride(1.0f);
+			if (player_) player_->SetIsControlActive(true); // 操作復帰
+		}
+	}
 
-      for (auto &obj : objectManager_->GetObjects()) {
-        if (obj->GetName() == "Bridge_Block_Center") {
-          Transform *trans = obj->GetTransform();
-          trans->translate.y -= 26.0f * deltaTime;
-          trans->rotate.x -= 1.0f * deltaTime; // 自然な傾き（下へ折れ曲がる）
-          trans->isQuaternionMaster = false;
-          obj->UpdateWorldMatrix();
-        } else if (movieTimer_ > 2.0f &&
-                   obj->GetName() == "Bridge_Block_Back") {
-          // 少し遅れて奥のブロックもさらに崩れる
-          Transform *trans = obj->GetTransform();
-          trans->translate.y -= 32.0f * deltaTime;
-          trans->rotate.x += 1.8f * deltaTime; // 折れ曲がる
-          trans->isQuaternionMaster = false;
-          obj->UpdateWorldMatrix();
-        } else if (movieTimer_ > 2.5f &&
-                   obj->GetName() == "Bridge_Block_Front") {
-          // 最後に手前の親ブロックごと崩落する
-          Transform *trans = obj->GetTransform();
-          trans->translate.y -= 48.0f * deltaTime;
-          trans->rotate.x += 0.6f * deltaTime;
-          trans->isQuaternionMaster = false;
-          obj->UpdateWorldMatrix();
-        }
-      }
-    }
+	if (hasFinishedTutorial_) {
+		if (doorOpenProgress_ < 1.0f) {
+			doorOpenProgress_ += deltaTime * 0.5f; // 2秒で開く
+			if (doorOpenProgress_ > 1.0f) {
+				doorOpenProgress_ = 1.0f;
+				// ドアが完全に開いた瞬間モデルを消しておく
+				for (auto& obj : objectManager_->GetObjects()) {
+					if (obj->GetName() == "Tutorial_Door_Left") {
+						obj->SetIsVisible(false);
+						obj->SetCollisionAttribute(0); // 当たり判定も消す
+						obj->isDead = true; // 完全に消す
+					}
+					else if (obj->GetName() == "Tutorial_Door_Right") {
+						std::string name = obj->GetName();
+						if (name.find("Tutorial_Door") != std::string::npos && name.find("Wall") == std::string::npos) { // Wallは残す
+							obj->SetIsVisible(false);
+							obj->SetCollisionAttribute(0); // 当たり判定も消す
+							obj->isDead = true; // 完全に消す
+						}
+					}
+				}
 
-    // ムービー終了判定
-    // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
-    if (movieTimer_ >= 5.5f) {
-      auto &objects_ref = objectManager_->GetObjects();
-      for (auto &obj : objects_ref) {
-        std::string name = obj->GetName();
-        // 名前が "Bridge_"" で始まるオブジェクトを全て対象にする
-        if (name.find("Bridge_") != std::string::npos) {
-          obj->SetCollisionAttribute(0); // 当たり判定を完全に消す
-          if (name.find("Bridge_Block") !=
-              std::string::npos) {    // ブリッジブロックは完全に消す
-            obj->SetIsVisible(false); // 見えなくする
-            obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-          }
-        } else if (
-            name.find("Battle_Field_Collision_Box_South") !=
-            std::string::
-                npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
-          obj->SetCollisionAttribute(kGround);
-        }
-      }
-      movieState_ = MovieState::kNone;
-      player_->SetIsControlActive(true);
-      player_->SetIsPhysicsActive(true);
-      GameProgress::GetInstance()->hasBridgeDropped = true;
-    }
+				// ここで missionText_go を表示（1回だけ）
+				if (!missionGoShown_ && missionText_go_) {
+					Vector4 c = missionText_go_->GetColor();
+					c.w = 1.0f;
+					missionText_go_->SetColor(c);
+					missionGoShown_ = true;
 
-    // ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
-  } else if (movieState_ == MovieState::kTutorialPlatformDescent) {
-    if (tutorialPlatform_ && player_) {
-      player_->SetIsControlActive(false);
-      player_->SetIsPhysicsActive(false);
+					if (missionText_lever_) {
+						Vector4 lc = missionText_lever_->GetColor();
+						lc.w = 0.0f;
+						missionText_lever_->SetColor(lc);
+					}
+				}
+			}
+		}
+		for (auto& obj : objectManager_->GetObjects()) {
+			if (obj->GetName() == "Tutorial_Door_Left") {
+				Transform* trans = obj->GetTransform();
+				trans->translate.x = -5.0f - 15.0f * doorOpenProgress_;
+				trans->isQuaternionMaster = false;
+				obj->UpdateWorldMatrix();
+			}
+			else if (obj->GetName() == "Tutorial_Door_Right") {
+				Transform* trans = obj->GetTransform();
+				trans->translate.x = 5.0f + 15.0f * doorOpenProgress_; 
+				trans->isQuaternionMaster = false;
+				obj->UpdateWorldMatrix();
+			}
+		}
+	}
 
-      Transform *trans = tutorialPlatform_->GetTransform();
-      if (trans->translate.y > 29.6f) {
-        trans->translate.y -= 15.0f * deltaTime;
-        if (trans->translate.y < 29.6f)
-          trans->translate.y = 29.6f;
-        tutorialPlatform_->UpdateWorldMatrix();
-      } else {
-        // ★到着！ movieState_ が kNone
-        // になるので、下のシャッター制御が「下げ」に転じます
-        movieState_ = MovieState::kNone;
-        player_->SetIsControlActive(true);
-        player_->SetIsPhysicsActive(true); // 物理復帰
 
-        if (!hasFinishedTutorial_) {
-          tutorialStep_ = TutorialStep::kShowMove;
-          tutorialTimer_ = 0.0f;
-          if (tutorialMoveSprite_) {
-            Vector4 c = tutorialMoveSprite_->GetColor();
-            c.w = 1.0f;
-            tutorialMoveSprite_->SetColor(c);
-          }
-        }
+	static Math math;
+	LightEditor::GetInstance()->Update();
 
-        if (!missionInitialShown_) {
-          auto ShowIfExists = [](Sprite *s) {
-            if (!s)
-              return;
-            Vector4 c = s->GetColor();
-            c.w = 1.0f;
-            s->SetColor(c);
-          };
-          ShowIfExists(missionText_mission_);
-          ShowIfExists(missionText_line_);
-          ShowIfExists(missionText_Mark_);
-          ShowIfExists(missionText_lever_);
-          missionInitialShown_ = true;
-        }
-      }
-      player_->GetTransform()->translate.y =
-          trans->translate.y + tutorialPlatformOffset_;
-      player_->UpdateWorldMatrix();
-    }
-  }
-  // チュートリアル状態機（順序：移動 → カメラ → ロックオン → 攻撃 → 回避）
-  if (!tutorialUiCompleted_) {
-    switch (tutorialStep_) {
-    case TutorialStep::kShowMove:
-      // 表示済みを確認して入力待ちへ
-      tutorialStep_ = TutorialStep::kWaitForMove;
-      tutorialTimer_ = 0.0f;
-      break;
+	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-    case TutorialStep::kWaitForMove: {
-      bool moved = false;
-      if (inputManager_) {
-        Vector2 left = inputManager_->GetLeftStick();
-        if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f)
-          moved = true;
-        if (inputManager_->IsKeyPressed(DIK_W) ||
-            inputManager_->IsKeyPressed(DIK_A) ||
-            inputManager_->IsKeyPressed(DIK_S) ||
-            inputManager_->IsKeyPressed(DIK_D)) {
-          moved = true;
-        }
-      }
-      if (!moved && player_) {
-        Vector3 vel = player_->GetVelocity();
-        float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
-        if (speed > 0.1f)
-          moved = true;
-      }
-      if (moved) {
-        // 次のカメラ説明表示へ切り替え
-        if (tutorialMoveSprite_) {
-          Vector4 c = tutorialMoveSprite_->GetColor();
-          c.w = 0.0f;
-          tutorialMoveSprite_->SetColor(c);
-        }
-        if (tutorialCameraSprite_) {
-          Vector4 c = tutorialCameraSprite_->GetColor();
-          c.w = 1.0f;
-          tutorialCameraSprite_->SetColor(c);
-        }
-        tutorialStep_ = TutorialStep::kWaitForCamera;
-        tutorialTimer_ = 0.0f;
-      }
-    } break;
+	// =================================================================
+	// ムービーの制御
+	// =================================================================
+	if (movieState_ == MovieState::kBridgeDrop) {
+		// ムービー開始時の初期化
+		if (movieTimer_ == 0.0f) {
+			movieStoredPlayerPos_ = player_->GetWorldPosition();
+			player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
+		}
 
-    case TutorialStep::kWaitForCamera: {
-      bool cameraUsed = false;
-      if (inputManager_) {
-        Vector2 right = inputManager_->GetRightStick();
-        Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-        if (std::abs(right.x) > 0.2f || std::abs(right.y) > 0.2f)
-          cameraUsed = true;
-        if (std::abs(mouseDelta.x) > 2.0f || std::abs(mouseDelta.y) > 2.0f)
-          cameraUsed = true;
-      }
-      if (cameraUsed) {
-        if (tutorialCameraSprite_) {
-          Vector4 c = tutorialCameraSprite_->GetColor();
-          c.w = 0.0f;
-          tutorialCameraSprite_->SetColor(c);
-        }
-        if (tutorialLockOnSprite_) {
-          Vector4 c = tutorialLockOnSprite_->GetColor();
-          c.w = 1.0f;
-          tutorialLockOnSprite_->SetColor(c);
-        }
-        tutorialStep_ = TutorialStep::kWaitForLockOn;
-        tutorialTimer_ = 0.0f;
-      }
-    } break;
+		movieTimer_ += deltaTime;
 
-    case TutorialStep::kWaitForLockOn:
-      if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
-        if (tutorialLockOnSprite_) {
-          Vector4 c = tutorialLockOnSprite_->GetColor();
-          c.w = 0.0f;
-          tutorialLockOnSprite_->SetColor(c);
-        }
-        if (tutorialAttackSprite_) {
-          Vector4 c = tutorialAttackSprite_->GetColor();
-          c.w = 1.0f;
-          tutorialAttackSprite_->SetColor(c);
-        }
-        tutorialStep_ = TutorialStep::kWaitForAttack;
-        tutorialTimer_ = 0.0f;
-      }
-      break;
+		// プレイヤーの座標を強制固定 (Player::Update側でも物理が無効化されているため)
+		player_->SetTranslate(movieStoredPlayerPos_);
 
-    case TutorialStep::kWaitForAttack:
-      if (inputManager_) {
-        // 攻撃ボタン検出（KeyConfig の "Attack" に対応）
-        if (inputManager_->IsActionTriggered("Attack")) {
-          if (tutorialAttackSprite_) {
-            Vector4 c = tutorialAttackSprite_->GetColor();
-            c.w = 0.0f;
-            tutorialAttackSprite_->SetColor(c);
-          }
-          if (tutorialDodgeSprite_) {
-            Vector4 c = tutorialDodgeSprite_->GetColor();
-            c.w = 1.0f;
-            tutorialDodgeSprite_->SetColor(c);
-          }
-          tutorialStep_ = TutorialStep::kWaitForDodge;
-          tutorialTimer_ = 0.0f;
-        }
-      }
-      break;
+		// ムービー開始から1.5秒後にブリッジブロックの崩落演出を開始する
 
-    case TutorialStep::kWaitForDodge:
-      if (inputManager_) {
-        // ダッシュがトリガーされたか
-        bool dashTriggered = inputManager_->IsActionTriggered("Dash");
+		// カメラ制御は GhostRecorder に任せるため、ブロックの崩落演出のみ実行する
+		if (movieTimer_ > 1.5f) {
+                // まず親の当たり判定を無効化する（プレイヤーが落ちるように）
+                for (auto& obj : objectManager_->GetObjects()) {
+                    if (obj->GetName() == "Bridge_Block_Front") {
+                        obj->SetCollisionAttribute(0);
+                    }
+                }
 
-        // 同時に移動入力があるかをチェック（左スティックまたはW/A/S/D、または速度による判定）
-        bool moveInput = false;
-        Vector2 left = inputManager_->GetLeftStick();
-        if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f)
-          moveInput = true;
-        if (inputManager_->IsKeyPressed(DIK_W) ||
-            inputManager_->IsKeyPressed(DIK_A) ||
-            inputManager_->IsKeyPressed(DIK_S) ||
-            inputManager_->IsKeyPressed(DIK_D)) {
-          moveInput = true;
-        }
-        if (!moveInput && player_) {
-          Vector3 vel = player_->GetVelocity();
-          float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
-          if (speed > 0.1f)
-            moveInput = true;
-        }
+				for (auto& obj : objectManager_->GetObjects()) {
+					if (obj->GetName() == "Bridge_Block_Center") {
+						Transform* trans = obj->GetTransform();
+						trans->translate.y -= 26.0f * deltaTime;
+						trans->rotate.x -= 1.0f * deltaTime; // 自然な傾き（下へ折れ曲がる）
+						trans->isQuaternionMaster = false;
+						obj->UpdateWorldMatrix();
+					} else if (movieTimer_ > 2.0f && obj->GetName() == "Bridge_Block_Back") {
+                        // 少し遅れて奥のブロックもさらに崩れる
+                        Transform* trans = obj->GetTransform();
+						trans->translate.y -= 32.0f * deltaTime;
+						trans->rotate.x += 1.8f * deltaTime; // 折れ曲がる
+						trans->isQuaternionMaster = false;
+						obj->UpdateWorldMatrix();
+                    } else if (movieTimer_ > 2.5f && obj->GetName() == "Bridge_Block_Front") {
+                        // 最後に手前の親ブロックごと崩落する
+                        Transform* trans = obj->GetTransform();
+                        trans->translate.y -= 48.0f * deltaTime;
+                        trans->rotate.x += 0.6f * deltaTime; 
+                        trans->isQuaternionMaster = false;
+                        obj->UpdateWorldMatrix();
+                    }
+				}
+			}
 
-        // ダッシュかつ移動入力がある場合に回避完了とする
-        if (dashTriggered && moveInput) {
-          if (tutorialDodgeSprite_) {
-            Vector4 c = tutorialDodgeSprite_->GetColor();
-            c.w = 0.0f;
-            tutorialDodgeSprite_->SetColor(c);
-          }
-          tutorialStep_ = TutorialStep::kCompleted;
-          tutorialUiCompleted_ = true;
-          // 必要なら hasFinishedTutorial_ をここで true にする
-        }
-      }
-      break;
+			// ムービー終了判定
+            // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
+			if (movieTimer_ >= 5.5f) {
+				auto& objects_ref = objectManager_->GetObjects();
+				for (auto& obj : objects_ref) {
+					std::string name = obj->GetName();
+					// 名前が "Bridge_Block" または "Tutorial_" で始まるオブジェクトを全て対象にする
+					if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+						obj->SetCollisionAttribute(0);   // 当たり判定を完全に消す
+						if (name.find("Bridge_Block") != std::string::npos) { // ブリッジブロックは完全に消す
+							obj->SetIsVisible(false);        // 見えなくする
+							obj->isDead = true;              // 完全に消す（UpdateやDrawの対象から外す）
+						}
+					}
+					else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
+						obj->SetCollisionAttribute(kGround);
+					}
+				}
+				movieState_ = MovieState::kNone;
+				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true);
+				GameProgress::GetInstance()->hasBridgeDropped = true;
+			}
 
-    default:
-      break;
-    }
-  }
+		// ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
+	}
+	else if (movieState_ == MovieState::kTutorialPlatformDescent) {
+		if (tutorialPlatform_ && player_) {
+			player_->SetIsControlActive(false);
+			player_->SetIsPhysicsActive(false);
 
-  // --- ロックオン & カメラ制御 ---
-  lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
-  CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
-  // =================================================================
-  // ロックオンアイコンの 2.5D 追従計算 (World To Screen)
-  // =================================================================
-  Object3d *target = lockOnSystem_->GetTarget();
+			Transform* trans = tutorialPlatform_->GetTransform();
+			if (trans->translate.y > 29.6f) {
+				trans->translate.y -= 15.0f * deltaTime;
+				if (trans->translate.y < 29.6f) trans->translate.y = 29.6f;
+				tutorialPlatform_->UpdateWorldMatrix();
+			}
+			else {
+				// ★到着！ movieState_ が kNone になるので、下のシャッター制御が「下げ」に転じます
+				movieState_ = MovieState::kNone;
+				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true); // 物理復帰
 
-  if (target && lockOnSystem_->IsLockingOn()) {
-    isDrawLockOn_ = true;
+				if (!hasFinishedTutorial_) {
+					tutorialStep_ = TutorialStep::kShowMove;
+					tutorialTimer_ = 0.0f;
+					if (tutorialMoveSprite_) {
+						Vector4 c = tutorialMoveSprite_->GetColor();
+						c.w = 1.0f;
+						tutorialMoveSprite_->SetColor(c);
+					}
+				}
 
-    // =======================================================
-    // ：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
-    // =======================================================
-    AABB aabb = target->GetAABB();
+				if (!missionInitialShown_) {
+					auto ShowIfExists = [](Sprite* s) {
+						if (!s) return;
+						Vector4 c = s->GetColor();
+						c.w = 1.0f;
+						s->SetColor(c);
+						};
+					ShowIfExists(missionText_mission_);
+					ShowIfExists(missionText_line_);
+					ShowIfExists(missionText_Mark_);
+					ShowIfExists(missionText_lever_);
+					missionInitialShown_ = true;
+				}
+			}
+			player_->GetTransform()->translate.y = trans->translate.y + tutorialPlatformOffset_;
+			player_->UpdateWorldMatrix();
+		}
+	}
+	// チュートリアル状態機（順序：移動 → カメラ → ロックオン → 攻撃 → 回避）
+	if (!tutorialUiCompleted_) {
+		switch (tutorialStep_) {
+		case TutorialStep::kShowMove:
+			// 表示済みを確認して入力待ちへ
+			tutorialStep_ = TutorialStep::kWaitForMove;
+			tutorialTimer_ = 0.0f;
+			break;
 
-    // ① ターゲットの「真の中心座標」を計算
-    Vector3 targetCenter;
-    targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
-    targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
-    targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
+		case TutorialStep::kWaitForMove:
+		{
+			bool moved = false;
+			if (inputManager_) {
+				Vector2 left = inputManager_->GetLeftStick();
+				if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f) moved = true;
+				if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_A) ||
+					inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_D)) {
+					moved = true;
+				}
+			}
+			if (!moved && player_) {
+				Vector3 vel = player_->GetVelocity();
+				float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+				if (speed > 0.1f) moved = true;
+			}
+			if (moved) {
+				// 次のカメラ説明表示へ切り替え
+				if (tutorialMoveSprite_) { Vector4 c = tutorialMoveSprite_->GetColor(); c.w = 0.0f; tutorialMoveSprite_->SetColor(c); }
+				if (tutorialCameraSprite_) { Vector4 c = tutorialCameraSprite_->GetColor(); c.w = 1.0f; tutorialCameraSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForCamera;
+				tutorialTimer_ = 0.0f;
+			}
+		}
+		break;
 
-    // ② カメラのビュー行列とプロジェクション行列を掛け合わせる
-    Matrix4x4 viewProj =
-        math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+		case TutorialStep::kWaitForCamera:
+		{
+			bool cameraUsed = false;
+			if (inputManager_) {
+				Vector2 right = inputManager_->GetRightStick();
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				if (std::abs(right.x) > 0.2f || std::abs(right.y) > 0.2f) cameraUsed = true;
+				if (std::abs(mouseDelta.x) > 2.0f || std::abs(mouseDelta.y) > 2.0f) cameraUsed = true;
+			}
+			if (cameraUsed) {
+				if (tutorialCameraSprite_) { Vector4 c = tutorialCameraSprite_->GetColor(); c.w = 0.0f; tutorialCameraSprite_->SetColor(c); }
+				if (tutorialLockOnSprite_) { Vector4 c = tutorialLockOnSprite_->GetColor(); c.w = 1.0f; tutorialLockOnSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForLockOn;
+				tutorialTimer_ = 0.0f;
+			}
+		}
+		break;
 
-    // ③ ワールド座標(中心) → クリップ座標 (W除算) の計算
-    float w = targetCenter.x * viewProj.m[0][3] +
-              targetCenter.y * viewProj.m[1][3] +
-              targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
+		case TutorialStep::kWaitForLockOn:
+			if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
+				if (tutorialLockOnSprite_) { Vector4 c = tutorialLockOnSprite_->GetColor(); c.w = 0.0f; tutorialLockOnSprite_->SetColor(c); }
+				if (tutorialAttackSprite_) { Vector4 c = tutorialAttackSprite_->GetColor(); c.w = 1.0f; tutorialAttackSprite_->SetColor(c); }
+				tutorialStep_ = TutorialStep::kWaitForAttack;
+				tutorialTimer_ = 0.0f;
+			}
+			break;
 
-    // カメラの後ろ（画面外）にいる時は表示しない
-    if (w > 0.001f) {
-      Vector3 ndc;
-      ndc.x = (targetCenter.x * viewProj.m[0][0] +
-               targetCenter.y * viewProj.m[1][0] +
-               targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) /
-              w;
-      ndc.y = (targetCenter.x * viewProj.m[0][1] +
-               targetCenter.y * viewProj.m[1][1] +
-               targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) /
-              w;
-      float screenWidth = static_cast<float>(WinApp::kClientWidth);
-      float screenHeight = static_cast<float>(WinApp::kClientHeight);
+		case TutorialStep::kWaitForAttack:
+			if (inputManager_) {
+				// 攻撃ボタン検出（KeyConfig の "Attack" に対応）
+				if (inputManager_->IsActionTriggered("Attack")) {
+					if (tutorialAttackSprite_) { Vector4 c = tutorialAttackSprite_->GetColor(); c.w = 0.0f; tutorialAttackSprite_->SetColor(c); }
+					if (tutorialDodgeSprite_) { Vector4 c = tutorialDodgeSprite_->GetColor(); c.w = 1.0f; tutorialDodgeSprite_->SetColor(c); }
+					tutorialStep_ = TutorialStep::kWaitForDodge;
+					tutorialTimer_ = 0.0f;
+				}
+			}
+			break;
 
-      float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
-      float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+		case TutorialStep::kWaitForDodge:
+			if (inputManager_) {
+				// ダッシュがトリガーされたか
+				bool dashTriggered = inputManager_->IsActionTriggered("Dash");
 
-      lockOnSprite_->SetPosition({screenX, screenY});
+				// 同時に移動入力があるかをチェック（左スティックまたはW/A/S/D、または速度による判定）
+				bool moveInput = false;
+				Vector2 left = inputManager_->GetLeftStick();
+				if (std::abs(left.x) > 0.2f || std::abs(left.y) > 0.2f) moveInput = true;
+				if (inputManager_->IsKeyPressed(DIK_W) || inputManager_->IsKeyPressed(DIK_A) ||
+					inputManager_->IsKeyPressed(DIK_S) || inputManager_->IsKeyPressed(DIK_D)) {
+					moveInput = true;
+				}
+				if (!moveInput && player_) {
+					Vector3 vel = player_->GetVelocity();
+					float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+					if (speed > 0.1f) moveInput = true;
+				}
 
-      // =======================================================
-      // ：オブジェクトの大きさに応じたアイコンサイズの自動調整！
-      // =======================================================
-      float objSizeX = aabb.max.x - aabb.min.x;
-      float objSizeY = aabb.max.y - aabb.min.y;
-      float objSizeZ = aabb.max.z - aabb.min.z;
-      float maxObjSize = std::max({objSizeX, objSizeY, objSizeZ});
+				// ダッシュかつ移動入力がある場合に回避完了とする
+				if (dashTriggered && moveInput) {
+					if (tutorialDodgeSprite_) {
+						Vector4 c = tutorialDodgeSprite_->GetColor();
+						c.w = 0.0f;
+						tutorialDodgeSprite_->SetColor(c);
+					}
+					tutorialStep_ = TutorialStep::kCompleted;
+					tutorialUiCompleted_ = true;
+					// 必要なら hasFinishedTutorial_ をここで true にする
+				}
+			}
+			break;
 
-      float baseSize = maxObjSize * 25.0f;
-      float distanceScale = 20.0f / w;
+		default:
+			break;
+		}
+	}
 
-      float finalSize = baseSize * distanceScale;
-      finalSize = std::max(32.0f, std::min(finalSize, 256.0f));
 
-      lockOnSprite_->SetSize({finalSize, finalSize});
 
-      // （おまけ）ロックオンアイコンを毎フレーム少し回転させると超カッコよくなります
-      float currentRot = lockOnSprite_->GetRotation();
-      lockOnSprite_->SetRotation(currentRot + 2.0f * deltaTime);
+		// --- シネマティック演出中かどうかの判定（黒帯が出る条件） ---
+		bool isBossDying = boss_ && boss_->IsDyingSequence();
+		// ムービー状態、ボス演出、チュートリアル演出、またはカメラのオーバーライド中ならシネマティックモードとする
+		bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying || (tutorialMovieTimer_ > 0.0f) || camera->IsOverridden();
 
-      lockOnSprite_->Update();
-    } else {
-      isDrawLockOn_ = false; // カメラの裏にいる時は消す
-    }
-  } else {
-    // =======================================================
-    // ロックオンしていない時は確実に表示をオフにする！
-    // =======================================================
-    isDrawLockOn_ = false;
-  }
+		// ムービー中（黒帯表示中）はロックオンを禁止＆解除
+		lockOnSystem_->SetEnabled(!isCinematicMode);
 
-  // 自由カメラモード以外の操作
-  if (!CameraEditor::GetInstance()->IsEditorMode()) {
-    Camera::FollowMode currentMode = camera->GetFollowMode();
+		// --- ロックオン & カメラ制御 ---
+		lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
+		CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
+		// =================================================================
+		// ロックオンアイコンの 2.5D 追従計算 (World To Screen)
+		// =================================================================
+		Object3d* target = lockOnSystem_->GetTarget();
 
-    if (player_ && player_->GetHp() > 0.0f &&
-        (currentMode == Camera::FollowMode::kAimable ||
-         currentMode == Camera::FollowMode::kFirstPerson)) {
+		if (target && lockOnSystem_->IsLockingOn()) {
+			isDrawLockOn_ = true;
 
-      // =======================================================
-      // ★ 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
-      // =======================================================
-      Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-      Vector2 rightStick = inputManager_->GetRightStick();
+			// =======================================================
+			// ：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
+			// =======================================================
+			AABB aabb = target->GetAABB();
 
-      // =======================================================
-      // ★ 2. カメラ感度を倍率に変換する！
-      // =======================================================
-      int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
-      float speedMultiplier = 1.0f + (sens * 0.1f);
+			// ① ターゲットの「真の中心座標」を計算
+			Vector3 targetCenter;
+			targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
+			targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
+			targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
 
-      // =======================================================
-      // ★ 3. 入力値に感度を掛け算して「最終的な移動量」を出す！
-      // =======================================================
-      Vector2 totalDelta;
-      totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f) * speedMultiplier;
-      totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f) *
-                     speedMultiplier; // スティックの上下は反転
+			// ② カメラのビュー行列とプロジェクション行列を掛け合わせる
+			Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
+			// ③ ワールド座標(中心) → クリップ座標 (W除算) の計算
+			float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] + targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
+
+			// カメラの後ろ（画面外）にいる時は表示しない
+			if (w > 0.001f) {
+				Vector3 ndc;
+				ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] + targetCenter.z * viewProj.m[2][0] + viewProj.m[3][0]) / w;
+				ndc.y = (targetCenter.x * viewProj.m[0][1] + targetCenter.y * viewProj.m[1][1] + targetCenter.z * viewProj.m[2][1] + viewProj.m[3][1]) / w;
+				float screenWidth = static_cast<float>(WinApp::kClientWidth);
+				float screenHeight = static_cast<float>(WinApp::kClientHeight);
+
+				float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
+				float screenY = (1.0f - ndc.y) * 0.5f * screenHeight;
+
+				lockOnSprite_->SetPosition({ screenX, screenY });
+
+				// =======================================================
+				// ：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+				// =======================================================
+				float objSizeX = aabb.max.x - aabb.min.x;
+				float objSizeY = aabb.max.y - aabb.min.y;
+				float objSizeZ = aabb.max.z - aabb.min.z;
+				float maxObjSize = std::max({ objSizeX, objSizeY, objSizeZ });
+
+				float baseSize = maxObjSize * 25.0f;
+				float distanceScale = 20.0f / w;
+
+				float finalSize = baseSize * distanceScale;
+				finalSize = std::max(32.0f, std::min(finalSize, 256.0f));
+
+				lockOnSprite_->SetSize({ finalSize, finalSize });
+
+				// （おまけ）ロックオンアイコンを毎フレーム少し回転させると超カッコよくなります
+				float currentRot = lockOnSprite_->GetRotation();
+				lockOnSprite_->SetRotation(currentRot + 2.0f * deltaTime);
+
+				lockOnSprite_->Update();
+			}
+			else {
+				isDrawLockOn_ = false; // カメラの裏にいる時は消す
+			}
+		}
+		else {
+			// =======================================================
+			// ロックオンしていない時は確実に表示をオフにする！
+			// =======================================================
+			isDrawLockOn_ = false;
+		}
+
+			// 自由カメラモード以外の操作
+		if (!CameraEditor::GetInstance()->IsEditorMode()) {
+			Camera::FollowMode currentMode = camera->GetFollowMode();
+
+			if (player_ && player_->GetHp() > 0.0f &&
+				(currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson)) {
+
+				// =======================================================
+				// ★ 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
+				// =======================================================
+				Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
+				Vector2 rightStick = inputManager_->GetRightStick();
+
+				// =======================================================
+				// ★ 2. カメラ感度を倍率に変換する！
+				// =======================================================
+				int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
+				float speedMultiplier = 1.0f + (sens * 0.1f);
+
+				// =======================================================
+				// ★ 3. 入力値に感度を掛け算して「最終的な移動量」を出す！
+				// =======================================================
+				Vector2 totalDelta;
+				totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f) * speedMultiplier;
+				totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f) * speedMultiplier; // スティックの上下は反転
+
 
 #ifdef USE_IMGUI
       // ★ デバッグ(Develop)環境:
@@ -1082,232 +1075,220 @@ void GamePlayScene::Update(float deltaTime) {
         camera->AddRotation(totalDelta);
       }
 #endif
-    }
-  }
-  bool isBossDying = boss_ && boss_->IsDyingSequence();
+			}
+		}
 
-  // ムービー状態、またはボス登場ムービー中、または【ボス撃破演出中】、クリア移行中なら黒帯を出す！
-  bool isCinematicMode =
-      (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
+bool isBossDying = boss_ && boss_->IsDyingSequence();	
+// ムービー状態、またはボス登場ムービー中、または【ボス撃破演出中】、クリア移行中なら黒帯を出す！	
+bool isCinematicMode =	
+(movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
 
-  float targetBarHeight = isCinematicMode ? 0.12f : 0.0f;
+		float targetBarHeight = isCinematicMode ? 0.12f : 0.0f;
 
-  // 現在の高さを滑らかに補間（5.0f は開閉スピード）
-  currentCinemaBarHeight_ +=
-      (targetBarHeight - currentCinemaBarHeight_) * 5.0f * deltaTime;
+		// 現在の高さを滑らかに補間（5.0f は開閉スピード）
+		currentCinemaBarHeight_ += (targetBarHeight - currentCinemaBarHeight_) * 5.0f * deltaTime;
 
-  // ポストエフェクトに反映
-  PostEffect::Params *postParams = PostEffect::GetInstance()->GetParams();
-  if (postParams) {
-    postParams->cinemaBarHeight = currentCinemaBarHeight_;
-  }
+		// ポストエフェクトに反映
+		PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+		if (postParams) {
+			postParams->cinemaBarHeight = currentCinemaBarHeight_;
+		}
 
-  // --- 全体更新 ---
-  CameraManager::GetInstance()->Update();
-  particleSystem_->Update(deltaTime);
-  objectManager_->Update(deltaTime); // オブジェクト一括更新
+	// --- 全体更新 ---
+	CameraManager::GetInstance()->Update();
+	particleSystem_->Update(deltaTime);
+	objectManager_->Update(deltaTime); // オブジェクト一括更新
 
-  if (boss_) {
-    boss_->ActuallySpawnShards();
-  }
+	if (boss_) {
+		boss_->ActuallySpawnShards();
+	}
+  
+	if (timeAttackUI_) {
+		timeAttackUI_->Update(deltaTime);
+	}
+	//// 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
+	GPUParticleManager::GetInstance()->Update(deltaTime);
+	for (auto& sprite : sprites_) {
+		sprite->Update();
+	}
+	// =========================================================
+		// 💀 ゲームオーバー画面のフェードインとメニュー選択
+		// =========================================================
+	if (player_ && player_->GetHp() <= 0.0f) {
 
-  if (timeAttackUI_) {
-    timeAttackUI_->Update(deltaTime);
-  }
-  //// 溜まった発生命令をもとに、GPUに計算（Compute Shader）を走らせる
-  GPUParticleManager::GetInstance()->Update(deltaTime);
-  for (auto &sprite : sprites_) {
-    sprite->Update();
-  }
-  // =========================================================
-  // 💀 ゲームオーバー画面のフェードインとメニュー選択
-  // =========================================================
-  if (player_ && player_->GetHp() <= 0.0f) {
+		// プレイヤーの点滅演出(3.5秒)が終わったら処理開始
+		if (player_->GetDeathTimer() > 3.5f) {
 
-    // プレイヤーの点滅演出(3.5秒)が終わったら処理開始
-    if (player_->GetDeathTimer() > 3.5f) {
+			// --- 1. テキストのフェードイン ---
+			if (!isGameOverUiReady_) {
+				bool allFadedIn = true;
 
-      // --- 1. テキストのフェードイン ---
-      if (!isGameOverUiReady_) {
-        bool allFadedIn = true;
+				auto FadeInSprite = [deltaTime, &allFadedIn](Sprite* sprite) {
+					if (sprite) {
+						Vector4 color = sprite->GetColor();
+						if (color.w < 1.0f) {
+							color.w += deltaTime * 0.5f; // 徐々に不透明にする
+							if (color.w > 1.0f) color.w = 1.0f;
+							sprite->SetColor(color);
+							allFadedIn = false; // まだ透明なやつがいればフラグを下ろす
+						}
+					}
+					};
 
-        auto FadeInSprite = [deltaTime, &allFadedIn](Sprite *sprite) {
-          if (sprite) {
-            Vector4 color = sprite->GetColor();
-            if (color.w < 1.0f) {
-              color.w += deltaTime * 0.5f; // 徐々に不透明にする
-              if (color.w > 1.0f)
-                color.w = 1.0f;
-              sprite->SetColor(color);
-              allFadedIn = false; // まだ透明なやつがいればフラグを下ろす
-            }
-          }
-        };
+				FadeInSprite(gameOverTextSprite_);
+				FadeInSprite(restartTextSprite_);
+				FadeInSprite(titleTextSprite_);
 
-        FadeInSprite(gameOverTextSprite_);
-        FadeInSprite(restartTextSprite_);
-        FadeInSprite(titleTextSprite_);
+				// 全部の文字が完全に出現したら準備完了！
+				if (allFadedIn) {
+					isGameOverUiReady_ = true;
+				}
+			}
+			// --- 2. メニュー選択とシーン遷移 ---
+			else {
+				InputManager* input = InputManager::GetInstance();
 
-        // 全部の文字が完全に出現したら準備完了！
-        if (allFadedIn) {
-          isGameOverUiReady_ = true;
-        }
-      }
-      // --- 2. メニュー選択とシーン遷移 ---
-      else {
-        InputManager *input = InputManager::GetInstance();
+				// 上下キーで項目切り替え (パッドの十字キーにも対応)
+				if (input->IsActionTriggered("Forward")) {
+					currentGameOverMenuIndex_--;
+					if (currentGameOverMenuIndex_ < 0) currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Max - 1;
+				}
+				if (input->IsActionTriggered("Backward")) {
+					currentGameOverMenuIndex_++;
+					if (currentGameOverMenuIndex_ >= (int)GameOverMenuIndex::Max) currentGameOverMenuIndex_ = 0;
+				}
 
-        // 上下キーで項目切り替え (パッドの十字キーにも対応)
-        if (input->IsActionTriggered("Forward")) {
-          currentGameOverMenuIndex_--;
-          if (currentGameOverMenuIndex_ < 0)
-            currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Max - 1;
-        }
-        if (input->IsActionTriggered("Backward")) {
-          currentGameOverMenuIndex_++;
-          if (currentGameOverMenuIndex_ >= (int)GameOverMenuIndex::Max)
-            currentGameOverMenuIndex_ = 0;
-        }
+				// 選択中の項目をハイライト (選ばれてるほうを白、そうでないほうを少し暗くする)
+				Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+				Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-        // 選択中の項目をハイライト
-        // (選ばれてるほうを白、そうでないほうを少し暗くする)
-        Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
-        Vector4 selectColor = {1.0f, 1.0f, 1.0f, 1.0f};
+				if (restartTextSprite_) {
+					restartTextSprite_->SetColor(currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart ? selectColor : normalColor);
+				}
+				if (titleTextSprite_) {
+					titleTextSprite_->SetColor(currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title ? selectColor : normalColor);
+				}
+				// 決定ボタンで遷移！
+				if (input->IsActionTriggered("Jump")) {
 
-        if (restartTextSprite_) {
-          restartTextSprite_->SetColor(currentGameOverMenuIndex_ ==
-                                               (int)GameOverMenuIndex::Restart
-                                           ? selectColor
-                                           : normalColor);
-        }
-        if (titleTextSprite_) {
-          titleTextSprite_->SetColor(currentGameOverMenuIndex_ ==
-                                             (int)GameOverMenuIndex::Title
-                                         ? selectColor
-                                         : normalColor);
-        }
-        // 決定ボタンで遷移！
-        if (input->IsActionTriggered("Jump")) {
+					// 共通のUI透明化ラムダ式
+					auto SetAlphaZero = [](Sprite* sprite) {
+						if (sprite) {
+							Vector4 color = sprite->GetColor();
+							color.w = 0.0f;
+							sprite->SetColor(color);
+						}
+						};
 
-          // 共通のUI透明化ラムダ式
-          auto SetAlphaZero = [](Sprite *sprite) {
-            if (sprite) {
-              Vector4 color = sprite->GetColor();
-              color.w = 0.0f;
-              sprite->SetColor(color);
-            }
-          };
+					if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart) {
+						isRestartTransition_ = true;
+						restartTimer_ = 0.0f;
 
-          if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart) {
-            isRestartTransition_ = true;
-            restartTimer_ = 0.0f;
+						SetAlphaZero(gameOverTextSprite_);
+						SetAlphaZero(restartTextSprite_);
+						SetAlphaZero(titleTextSprite_);
+					}
+					else if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title) {
+					
+						isTitleTransition_ = true;
+						restartTimer_ = 0.0f;
 
-            SetAlphaZero(gameOverTextSprite_);
-            SetAlphaZero(restartTextSprite_);
-            SetAlphaZero(titleTextSprite_);
-          } else if (currentGameOverMenuIndex_ ==
-                     (int)GameOverMenuIndex::Title) {
+						SetAlphaZero(gameOverTextSprite_);
+						SetAlphaZero(restartTextSprite_);
+						SetAlphaZero(titleTextSprite_);
+					}
+				}
+			}
+		}
+	}
+	BulletManager::GetInstance()->Update(deltaTime);
+	CollisionManager::GetInstance()->Update();
+	MeshEffectManager::GetInstance()->Update(deltaTime);
+	UpdateUI();
 
-            isTitleTransition_ = true;
-            restartTimer_ = 0.0f;
+	// ========================================================
+	// ★ ボス登場ムービー中の監視処理（時間で強制終了！）
+	// ========================================================
+	if (isBossMoviePlaying_ && boss_) {
 
-            SetAlphaZero(gameOverTextSprite_);
-            SetAlphaZero(restartTextSprite_);
-            SetAlphaZero(titleTextSprite_);
-          }
-        }
-      }
-    }
-  }
-  BulletManager::GetInstance()->Update(deltaTime);
-  CollisionManager::GetInstance()->Update();
-  MeshEffectManager::GetInstance()->Update(deltaTime);
-  UpdateUI();
+		// ★ タイマーを進める！
+		movieTimer_ += deltaTime;
 
-  // ========================================================
-  // ★ ボス登場ムービー中の監視処理（時間で強制終了！）
-  // ========================================================
-  if (isBossMoviePlaying_ && boss_) {
+		// プレイヤーがズレないように固定し続ける
+		if (player_) {
+			player_->SetTranslate(movieStoredPlayerPos_);
+			player_->UpdateWorldMatrix();
+		}
 
-    // ★ タイマーを進める！
-    movieTimer_ += deltaTime;
+		// ====================================================
+		// ★ 修正：全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
+		// ====================================================
+		if (movieTimer_ >= 4.0f) {
+			isBossMoviePlaying_ = false;
 
-    // プレイヤーがズレないように固定し続ける
-    if (player_) {
-      player_->SetTranslate(movieStoredPlayerPos_);
-      player_->UpdateWorldMatrix();
-    }
+			if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+				camera->EndOverride(1.0f);
+			}
 
-    // ====================================================
-    // ★ 修正：全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
-    // ====================================================
-    if (movieTimer_ >= 4.0f) {
-      isBossMoviePlaying_ = false;
+			if (player_) {
+				player_->SetIsControlActive(true);
+				player_->SetIsPhysicsActive(true);
+			}
 
-      if (Camera *camera = CameraManager::GetInstance()->GetMainCamera()) {
-        camera->EndOverride(1.0f);
-      }
+			boss_->StartBattle();
 
-      if (player_) {
-        player_->SetIsControlActive(true);
-        player_->SetIsPhysicsActive(true);
-      }
+			// ボス登場後に missionText_boss を表示（1回だけ）
+			if (!missionBossShown_ && missionText_boss_) {
+				Vector4 c = missionText_boss_->GetColor();
+				c.w = 1.0f;
+				missionText_boss_->SetColor(c);
+				missionBossShown_ = true;
 
-      boss_->StartBattle();
+				// 重なり防止：以前のミッションUIを確実に非表示にする
+				if (missionText_go_) {
+					Vector4 gc = missionText_go_->GetColor();
+					gc.w = 0.0f;
+					missionText_go_->SetColor(gc);
+				}
+				if (missionText_lever_) {
+					Vector4 lc = missionText_lever_->GetColor();
+					lc.w = 0.0f;
+					missionText_lever_->SetColor(lc);
+				}
+			}
 
-      // ボス登場後に missionText_boss を表示（1回だけ）
-      if (!missionBossShown_ && missionText_boss_) {
-        Vector4 c = missionText_boss_->GetColor();
-        c.w = 1.0f;
-        missionText_boss_->SetColor(c);
-        missionBossShown_ = true;
+			if (timeAttackUI_) {
+				timeAttackUI_->Start();
+			}
+		}
+	}
+	if (boss_) {
+		// ボスが完全に消滅し、かつまだクリアシーケンスに入っていなければ開始
+		if (boss_->IsCompletelyDead() && !isGameClearSequence_) {
+			isGameClearSequence_ = true;
+			gameClearTimer_ = 0.0f;
 
-        // 重なり防止：以前のミッションUIを確実に非表示にする
-        if (missionText_go_) {
-          Vector4 gc = missionText_go_->GetColor();
-          gc.w = 0.0f;
-          missionText_go_->SetColor(gc);
-        }
-        if (missionText_lever_) {
-          Vector4 lc = missionText_lever_->GetColor();
-          lc.w = 0.0f;
-          missionText_lever_->SetColor(lc);
-        }
-      }
+			// タイマーを止める
+			if (timeAttackUI_) {
+				timeAttackUI_->Stop();
+			}
+			float clearTime = timeAttackUI_->GetCurrentTime();
+			SaveDataManager::GetInstance()->RecordClearTime(clearTime);
 
-      if (timeAttackUI_) {
-        timeAttackUI_->Start();
-      }
-    }
-  }
-  if (boss_) {
-    // ボスが完全に消滅し、かつまだクリアシーケンスに入っていなければ開始
-    if (boss_->IsCompletelyDead() && !isGameClearSequence_) {
-      isGameClearSequence_ = true;
-      gameClearTimer_ = 0.0f;
+			DebugConsole::GetInstance()->AddLog("クリアタイムを保存しました: " + std::to_string(clearTime) + " 秒");
+			DebugConsole::GetInstance()->AddLog("【GAME CLEAR】 クリア演出開始！");
+		}
+	}
 
-      // タイマーを止める
-      if (timeAttackUI_) {
-        timeAttackUI_->Stop();
-      }
-      float clearTime = timeAttackUI_->GetCurrentTime();
-      SaveDataManager::GetInstance()->RecordClearTime(clearTime);
+	// クリアシーケンス中の処理
+	if (isGameClearSequence_) {
+		gameClearTimer_ += deltaTime;
 
-      DebugConsole::GetInstance()->AddLog(
-          "クリアタイムを保存しました: " + std::to_string(clearTime) + " 秒");
-      DebugConsole::GetInstance()->AddLog("【GAME CLEAR】 クリア演出開始！");
-    }
-  }
-
-  // クリアシーケンス中の処理
-  if (isGameClearSequence_) {
-    gameClearTimer_ += deltaTime;
-
-    // ボス消滅から 2.0 秒後に「CLEAR」シーンへ遷移！
-    if (gameClearTimer_ > 2.0f) {
-      SceneManager::GetInstance()->ChangeScene("GAMECLEAR");
-    }
-  }
+		// ボス消滅から 2.0 秒後に「CLEAR」シーンへ遷移！
+		if (gameClearTimer_ > 2.0f) {
+			SceneManager::GetInstance()->ChangeScene("GAMECLEAR");
+		}
+	}
 }
 
 void GamePlayScene::Draw() {
@@ -1321,182 +1302,170 @@ void GamePlayScene::Draw() {
   }
 #endif
 
-  // =========================================================
-  // ★ 追加:
-  // カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
-  // =========================================================
-  if (!isFirstPerson && player_ && camera) {
-    Vector3 pPos = player_->GetWorldPosition();
-    pPos.y += 1.0f; // プレイヤーの胸の高さを基準にする
-    Vector3 cPos = camera->GetEye();
-    Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
-    float dist =
-        std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
-    // 距離が 3.0m 未満なら、プレイヤーを完全に消す！
-    if (dist < 3.0f) {
-      isFirstPerson = true;
-    }
-  }
+	// =========================================================
+	// ★ 追加: カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
+	// =========================================================
+	if (!isFirstPerson && player_ && camera) {
+		Vector3 pPos = player_->GetWorldPosition();
+		pPos.y += 1.0f; // プレイヤーの胸の高さを基準にする
+		Vector3 cPos = camera->GetEye();
+		Vector3 toCam = { cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z };
+		float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
-  ID3D12Resource *pointLightRes =
-      LightManager::GetInstance()->GetPointLightResource();
-  ID3D12Resource *spotLightRes =
-      LightManager::GetInstance()->GetSpotLightResource();
-  object3dCommon_->SetGraphicsCommand();
+		// 距離が 3.0m 未満なら、プレイヤーを完全に消す！
+		if (dist < 3.0f) {
+			isFirstPerson = true;
+		}
+	}
 
-  auto &objects = objectManager_->GetObjects();
+	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
+	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+	object3dCommon_->SetGraphicsCommand();
 
-  // =========================================================
-  // ★ ここに「完全自動カリング」のロジックを挿入！
-  // =========================================================
-  Frustum frustum = camera->GetFrustum();
-  Math math;
-  int drawCount = 0;
-  int totalCount = 0;
+	auto& objects = objectManager_->GetObjects();
 
-  auto IsVisible = [&](Object3d *obj) {
-    if (!obj->GetIsVisible())
-      return false;
+	// =========================================================
+	// ★ ここに「完全自動カリング」のロジックを挿入！
+	// =========================================================
+	Frustum frustum = camera->GetFrustum();
+	Math math;
+	int drawCount = 0;
+	int totalCount = 0;
 
-    // 1. オブジェクトから Model を取得
-    // ※もし Object3d に GetModel() が無ければ追加してください！ ( return
-    // model_; など )
-    Model *model = obj->GetModel();
-    if (!model)
-      return true; // モデルが無い(空の)場合は安全のため描画を通す
+	auto IsVisible = [&](Object3d* obj) {
+		if (!obj->GetIsVisible()) return false;
 
-    // 2. モデル本来のサイズ（ローカルAABB）を取得
-    Vector3 lMin = model->GetLocalAabbMin();
-    Vector3 lMax = model->GetLocalAabbMax();
+		// 1. オブジェクトから Model を取得 
+		// ※もし Object3d に GetModel() が無ければ追加してください！ ( return model_; など )
+		Model* model = obj->GetModel(); 
+		if (!model) return true; // モデルが無い(空の)場合は安全のため描画を通す
 
-    // 3. ローカルの「箱の8つの角（頂点）」を作成
-    Vector3 corners[8] = {{lMin.x, lMin.y, lMin.z}, {lMax.x, lMin.y, lMin.z},
-                          {lMin.x, lMax.y, lMin.z}, {lMax.x, lMax.y, lMin.z},
-                          {lMin.x, lMin.y, lMax.z}, {lMax.x, lMin.y, lMax.z},
-                          {lMin.x, lMax.y, lMax.z}, {lMax.x, lMax.y, lMax.z}};
+		// 2. モデル本来のサイズ（ローカルAABB）を取得
+		Vector3 lMin = model->GetLocalAabbMin();
+		Vector3 lMax = model->GetLocalAabbMax();
 
-    // 4. ワールド行列を使って、8つの角すべてをゲーム空間の座標に変換する
-    Matrix4x4 wm = obj->GetWorldMatrix();
-    Vector3 wMin = {FLT_MAX, FLT_MAX, FLT_MAX};
-    Vector3 wMax = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+		// 3. ローカルの「箱の8つの角（頂点）」を作成
+		Vector3 corners[8] = {
+			{lMin.x, lMin.y, lMin.z}, {lMax.x, lMin.y, lMin.z},
+			{lMin.x, lMax.y, lMin.z}, {lMax.x, lMax.y, lMin.z},
+			{lMin.x, lMin.y, lMax.z}, {lMax.x, lMin.y, lMax.z},
+			{lMin.x, lMax.y, lMax.z}, {lMax.x, lMax.y, lMax.z}
+		};
 
-    for (int i = 0; i < 8; ++i) {
-      // math.Transform で座標に行列を掛ける
-      Vector3 wPos = math.Transform(corners[i], wm);
+		// 4. ワールド行列を使って、8つの角すべてをゲーム空間の座標に変換する
+		Matrix4x4 wm = obj->GetWorldMatrix();
+		Vector3 wMin = { FLT_MAX, FLT_MAX, FLT_MAX };
+		Vector3 wMax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 
-      // 変換後の8つの点から、ワールド空間での新たな min / max を見つける
-      wMin.x = (std::min)(wMin.x, wPos.x);
-      wMin.y = (std::min)(wMin.y, wPos.y);
-      wMin.z = (std::min)(wMin.z, wPos.z);
-      wMax.x = (std::max)(wMax.x, wPos.x);
-      wMax.y = (std::max)(wMax.y, wPos.y);
-      wMax.z = (std::max)(wMax.z, wPos.z);
-    }
+		for (int i = 0; i < 8; ++i) {
+			// math.Transform で座標に行列を掛ける
+			Vector3 wPos = math.Transform(corners[i], wm); 
 
-    // 回転したことで箱が大きくなっても問題なし！確実にオブジェクトを包み込むAABBが完成。
-    return math.IntersectFrustumAABB(frustum, wMin, wMax);
-  };
+			// 変換後の8つの点から、ワールド空間での新たな min / max を見つける
+			wMin.x = (std::min)(wMin.x, wPos.x);
+			wMin.y = (std::min)(wMin.y, wPos.y);
+			wMin.z = (std::min)(wMin.z, wPos.z);
+			wMax.x = (std::max)(wMax.x, wPos.x);
+			wMax.y = (std::max)(wMax.y, wPos.y);
+			wMax.z = (std::max)(wMax.z, wPos.z);
+		}
 
-  // --- 1. 不透明描画 ---
-  for (auto &obj : objects) {
+		// 回転したことで箱が大きくなっても問題なし！確実にオブジェクトを包み込むAABBが完成。
+		return math.IntersectFrustumAABB(frustum, wMin, wMax);
+	};
 
-    bool isPlayerPart = false;
-    if (isFirstPerson) {
-      Object3d *current = obj.get();
-      while (current) {
-        if (current == player_) {
-          isPlayerPart = true;
-          break;
-        }
-        current = current->GetParent();
-      }
-    }
-    if (isPlayerPart)
-      continue; // プレイヤーの一部なら描画をスキップ！
+	// --- 1. 不透明描画 ---
+	for (auto& obj : objects) {
+		
+		bool isPlayerPart = false;
+		if (isFirstPerson) {
+			Object3d* current = obj.get();
+			while (current) {
+				if (current == player_) { isPlayerPart = true; break; }
+				current = current->GetParent();
+			}
+		}
+		if (isPlayerPart) continue; // プレイヤーの一部なら描画をスキップ！
 
-    if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7)
-      continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() == 9) continue;
+		
+		totalCount++;
+		// ★ カリング判定！
+		if (IsVisible(obj.get())) {
+			obj->Draw(pointLightRes, spotLightRes);
+			drawCount++;
+		}
+	}
 
-    totalCount++;
-    // ★ カリング判定！
-    if (IsVisible(obj.get())) {
-      obj->Draw(pointLightRes, spotLightRes);
-      drawCount++;
-    }
-  }
+	// --- 2. 中間描画 (弾・デバッグ) ---
+	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
+	LightEditor::GetInstance()->Draw3D();
+	MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+	
+	// --- 3. 透明描画 ---
+	for (auto& obj : objects) {
+		// ここでも同じくプレイヤー関連をスキップ
+		bool isPlayerPart = false;
+		if (isFirstPerson) {
+			Object3d* current = obj.get();
+			while (current) {
+				if (current == player_) { isPlayerPart = true; break; }
+				current = current->GetParent();
+			}
+		}
+		if (isPlayerPart) continue;
 
-  // --- 2. 中間描画 (弾・デバッグ) ---
-  BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
-  if (debugEditor_)
-    debugEditor_->DrawPreview(pointLightResource_.Get(),
-                              spotLightResource_.Get());
-  LightEditor::GetInstance()->Draw3D();
-  MeshEffectManager::GetInstance()->Draw(pointLightRes, spotLightRes);
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 9) { // 透明のみ描画
+			totalCount++;
+			// ★ カリング判定！
+			if (IsVisible(obj.get())) {
+				obj->Draw(pointLightRes, spotLightRes);
+				drawCount++;
+			}
+		}
+	}
+	particleSystem_->Draw();
 
-  // --- 3. 透明描画 ---
-  for (auto &obj : objects) {
-    // ここでも同じくプレイヤー関連をスキップ
-    bool isPlayerPart = false;
-    if (isFirstPerson) {
-      Object3d *current = obj.get();
-      while (current) {
-        if (current == player_) {
-          isPlayerPart = true;
-          break;
-        }
-        current = current->GetParent();
-      }
-    }
-    if (isPlayerPart)
-      continue;
+	// =======================================================
+	// 4. ローカルフォグ (霧の箱) の描画！
+	// =======================================================
+	bool hasFog = false;
+	for (auto& obj : objects) {
+		if (obj->GetMaterialType() == 7) hasFog = true;
+	}
 
-    if (obj->GetMaterialType() == 1) { // 透明のみ描画
-      totalCount++;
-      // ★ カリング判定！
-      if (IsVisible(obj.get())) {
-        obj->Draw(pointLightRes, spotLightRes);
-        drawCount++;
-      }
-    }
-  }
-  particleSystem_->Draw();
+	if (hasFog) {
+		dxCommon_->PreDrawLocalFog();
+		for (auto& obj : objects) {
+			if (obj->GetMaterialType() == 7) {
+				// ★ フォグの箱自体も画面外なら描画しないように最適化！
+				if (IsVisible(obj.get())) {
+					obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+				}
+			}
+		}
+		dxCommon_->PostDrawLocalFog();
+	}
 
-  // =======================================================
-  // 4. ローカルフォグ (霧の箱) の描画！
-  // =======================================================
-  bool hasFog = false;
-  for (auto &obj : objects) {
-    if (obj->GetMaterialType() == 7)
-      hasFog = true;
-  }
+	// =======================================================
+	// 5. GPUパーティクルの描画！
+	// =======================================================
+	dxCommon_->UpdateGrabTexture();
 
-  if (hasFog) {
-    dxCommon_->PreDrawLocalFog();
-    for (auto &obj : objects) {
-      if (obj->GetMaterialType() == 7) {
-        // ★ フォグの箱自体も画面外なら描画しないように最適化！
-        if (IsVisible(obj.get())) {
-          obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-        }
-      }
-    }
-    dxCommon_->PostDrawLocalFog();
-  }
+	GPUParticleManager::GetInstance()->Draw(
+		dxCommon_->GetCommandList(),
+		camera->GetViewMatrix(),
+		camera->GetProjectionMatrix(),
+		gpuParticleTexHandle_,
+		dxCommon_->GetDepthSrvHandle()
+	);
 
-  // =======================================================
-  // 5. GPUパーティクルの描画！
-  // =======================================================
-  dxCommon_->UpdateGrabTexture();
 
-  GPUParticleManager::GetInstance()->Draw(
-      dxCommon_->GetCommandList(), camera->GetViewMatrix(),
-      camera->GetProjectionMatrix(), gpuParticleTexHandle_,
-      dxCommon_->GetDepthSrvHandle());
 
-  // ★ カリングがどれくらい効いているか確認用のログ
-  // DebugConsole::GetInstance()->AddLog("DrawCount: " +
-  // std::to_string(drawCount) + " / Total: " + std::to_string(totalCount));
+	// ★ カリングがどれくらい効いているか確認用のログ 
+	// DebugConsole::GetInstance()->AddLog("DrawCount: " + std::to_string(drawCount) + " / Total: " + std::to_string(totalCount));
 }
 // ====================================================================
 // UI描画専用の関数
@@ -1627,35 +1596,110 @@ void GamePlayScene::StartBridgeDropMovie() {
 // ★ ボス登場ムービーの開始処理
 // ========================================================
 void GamePlayScene::StartBossAppearanceMovie() {
-  if (isBossMoviePlaying_ || !boss_ || hasBossAppeared_)
-    return;
+	if (isBossMoviePlaying_ || !boss_ || hasBossAppeared_) return;
 
-  isBossMoviePlaying_ = true;
-  hasBossAppeared_ = true;
-  movieTimer_ = 0.0f;
+	isBossMoviePlaying_ = true;
+	hasBossAppeared_ = true;
+	movieTimer_ = 0.0f;
 
-  // プレイヤーを固定
-  if (player_) {
-    movieStoredPlayerPos_ = player_->GetWorldPosition();
-    player_->SetVelocity({0.0f, 0.0f, 0.0f});
-    player_->SetIsControlActive(false);
-    player_->SetIsPhysicsActive(false);
-  }
+	// プレイヤーを固定
+	if (player_) {
+		movieStoredPlayerPos_ = player_->GetWorldPosition();
+		player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+		player_->SetIsControlActive(false);
+		player_->SetIsPhysicsActive(false);
+	}
 
-  // ====================================================
-  // ★ 追加：a.json（カメラのアニメーション）を再生する！
-  // ====================================================
-  for (auto &obj : objectManager_->GetObjects()) {
-    if (obj->GetName() ==
-        "Cinematic_Camera_Boss") { // ボス用のシネマティックカメラオブジェクトを用意しておく
-      if (obj->recorder_) {
-        // "a" という名前のJSONを再生！
-        obj->recorder_->Play("a", false, false, true);
-      }
-      break;
-    }
-  }
+	// ====================================================
+	// ★ 追加：a.json（カメラのアニメーション）を再生する！
+	// ====================================================
+	for (auto& obj : objectManager_->GetObjects()) {
+		if (obj->GetName() == "Cinematic_Camera_Boss") { // ボス用のシネマティックカメラオブジェクトを用意しておく
+			if (obj->recorder_) {
+				// "a" という名前のJSONを再生！
+				obj->recorder_->Play("a", false, false, true);
+			}
+			break;
+		}
+	}
 
-  // ボス側にはカメラ移動以外の演出（ブロックが集まる等）だけをやらせる
-  boss_->StartAppearance();
+	// ボス側にはカメラ移動以外の演出（ブロックが集まる等）だけをやらせる
+	boss_->StartAppearance();
+}
+
+void GamePlayScene::DrawImGui() {
+#ifdef USE_IMGUI
+	// ★ Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
+	if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
+		
+		if (ImGui::TreeNode("Player/Enemy Status")) {
+			if (ImGui::Button("Player HP -> 0")) {
+				if (player_ && player_->param_.has_value()) {
+					player_->param_->hp = 0.0f;
+				}
+			}
+
+			ImGui::Separator();
+
+			if (ImGui::Button("Boss HP -> 25%")) {
+				if (boss_ && boss_->param_.has_value()) {
+					boss_->param_->hp = boss_->param_->maxHp * 0.25f;
+				}
+			}
+
+			if (ImGui::Button("Boss HP -> 0% (Force Death)")) {
+				if (boss_) {
+					if (boss_->param_.has_value()) {
+						boss_->param_->hp = 0.0f;
+					}
+					boss_->StartDeathSequence();
+				}
+			}
+			ImGui::TreePop();
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::Button("Skip Tutorial", ImVec2(-1, 30))) {
+			if (player_) {
+				// 1. 速度と座標のリセット
+				player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+				player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
+				player_->UpdateLocalMatrix();
+				player_->UpdateWorldMatrix();
+
+				// 2. カメラを即座にワープ地点へ同期（ラグを防ぐ）
+				Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+				if (camera) {
+					camera->SetTarget(player_->GetWorldPosition());
+					camera->Update();
+				}
+
+				// 3. 各種フラグを「完了」にセット
+				hasFinishedTutorial_ = true;
+				hasBridgeDropped_ = true; // 橋の状態も同期
+				GameProgress::GetInstance()->hasFinishedTutorial = true;
+				doorOpenProgress_ = 1.0f;
+				missionInitialShown_ = true;
+				missionGoShown_ = true;
+
+				// 4. チュートリアル関連のオブジェクト削除 ＆ ボスエリアの床を有効化
+				for (auto& obj : objectManager_->GetObjects()) {
+					std::string name = obj->GetName();
+
+					// チュートリアル関係は消す
+					if (name.find("Bridge_") != std::string::npos || name.find("Tutorial_") != std::string::npos) {
+						obj->SetIsVisible(false);
+						obj->isDead = true;
+					}
+					// ボスエリアの地面の当たり判定をONにする
+					else if (name.find("Battle_Field_Collision_Box_") != std::string::npos) {
+						obj->SetCollisionAttribute(kGround);
+					}
+				}
+				DebugConsole::GetInstance()->AddLog("【DEBUG】 チュートリアルをスキップしました");
+			}
+		}
+	}
+#endif
 }

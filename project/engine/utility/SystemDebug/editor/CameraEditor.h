@@ -50,7 +50,14 @@ public:
 
     void SaveSettings();
     void LoadSettings();
+    // ファイルから設定を読み込む
     void LoadFile(const std::string& fileName);
+
+    /// <summary>
+    /// 現在のカメラの状態を設定値(settings_)に同期する
+    /// </summary>
+    void SyncSettingsFromCamera();
+
     void RefreshFileList();
 
     bool IsEditorMode() const { return settings_.currentMode == Mode::Editor; }
