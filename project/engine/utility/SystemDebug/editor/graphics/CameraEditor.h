@@ -34,6 +34,10 @@ public:
         float mouseSensitivity = 0.003f;
         Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
         Vector3 fixedPointAngle = { 0.0f, 0.0f, 0.0f };
+
+        // --- Editorモード保存用 ---
+        Vector3 editorCameraPos = { 0.0f, 5.0f, -15.0f };
+        Vector3 editorCameraAngle = { 0.0f, 0.0f, 0.0f };
     };
 
 public:
@@ -52,6 +56,9 @@ public:
     void LoadSettings();
     void LoadFile(const std::string& fileName);
     void RefreshFileList();
+
+    void SaveEditorState();
+    void LoadEditorState();
 
     bool IsEditorMode() const { return settings_.currentMode == Mode::Editor; }
     void SetMode(Mode mode);

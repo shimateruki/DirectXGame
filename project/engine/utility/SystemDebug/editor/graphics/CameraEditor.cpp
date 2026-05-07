@@ -33,6 +33,16 @@ void CameraEditor::Initialize() {
 
     // デフォルトファイル（camera_settings.json）を読み込む
     LoadSettings();
+    // 自由カメラ専用の状態を読み込む
+    LoadEditorState();
+
+    // 自由カメラの位置を復元
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (camera) {
+        camera->SetEye(settings_.editorCameraPos);
+        camera->SetRotation(settings_.editorCameraAngle);
+        camera->Update();
+    }
 }
 
 // フォルダ内の .json ファイルを探してリストを更新する
@@ -48,7 +58,10 @@ void CameraEditor::RefreshFileList() {
     // ディレクトリ内を走査して .json だけリストに追加
     for (const auto& entry : fs::directory_iterator(kDirectoryPath_)) {
         if (entry.path().extension() == ".json") {
-            fileList_.push_back(entry.path().filename().string());
+            std::string fileName = entry.path().filename().string();
+            // エディタ状態保存用のファイルはリストに表示しない
+            if (fileName == "editor_camera_state.json") continue;
+            fileList_.push_back(fileName);
         }
     }
 }
@@ -261,6 +274,15 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     eye.z += moveVelocity.z;
 
     camera->SetEye(eye);
+    settings_.editorCameraPos = eye;
+    settings_.editorCameraAngle = rotation;
+
+    static float saveTimer = 0.0f;
+    saveTimer += 0.016f; // おおよそ60fps
+    if (saveTimer > 1.0f) { // 1秒ごとに自動保存
+        SaveEditorState(); // 専用ファイルに保存
+        saveTimer = 0.0f;
+    }
 
     // ----------------------------------------------------------
     // 4. ターゲットの更新
@@ -512,6 +534,9 @@ void CameraEditor::SaveSettings() {
     j["mouseSensitivity"] = settings_.mouseSensitivity;
     j["fixedPointPos"] = { settings_.fixedPointPos.x, settings_.fixedPointPos.y, settings_.fixedPointPos.z };
     j["fixedPointAngle"] = { settings_.fixedPointAngle.x, settings_.fixedPointAngle.y, settings_.fixedPointAngle.z };
+    
+    // editorCameraPos, editorCameraAngle はここでは保存しない (SaveEditorStateに移行)
+
     json overridesJson = json::object();
     for (const auto& [name, param] : overrideParamsMap_) {
         json p;
@@ -589,6 +614,8 @@ void CameraEditor::LoadSettings() {
             settings_.fixedPointAngle.y = j["fixedPointAngle"][1];
             settings_.fixedPointAngle.z = j["fixedPointAngle"][2];
         }
+        
+        // editorCameraPos, editorCameraAngle はここでは読み込まない (LoadEditorStateに移行)
         overrideParamsMap_.clear();
         if (j.contains("Overrides")) {
             for (auto& [key, val] : j["Overrides"].items()) {
@@ -668,4 +695,36 @@ bool CameraEditor::PlayOverrideCamera(Camera* camera, const std::string& cameraN
     // 見つからなかった場合はエラーを出す
     DebugConsole::GetInstance()->AddLog("Error: Camera Override '" + cameraName + "' not found!");
     return false;
+}
+
+void CameraEditor::SaveEditorState() {
+    std::string filePath = kDirectoryPath_ + "editor_camera_state.json";
+    json j;
+    j["editorCameraPos"] = { settings_.editorCameraPos.x, settings_.editorCameraPos.y, settings_.editorCameraPos.z };
+    j["editorCameraAngle"] = { settings_.editorCameraAngle.x, settings_.editorCameraAngle.y, settings_.editorCameraAngle.z };
+    std::ofstream file(filePath);
+    if (file.is_open()) {
+        file << j.dump(4);
+    }
+}
+
+void CameraEditor::LoadEditorState() {
+    std::string filePath = kDirectoryPath_ + "editor_camera_state.json";
+    std::ifstream file(filePath);
+    if (!file.is_open()) return;
+    try {
+        json j;
+        file >> j;
+        if (j.contains("editorCameraPos") && j["editorCameraPos"].is_array()) {
+            settings_.editorCameraPos.x = j["editorCameraPos"][0];
+            settings_.editorCameraPos.y = j["editorCameraPos"][1];
+            settings_.editorCameraPos.z = j["editorCameraPos"][2];
+        }
+        if (j.contains("editorCameraAngle") && j["editorCameraAngle"].is_array()) {
+            settings_.editorCameraAngle.x = j["editorCameraAngle"][0];
+            settings_.editorCameraAngle.y = j["editorCameraAngle"][1];
+            settings_.editorCameraAngle.z = j["editorCameraAngle"][2];
+        }
+    }
+    catch (...) {}
 }

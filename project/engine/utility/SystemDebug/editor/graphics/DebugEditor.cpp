@@ -41,6 +41,7 @@
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
+#include <unordered_map>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
@@ -1203,6 +1204,13 @@ void DebugEditor::DrawEventIDOverlay() {
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
+    // 1. EventIDを持つオブジェクトをマップに集める (線を描画するため)
+    std::unordered_map<int, std::vector<Object3d*>> eventMap;
+    for (const auto& obj : objects) {
+        int eID = obj->GetEventID();
+        if (eID != -1) eventMap[eID].push_back(obj.get());
+    }
+
     for (const auto& obj : objects) {
         if (!obj->GetIsVisible()) continue;
 
@@ -1210,15 +1218,41 @@ void DebugEditor::DrawEventIDOverlay() {
         int myID = obj->GetEventID();
         int targetID = obj->GetTargetID();
 
-        // 描画テキストの構築
+        // --- 2. ID間のリレーション線を描画 ---
+        if (targetID != -1 && eventMap.count(targetID)) {
+            Vector3 startPos = obj->GetWorldPosition();
+            Vector3 startScreen = WorldToScreen(startPos);
+
+            if (startScreen.z >= 0.0f) {
+                for (Object3d* targetObj : eventMap[targetID]) {
+                    Vector3 endPos = targetObj->GetWorldPosition();
+                    Vector3 endScreen = WorldToScreen(endPos);
+
+                    if (endScreen.z >= 0.0f) {
+                        // 線を描画 (少し透明な水色)
+                        drawList->AddLine(
+                            ImVec2(startScreen.x, startScreen.y),
+                            ImVec2(endScreen.x, endScreen.y),
+                            IM_COL32(0, 255, 255, 150),
+                            2.0f
+                        );
+
+                        // 終点に小さな丸を描画して方向を示す
+                        drawList->AddCircleFilled(ImVec2(endScreen.x, endScreen.y), 4.0f, IM_COL32(0, 255, 255, 200));
+                    }
+                }
+            }
+        }
+
+        // --- 3. IDラベルの描画 (既存処理) ---
         std::string label = "";
-        if (myID != -1) label += "[ID: " + std::to_string(myID) + "] ";
-        if (targetID != -1) label += "[Target: " + std::to_string(targetID) + "]";
+        if (myID != -1) label += ICON_FA_FINGERPRINT " [ID: " + std::to_string(myID) + "] ";
+        if (targetID != -1) label += ICON_FA_BULLSEYE " [Target: " + std::to_string(targetID) + "]";
 
         if (label.empty()) continue;
 
         // 3D座標の取得と変換（頭上に表示）
-        Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
+        Vector3 worldPos = obj->GetWorldPosition();
         worldPos.y += obj->GetTransform()->scale.y + 0.5f;
 
         Vector3 screenPos = WorldToScreen(worldPos);
@@ -1226,7 +1260,8 @@ void DebugEditor::DrawEventIDOverlay() {
         if (screenPos.z >= 0.0f) {
             ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
             ImU32 color = (myID != -1) ? IM_COL32(255, 255, 0, 255) : IM_COL32(100, 200, 255, 255);
-            
+            if (selectedObject_ == obj.get()) color = IM_COL32(255, 255, 255, 255); // 選択中は白
+
             // アウトライン
             drawList->AddText(NULL, 0.0f, ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 255), label.c_str());
             // 本体
