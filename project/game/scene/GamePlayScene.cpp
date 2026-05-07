@@ -1,56 +1,58 @@
 #define NOMINMAX
 #include "GamePlayScene.h"
-#include "DirectXCommon.h"
-#include "InputManager.h"
 #include "AudioPlayer.h"
-#include "Object3dCommon.h"
-#include "SpriteCommon.h"
-#include "Object3d.h"
-#include "Sprite.h"
-#include "ModelManager.h"
-#include "TextureManager.h"
+#include "BossCore.h"
+#include "BulletManager.h"
 #include "CameraManager.h"
 #include "CollisionManager.h"
-#include "ParticleSystem.h"
-#include "imgui.h"
-#include "LightManager.h"
-#include <EventManager.h>
-#include "SceneManager.h"
 #include "DebugConsole.h"
-#include <cassert>
-#include "BulletManager.h"
-#include "MoveStrategy3D.h"
-#include "MoveStrategy2D.h"
-#include "LevelLoader.h"
-#include "LockOnSystem.h"
-#include "GameRule.h"
-#include "ObjectManager.h" 
-#include "BossCore.h"
-#include "TutorialDoll.h"
-#include"WinApp.h"
+#include "DirectXCommon.h"
 #include "GameProgress.h"
+#include "GameRule.h"
+#include "InputManager.h"
+#include "LevelLoader.h"
+#include "LightManager.h"
+#include "LockOnSystem.h"
+#include "ModelManager.h"
+#include "MoveStrategy2D.h"
+#include "MoveStrategy3D.h"
+#include "Object3d.h"
+#include "Object3dCommon.h"
+#include "ObjectManager.h"
+#include "ParticleSystem.h"
 #include "SaveDataManager.h"
+#include "SceneManager.h"
+#include "Sprite.h"
+#include "SpriteCommon.h"
+#include "TextureManager.h"
+#include "TutorialDoll.h"
+#include "WinApp.h"
+#include "imgui.h"
+#include <EventManager.h>
+#include <cassert>
+
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
 
 // --- JSON (保存機能) ---
-#include <fstream>
-#include <string>
+#include "TimeAttackUI.h"
 #include "json.hpp"
-#include <numbers>
-#include <CameraEditor.h>
 #include <BaseEnemy.h>
+#include <CameraEditor.h>
+#include <CinematicFade.h>
 #include <EnemyFactory.h>
 #include <EnemySpawner.h>
-#include <LightEditor.h>
-#include <ParticleManager.h>
 #include <GPUParticleManager.h>
-#include <SrvManager.h>
-#include <PostEffect.h>
+#include <LightEditor.h>
 #include <MeshEffectManager.h>
-#include"TimeAttackUI.h"
-#include <CinematicFade.h>
+#include <ParticleManager.h>
+#include <PostEffect.h>
+#include <SrvManager.h>
+#include <fstream>
+#include <numbers>
+#include <string>
+
 
 bool GamePlayScene::s_isRebooting_ = false;
 
@@ -118,6 +120,7 @@ void GamePlayScene::Initialize() {
 	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
 	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
+  levelLoader_->LoadSpriteLayout(	this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
@@ -180,7 +183,7 @@ void GamePlayScene::Initialize() {
 	poseTextSprite_ = GetSpriteByName("poseText.png");
 	restartPoseTextSprite_ = GetSpriteByName("restartPoseText.png");
 	titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
-
+  optionPoseTextSprite_ = GetSpriteByName("optionText.png");
 	auto SetAlpha = [](Sprite* sprite, float alpha) {
 		if (sprite) {
 			Vector4 color = sprite->GetColor();
@@ -400,8 +403,11 @@ void GamePlayScene::Initialize() {
 			player_->SetIsPhysicsActive(false);
 		}
 	}
-
-	// =======================================================
+  
+  // OptionUIの初期化	
+  optionUI_.Initialize(this, spriteCommon_.get());
+	
+  // =======================================================
 	 // ★ リスタート演出（電脳リブート）と完全初期化
 	 // =======================================================
 	SceneManager* scm = SceneManager::GetInstance();
@@ -418,26 +424,58 @@ void GamePlayScene::Initialize() {
 }
 
 void GamePlayScene::Finalize() {
-	MeshEffectManager::GetInstance()->Clear();
-	CollisionManager::GetInstance()->ClearObjects();
-	BulletManager::GetInstance()->Finalize();
-	particleSystem_.reset();
-	particleCommon_.reset();
-	sprites_.clear();
-	spriteCommon_.reset();
-	object3dCommon_.reset();
-	objectManager_.reset();
-	lockOnSystem_.reset();
+  MeshEffectManager::GetInstance()->Clear();
+  CollisionManager::GetInstance()->ClearObjects();
+  BulletManager::GetInstance()->Finalize();
+  particleSystem_.reset();
+  particleCommon_.reset();
+  sprites_.clear();
+  spriteCommon_.reset();
+  object3dCommon_.reset();
+  objectManager_.reset();
+  lockOnSystem_.reset();
 }
 
 void GamePlayScene::Update(float deltaTime) {
+  
+  // ---------------------------------------------------------	
+// 0. ESCキーでの強制終了（オプション画面以外）	
+// ---------------------------------------------------------	
+if (!isOptionMenu_ && inputManager_->IsKeyTriggered(DIK_ESCAPE)) {	
+if (isPaused_) {	
+// ポーズ中ならポーズを閉じる	
+isPaused_ = false;	
+auto SetAlpha = [](Sprite *sprite, float a) {	
+if (sprite) {	
+Vector4 c = sprite->GetColor();	
+c.w = a;	
+sprite->SetColor(c);	
+}	
+};	
+SetAlpha(poseBackSprite_, 0.0f);	
+SetAlpha(poseTextSprite_, 0.0f);	
+SetAlpha(restartPoseTextSprite_, 0.0f);	
+SetAlpha(titleTextPoseSprite_, 0.0f);	
+currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;	
+} else {	
+// ゲームプレイ中なら今まで通り終了	
+PostQuitMessage(0);	
+}	
+return;	
+}
+  
 	// ---------------------------------------------------------
 	// 1. ポーズの切り替え判定 (ゲームオーバー時はポーズ不可)
 	// ---------------------------------------------------------
 	bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
-
+  bool isMoviePlaying =	(movieState_ != MovieState::kNone) || isBossMoviePlaying_;
+  
 	// 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え
 	if (!isGameOver && inputManager_->IsActionTriggered("pose")) {
+    if (isOptionMenu_) {	
+  isOptionMenu_ = false; // オプション中ならオプションを閉じる	
+  } else {
+    
 		isPaused_ = !isPaused_; // フラグを反転
 
 		// 文字用のアルファ値 (1.0 = 完全不透明, 0.0 = 完全透明)
@@ -456,12 +494,17 @@ void GamePlayScene::Update(float deltaTime) {
 
 		// 選択位置をリセット
 		currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
+      }
 	}
 
 	// ---------------------------------------------------------
 	// 2. ポーズ中のUI操作と遷移
 	// ---------------------------------------------------------
-	if (isPaused_) {
+	if (isOptionMenu_) {	
+if (optionUI_.Update(deltaTime)) {	
+isOptionMenu_ = false; // バック等で戻る	
+}	
+} else if (isPaused_) {
 		// 上下キーで項目切り替え
 		if (inputManager_->IsActionTriggered("Forward")) {
 			currentPauseMenuIndex_--;
@@ -476,9 +519,16 @@ void GamePlayScene::Update(float deltaTime) {
 		Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f };
 		Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-		if (restartPoseTextSprite_) restartPoseTextSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart ? selectColor : normalColor);
+		if (restartPoseTextSprite_) restartPoseTextSprite_->SetColor(currentPauseMenuIndex_ ==  (int)PauseMenuIndex::Restart ? selectColor: normalColor);	
+    if (optionPoseTextSprite_)optionPoseTextSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Option ? selectColor:normalColor);
 		if (titleTextPoseSprite_) titleTextPoseSprite_->SetColor(currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor : normalColor);
-
+ 
+    // optionTextはポーズメニュー時のみ表示	
+  if (optionPoseTextSprite_) {	
+  Vector4 color = optionPoseTextSprite_->GetColor();	
+  color.w = 1.0f;	
+  optionPoseTextSprite_->SetColor(color);	
+  }
 		// 決定ボタンで遷移
 		if (inputManager_->IsActionTriggered("Jump")) {
 
@@ -488,11 +538,40 @@ void GamePlayScene::Update(float deltaTime) {
 
 			if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart) {
 				SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-			}
-			else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Title) {
+			} else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Option) {
+        isOptionMenu_ = true; // 設定画面遷移	
+      }else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Title) {
 				SceneManager::GetInstance()->ChangeScene("TITLE");
 			}
 		}
+   } else {
+    // ポーズメニュー以外はoptionText.pngを非表示
+    if (optionPoseTextSprite_) {
+      Vector4 color = optionPoseTextSprite_->GetColor();
+      color.w = 0.0f;
+      optionPoseTextSprite_->SetColor(color);
+    }
+  }
+  
+  // UI表示切り替え（オプション中は他のUIを隠す）
+  for (auto &sprite : sprites_) {
+    bool isOpt = optionUI_.IsOptionSprite(sprite.get());
+    if (isOptionMenu_) {
+      if (isOpt) {
+          sprite->SetVisible(optionUI_.IsSpriteVisibleInCurrentTab(sprite.get()));
+      } else {
+          sprite->SetVisible(false);
+      }
+    } else {
+      if (isOpt) {
+        sprite->SetVisible(false);
+      } else {
+        sprite->SetVisible(true);
+      }
+    }
+  }
+
+    
 		for (auto& sprite : sprites_) {
 			sprite->Update();
 		}
@@ -501,6 +580,7 @@ void GamePlayScene::Update(float deltaTime) {
 		// =======================================================
 		return;
 	}
+
 	if (isRestartTransition_ || isTitleTransition_) {
 		restartTimer_ += deltaTime;
 		float transitionDuration = 1.0f;
@@ -979,21 +1059,29 @@ void GamePlayScene::Update(float deltaTime) {
 				totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f) * speedMultiplier;
 				totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f) * speedMultiplier; // スティックの上下は反転
 
+
 #ifdef USE_IMGUI
-				// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」または「スティック入力中」のみ回転
-				if (inputManager_->IsMouseButtonPressed(1) || rightStick.x != 0.0f || rightStick.y != 0.0f) {
-					if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
-						camera->AddRotation(totalDelta);
-					}
-				}
+      // ★ デバッグ(Develop)環境:
+      // UI操作の誤爆を防ぐため「右クリック中」または「スティック入力中」のみ回転
+      if (inputManager_->IsMouseButtonPressed(1) || rightStick.x != 0.0f ||
+          rightStick.y != 0.0f) {
+        if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
+          camera->AddRotation(totalDelta);
+        }
+      }
 #else
-				// ★ Release環境限定: 右クリック不要！操作した分だけ回転する
-				if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
-					camera->AddRotation(totalDelta);
-				}
+      // ★ Release環境限定: 右クリック不要！操作した分だけ回転する
+      if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
+        camera->AddRotation(totalDelta);
+      }
 #endif
 			}
 		}
+
+bool isBossDying = boss_ && boss_->IsDyingSequence();	
+// ムービー状態、またはボス登場ムービー中、または【ボス撃破演出中】、クリア移行中なら黒帯を出す！	
+bool isCinematicMode =	
+(movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
 
 		float targetBarHeight = isCinematicMode ? 0.12f : 0.0f;
 
@@ -1203,16 +1291,17 @@ void GamePlayScene::Update(float deltaTime) {
 	}
 }
 
-
 void GamePlayScene::Draw() {
-	// --- 一人称視点判定 ---
-	bool isFirstPerson = false;
-	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+  // --- 一人称視点判定 ---
+  bool isFirstPerson = false;
+  Camera *camera = CameraManager::GetInstance()->GetMainCamera();
 #ifndef _DEBUG
-	if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
-		isFirstPerson = true;
-	}
+  if (camera->GetFollowTarget() &&
+      camera->GetFollowMode() == Camera::FollowMode::kFirstPerson) {
+    isFirstPerson = true;
+  }
 #endif
+
 
 	// =========================================================
 	// ★ 追加: カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
@@ -1382,111 +1471,125 @@ void GamePlayScene::Draw() {
 // UI描画専用の関数
 // ====================================================================
 void GamePlayScene::DrawUI() {
-	// --- 4. 2D描画 (UIスプライト) ---
-	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
-	for (auto& sprite : sprites_) {
-		sprite->Draw();
-	}
-	if (isDrawLockOn_ && lockOnSprite_) {
-		lockOnSprite_->Draw();
-	}
-	if (timeAttackUI_ && hasBossAppeared_ && !isBossMoviePlaying_) {
-		timeAttackUI_->Draw();
-	}
+  // --- 4. 2D描画 (UIスプライト) ---
+  spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+  for (auto &sprite : sprites_) {
+    sprite->Draw();
+  }
+  if (isDrawLockOn_ && lockOnSprite_ && !isOptionMenu_) {
+    lockOnSprite_->Draw();
+  }
+  if (timeAttackUI_ && hasBossAppeared_ && !isBossMoviePlaying_ &&
+      !isOptionMenu_) {
+    timeAttackUI_->Draw();
+  }
+  if (isOptionMenu_) {
+    optionUI_.DrawKeyIcons();
+  }
 }
 
-
 void GamePlayScene::DrawShadow() {
-	if (objectManager_) {
+  if (objectManager_) {
 
-		objectManager_->DrawShadow();
-	}
+    objectManager_->DrawShadow();
+  }
 }
 
 void GamePlayScene::UpdateUI() {
-	// 1. プレイヤーのHP同期
-	if (player_ && playerHpBarSprite_) {
-		float currentHp = player_->GetHp();
-		float maxHp = player_->GetMaxHp();
+  // 1. プレイヤーのHP同期
+  if (player_ && playerHpBarSprite_) {
+    float currentHp = player_->GetHp();
+    float maxHp = player_->GetMaxHp();
 
-		// 割合を計算 (0.0f ～ 1.0f の間に制限してエラーを防ぐ)
-		float hpRatio = std::clamp(currentHp / maxHp, 0.0f, 1.0f);
+    // 割合を計算 (0.0f ～ 1.0f の間に制限してエラーを防ぐ)
+    float hpRatio = std::clamp(currentHp / maxHp, 0.0f, 1.0f);
 
-		// スプライトの幅を更新
-		Vector2 newSize = playerHpBarSprite_->GetSize();
-		newSize.x = playerHpBarMaxWidth_ * hpRatio;
-		playerHpBarSprite_->SetSize(newSize);
-	}
-	if (boss_) {
-		// =======================================================
-		// ボスUIの表示・非表示制御
-		// ムービーが終了（!isBossMoviePlaying_）したら表示する
-		// =======================================================
-		float alpha = (hasBossAppeared_ && !isBossMoviePlaying_) ? 1.0f : 0.0f;
+    // スプライトの幅を更新
+    Vector2 newSize = playerHpBarSprite_->GetSize();
+    newSize.x = playerHpBarMaxWidth_ * hpRatio;
+    playerHpBarSprite_->SetSize(newSize);
+  }
+  if (boss_) {
+    // =======================================================
+    // ボスUIの表示・非表示制御
+    // ムービーが終了（!isBossMoviePlaying_）したら表示する
+    // =======================================================
+    float alpha = (hasBossAppeared_ && !isBossMoviePlaying_) ? 1.0f : 0.0f;
 
-		auto SetAlpha = [](Sprite* s, float a) {
-			if (s) { Vector4 c = s->GetColor(); c.w = a; s->SetColor(c); }
-			};
+    auto SetAlpha = [](Sprite *s, float a) {
+      if (s) {
+        Vector4 c = s->GetColor();
+        c.w = a;
+        s->SetColor(c);
+      }
+    };
 
-		SetAlpha(bossHpBarSprite_, alpha);
-		SetAlpha(barrierHpBarSprite_, alpha);
-		SetAlpha(bossHpBackSprite_, alpha); 
-		SetAlpha(bossNameSprite_, alpha);   
-		// --- A. メインHPバーの同期 ---
-		if (bossHpBarSprite_) {
-			float hpRatio = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
-			bossHpBarSprite_->SetSize({ bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y });
-		}
+    SetAlpha(bossHpBarSprite_, alpha);
+    SetAlpha(barrierHpBarSprite_, alpha);
+    SetAlpha(bossHpBackSprite_, alpha);
+    SetAlpha(bossNameSprite_, alpha);
+    // --- A. メインHPバーの同期 ---
+    if (bossHpBarSprite_) {
+      float hpRatio =
+          std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
+      bossHpBarSprite_->SetSize(
+          {bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y});
+    }
 
-		// --- B. バリアHPバーの同期 ---
-		if (barrierHpBarSprite_) {
-			float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
-			barrierHpBarSprite_->SetSize({ barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });
-		}
-	}
-	auto SetAlpha = [](Sprite* s, float a) {
-		if (s) { Vector4 c = s->GetColor(); c.w = a; s->SetColor(c); }
-		};
+    // --- B. バリアHPバーの同期 ---
+    if (barrierHpBarSprite_) {
+      float bRatio = std::clamp(
+          boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
+      barrierHpBarSprite_->SetSize(
+          {barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y});
+    }
+  }
+  auto SetAlpha = [](Sprite *s, float a) {
+    if (s) {
+      Vector4 c = s->GetColor();
+      c.w = a;
+      s->SetColor(c);
+    }
+  };
 
-	if (hasBridgeDropped_ && !hasBossAppeared_) {
-		// 橋が落ちてボス前なら「GO」を表示！
-		SetAlpha(missionText_go_, 1.0f);
-		SetAlpha(missionText_Mark_, 1.0f);
-		SetAlpha(missionText_line_, 1.0f);
-		SetAlpha(missionText_mission_, 0.0f);
-		SetAlpha(missionText_lever_, 0.0f);
-	}
-	else if (hasBossAppeared_) {
-		// ボス戦中なら「BOSS撃破」を表示！
-		SetAlpha(missionText_go_, 0.0f);
-		SetAlpha(missionText_boss_, 1.0f);
-	}
-	else if (!hasFinishedTutorial_) {
-		// チュートリアル中なら初期セットを表示
-		SetAlpha(missionText_mission_, 1.0f);
-		SetAlpha(missionText_line_, 1.0f);
-		SetAlpha(missionText_Mark_, 1.0f);
-		SetAlpha(missionText_lever_, 1.0f);
-	}
+  if (hasBridgeDropped_ && !hasBossAppeared_) {
+    // 橋が落ちてボス前なら「GO」を表示！
+    SetAlpha(missionText_go_, 1.0f);
+    SetAlpha(missionText_Mark_, 1.0f);
+    SetAlpha(missionText_line_, 1.0f);
+    SetAlpha(missionText_mission_, 0.0f);
+    SetAlpha(missionText_lever_, 0.0f);
+  } else if (hasBossAppeared_) {
+    // ボス戦中なら「BOSS撃破」を表示！
+    SetAlpha(missionText_go_, 0.0f);
+    SetAlpha(missionText_boss_, 1.0f);
+  } else if (!hasFinishedTutorial_) {
+    // チュートリアル中なら初期セットを表示
+    SetAlpha(missionText_mission_, 1.0f);
+    SetAlpha(missionText_line_, 1.0f);
+    SetAlpha(missionText_Mark_, 1.0f);
+    SetAlpha(missionText_lever_, 1.0f);
+  }
 }
 
 void GamePlayScene::StartBridgeDropMovie() {
-	if (movieState_ != MovieState::kNone || hasBridgeDropped_) return;
-	
-	movieState_ = MovieState::kBridgeDrop;
-	movieTimer_ = 0.0f;
-    hasBridgeDropped_ = true;
+  if (movieState_ != MovieState::kNone || hasBridgeDropped_)
+    return;
 
-	// CinematicCamera を探してムービーを再生する
-	for (auto& obj : objectManager_->GetObjects()) {
-		if (obj->GetName() == "Cinematic_Camera_Bridge") {
-			if (obj->recorder_) {
-                // Play(fileName, loop, isRelative, isCinematic)
-				obj->recorder_->Play("bridge_movie", false, false, true);
-			}
-			break;
-		}
-	}
+  movieState_ = MovieState::kBridgeDrop;
+  movieTimer_ = 0.0f;
+  hasBridgeDropped_ = true;
+
+  // CinematicCamera を探してムービーを再生する
+  for (auto &obj : objectManager_->GetObjects()) {
+    if (obj->GetName() == "Cinematic_Camera_Bridge") {
+      if (obj->recorder_) {
+        // Play(fileName, loop, isRelative, isCinematic)
+        obj->recorder_->Play("bridge_movie", false, false, true);
+      }
+      break;
+    }
+  }
 }
 
 // ========================================================

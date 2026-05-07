@@ -1,0 +1,202 @@
+{
+    "sprites": [
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/cameraSaundUI.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/cameraSaundUI.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/optionUI.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/optionUI.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/optionUI_A.png",
+            "position": [
+                230.0,
+                90.0
+            ],
+            "size": [
+                38.400001525878906,
+                38.400001525878906
+            ],
+            "texture": "option/optionUI_A.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/optionUI_D.png",
+            "position": [
+                1125.0,
+                90.0
+            ],
+            "size": [
+                38.400001525878906,
+                38.400001525878906
+            ],
+            "texture": "option/optionUI_D.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/UI_selectLeft.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/UI_selectLeft.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/UI_selectRight.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/UI_selectRight.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/BGM_select.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/BGM_select.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/camera_select.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/camera_select.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/SE_select.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/SE_select.png"
+        }
+    ]
+}

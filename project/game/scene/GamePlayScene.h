@@ -17,6 +17,7 @@
 #include "TimeAttackUI.h"
 #include "ObjectManager.h"
 #include "DebugEditor.h" 
+#include "OptionUI.h"
 #include <GhostRecorder.h>
 
 #include <memory>
@@ -174,14 +175,19 @@ private:
 
     enum class PauseMenuIndex {
         Restart,
+        Option,
         Title,
         Max
     };
     int currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
 
+    OptionUI optionUI_;
+    bool isOptionMenu_ = false; // オプションメニューを開いているか
+
     Sprite* poseBackSprite_ = nullptr;
     Sprite* poseTextSprite_ = nullptr;
     Sprite* restartPoseTextSprite_ = nullptr;
+    Sprite* optionPoseTextSprite_ = nullptr; // 追加: optionText.png
     Sprite* titleTextPoseSprite_ = nullptr;
     bool isGameClearSequence_ = false;
     float gameClearTimer_ = 0.0f;
