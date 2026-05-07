@@ -57,8 +57,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     // ★ ここにステータス設定を実装します！
     // ========================================================
     Object3d::EntityParameter param; // Object3d.h で定義されている構造体
-    param.hp = 10.0f;                // 雑魚敵のHP[cite: 16]
-    param.gravity = 50.0f;           // 重力の強さ[cite: 16]
+    param.gravity = 50.0f;           // 重力の強さ
     param.maxFallSpeed = 60.0f;      // 落下速度の限界[cite: 16]
 
     // Character::Update 内の param_.has_value() 判定を通すために必須
@@ -73,7 +72,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     Vector3 spawnPos = boss->GetTranslate();
     spawnPos.x += std::cos(angle) * 5.0f;
     spawnPos.z += std::sin(angle) * 5.0f;
-    spawnPos.y = 1.0f;
+    spawnPos.y = 5.0f;
     slime->SetTranslate(spawnPos);
 
     // 4. マネージャーとシーンへの登録
