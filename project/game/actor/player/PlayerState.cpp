@@ -1131,7 +1131,8 @@ void PlayerStateAttack1::Enter(Player* player)
 	if (player) player->SetIsControlActive(false);
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slash.json");
+	/*MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slash.json");*/
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_a1.json");
 	bodyObj_ = player;
 
 	TryFindHead(player, headObj_);
