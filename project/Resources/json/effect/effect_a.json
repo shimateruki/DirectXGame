@@ -1,0 +1,101 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": true,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 2,
+        "Size": [
+            2.700000047683716,
+            2.0,
+            2.299999952316284
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 50.0,
+    "DistortionStrength": 0.20000000298023224,
+    "EasingType": 0,
+    "EdgeFadeStrength": 3.3259999752044678,
+    "EnableDistortion": false,
+    "EnableReveal": true,
+    "EndColor": [
+        0.5,
+        0.0,
+        1.0,
+        0.0
+    ],
+    "EndScale": [
+        1.5,
+        2.0,
+        2.0
+    ],
+    "InnerRadius": 0.5,
+    "Intensity": 100.0,
+    "Lifetime": 0.7459999918937683,
+    "MeshSegments": 16,
+    "ModelName": "Semicircle.gltf",
+    "NoiseTexturePath": "",
+    "OuterRadius": 4.0,
+    "PlaneSize": [
+        2.0,
+        2.0
+    ],
+    "Position": [
+        -1.899999976158142,
+        -2.0,
+        5.400000095367432
+    ],
+    "ProceduralType": 1,
+    "RampTexturePath": "Resources/sprite/b.png",
+    "RingInnerRadius": 0.5,
+    "RingOuterRadius": 1.0,
+    "Rotation": [
+        -3.119999885559082,
+        2.4600000381469727,
+        -11.619999885559082
+    ],
+    "ScrollSpeed": [
+        -2.990000009536743,
+        0.0
+    ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        0.0,
+        0.5482628345489502,
+        1.0,
+        1.0
+    ],
+    "StartScale": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "TargetName": "Player_body",
+    "TexturePath": "",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.800000011920929,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.30000001192092896,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}
