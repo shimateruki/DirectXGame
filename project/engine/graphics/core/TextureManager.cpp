@@ -1,4 +1,4 @@
-#include "TextureManager.h"
+﻿#include "TextureManager.h"
 #include <cassert>
 #include "SRVManager.h"
 #include "d3dx12.h"
@@ -72,22 +72,21 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
     device_ = dxCommon->GetDevice();
 }
 
-
-
 uint32_t TextureManager::Load(const std::string& filePath) {
     // 優先的に読み込むパスを決定（DDSがあればそっちを使う）
     std::string pathToLoad = filePath;
+
     std::filesystem::path p(filePath);
     if (p.extension() == ".png" || p.extension() == ".jpg") {
         std::filesystem::path ddsPath = p;
         ddsPath.replace_extension(".dds");
         if (std::filesystem::exists(ddsPath)) {
             pathToLoad = ddsPath.string();
-            std::replace(pathToLoad.begin(), pathToLoad.end(), '\\', '/');
         }
     }
 
     // 1. すでに読み込み済みのテクスチャか検索（変換後のパスでチェック）
+    std::replace(pathToLoad.begin(), pathToLoad.end(), '\\', '/');
     auto it = textureHandleMap_.find(pathToLoad);
     if (it != textureHandleMap_.end()) {
         return it->second;
@@ -105,14 +104,12 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     }
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
 
-
     UploadTextureData(
         resource.Get(), mipImages, &intermediateResource,
-        device_.Get(), dxCommon_->GetCommandList()); //コマンドが積まれる
+        device_.Get(), dxCommon_->GetLoadCommandList()); //ロード用コマンドリスト
 
-    // FlushCommandQueue(true) を呼び出す
-    dxCommon_->FlushCommandQueue(true);
-
+    // ロード用コマンドを実行する
+    dxCommon_->ExecuteLoadCommands(); //専用実行関数
 
     // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -120,7 +117,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     // キューブマップ対応
-    if (metadata.IsCubemap()) {
+    if (metadata.IsCubemap() || (metadata.arraySize == 6 && metadata.width == metadata.height)) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
         srvDesc.TextureCube.MipLevels = UINT(metadata.mipLevels);
@@ -130,7 +127,6 @@ uint32_t TextureManager::Load(const std::string& filePath) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
     }
-
 
     // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
     uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
@@ -156,7 +152,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     std::chrono::duration<double, std::milli> diff = end - start;
 
     // 出力
-    std::string log = std::format("[TextureManager] Load: {} ({:.2f} ms)\n", filePath, diff.count());
+    std::string log = std::format("[TextureManager] Load: {} (Format: {}, {:.2f} ms)\n", filePath, (int)metadata.format, diff.count());
     DebugConsole::GetInstance()->AddLog(log);
 
     // 6. 「本物のハンドル」を返す
@@ -208,7 +204,9 @@ std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
 }
 
 uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
-    auto it = textureHandleMap_.find(filePath);
+    std::string normalizedPath = filePath;
+    std::replace(normalizedPath.begin(), normalizedPath.end(), '\\', '/');
+    auto it = textureHandleMap_.find(normalizedPath);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
