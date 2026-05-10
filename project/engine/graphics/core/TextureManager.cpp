@@ -10,7 +10,7 @@
 #include "DebugConsole.h"
 
 /// <summary>
-/// 繝・け繧ｹ繝√Ε繝・・繧ｿ繧竪PU縺ｫ繧｢繝・・繝ｭ繝ｼ繝峨☆繧九◆繧√・繝倥Ν繝代・髢｢謨ｰ
+/// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>
 void UploadTextureData(
     ID3D12Resource* texture,
@@ -19,15 +19,15 @@ void UploadTextureData(
     ID3D12Device* device,
     ID3D12GraphicsCommandList* commandList)
 {
-    // 繧｢繝・・繝ｭ繝ｼ繝峨↓蠢・ｦ√↑繧ｵ繝悶Μ繧ｽ繝ｼ繧ｹ縺ｮ諠・ｱ繧呈ｺ門ｙ
+    // アップロードに必要なサブリソースの情報を準備
     std::vector<D3D12_SUBRESOURCE_DATA> subresources;
     HRESULT hr = DirectX::PrepareUpload(device, mipImages.GetImages(), mipImages.GetImageCount(), mipImages.GetMetadata(), subresources);
     assert(SUCCEEDED(hr));
 
-    // 荳ｭ髢薙Μ繧ｽ繝ｼ繧ｹ縺ｫ蠢・ｦ√↑繧ｵ繧､繧ｺ繧定ｨ育ｮ・
+    // 中間リソースに必要なサイズを計算
     uint64_t intermediateSize = GetRequiredIntermediateSize(texture, 0, UINT(subresources.size()));
 
-    // --- 荳ｭ髢薙Μ繧ｽ繝ｼ繧ｹ縺ｮ菴懈・ ---
+    // --- 中間リソースの作成 ---
     D3D12_HEAP_PROPERTIES uploadHeapProperties{};
     uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
     D3D12_RESOURCE_DESC bufferDesc{};
@@ -48,10 +48,10 @@ void UploadTextureData(
         IID_PPV_ARGS(intermediateResource));
     assert(SUCCEEDED(hr));
 
-    // --- 繝・・繧ｿ縺ｮ霆｢騾・---
+    // --- データの転送 ---
     UpdateSubresources(commandList, texture, *intermediateResource, 0, 0, UINT(subresources.size()), subresources.data());
 
-    // --- 繝ｪ繧ｽ繝ｼ繧ｹ繝舌Μ繧｢ ---
+    // --- リソースバリア ---
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -72,33 +72,30 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
     device_ = dxCommon->GetDevice();
 }
 
-
-
 uint32_t TextureManager::Load(const std::string& filePath) {
-    // 蜆ｪ蜈育噪縺ｫ隱ｭ縺ｿ霎ｼ繧繝代せ繧呈ｱｺ螳夲ｼ・DS縺後≠繧後・縺昴▲縺｡繧剃ｽｿ縺・ｼ・
+    // 優先的に読み込むパスを決定（DDSがあればそっちを使う）
     std::string pathToLoad = filePath;
-    
+
     std::filesystem::path p(filePath);
     if (p.extension() == ".png" || p.extension() == ".jpg") {
         std::filesystem::path ddsPath = p;
         ddsPath.replace_extension(".dds");
         if (std::filesystem::exists(ddsPath)) {
             pathToLoad = ddsPath.string();
-            
         }
     }
 
-    // 1. 縺吶〒縺ｫ隱ｭ縺ｿ霎ｼ縺ｿ貂医∩縺ｮ繝・け繧ｹ繝√Ε縺区､懃ｴ｢・亥､画鋤蠕後・繝代せ縺ｧ繝√ぉ繝・け・・
+    // 1. すでに読み込み済みのテクスチャか検索（変換後のパスでチェック）
     std::replace(pathToLoad.begin(), pathToLoad.end(), '\\', '/');
     auto it = textureHandleMap_.find(pathToLoad);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
 
-    // --- 險域ｸｬ髢句ｧ・---
+    // --- 計測開始 ---
     auto start = std::chrono::high_resolution_clock::now();
 
-    // 2. 繝・け繧ｹ繝√Ε繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ縺ｿ縲√Μ繧ｽ繝ｼ繧ｹ繧剃ｽ懈・
+    // 2. テクスチャファイルを読み込み、リソースを作成
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(pathToLoad);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
@@ -107,21 +104,19 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     }
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
 
-
     UploadTextureData(
         resource.Get(), mipImages, &intermediateResource,
         device_.Get(), dxCommon_->GetLoadCommandList()); //ロード用コマンドリスト
 
-    // FlushCommandQueue(true) 繧貞他縺ｳ蜃ｺ縺・
+    // ロード用コマンドを実行する
     dxCommon_->ExecuteLoadCommands(); //専用実行関数
 
-
-    // 3. SRV繧剃ｽ懈・縺励；PU荳翫・豁｣縺励＞繝上Φ繝峨Ν繧貞叙蠕・
+    // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-    // 繧ｭ繝･繝ｼ繝悶・繝・・蟇ｾ蠢・
+    // キューブマップ対応
     if (metadata.IsCubemap() || (metadata.arraySize == 6 && metadata.width == metadata.height)) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
@@ -133,11 +128,10 @@ uint32_t TextureManager::Load(const std::string& filePath) {
         srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
     }
 
-
-    // SRVManager縺ｫSRV縺ｮ菴懈・繧剃ｾ晞ｼ縺励∬ｿ斐▲縺ｦ縺阪◆縲梧悽迚ｩ縺ｮ繝上Φ繝峨Ν縲阪ｒ蜿門ｾ・
+    // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
     uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
 
-    // 4. 譁ｰ縺励＞繝・け繧ｹ繝√Ε繝・・繧ｿ繧知ap縺ｫ譬ｼ邏・
+    // 4. 新しいテクスチャデータをmapに格納
     TextureData& newData = textureDatas_[srvHandle];
     newData.filePath = filePath;
     newData.metadata = metadata;
@@ -145,23 +139,23 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     newData.intermediateResource = intermediateResource;
     newData.srvHandle = srvHandle;
 
-    // 5. 繝輔ぃ繧､繝ｫ繝代せ縺ｨ縲梧悽迚ｩ縺ｮ繝上Φ繝峨Ν縲阪・蟇ｾ蠢懊ｒ繝槭ャ繝励↓險倬鹸
+    // 5. ファイルパスと「本物のハンドル」の対応をマップに記録
     textureHandleMap_[pathToLoad] = srvHandle;
 
-    // 繧ゅ＠PNG繧呈欠螳壹＠縺ｦDDS繧定ｪｭ繧薙□縺ｪ繧峨∝・縺ｮ繝代せ縺ｧ繧ょｼ輔￠繧九ｈ縺・↓縺励※縺翫￥
+    // もしPNGを指定してDDSを読んだなら、元のパスでも引けるようにしておく
     if (pathToLoad != filePath) {
         textureHandleMap_[filePath] = srvHandle;
     }
 
-    // --- 險域ｸｬ邨ゆｺ・---
+    // --- 計測終了 ---
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> diff = end - start;
 
-    // 蜃ｺ蜉・
-    std::string log = std::format("[TextureManager] Load: {} (Format: {}, {:.2f} ms)\\n", filePath, (int)metadata.format, diff.count());
+    // 出力
+    std::string log = std::format("[TextureManager] Load: {} (Format: {}, {:.2f} ms)\n", filePath, (int)metadata.format, diff.count());
     DebugConsole::GetInstance()->AddLog(log);
 
-    // 6. 縲梧悽迚ｩ縺ｮ繝上Φ繝峨Ν縲阪ｒ霑斐☆
+    // 6. 「本物のハンドル」を返す
     return srvHandle;
 }
 
@@ -173,12 +167,12 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
     if (std::filesystem::exists(directoryPath)) {
-        // --- 蜈ｨ菴楢ｨ域ｸｬ髢句ｧ・---
+        // --- 全体計測開始 ---
         auto totalStart = std::chrono::high_resolution_clock::now();
         int count = 0;
 
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
-            // 繝輔か繝ｫ繝縺ｧ縺ｯ縺ｪ縺上後ヵ繧｡繧､繝ｫ縲阪□縺｣縺溷ｴ蜷医・縺ｿ蜃ｦ逅・
+            // フォルダではなく「ファイル」だった場合のみ処理
             if (entry.is_regular_file()) {
                 std::string ext = entry.path().extension().string();
                 if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
@@ -190,7 +184,7 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
             }
         }
 
-        // --- 蜈ｨ菴楢ｨ域ｸｬ邨ゆｺ・---
+        // --- 全体計測終了 ---
         auto totalEnd = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> totalDiff = totalEnd - totalStart;
 
@@ -202,7 +196,7 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
 
 std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
     std::vector<std::string> paths;
-    // textureHandleMap_ 縺ｮ繧ｭ繝ｼ(繝代せ)繧貞・驛ｨ髮・ａ縺ｦ霑斐☆
+    // textureHandleMap_ のキー(パス)を全部集めて返す
     for (const auto& pair : textureHandleMap_) {
         paths.push_back(pair.first);
     }
@@ -210,12 +204,12 @@ std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
 }
 
 uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
-        std::string normalizedPath = filePath;
+    std::string normalizedPath = filePath;
     std::replace(normalizedPath.begin(), normalizedPath.end(), '\\', '/');
     auto it = textureHandleMap_.find(normalizedPath);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
-    // 隕九▽縺九ｉ縺ｪ縺九▲縺溷ｴ蜷医・0繧定ｿ斐☆・育ｵｶ蟇ｾ縺ｫLoad繧貞他縺ｰ縺ｪ縺・ｼ・ｼ・
+    // 見つからなかった場合は0を返す（絶対にLoadを呼ばない！）
     return 0;
 }

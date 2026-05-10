@@ -1442,7 +1442,7 @@ void GamePlayScene::Draw() {
         if (isPlayerPart)
             continue; // プレイヤーの一部なら描画をスキップ！
 
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7)
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() == 9)
             continue;
 
         totalCount++;
@@ -1478,7 +1478,7 @@ void GamePlayScene::Draw() {
         if (isPlayerPart)
             continue;
 
-        if (obj->GetMaterialType() == 1) { // 透明のみ描画
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 9) { // 透明のみ描画
             totalCount++;
             // ★ カリング判定！
             if (IsVisible(obj.get())) {
