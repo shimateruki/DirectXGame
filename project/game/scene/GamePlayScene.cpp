@@ -247,6 +247,19 @@ void GamePlayScene::Initialize() {
         }
     }
 
+    // ボスコンテナのパーティクル発生
+    if (boss_) {
+        Vector3 bossPos = boss_->GetWorldPosition();
+		Vector3 offsetTop = { 0.0f, 10.0f, 0.0f }; // ボスの頭上に少しオフセット
+		Vector3 offsetBottom = { 0.0f, -5.0f, 0.0f }; // ボスの足元に少しオフセット
+        bossContainerTopParticleId_ =
+            GPUParticleManager::GetInstance()->PlayAutoEmitter(
+                "boss_container_top", bossPos + offsetTop);
+        bossContainerBottomParticleId_ =
+            GPUParticleManager::GetInstance()->PlayAutoEmitter(
+                "boss_container_bottom", bossPos + offsetBottom);
+    }
+
     auto SetAlphaIfExists = [](Sprite* sprite, float a) {
         if (sprite) {
             Vector4 c = sprite->GetColor();
@@ -455,6 +468,10 @@ void GamePlayScene::Finalize() {
     object3dCommon_.reset();
     objectManager_.reset();
     lockOnSystem_.reset();
+
+    // パーティクルの停止
+    GPUParticleManager::GetInstance()->StopAutoEmitter(bossContainerTopParticleId_);
+    GPUParticleManager::GetInstance()->StopAutoEmitter(bossContainerBottomParticleId_);
 }
 
 void GamePlayScene::Update(float deltaTime) {
@@ -1662,6 +1679,14 @@ void GamePlayScene::StartBossAppearanceMovie() {
     isBossMoviePlaying_ = true;
     hasBossAppeared_ = true;
     movieTimer_ = 0.0f;
+
+    // ボスコンテナのパーティクルを停止
+    GPUParticleManager::GetInstance()->StopAutoEmitter(
+        bossContainerTopParticleId_);
+    GPUParticleManager::GetInstance()->StopAutoEmitter(
+        bossContainerBottomParticleId_);
+    bossContainerTopParticleId_ = 0;
+    bossContainerBottomParticleId_ = 0;
 
     // プレイヤーを固定
     if (player_) {
