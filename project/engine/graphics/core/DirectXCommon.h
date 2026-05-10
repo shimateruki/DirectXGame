@@ -1,94 +1,94 @@
-#pragma once
+﻿#pragma once
 
-// ======== DirectXの基本機能に必要なヘッダーファイル ========
+// ======== DirectX縺ｮ蝓ｺ譛ｬ讖溯・縺ｫ蠢・ｦ√↑繝倥ャ繝繝ｼ繝輔ぃ繧､繝ｫ ========
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <wrl.h> // ComPtrを使うのに必要
+#include <wrl.h> // ComPtr繧剃ｽｿ縺・・縺ｫ蠢・ｦ・
 #include <string>
 #include <chrono>
 
-// ======== 外部ライブラリのヘッダーファイル ========
-#include <dxcapi.h> // シェーダーコンパイルに必要
+// ======== 螟夜Κ繝ｩ繧､繝悶Λ繝ｪ縺ｮ繝倥ャ繝繝ｼ繝輔ぃ繧､繝ｫ ========
+#include <dxcapi.h> // 繧ｷ繧ｧ繝ｼ繝繝ｼ繧ｳ繝ｳ繝代う繝ｫ縺ｫ蠢・ｦ・
 #include "DirectXTex.h"
 
-// 前方宣言 
+// 蜑肴婿螳｣險 
 class WinApp;
 
 // =================================================================
-// DirectXの様々な初期化や機能を集約した、プログラムの基盤となるクラス
-// Singletonパターンで、プログラム全体で唯一のインスタンスを共有する
+// DirectX縺ｮ讒倥・↑蛻晄悄蛹悶ｄ讖溯・繧帝寔邏・＠縺溘√・繝ｭ繧ｰ繝ｩ繝縺ｮ蝓ｺ逶､縺ｨ縺ｪ繧九け繝ｩ繧ｹ
+// Singleton繝代ち繝ｼ繝ｳ縺ｧ縲√・繝ｭ繧ｰ繝ｩ繝蜈ｨ菴薙〒蜚ｯ荳縺ｮ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ繧貞・譛峨☆繧・
 // =================================================================
 class DirectXCommon {
 public:
-	// ======== publicなメンバ関数（外部から呼び出して使う機能） ========
+	// ======== public縺ｪ繝｡繝ｳ繝宣未謨ｰ・亥､夜Κ縺九ｉ蜻ｼ縺ｳ蜃ｺ縺励※菴ｿ縺・ｩ溯・・・========
 
 	/// <summary>
-	/// Singletonインスタンスの取得
+	/// Singleton繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ縺ｮ蜿門ｾ・
 	/// </summary>
 	static DirectXCommon* GetInstance();
 
 	/// <summary>
-	/// DirectXの各種初期化処理をまとめた関数
+	/// DirectX縺ｮ蜷・ｨｮ蛻晄悄蛹門・逅・ｒ縺ｾ縺ｨ繧√◆髢｢謨ｰ
 	/// </summary>
 	void Initialize(WinApp* winApp);
 
 	/// <summary>
-	/// 終了処理 (ImGuiの終了など)
+	/// 邨ゆｺ・・逅・(ImGui縺ｮ邨ゆｺ・↑縺ｩ)
 	/// </summary>
 	void Finalize();
 
 	/// <summary>
-	/// 毎フレームの描画前に行う処理
+	/// 豈弱ヵ繝ｬ繝ｼ繝縺ｮ謠冗判蜑阪↓陦後≧蜃ｦ逅・
 	/// </summary>
 	void PreDraw();
 
 	/// <summary>
-	/// 毎フレームの描画後に行う処理
+	/// 豈弱ヵ繝ｬ繝ｼ繝縺ｮ謠冗判蠕後↓陦後≧蜃ｦ逅・
 	/// </summary>
 	void PostDraw();
 
 
-	// --- ゲッター関数（privateなメンバ変数を外部から安全に取得する） ---
+	// --- 繧ｲ繝・ち繝ｼ髢｢謨ｰ・・rivate縺ｪ繝｡繝ｳ繝仙､画焚繧貞､夜Κ縺九ｉ螳牙・縺ｫ蜿門ｾ励☆繧具ｼ・---
 
 	ID3D12Device* GetDevice() const { return device_.Get(); }
 	ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
 	DXGI_FORMAT GetRTVFormat() const { return rtvFormat_; }
 	size_t GetBackBufferCount() const { return backBufferCount_; }
 
-	// 最大SRV数（最大テクスチャ枚数）
+	// 譛螟ｧSRV謨ｰ・域怙螟ｧ繝・け繧ｹ繝√Ε譫壽焚・・
 	static const uint32_t kMaxSRVCount = 512;
 	void InitalaizeFixFPS();
 	void UpdateFixFPS();
 
-	// --- ユーティリティ関数（便利なヘルパー機能） ---
+	// --- 繝ｦ繝ｼ繝・ぅ繝ｪ繝・ぅ髢｢謨ｰ・井ｾｿ蛻ｩ縺ｪ繝倥Ν繝代・讖溯・・・---
 
 	/// <summary>
-	/// HLSLシェーダーファイルをコンパイルする
+	/// HLSL繧ｷ繧ｧ繝ｼ繝繝ｼ繝輔ぃ繧､繝ｫ繧偵さ繝ｳ繝代う繝ｫ縺吶ｋ
 	/// </summary>
 	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst , const wchar_t* entryPoint = L"main");
 
 	/// <summary>
-	/// 汎用的なバッファリソースを作成する
+	/// 豎守畑逧・↑繝舌ャ繝輔ぃ繝ｪ繧ｽ繝ｼ繧ｹ繧剃ｽ懈・縺吶ｋ
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(size_t sizeInBytes);
 
 	/// <summary>
-	/// テクスチャリソースを作成する
+	/// 繝・け繧ｹ繝√Ε繝ｪ繧ｽ繝ｼ繧ｹ繧剃ｽ懈・縺吶ｋ
 	/// </summary>
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metadata);
 
 	/// <summary>
-	/// テクスチャデータをリソースにアップロードする (WriteToSubresource版)
+	/// 繝・け繧ｹ繝√Ε繝・・繧ｿ繧偵Μ繧ｽ繝ｼ繧ｹ縺ｫ繧｢繝・・繝ｭ繝ｼ繝峨☆繧・(WriteToSubresource迚・
 	/// </summary>
 	void UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
 
 	/// <summary>
-	/// テクスチャファイルを読み込む (staticなのでインスタンス不要)
+	/// 繝・け繧ｹ繝√Ε繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ霎ｼ繧 (static縺ｪ縺ｮ縺ｧ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ荳崎ｦ・
 	/// </summary>
 	static DirectX::ScratchImage LoadTexture(const std::string& filePath);
 
 	/// <summary>
-	/// string を wstring に変換する (staticなのでインスタンス不要)
+	/// string 繧・wstring 縺ｫ螟画鋤縺吶ｋ (static縺ｪ縺ｮ縺ｧ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ荳崎ｦ・
 	/// </summary>
 	static std::wstring ConvertString(const std::string& str);
 	void FlushCommandQueue(bool reset = true);
@@ -97,12 +97,12 @@ public:
 
 
 	/// <summary>
-	/// 標準的な深度ステンシルデスクリプタを取得する
+	/// 讓呎ｺ也噪縺ｪ豺ｱ蠎ｦ繧ｹ繝・Φ繧ｷ繝ｫ繝・せ繧ｯ繝ｪ繝励ち繧貞叙蠕励☆繧・
 	/// </summary>
 	D3D12_DEPTH_STENCIL_DESC GetDefaultDepthStencilDesc() const;
 
 	/// <summary>
-	/// 深度ステンシルビューのフォーマットを取得する
+	/// 豺ｱ蠎ｦ繧ｹ繝・Φ繧ｷ繝ｫ繝薙Η繝ｼ縺ｮ繝輔か繝ｼ繝槭ャ繝医ｒ蜿門ｾ励☆繧・
 	/// </summary>
 	DXGI_FORMAT GetDSVFormat() const;
 
@@ -118,24 +118,24 @@ public:
 	uint64_t GetFenceValue() const { return fenceValue_; }
 	HANDLE GetFenceEvent() const { return fenceEvent_; }
 
-	//  レンダーテクスチャの初期化
+	//  繝ｬ繝ｳ繝繝ｼ繝・け繧ｹ繝√Ε縺ｮ蛻晄悄蛹・
 	void CreateRenderTexture();
 
-	//  描画先を「レンダーテクスチャ」に切り替える (GameView描画開始)
+	//  謠冗判蜈医ｒ縲後Ξ繝ｳ繝繝ｼ繝・け繧ｹ繝√Ε縲阪↓蛻・ｊ譖ｿ縺医ｋ (GameView謠冗判髢句ｧ・
 	void PreDrawRenderTexture();
 
-	//  描画先を「画面(バックバッファ)」に戻す (GameView描画終了)
+	//  謠冗判蜈医ｒ縲檎判髱｢(繝舌ャ繧ｯ繝舌ャ繝輔ぃ)縲阪↓謌ｻ縺・(GameView謠冗判邨ゆｺ・
 	void PostDrawRenderTexture();
 
-	//  ImGuiで表示するための SRVハンドルを取得
+	//  ImGui縺ｧ陦ｨ遉ｺ縺吶ｋ縺溘ａ縺ｮ SRV繝上Φ繝峨Ν繧貞叙蠕・
 	uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
-	void PreDrawBackBuffer(); // 描画先をバックバッファに戻す（リセットなし）
+	void PreDrawBackBuffer(); // 謠冗判蜈医ｒ繝舌ャ繧ｯ繝舌ャ繝輔ぃ縺ｫ謌ｻ縺呻ｼ医Μ繧ｻ繝・ヨ縺ｪ縺暦ｼ・
 	void CreateShadowMap();
 	uint32_t GetShadowMapSrvHandle() const { return shadowMapSrvHandle_; }
 	void PreDrawShadow();
 	void PostDrawShadow();
 	float GetGpuDrawTimeMs() const { return gpuDrawTimeMs_; }
-	// GPUプロファイラ操作用
+	// GPU繝励Ο繝輔ぃ繧､繝ｩ謫堺ｽ懃畑
 	void StartGpuProfile();
 	void EndGpuProfile();
 	void ReadGpuProfile();
@@ -147,37 +147,39 @@ public:
 	uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
 	void UpdateGrabTexture();
 	void ResizeSwapChain(int32_t width, int32_t height);
+	ID3D12GraphicsCommandList* GetLoadCommandList() const { return loadCommandList_.Get(); }
+	void ExecuteLoadCommands();
 private:
-	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
+	// ======== private縺ｪ繝｡繝ｳ繝宣未謨ｰ・医％縺ｮ繧ｯ繝ｩ繧ｹ縺ｮ蜀・Κ縺ｧ縺ｮ縺ｿ菴ｿ縺・ｩ溯・・・========
 
-	// Singletonにするためのコンストラクタ等のprivate化
+	// Singleton縺ｫ縺吶ｋ縺溘ａ縺ｮ繧ｳ繝ｳ繧ｹ繝医Λ繧ｯ繧ｿ遲峨・private蛹・
 	DirectXCommon() = default;
 	~DirectXCommon() = default;
 	DirectXCommon(const DirectXCommon&) = delete;
 	const DirectXCommon& operator=(const DirectXCommon&) = delete;
 
-	// 各種初期化処理
-	void InitializeDXGIDevice(); // DXGIデバイスの初期化
-	void CreateCommand();        // コマンド関連の初期化
-	void CreateSwapChain();      // スワップチェインの作成
-	void CreateRTV();            // レンダーターゲットビューの作成
-	void CreateDSV();            // 深度ステンシルビューの作成
-	void CreateFence();          // フェンスの作成
+	// 蜷・ｨｮ蛻晄悄蛹門・逅・
+	void InitializeDXGIDevice(); // DXGI繝・ヰ繧､繧ｹ縺ｮ蛻晄悄蛹・
+	void CreateCommand();        // 繧ｳ繝槭Φ繝蛾未騾｣縺ｮ蛻晄悄蛹・
+	void CreateSwapChain();      // 繧ｹ繝ｯ繝・・繝√ぉ繧､繝ｳ縺ｮ菴懈・
+	void CreateRTV();            // 繝ｬ繝ｳ繝繝ｼ繧ｿ繝ｼ繧ｲ繝・ヨ繝薙Η繝ｼ縺ｮ菴懈・
+	void CreateDSV();            // 豺ｱ蠎ｦ繧ｹ繝・Φ繧ｷ繝ｫ繝薙Η繝ｼ縺ｮ菴懈・
+	void CreateFence();          // 繝輔ぉ繝ｳ繧ｹ縺ｮ菴懈・
 
-	// DSV用のテクスチャリソースを作成するヘルパー
+	// DSV逕ｨ縺ｮ繝・け繧ｹ繝√Ε繝ｪ繧ｽ繝ｼ繧ｹ繧剃ｽ懈・縺吶ｋ繝倥Ν繝代・
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(int32_t width, int32_t height);
 
 
 
 private:
-	// ======== privateなメンバ変数（このクラスが内部で保持するデータ） ========
+	// ======== private縺ｪ繝｡繝ｳ繝仙､画焚・医％縺ｮ繧ｯ繝ｩ繧ｹ縺悟・驛ｨ縺ｧ菫晄戟縺吶ｋ繝・・繧ｿ・・========
 
-	WinApp* winApp_ = nullptr; // WindowsAPIクラス
+	WinApp* winApp_ = nullptr; // WindowsAPI繧ｯ繝ｩ繧ｹ
 
-	//記録時間
+	//險倬鹸譎る俣
 	std::chrono::steady_clock::time_point reference_;
 
-	// --- DirectXオブジェクト ---
+	// --- DirectX繧ｪ繝悶ず繧ｧ繧ｯ繝・---
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Device> device_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue_ = nullptr;
@@ -189,47 +191,50 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
 	uint32_t depthSrvHandle_ = 0; 
-	// --- GPUとの同期用 ---
+	// --- GPU縺ｨ縺ｮ蜷梧悄逕ｨ ---
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence_ = nullptr;
 	uint64_t fenceValue_ = 0;
 	HANDLE fenceEvent_ = nullptr;
 
-	// --- 描画領域 ---
+	// --- 謠冗判鬆伜沺 ---
 	D3D12_VIEWPORT viewport_{};
 	D3D12_RECT scissorRect_{};
 
-	// --- その他 ---
+	// --- 縺昴・莉・---
 	DXGI_FORMAT rtvFormat_ = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	UINT backBufferIndex_ = 0;
 	const size_t backBufferCount_ = 2;
 
-	// --- シェーダーコンパイル用 ---
+	// --- 繧ｷ繧ｧ繝ｼ繝繝ｼ繧ｳ繝ｳ繝代う繝ｫ逕ｨ ---
 	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_ = nullptr;
-	//  レンダーテクスチャのリソース
+	//  繝ｬ繝ｳ繝繝ｼ繝・け繧ｹ繝√Ε縺ｮ繝ｪ繧ｽ繝ｼ繧ｹ
 	Microsoft::WRL::ComPtr<ID3D12Resource> renderTexture_;
 
-	//  レンダーテクスチャ専用のRTVヒープ (ここに描画するためのハンドル)
+	//  繝ｬ繝ｳ繝繝ｼ繝・け繧ｹ繝√Ε蟆ら畑縺ｮRTV繝偵・繝・(縺薙％縺ｫ謠冗判縺吶ｋ縺溘ａ縺ｮ繝上Φ繝峨Ν)
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtRtvHeap_;
 
-	//  SRVManager上のインデックス番号
+	//  SRVManager荳翫・繧､繝ｳ繝・ャ繧ｯ繧ｹ逡ｪ蜿ｷ
 	uint32_t renderTextureSrvHandle_ = 0;
 
-	//  GameViewのクリアカラー (動作確認用に「緑」にしておきます)
+	//  GameView縺ｮ繧ｯ繝ｪ繧｢繧ｫ繝ｩ繝ｼ (蜍穂ｽ懃｢ｺ隱咲畑縺ｫ縲檎ｷ代阪↓縺励※縺翫″縺ｾ縺・
 	float clearColor_[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
 	uint32_t shadowMapSrvHandle_ = 0;
-	// シャドウマップの解像度（とりあえず1024x1024。綺麗にしたいなら2048や4096に）
+	// 繧ｷ繝｣繝峨え繝槭ャ繝励・隗｣蜒丞ｺｦ・医→繧翫≠縺医★1024x1024縲らｶｺ鮗励↓縺励◆縺・↑繧・048繧・096縺ｫ・・
 	static const int kShadowMapWidth = 2048;
 	static const int kShadowMapHeight = 2048;
-	//Gpuの時間計測用
+	//Gpu縺ｮ譎る俣險域ｸｬ逕ｨ
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
 	Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
-	uint64_t gpuFrequency_ = 0; // GPUのタイマーの周波数
-	float gpuDrawTimeMs_ = 0.0f; // 計測結果（ミリ秒）
+	uint64_t gpuFrequency_ = 0; // GPU縺ｮ繧ｿ繧､繝槭・縺ｮ蜻ｨ豕｢謨ｰ
+	float gpuDrawTimeMs_ = 0.0f; // 險域ｸｬ邨先棡・医Α繝ｪ遘抵ｼ・
 	Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
 	uint32_t grabSrvHandle_ = 0;
+
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> loadCommandAllocator_ = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> loadCommandList_ = nullptr;
 };
