@@ -246,4 +246,8 @@ private:
     // =======================================================
     float currentCinemaBarHeight_ = 0.0f;
 
+    // ボスコンテナのパーティクル用ID
+    uint32_t bossContainerTopParticleId_ = 0;
+    uint32_t bossContainerBottomParticleId_ = 0;
+
 };
