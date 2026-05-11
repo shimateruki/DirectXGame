@@ -441,6 +441,12 @@ void GamePlayScene::Initialize() {
     else {
         CinematicFade::GetInstance()->StartOpen(0.5f);
     }
+    // --- 6. カメラの初期状態を強制的に反映（1フレーム目の Glide 防止） ---
+    if (player_) {
+        CameraEditor::GetInstance()->Update(player_, false);
+        CameraManager::GetInstance()->Update();
+    }
+
     dxCommon_->FlushCommandQueue(false);
 }
 
@@ -486,14 +492,19 @@ void GamePlayScene::Update(float deltaTime) {
     }
 
     // ---------------------------------------------------------
-    // 1. ポーズの切り替え判定 (ゲームオーバー・ムービー中はポーズ不可)
+    // 1. 状態判定 (ゲームオーバー・ムービー中などのフラグ)
     // ---------------------------------------------------------
     bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
-    bool isMoviePlaying =
-        (movieState_ != MovieState::kNone) || isBossMoviePlaying_;
+    bool isBossDying = boss_ && boss_->IsDyingSequence();
+    bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
 
-    // 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え
-    if (!isGameOver && !isMoviePlaying &&
+    // ムービー中などはロックオンを無効化（強制解除）する
+    if (lockOnSystem_) {
+        lockOnSystem_->SetEnabled(!isCinematicMode);
+    }
+
+    // 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え (ムービー中は不可)
+    if (!isGameOver && !isCinematicMode &&
         inputManager_->IsActionTriggered("pose")) {
         if (isOptionMenu_) {
             isOptionMenu_ = false; // オプション中ならオプションを閉じる
@@ -630,6 +641,13 @@ void GamePlayScene::Update(float deltaTime) {
                 TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
                 if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
                     hasFinishedTutorial_ = true;
+
+                    // ★ ムービー開始
+                    movieState_ = MovieState::kTutorialDoorOpen;
+                    movieTimer_ = 0.0f;
+                    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                    CameraEditor::GetInstance()->PlayOverrideCamera(camera, "tutorial movie");
+
                     break;
                 }
             }
@@ -782,6 +800,25 @@ void GamePlayScene::Update(float deltaTime) {
         }
 
         // ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
+    }
+    else if (movieState_ == MovieState::kTutorialDoorOpen) {
+        // ムービー開始時の初期化
+        if (movieTimer_ == 0.0f) {
+            player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+            player_->SetIsControlActive(false);
+            player_->SetIsPhysicsActive(false);
+        }
+
+        movieTimer_ += deltaTime;
+
+        // 1.5秒後にムービー終了
+        if (movieTimer_ > 2.5f) {
+            movieState_ = MovieState::kNone;
+            player_->SetIsControlActive(true);
+            player_->SetIsPhysicsActive(true);
+            Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+            camera->EndOverride(1.5f);
+        }
     }
     else if (movieState_ == MovieState::kTutorialPlatformDescent) {
         if (tutorialPlatform_ && player_) {
@@ -1110,12 +1147,7 @@ void GamePlayScene::Update(float deltaTime) {
 #endif
         }
     }
-    bool isBossDying = boss_ && boss_->IsDyingSequence();
-
-    // ムービー状態、またはボス登場ムービー中、または【ボス撃破演出中】、クリア移行中なら黒帯を出す！
-    bool isCinematicMode =
-        (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
-
+    // ムービー状態などに応じて黒帯の高さを決める
     float targetBarHeight = isCinematicMode ? 0.12f : 0.0f;
 
     // 現在の高さを滑らかに補間（5.0f は開閉スピード）
