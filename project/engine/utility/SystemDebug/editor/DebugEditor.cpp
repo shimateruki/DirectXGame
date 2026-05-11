@@ -107,6 +107,25 @@ void DebugEditor::Update() {
         }
     }
 
+    // =========================================================
+    // ★追加: ダングリングポインタ対策（削除されたオブジェクトを参照し続けない）
+    // =========================================================
+    if (selectedObject_) {
+        bool isAlive = false;
+        for (const auto& obj : currentScene->GetObjects()) {
+            if (obj.get() == selectedObject_) {
+                isAlive = true;
+                break;
+            }
+        }
+        if (!isAlive) {
+            selectedObject_ = nullptr;
+            if (EditorManager::GetInstance()->GetSelectedObject() == this) {
+                EditorManager::GetInstance()->ClearSelection();
+            }
+        }
+    }
+
     // --- カメラ制御 (設置モード用) ---
     bool isPreviewActive = (previewObject_ != nullptr);
     if (isPreviewActive && !wasPreviewActive_) {
