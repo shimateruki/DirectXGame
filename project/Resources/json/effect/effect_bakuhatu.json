@@ -1,11 +1,34 @@
 {
     "AutoLoop": true,
     "BlendMode": 2,
-    "DistortionSpeed": 50.0,
-    "DistortionStrength": 0.20000000298023224,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": true,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            0.800000011920929,
+            1.0,
+            1.0
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 20.506000518798828,
+    "DistortionStrength": 0.0,
     "EasingType": 0,
     "EdgeFadeStrength": 3.881999969482422,
-    "EnableDistortion": false,
+    "EnableDistortion": true,
     "EnableReveal": false,
     "EndColor": [
         0.5,
@@ -18,26 +41,39 @@
         4.0,
         4.0
     ],
-    "Intensity": 10.0,
-    "Lifetime": 0.7459999918937683,
+    "InnerRadius": 0.6000000238418579,
+    "Intensity": 1.0,
+    "Lifetime": 1.2000000476837158,
+    "MeshSegments": 128,
     "ModelName": "sphere.gltf",
     "NoiseTexturePath": "Resources/sprite/image3.png",
+    "OuterRadius": 1.5,
+    "PlaneSize": [
+        2.0,
+        2.0
+    ],
     "Position": [
-        0.5,
-        0.8999999761581421,
-        1.399999976158142
+        0.0,
+        0.0,
+        0.0
     ],
     "ProceduralType": 2,
     "RampTexturePath": "Resources/sprite/color.png",
+    "RingInnerRadius": 0.5,
+    "RingOuterRadius": 1.0,
     "Rotation": [
         0.0,
-        3.319999933242798,
-        -4.010000228881836
+        0.0,
+        0.0
     ],
     "ScrollSpeed": [
         -1.7599999904632568,
         0.0
     ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
     "StartColor": [
         0.0,
         0.5482628345489502,
@@ -49,7 +85,17 @@
         0.10000000149011612,
         0.10000000149011612
     ],
-    "TargetName": "Enemy_Bomb",
+    "TargetName": "Player_body",
     "TexturePath": "",
+    "Thickness": 0.3499999940395355,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.800000011920929,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.30000001192092896,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
     "VolumeMode": 0
 }
