@@ -20,6 +20,11 @@ void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName
     jumpTimer_ = 0.0f;
     lastShakeOffset_ = { 0,0,0 };
     defaultColor_ = { 0.0f, 1.0f, 0.0f, 1.0f }; // デフォルトは緑
+    
+    // スケールアニメーション初期化
+    transform_.scale = { 1,1,1 };
+    targetScale_ = { 1,1,1 };
+    prevIsGrounded_ = true;
 
     // 2. 親クラスの初期化
     BaseEnemy::Initialize(common, modelName);
@@ -89,7 +94,17 @@ void EnemySlime::Update(float deltaTime) {
     }
 
     // 6. キャラクターとしての物理更新（論理座標の確定）
+    // ※内部の Character::Update で isGrounded_ が一旦リセットされるため、アニメーション用に現在の状態を保持する
+    bool currentGrounded = isGrounded_;
     BaseEnemy::Update(deltaTime);
+
+    // 接地判定の安定化（ぶるぶる防止）
+    // 「物理的に接地している」または「ジャンプ後の待機時間中（0.5秒間）」なら接地中とみなす
+    // ただし、ジャンプして上方向に勢いよく動いている時は除く
+    bool isStableGrounded = (currentGrounded || (jumpTimer_ > 0.0f && jumpTimer_ < 0.5f));
+    if (velocity_.y > 0.1f) {
+        isStableGrounded = false;
+    }
 
     // 6. シェイク演出（描画用の座標オフセットを計算・適用）
     if (shakeTimer_ > 0.0f) {
@@ -113,6 +128,30 @@ void EnemySlime::Update(float deltaTime) {
         SetCollisionAttribute(0);
         isDead = true;
     }
+
+    // =========================================================
+    // 7. もちっとしたアニメーション（Squash & Stretch）
+    // =========================================================
+    if (!isStableGrounded) {
+        // 空中：縦長に伸びる（Stretch）
+        targetScale_ = { 0.8f, 1.3f, 0.8f };
+    }
+    else {
+        // 着地した瞬間：横に潰れる（Squash）
+        if (!prevIsGrounded_) {
+            transform_.scale = { 1.4f, 0.5f, 1.4f }; // 瞬時に潰す
+        }
+        // 接地中：徐々に元に戻る
+        targetScale_ = { 1.0f, 1.0f, 1.0f };
+    }
+
+    // スケールを目標に近づける（線形補間）
+    float lerpRate = 10.0f; // 戻る速さ
+    transform_.scale.x = math.Lerp(transform_.scale.x, targetScale_.x, lerpRate * deltaTime);
+    transform_.scale.y = math.Lerp(transform_.scale.y, targetScale_.y, lerpRate * deltaTime);
+    transform_.scale.z = math.Lerp(transform_.scale.z, targetScale_.z, lerpRate * deltaTime);
+
+    prevIsGrounded_ = isStableGrounded;
 }
 
 bool EnemySlime::OnCollision(Object3d* other) {

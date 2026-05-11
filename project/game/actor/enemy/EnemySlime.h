@@ -29,4 +29,8 @@ private:
     float jumpTimer_ = 0.0f;     // ジャンプ移動用の待機タイマー
     Vector3 lastShakeOffset_ = { 0,0,0 }; // 前回のシェイクオフセット
     BossCore* bossTarget_ = nullptr; // ホーミング対象
+
+    // アニメーション用
+    bool prevIsGrounded_ = true;     // 前回の接地状態
+    Vector3 targetScale_ = { 1,1,1 }; // 目標スケール
 };
