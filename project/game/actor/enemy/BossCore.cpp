@@ -680,8 +680,6 @@ void BossCore::ChangeState(State nextState) {
             nextAttack = 8;
         }
 
-        nextAttack = 9;
-
         animTimer_ = 0.0f;
 
         if (nextAttack == 1) currentAttack_ = std::make_unique<BossAttack1_Rush>();
