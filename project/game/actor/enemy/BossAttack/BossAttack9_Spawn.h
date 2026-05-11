@@ -8,6 +8,7 @@ private:
     int animPhase_ = 0;       // 演出フェーズ管理
     int spawnCount_ = 0;      // 現在までに召喚した数
     float spawnTimer_ = 0.0f; // 召喚間隔を測るタイマー
+    Vector3 startPos_ = { 0, 0, 0 }; // 移動開始時の位置
 
     // 内部的な召喚処理
     void SpawnEnemy(BossCore* boss);

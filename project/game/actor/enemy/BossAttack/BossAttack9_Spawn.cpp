@@ -9,36 +9,66 @@ void BossAttack9_Spawn::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
     spawnCount_ = 0;
     spawnTimer_ = 0.0f;
-    animPhase_ = 0; // 0: 溜め演出, 1: 召喚中
+    animPhase_ = 0; // 0: 中央への移動, 1: 回転召喚
+    startPos_ = boss->GetTranslate();
 }
 
 void BossAttack9_Spawn::Update(BossCore* boss, float deltaTime) {
     animTimer_ += deltaTime;
 
-    // Phase 0: 召喚前の予兆（ボスが少し浮き上がるなど）
+    // 装甲ブロックの軌道更新（常に待機時の挙動を継続）
+    auto& armorBlocks = boss->GetArmorBlocks();
+    for (size_t i = 0; i < armorBlocks.size(); ++i) {
+        if (armorBlocks[i]) {
+            BossCore::OrbitData orbit = boss->GetIdleOrbit(i);
+            armorBlocks[i]->SetTranslate(orbit.pos);
+            armorBlocks[i]->SetRotation(orbit.rot);
+            armorBlocks[i]->SetScale(orbit.scale);
+        }
+    }
+
+    // Phase 0: 中央 Y=7 へのイージング移動（1秒間）
     if (animPhase_ == 0) {
-        Vector3 pos = boss->GetTranslate();
-        pos.y += 2.0f * deltaTime; // 少し浮く
-        boss->SetTranslate(pos);
+        float t = std::clamp(animTimer_ / 1.0f, 0.0f, 1.0f);
+        float easeT = 1.0f - std::pow(1.0f - t, 3.0f); // OutCubic
+        Vector3 targetPos = { 0.0f, 7.0f, 0.0f };
+        Vector3 currentPos = Math::Lerp(startPos_, targetPos, easeT);
+        boss->SetTranslate(currentPos);
 
         if (animTimer_ >= 1.0f) {
             animPhase_ = 1;
             animTimer_ = 0.0f;
+            boss->SetTranslate(targetPos);
         }
     }
-    // Phase 1: 実際に敵を出す
+    // Phase 1: 儀式的回転召喚（6秒間）
     else if (animPhase_ == 1) {
-        spawnTimer_ += deltaTime;
+        // 位置は中央 Y=7 に固定
+        boss->SetTranslate({ 0.0f, 7.0f, 0.0f });
 
-        // 0.5秒ごとに1体、合計4体出す例
-        if (spawnTimer_ >= 0.5f && spawnCount_ < 4) {
-            SpawnEnemy(boss);
-            spawnCount_++;
-            spawnTimer_ = 0.0f;
+        float phaseDuration = 6.0f;
+        float nt = std::clamp(animTimer_ / phaseDuration, 0.0f, 1.0f);
+
+        // ハニング窓のようなカーブで非常に滑らかに加減速 (0 -> max -> 0)
+        float maxRotationSpeed = 35.0f; 
+        float currentSpeed = maxRotationSpeed * 0.5f * (1.0f - std::cos(nt * 2.0f * 3.14159265f));
+
+        Vector3 rot = boss->GetRotation();
+        rot.y -= currentSpeed * deltaTime; // 逆回転
+        boss->SetRotation(rot);
+
+        // 召喚スケジュール: 2秒〜4秒の間のみ
+        if (animTimer_ >= 2.0f && animTimer_ <= 4.0f) {
+            spawnTimer_ += deltaTime;
+            if (spawnTimer_ >= 0.5f && spawnCount_ < 4) {
+                SpawnEnemy(boss);
+                spawnCount_++;
+                spawnTimer_ = 0.0f;
+            }
         }
 
-        if (spawnCount_ >= 4 && animTimer_ >= 3.0f) {
-            isFinished_ = true; // 攻撃終了
+        if (nt >= 1.0f) {
+            isFinished_ = true;
         }
     }
 }
