@@ -32,7 +32,7 @@ void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName
     // 3. スライム固有の設定
     SetColliderType(ColliderType::kOBB);
     SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-    SetCollisionAttribute(kEnemy | kGround);
+    SetCollisionAttribute(kEnemy); // 地面属性(kGround)を削除（上に乗れないようにするため）
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack | kEnemy);
 
     // 親の Initialize で defaultColor_ が上書きされる可能性があるため、ここで再度確定させる
@@ -60,6 +60,26 @@ void EnemySlime::Update(float deltaTime) {
     }
     // 5. 通常の移動AI（吹き飛び中・硬直中でない場合）
     else if (!isBlownAway_ && target_) {
+        // 常にターゲットの方を向く（線形補間によるスムーズな回転）
+        Vector3 myPos = transform_.translate;
+        Vector3 targetPos = target_->GetWorldPosition();
+        Vector3 toTarget = targetPos - myPos;
+        toTarget.y = 0.0f;
+
+        if (math.Length(toTarget) > 0.1f) {
+            Vector3 dir = math.Normalize(toTarget);
+            float targetAngle = std::atan2(dir.x, dir.z);
+
+            // 最短角度での線形補間（0〜360度の跨ぎを考慮）
+            float diff = targetAngle - transform_.rotate.y;
+            while (diff > 3.14159265f) diff -= 6.2831853f;
+            while (diff < -3.14159265f) diff += 6.2831853f;
+
+            float rotateLerpRate = 8.0f; // 回転速度
+            transform_.rotate.y += diff * rotateLerpRate * deltaTime;
+            transform_.isQuaternionMaster = false;
+        }
+
         if (isGrounded_) {
             // 接地中は停止してジャンプを待つ
             velocity_.x = 0.0f;
@@ -67,24 +87,15 @@ void EnemySlime::Update(float deltaTime) {
             jumpTimer_ += deltaTime;
 
             if (jumpTimer_ >= 0.5f) {
-                // ターゲットへの方向を計算
-                Vector3 myPos = transform_.translate;
-                Vector3 targetPos = target_->GetWorldPosition();
-                Vector3 toTarget = targetPos - myPos;
-                toTarget.y = 0.0f;
+                // ターゲットへの方向を再計算（最新の向きで飛ぶ）
+                Vector3 dir = { std::sin(transform_.rotate.y), 0, std::cos(transform_.rotate.y) };
+                float horizontalSpeed = 5.0f;
+                float jumpPower = 12.0f; // プレイヤーより少し低め
 
-                float length = math.Length(toTarget);
-                if (length > 1.0f) {
-                    Vector3 dir = math.Normalize(toTarget);
-                    float horizontalSpeed = 5.0f;
-                    float jumpPower = 12.0f; // プレイヤーより少し低め
+                velocity_.x = dir.x * horizontalSpeed;
+                velocity_.z = dir.z * horizontalSpeed;
+                velocity_.y = jumpPower;
 
-                    velocity_.x = dir.x * horizontalSpeed;
-                    velocity_.z = dir.z * horizontalSpeed;
-                    velocity_.y = jumpPower;
-
-                    transform_.rotate.y = std::atan2(dir.x, dir.z);
-                }
                 jumpTimer_ = 0.0f;
             }
         }
@@ -168,6 +179,25 @@ bool EnemySlime::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
     CollisionInfo info = CheckCollision(other);
     if (!info.isColliding) return false;
+
+    // 0. スライム同士の衝突：上に重ならないように水平方向にのみ押し出す
+    if ((attribute & kEnemy) && !(attribute & kGround)) {
+        // 自分が「下」にいる場合（相手に踏まれている状態：法線が下向き）は移動しない
+        if (info.normal.y < -0.1f) {
+            return true;
+        }
+
+        // 自分が「上」または「横」にいる場合は、重なりを解消するために横に逃げる
+        Vector3 pushDir = info.normal;
+        pushDir.y = 0.0f; // 垂直方向の押し出しを無効化
+        if (math.Length(pushDir) < 0.01f) {
+            // 真上から当たった場合は、適当な横方向に逃がす
+            pushDir = { 1.0f, 0.0f, 0.0f };
+        }
+        pushDir = math.Normalize(pushDir);
+        transform_.translate += pushDir * info.penetration;
+        return true;
+    }
 
     // 1. 吹き飛び中にボス（敵属性）に当たったらダメージ
     if (isBlownAway_ && (attribute & kEnemy)) {

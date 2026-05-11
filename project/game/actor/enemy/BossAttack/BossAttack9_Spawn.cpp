@@ -82,7 +82,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
 
     // 1. インスタンス生成と初期化
     auto slime = std::make_unique<EnemySlime>();
-    slime->Initialize(boss->GetCommon(), "block");
+    slime->Initialize(boss->GetCommon(), "bunny");
 
     // ========================================================
     // ★ ここにステータス設定を実装します！
