@@ -5,6 +5,7 @@
 #include "engine/system/scene/BaseScene.h"
 #include "BossCore.h"
 #include "game/actor/player/Player.h"
+#include "engine/graphics/3d/camera/CameraManager.h"
 #include <cmath>
 #include <algorithm>
 
@@ -112,14 +113,12 @@ bool EnemySlime::OnCollision(Object3d* other) {
                 // 吹き飛ばし開始
                 isBlownAway_ = true;
                 
-                // プレイヤーの向いている正面方向に吹っ飛ばす（攻撃開始時に保存された向きを使用）
-                Vector3 dir = { 0, 0, 1 }; // デフォルト正面
-                Player* player = dynamic_cast<Player*>(target_);
-                if (player) {
-                    dir = player->GetAttackDirection();
-                } else if (target_) {
-                    const Matrix4x4& playerMat = target_->GetWorldMatrix();
-                    dir = { playerMat.m[2][0], 0.0f, playerMat.m[2][2] };
+                // 視点の向いている方向に吹っ飛ばす
+                Vector3 dir = { 0, 0, 1 };
+                Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+                if (camera) {
+                    dir = camera->GetTargetPoint() - camera->GetEye();
+                    dir.y = 0.0f;
                     if (math.Length(dir) > 0.001f) dir = math.Normalize(dir);
                     else dir = { 0, 0, 1 };
                 }
