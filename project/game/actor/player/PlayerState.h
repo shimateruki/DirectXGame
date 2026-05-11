@@ -4,6 +4,7 @@
 
 // 前方宣言
 class Object3d;
+class GPUParticleEmitter;
 
 // --------------------------------------------------------
 // 待機状態 (Idle)
@@ -208,6 +209,8 @@ private:
 
     bool initializedParts_ = false;
 
+    std::unique_ptr<GPUParticleEmitter> particleEmitter_;
+
     // アニメ開始・終了ポーズ用ヘルパ
     void ApplyPose(float t);
 };
@@ -254,6 +257,8 @@ private:
 
     bool initializedParts_ = false;
 
+    std::unique_ptr<GPUParticleEmitter> particleEmitter_;
+
     // アニメ開始・終了ポーズ用ヘルパ
     void ApplyPose(float t);
 };
@@ -286,6 +291,8 @@ private:
     Vector3 leftFootDefaultPos_{}; Vector3 leftFootDefaultRot_{}; Vector3 ltFootStartRot_{};
 
     bool initializedParts_ = false;
+
+    std::unique_ptr<GPUParticleEmitter> particleEmitter_;
 
     void ApplyPose(float t);
 };

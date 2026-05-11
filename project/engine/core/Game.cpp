@@ -1,4 +1,4 @@
-﻿#include "Game.h"
+#include "Game.h"
 #include "SceneManager.h" 
 #include "ImguiManager.h"
 #include "InputManager.h"
@@ -552,11 +552,8 @@ void Game::Draw() {
         sceneManager_->DrawUI();
     }
     // VFXSequencerが生成したエフェクトを描画
-    {
-        ID3D12Resource* pLight = LightManager::GetInstance()->GetPointLightResource();
-        ID3D12Resource* sLight = LightManager::GetInstance()->GetSpotLightResource();
-        MeshEffectManager::GetInstance()->Draw(pLight, sLight);
-    }
+    // (現在は各シーンのDraw内で描画するため、ここでの重複描画は避ける)
+
 
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
     if (meshEffectEditor_ && EditorManager::GetInstance()->GetSelectedObject() == meshEffectEditor_.get()) {

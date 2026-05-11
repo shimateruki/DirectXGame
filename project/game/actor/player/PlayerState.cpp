@@ -10,7 +10,8 @@
 #include <cmath>
 #include <MeshEffectManager.h>
 #include "CameraManager.h"
-#include"Camera.h"
+#include "Camera.h"
+#include "GPUParticleEmitter.h"
 
 // ========================================================
 // ヘルパ: 小文字化
@@ -1132,7 +1133,17 @@ void PlayerStateAttack1::Enter(Player* player)
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 	/*MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slash.json");*/
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_a1.json");
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak1.json");
+
+	Object3d* swordObj = nullptr;
+	TryFindSword(player, swordObj);
+	if (swordObj) {
+		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
+		particleEmitter_->Initialize("playerattak", swordObj);
+		particleEmitter_->SetInterval(0.016f);
+		particleEmitter_->Play();
+	}
+
 	bodyObj_ = player;
 
 	TryFindHead(player, headObj_);
@@ -1229,6 +1240,10 @@ void PlayerStateAttack1::Update(Player* player)
 	// イーズインアウト
 	float et = EaseInOutSine(t);
 	ApplyPose(et);
+
+	if (particleEmitter_) {
+		particleEmitter_->Update(1.0f / 60.0f);
+	}
 
 	if (animTimer_ >= animDuration_)
 	{
@@ -1361,6 +1376,11 @@ void PlayerStateAttack1::Exit(Player* player)
 	if (player) player->SetIsControlActive(true);
 	SetSwordActive(player, false);
 
+	if (particleEmitter_) {
+		particleEmitter_->Stop();
+		particleEmitter_.reset();
+	}
+
 	// 既に初期化されていなければ何もしない
 	if (!initializedParts_) return;
 
@@ -1485,7 +1505,17 @@ void PlayerStateAttack2::Enter(Player* player)
 	if (player) player->SetIsControlActive(false);
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slasha.json");
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak2.json");
+
+	Object3d* swordObj = nullptr;
+	TryFindSword(player, swordObj);
+	if (swordObj) {
+		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
+		particleEmitter_->Initialize("playerattak", swordObj);
+		particleEmitter_->SetInterval(0.016f);
+		particleEmitter_->Play();
+	}
+
 	bodyObj_ = player;
 
 	// パーツ探索
@@ -1617,6 +1647,10 @@ void PlayerStateAttack2::Update(Player* player)
 	float et = EaseInOutSine(t);
 	ApplyPose(et);
 
+	if (particleEmitter_) {
+		particleEmitter_->Update(1.0f / 60.0f);
+	}
+
 	// 到達判定
 	if (animTimer_ >= animDuration_)
 	{
@@ -1696,6 +1730,12 @@ void PlayerStateAttack2::Exit(Player* player)
 
 	if (player) player->SetIsControlActive(true);
 	SetSwordActive(player, false);
+
+	if (particleEmitter_) {
+		particleEmitter_->Stop();
+		particleEmitter_.reset();
+	}
+
 	if (!initializedParts_) return;
 
 	// 補間は Exit では作らない（Idle へ遷移する直前の Update で作成する）。
@@ -1914,7 +1954,17 @@ void PlayerStateAttack3::Enter(Player* player)
 	player->SetIsControlActive(false);
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slashb.json");
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak3.json");
+
+	Object3d* swordObj = nullptr;
+	TryFindSword(player, swordObj);
+	if (swordObj) {
+		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
+		particleEmitter_->Initialize("playerattak", swordObj);
+		particleEmitter_->SetInterval(0.016f);
+		particleEmitter_->Play();
+	}
+
 	bodyObj_ = player;
 
 	TryFindHead(player, headObj_); TryFindArms(player, leftArmObj_, rightArmObj_); TryFindFeet(player, leftFootObj_, rightFootObj_);
@@ -1969,6 +2019,10 @@ void PlayerStateAttack3::Update(Player* player)
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
 	ApplyPose(t);
 
+	if (particleEmitter_) {
+		particleEmitter_->Update(1.0f / 60.0f);
+	}
+
 	if (animTimer_ >= animDuration_)
 	{
 		//  Idleに戻る際の滑らかな補間（ブレンド）を設定する
@@ -2022,6 +2076,11 @@ void PlayerStateAttack3::Exit(Player* player)
 	DebugConsole::GetInstance()->AddLog("★ EXIT: Attack3 State");
 	if (player) player->SetIsControlActive(true);
 	SetSwordActive(player, false);
+
+	if (particleEmitter_) {
+		particleEmitter_->Stop();
+		particleEmitter_.reset();
+	}
 
 	if (!initializedParts_) return;
 
@@ -2221,6 +2280,10 @@ void PlayerStateDash::Update(Player* player)
 	animTimer_ += 1.0f / 60.0f;
 	float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
 	ApplyPose(t);
+
+	if (particleEmitter_) {
+		particleEmitter_->Update(1.0f / 60.0f);
+	}
 
 	if (animTimer_ >= animDuration_)
 	{
