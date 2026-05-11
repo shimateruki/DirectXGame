@@ -128,6 +128,10 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
         if (moveT >= 1.0f) {
             animPhase_ = 22;
             animTimer_ = 0.0f;
+            // ★ サンドイッチ対策：叩きつける瞬間だけ地形判定を消す
+            for (auto* block : armorBlocks) {
+                if (block) block->SetCollisionAttribute(kEnemyAttack);
+            }
         }
     }
     // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
@@ -150,6 +154,10 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             if (warningArea) { warningArea->SetScale({ 0.0f, 0.0f, 0.0f }); }
             animPhase_ = 23;
             animTimer_ = 0.0f;
+            // ★ 地面判定を復活させる
+            for (auto* block : armorBlocks) {
+                if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
+            }
         }
     }
     // --- Phase 23: 地面に倒れたまま3秒待機 ---
