@@ -85,7 +85,8 @@ private:
         kNone,
         kBridgeDrop,
         kBossAppearance,
-        kTutorialPlatformDescent // ★ 追加
+        kTutorialPlatformDescent,
+        kTutorialDoorOpen        // ★ 追加：ドアが開く演出
     };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;

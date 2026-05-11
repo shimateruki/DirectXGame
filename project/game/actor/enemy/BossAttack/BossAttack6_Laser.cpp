@@ -8,18 +8,28 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include <CollisionManager.h>
+#include "GPUParticleManager.h"
 
 void BossAttack6_Laser::Finalize() {
     for (Object3d* beam : activeBeams_) {
         if (beam) {
             CollisionManager::GetInstance()->RemoveObject(beam);
             beam->SetParent(nullptr);
-            beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 透明にして隠すだけ！
+            beam->SetScale({ 0.0f, 0.0f, 0.0f });
             beam->SetCollisionAttribute(0);
-            // ★ isDead = true は絶対に書かない！（使い回すため）
         }
     }
     activeBeams_.clear();
+
+    for (Object3d* core : activeCoreBeams_) {
+        if (core) {
+            CollisionManager::GetInstance()->RemoveObject(core);
+            core->SetParent(nullptr);
+            core->SetScale({ 0.0f, 0.0f, 0.0f });
+            core->SetCollisionAttribute(0);
+        }
+    }
+    activeCoreBeams_.clear();
 }
 
 // ※デストラクタは Finalize() を呼ぶだけでOKです
@@ -39,6 +49,7 @@ void BossAttack6_Laser::Initialize(BossCore* boss) {
     // 前回の攻撃で作った余分なレーザーをリセット
     // ==========================================
     activeBeams_.clear();
+    activeCoreBeams_.clear();
 
     // ★ 修正：ここに残っていた「古いレーザー生成コード」は
     // クラッシュの原因になるため綺麗に削除しました！
@@ -180,35 +191,32 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
 
 
             std::vector<Object3d*> beamPool;
+            std::vector<Object3d*> coreBeamPool;
             if (currentScene) {
                 for (auto& obj : currentScene->GetObjects()) {
-                    if (obj->GetName() == "Beam_Cylinder") {
-                        beamPool.push_back(obj.get());
-                    }
+                    if (obj->GetName() == "Beam_Cylinder") beamPool.push_back(obj.get());
+                    else if (obj->GetName() == "Beam_Core_Cylinder") coreBeamPool.push_back(obj.get());
                 }
             }
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 if (!armorBlocks[i]) continue;
 
+                // ==========================================
+                // 1. 赤いオーラ（外側のビーム）の生成
+                // ==========================================
                 Object3d* laser = nullptr;
-
-       
                 if (i < beamPool.size()) {
-                    laser = beamPool[i]; // 前回のを使い回す！
-                }
-                else {
+                    laser = beamPool[i];
+                } else {
                     auto newLaser = std::make_unique<Object3d>();
                     laser = newLaser.get();
                     laser->Initialize(boss->GetCommon());
                     laser->SetModel("Cylinder");
                     laser->SetName("Beam_Cylinder");
-                    if (currentScene) {
-                        currentScene->GetObjects().push_back(std::move(newLaser));
-                    }
+                    if (currentScene) currentScene->GetObjects().push_back(std::move(newLaser));
                 }
 
-                // --- ここから下は今まで通り、レーザーの設定を上書き ---
                 laser->SetBlendMode(BlendMode::kAdd);
                 laser->SetEmissive(5.0f);
                 laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
@@ -228,17 +236,50 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 laser->SetScale({ 0.1f, 80.0f, 0.1f });
                 laser->SetCollisionAttribute(0);
 
-                // 安全のため一度外してから入れ直す
                 CollisionManager::GetInstance()->RemoveObject(laser);
                 CollisionManager::GetInstance()->AddObject(laser);
 
                 laser->SetParent(armorBlocks[i]);
-
                 float rotX90 = std::numbers::pi_v<float> / 2.0f;
                 laser->SetRotation({ rotX90, 0.0f, 0.0f });
                 laser->GetTransform()->isQuaternionMaster = false;
 
                 activeBeams_.push_back(laser);
+
+                // ==========================================
+                // 2. 白いコア（内側のビーム）の生成
+                // ==========================================
+                Object3d* coreLaser = nullptr;
+                if (i < coreBeamPool.size()) {
+                    coreLaser = coreBeamPool[i];
+                } else {
+                    auto newCore = std::make_unique<Object3d>();
+                    coreLaser = newCore.get();
+                    coreLaser->Initialize(boss->GetCommon());
+                    coreLaser->SetModel("Cylinder");
+                    coreLaser->SetName("Beam_Core_Cylinder");
+                    if (currentScene) currentScene->GetObjects().push_back(std::move(newCore));
+                }
+
+                coreLaser->SetBlendMode(BlendMode::kAdd);
+                coreLaser->SetEmissive(8.0f); // コアはさらに強く光らせる
+                coreLaser->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 真っ白
+                coreLaser->SetTexture("Resources/sprite/beamNoice.png");
+                coreLaser->SetMaterialType(9);
+                coreLaser->SetUVTransform(uvMat);
+
+                coreLaser->SetColliderConfig(cConfig); // 当たり判定は持たないが設定だけ入れておく
+                coreLaser->SetScale({ 0.05f, 80.0f, 0.05f }); // 予兆時点ではオーラの半分の細さ
+                coreLaser->SetCollisionAttribute(0);
+
+                CollisionManager::GetInstance()->RemoveObject(coreLaser);
+                CollisionManager::GetInstance()->AddObject(coreLaser);
+
+                coreLaser->SetParent(armorBlocks[i]);
+                coreLaser->SetRotation({ rotX90, 0.0f, 0.0f });
+                coreLaser->GetTransform()->isQuaternionMaster = false;
+
+                activeCoreBeams_.push_back(coreLaser);
             }
         }
 
@@ -248,11 +289,13 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ >= stopDuration) {
             animPhase_ = 64;
             animTimer_ = 0.0f;
+            particleTimer_ = 0.0f;
         }
         }
     // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
     else if (animPhase_ == 64) {
         animTimer_ += deltaTime;
+        particleTimer_ += deltaTime;
         float spinDuration = 7.5f;
 
         Vector3 rot = boss->GetRotation();
@@ -276,25 +319,56 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         // 最終的な太さ
         float currentThickness = baseThickness * pulse;
 
-        // 名簿(children)を探さず、自分専用のリストを使う！
-        for (Object3d* beam : activeBeams_) {
-            if (beam) {
-                // 震える太さを適用
-                beam->SetScale({ currentThickness, 80.0f, currentThickness });
+        // 2層のビームをそれぞれ更新する
+        for (size_t i = 0; i < activeBeams_.size(); ++i) {
+            Object3d* beam = activeBeams_[i];
+            Object3d* coreBeam = (i < activeCoreBeams_.size()) ? activeCoreBeams_[i] : nullptr;
 
-                // 発射中は完全に不透明な赤（Emissiveと加算ブレンドで白飛びするほど輝きます！）
+            static Math math;
+
+            // --- 1. 外側の赤いオーラ ---
+            if (beam) {
+                beam->SetScale({ currentThickness, 80.0f, currentThickness });
                 beam->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                 beam->SetCollisionAttribute(kEnemyAttack);
                 beam->SetCollisionMask(kPlayer);
-                // ==========================================
-                // ★ エネルギーのUVスクロール
-                // ==========================================
-                static Math math;
-                Vector3 uvScale = { 1.0f, 15.0f, 1.0f }; // 縦に15回リピート
-                float scrollSpeed = -30.0f; // -30.0f の猛スピードで奥へかっ飛ばす
+                
+                Vector3 uvScale = { 1.0f, 15.0f, 1.0f }; 
+                float scrollSpeed = -30.0f; 
                 Vector3 uvTranslate = { 0.0f, animTimer_ * scrollSpeed, 0.0f };
                 beam->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
             }
+
+            // --- 2. 内側の白いコア ---
+            if (coreBeam) {
+                // コアはオーラの 60% の太さにする
+                float coreThickness = currentThickness * 0.6f;
+                coreBeam->SetScale({ coreThickness, 80.0f, coreThickness });
+                coreBeam->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 真っ白
+                
+                // コアは当たり判定を持たない（オーラに任せる）
+                coreBeam->SetCollisionAttribute(0); 
+                coreBeam->SetCollisionMask(0);
+
+                // コアはさらに速くスクロールさせて、内側のエネルギーの激しさを強調する
+                Vector3 coreUvScale = { 1.0f, 20.0f, 1.0f }; 
+                float coreScrollSpeed = -50.0f; 
+                Vector3 coreUvTranslate = { 0.0f, animTimer_ * coreScrollSpeed, 0.0f };
+                coreBeam->SetUVTransform(math.MakeAffineMatrix(coreUvScale, { 0.0f, 0.0f, 0.0f }, coreUvTranslate));
+            }
+        }
+
+        // ==========================================
+        // ★ GPUパーティクルの発生（ビームの回転に追従させる）
+        // ==========================================
+        // 0.05秒に1回、全ビームの根元からエミットする
+        if (particleTimer_ >= 0.05f) {
+            for (Object3d* beam : activeBeams_) {
+                if (beam) {
+              /*      GPUParticleManager::GetInstance()->Emit("LaserSpark", beam->GetWorldPosition(), beam->GetWorldMatrix());*/
+                }
+            }
+            particleTimer_ = 0.0f;
         }
 
         if (animTimer_ >= spinDuration) {
@@ -303,15 +377,23 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animStartRot_ = boss->GetRotation();
             for (Object3d* beam : activeBeams_) {
                 if (beam) {
-                    // ★ ここにも3点セットを追加！
-                    CollisionManager::GetInstance()->RemoveObject(beam); // 当たり判定解除
-                    beam->SetParent(nullptr);                            // 親との縁を切る
-
+                    CollisionManager::GetInstance()->RemoveObject(beam); 
+                    beam->SetParent(nullptr);                            
                     beam->SetScale({ 0.0f, 0.0f, 0.0f });
                     beam->SetCollisionAttribute(0);
                 }
             }
-            activeBeams_.clear(); // リストも空にする
+            activeBeams_.clear(); 
+
+            for (Object3d* core : activeCoreBeams_) {
+                if (core) {
+                    CollisionManager::GetInstance()->RemoveObject(core); 
+                    core->SetParent(nullptr);                            
+                    core->SetScale({ 0.0f, 0.0f, 0.0f });
+                    core->SetCollisionAttribute(0);
+                }
+            }
+            activeCoreBeams_.clear();
 
             blockStartPos_.clear();
             blockStartScale_.clear();

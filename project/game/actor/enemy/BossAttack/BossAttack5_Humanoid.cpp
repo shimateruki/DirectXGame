@@ -13,6 +13,8 @@ void BossAttack5_Humanoid::Initialize(BossCore* boss) {
     blockStartScale_.clear();
     blockTargetScale_.clear();
 
+
+
     animPhase_ = 50;
 }
 
@@ -180,6 +182,10 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
             animStartRot_ = boss->GetRotation();
             animStartPos_ = boss->GetTranslate();
+            // ★ サンドイッチ対策：叩きつける瞬間だけ地形判定を消す
+            for (auto* block : armorBlocks) {
+                if (block) block->SetCollisionAttribute(kEnemyAttack);
+            }
         }
     }
     // --- Phase 53: 前にぶっ倒れて叩き潰す！ ---
@@ -250,6 +256,10 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         if (t >= 1.0f) {
             animPhase_ = 54;
             animTimer_ = 0.0f;
+            // ★ 地面判定を復活させる
+            for (auto* block : armorBlocks) {
+                if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
+            }
         }
     }
     // --- Phase 54: 倒れたまま待機（攻撃チャンス） ---

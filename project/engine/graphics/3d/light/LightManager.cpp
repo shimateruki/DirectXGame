@@ -44,6 +44,7 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
     spotLights_.clear();
 }
 
+
 void LightManager::Update() {
 
     // ---------------------------------------------------
