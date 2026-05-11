@@ -4,6 +4,7 @@
 #include "SceneManager.h"
 #include "engine/system/scene/BaseScene.h"
 #include "BossCore.h"
+#include "game/actor/player/Player.h"
 #include <cmath>
 #include <algorithm>
 
@@ -38,22 +39,8 @@ void EnemySlime::Update(float deltaTime) {
     transform_.translate -= lastShakeOffset_;
     lastShakeOffset_ = { 0,0,0 };
 
-    // 2. 吹き飛び中のホーミング処理
-    if (isBlownAway_ && bossTarget_) {
-        Vector3 myPos = GetTranslate();
-        Vector3 targetPos = bossTarget_->GetWorldPosition();
-        Vector3 toTarget = targetPos - myPos;
-        float dist = math.Length(toTarget);
-
-        if (dist < 50.0f) { // 射程内ならホーミング
-            Vector3 dir = math.Normalize(toTarget);
-            float currentSpeed = math.Length(velocity_);
-            
-            // 速度ベクトルを徐々にターゲット方向へ向ける（ホーミング強度 5.0）
-            Vector3 targetVelocity = dir * currentSpeed;
-            velocity_ = math.Lerp(velocity_, targetVelocity, 5.0f * deltaTime);
-        }
-    }
+    // 2. 吹き飛び中（ホーミングなし）
+    // ホーミング機能は一時削除されました。
 
     // 4. 通常の移動AI（吹き飛び中でない場合）
     if (!isBlownAway_ && target_) {
@@ -125,28 +112,20 @@ bool EnemySlime::OnCollision(Object3d* other) {
                 // 吹き飛ばし開始
                 isBlownAway_ = true;
                 
-                Vector3 diff = GetTranslate() - other->GetWorldPosition();
-                diff.y = 0.0f;
-                if (math.Length(diff) > 0.001f) {
-                    Vector3 dir = math.Normalize(diff);
-                    float blowSpeed = 40.0f;
-                    velocity_ = { dir.x * blowSpeed, 15.0f, dir.z * blowSpeed };
+                // プレイヤーの向いている正面方向に吹っ飛ばす（攻撃開始時に保存された向きを使用）
+                Vector3 dir = { 0, 0, 1 }; // デフォルト正面
+                Player* player = dynamic_cast<Player*>(target_);
+                if (player) {
+                    dir = player->GetAttackDirection();
+                } else if (target_) {
+                    const Matrix4x4& playerMat = target_->GetWorldMatrix();
+                    dir = { playerMat.m[2][0], 0.0f, playerMat.m[2][2] };
+                    if (math.Length(dir) > 0.001f) dir = math.Normalize(dir);
+                    else dir = { 0, 0, 1 };
                 }
-
-                // ホーミング対象（ボス）を検索
-                BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
-                if (scene) {
-                    for (auto& obj : scene->GetObjects()) {
-                        BossCore* b = dynamic_cast<BossCore*>(obj.get());
-                        if (b) {
-                            float dist = math.Length(b->GetWorldPosition() - GetTranslate());
-                            if (dist < 40.0f) { // 40m以内ならホーミング
-                                bossTarget_ = b;
-                            }
-                            break;
-                        }
-                    }
-                }
+                
+                float blowSpeed = 40.0f;
+                velocity_ = { dir.x * blowSpeed, 15.0f, dir.z * blowSpeed };
             }
             
             UpdateColorByHitCount();

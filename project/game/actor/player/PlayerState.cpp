@@ -1128,7 +1128,14 @@ void PlayerStateAttack1::Enter(Player* player)
 {
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack1 State");
 
-	if (player) player->SetIsControlActive(false);
+	if (player) {
+		player->SetIsControlActive(false);
+		const Matrix4x4& mat = player->GetWorldMatrix();
+		Vector3 dir = { mat.m[2][0], 0.0f, mat.m[2][2] };
+		if (Math::Length(dir) > 0.001f) dir = Math::Normalize(dir);
+		else dir = { 0,0,1 };
+		player->SetAttackDirection(dir);
+	}
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slash.json");
@@ -1481,7 +1488,14 @@ void PlayerStateAttack2::Enter(Player* player)
 
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack2 State");
 
-	if (player) player->SetIsControlActive(false);
+	if (player) {
+		player->SetIsControlActive(false);
+		const Matrix4x4& mat = player->GetWorldMatrix();
+		Vector3 dir = { mat.m[2][0], 0.0f, mat.m[2][2] };
+		if (Math::Length(dir) > 0.001f) dir = Math::Normalize(dir);
+		else dir = { 0,0,1 };
+		player->SetAttackDirection(dir);
+	}
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slasha.json");
@@ -1910,7 +1924,14 @@ void PlayerStateAttack3::Enter(Player* player)
 	if (!player) return;
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack3 State (Thrust!)");
 
-	player->SetIsControlActive(false);
+	if (player) {
+		player->SetIsControlActive(false);
+		const Matrix4x4& mat = player->GetWorldMatrix();
+		Vector3 dir = { mat.m[2][0], 0.0f, mat.m[2][2] };
+		if (Math::Length(dir) > 0.001f) dir = Math::Normalize(dir);
+		else dir = { 0,0,1 };
+		player->SetAttackDirection(dir);
+	}
 	SetSwordActive(player, true);
 	animTimer_ = 0.0f;
 	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_slashb.json");
