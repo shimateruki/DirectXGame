@@ -87,6 +87,16 @@ void EnemySlime::Update(float deltaTime) {
 }
 
 bool EnemySlime::OnCollision(Object3d* other) {
+    // 吹き飛ばし中にボス本体に当たったら、何よりも優先してダメージを与えて消滅する
+    if (isBlownAway_) {
+        BossCore* boss = dynamic_cast<BossCore*>(other);
+        if (boss) {
+            boss->TakeBodyDamage(10.0f);
+            isDead = true;
+            return true;
+        }
+    }
+
     uint32_t attribute = other->GetCollisionAttribute();
     CollisionInfo info = CheckCollision(other);
     if (!info.isColliding) return false;
@@ -122,9 +132,41 @@ bool EnemySlime::OnCollision(Object3d* other) {
                     if (math.Length(dir) > 0.001f) dir = math.Normalize(dir);
                     else dir = { 0, 0, 1 };
                 }
+
+                // ボスが近くにいればホーミング（エイムアシスト）
+                BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
+                if (scene) {
+                    auto& objects = scene->GetObjects();
+                    for (auto& obj : objects) {
+                        BossCore* boss = dynamic_cast<BossCore*>(obj.get());
+                        if (boss) {
+                            Vector3 toBoss = boss->GetTranslate() - GetTranslate();
+                            toBoss.y = 0.0f;
+                            if (math.Length(toBoss) > 0.1f) {
+                                Vector3 normToBoss = math.Normalize(toBoss);
+                                float dot = math.Dot(dir, normToBoss);
+                                // 約36度以内ならボスの方へ補正
+                                if (dot > 0.8f) {
+                                    dir = normToBoss;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 float blowSpeed = 40.0f;
-                velocity_ = { dir.x * blowSpeed, 15.0f, dir.z * blowSpeed };
+                // 高さを 15.0f -> 25.0f に引き上げ
+                velocity_ = { dir.x * blowSpeed, 25.0f, dir.z * blowSpeed };
+
+                // --- 貫通設定 ---
+                // 当たり判定を元のサイズに維持（ボス側の属性修正によりこれでも当たるはず）
+                SetCollisionSize({ 1.0f, 1.0f, 1.0f });
+
+                // プレイヤーの攻撃属性を付与してボスにダメージを与えられるようにし、
+                // 衝突対象を「敵（BossCore本体含む）」のみに絞ることで地形や装甲を貫通させる
+                SetCollisionAttribute(GetCollisionAttribute() | kPlayerAttack);
+                SetCollisionMask(kEnemy);
             }
             
             UpdateColorByHitCount();

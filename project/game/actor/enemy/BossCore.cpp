@@ -579,7 +579,7 @@ void BossCore::ChangeState(State nextState) {
     }
     else {
         if (state_ == State::Attack) {
-            coreAttribute = kEnemyAttack | kGround;
+            coreAttribute = kEnemy | kEnemyAttack | kGround;
         }
         else if (state_ == State::Weak) {
             coreAttribute = kEnemy | kGround;
