@@ -120,6 +120,8 @@ private:
     };
     int currentOptionIndex_ = (int)OptionIndex::Sound;
 
+    OptionUI optionUI_;
+
 
     // ==========================================
     // enemy_core を上下に動かすための変数（複数対応）

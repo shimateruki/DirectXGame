@@ -4012,8 +4012,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Front",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "position": [
                 -2.9802322387695313e-08,
@@ -4044,7 +4044,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -4104,8 +4104,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Center",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "position": [
                 0.0,
@@ -4136,7 +4136,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -4196,8 +4196,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Back",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "position": [
                 0.0,
@@ -4228,7 +4228,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -5572,7 +5572,7 @@
             "collider": {
                 "center": [
                     -13.949999809265137,
-                    -0.30000001192092896,
+                    -0.75,
                     -14.0
                 ],
                 "rotation": [
@@ -5664,7 +5664,7 @@
             "collider": {
                 "center": [
                     14.050000190734863,
-                    -0.20000000298023224,
+                    -0.75,
                     -13.98799991607666
                 ],
                 "rotation": [
@@ -5756,7 +5756,7 @@
             "collider": {
                 "center": [
                     14.0,
-                    -0.20000000298023224,
+                    -0.75,
                     14.050000190734863
                 ],
                 "rotation": [
@@ -7184,8 +7184,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Front_02",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -7216,7 +7216,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -7276,8 +7276,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Front_03",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -7308,7 +7308,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -8056,7 +8056,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    -1.25,
+                    -1.600000023841858,
                     0.0
                 ],
                 "rotation": [
@@ -8804,7 +8804,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -8895,7 +8895,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 4294967073,
             "color": [
                 1.0,
@@ -9168,7 +9168,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 4294967073,
             "color": [
                 1.0,

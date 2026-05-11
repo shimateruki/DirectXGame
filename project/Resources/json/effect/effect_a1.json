@@ -1,0 +1,101 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": true,
+        "Offset": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "Shape": 2,
+        "Size": [
+            1.0,
+            0.4000000059604645,
+            -0.5
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 15.0,
+    "DistortionStrength": 0.05000000074505806,
+    "EasingType": 2,
+    "EdgeFadeStrength": 1.5,
+    "EnableDistortion": true,
+    "EnableReveal": true,
+    "EndColor": [
+        0.5,
+        0.0,
+        1.0,
+        0.0
+    ],
+    "EndScale": [
+        3.0,
+        3.0,
+        3.0
+    ],
+    "InnerRadius": 0.9980000257492065,
+    "Intensity": 3.0,
+    "Lifetime": 1.0,
+    "MeshSegments": 45,
+    "ModelName": "sword_effect1",
+    "NoiseTexturePath": "",
+    "OuterRadius": 1.965999960899353,
+    "PlaneSize": [
+        2.0,
+        2.0
+    ],
+    "Position": [
+        0.0,
+        2.0999999046325684,
+        1.899999976158142
+    ],
+    "ProceduralType": 1,
+    "RampTexturePath": "Resources/sprite/abc.png",
+    "RingInnerRadius": 0.5,
+    "RingOuterRadius": 1.0,
+    "Rotation": [
+        -0.03999999910593033,
+        -0.11999999731779099,
+        -2.109999895095825
+    ],
+    "ScrollSpeed": [
+        0.0,
+        -1.0
+    ],
+    "SlashAngle": 255.43499755859375,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        2.0,
+        2.0,
+        2.0,
+        1.0
+    ],
+    "StartScale": [
+        0.10000000149011612,
+        0.10000000149011612,
+        0.10000000149011612
+    ],
+    "TargetName": "Player_sword",
+    "TexturePath": "Resources/sprite/a.png",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.800000011920929,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.30000001192092896,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

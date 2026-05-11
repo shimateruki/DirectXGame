@@ -140,7 +140,7 @@
         0.0
     ],
     "boostSpeed": 2.0,
-    "cameraSensitivity": 0,
+    "cameraSensitivity": -1,
     "distance": 21.100000381469727,
     "fixedPointAngle": [
         0.3450002074241638,
