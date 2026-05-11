@@ -20,6 +20,9 @@
 #include <memory>
 #include <vector>
 
+#include <GPUParticleEmitter.h>
+#include <memory>
+
 // --- 前方宣言 ---
 class DirectXCommon;
 class InputManager;
@@ -131,4 +134,7 @@ private:
     float enemyCoreAmplitude_ = 0.5f;         // 振幅
     float enemyCoreSpeed_ = 1.5f;             // 速度（係数）
     float enemyCoreTimer_ = 0.0f;             // 共通タイマー
+
+    // ボスコンテナのパーティクル（複数コア対応・追従用）
+    std::vector<std::unique_ptr<GPUParticleEmitter>> bossContainerEmitters_;
 };
