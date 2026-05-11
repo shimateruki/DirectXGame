@@ -12,23 +12,25 @@
 static Math math;
 
 void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName) {
-    BaseEnemy::Initialize(common, modelName);
-    
-    // 当たり判定の設定 (OBB)
-    SetColliderType(ColliderType::kOBB);
-    SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-    // 属性に kGround を加えることで、他の敵やプレイヤーから「地形（進入不可）」として扱われるようになる
-    SetCollisionAttribute(kEnemy | kGround);
-    SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack | kEnemy);
-
-    // 初期設定
+    // 1. メンバ変数の初期化（親の初期化を呼ぶ前にリセット）
     hitCount_ = 0;
     isBlownAway_ = false;
     shakeTimer_ = 0.0f;
-    bossTarget_ = nullptr;
+    stunTimer_ = 0.0f;
+    jumpTimer_ = 0.0f;
     lastShakeOffset_ = { 0,0,0 };
+    defaultColor_ = { 0.0f, 1.0f, 0.0f, 1.0f }; // デフォルトは緑
 
-    // 初期色は緑
+    // 2. 親クラスの初期化
+    BaseEnemy::Initialize(common, modelName);
+    
+    // 3. スライム固有の設定
+    SetColliderType(ColliderType::kOBB);
+    SetCollisionSize({ 1.0f, 1.0f, 1.0f });
+    SetCollisionAttribute(kEnemy | kGround);
+    SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack | kEnemy);
+
+    // 親の Initialize で defaultColor_ が上書きされる可能性があるため、ここで再度確定させる
     defaultColor_ = { 0.0f, 1.0f, 0.0f, 1.0f };
     SetColor(defaultColor_);
     SetEnemyType("Slime");
@@ -43,30 +45,50 @@ void EnemySlime::Update(float deltaTime) {
     // 2. 吹き飛び中（ホーミングなし）
     // ホーミング機能は一時削除されました。
 
-    // 4. 通常の移動AI（吹き飛び中でない場合）
-    if (!isBlownAway_ && target_) {
-        Vector3 myPos = transform_.translate;
-        Vector3 targetPos = target_->GetWorldPosition();
-        Vector3 toTarget = targetPos - myPos;
-        toTarget.y = 0.0f;
-
-        float length = math.Length(toTarget);
-
-        if (length < 20.0f && length > 1.0f) {
-            Vector3 dir = math.Normalize(toTarget);
-            float speed = 3.0f;
-
-            velocity_.x = dir.x * speed;
-            velocity_.z = dir.z * speed;
-
-            transform_.rotate.y = std::atan2(dir.x, dir.z);
-        } else {
+    // 4. ノックバック・硬直処理 (AI移動を上書き)
+    if (stunTimer_ > 0.0f) {
+        stunTimer_ -= deltaTime;
+        // 横方向の摩擦を適用
+        float friction = 0.9f;
+        velocity_.x *= friction;
+        velocity_.z *= friction;
+    }
+    // 5. 通常の移動AI（吹き飛び中・硬直中でない場合）
+    else if (!isBlownAway_ && target_) {
+        if (isGrounded_) {
+            // 接地中は停止してジャンプを待つ
             velocity_.x = 0.0f;
             velocity_.z = 0.0f;
+            jumpTimer_ += deltaTime;
+
+            if (jumpTimer_ >= 0.5f) {
+                // ターゲットへの方向を計算
+                Vector3 myPos = transform_.translate;
+                Vector3 targetPos = target_->GetWorldPosition();
+                Vector3 toTarget = targetPos - myPos;
+                toTarget.y = 0.0f;
+
+                float length = math.Length(toTarget);
+                if (length > 1.0f) {
+                    Vector3 dir = math.Normalize(toTarget);
+                    float horizontalSpeed = 5.0f;
+                    float jumpPower = 12.0f; // プレイヤーより少し低め
+
+                    velocity_.x = dir.x * horizontalSpeed;
+                    velocity_.z = dir.z * horizontalSpeed;
+                    velocity_.y = jumpPower;
+
+                    transform_.rotate.y = std::atan2(dir.x, dir.z);
+                }
+                jumpTimer_ = 0.0f;
+            }
+        }
+        else {
+            // 空中では水平速度を維持（AIによる更新は行わない）
         }
     }
 
-    // 5. キャラクターとしての物理更新（論理座標の確定）
+    // 6. キャラクターとしての物理更新（論理座標の確定）
     BaseEnemy::Update(deltaTime);
 
     // 6. シェイク演出（描画用の座標オフセットを計算・適用）
@@ -83,6 +105,13 @@ void EnemySlime::Update(float deltaTime) {
         };
         // 座標にオフセットを乗せる（次のUpdateの冒頭で差し引かれる）
         transform_.translate += lastShakeOffset_;
+    }
+
+    // 落下死判定（Y座標が-5.0f以下になったら消滅し、実体も即座に消す）
+    if (transform_.translate.y <= -5.0f) {
+        SetIsVisible(false);
+        SetCollisionAttribute(0);
+        isDead = true;
     }
 }
 
@@ -119,20 +148,22 @@ bool EnemySlime::OnCollision(Object3d* other) {
             shakeTimer_ = 0.5f; // シェイク開始
             damageCooldownTimer_ = 0.5f; // 連続ヒット防止
             
+            // 攻撃の飛んできた方向を計算（カメラの向きをベースにする）
+            Vector3 hitDir = { 0, 0, 1 };
+            Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+            if (camera) {
+                hitDir = camera->GetTargetPoint() - camera->GetEye();
+                hitDir.y = 0.0f;
+                if (math.Length(hitDir) > 0.001f) hitDir = math.Normalize(hitDir);
+            }
+
             if (hitCount_ >= 3) {
                 // 吹き飛ばし開始
                 isBlownAway_ = true;
                 
                 // 視点の向いている方向に吹っ飛ばす
-                Vector3 dir = { 0, 0, 1 };
-                Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-                if (camera) {
-                    dir = camera->GetTargetPoint() - camera->GetEye();
-                    dir.y = 0.0f;
-                    if (math.Length(dir) > 0.001f) dir = math.Normalize(dir);
-                    else dir = { 0, 0, 1 };
-                }
-
+                Vector3 dir = hitDir;
+                
                 // ボスが近くにいればホーミング（エイムアシスト）
                 BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene();
                 if (scene) {
@@ -168,6 +199,13 @@ bool EnemySlime::OnCollision(Object3d* other) {
                 SetCollisionAttribute(GetCollisionAttribute() | kPlayerAttack);
                 SetCollisionMask(kEnemy);
             }
+            else {
+                // 1~2発目は軽いノックバック
+                float kbSpeed = 15.0f;
+                velocity_.x = hitDir.x * kbSpeed;
+                velocity_.z = hitDir.z * kbSpeed;
+                stunTimer_ = 0.2f; // 0.2秒間は硬直（AI移動を停止）
+            }
             
             UpdateColorByHitCount();
         }
@@ -194,6 +232,9 @@ bool EnemySlime::OnCollision(Object3d* other) {
 }
 
 void EnemySlime::UpdateColorByHitCount() {
+    // 負の数や異常値へのガード
+    if (hitCount_ < 0) hitCount_ = 0;
+
     switch (hitCount_) {
     case 0:
         defaultColor_ = { 0.0f, 1.0f, 0.0f, 1.0f }; // 緑
@@ -209,8 +250,6 @@ void EnemySlime::UpdateColorByHitCount() {
         defaultColor_ = { 1.0f, 0.0f, 0.0f, 1.0f }; // 赤
         break;
     }
-    // BaseEnemy::Update で defaultColor_ に戻されるので、ここでは即座にセットしなくて良いが、
-    // 即時反映のために呼んでおく
     SetColor(defaultColor_);
 }
 

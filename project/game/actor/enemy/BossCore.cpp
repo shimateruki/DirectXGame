@@ -174,6 +174,13 @@ int BossCore::GetNeededBlockCount() const {
 void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
 
+    // パラメータが未初期化ならデフォルト値で初期化（アクセス違反防止）
+    if (!param_.has_value()) {
+        param_ = EntityParameter();
+        param_->hp = 1000.0f; // デフォルトHP
+        param_->maxHp = 1000.0f;
+    }
+
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     director_ = std::make_unique<GhostDirector>();
@@ -222,6 +229,13 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     BossParticle6->Initialize("Boss6", this);
     BossParticle6->Play();
     //particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加！
+
+    isFinalPhase_ = false;
+    isWaitingForDeath_ = false;
+    isWaitingForFinisher_ = false;
+    deathPhase_ = 0;
+    isCompletelyDead_ = false;
+    isShardSpawnRequested_ = false;
 }
 
 void BossCore::Update(float deltaTime) {
@@ -710,6 +724,17 @@ void BossCore::TakeBodyDamage(float damage) {
     // 既に爆散演出中なら何もしない
     if (deathPhase_ != 0) return;
 
+    // 赤色演出（ダメージフィードバック）
+    SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+    colorResetTimer_ = 0.15f;
+
+    // パラメータが設定されていなければ初期化する (安全策)
+    if (!param_.has_value()) {
+        param_ = EntityParameter();
+        param_->hp = 1000.0f;
+        param_->maxHp = 1000.0f;
+    }
+
     // ====================================================
     // ★ 追加：トドメ待ち状態の時に殴られたら、ついに撃破演出スタート！
     // ====================================================
@@ -1075,7 +1100,9 @@ void BossCore::StartDeathSequence() {
             block->SetScale({ 0.0f, 0.0f, 0.0f });
             block->SetCollisionAttribute(0);
         }
-    }for (auto& emitter : particleEmitters_) {
+    }
+
+    for (auto& emitter : particleEmitters_) {
         if (emitter) {
             emitter->Stop();
         }
@@ -1146,7 +1173,7 @@ void BossCore::ActuallySpawnShards() {
             piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
             corePieces_.push_back(piece);
 
-            currentScene->GetObjects().push_back(std::move(pieceObj));
+            currentScene->AddObject(std::move(pieceObj));
         }
     }
     isShardSpawnRequested_ = false; // 生成完了！

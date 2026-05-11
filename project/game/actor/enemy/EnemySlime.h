@@ -25,6 +25,8 @@ private:
     bool isFirstUpdate_ = true;  // 初回更新フラグ
     bool isBlownAway_ = false;   // 吹き飛びフラグ
     float shakeTimer_ = 0.0f;    // シェイクタイマー
+    float stunTimer_ = 0.0f;     // ノックバック等による硬直タイマー
+    float jumpTimer_ = 0.0f;     // ジャンプ移動用の待機タイマー
     Vector3 lastShakeOffset_ = { 0,0,0 }; // 前回のシェイクオフセット
     BossCore* bossTarget_ = nullptr; // ホーミング対象
 };

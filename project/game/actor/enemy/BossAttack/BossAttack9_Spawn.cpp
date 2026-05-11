@@ -57,14 +57,15 @@ void BossAttack9_Spawn::Update(BossCore* boss, float deltaTime) {
         rot.y -= currentSpeed * deltaTime; // 逆回転
         boss->SetRotation(rot);
 
-        // 召喚スケジュール: 2秒〜4秒の間のみ
-        if (animTimer_ >= 2.0f && animTimer_ <= 4.0f) {
-            spawnTimer_ += deltaTime;
-            if (spawnTimer_ >= 0.5f && spawnCount_ < 4) {
+        // 召喚スケジュール: 2秒以降、4体出すまで
+        if (animTimer_ >= 2.0f && spawnCount_ < 4) {
+            // 1体目は即座に、2体目以降は0.5秒おきに出現させる
+            if (spawnCount_ == 0 || spawnTimer_ >= 0.5f) {
                 SpawnEnemy(boss);
                 spawnCount_++;
                 spawnTimer_ = 0.0f;
             }
+            spawnTimer_ += deltaTime;
         }
 
         if (nt >= 1.0f) {
