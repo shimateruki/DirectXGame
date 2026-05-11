@@ -32,7 +32,7 @@ void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName
     // 3. スライム固有の設定
     SetColliderType(ColliderType::kOBB);
     SetCollisionSize({ 1.0f, 1.0f, 1.0f });
-    SetCollisionAttribute(kEnemy); // 地面属性(kGround)を削除（上に乗れないようにするため）
+    SetCollisionAttribute(kEnemy | kEnemyAttack); // 接触ダメージを有効にする
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack | kEnemy);
 
     // 親の Initialize で defaultColor_ が上書きされる可能性があるため、ここで再度確定させる
