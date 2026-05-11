@@ -1222,7 +1222,7 @@ void PlayerStateAttack1::Enter(Player *player) {
   TryFindSword(player, swordObj);
   if (swordObj) {
       particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-      particleEmitter_->Initialize("playerattak", swordObj);
+      particleEmitter_->Initialize("playerAttak", swordObj);
       particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
       particleEmitter_->SetInterval(0.016f);
       particleEmitter_->Play();
@@ -1612,7 +1612,7 @@ void PlayerStateAttack2::Enter(Player *player) {
   TryFindSword(player, swordObj);
   if (swordObj) {
       particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-      particleEmitter_->Initialize("playerattak", swordObj);
+      particleEmitter_->Initialize("playerAttak", swordObj);
       particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
       particleEmitter_->SetInterval(0.016f);
       particleEmitter_->Play();
@@ -2094,7 +2094,7 @@ void PlayerStateAttack3::Enter(Player *player) {
   TryFindSword(player, swordObj);
   if (swordObj) {
       particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-      particleEmitter_->Initialize("playerattak", swordObj);
+      particleEmitter_->Initialize("playerAttak", swordObj);
       particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
       particleEmitter_->SetInterval(0.016f);
       particleEmitter_->Play();
@@ -3028,6 +3028,21 @@ void PlayerStatePlungeAttack::Update(Player *player) {
       if (vel.y > -5.0f) {
         isLanded_ = true;
         DebugConsole::GetInstance()->AddLog("Plunge Attack: LANDED! (DOOOM!)");
+
+        Vector3 landPos = player->GetWorldPosition();
+        MeshEffectManager::GetInstance()->SpawnEffectAt(
+            "Resources/json/effect/effect_bakuhatu.json",
+            landPos,
+            { 0.0f, 0.0f, 0.0f }, // 地面に合わせた回転
+            { 1.5f, 1.5f, 1.5f }  // 衝撃波のスケール
+        );
+
+        // パーティクルの発生
+        particleEmitter_ = std::make_unique<GPUParticleEmitter>();
+        particleEmitter_->Initialize("fallAttak", bodyObj_);
+        particleEmitter_->SetOffset({ 0.0f, 0.0f, 0.0f });
+        particleEmitter_->SetInterval(0.016f);
+        particleEmitter_->Play();
       }
     }
   } else {
@@ -3039,6 +3054,10 @@ void PlayerStatePlungeAttack::Update(Player *player) {
     }
   }
 
+  if (particleEmitter_) {
+    particleEmitter_->Update(1.0f / 60.0f);
+  }
+
   ApplyPose(player);
 }
 
@@ -3046,6 +3065,11 @@ void PlayerStatePlungeAttack::Exit(Player *player) {
   if (!player)
     return;
   SetSwordActive(player, false);
+
+  if (particleEmitter_) {
+    particleEmitter_->Stop();
+    particleEmitter_.reset();
+  }
 
   // 初期化されていなければ復帰処理を行わない
   if (!initializedParts_)

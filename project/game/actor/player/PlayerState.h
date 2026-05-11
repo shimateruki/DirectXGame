@@ -458,6 +458,9 @@ private:
 
 	bool swordSaved_ = false;
 	bool initializedParts_ = false;
+
+	std::unique_ptr<GPUParticleEmitter> particleEmitter_;
+
 	void ApplyPose(Player* player);
 };
 
