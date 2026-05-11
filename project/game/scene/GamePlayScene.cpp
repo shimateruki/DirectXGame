@@ -1774,6 +1774,22 @@ void GamePlayScene::DrawImGui() {
                     boss_->StartDeathSequence();
                 }
             }
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Boss Stun Gauge -> 25%")) {
+                if (boss_) {
+                    boss_->SetBarrierHp(boss_->GetMaxBarrierHp() * 0.25f);
+                }
+            }
+
+            if (ImGui::Button("Boss Stun Gauge -> 0% (Force Stun)")) {
+                if (boss_) {
+                    // 現在のバリアHP分ダメージを与えて強制的にスタン演出をトリガーする
+                    boss_->TakeBarrierDamage(boss_->GetBarrierHp(), nullptr);
+                }
+            }
+
             ImGui::TreePop();
         }
 

@@ -23,6 +23,7 @@
 #include "BossAttack/BossAttack6_Laser.h"
 #include "BossAttack/BossAttack7_Absorb.h"
 #include "BossAttack/BossAttack8_Final.h"
+#include "BossAttack/BossAttack9_Funnels.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -252,6 +253,7 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
         if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
+        if (input->IsKeyTriggered(DIK_Y)) triggerAttack = 9; // Yキーでファンネル攻撃！
 
         // ==========================================
     // 9キーで即座にボスを爆散させるデバッグ機能！
@@ -644,6 +646,7 @@ void BossCore::ChangeState(State nextState) {
             { 5, 30 }, // 人型 (30%)
             { 6, 30 },  // レーザー (30%) ※超大技！
             { 7, 30 },  // 吸収 (重み30)
+            { 9, 30 },  // ファンネル・レーザー (30%)
         };
 
         static int lastAttack = 0; // 前回撃った攻撃を記憶
@@ -702,6 +705,7 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
         else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
         else if (nextAttack == 8) currentAttack_ = std::make_unique<BossAttack8_Final>();
+        else if (nextAttack == 9) currentAttack_ = std::make_unique<BossAttack9_Funnels>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
@@ -801,6 +805,30 @@ void BossCore::UpdateIdle(float deltaTime) {
     }
 
     // ====================================================
+    // コア本体の待機モーション（鼓動と浮遊）
+    // ====================================================
+    if (isBattleStarted_ && !isWaitingForFinisher_) {
+        // 1. 鼓動（心音のように「ドクン、ドクン」と大きく変化させる）
+        float t = std::fmod(s_globalIdleTimer, 2.0f); // 2.0秒周期
+        float pulse = 0.0f;
+        if (t < 0.15f) {
+            // 1回目の強い拍動
+            pulse = std::sin((t / 0.15f) * std::numbers::pi_v<float>);
+        } else if (t > 0.25f && t < 0.4f) {
+            // 2回目の少し弱い拍動
+            pulse = std::sin(((t - 0.25f) / 0.15f) * std::numbers::pi_v<float>) * 0.7f;
+        }
+        
+        // 最大1.2倍までハッキリと大きくする
+        float scaleVal = 1.0f + pulse * 0.2f;
+        SetScale({ scaleVal, scaleVal, scaleVal });
+
+        // 2. 浮遊（Y軸が 4.0f を中心にゆっくり上下）
+        float hoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f;
+        SetTranslate({ GetTranslate().x, hoverY, GetTranslate().z });
+    }
+
+    // ====================================================
     // ★ ここが圧倒的カッコよさの秘密！
     // 1.8秒（咆哮が終わって元のサイズに戻る瞬間）までは 0% で完全待機。
     // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッ！と集める！
@@ -813,19 +841,33 @@ void BossCore::UpdateIdle(float deltaTime) {
     // カッコいいイージング計算（3乗アウト：最初は早く、ボスに近づくにつれてゆっくり）
     float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
 
+    // 親（コア）の鼓動によるスケールを取得
+    Vector3 coreScale = GetScale();
+
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
 
+        // コアのスケール変化の影響を打ち消す（ブロック自体は鼓動しないようにする）
+        Vector3 localPos = orbit.pos;
+        localPos.x /= coreScale.x;
+        localPos.y /= coreScale.y;
+        localPos.z /= coreScale.z;
+
+        Vector3 localScale = orbit.scale;
+        localScale.x /= coreScale.x;
+        localScale.y /= coreScale.y;
+        localScale.z /= coreScale.z;
+
         if (i < blockStartPos_.size()) {
-            // 散らばった位置(blockStartPos_)から、軌道の位置(orbit)へ補間！
-            Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+            // 散らばった位置(blockStartPos_)から、軌道の位置へ補間
+            Vector3 pos = Math::Lerp(blockStartPos_[i], localPos, easeT);
             armorBlocks_[i]->SetTranslate(pos);
         }
         else {
-            armorBlocks_[i]->SetTranslate(orbit.pos);
+            armorBlocks_[i]->SetTranslate(localPos);
         }
 
-        armorBlocks_[i]->SetScale(orbit.scale);
+        armorBlocks_[i]->SetScale(localScale);
         armorBlocks_[i]->SetRotation(orbit.rot);
         armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
     }
@@ -859,33 +901,123 @@ void BossCore::UpdateIdle(float deltaTime) {
 void BossCore::UpdateWeak(float deltaTime) {
     animTimer_ += deltaTime;
 
-    float shakeX = std::sin(animTimer_ * 50.0f) * 0.05f;
-    float shakeZ = std::cos(animTimer_ * 45.0f) * 0.05f;
-    SetRotation({ shakeX, GetRotation().y, shakeZ });
+    // --- コア本体の落下・転がり（コロン）・復帰 ---
+    Vector3 bossPos = GetTranslate();
+    float fallDuration = 0.5f;
+    float rollAngle = 0.0f;
 
-    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
+    // 1. 落下と転がり
+    if (animTimer_ <= fallDuration) {
+        float t = animTimer_ / fallDuration;
+        float easeT = std::pow(t, 2.0f); // 重力落下のようなEaseIn
+        bossPos.y = Math::Lerp(4.0f, 0.5f, easeT);
+        rollAngle = Math::Lerp(0.0f, 90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
+        SetTranslate(bossPos);
+    } 
+    // 2. 起き上がり（最後の2秒）
+    else if (animTimer_ > 8.0f) {
+        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+        float easeT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // ふわりと浮くEaseOut
+        bossPos.y = Math::Lerp(0.5f, 4.0f, easeT);
+        rollAngle = Math::Lerp(90.0f * (std::numbers::pi_v<float> / 180.0f), 0.0f, easeT);
+        SetTranslate(bossPos);
+    } 
+    // 3. 地面でダウン中
+    else {
+        bossPos.y = 0.5f;
+        rollAngle = 90.0f * (std::numbers::pi_v<float> / 180.0f);
+        SetTranslate(bossPos);
+    }
 
+    // コアの震えを完全に無くし、コロンと転がった状態を維持する
+    SetRotation({ rollAngle, GetRotation().y, 0.0f });
+
+    // --- フリッカー（明滅）エフェクト ---
+    int flicker = static_cast<int>(animTimer_ * 15.0f) % 4; // ランダムっぽくチカチカさせる
+    bool isLightOn = (flicker == 0 && animTimer_ < 8.0f);
+    
+    if (animTimer_ > 8.0f) {
+        // 起き上がり中は徐々に元の色に戻す
+        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+        Vector4 color;
+        color.x = Math::Lerp(0.3f, originalColor_.x, wakeUpT);
+        color.y = Math::Lerp(0.3f, originalColor_.y, wakeUpT);
+        color.z = Math::Lerp(0.3f, originalColor_.z, wakeUpT);
+        color.w = 1.0f;
+        SetColor(color);
+    } else {
+        SetColor(isLightOn ? originalColor_ : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
+    }
+
+    // --- 装甲ブロックの動き ---
     float scatterDuration = 0.8f;
-    float t = std::min(animTimer_ / scatterDuration, 1.0f);
-    float easeT = Easing::OutExpo(t);
+    float scatterT = std::min(animTimer_ / scatterDuration, 1.0f);
+    float easeT = 1.0f - std::pow(1.0f - scatterT, 3.0f); // OutCubic
 
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+            // ダウン中の位置（散らばった位置）を計算
             Vector3 currentPos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+            
+            // 落下中のバウンドエフェクト
+            if (scatterT < 1.0f) {
+                float bounce = std::abs(std::sin(scatterT * std::numbers::pi_v<float> * 2.0f)) * (1.0f - scatterT) * 4.0f;
+                currentPos.y += bounce;
+            }
+
+            // 起き上がり中のブロック補間（コアへスムーズに戻る）
+            if (animTimer_ > 8.0f) {
+                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+                float returnEaseT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // OutCubic
+                OrbitData orbit = GetIdleOrbit(i);
+                currentPos = Math::Lerp(currentPos, orbit.pos, returnEaseT);
+            }
+
             armorBlocks_[i]->SetTranslate(currentPos);
 
             Vector3 rot = armorBlocks_[i]->GetRotation();
-            rot.x += 1.0f * deltaTime;
-            rot.y += 1.5f * deltaTime;
+            // 落下中のみ回転
+            if (scatterT < 1.0f) {
+                rot.x += 5.0f * deltaTime;
+                rot.y += 3.0f * deltaTime;
+            } else if (animTimer_ > 8.0f) {
+                // 起き上がり中は軌道の回転へスムーズに補間（プルプルさせない）
+                OrbitData orbit = GetIdleOrbit(i);
+                auto LerpAngle = [](float a, float b, float t) {
+                    float diff = b - a;
+                    while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
+                    while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
+                    return a + diff * t;
+                };
+                rot.x = LerpAngle(rot.x, orbit.rot.x, 5.0f * deltaTime);
+                rot.y = LerpAngle(rot.y, orbit.rot.y, 5.0f * deltaTime);
+                rot.z = LerpAngle(rot.z, orbit.rot.z, 5.0f * deltaTime);
+            }
             armorBlocks_[i]->SetRotation(rot);
-            armorBlocks_[i]->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
+
+            // ブロックも明滅
+            if (animTimer_ > 8.0f) {
+                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+                armorBlocks_[i]->SetColor({ 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
+            } else {
+                armorBlocks_[i]->SetColor(isLightOn ? Vector4{ 0.8f, 0.8f, 0.8f, 1.0f } : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
+            }
         }
     }
 
+    // --- 10秒経過でステート復帰 ---
     if (animTimer_ >= 10.0f) {
         animTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         SetColor(originalColor_);
+        Vector3 finalPos = GetTranslate();
+        finalPos.y = 4.0f;
+        SetTranslate(finalPos);
+
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            armorBlocks_[i]->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        }
+
         ChangeState(State::Idle);
     }
 }
@@ -1053,13 +1185,19 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
                 blockStartPos_.push_back(block->GetTranslate());
 
                 float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
-                float distance = 10.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
-                float height = ((static_cast<float>(rand()) / RAND_MAX) * 10.0f) - 5.0f;
+                float distance = 5.0f + (static_cast<float>(rand()) / RAND_MAX) * 8.0f;
+                float height = 0.5f + (static_cast<float>(rand()) / RAND_MAX) * 1.0f; // 地面に転がす
 
+                float dx = std::cos(angle) * distance;
+                float dz = std::sin(angle) * distance;
+                float dy = height - 0.5f; // コアの最終高さが0.5fのため
+
+                // コアがダウン時にX軸へ90度コロンと転がるため、ローカル座標の軸が入れ替わる
+                // ワールド空間で (dx, dy, dz) の位置に散らばらせるには Local(dx, dz, -dy) にする
                 Vector3 scatterPos = {
-                    std::cos(angle) * distance,
-                    height,
-                    std::sin(angle) * distance
+                    dx,
+                    dz,
+                    -dy
                 };
                 blockTargetPos_.push_back(scatterPos);
             }
