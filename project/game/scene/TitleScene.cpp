@@ -163,6 +163,20 @@ void TitleScene::Initialize() {
   }
   LOG("Found %d enemy core(s) to animate.", (int)enemyCores_.size());
 
+  // ボスコンテナのパーティクルを各コアに設定
+  bossContainerEmitters_.clear();
+  for (Object3d *core : enemyCores_) {
+    auto top = std::make_unique<GPUParticleEmitter>();
+    top->Initialize("boss_container_top", core);
+    top->Play();
+    bossContainerEmitters_.push_back(std::move(top));
+
+    auto bottom = std::make_unique<GPUParticleEmitter>();
+    bottom->Initialize("boss_container_bottom", core);
+    bottom->Play();
+    bossContainerEmitters_.push_back(std::move(bottom));
+  }
+
   // OptionUI の初期化
   optionUI_.Initialize(this, spriteCommon_.get());
 
@@ -188,6 +202,7 @@ void TitleScene::Finalize() {
 
   objectManager_.reset();
   sprites_.clear();
+  bossContainerEmitters_.clear();
   particleSystem_.reset();
   particleCommon_.reset();
   spriteCommon_.reset();
@@ -334,6 +349,12 @@ void TitleScene::Update(float deltaTime) {
     objectManager_->Update(deltaTime);
   if (particleSystem_)
     particleSystem_->Update(deltaTime);
+
+  // ボスコンテナのパーティクルを更新
+  for (auto &emitter : bossContainerEmitters_) {
+    emitter->Update(deltaTime);
+  }
+
   for (auto &sprite : sprites_) {
     sprite->Update();
   }

@@ -539,8 +539,8 @@ void MeshEffectEditor::DrawImGui() {
         // ★ カラーランプが設定されているかチェック
         if (strlen(editRampTexturePath_) == 0) {
             ImGui::Text(ICON_FA_TINT " [ カラー (Color) ]");
-            ImGui::ColorEdit4("開始カラー", &editStartColor_.x);
-            ImGui::ColorEdit4("終了カラー", &editEndColor_.x);
+            ImGui::ColorEdit4("開始カラー", &editStartColor_.x, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+            ImGui::ColorEdit4("終了カラー", &editEndColor_.x, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
         }
         else {
             // カラーランプ使用時は非表示にし、理由を明記する

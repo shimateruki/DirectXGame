@@ -3,6 +3,7 @@
 #include "engine/utility/math/Math.h"
 #include <cmath> 
 #include <algorithm> // std::find
+#include "game/actor/CollisionConfig.h"
 
 
 
@@ -336,23 +337,29 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
             std::string className = current->GetClassName();
             std::string name = current->GetName();
 
-            // ① プレイヤー（自分自身と武器など）は、どんなレイキャストでも常に除外！
-            if (className == "Player" || name.find("Player") != std::string::npos) {
+            std::string cat = current->GetSaveCategory();
+
+            // ① プレイヤーカテゴリは常に除外
+            if (cat == "Player") {
                 isIgnoreObject = true;
                 break;
             }
 
-            // ② 「地形・壁（mask == 1）」を探すレイキャストの時だけ、敵やボスも除外！
-            if (mask == 1) {
-                if (className == "Enemy" ||
-                    name.find("Enemy") != std::string::npos ||
-                    name.find("Boss") != std::string::npos ||
-                    name.find("Block") != std::string::npos ||
-                    name.find("block") != std::string::npos) {
+            // ② エネミーカテゴリは、エネミーを探していないレイキャスト（地形探索など）の時だけ除外
+            if (cat == "Enemy") {
+                if (!(mask & kEnemy)) {
                     isIgnoreObject = true;
                     break;
                 }
             }
+
+            // ③ その他、特定の名前（Blockなど）を持つオブジェクトの除外
+       /*     if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) {
+                if (!(mask & kEnemy)) {
+                    isIgnoreObject = true;
+                    break;
+                }
+            }*/
 
             current = current->GetParent();
         }

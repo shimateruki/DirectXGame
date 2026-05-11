@@ -628,13 +628,14 @@ void CameraEditor::SyncSettingsFromCamera() {
     settings_.angle.y = rot.y * toDeg;
     settings_.angle.z = rot.z * toDeg;
 
-    // 距離を同期
-    Vector3 eye = camera->GetEye();
+    // 距離は動的に変わるもの（ロックオン中など）を基本設定に書き戻すと
+    // 解除後に戻らなくなるため、角度（向き）のみを同期する
+    /*Vector3 eye = camera->GetEye();
     Vector3 target = camera->GetTargetPoint();
     float dx = eye.x - target.x;
     float dy = eye.y - target.y;
     float dz = eye.z - target.z;
-    settings_.distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+    settings_.distance = std::sqrt(dx * dx + dy * dy + dz * dz);*/
 }
 
 void CameraEditor::LoadFile(const std::string& fileName) {

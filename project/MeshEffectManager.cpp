@@ -380,6 +380,46 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
             }
         }
 
+        // =========================================================
+        // ★ 当たり判定(Collision)の復元とマネージャーへの登録 (SpawnEffectAt用)
+        // =========================================================
+        if (j.contains("Collision")) {
+            effect->editHasCollision_ = j["Collision"]["HasCollision"];
+
+            if (effect->editHasCollision_) {
+                effect->editCollisionShape_ = j["Collision"]["Shape"];
+                
+                // ★ scale を加味してサイズとオフセットを計算！
+                effect->editCollisionSize_ = { 
+                    (float)j["Collision"]["Size"][0] * scale.x, 
+                    (float)j["Collision"]["Size"][1] * scale.y, 
+                    (float)j["Collision"]["Size"][2] * scale.z 
+                };
+                effect->editCollisionOffset_ = { 
+                    (float)j["Collision"]["Offset"][0] * scale.x, 
+                    (float)j["Collision"]["Offset"][1] * scale.y, 
+                    (float)j["Collision"]["Offset"][2] * scale.z 
+                };
+
+                ColliderType cType = ColliderType::kNone;
+                if (effect->editCollisionShape_ == 0) cType = ColliderType::kSphere;
+                else if (effect->editCollisionShape_ == 1) cType = ColliderType::kAABB;
+                else if (effect->editCollisionShape_ == 2) cType = ColliderType::kOBB;
+
+                Object3d::ColliderConfig cConfig = effect->GetColliderConfig();
+                cConfig.type = cType;
+                cConfig.size = effect->editCollisionSize_;
+                cConfig.center = effect->editCollisionOffset_;
+                effect->SetColliderConfig(cConfig);
+
+                // --- 属性とマスクの設定 ---
+                effect->SetCollisionAttribute(kPlayerAttack); // 例: kPlayerAttack 相当
+                effect->SetCollisionMask(kEnemy);      // 例: kEnemy 相当
+
+                CollisionManager::GetInstance()->AddObject(effect.get());
+            }
+        }
+
         // --- 座標・回転を直接適用 (JSONのPosition/Rotationは無視) ---
         Vector3 finalPos = worldPos;
         Vector3 finalRot = worldRot;

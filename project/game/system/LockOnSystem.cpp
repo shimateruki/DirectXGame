@@ -79,6 +79,8 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             lockOnTarget_ = nullptr;
             camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
+            camera->SyncRotationToCurrentView(); // 視点のガクつき防止
+            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
             lostSightTimer_ = 0.0f;
 
             DebugConsole::GetInstance()->AddLog("LockOn Canceled: Cinematic Camera Active.");
