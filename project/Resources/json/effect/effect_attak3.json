@@ -11,23 +11,23 @@
         "Offset": [
             0.0,
             0.0,
-            1.0
+            2.0
         ],
         "Shape": 2,
         "Size": [
-            1.0,
-            0.4000000059604645,
-            -0.5
+            1.5,
+            0.699999988079071,
+            2.200000047683716
         ]
     },
     "ConeHeight": 2.0,
     "ConeRadius": 1.0,
     "CylinderHeight": 2.0,
     "CylinderRadius": 1.0,
-    "DistortionSpeed": 15.0,
-    "DistortionStrength": 0.05000000074505806,
-    "EasingType": 2,
-    "EdgeFadeStrength": 1.5,
+    "DistortionSpeed": 25.0,
+    "DistortionStrength": 0.0,
+    "EasingType": 0,
+    "EdgeFadeStrength": 4.184999942779541,
     "EnableDistortion": true,
     "EnableReveal": true,
     "EndColor": [
@@ -37,59 +37,59 @@
         0.0
     ],
     "EndScale": [
-        3.0,
-        3.0,
-        3.0
+        2.0,
+        2.0,
+        2.0
     ],
-    "InnerRadius": 0.9980000257492065,
-    "Intensity": 3.0,
-    "Lifetime": 1.0,
-    "MeshSegments": 45,
-    "ModelName": "sword_effect1",
+    "InnerRadius": 2.0,
+    "Intensity": 1.0,
+    "Lifetime": 1.5,
+    "MeshSegments": 128,
+    "ModelName": "Semicircle.gltf",
     "NoiseTexturePath": "",
-    "OuterRadius": 1.965999960899353,
+    "OuterRadius": 3.5,
     "PlaneSize": [
         2.0,
         2.0
     ],
     "Position": [
+        4.0,
         0.0,
-        2.0999999046325684,
-        1.899999976158142
+        -1.2999999523162842
     ],
-    "ProceduralType": 1,
-    "RampTexturePath": "Resources/sprite/abc.png",
+    "ProceduralType": 3,
+    "RampTexturePath": "Resources/sprite/color.png",
     "RingInnerRadius": 0.5,
     "RingOuterRadius": 1.0,
     "Rotation": [
-        -0.03999999910593033,
-        -0.11999999731779099,
-        -2.109999895095825
+        -0.029999999329447746,
+        1.6200000047683716,
+        0.0
     ],
     "ScrollSpeed": [
         0.0,
-        -1.0
+        0.0
     ],
-    "SlashAngle": 255.43499755859375,
+    "SlashAngle": 500.0,
     "SphereRadius": 1.0,
     "SphereRings": 16,
     "SpiralPitch": 0.0,
     "StartColor": [
-        2.0,
-        2.0,
-        2.0,
+        0.0,
+        0.5482628345489502,
+        1.0,
         1.0
     ],
     "StartScale": [
         0.10000000149011612,
-        0.10000000149011612,
-        0.10000000149011612
+        1.0,
+        1.0
     ],
-    "TargetName": "Player_sword",
-    "TexturePath": "Resources/sprite/a.png",
-    "Thickness": 0.5,
+    "TargetName": "Player_body",
+    "TexturePath": "",
+    "Thickness": 0.3700000047683716,
     "ThrustLength": 5.0,
-    "ThrustRadius": 0.800000011920929,
+    "ThrustRadius": 0.5,
     "TorusMajorRadius": 1.0,
     "TorusMinorRadius": 0.30000001192092896,
     "TriangleSize": 1.0,
