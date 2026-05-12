@@ -401,7 +401,7 @@ void BossCore::Update(float deltaTime) {
     }
 
     // バリアへのダメージ処理
-    if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
+    if (IsTargetValid() && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
         Object3d* weapon = FindWeaponRecursive(target_);
 
         // ==========================================
@@ -1047,7 +1047,8 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             if (distance < 0.5f) {
                 fb.block->SetTranslate(headPos);
 
-                if (target_) {
+                // ターゲット（プレイヤー）への追跡
+                if (IsTargetValid()) {
                     Vector3 targetPos = target_->GetWorldPosition();
                     targetPos.y = 0.0f;
 
@@ -1356,8 +1357,12 @@ void BossCore::UpdateCorePieces(float deltaTime) {
 
     if (deathTimer_ > 5.0f) {
         for (auto& piece : corePieces_) {
-            if (piece.obj) piece.obj->isDead = true;
+            if (piece.obj) {
+                piece.obj->isDead = true;
+                piece.obj = nullptr; // ダングリングポインタ防止
+            }
         }
+        corePieces_.clear(); // リストもクリア
         isDead = true;
         isCompletelyDead_ = true;
         // ==========================================
