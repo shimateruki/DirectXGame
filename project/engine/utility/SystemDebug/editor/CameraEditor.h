@@ -72,7 +72,6 @@ public:
     int GetCameraSensitivity() const { return settings_.cameraSensitivity; }
     void SetCameraSensitivity(int val) {
         settings_.cameraSensitivity = val;
-        SaveSettings(); // 変更された瞬間に自動セーブ！
     }
 
 
