@@ -103,6 +103,11 @@ public:
     // 操作・同期
     // ==================================================
     void AddRotation(const Vector2& mouseDelta);
+    
+    /// <summary>
+    /// 感度を設定します (-5 ~ 5)
+    /// </summary>
+    void SetSensitivity(int level);
     void SyncRotationToCurrentView();
 
     // ==================================================
@@ -160,6 +165,7 @@ private:
     float aimHeight_ = 5.0f;
     Vector3 aimAngle_ = { 0.0f, 0.0f, 0.0f };
     bool isEyeFrozen_ = false;
+    float sensitivityMultiplier_ = 1.0f; // 感度倍率
 
     float orbitRadius_ = 15.0f;
     float orbitHeight_ = 5.0f;
