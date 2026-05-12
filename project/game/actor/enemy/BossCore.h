@@ -115,6 +115,8 @@ public:
     void StartAppearance(); // 登場演出をスタートする関数
     bool IsAppearing() const { return isAppearing_; }
 
+    State GetState() const { return state_; } // 追加
+
     void ActuallySpawnShards();
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }

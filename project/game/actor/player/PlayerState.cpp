@@ -1231,7 +1231,7 @@ void PlayerStateAttack1::Enter(Player* player)
 	TryFindSword(player, swordObj);
 	if (swordObj) {
 		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-		particleEmitter_->Initialize("playerAttak", swordObj);
+		particleEmitter_->Initialize("playerattak", swordObj);
 		particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
 		particleEmitter_->SetInterval(0.016f);
 		particleEmitter_->Play();
@@ -1631,7 +1631,7 @@ void PlayerStateAttack2::Enter(Player* player)
 	TryFindSword(player, swordObj);
 	if (swordObj) {
 		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-		particleEmitter_->Initialize("playerAttak", swordObj);
+		particleEmitter_->Initialize("playerattak", swordObj);
 		particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
 		particleEmitter_->SetInterval(0.016f);
 		particleEmitter_->Play();
@@ -2095,7 +2095,7 @@ void PlayerStateAttack3::Enter(Player* player)
 	TryFindSword(player, swordObj);
 	if (swordObj) {
 		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-		particleEmitter_->Initialize("playerAttak", swordObj);
+		particleEmitter_->Initialize("playerattak", swordObj);
 		particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
 		particleEmitter_->SetInterval(0.016f);
 		particleEmitter_->Play();

@@ -406,8 +406,9 @@ void Camera::ConfigFirstPerson(const Vector3& eyeOffset) {
 
 void Camera::AddRotation(const Vector2& mouseDelta) {
     const float rotateSpeed = 0.005f;
-    rotation_.x += mouseDelta.y * rotateSpeed;
-    rotation_.y += mouseDelta.x * rotateSpeed;
+    // 感度倍率を適用
+    rotation_.x += mouseDelta.y * rotateSpeed * sensitivityMultiplier_;
+    rotation_.y += mouseDelta.x * rotateSpeed * sensitivityMultiplier_;
 
     // X軸（ピッチ）の回転制限
     const float pitchLimit = PI / 2.0f - 0.01f;
@@ -416,6 +417,18 @@ void Camera::AddRotation(const Vector2& mouseDelta) {
     // Y軸（ヨー）のラップアラウンド
     if (rotation_.y > PI) { rotation_.y -= 2.0f * PI; }
     if (rotation_.y < -PI) { rotation_.y += 2.0f * PI; }
+}
+
+void Camera::SetSensitivity(int level) {
+    // level: -5 ~ 5
+    // -5 のときは 0.2倍, 0 のときは 1.0倍, 5 のときは 3.0倍 程度にして変化を分かりやすくする
+    if (level < 0) {
+        // -5 -> 0.2, 0 -> 1.0
+        sensitivityMultiplier_ = 1.0f + (level * 0.16f); // -5 * 0.16 = -0.8 -> 0.2
+    } else {
+        // 0 -> 1.0, 5 -> 3.0
+        sensitivityMultiplier_ = 1.0f + (level * 0.4f); // 5 * 0.4 = 2.0 -> 3.0
+    }
 }
 
 void Camera::SyncRotationToCurrentView() {

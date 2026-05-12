@@ -46,7 +46,7 @@ public:
     void Initialize() override;
     void Finalize() override;
     void Update(float deltaTime) override;
-    void UpdateUI();
+    void UpdateUI(float deltaTime);
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
@@ -140,7 +140,12 @@ private:
     bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
 	//sprite変数
     Sprite* playerHpBarSprite_ = nullptr;
+    Sprite* playerDamageBarSprite_ = nullptr; // 追加：ダメージ残像用
     float playerHpBarMaxWidth_ = 0.0f; // 100%の時の長さ
+    float playerVisualHp_ = 0.0f;      // 追加：表示上のHP (演出用)
+    float playerDamageDelayTimer_ = 0.0f; // 追加：減少開始までの待機時間
+    float playerPrevHpRatio_ = 0.0f;   // 追加：前フレームのHP率
+
     Object3d* tutorialPlatform_ = nullptr; // ★ 降下させるプラットフォーム
     float tutorialPlatformOffset_ = 0.0f; // ★ プレイヤーとのY軸オフセット
 
@@ -150,10 +155,20 @@ private:
     BossCore* boss_ = nullptr;
 
     Sprite* bossHpBarSprite_ = nullptr;    // メインHPバー
+    Sprite* bossDamageBarSprite_ = nullptr; // 追加：ダメージ残像用
     float bossHpBarMaxWidth_ = 0.0f;
+    float bossVisualHp_ = 0.0f;             // 追加：ボスの表示上のHP (演出用)
+    float bossDamageDelayTimer_ = 0.0f;    // 追加：減少開始までの待機時間
+    float bossPrevHpRatio_ = 0.0f;         // 追加：前フレームのHP率
+
     Sprite* bossHpBackSprite_ = nullptr;
     Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
+    Sprite* barrierDamageBarSprite_ = nullptr; // 追加：バリア用ダメージ残像
     float barrierHpBarMaxWidth_ = 0.0f;
+    float barrierVisualMain_ = 0.0f;       // 追加：バリアメインバーの表示用HP
+    float barrierVisualDamage_ = 0.0f;     // 追加：バリアダメージバーの表示用HP
+    float barrierDamageDelayTimer_ = 0.0f; // 追加：バリアの減少待機時間
+    float barrierPrevHpRatio_ = 0.0f;      // 追加：前フレームのバリアHP率
     Sprite* bossNameSprite_ = nullptr;
     enum class GameOverMenuIndex {
         Restart,
