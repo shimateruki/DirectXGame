@@ -19,12 +19,10 @@ void CollisionManager::AddObject(Object3d* object) {
 }
 
 void CollisionManager::RemoveObject(Object3d* object) {
-    auto it = std::find(objects_.begin(), objects_.end(), object);
-    if (it != objects_.end()) {
-        objects_.erase(it);
-        // 静的グリッドの再構築が必要
-        needsStaticGridRebuild_ = true;
-    }
+    // ★修正: std::find ではなく std::list::remove を使う
+    // これにより、もし重複して登録されていても全て削除され、ダングリングポインタを防げます
+    objects_.remove(object);
+    needsStaticGridRebuild_ = true;
 }
 
 void CollisionManager::ClearObjects() {

@@ -119,6 +119,7 @@ public:
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }
     bool IsDyingSequence() const { return deathPhase_ > 0; }
+    void TakeBodyDamage(float damage);
 private:
 
     // 射出されたブロックのリスト
@@ -134,6 +135,8 @@ private:
 
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
+    void TakeBarrierDamage(float damage, Object3d* hitBlock = nullptr);
+    // void TakeBodyDamage(float damage);
 
     // ==================================================
     // 内部コンポーネント・変数

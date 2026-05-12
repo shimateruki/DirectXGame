@@ -263,6 +263,7 @@ bool Player::OnCollision(Object3d* other)
         ApplyPhysicsCollision(info, attribute);
     }
 
+    // 2. 敵の攻撃に接触した場合
     if (attribute & kEnemyAttack)
     {
         // タイマーと「総合的な無敵状態」の両方をチェック
