@@ -56,33 +56,10 @@ void Camera::Update() {
         Vector3 playerPos = followObject_->GetWorldPosition();
 
         // -----------------------------------------------------------------
-        // (A) 注視点 (Target) の計算
+        // (A) 注視点 (TargetPos) の基本計算
         // -----------------------------------------------------------------
         Vector3 targetPos = playerPos;
-        targetPos.y += aimHeight_; // 基本的な注視高さ
-
-        // ロックオン時の注視点（プレイヤーと敵の中間付近を狙う）
-        if (followMode_ == FollowMode::kLockOn && targetObject_) {
-            Vector3 enemyPos = targetObject_->GetWorldPosition();
-            Vector3 playerFocus = playerPos;
-            playerFocus.y += aimHeight_ * 0.5f;
-
-            // XZは敵寄りを注視 (70% ほど敵側へ)
-            targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.7f;
-            targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.7f;
-
-            // 高低差に応じた注視点の上下リミット
-            float distXZ = std::sqrt((enemyPos.x - playerFocus.x) * (enemyPos.x - playerFocus.x) +
-                (enemyPos.z - playerFocus.z) * (enemyPos.z - playerFocus.z));
-
-            float maxY = playerFocus.y + std::min(3.0f, distXZ * 0.4f);
-            float idealY = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.5f;
-
-            targetPos.y = std::min(idealY, maxY);
-        }
-        else if (followMode_ == FollowMode::kFirstPerson) {
-            targetPos = playerPos + firstPersonOffset_;
-        }
+        targetPos.y += aimHeight_; // デフォルトはプレイヤーの頭上
 
         // -----------------------------------------------------------------
         // (B) 目標座標 (Desired Eye) の計算
@@ -94,12 +71,24 @@ void Camera::Update() {
         case FollowMode::kLockOn:
         {
             if (targetObject_) {
+                // ロックオン時の注視点計算（ここで targetPos を更新）
                 Vector3 enemyPos = targetObject_->GetWorldPosition();
-                Vector3 playerPosForLockOn = followObject_->GetWorldPosition();
-                Vector3 toEnemy = enemyPos - playerPosForLockOn;
+                Vector3 playerFocus = playerPos;
+                playerFocus.y += aimHeight_ * 0.5f;
+
+                targetPos.x = playerFocus.x + (enemyPos.x - playerFocus.x) * 0.7f;
+                targetPos.z = playerFocus.z + (enemyPos.z - playerFocus.z) * 0.7f;
+
+                float distXZ_L = std::sqrt((enemyPos.x - playerFocus.x) * (enemyPos.x - playerFocus.x) +
+                    (enemyPos.z - playerFocus.z) * (enemyPos.z - playerFocus.z));
+                float maxY = playerFocus.y + std::min(3.0f, distXZ_L * 0.4f);
+                float idealY = playerFocus.y + (enemyPos.y - playerFocus.y) * 0.5f;
+                targetPos.y = std::min(idealY, maxY);
+
+                Vector3 toEnemy = enemyPos - playerPos;
 
                 float distanceXZ = std::sqrt(toEnemy.x * toEnemy.x + toEnemy.z * toEnemy.z);
-                float heightDiff = std::max(0.0f, enemyPos.y - playerPosForLockOn.y);
+                float heightDiff = std::max(0.0f, enemyPos.y - playerPos.y);
                 float heightZoom = heightDiff * 0.8f;
 
                 // 至近距離でのカメラ引き
@@ -131,7 +120,7 @@ void Camera::Update() {
                 Matrix4x4 rotateMat = math.MakeRotateYMatrix(rotation_.y);
                 Vector3 rotatedOffset = math.TransformNormal(dynamicOffset, rotateMat);
 
-                desiredEye = playerPosForLockOn + rotatedOffset;
+                desiredEye = playerPos + rotatedOffset;
             }
             else {
                 followMode_ = FollowMode::kAimable;
@@ -159,10 +148,10 @@ void Camera::Update() {
         }
         case FollowMode::kFirstPerson:
         {
-            desiredEye = targetPos;
+            desiredEye = playerPos + firstPersonOffset_;
             Matrix4x4 rotateMatFP = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
             Vector3 forwardFP = math.TransformNormal({ 0, 0, 1 }, rotateMatFP);
-            target_ = desiredEye + forwardFP;
+            targetPos = desiredEye + forwardFP; // 一人称は回転方向が注視点
             break;
         }
         case FollowMode::kOrbit:
@@ -183,7 +172,7 @@ void Camera::Update() {
             forward.y = -std::sin(pitch);
             forward.z = std::cos(yaw) * std::cos(pitch);
 
-            target_ = desiredEye + forward * 10.0f;
+            targetPos = desiredEye + forward * 10.0f; // 定点カメラも回転方向が注視点
             break;
         }
         }
