@@ -32,7 +32,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
         if (target) {
             Vector3 toPlayer = target->GetWorldPosition() - boss->GetWorldPosition();
-            float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+            float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
             boss->SetRotation({ boss->GetRotation().x, angleY, boss->GetRotation().z });
             boss->GetTransform()->isQuaternionMaster = false;
         }
@@ -88,7 +88,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
         if (target) {
             Vector3 toPlayer = target->GetWorldPosition() - boss->GetWorldPosition();
-            float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+            float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
             boss->SetRotation({ boss->GetRotation().x, angleY, boss->GetRotation().z });
             boss->GetTransform()->isQuaternionMaster = false;
         }
@@ -105,7 +105,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
         if (target) {
             Vector3 toPlayer = target->GetWorldPosition() - boss->GetWorldPosition();
-            float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
+            float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
             boss->SetRotation({ boss->GetRotation().x, angleY, boss->GetRotation().z });
             boss->GetTransform()->isQuaternionMaster = false;
         }

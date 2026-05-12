@@ -159,6 +159,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="CinematicFade.cpp" />
     <ClCompile Include="GameProgress.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack8_Final.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack9_Funnels.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.cpp" />
     <ClCompile Include="EnemyBomb.cpp" />
     <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
@@ -400,6 +401,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="CinematicFade.h" />
     <ClInclude Include="GameProgress.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack8_Final.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack9_Funnels.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.h" />
     <ClInclude Include="EnemyBomb.h" />
     <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />

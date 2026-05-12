@@ -5,11 +5,37 @@
 #include <cmath>
 #include <numbers>
 
+namespace {
+    struct HammerSetting {
+        Vector3 translate; Vector3 scale; Vector3 rotation;
+    };
+    const std::vector<HammerSetting> kHammerSettings = {
+        { {  0.000f,  4.000f,  0.000f }, { 1.500f, 1.000f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
+        { {  2.000f,  4.000f,  0.000f }, { 0.700f, 1.500f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
+        { {  0.000f,  1.000f,  0.000f }, { 0.400f, 2.200f, 0.400f }, { 0.0f, 0.0f, 0.0f } },
+        { { -2.000f,  4.000f,  0.000f }, { 0.700f, 1.500f, 1.000f }, { 0.0f, 0.0f, 0.0f } },
+        { {  0.000f, -1.800f, -0.002f }, { 0.500f, 0.500f, 0.800f }, { 0.0f, 0.0f, 0.0f } },
+        { {  0.000f,  5.100f,  0.000f }, { 0.500f, 0.250f, 0.500f }, { 0.0f, 0.0f, 0.0f } },
+        { {  3.000f,  4.000f,  0.000f }, { 0.500f, 2.000f, 1.200f }, { 0.0f, 0.0f, 0.0f } },
+        { { -3.000f,  4.000f,  0.000f }, { 0.500f, 2.000f, 1.200f }, { 0.0f, 0.0f, 0.0f } },
+        { {  0.000f,  6.000f,  0.000f }, { 0.300f, 1.000f, 0.300f }, { 0.0f, 0.0f, 0.0f } },
+        { {  0.000f, -3.000f,  0.000f }, { 0.600f, 0.800f, 0.800f }, { 0.0f, 0.0f, 0.0f } } 
+    };
+
+    float LerpAngle(float a, float b, float t) {
+        float diff = b - a;
+        while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
+        while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
+        return a + diff * t;
+    }
+}
+
 void BossAttack3_Hammer::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
     blockStartPos_.clear();
 
     animPhase_ = 20; // フェーズ20からスタート
+    attackCount_ = 0; // コンボ回数をリセット
 }
 
 void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
@@ -62,56 +88,71 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ >= 1.5f) {
             animPhase_ = 21;
             animTimer_ = 0.0f;
+            animStartRot_ = boss->GetRotation();
+            animStartPos_ = boss->GetTranslate();
 
-            if (target) { animTargetPos_ = target->GetWorldPosition(); }
-            else { animTargetPos_ = boss->GetTranslate(); }
+            if (target) { 
+                animTargetPos_ = target->GetWorldPosition(); 
+                Vector3 toP = animTargetPos_ - animStartPos_;
+                toP.y = 0.0f;
+                float d = std::sqrt(toP.x*toP.x + toP.z*toP.z);
+                if (d > 0.01f) { attackDir_ = { toP.x/d, 0.0f, toP.z/d }; }
+                else { attackDir_ = { 0.0f, 0.0f, 1.0f }; }
+            } else { 
+                animTargetPos_ = boss->GetTranslate(); 
+                attackDir_ = { 0.0f, 0.0f, 1.0f };
+            }
 
             if (warningArea) {
-                if (armorBlocks.size() > 1 && armorBlocks[1]) {
-                    Vector3 block2Scale = armorBlocks[1]->GetScale();
-                    warningArea->SetScale({ block2Scale.x, 2.0f, block2Scale.z });
-                }
-                warningArea->SetTranslate({ animTargetPos_.x, 1.0f, animTargetPos_.z });
-
-                float finalRotY = boss->GetRotation().y + (std::numbers::pi_v<float> / 2.0f);
-                warningArea->SetRotation({ 0.0f, finalRotY, 0.0f });
                 warningArea->GetTransform()->isQuaternionMaster = false;
                 warningArea->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f });
             }
         }
     }
-    // --- Phase 21: ロックオンした位置へ移動 ＆ 振りかぶる！ ---
+    // --- Phase 21: 移動＆振りかぶり ---
     else if (animPhase_ == 21) {
         animTimer_ += deltaTime;
 
-        float moveDuration = 4.5f;
-        float moveT = std::min(animTimer_ / moveDuration, 1.0f);
+        float moveDuration = 1.5f;
+        float targetHeight = 4.0f;
+        float rotDuration = 1.5f;
+        float distToKeep = 4.5f;
 
-        if (warningArea) {
-            float currentGreen = Math::Lerp(1.0f, 0.0f, moveT);
-            warningArea->SetColor({ 1.0f, currentGreen, 0.0f, 0.9f });
+        if (attackCount_ == 0) { // ぶん回し
+            targetHeight = 2.0f;  
+            distToKeep = 1.5f;    
+        } else if (attackCount_ == 1) { // 叩きつけ
+            targetHeight = 4.0f;
+            distToKeep = 4.5f;    
+        } else if (attackCount_ == 2) { // 巨大叩きつけ
+            moveDuration = 2.0f;
+            targetHeight = 8.0f;  
+            distToKeep = 6.0f;    
+            rotDuration = 2.0f;
+            
+            // ハンマーを1.5倍に巨大化
+            float scaleT = std::min(animTimer_ / 1.0f, 1.0f);
+            float currentScale = Math::Lerp(1.0f, 1.5f, scaleT);
+            for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                if (i < kHammerSettings.size() && armorBlocks[i]) {
+                    armorBlocks[i]->SetScale({ kHammerSettings[i].scale.x * currentScale, kHammerSettings[i].scale.y * currentScale, kHammerSettings[i].scale.z * currentScale });
+                    armorBlocks[i]->SetTranslate({ kHammerSettings[i].translate.x * currentScale, kHammerSettings[i].translate.y * currentScale, kHammerSettings[i].translate.z * currentScale });
+                }
+            }
         }
 
-        Vector3 targetPos = animTargetPos_;
-        Vector3 currentPos = boss->GetTranslate();
-        Vector3 toBoss = currentPos - targetPos;
-        toBoss.y = 0.0f;
-        float dist = std::sqrt(toBoss.x * toBoss.x + toBoss.z * toBoss.z);
-        if (dist > 0.0f) { toBoss.x /= dist; toBoss.z /= dist; }
-
-        Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, 4.0f, targetPos.z + toBoss.z * 4.5f };
-
-        //Vector3 targetHoverPos = { targetPos.x + toBoss.x * 4.5f, targetPos.y + 1.0f, targetPos.z + toBoss.z * 4.5f };
-        float easeT = moveT;
-        currentPos.x = Math::Lerp(currentPos.x, targetHoverPos.x, easeT);
-        currentPos.y = Math::Lerp(currentPos.y, targetHoverPos.y, easeT);
-        currentPos.z = Math::Lerp(currentPos.z, targetHoverPos.z, easeT);
+        float moveT = std::min(animTimer_ / moveDuration, 1.0f);
+        
+        Vector3 targetHoverPos = { animTargetPos_.x - attackDir_.x * distToKeep, targetHeight, animTargetPos_.z - attackDir_.z * distToKeep };
+        
+        float easeT = std::pow(moveT, 2.0f); // Ease In
+        Vector3 currentPos;
+        currentPos.x = Math::Lerp(animStartPos_.x, targetHoverPos.x, easeT);
+        currentPos.y = Math::Lerp(animStartPos_.y, targetHoverPos.y, easeT);
+        currentPos.z = Math::Lerp(animStartPos_.z, targetHoverPos.z, easeT);
         boss->SetTranslate(currentPos);
 
-        float rotT = std::min(animTimer_ / 3.0f, 1.0f);
-        Vector3 toPlayer = targetPos - currentPos;
-        float angleY = std::atan2(toPlayer.x, toPlayer.z) - (std::numbers::pi_v<float> / 2.0f);
-
+        float rotT = std::min(animTimer_ / rotDuration, 1.0f);
         float elasticT = 0.0f;
         if (rotT == 0.0f) elasticT = 0.0f;
         else if (rotT == 1.0f) elasticT = 1.0f;
@@ -120,15 +161,46 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             elasticT = -std::pow(2.0f, 10.0f * rotT - 10.0f) * std::sin((rotT * 10.0f - 10.75f) * c4);
         }
 
-        float targetTilt = -70.0f * (std::numbers::pi_v<float> / 180.0f);
-        float tiltBack = Math::Lerp(0.0f, targetTilt, elasticT);
-        boss->SetRotation({ 0.0f, angleY, tiltBack });
+        float angleY = std::atan2(attackDir_.x, attackDir_.z) - (std::numbers::pi_v<float> / 2.0f);
+
+        if (attackCount_ == 0) {
+            // ぶん回し: ハンマーを寝かせる (-90度)
+            float targetTilt = -90.0f * (std::numbers::pi_v<float> / 180.0f);
+            float tiltBack = Math::Lerp(animStartRot_.z, targetTilt, elasticT);
+            float targetRotY = angleY - 120.0f * (std::numbers::pi_v<float> / 180.0f); 
+            float currentRotY = LerpAngle(animStartRot_.y, targetRotY, elasticT);
+            boss->SetRotation({ 0.0f, currentRotY, tiltBack });
+        } else {
+            // 叩きつけ: ハンマーを後ろに傾ける (-70度)
+            float targetTilt = -70.0f * (std::numbers::pi_v<float> / 180.0f);
+            float tiltBack = Math::Lerp(animStartRot_.z, targetTilt, elasticT);
+            float currentRotY = LerpAngle(animStartRot_.y, angleY, std::min(animTimer_ / 0.5f, 1.0f));
+            boss->SetRotation({ 0.0f, currentRotY, tiltBack });
+        }
+        
         boss->GetTransform()->isQuaternionMaster = false;
+
+        if (warningArea) {
+            warningArea->SetTranslate({ animTargetPos_.x, 1.0f, animTargetPos_.z });
+            if (attackCount_ == 0) { 
+                warningArea->SetScale({ 6.0f, 2.0f, 6.0f });
+                warningArea->SetRotation({ 0.0f, 0.0f, 0.0f });
+            } else { 
+                float s = (attackCount_ == 2) ? 1.5f : 1.0f;
+                if (armorBlocks.size() > 1 && armorBlocks[1]) {
+                    Vector3 block2Scale = armorBlocks[1]->GetScale();
+                    warningArea->SetScale({ block2Scale.x, 2.0f, block2Scale.z * s });
+                }
+                warningArea->SetRotation({ 0.0f, angleY + (std::numbers::pi_v<float> / 2.0f), 0.0f });
+            }
+            float currentGreen = Math::Lerp(1.0f, 0.0f, moveT);
+            warningArea->SetColor({ 1.0f, currentGreen, 0.0f, 0.9f });
+        }
 
         if (moveT >= 1.0f) {
             animPhase_ = 22;
             animTimer_ = 0.0f;
-            // ★ サンドイッチ対策：叩きつける瞬間だけ地形判定を消す
+            animStartRot_ = boss->GetRotation(); 
             for (auto* block : armorBlocks) {
                 if (block) block->SetCollisionAttribute(kEnemyAttack);
             }
@@ -137,27 +209,100 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
     // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
     else if (animPhase_ == 22) {
         animTimer_ += deltaTime;
+        
         float smashDuration = 0.15f;
+        if (attackCount_ == 0) smashDuration = 0.35f; // ぶん回し
+        else if (attackCount_ == 2) smashDuration = 0.2f;
+
         float t = std::min(animTimer_ / smashDuration, 1.0f);
 
-        if (warningArea) {
-            warningArea->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+        if (warningArea) warningArea->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+
+        if (attackCount_ == 0) {
+            // ぶん回し
+            float startRotY = animStartRot_.y;
+            float endRotY = startRotY + 360.0f * (std::numbers::pi_v<float> / 180.0f); 
+            float currentRotY = startRotY + (endRotY - startRotY) * std::pow(t, 2.0f); // EaseIn
+            boss->SetRotation({ 0.0f, currentRotY, animStartRot_.z });
+        } else {
+            // 叩きつけ
+            float startRotZ = animStartRot_.z; 
+            float endRotZ = 270.0f * (std::numbers::pi_v<float> / 180.0f);
+            float currentRotZ = Math::Lerp(startRotZ, endRotZ, std::pow(t, 3.0f));
+            
+            // 沈み込み
+            Vector3 bossPos = boss->GetTranslate();
+            if (t > 0.8f) {
+                bossPos.y = Math::Lerp(bossPos.y, 0.0f, std::pow(t, 3.0f));
+                boss->SetTranslate(bossPos);
+            }
+            boss->SetRotation({ 0.0f, animStartRot_.y, currentRotZ });
         }
 
-        float startRotZ = -70.0f * (std::numbers::pi_v<float> / 180.0f);
-        float endRotZ = 270.0f * (std::numbers::pi_v<float> / 180.0f);
-        float currentRotZ = Math::Lerp(startRotZ, endRotZ, std::pow(t, 3.0f));
-        boss->SetRotation({ 0.0f, boss->GetRotation().y, currentRotZ });
-
         if (t >= 1.0f) {
-            boss->SetRotation({ 0.0f, boss->GetRotation().y, endRotZ });
+            if (attackCount_ == 0) {
+                boss->SetRotation({ 0.0f, animStartRot_.y + 360.0f * (std::numbers::pi_v<float> / 180.0f), animStartRot_.z });
+            } else {
+                boss->SetRotation({ 0.0f, animStartRot_.y, 270.0f * (std::numbers::pi_v<float> / 180.0f) });
+            }
+            
             if (warningArea) { warningArea->SetScale({ 0.0f, 0.0f, 0.0f }); }
-            animPhase_ = 23;
+            
+            attackCount_++;
+
+            if (attackCount_ < 3) {
+                animPhase_ = 25; 
+            } else {
+                animPhase_ = 23; 
+            }
+            
             animTimer_ = 0.0f;
-            // ★ 地面判定を復活させる
+            animStartRot_ = boss->GetRotation(); 
+            animStartPos_ = boss->GetTranslate();
+            
             for (auto* block : armorBlocks) {
                 if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
             }
+        }
+    }
+    // --- Phase 25: 次の攻撃に向けてハンマーを引き抜く ---
+    else if (animPhase_ == 25) {
+        animTimer_ += deltaTime;
+        float pullUpDuration = 0.6f; 
+        float t = std::min(animTimer_ / pullUpDuration, 1.0f);
+        float easeT = 1.0f - std::pow(1.0f - t, 3.0f); // EaseOutCubic
+
+        // 叩きつけの後はZ軸を戻す、ぶん回しの後はそのままZを0に戻す
+        float startRotZ = animStartRot_.z; 
+        float endRotZ = 0.0f; 
+        float currentRotZ = Math::Lerp(startRotZ, endRotZ, easeT);
+        
+        boss->SetRotation({ 0.0f, animStartRot_.y, currentRotZ });
+        
+        // 高さを少し戻す
+        Vector3 bossPos = boss->GetTranslate();
+        bossPos.y = Math::Lerp(animStartPos_.y, 4.0f, easeT);
+        boss->SetTranslate(bossPos);
+
+        if (t >= 1.0f) {
+            animPhase_ = 21; 
+            animTimer_ = 0.0f;
+            animStartRot_ = boss->GetRotation(); 
+            animStartPos_ = boss->GetTranslate();
+
+            // ターゲットを再取得してホーミングし直す
+            if (target) { 
+                animTargetPos_ = target->GetWorldPosition(); 
+                Vector3 dir = animTargetPos_ - animStartPos_;
+                dir.y = 0.0f;
+                float d = std::sqrt(dir.x*dir.x + dir.z*dir.z);
+                if (d > 0.01f) { attackDir_ = { dir.x/d, 0.0f, dir.z/d }; }
+                else { attackDir_ = { 0.0f, 0.0f, 1.0f }; }
+            } else { 
+                animTargetPos_ = boss->GetTranslate(); 
+            }
+
+            if (warningArea) warningArea->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f });
         }
     }
     // --- Phase 23: 地面に倒れたまま3秒待機 ---

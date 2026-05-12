@@ -53,6 +53,10 @@ public:
     // バリアHP
     float GetBarrierHp() const { return barrierHp_; }
     float GetMaxBarrierHp() const { return maxBarrierHp_; }
+    void SetBarrierHp(float hp) { barrierHp_ = hp; }
+
+    void TakeBarrierDamage(float damage, Object3d* hitBlock = nullptr);
+    void TakeBodyDamage(float damage);
 
     // ==========================================
     // 攻撃クラスがボスの部品をいじるためのゲッター！
