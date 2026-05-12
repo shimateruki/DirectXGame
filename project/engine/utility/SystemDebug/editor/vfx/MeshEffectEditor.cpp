@@ -26,7 +26,7 @@ static const char* kEasingNames[] = {
     "InBounce", "OutBounce", "InOutBounce"
 };
 void MeshEffectEditor::Initialize(SceneManager* sceneManager) {
-    // ★ 変更: SceneManager のポインタだけ保持する
+    // SceneManager のポインタを保持
     sceneManager_ = sceneManager;
     RefreshTextureList();
     RefreshJsonFileList();
@@ -123,11 +123,11 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     Vector3 basePos = editPosition_;
     Vector3 baseRot = editRotation_;
+    float targetWorldY = 0.0f;
     if (targetObject_) {
         Vector3 targetPos = targetObject_->GetWorldPosition();
 
-        // ★超重要修正: ボーンのねじれを完全無視して、大元（ルートノード）の向きだけを取る！
-        float targetWorldY = 0.0f;
+        // ターゲットのボーン構造を無視し、ルートノードの向きを優先
         Object3d* rootObj = targetObject_;
         while (rootObj && rootObj->GetParent()) {
             rootObj = rootObj->GetParent(); // 一番上の親（プレイヤー本体など）まで遡る
@@ -148,13 +148,11 @@ void MeshEffectEditor::Update(float deltaTime) {
         basePos.y = targetPos.y + rotatedOffset.y;
         basePos.z = targetPos.z + rotatedOffset.z;
 
-        // ★回転はシンプルにY軸だけを足す（行列変換のバグを回避！）
+        // 回転はY軸オフセットとして適用（行列演算の誤差回避）
         baseRot = editRotation_;
         baseRot.y += targetWorldY;
     }
-    // ========================================================
-    // ★ 修正1: 一斉再生の完全同期！
-    // ========================================================
+    // 再生リクエストまたは自動ループの同期
     if (forcePlayRequest_ || (isAutoLoop_ && !activePreviews.empty() && !activePreviews[0]->IsPlaying())) {
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
@@ -223,7 +221,7 @@ void MeshEffectEditor::Update(float deltaTime) {
     }
 }
 void MeshEffectEditor::Draw() {
-    // ★ 1. Game側から呼ばれているか確認
+    // シーン遷移やNULLチェック
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (lastScene_ != currentScene || !currentScene) {
         return;
@@ -235,7 +233,7 @@ void MeshEffectEditor::Draw() {
         }
     }
     else {
-        // ★ もし生成されていなければエラーを出す
+        // プレビューオブジェクトの欠損チェック
         DebugConsole::GetInstance()->AddLog(LogLevel::Error, "Error: previewEffect_ is NULL!");
     }
 }
@@ -319,7 +317,7 @@ void MeshEffectEditor::DrawImGui() {
     if (ImGui::Combo("エフェクト形状", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes))) {
         previewEffect_->SetProceduralType(editProceduralType_);
 
-        // ★ 回転切りを選んだ時、自動で360度以上にしておく親切設計
+        // スピン形状選択時の初期角度調整
         if (editProceduralType_ == 2 && previewEffect_->editSlashAngle_ < 360.0f) {
             previewEffect_->editSlashAngle_ = 400.0f; // 少し余分に回して透明部分を隠す
         }
@@ -335,14 +333,14 @@ void MeshEffectEditor::DrawImGui() {
         ImGui::Indent();
         bool changed = false;
 
-        // ★ 1(Slash)と2(Spin)の両方で角度や厚みをいじれるようにする
+        // SlashおよびSpinの両方でパラメータ調整を可能にする
         if (editProceduralType_ == 1 || editProceduralType_ == 2) {
-            // スライダーの上限を 1080度（3周）に解放！
+            // スライダーの上限を 1080度（3周）に拡張
             changed |= ImGui::SliderFloat("斬撃の角度", &previewEffect_->editSlashAngle_, 30.0f, 1080.0f);
             changed |= ImGui::SliderFloat("内側の半径", &previewEffect_->editInnerRadius_, 0.0f, 5.0f);
             changed |= ImGui::SliderFloat("外側の半径", &previewEffect_->editOuterRadius_, 1.0f, 15.0f);
             changed |= ImGui::SliderFloat("軌跡の厚み", &previewEffect_->editThickness_, 0.01f, 3.0f);
-            changed |= ImGui::SliderFloat("螺旋の高さ(Zズレ)", &previewEffect_->editSpiralPitch_, -5.0f, 5.0f); // ★追加
+            changed |= ImGui::SliderFloat("螺旋の高さ(Zズレ)", &previewEffect_->editSpiralPitch_, -5.0f, 5.0f);
         }
         else if (editProceduralType_ == 3) {
             changed |= ImGui::SliderFloat("突きの長さ", &previewEffect_->editThrustLength_, 1.0f, 20.0f);
@@ -418,9 +416,7 @@ void MeshEffectEditor::DrawImGui() {
         }
         ImGui::Unindent();
 
-        // ==========================================
-        // ★ OBJ エクスポート機能
-        // ==========================================
+        // 外部OBJエクスポート機能
         ImGui::Spacing();
         static char objName[128] = "my_custom_primitive";
         ImGui::InputText("OBJファイル名", objName, sizeof(objName));
@@ -536,7 +532,7 @@ void MeshEffectEditor::DrawImGui() {
 
         ImGui::Spacing();
 
-        // ★ カラーランプが設定されているかチェック
+        // カラーランプ設定の有無による表示切り替え
         if (strlen(editRampTexturePath_) == 0) {
             ImGui::Text(ICON_FA_TINT " [ カラー (Color) ]");
             ImGui::ColorEdit4("開始カラー", &editStartColor_.x);
@@ -622,7 +618,7 @@ void MeshEffectEditor::DrawImGui() {
             for (int i = 0; i < (int)jsonFileList_.size(); ++i) {
                 if (ImGui::Selectable(jsonFileList_[i].c_str(), currentJsonIndex_ == i)) {
                     currentJsonIndex_ = i;
-                    // ★ 選択したファイル名をテキスト入力欄に自動でコピーする！
+                    // 選択したファイル名をテキスト入力欄に自動でコピー
                     strncpy_s(saveFileName_, jsonFileList_[i].c_str(), sizeof(saveFileName_) - 1);
                 }
             }
@@ -636,14 +632,14 @@ void MeshEffectEditor::DrawImGui() {
 
         float halfWidth = (availWidth - ImGui::GetStyle().ItemSpacing.x) / 2.0f;
 
-        // ★ 保存ボタン
+        // 保存ボタン
         if (ImGui::Button(ICON_FA_SAVE " JSON 保存", ImVec2(halfWidth, 0))) {
             SaveToJson();
             RefreshJsonFileList(); // 保存したらリストを最新に更新する！
         }
         ImGui::SameLine();
 
-        // ★ 読込ボタン
+        // 読込ボタン
         if (ImGui::Button(ICON_FA_FOLDER_OPEN " JSON 読込", ImVec2(halfWidth, 0))) {
             LoadFromJson();
         }
@@ -861,9 +857,7 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("VolumeMode")) editVolumeMode_ = j["VolumeMode"];
     else editVolumeMode_ = 0;
 
-    // ==========================================
-    // ★ 追加: プロシージャルパラメータの読み込み
-    // ==========================================
+    // プロシージャルパラメータの読み込み
     if (j.contains("ProceduralType")) editProceduralType_ = j["ProceduralType"];
     if (previewEffect_) {
         if (j.contains("SlashAngle")) previewEffect_->editSlashAngle_ = j["SlashAngle"];
@@ -927,7 +921,7 @@ void MeshEffectEditor::LoadFromJson() {
         }
     }
 
-    // ★読み込み完了後、新しい設定値でエフェクトを最初から再生し直す
+    // 読み込み完了後にプレビューを再起動
     forcePlayRequest_ = true;
     SyncTextureIndices();
 

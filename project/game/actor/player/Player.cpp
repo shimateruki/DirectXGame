@@ -114,7 +114,7 @@ void Player::Update(float deltaTime)
                             // 【案A：エイムフィードバック】
                             // 敵をロックオンしている時はマーカーを強調する（赤色に変える）
                             if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
-                                hookMarker_->SetColor({ 1.0f, 0.2f, 0.2f, 1.0f }); // ★赤色に変更
+                                hookMarker_->SetColor({ 1.0f, 0.2f, 0.2f, 1.0f }); // 赤色に変更
                                 static float pulseTimer = 0.0f;
                                 pulseTimer += deltaTime;
                                 float pulse = 1.2f + std::sin(pulseTimer * 15.0f) * 0.3f;
@@ -224,7 +224,7 @@ void Player::Update(float deltaTime)
             if (camera) {
                 Vector3 camRot = camera->GetRotation();
                 throwDir.x = std::sin(camRot.y) * std::cos(camRot.x);
-                // ★少し上向き（+0.3f）に補正して、綺麗な放物線を描かせる！
+                // 放物線を綺麗にするため、少し上向きに補正
                 throwDir.y = -std::sin(camRot.x) + 0.3f;
                 throwDir.z = std::cos(camRot.y) * std::cos(camRot.x);
 
@@ -265,7 +265,7 @@ void Player::Update(float deltaTime)
             }
         }
 
-        // ★ 手放す！
+        // 手放す
         carriedEnemy_ = nullptr;
         DebugConsole::GetInstance()->AddLog("Throw Enemy!");
     }
@@ -383,7 +383,7 @@ bool Player::OnCollision(Object3d* other)
     // =======================================================
     if (attribute & (kEnemy | kEnemyAttack))
     {
-        // ★ 突進（タックル）判定
+        // 突進（タックル）判定
         if ((attribute & kEnemy) && mover_->IsDashing())
         {
             // 敵に大ダメージ
@@ -403,7 +403,7 @@ bool Player::OnCollision(Object3d* other)
             return true; // 突進中はダメージを受けず、相手を倒す
         }
 
-        // ★ 踏みつけ判定: 敵の本体(kEnemy)かつ、上方向から衝突したか
+        // 踏みつけ判定: 敵本体(kEnemy)かつ上方からの衝突かを確認
         // 判定を安定させるため、法線のしきい値を0.5(60度)に広げ、速度条件も緩和します
         bool isAbove = GetWorldPosition().y > other->GetWorldPosition().y;
         if ((attribute & kEnemy) && info.normal.y > 0.5f && isAbove)
@@ -432,14 +432,14 @@ bool Player::OnCollision(Object3d* other)
             DamageEvent dmgEvent;
             dmgEvent.target = this;
             dmgEvent.attacker = other;
-            dmgEvent.damageAmount = 1.0f; // ★ 1ダメージ
+            dmgEvent.damageAmount = 1.0f; // 1ダメージを与える
             EventManager::GetInstance()->Dispatch(dmgEvent);
 
             // 無敵時間をセット
             damageCooldownTimer_ = 1.0f;
             SetDamageInvincible(true);
 
-            // ★ ノックバック状態へ移行 (衝突法線を利用)
+            // ノックバック状態へ移行 (衝突法線を利用)
             ChangeState(std::make_unique<PlayerStateDamage>(info.normal));
         }
     }
@@ -521,10 +521,10 @@ void Player::UpdateColor() {
     Vector4 targetColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
 
     if (isDamageInvincible_) {
-        targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ★ ダメージ中は最優先で「赤」！
+        targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ダメージ中は赤色を優先
     }
     else if (isDashInvincible_) {
-        targetColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // ★ 回避中は「青」！
+        targetColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // 回避中は青色を設定
     }
 
     // 本体と子パーツの色を一括変更

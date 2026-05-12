@@ -34,9 +34,6 @@ void EngineManualWindow::Draw() {
             ICON_FA_STAR " VFXシーケンサー (必殺技)",
             ICON_FA_BULLHORN " シネマティック監督 (GhostDirector)",
             ICON_FA_IMAGES " 2D UIエディタ (Sprite)",
-            // ===============================================
-            // ★追加: 15番目の項目としてキーコンフィグを追加！
-            // ===============================================
             ICON_FA_GAMEPAD " キーコンフィグ (Input)"
         };
 
@@ -288,7 +285,7 @@ void EngineManualWindow::Draw() {
                     "    None = 0,\n"
                     "    Damage,\n"
                     "    Warp,\n"
-                    "    Heal, // ← ★追加！\n"
+                    "    Heal,\n"
                     "};"
                 );
                 ImGui::Spacing();
@@ -297,7 +294,7 @@ void EngineManualWindow::Draw() {
                     "switch (type) {\n"
                     "    // ...(WarpやDamageの処理)...\n"
                     "\n"
-                    "    case EventType::Heal: // ← ★追加！\n"
+                    "    case EventType::Heal:\n"
                     "        if (whoHit->param_.has_value()) {\n"
                     "            whoHit->param_->hp += 50.0f;\n"
                     "            DebugConsole::GetInstance()->AddLog(\"Healed!\");\n"
@@ -812,9 +809,7 @@ void EngineManualWindow::Draw() {
             }
             break;
 
-            // ==========================================================
-            // ★追加: 15番目の項目 (Key Config) のコンテンツ
-            // ==========================================================
+            // 15番目の項目 (Key Config) のコンテンツ
         case 15:
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), ICON_FA_GAMEPAD " [ キーコンフィグ (Key Configuration) ]");
             ImGui::Separator();

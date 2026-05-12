@@ -129,7 +129,7 @@ void VFXSequencerEditor::DrawImGui() {
             comboLabel = " プリセット名";
         }
         else if (events[i].type == VFXEventType::MovingParticle) {
-            // ★追加: 軌跡用UI
+            // 軌跡用UI
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), ICON_FA_FIRE " [ GPUパーティクル (軌跡) ]");
             currentListPtr = &particlePresetList_;
             comboLabel = " プリセット名";
@@ -174,7 +174,7 @@ void VFXSequencerEditor::DrawImGui() {
             ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール倍率", &events[i].scale.x, 0.05f);
         }
         else if (events[i].type == VFXEventType::MovingParticle) {
-            // ★追加: 軌跡用パラメータUI
+            // 軌跡用パラメータUI
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 始点オフセット", &events[i].offset.x, 0.1f);
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 中間点(カーブ)", &events[i].controlPoint.x, 0.1f);
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 終点オフセット", &events[i].endOffset.x, 0.1f);

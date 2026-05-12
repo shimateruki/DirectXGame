@@ -425,7 +425,7 @@ void GPUParticleEditor::Load(const std::string& presetName) {
         if (j.contains("shapeType")) config_.shapeType = j["shapeType"];
         if (j.contains("shapeRadius")) config_.shapeRadius = j["shapeRadius"];
         if (j.contains("shapeAngle")) config_.shapeAngle = j["shapeAngle"];
-        // ★ 追加したパラメータの読み込み
+        // パラメータの読み込み反映
         if (j.contains("blendModeIndex")) config_.blendModeIndex = j["blendModeIndex"];
         if (j.contains("isLooping")) config_.isLooping = j["isLooping"];
         if (j.contains("emitInterval")) config_.emitInterval = j["emitInterval"];

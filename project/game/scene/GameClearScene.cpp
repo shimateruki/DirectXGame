@@ -51,7 +51,7 @@ void GameClearScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
-    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+    // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
     // ライトエディタの設定
@@ -66,7 +66,7 @@ void GameClearScene::Initialize() {
     // 弾マネージャの初期化
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-    // ★追加: GPUパーティクルの初期化
+    // GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
@@ -144,7 +144,7 @@ void GameClearScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // ★修正: フォグ(7)も不透明パスから除外
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 
@@ -209,7 +209,7 @@ void GameClearScene::DrawUI() {
     }
 }
 
-// ★追加: シャドウマップ描画の実装
+// シャドウマップ描画の実装
 void GameClearScene::DrawShadow() {
     if (objectManager_) {
         objectManager_->DrawShadow();

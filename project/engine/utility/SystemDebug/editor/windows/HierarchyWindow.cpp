@@ -199,7 +199,7 @@ void HierarchyWindow::Draw() {
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common); newObj->SetModel(modelName); newObj->SetClassName("Model"); newObj->SetName("Preview_" + std::string(modelName));
                     newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
-                    editor_->SetPreviewObject(std::move(newObj)); // ★ セッター経由で渡す！
+                    editor_->SetPreviewObject(std::move(newObj));
                 }
             }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
@@ -214,7 +214,7 @@ void HierarchyWindow::Draw() {
                         auto newObj = std::make_unique<Object3d>();
                         newObj->Initialize(common); newObj->ImportFromJson(data); newObj->SetModel(modelName); newObj->SetName("Preview_" + std::string(presetName));
                         newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
-                        editor_->SetPreviewObject(std::move(newObj)); // ★ セッター経由で渡す！
+                        editor_->SetPreviewObject(std::move(newObj));
                     }
                 }
             }

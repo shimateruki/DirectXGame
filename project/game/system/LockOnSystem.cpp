@@ -37,7 +37,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
                 isLockingOn_ = false; // 見つからなかったら解除
             }
             else {
-                lostSightTimer_ = 0.0f; // ★ 新規ロックオン時はタイマーをリセット
+                lostSightTimer_ = 0.0f; // ロックオン開始時にタイマーを初期化
             }
         }
 
@@ -47,7 +47,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             camera->SyncRotationToCurrentView();
             camera->SetLockOnTarget(nullptr);
             camera->SetFollowMode(Camera::FollowMode::kAimable); // 通常モード
-            lostSightTimer_ = 0.0f; // ★ 手動解除時も念のためリセット
+            lostSightTimer_ = 0.0f; // 解除時もタイマーを初期化
         }
 
     }
@@ -62,8 +62,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             return;
         }
 
-        // ========================================================
-        // ★ 壁による視線切れチェック (モンハン・ダクソ方式)
+        // 障害物による視認不可のチェック
         // ========================================================
         Vector3 playerPos = player->GetWorldPosition();
         Vector3 enemyPos = lockOnTarget_->GetWorldPosition();
@@ -119,8 +118,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     Vector3 playerPos = player->GetWorldPosition();
     Vector3 cameraEye = camera->GetEye();
 
-    // ========================================================
-    // ★ 修正1: Y軸を無視せず、カメラの「本当の3Dの向き」を計算！
+    // カメラの奥行きを含めた3D前方ベクトルを算出
     // ========================================================
     Vector3 cameraForward = camera->GetTargetPoint() - cameraEye;
     float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.y * cameraForward.y + cameraForward.z * cameraForward.z);
@@ -168,9 +166,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
 
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
 
-        // ========================================================
-        // ★ 修正2: 「プレイヤーから」ではなく、「カメラから」敵への方向を計算！
-        // これにより『画面の中に敵が映っているか』を正確に判定できます。
+        // カメラ座標を起点としたターゲットへの方向を算出
         // ========================================================
         Vector3 toEnemyFromCam = enemyPos - cameraEye;
         float teCamLen = std::sqrt(toEnemyFromCam.x * toEnemyFromCam.x + toEnemyFromCam.y * toEnemyFromCam.y + toEnemyFromCam.z * toEnemyFromCam.z);
@@ -183,8 +179,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         // カメラの向きと、敵への方向の3D内積（画面に入っているかチェック）
         float dot = math.Dot(cameraForward, toEnemyFromCam);
 
-        // ========================================================
-        // ★ 修正3: カメラの視野内(dot > -0.2f)にいて、一番近い敵を探す！
+        // 視野内（前方180度弱）かつ最短距離の対象を選別
         // ========================================================
         if (dot > -0.2f && distance < minDistance) {
 

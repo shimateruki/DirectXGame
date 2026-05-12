@@ -124,7 +124,7 @@ void GamePlayScene::Initialize() {
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
-	// ★課題用アニメーションモデルの生成
+	// 課題用アニメーションモデルの生成
 	animatedCube_ = std::make_unique<Object3d>();
 	animatedCube_->Initialize(object3dCommon_.get());
 	animatedCube_->SetModel("walk"); 
@@ -269,14 +269,14 @@ void GamePlayScene::Update(float deltaTime) {
 			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
 
 #ifdef USE_IMGUI
-			// ★ デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」のみ回転
+			// デバッグ(Develop)環境: UI操作の誤爆を防ぐため「右クリック中」のみ回転
 			if (inputManager_->IsMouseButtonPressed(1)) {
 				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
 					camera->AddRotation(mouseDelta);
 				}
 			}
 #else
-			// ★ Release環境限定: 右クリック不要！マウスを動かすだけで回転する
+			// Release環境限定: 右クリック不要！マウスを動かすだけで回転する
 			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
 				camera->AddRotation(mouseDelta);
 			}
@@ -298,7 +298,7 @@ void GamePlayScene::Update(float deltaTime) {
 	UpdateUI();
 	if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
 		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
-		// ★課題: 星型ヒット(8個) + 斬撃(3個) を同時発動
+		// 星型ヒット(8個) + 斬撃(3個) を同時発動
 		particleSystem_->SpawnStarHitEffect(effectPos);
 		particleSystem_->SpawnSlashEffect(effectPos);
 	}
@@ -311,12 +311,12 @@ void GamePlayScene::Update(float deltaTime) {
 		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
 		particleSystem_->SpawnSlashEffect(effectPos);
 	}
-	// ★課題: Rキー = 手動コード(MeshEffect)によるリング波紋エフェクト
+	// Rキー = 手動コード(MeshEffect)によるリング波紋エフェクト
 	if (inputManager_->IsKeyTriggered(DIK_R)) {
 		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
 		MeshEffectManager::GetInstance()->SpawnRingWaveEffect(effectPos);
 	}
-	// ★課題: Tキー = Cylinder + 横UVスクロール + 色アニメ = ポータルエフェクト
+	// Tキー = Cylinder + 横UVスクロール + 色アニメ = ポータルエフェクト
 	if (inputManager_->IsKeyTriggered(DIK_T)) {
 		Vector3 effectPos = { 0.0f, 1.5f, 0.0f };
 		MeshEffectManager::GetInstance()->SpawnPortalEffect(effectPos, 5.0f);

@@ -1,4 +1,4 @@
-﻿#include "BossCore.h"
+#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h"
@@ -8,8 +8,7 @@
 #include <ctime>
 #include <cstdlib>
 
-// =================================================================
-// ★ 新規：待機アニメーション用のタイマーと軌道計算関数
+// 待機アニメーション用のタイマーと軌道計算関数
 // =================================================================
 namespace {
     float s_globalIdleTimer = 0.0f; // 待機アニメーション用のタイマー
@@ -24,10 +23,8 @@ namespace {
     OrbitData GetIdleOrbit(size_t index) {
         OrbitData data;
 
-        // ==========================================
-        // ★ 新規：スケールをランダム生成（初回のみ計算して記憶させる！）
-        // static を付けることで、関数を抜けても記憶が保持されます。
-        // ==========================================
+        // スケールをランダム生成（初回のみ計算して記憶）
+        // static を付けることで、インスタンス間で共有される固定値として保持される
         static std::vector<Vector3> randomScales;
         if (randomScales.empty()) {
             for (int i = 0; i < 6; ++i) {
@@ -74,9 +71,7 @@ namespace {
 
         data.rot = { rotX, rotY, 0.0f }; // コアを睨みつける！
 
-        // ==========================================
-        // ★ 修正：記憶したランダムな大きさを適用する！
-        // ==========================================
+        // 記憶したランダムな大きさを適用
         data.scale = randomScales[index % 6];
 
         return data;
@@ -114,10 +109,8 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     // 親クラス(BaseEnemy)の初期化
     BaseEnemy::Initialize(common, modelName);
 
-    // ==========================================
-    // ★ 新規：乱数の「種（シード）」を現在時刻で設定！
-    // これを呼ぶことで、毎回違う行動パターンになります！
-    // ==========================================
+    // 乱数のシードを現在時刻で設定
+    // これを呼ぶことで、毎回違う行動パターンを生成する
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     // 演出・攻撃パターン管理用ディレクターの生成
@@ -143,10 +136,8 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
-    // ==========================================
-    // ★ 魔法の1行：ボスの全体スピード倍率！
-    // 以前の「2回Update」と同じ速度を再現するため、ボスの時間だけを2倍速で進める！
-    // ==========================================
+    // ボスの全体スピード倍率
+    // 以前の仕様に合わせ、ボスの時間経過を1.5倍速で進める
     deltaTime *= 1.5f;
 
     // ==========================================
@@ -165,7 +156,7 @@ void BossCore::Update(float deltaTime) {
         }
     }
 
-    // ★ 魔法の処理：時間停止中は、このフレームの経過時間を「0秒」に偽装する！
+    // 時間停止中は、このフレームの経過時間を 0 に設定する
     if (s_isTimeStopped_) {
         deltaTime = 0.0f;
     }
@@ -213,14 +204,14 @@ void BossCore::Update(float deltaTime) {
 
     // ゲーム再生中は待機タイマーを常に進める
     if (SceneManager::GetInstance()->IsPlaying()) {
-        s_globalIdleTimer += deltaTime; // ★ deltaTimeが0ならタイマーも止まる！
+        s_globalIdleTimer += deltaTime; // deltaTimeが0ならタイマーも停止する
     }
 
     // 飛んでいるブロックの更新
     UpdateFlyingBlocks(deltaTime); // ★ 弾も空中でピタッと止まる！
 
     // アニメーションシーケンスを優先実行
-    UpdateAnimationSequence(deltaTime); // ★ アニメーションも現在位置で完全フリーズ！
+    UpdateAnimationSequence(deltaTime); // アニメーションも現在位置で停止する
 
     if (animPhase_ != 0 && animPhase_ != 4) {
         return;
@@ -286,8 +277,7 @@ void BossCore::Update(float deltaTime) {
 void BossCore::ChangeState(State nextState) {
     state_ = nextState;
 
-    // =======================================================
-    // ★ 修正：コア本体とブロックの属性設定！
+    // コア本体とブロックの属性設定
     // =======================================================
     uint32_t coreAttribute;
     if (state_ == State::Attack) {
@@ -384,8 +374,7 @@ void BossCore::ChangeState(State nextState) {
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
-    // ==========================================
-    // ★ 修正：一定時間待機したら、攻撃ステートへ自動で移行！
+    // 一定時間待機後、攻撃ステートへ自動移行
     // ==========================================
     animTimer_ += deltaTime;
 
@@ -396,8 +385,7 @@ void BossCore::UpdateIdle(float deltaTime) {
 }
 
 void BossCore::UpdateAttack(float deltaTime) {
-    // ==========================================
-    // ★ 修正：アニメーションの終了を監視する！
+    // アニメーションの終了を監視
     // UpdateAnimationSequence() の中で攻撃が完了すると attackMode_ が 0 に戻るのを利用。
     // ==========================================
 
@@ -418,8 +406,7 @@ void BossCore::UpdateWeak(float deltaTime) {
     // --- 演出2：全体の色を暗くする ---
     SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
 
-    // ==========================================
-    // ★ 追加：ブロックをバラバラに弾け飛ばすアニメーション！
+    // ブロックを飛散させるアニメーション
     // ==========================================
     float scatterDuration = 0.8f; // 0.8秒かけて弾け飛ぶ
     float t = std::min(animTimer_ / scatterDuration, 1.0f);
@@ -474,7 +461,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
         }
 
-        // ★ 自動ループ化に伴い、キー入力は全削除！
+        // 自動ループ化に伴い、キー入力による遷移を廃止
         // 攻撃のトリガーは ChangeState(State::Attack) が自動で行います。
         return;
     }
@@ -484,7 +471,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     // ======================================
     if (attackMode_ == 1) {
 
-        // ★ 自動化の追加：Phase 1 に入った「最初の1フレーム」だけ準備を行う！
+        // Phase 1 開始時の初期化処理
         if (animPhase_ == 1 && animTimer_ == 0.0f) {
             blockStartPos_.clear();
             blockTargetPos_.clear();
@@ -866,7 +853,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             float moveT = std::min(animTimer_ / moveDuration, 1.0f);
 
             if (warningArea_) {
-                // ★ 修正3：薄い透明度(0.3f)を維持したまま、黄色から赤へ
+                // 予兆エリアの色を黄色から赤へ遷移
                 float currentGreen = Math::Lerp(1.0f, 0.0f, moveT);
                 warningArea_->SetColor({ 1.0f, currentGreen, 0.0f, 0.9f });
             }
@@ -911,7 +898,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             float t = std::min(animTimer_ / smashDuration, 1.0f);
 
             if (warningArea_) {
-                // ★ 修正4：振り下ろし中も薄い赤(0.3f)で表示し続ける
+                // 振り下ろし中も赤色を表示し続ける
                 warningArea_->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
             }
 
@@ -1214,9 +1201,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             SetTranslate(pos);
 
             if (target_) {
-                // ==========================================
-                // ★ 修正：プレイヤーを向く角度に「std::numbers::pi_v<float>」(180度)を足す！
-                // ==========================================
+                // プレイヤーを向くように回転。背中合わせにならないよう調整
                 Vector3 toPlayer = target_->GetWorldPosition() - GetWorldPosition();
                 float angleY = std::atan2(toPlayer.x, toPlayer.z) + std::numbers::pi_v<float>;
 
@@ -1235,13 +1220,12 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 blockStartPos_.clear();
                 blockTargetPos_.clear();
                 blockStartScale_.clear();
-                blockTargetScale_.clear(); // ★追加
+                blockTargetScale_.clear(); // 初期化
 
                 animStartRot_ = GetRotation();
 
+                // Block4とBlock5の Z軸回転 を 90度（pi/2）に設定
                 // ==========================================
-                 // ★ 修正：Block4とBlock5の Z軸回転 を 90度（pi/2）にする！
-                 // ==========================================
                 float rotZ90 = std::numbers::pi_v<float> / 2.0f; // 90度のラジアン値
 
                 struct BlockSetting { Vector3 translate; Vector3 scale; Vector3 rotation; };
@@ -1249,19 +1233,19 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     { { -5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block1(足)
                     { {  0.0f,  21.5f,  6.0f }, { 10.0f, 10.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block2(頭)
                     { {  0.0f,  -3.5f,  6.0f }, {  8.0f, 15.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block3(胴体)
-                    { { 11.0f,   0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block4(右腕) ★Z回転
-                    { { -11.0f,  0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block5(左腕) ★Z回転
+                    { { 11.0f,   0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block4(右腕)
+                    { { -11.0f,  0.0f,  6.0f }, {  7.0f,  3.0f,  5.0f }, { 0.0f, 0.0f, rotZ90 } }, // Block5(左腕)
                     { {  5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } }    // Block6(足)
                 };
 
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                     armorBlocks_[i]->SetParent(this);
                     blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
-                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // ★追加
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // 開始時スケールを記憶
 
                     if (i < settings.size()) {
                         blockTargetPos_.push_back(settings[i].translate);
-                        blockTargetScale_.push_back(settings[i].scale); // ★追加
+                        blockTargetScale_.push_back(settings[i].scale); // 目標スケールを記憶
                         armorBlocks_[i]->SetRotation(settings[i].rotation);
                         armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
                     }
@@ -1285,8 +1269,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             float t = std::min(animTimer_ / duration, 1.0f);
             float easeT = Easing::OutExpo(t);
 
-            // ==========================================
-            // ★ 修正：コアはそのままに、ブロック全体を 0.2倍 に圧縮！
+            // コアはそのままに、ブロック全体を 0.2倍 に圧縮
             // ==========================================
             float currentOverallScale = Math::Lerp(1.0f, 0.2f, easeT);
 
@@ -1360,7 +1343,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 currentOverallScale = 0.8f; // ちょい縮む
             }
             else {
-                // ★ animTimer_ が 0.75秒を超えたら、duration(2.5秒)が終わるまでずっと1.0倍で静止！
+                // 指定時間経過後、攻撃開始までスケールを固定して静止
                 currentOverallScale = 1.0f;
             }
 
@@ -1422,8 +1405,8 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
             // ==========================================
             // 右腕と左腕で「回転する方向」を逆にして、外側を通す！
             // ==========================================
-            float startArmAngle = std::numbers::pi_v<float> / 2.0f;  // 90度（気を付け）
-            float armOffset45 = std::numbers::pi_v<float> / 4.0f;   // ★追加：45度のラジアン
+            float startArmAngle = std::numbers::pi_v<float> / 2.0f;  // 90度
+            float armOffset45 = std::numbers::pi_v<float> / 4.0f;   // 45度のラジアン
 
             // ① 右腕（Block4）は 270度(真上)の手前、225度に向かって「反時計回り（外回り）」
             // 3pi/2 (270度) - pi/4 (45度) = 225度
@@ -1482,10 +1465,10 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
         else if (animPhase_ == 55) {
             if (animTimer_ == 0.0f) {
                 blockStartPos_.clear();
-                blockStartScale_.clear(); // ★追加
+                blockStartScale_.clear();
                 for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                     blockStartPos_.push_back(armorBlocks_[i]->GetTranslate());
-                    blockStartScale_.push_back(armorBlocks_[i]->GetScale()); // ★追加
+                    blockStartScale_.push_back(armorBlocks_[i]->GetScale());
                 }
                 animStartRot_ = GetRotation();
             }
@@ -1565,8 +1548,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
     // ======================================
     else if (attackMode_ == 6) {
 
-        // ==========================================
-        // ★ 回転スピードの調整用変数
+        // 回転スピードの調整用変数
         // ==========================================
         float maxSpinSpeed = 8.0f;  // タメ・変形中の大回転トップスピード！
         float fireSpinSpeed = 0.3f; // レーザー発射中の少し落ち着いた回転スピード
@@ -1711,13 +1693,11 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     for (Object3d* child : block->GetChildren()) {
                         if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
 
-                            // ==========================================
-                            // ★ 修正：Y軸を長さ(80.0f)にして、XZを極細(0.1f)にする！
+                            // Y軸を長さ(80.0f)に、XZを極細(0.1f)に設定
                             // ==========================================
                             child->SetScale({ 0.1f, 80.0f, 0.1f });
 
-                            // ==========================================
-                            // ★ 修正：円柱をX軸に90度（pi/2）倒して、正面に向ける！
+                            // 円柱をX軸に90度（pi/2）倒して、正面に向ける
                             // ==========================================
                             float rotX90 = std::numbers::pi_v<float> / 2.0f;
                             child->SetRotation({ rotX90, 0.0f, 0.0f });
@@ -1732,7 +1712,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
 
             animTimer_ += deltaTime;
 
-            // ★ 修正：実時間で 0.5秒間ストップ (0.5 * 1.5 = 0.75f) に直しました！
+            // 実時間で 0.5秒間停止 (0.5 * 1.5 = 0.75f)
             float stopDuration = 0.75f;
 
             if (animTimer_ >= stopDuration) {
@@ -1753,8 +1733,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                 SetRotation(rot);
                 GetTransform()->isQuaternionMaster = false;
 
-                // ==========================================
-                // ★ 追加：ビームを一気に極太にして、当たり判定を付ける！
+                // ビームの太さを拡大し、当たり判定を付与
                 // ==========================================
                 float expandTime = 0.2f; // 0.2秒で極太になる
                 float t = std::min(animTimer_ / expandTime, 1.0f);
@@ -1767,15 +1746,14 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     for (Object3d* child : block->GetChildren()) {
                         if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
 
-                            // ==========================================
-                            // ★ 修正：長さのY軸は80.0fに固定し、XZ（太さ）を極太にする！
+                            // 長さ(Y軸)は80.0fに固定し、太さ(XZ)を拡大
                             // ==========================================
                             child->SetScale({ beamThickness, 80.0f, beamThickness });
 
                             // ※回転（Rotation）はPhase 63で倒したままなので、ここでは設定しなくてOKです！
 
                             child->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 濃い赤
-                            child->SetCollisionAttribute(kEnemyAttack);  // ★触れたらダメージ！
+                            child->SetCollisionAttribute(kEnemyAttack);  // 攻撃属性を付与
                         }
                     }
                 }
@@ -1786,8 +1764,7 @@ void BossCore::UpdateAnimationSequence(float deltaTime) {
                     animTimer_ = 0.0f;
                     animStartRot_ = GetRotation();
 
-                    // ==========================================
-                    // ★ 追加：ビームを消して、当たり判定も消す
+                    // ビームを非表示にし、当たり判定を削除
                     // ==========================================
                     for (Object3d* block : armorBlocks_) {
                         if (!block) continue;
@@ -1875,7 +1852,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
                 if (target_) {
                     Vector3 targetPos = target_->GetWorldPosition();
 
-                    // ★ タイクラーさん仕様：プレイヤーの「足元（地面）」を直接狙う！
+                    // プレイヤーの足元（地面）を狙う
                     targetPos.y = 0.0f;
 
                     Vector3 toPlayer = math.Normalize(targetPos - headPos);
@@ -1912,7 +1889,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
         else if (fb.mode == 0) {
             // --- 攻撃中（直線的に足元へ突撃！） ---
 
-            // ★ タイクラーさん仕様：重力の計算はしない！（直線レーザー）
+            // 直線的な軌道で移動（重力計算なし）
 
             Vector3 pos = fb.block->GetTranslate();
             pos.x += fb.velocity.x * deltaTime;
@@ -1999,8 +1976,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
 
             int idx = it->originalIndex;
 
-            // ==========================================
-            // ★ 修正：戻ってきた弾も、固定位置ではなく待機軌道に乗せる！
+            // 帰還したブロックを待機軌道に復帰
             // ==========================================
             OrbitData orbit = GetIdleOrbit(idx);
             it->block->SetTranslate(orbit.pos);
@@ -2036,7 +2012,7 @@ void BossCore::TakeBarrierDamage(float damage) {
     }
 
     if (barrierHp_ <= 0.0f) {
-        DebugConsole::GetInstance()->AddLog("★☆ Barrier BROKEN! ☆★");
+        DebugConsole::GetInstance()->AddLog("Barrier BROKEN!");
         barrierHp_ = maxBarrierHp_;
 
         animPhase_ = 0;

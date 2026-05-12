@@ -8,7 +8,7 @@ private:
     EditorManager(const EditorManager&) = delete;
     EditorManager& operator=(const EditorManager&) = delete;
 
-    // ★ 現在選択されているオブジェクトのポインタ
+    // 現在選択されているオブジェクトのポインタ
     IEditable* selectedObject_ = nullptr;
 
 public:
@@ -23,6 +23,6 @@ public:
     IEditable* GetSelectedObject() const { return selectedObject_; }
     void ClearSelection() { selectedObject_ = nullptr; }
 
-    // ★ Inspectorウィンドウを描画する関数
+    // Inspectorウィンドウを描画する関数
     void DrawInspector();
 };

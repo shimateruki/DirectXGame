@@ -28,9 +28,9 @@ void PresetManager::Initialize() {
         needsMigration = true;
     }
 
-    // 3. お引越しが必要な場合のみ、統合セーブしてから古い家を壊す！
+    // 3. 統合セーブを実行し、移行元の旧ファイルを削除
     if (needsMigration) {
-        SaveAll(); // ★ここで全員を presets.json に書き込む！
+        SaveAll(); // 全プリセットを統合ファイル presets.json に書き出す
 
         std::filesystem::remove("Resources/json/preset/EnemyPresets.json");
         std::filesystem::remove("Resources/json/preset/GimmickPresets.json");

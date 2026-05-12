@@ -182,14 +182,14 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
     commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
 
-    // ★球体専用のバッファをセットして描画
+    // 球体専用のバッファをセットして描画
     commandList->IASetVertexBuffers(0, 1, &sphereVertexBufferView_);
     commandList->IASetIndexBuffer(&sphereIndexBufferView_);
 
     // 16分割 * 3平面 * 2(線分) = 96 インデックス
     commandList->DrawIndexedInstanced(216, 1, 0, 0, 0);
 
-    // ★他の描画（DrawWireCube）に影響が出ないようにキューブ用に戻しておく
+    // デフォルトの描画（キューブ）用バッファに復帰
     commandList->IASetVertexBuffers(0, 1, &cubeVertexBufferView_);
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 }
@@ -212,7 +212,7 @@ void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, c
     commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
 
-    // ★ 円柱の描画ロジックに修正
+    // 円柱専用のバッファをセットして描画
     commandList->IASetVertexBuffers(0, 1, &cylinderVertexBufferView_);
     commandList->IASetIndexBuffer(&cylinderIndexBufferView_);
 

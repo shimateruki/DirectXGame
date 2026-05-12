@@ -243,7 +243,7 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.previewObject->Initialize(objCommon);
             data.previewObject->SetIsUIPreview(true);
 
-            // ★ ここで LoadModel しつつ、Model実体のポインタを受け取る！
+            // モデルをロードしてポインタを取得
             Model* model = ModelManager::GetInstance()->LoadModel(modelName);
             data.previewObject->SetModel(modelName);
 
@@ -258,7 +258,7 @@ void ProjectWindow::CapturePendingThumbnails() {
                 // 最も長い辺を見つける
                 float maxDim = (std::max)({ modelSize.x, modelSize.y, modelSize.z });
                 if (maxDim > 0.001f) {
-                    // ★ ジャストサイズと中心点を計算
+                    // モデルのサイズと中心点に基づき、フィットするスケールとオフセットを計算
                     autoScale = 8.5f / maxDim;
                     autoTranslate.x = -modelCenter.x * autoScale;
                     autoTranslate.y = -modelCenter.y * autoScale + 1.1f;
@@ -270,7 +270,7 @@ void ProjectWindow::CapturePendingThumbnails() {
             data.previewObject->GetTransform()->scale = { autoScale, autoScale, autoScale };
             data.previewObject->GetTransform()->translate = autoTranslate;
 
-            // ★ スタジオカメラが少し見下ろしているため、モデルを上向きにして正面からのフレーミングにする
+            // スタジオカメラの角度に合わせ、モデルを上向きにして正面を向くように調整
             data.previewObject->GetTransform()->rotate.x = -0.2f;
         }
 

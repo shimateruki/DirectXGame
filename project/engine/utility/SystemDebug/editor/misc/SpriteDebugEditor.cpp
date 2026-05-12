@@ -132,9 +132,9 @@ SKIP_SHORTCUTS:
 
 	if (!isHovered && !isMovingX_ && !isMovingY_) return;
 
-	// --- 1. ギズモ操作 (簡易移動) ---
+	// ギズモ操作 (簡易移動)
 	if (selectedSprite_) {
-		// ★ 変更: ロックされていない時だけドラッグを開始できる
+		// ロックされていない時だけドラッグを開始可能
 		if (!selectedSprite_->IsLocked()) {
 			// マウスが押された瞬間
 			if (inputManager_->IsMouseButtonTriggered(0) && IsMouseOver(selectedSprite_, localMousePos)) {
@@ -174,7 +174,7 @@ SKIP_SHORTCUTS:
 		// 重なり順を考慮して逆順（手前）からチェック
 		for (auto it = sprites.rbegin(); it != sprites.rend(); ++it) {
 			Sprite* sprite = it->get();
-			// ★ 変更: ロックされていないスプライトのみ選択可能にする
+			// ロックされていないスプライトのみ選択可能にする
 			if (sprite && !sprite->IsLocked() && IsMouseOver(sprite, localMousePos)) {
 				selectedSprite_ = sprite;
 				hit = true;
@@ -685,7 +685,7 @@ void SpriteDebugEditor::Draw() {
 		gizmoArrowY_->SetColor({ 0.0f, 1.0f, 0.0f, 0.8f });
 		gizmoArrowY_->SetAnchorPoint({ 0.5f, 0.0f });
 
-		// ★ 「今使った Common」を記憶する
+		// 初期化に使用した Common を記憶
 		initializedSpriteCommon_ = currentSpriteCommon;
 	}
 

@@ -95,7 +95,7 @@ void LightEditor::Update() {
 
     for (size_t i = 0; i < spotLights.size(); ++i) {
         if (spotLightGizmos_[i]) {
-            // ★修正: .data 経由でアクセス
+            // スポットライト位置をギズモに反映
             spotLightGizmos_[i]->SetTranslate(spotLights[i].data.position);
 
             // 向きに合わせて回転させると完璧だが、今回は省略

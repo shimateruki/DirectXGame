@@ -42,7 +42,7 @@ void InspectorWindow::Draw() {
         ImGui::TextDisabled(ICON_FA_EXCLAMATION_CIRCLE " オブジェクトが選択されていません");
         ImGui::TextDisabled("Hierarchyから選択してください");
         ImGui::Separator();
-        // ★ ゲッターを使って安全にポインタアクセス
+        // ゲッター経由での描画フラグ制御
         ImGui::Checkbox(ICON_FA_EYE " コライダー枠を描画", editor_->GetDrawCollidersPtr());
         ImGui::Checkbox(ICON_FA_FINGERPRINT " イベントIDを表示", editor_->GetDrawEventIDsPtr());
     }
@@ -129,7 +129,7 @@ void InspectorWindow::Draw() {
                     DebugConsole::GetInstance()->AddLog("Switched model to: " + std::string(modelName));
                 }
                 
-                // ★ プリセットのドロップにも対応！
+                // プリセットデータのドロップ受付
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PRESET_ASSET")) {
                     const char* presetName = (const char*)payload->Data;
                     PresetManager::GetInstance()->ApplyPresetToObject(presetName, selectedObject);

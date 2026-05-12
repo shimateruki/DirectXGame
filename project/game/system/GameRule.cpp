@@ -81,7 +81,7 @@ void GameRule::Initialize(BaseScene* scene) {
                 // 演出を開始して消す (Object3d側で上昇回転する)
                 objectHit->StartCollectionAnimation();
 
-                // ★GPUパーティクルで取得演出を出す
+                // GPUパーティクルで取得演出を発生
                 GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
 
                 DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIdx) + " Collected!");
@@ -123,8 +123,7 @@ void GameRule::Initialize(BaseScene* scene) {
 
         });
 
-    // ========================================================
-    // ★戦闘のダメージイベントを受信！
+    // 戦闘のダメージイベントを受信
     // ========================================================
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target) return;
@@ -143,8 +142,7 @@ void GameRule::Initialize(BaseScene* scene) {
         }
     });
 
-    // ========================================================
-    // ★ プレイヤー死亡時の処理
+    // プレイヤー死亡時の処理
     // ========================================================
     EventManager::GetInstance()->Subscribe([this](const PlayerDeathEvent& event) {
         GameDataManager::GetInstance()->SubtractLife();

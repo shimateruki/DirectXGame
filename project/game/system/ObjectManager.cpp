@@ -91,7 +91,7 @@ void ObjectManager::DrawShadow() {
 	if (!camera) return;
 	const Frustum& frustum = camera->GetFrustum();
 
-	// ★ 軽量化: 共通の状態設定はループの外で1回だけ行う
+	// 軽量化: 共通の状態設定はループの外で1回だけ行う
 	bool isFirst = true;
 
 	// 管理している全オブジェクトの影を描画する

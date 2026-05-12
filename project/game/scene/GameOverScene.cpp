@@ -52,7 +52,7 @@ void GameOverScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
-    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+    // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
@@ -65,7 +65,7 @@ void GameOverScene::Initialize() {
 
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-    // ★追加: GPUパーティクルの初期化
+    // GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
@@ -194,7 +194,7 @@ void GameOverScene::DrawUI() {
     }
 }
 
-// ★追加: シャドウマップ描画の実装
+// シャドウマップ描画の実装
 void GameOverScene::DrawShadow() {
     if (objectManager_) {
         objectManager_->DrawShadow();

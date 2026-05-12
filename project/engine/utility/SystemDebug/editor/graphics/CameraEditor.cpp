@@ -97,10 +97,10 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             // 操作中判定（環境による分岐）
             // =========================================================
 #ifdef USE_IMGUI
-            // ★ Debug/Develop環境：エディタ操作の誤爆を防ぐため、右クリック中のみ操作中とみなす
+            // Debug/Develop環境：エディタ操作の誤爆を防ぐため、右クリック中のみ操作中とみなす
             bool isControllingCamera = input->IsMouseButtonPressed(1) ||
 #else
-            // ★ Release環境：右クリック不要！マウスを動かしただけでも操作中とみなす
+            // Release環境：マウス移動および右クリックを操作として判定
             bool isControllingCamera = input->IsMouseButtonPressed(1) || isMouseMoving ||
 #endif
                 (std::abs(input->GetRightStick().x) > 0.1f) ||
@@ -195,9 +195,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     Vector3 moveVelocity = { 0, 0, 0 };
 
-    // ==========================================================
-    // ★ GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
-    // ==========================================================
+    // GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
     if (isGameViewHovered_ || input->IsMouseButtonPressed(1)) {
 
         // Shiftキーで加速
@@ -205,7 +203,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
             ? settings_.boostSpeed
             : settings_.moveSpeed;
 
-        // ★ W/S: カメラの「向いている方向」へ前進・後退
+        // W/S: カメラの視線方向へ前進・後退
         if (input->IsKeyPressed(DIK_W)) {
             moveVelocity.x += forward.x * speed;
             moveVelocity.y += forward.y * speed;
@@ -217,7 +215,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
             moveVelocity.z -= forward.z * speed;
         }
 
-        // ★ A/D: カメラの左右へ平行移動
+        // A/D: カメラの左右へ平行移動
         if (input->IsKeyPressed(DIK_D)) {
             moveVelocity.x += right.x * speed;
             moveVelocity.y += right.y * speed;
@@ -229,7 +227,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
             moveVelocity.z -= right.z * speed;
         }
 
-        // ★ Q/E: 空間の上下へ移動
+        // Q/E: 空間の上下へ移動
         if (input->IsKeyPressed(DIK_E)) {
             moveVelocity.y += speed; // Eで上昇
         }
@@ -237,7 +235,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
             moveVelocity.y -= speed; // Qで下降
         }
 
-        // ★ ホイール回転: ズーム移動
+        // ホイール回転: ズーム移動
         float wheelDelta = input->GetMouseWheelDelta();
         if (wheelDelta != 0.0f) {
             float wheelDir = (wheelDelta > 0.0f) ? 1.0f : -1.0f;
@@ -249,8 +247,8 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
         }
     }
 
-    // ★ 中クリック (ホイール押し込み) : パン(平行)移動
-    // これもGameViewホバー中か、すでに中クリックを押している時だけ許可
+    // 中クリック (ホイール押し込み) : パン(平行)移動
+    // GameViewホバー中、または中クリック押下中のみ許可
     if (isGameViewHovered_ || input->IsMouseButtonPressed(2)) {
         if (input->IsMouseButtonPressed(2)) { // 2 = Middle Click
             Vector2 mouseDelta = input->GetMouseMoveDelta();
@@ -403,7 +401,7 @@ void CameraEditor::DrawImGui() {
             ImGui::Spacing();
             if (ImGui::Button(ICON_FA_MAP_MARKER_ALT " 現在位置を「定点カメラ」の座標・角度にセット")) {
                 settings_.fixedPointPos = pos;
-                settings_.fixedPointAngle = camera->GetRotation(); // ★角度も記録する
+                settings_.fixedPointAngle = camera->GetRotation(); // 角度も記録
                 SaveSettings(); // セットしたら自動でセーブ
             }
         }
@@ -483,7 +481,7 @@ void CameraEditor::DrawImGui() {
 
             ImGui::Unindent();
 
-            // ★ エディタ上で動きを確認できる神機能！
+            // エディタ上で動作を確認可能
             ImGui::Spacing();
             if (ImGui::Button(ICON_FA_PLAY " テスト再生 (Test Play)")) {
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();

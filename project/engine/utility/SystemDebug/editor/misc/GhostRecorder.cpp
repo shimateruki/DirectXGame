@@ -123,7 +123,7 @@ void GhostRecorder::Update() {
 					basePosition_.y + frame.position.y,
 					basePosition_.z + frame.position.z
 					});
-				// ★修正: 角度の足し算をクォータニオン合成で行う！
+				// 角度の加算をクォータニオン合成で実行
 				target_->SetRotation(AddEuler(baseRotation_, frame.rotation));
 			}
 			else {
@@ -169,7 +169,7 @@ void GhostRecorder::Play(const std::string& fileName, bool loop, bool isRelative
 
 	if (target_) { target_->SetIsVisible(!isCinematic); }
 
-	// ★ 修正：相対再生フラグがONなら、再生開始時の座標を必ず基準(Base)として記憶する！
+	// 相対再生フラグが有効な場合、開始時のトランスフォームを基準として記憶
 	if (isRelative_) {
 		CaptureBasePose();
 	}
@@ -320,7 +320,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 		FindAnchor();
 		if (state_ == State::Playing || isScrubbing_ || isReadOnly) {
 			drawOffset = { basePosition_.x - genParams_.startPos.x, basePosition_.y - genParams_.startPos.y, basePosition_.z - genParams_.startPos.z };
-			// ★修正: プレビュー時の回転オフセットもクォータニオンで計算！
+			// プレビュー時の回転オフセットをクォータニオンで算出
 			drawRotOffset = SubEuler(baseRotation_, genParams_.startRot);
 		}
 		else {
@@ -333,7 +333,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 					anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 					anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 				};
-				// ★修正: アンカー時の回転オフセットもクォータニオン合成
+				// アンカー時の回転オフセットをクォータニオン合成
 				currentRot = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 			}
 
@@ -346,7 +346,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 			}
 			else {
 				drawOffset = { currentBase.x - genParams_.startPos.x, currentBase.y - genParams_.startPos.y, currentBase.z - genParams_.startPos.z };
-				// ★修正: クォータニオンでの差分計算
+				// クォータニオンによる差分計算
 				drawRotOffset = SubEuler(currentRot, genParams_.startRot);
 				s_cachedOffset = drawOffset;
 				s_cachedRotOffset = drawRotOffset;
@@ -355,12 +355,10 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 	}
 
 	auto applyOffset = [&](const Vector3& p) { return Vector3{ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z }; };
-	// ★修正: 回転の適用もクォータニオン合成！
+	// 回転の適用もクォータニオン合成で実行
 	auto applyRotOffset = [&](const Vector3& r) { return AddEuler(r, drawRotOffset); };
 
-	// ========================================================
-	// ★ Gizmo処理 (Rotate / Scale 修正版)
-	// ========================================================
+	// Gizmo処理 (Rotate / Scale 修正版)
 	bool isGizmoHovered = false;
 
 	if (!isReadOnly && selectedPinType_ != SelectedPinType::None) {
@@ -395,7 +393,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 
 			if (targetPos && targetRot && targetScale) {
 				Vector3 worldPos = { targetPos->x + drawOffset.x, targetPos->y + drawOffset.y, targetPos->z + drawOffset.z };
-				// ★修正
+				// ワールド回転を算出
 				Vector3 worldRot = AddEuler(*targetRot, drawRotOffset);
 				Vector3 worldScale = *targetScale;
 
@@ -432,7 +430,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 					float radZ = newRotDeg.z * (3.14159265f / 180.0f);
 					Vector3 newRotRad = { radX, radY, radZ };
 
-					// ★修正: クォータニオンによる安全な減算(Gizmo操作の逆適用)
+					// クォータニオンによる減算 (Gizmo操作の逆適用)
 					*targetRot = SubEuler(newRotRad, drawRotOffset);
 
 					*targetScale = newScale;
@@ -501,7 +499,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 		float t = (float)i / (float)arrowSteps;
 		float p = t * (allPos.size() - 1); int idx = (int)p; float lt = p - idx; if (idx >= (int)allPos.size() - 1) { idx = (int)allPos.size() - 2; lt = 1.0f; }
 		Vector3 pos = genParams_.useSpline ? GetSplinePoint(allPos, t, false) : Lerp(allPos[idx], allPos[idx + 1], lt);
-		// ★修正: プレビューの矢印向きもSlerpで滑らかに！
+		// プレビュー矢印の向きをSlerpで補間
 		Vector3 rot = SlerpEuler(allRot[idx], allRot[idx + 1], lt);
 
 		ImVec2 baseScr = WorldToScreen(LocalToWorld(pos));
@@ -612,10 +610,7 @@ void GhostRecorder::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
 				currentBase = { anchor_->GetTranslate().x + genParams_.anchorOffsetPos.x, anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y, anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z };
 			}
 
-			// =========================================================
-			// ★ 修正: 水平面(床)との交差ではなく、「直前の点と同じカメラからの距離」に配置する！
-			// =========================================================
-			// 1. 基準点（最後に打ったWaypoint、またはStart位置）のワールド座標を取得
+			// 基準点（最後に打ったWaypoint、またはStart位置）とのカメラ距離を維持して配置
 			Vector3 refPos = currentBase;
 			if (!genParams_.waypoints.empty()) {
 				refPos = { genParams_.waypoints.back().pos.x + drawOffset.x, genParams_.waypoints.back().pos.y + drawOffset.y, genParams_.waypoints.back().pos.z + drawOffset.z };
@@ -882,10 +877,8 @@ void GhostRecorder::DrawImGui() {
 			ImGui::SameLine();
 			ImGui::Checkbox(ICON_FA_PROJECT_DIAGRAM " 相対データ化", &genParams_.generateRelative);
 
-			// =========================================================================
-			// ★ 消失していた生成ロジックを完全復活！(クォータニオン対応版)
-			// =========================================================================
-			if (ImGui::Button(ICON_FA_MAGIC " ★ 生成実行 (Generate & AutoSave)", ImVec2(-1, 40))) {
+			// パス生成実行ロジック (クォータニオン対応)
+			if (ImGui::Button(ICON_FA_MAGIC " 生成実行 (Generate & AutoSave)", ImVec2(-1, 40))) {
 				frames_.clear();
 				FindAnchor();
 				if (anchor_ && genParams_.generateRelative) {
@@ -894,7 +887,7 @@ void GhostRecorder::DrawImGui() {
 						genParams_.startPos.y - anchor_->GetTranslate().y,
 						genParams_.startPos.z - anchor_->GetTranslate().z
 					};
-					// ★クォータニオンでの差分計算（アンカーの回転からのオフセット）
+					// クォータニオンでの差分計算（アンカー回転からのオフセット）
 					genParams_.anchorOffsetRot = SubEuler(genParams_.startRot, anchor_->GetRotation());
 				}
 				else {
@@ -920,7 +913,7 @@ void GhostRecorder::DrawImGui() {
 					for (int w = 0; w < waitFrames; ++w) {
 						GhostFrame f;
 						f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
-						f.rotation = SubEuler(pts[i].rot, rotOffset); // ★クォータニオンでの差分計算
+						f.rotation = SubEuler(pts[i].rot, rotOffset); // クォータニオンによる差分計算
 						f.scale = pts[i].scale;
 						f.eventID = (w == 0) ? pts[i].eventID : 0;
 						frames_.push_back(f);
@@ -930,7 +923,7 @@ void GhostRecorder::DrawImGui() {
 						if (waitFrames == 0) {
 							GhostFrame f;
 							f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
-							f.rotation = SubEuler(pts[i].rot, rotOffset); // ★クォータニオンでの差分計算
+							f.rotation = SubEuler(pts[i].rot, rotOffset); // クォータニオンによる差分計算
 							f.scale = pts[i].scale;
 							f.eventID = pts[i].eventID;
 							frames_.push_back(f);
@@ -959,13 +952,13 @@ void GhostRecorder::DrawImGui() {
 							currentPos = Lerp(pts[i].pos, pts[i + 1].pos, t);
 						}
 
-						// ★クォータニオンによる最短経路補間（Slerp）
+						// クォータニオンによる最短経路補間（Slerp）
 						Vector3 currentRot = SlerpEuler(pts[i].rot, pts[i + 1].rot, t);
 						Vector3 currentScale = Lerp(pts[i].scale, pts[i + 1].scale, t);
 
 						GhostFrame frame;
 						frame.position = { currentPos.x - offset.x, currentPos.y - offset.y, currentPos.z - offset.z };
-						frame.rotation = SubEuler(currentRot, rotOffset); // ★クォータニオンでの差分計算
+						frame.rotation = SubEuler(currentRot, rotOffset); // クォータニオンによる差分計算
 						frame.scale = currentScale;
 						frame.eventID = (f == 0 && waitFrames == 0) ? pts[i].eventID : 0;
 						frames_.push_back(frame);
@@ -1193,7 +1186,7 @@ void GhostRecorder::EvaluateAtFrame(int frameIndex) {
 			basePosition_.y + frame.position.y,
 			basePosition_.z + frame.position.z
 			});
-		// ★修正: 角度の足し算をクォータニオン合成で行う！
+		// 角度の加算をクォータニオン合成で実行
 		target_->SetRotation(AddEuler(baseRotation_, frame.rotation));
 	}
 	else {
@@ -1213,7 +1206,7 @@ void GhostRecorder::CaptureBasePose() {
 			anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 			anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 		};
-		// ★修正: アンカーの回転にオフセットを「クォータニオン合成」で足し込む！
+		// アンカーの回転にオフセットをクォータニオン合成
 		baseRotation_ = AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot);
 		baseScale_ = target_ ? target_->GetScale() : Vector3{ 1.0f, 1.0f, 1.0f };
 	}
@@ -1234,7 +1227,7 @@ void GhostRecorder::RestoreBasePose() {
 				anchor_->GetTranslate().y + genParams_.anchorOffsetPos.y,
 				anchor_->GetTranslate().z + genParams_.anchorOffsetPos.z
 				});
-			// ★修正: アンカーの回転にオフセットを「クォータニオン合成」で足し込む！
+			// アンカーの回転にオフセットをクォータニオン合成
 			target_->SetRotation(AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot));
 		}
 		else {

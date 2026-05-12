@@ -117,8 +117,7 @@ void DebugEditor::Update() {
         CameraEditor* camEditor = CameraEditor::GetInstance();
         previousCameraMode_ = (int)camEditor->GetMode();
         camEditor->SetMode(CameraEditor::Mode::Editor);
-        // ★ 修正: カメラを強制的に上空へワープさせるお節介機能を完全削除！
-        // （これで現在の視点をキープしたまま配置作業に入れます）
+        // カメラを強制的に上空へ移動させる機能を削除し、現在の視点を維持
     }
     else if (!isPreviewActive && wasPreviewActive_) {
         CameraEditor::GetInstance()->SetMode((CameraEditor::Mode)previousCameraMode_);
@@ -177,7 +176,7 @@ void DebugEditor::Update() {
                 previewObject_->UpdateWorldMatrix();
             }
 
-            // ★ImGuiのクリック判定を使用 (マルチビューポート対応)
+            // ImGuiのクリック判定を使用 (マルチビューポート対応)
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
                 auto newObj = std::make_unique<Object3d>();
                 newObj->Initialize(currentScene->GetObject3dCommon());
@@ -338,9 +337,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     if (!currentScene) return;
 
-    // =========================================================
-    // ★ PrimitiveDrawer にパイプライン設定を丸投げ！
-    // =========================================================
+    // PrimitiveDrawer にパイプライン設定を委譲
     primitiveDrawer_.PreDraw(commandList);
 
     int instanceCount = 0;
@@ -424,7 +421,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
         // --- 色の決定 ---
         Vector4 color;
-        if (isInvisibleObj) { // ★修正: isInvisible ではなく isInvisibleObj を使う
+        if (isInvisibleObj) { // isInvisible ではなく isInvisibleObj を使用
             // 見えないオブジェクトは「紫」固定
             color = { 0.6f, 0.0f, 0.8f, 1.0f };
         }
@@ -440,9 +437,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             }
         }
 
-        // =========================================================
-        // ★ PrimitiveDrawer で描画実行！
-        // =========================================================
+        // PrimitiveDrawer で描画実行
         if (type == ColliderType::kSphere) {
             primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
         }
@@ -515,9 +510,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         }
         instanceCount++; // あたり判定を描画したのでカウントを進める
 
-        // =========================================================
-        // ★ 検知範囲の可視化 (敵のみ)
-        // =========================================================
+        // 検知範囲の可視化 (敵のみ)
         if (obj->GetClassName() == "Enemy") {
             float range = 0.0f;
             if (obj->param_.has_value()) {
@@ -588,9 +581,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 drawWorldMatrix = math.Multiply(matScale, matTrans);
             }
 
-            // =========================================================
-            // ★ PrimitiveDrawer で弾も描画実行！
-            // =========================================================
+            // PrimitiveDrawer で弾も描画実行
             if (type == ColliderType::kSphere) {
                 primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
             }
@@ -606,7 +597,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
     // 3. エフェクトのコライダー描画
     // =========================================================
         if (drawColliders_) {
-            // ★ 修正：ゲーム中のエフェクト ＋ エディタのプレビューエフェクト を両方集める
+            // ゲーム中のエフェクト ＋ エディタのプレビューエフェクトを両方収集
             std::vector<EffectObject3d*> effectsToDraw;
 
             for (const auto& eff : MeshEffectManager::GetInstance()->GetActiveEffects()) {
@@ -664,9 +655,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
                 }
 
-                // =========================================================
-                // ★ Ring形状の場合 (クリーン版)
-                // =========================================================
+                // Ring形状の場合
                 if (type == ColliderType::kRing) {
                     Ring ring;
                     if (effect->GetCollider()) {
@@ -919,7 +908,7 @@ void DebugEditor::PerformUndo() {
 
     // 3. 値を「変更前 (oldTf)」に戻す
     if (cmd.target) {
-        // ★修正: 構造体ごとコピー
+        // 構造体ごとコピーして復元
         *cmd.target->GetTransform() = cmd.oldTf;
 
         // 行列更新
@@ -1351,8 +1340,7 @@ void DebugEditor::DropToFloor() {
     selectedObject_->UpdateLocalMatrix();
     selectedObject_->UpdateWorldMatrix();
 }
-// ========================================================================
-// ★ 指定したモデルをマウス位置(GameView)に即座に配置する
+// 指定したモデルをマウス位置(GameView)に配置
 // ========================================================================
 void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
@@ -1386,9 +1374,7 @@ void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
         }
     }
 
-    // =======================================================
-    // ★ 修正: 高さと「距離」を考慮して配置場所を決定する！
-    // =======================================================
+    // 高さとカメラからの距離を考慮して配置場所を決定
     float yOffset = newObj->GetColliderConfig().size.y;
     if (yOffset == 0.0f) yOffset = newObj->GetTransform()->scale.y;
 
@@ -1401,13 +1387,13 @@ void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
     else {
         // 当たらなかった場合、地面（Y=0）との交点を計算
         if (IntersectRayPlane(ray, finalPos)) {
-            // ★ 追加: カメラから交点までの「距離」を計算！
+            // カメラから交点までの「距離」を計算
             float dx = finalPos.x - ray.origin.x;
             float dy = finalPos.y - ray.origin.y;
             float dz = finalPos.z - ray.origin.z;
             float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-            // ★ 距離が遠すぎる（20m以上先）なら、強制的にカメラの前方10mの空中に置く
+            // 距離が遠すぎる（20m以上先）なら、強制的にカメラの前方10mの空中に配置
             if (distance > 20.0f) {
                 finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
             }

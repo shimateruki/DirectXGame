@@ -34,7 +34,7 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
         if (math.Length(right) > 0.001f) { right = math.Normalize(right); }
     }
 
-    // --- ★ KeyConfig対応：アクション名で入力をチェック！ ---
+    // KeyConfig対応：アクション名で入力をチェック
     if (input->IsActionPressed("Forward")) { move += forward; }
     if (input->IsActionPressed("Backward")) { move += (forward * -1.0f); }
     if (input->IsActionPressed("Left")) { move += (right * -1.0f); }

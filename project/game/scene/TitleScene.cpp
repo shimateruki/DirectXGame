@@ -53,7 +53,7 @@ void TitleScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
-    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+    // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
@@ -181,7 +181,7 @@ void TitleScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // ★修正: フォグ(7)も不透明パスから除外
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 

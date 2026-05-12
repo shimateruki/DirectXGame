@@ -143,7 +143,7 @@ private:
     std::unique_ptr<Skybox> skybox_;
     uint32_t skyboxTextureHandle_ = 0;
 
-    // ★課題用アニメーションモデル
+    // アニメーションモデルのテスト用変数
     std::unique_ptr<Object3d> animatedCube_;
 
     bool isGoal_ = false;

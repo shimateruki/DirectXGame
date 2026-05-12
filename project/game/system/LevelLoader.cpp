@@ -55,7 +55,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     std::string enemyFile = baseFilename + "_enemy.json";
     std::string objectFile = baseFilename + "_object.json";
 
-    // ★ 3つの分割ファイルがどれか一つでも存在するかチェックする
+    // 分割ファイルの存在チェック
     bool useSplitFiles = false;
     std::ifstream pFile(playerFile);
     std::ifstream eFile(enemyFile);
@@ -70,8 +70,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     if (eFile.is_open()) eFile.close();
     if (oFile.is_open()) oFile.close();
 
-    // ========================================================
-    // ★ 分岐処理：分割ファイルがあればそれを、無ければ元のファイルを読む
+    // 分岐処理：分割ファイルがあればそれを、無ければ単一ファイルを読み込む
     // ========================================================
     if (useSplitFiles) {
         // 新仕様：分割ファイルを読み込む
@@ -83,7 +82,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
         LoadSingleJson(scene, filename);
     }
 
-    // ★すべてのファイルを読み終わった後に、一括で親子関係を解決する
+    // 全ファイルを読み込み後、親子関係を解決
     auto& objects = scene->GetObjects();
     for (auto const& [childObj, parentName] : parentPendingList_) {
         Object3d* parentObj = nullptr;
@@ -156,7 +155,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         auto enemy = EnemyFactory::GetInstance()->CreateEnemy(enemyType, object3dCommon);
                         if (enemy) {
                             enemy->SetEnemyType(enemyType);
-                            // ★ 追加: プリセットで上書き
+                            // プリセットによるパラメータ上書き
                             PresetManager::GetInstance()->ApplyPresetToObject(enemyType, enemy.get());
 
                             if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
@@ -220,7 +219,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         auto gimmick = GimmickFactory::GetInstance()->CreateGimmick(gType, object3dCommon);
                         if (gimmick) {
                             gimmick->SetGimmickType(gType);
-                            // ★ 追加: プリセットで上書き
+                            // プリセットによるパラメータ上書き
                             PresetManager::GetInstance()->ApplyPresetToObject(gType, gimmick.get());
 
                             newObj = std::move(gimmick);
@@ -239,8 +238,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             newObj->SetClassName(type);
                         }
 
-                        // ==========================================
-                        // ★追加: 保存カテゴリの復元処理
+                        // 保存カテゴリの復元処理
                         // ==========================================
                         if (objData.contains("saveCategory") && objData["saveCategory"].is_string()) {
                             newObj->SetSaveCategory(objData["saveCategory"].get<std::string>());
@@ -421,7 +419,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->InitializeRecorder(nullptr);
                 bool isCinematic = (targetObject->GetClassName() == "CinematicCamera");
 
-                // ★ レコーダーのパスデータ名が入っている時だけ再生をスタートする！
+                // パスデータが存在する場合に再生を開始
                 if (!targetObject->recordPathName_.empty() && targetObject->recorder_) {
                     targetObject->recorder_->Play(
                         targetObject->recordPathName_,

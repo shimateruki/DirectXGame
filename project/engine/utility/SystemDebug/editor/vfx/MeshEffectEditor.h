@@ -30,7 +30,7 @@ private:
     void SaveToJson();
     void LoadFromJson();
 private:
-    // ★ SceneManager を保持しておく
+    // SceneManager を保持
     SceneManager* sceneManager_ = nullptr;
     BaseScene* lastScene_ = nullptr;
     std::unique_ptr<EffectObject3d> previewEffect_;
