@@ -110,7 +110,21 @@ void Player::Update(float deltaTime)
                         if (hit.isHit) {
                             hookMarker_->SetIsVisible(true);
                             hookMarker_->GetTransform()->translate = hit.hitPoint;
-                            hookMarker_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+
+                            // 【案A：エイムフィードバック】
+                            // 敵をロックオンしている時はマーカーを強調する（赤色に変える）
+                            if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
+                                hookMarker_->SetColor({ 1.0f, 0.2f, 0.2f, 1.0f }); // ★赤色に変更
+                                static float pulseTimer = 0.0f;
+                                pulseTimer += deltaTime;
+                                float pulse = 1.2f + std::sin(pulseTimer * 15.0f) * 0.3f;
+                                hookMarker_->GetTransform()->scale = { pulse, pulse, pulse };
+                            }
+                            else {
+                                hookMarker_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 白
+                                hookMarker_->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+                            }
+
                             hookMarker_->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
 
                             // 対象を記憶する
@@ -230,8 +244,25 @@ void Player::Update(float deltaTime)
             // ③ 無力化を解除（当たり判定復活）して、初速（Velocity）を与える！
             enemyBase->SetCarried(false);
 
+            // 投げた時は元の大きさと状態に戻す
+            enemyBase->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+            enemyBase->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+            enemyBase->GetTransform()->isQuaternionMaster = true;
+
             // 勢いよくぶん投げる！（120.0f はスピード。お好みで調整してください）
             enemyBase->SetVelocity({ throwDir.x * 120.0f, throwDir.y * 120.0f, throwDir.z * 120.0f });
+
+            // 【案D：投げアクション演出】
+            // ① プレイヤー本体を鋭く前方に伸ばす
+            transform_.scale = { 0.7f, 1.8f, 0.7f };
+            // ② 投げた瞬間の衝撃エフェクト（パーティクル）
+            if (particleSystem_) {
+                particleSystem_->SpawnParticles(
+                    playerPos + Vector3{0.0f, 2.5f, 0.0f}, 30, 2.0f, &throwDir, 40.0f,
+                    { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
+                    0.1f, 0.3f, 0.8f, 0.1f
+                );
+            }
         }
 
         // ★ 手放す！
@@ -247,13 +278,44 @@ void Player::Update(float deltaTime)
     }
     if (carriedEnemy_) {
         Vector3 playerPos = GetWorldPosition();
-        // スライムの高さに合わせてY軸のオフセットを調整（例: 2.5f）
-        carriedEnemy_->GetTransform()->translate = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+        
+        static float struggleTimer_ = 0.0f;
+        struggleTimer_ += deltaTime;
+
+        // 【抗っている感の演出（汎用プロシージャルアニメーション）】
+        float offsetX = std::sin(struggleTimer_ * 35.0f) * 0.15f;
+        float offsetZ = std::cos(struggleTimer_ * 30.0f) * 0.15f;
+        float offsetY = std::sin(struggleTimer_ * 45.0f) * 0.08f;
+
+        carriedEnemy_->GetTransform()->translate = { 
+            playerPos.x + offsetX, playerPos.y + 2.5f + offsetY, playerPos.z + offsetZ 
+        };
+
+        Vector3 rot;
+        rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
+        rot.y = GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f;
+        rot.z = std::cos(struggleTimer_ * 22.0f) * 0.2f;
+        carriedEnemy_->GetTransform()->rotate = rot;
+        carriedEnemy_->GetTransform()->isQuaternionMaster = false;
+
+        float baseScale = 0.6f;
+        float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
+        carriedEnemy_->GetTransform()->scale = { 
+            baseScale - stretch, baseScale + stretch, baseScale - stretch 
+        };
 
         // 行列を強制更新して、1フレームの遅れもなくピタッと追従させる
         carriedEnemy_->UpdateLocalMatrix();
         carriedEnemy_->UpdateWorldMatrix();
     }
+
+    // --- スケールの自然な復元（Squash & Stretch のための自動リセット） ---
+    // どの状態からでも、変形させられたスケールを 0.15 の速度で 1.0 に戻します
+    Vector3 currentScale = transform_.scale;
+    Vector3 targetScale = { 1.0f, 1.0f, 1.0f };
+    transform_.scale.x = Math::Lerp(currentScale.x, targetScale.x, 0.15f);
+    transform_.scale.y = Math::Lerp(currentScale.y, targetScale.y, 0.15f);
+    transform_.scale.z = Math::Lerp(currentScale.z, targetScale.z, 0.15f);
 }
 
 

@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "PlayerState.h"
 #include "Player.h"
 #include "InputManager.h"
@@ -256,6 +257,7 @@ void PlayerStateHook::Enter(Player* player) {
         Object3d* marker = player->GetHookMarker();
         if (marker) {
             marker->SetIsVisible(true);
+            marker->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // ★フックとして使う時は白（スライム色）に戻す
             marker->GetTransform()->translate = hookTipPos_;
             marker->GetTransform()->scale = { 1.5f, 1.5f, 1.5f }; // 少し大きめの手にする
         }
@@ -306,8 +308,11 @@ void PlayerStateHook::Update(Player* player) {
             marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
             marker->GetTransform()->isQuaternionMaster = false;
 
-            // 長さを距離に合わせる (太さは0.5にしてスライムの腕っぽく)
-            marker->GetTransform()->scale = { 0.5f, 0.5f, len };
+            // 長さを距離に合わせ、伸びるほど細くなる（体積保存の法則的なスライム感）
+            float baseThickness = std::max(0.15f, 0.8f - len * 0.015f);
+            // スライム特有の「ぷるんっ」とした波打ち（距離に応じて波打つ）
+            float wobble = std::sin(len * 0.2f) * 0.1f;
+            marker->GetTransform()->scale = { baseThickness + wobble, baseThickness - wobble, len };
 
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
@@ -358,7 +363,12 @@ void PlayerStateHook::Update(Player* player) {
             float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
             marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
             marker->GetTransform()->isQuaternionMaster = false;
-            marker->GetTransform()->scale = { 0.5f, 0.5f, len };
+            // プレイヤーが引っ張られる間、近づくにつれて腕が太く戻っていく
+            float t = std::max(0.0f, std::min(1.0f, 1.0f - (len / Math::Length(targetPos_ - hookTipPos_)))); // 簡易的な進行度
+            float thickness = Math::Lerp(0.15f, 1.0f, t);
+            // 引っ張るテンションによるブルブルとした震え
+            float wobble = std::sin(wobbleTimer_ * 40.0f) * (1.0f - t) * 0.2f;
+            marker->GetTransform()->scale = { thickness + wobble, thickness - wobble, len };
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
         }
@@ -377,10 +387,9 @@ void PlayerStateHook::Exit(Player* player) {
         if (player->param_.has_value()) {
             player->param_->gravity = oldGravity_;
         }
-        // 到達後に少し上に跳ねる
-        Vector3 v = player->GetVelocity();
-        player->SetVelocity({ v.x, 15.0f, v.z });
-        player->SetScale({ 3.0f, 1.0f, 3.0f });
+        // 到達後は跳ねずに、その場にピタッと張り付く
+        player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player->SetScale({ 3.0f, 0.5f, 3.0f }); // 張り付いた感じを出すために、より平べったく潰す
 
         // ★ 腕として使っていたマーカーを隠し、形を「元の球体」にリセットする！
         Object3d* marker = player->GetHookMarker();
@@ -388,6 +397,9 @@ void PlayerStateHook::Exit(Player* player) {
             marker->SetIsVisible(false);
             marker->GetTransform()->scale = { 1.0f, 1.0f, 1.0f }; // ←スケールを元に戻す（必要に応じて0.5fなどに調整してください）
             marker->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f }; // ←回転をリセット
+            marker->GetTransform()->isQuaternionMaster = true; // ★追加: 回転モードを元に戻す
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
         }
     }
 
@@ -413,6 +425,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     Object3d* marker = player->GetHookMarker();
     if (marker) {
         marker->SetIsVisible(true);
+        marker->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // ★フックとして使う時は白（スライム色）に戻す
         marker->GetTransform()->translate = hookTipPos_;
     }
 }
@@ -435,6 +448,24 @@ void PlayerStatePullEnemy::Update(Player* player) {
         if (dist < 5.0f) {
             hookTipPos_ = enemyPos;
             phase_ = Phase::kPullEnemy;
+            enemyStartPos_ = enemyPos;
+            pullTimer_ = -0.12f; // 【演出】ヒットストップ：命中後0.12秒間タメる
+            
+            // ★ 修正: 命中した瞬間に敵を「無力化（Carried）」状態にして衝突判定を消す！
+            BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_);
+            if (enemyBase) {
+                enemyBase->SetCarried(true);
+            }
+
+            // 【演出】命中した瞬間の火花（パーティクル）
+            if (player->GetParticleSystem()) {
+                Vector3 toPlayer = Math::Normalize(playerPos - enemyPos);
+                player->GetParticleSystem()->SpawnParticles(
+                    enemyPos, 30, 2.0f, &toPlayer, 30.0f,
+                    {1.0f, 1.0f, 0.8f, 1.0f}, {1.0f, 0.8f, 0.2f, 0.0f},
+                    0.2f, 0.4f, 0.8f, 0.1f
+                );
+            }
         }
         else {
             Vector3 dir = Math::Normalize(toTarget);
@@ -461,29 +492,104 @@ void PlayerStatePullEnemy::Update(Player* player) {
         }
     }
     else if (phase_ == Phase::kPullEnemy) {
-        // --- 敵を自分の手元へ引っ張る ---
-        Vector3 enemyPos = targetEnemy_->GetTransform()->translate;
-        Vector3 toPlayer = playerPos - enemyPos;
-        float dist = Math::Length(toPlayer);
+        // --- 敵を自分の手元へ引っ張る（放物線＆巻き取り） ---
+        pullTimer_ += deltaTime;
 
-        if (dist < 3.0f) {
-            player->SetCarriedEnemy(targetEnemy_);
+        // 【演出】ヒットストップ：時間がマイナスの間は引き寄せず、お互いに激しくブルブル震える
+        if (pullTimer_ < 0.0f) {
+            float shakeX = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
+            float shakeY = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
+            float shakeZ = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * 0.4f;
+            
+            targetEnemy_->GetTransform()->translate = {
+                enemyStartPos_.x + shakeX, enemyStartPos_.y + shakeY, enemyStartPos_.z + shakeZ
+            };
+            targetEnemy_->GetTransform()->isQuaternionMaster = false;
+            targetEnemy_->UpdateLocalMatrix();
+            targetEnemy_->UpdateWorldMatrix();
+            
+            Object3d* marker = player->GetHookMarker();
+            if (marker) {
+                Vector3 diff = enemyStartPos_ - playerPos;
+                marker->GetTransform()->translate = {
+                    playerPos.x + diff.x * 0.5f + shakeX * 0.5f, 
+                    playerPos.y + diff.y * 0.5f + shakeY * 0.5f, 
+                    playerPos.z + diff.z * 0.5f + shakeZ * 0.5f
+                };
+                // ヒットストップ中は「ピンッ」と極限まで細く張り詰める
+                float len = Math::Length(diff);
+                marker->GetTransform()->scale = { 0.15f, 0.15f, len };
 
-            BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_);
-            if (enemyBase) {
-                enemyBase->SetCarried(true);
+                marker->UpdateLocalMatrix();
+                marker->UpdateWorldMatrix();
+            }
+            return; // これ以上は更新しない（時を止める）
+        }
+
+        const float kPullDuration = 0.45f; // 少しだけ時間を長くしてタメを作る
+        float t = pullTimer_ / kPullDuration;
+        if (t > 1.0f) t = 1.0f;
+
+        // 【案B：ふんばり演出】引き寄せている間、プレイヤーが力強く踏ん張る（少し潰れて横に広がる）
+        float strain = (1.0f - (t * t)) * 0.5f; 
+        player->GetTransform()->scale = { 1.0f + strain, 1.0f - strain, 1.0f + strain };
+
+        // 【演出1】イージング：最初は重たく、後半一気に飛んでくる（Ease-In）
+        float easeT = t * t * t; 
+
+        // 【演出2】敵の回転：引き寄せられながら超高速できりもみ回転する
+        Vector3 rot = targetEnemy_->GetTransform()->rotate;
+        rot.x += 20.0f * deltaTime;
+        rot.y += 35.0f * deltaTime;
+        rot.z += 15.0f * deltaTime;
+        targetEnemy_->GetTransform()->rotate = rot;
+        targetEnemy_->GetTransform()->isQuaternionMaster = false; // 追加: クォータニオンを無視してオイラー角回転を適用
+
+        // 【演出3】敵の縮小：手元に来るにつれて小さく圧縮される（毛糸玉化）
+        // ※元の大きさが1.0として、手元で0.6くらいまで小さくなる
+        float scale = Math::Lerp(1.0f, 0.6f, easeT);
+        targetEnemy_->GetTransform()->scale = {scale, scale, scale};
+
+        // 目標位置（プレイヤーの頭上）
+        Vector3 headPos = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+
+        // easeTを使って開始位置から目標位置への線形補間
+        Vector3 basePos = {
+            Math::Lerp(enemyStartPos_.x, headPos.x, easeT),
+            Math::Lerp(enemyStartPos_.y, headPos.y, easeT),
+            Math::Lerp(enemyStartPos_.z, headPos.z, easeT)
+        };
+        
+        // サイン波でY軸に放物線のアーチを加える（easeTではなく純粋なtで綺麗なアーチにする）
+        float arcHeight = 6.0f; 
+        basePos.y += std::sin(t * 3.14159265f) * arcHeight;
+
+        targetEnemy_->GetTransform()->translate = basePos;
+
+        if (t >= 1.0f) {
+            // 【演出】頭に乗った（キャッチした）瞬間の衝撃エフェクト
+            if (player->GetParticleSystem()) {
+                Vector3 headPos = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+                player->GetParticleSystem()->SpawnParticles(
+                    headPos, 20, 1.5f, nullptr, 20.0f,
+                    {1.0f, 1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.0f},
+                    0.2f, 0.4f, 0.6f, 0.05f
+                );
             }
 
+            // 【案B：着地時の潰れ演出】頭に乗った瞬間にベチャッと大きく潰れる！
+            // このあと Player::Update の復元処理で自然にプルンと戻ります
+            player->GetTransform()->scale = { 2.2f, 0.4f, 2.2f };
+
+            player->SetCarriedEnemy(targetEnemy_);
             player->ChangeState(std::make_unique<PlayerStateIdle>());
             return;
         }
 
-        Vector3 dir = Math::Normalize(toPlayer);
-        targetEnemy_->GetTransform()->translate = enemyPos + dir * (80.0f * deltaTime);
-
         Object3d* marker = player->GetHookMarker();
         if (marker) {
-            Vector3 diff = enemyPos - playerPos;
+            Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
+            Vector3 diff = enemyCurrentPos - playerPos;
             marker->GetTransform()->translate = {
                 playerPos.x + diff.x * 0.5f, playerPos.y + diff.y * 0.5f, playerPos.z + diff.z * 0.5f
             };
@@ -491,7 +597,12 @@ void PlayerStatePullEnemy::Update(Player* player) {
             float angleX = std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z));
             marker->GetTransform()->rotate = { angleX, angleY, 0.0f };
             marker->GetTransform()->isQuaternionMaster = false;
-            marker->GetTransform()->scale = { 0.5f, 0.5f, Math::Length(diff) };
+            // 手元に近づくにつれて太く戻る（イージングを利用）
+            float len = Math::Length(diff);
+            float thickness = Math::Lerp(0.15f, 1.0f, easeT);
+            // 引っ張る反動でブルンブルン震える（近づくと収まる）
+            float wobble = std::sin(pullTimer_ * 50.0f) * (1.0f - easeT) * 0.2f;
+            marker->GetTransform()->scale = { thickness + wobble, thickness - wobble, len };
 
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
@@ -506,6 +617,7 @@ void PlayerStatePullEnemy::Exit(Player* player) {
             marker->SetIsVisible(false);
             marker->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
             marker->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+            marker->GetTransform()->isQuaternionMaster = true; // ★追加: 回転モードを元に戻す
             marker->UpdateLocalMatrix();
             marker->UpdateWorldMatrix();
         }
@@ -517,6 +629,7 @@ void PlayerStatePullEnemy::Exit(Player* player) {
 void PlayerStateCarry::Enter(Player* player) {
     if (player) {
         player->SetIsControlActive(true); // 持ち運び中もプレイヤーは動ける！
+        struggleTimer_ = 0.0f;
 
         Object3d* enemy = player->GetCarriedEnemy();
         if (enemy) {
@@ -530,12 +643,46 @@ void PlayerStateCarry::Enter(Player* player) {
 void PlayerStateCarry::Update(Player* player) {
     if (!player) return;
 
+    struggleTimer_ += 1.0f / 60.0f;
+
     Object3d* enemy = player->GetCarriedEnemy();
     if (enemy) {
-        // ★ 敵の座標を常に「プレイヤーの頭の上」に固定する！
         Vector3 playerPos = player->GetWorldPosition();
-        // スライムの高さに合わせてY軸のオフセットを調整（例: 2.5f）
-        enemy->GetTransform()->translate = { playerPos.x, playerPos.y + 2.5f, playerPos.z };
+        
+        // 【抗っている感の演出（汎用プロシージャルアニメーション）】
+        // 1. 座標の揺れ（ジタバタと細かく暴れる）
+        float offsetX = std::sin(struggleTimer_ * 35.0f) * 0.15f;
+        float offsetZ = std::cos(struggleTimer_ * 30.0f) * 0.15f;
+        float offsetY = std::sin(struggleTimer_ * 45.0f) * 0.08f;
+
+        enemy->GetTransform()->translate = { 
+            playerPos.x + offsetX, 
+            playerPos.y + 2.5f + offsetY, 
+            playerPos.z + offsetZ 
+        };
+
+        // 2. 回転の揺れ（体をよじる、イヤイヤと暴れる動き）
+        Vector3 rot;
+        rot.x = std::sin(struggleTimer_ * 20.0f) * 0.2f;
+        // ★修正: プレイヤーの向いている方向（Y回転）をベースにして、そこから首を振らせる
+        rot.y = player->GetRotation().y + std::sin(struggleTimer_ * 15.0f) * 0.4f; 
+        rot.z = std::cos(struggleTimer_ * 22.0f) * 0.2f;
+        enemy->GetTransform()->rotate = rot;
+
+        // 3. スケールの伸縮（息遣いや力を込めるような Squash & Stretch）
+        // 0.6 を基準サイズとして伸縮
+        float baseScale = 0.6f;
+        float stretch = std::sin(struggleTimer_ * 25.0f) * 0.05f;
+        enemy->GetTransform()->scale = { 
+            baseScale - stretch, 
+            baseScale + stretch, 
+            baseScale - stretch 
+        };
+
+        // 追加: クォータニオンを無視させ、手動でマトリックスを更新する
+        enemy->GetTransform()->isQuaternionMaster = false;
+        enemy->UpdateLocalMatrix();
+        enemy->UpdateWorldMatrix();
     }
 
     // （※ここに後で「左クリックで投げる」処理を追加します）
@@ -544,6 +691,15 @@ void PlayerStateCarry::Update(Player* player) {
 void PlayerStateCarry::Exit(Player* player) {
     // 投げた時などに呼ばれる
     if (player) {
+        Object3d* enemy = player->GetCarriedEnemy();
+        if (enemy) {
+            // 持ち運びが終わったら（投げる等）、姿勢とスケールを元に戻す
+            enemy->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+            enemy->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+            enemy->GetTransform()->isQuaternionMaster = true; // クォータニオンモードに戻す
+            enemy->UpdateLocalMatrix();
+            enemy->UpdateWorldMatrix();
+        }
         player->SetCarriedEnemy(nullptr);
     }
 }

@@ -143,6 +143,9 @@ private:
         kPullEnemy   // 敵が自分に向かって引っ張られている
     };
     Phase phase_ = Phase::kShootHook;
+    
+    Vector3 enemyStartPos_; // 引っ張り開始時の敵の座標
+    float pullTimer_ = 0.0f; // 引っ張りにかかる時間のタイマー
 };
 
 // --------------------------------------------------------
@@ -154,4 +157,6 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+private:
+    float struggleTimer_ = 0.0f;
 };
