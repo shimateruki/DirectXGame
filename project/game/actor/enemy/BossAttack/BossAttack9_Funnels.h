@@ -20,4 +20,8 @@ private:
     // 各ファンネルに割り当てるレーザーオブジェクト
     std::vector<class Object3d*> activeLasers_;
     std::vector<class Object3d*> activeCoreLasers_;
+
+    std::vector<int> funnelStates_;
+    std::vector<float> funnelTimers_;
+    std::vector<int> funnelFireCounts_;
 };

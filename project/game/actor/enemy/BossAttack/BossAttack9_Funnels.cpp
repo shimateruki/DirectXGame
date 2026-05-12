@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "BossAttack9_Funnels.h"
 #include "../BossCore.h"
 #include "./easing.h"
@@ -14,6 +15,10 @@ void BossAttack9_Funnels::Initialize(BossCore* boss) {
     blockTargetPos_.clear();
     blockStartScale_.clear();
     activeLasers_.clear();
+    activeCoreLasers_.clear();
+    funnelStates_.clear();
+    funnelTimers_.clear();
+    funnelFireCounts_.clear();
 
     animPhase_ = 90;
     animTimer_ = 0.0f;
@@ -41,15 +46,15 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 blockStartPos_.push_back(worldPos);
                 blockStartScale_.push_back(armorBlocks[i]->GetScale());
 
-                // プレイヤーの上空を中心に、円状＋ランダムな高さに展開
-                float angle = (i / (float)armorBlocks.size()) * 2.0f * std::numbers::pi_v<float>;
-                float radius = 15.0f + ((rand() % 100) / 100.0f) * 10.0f; // 15〜25mの円
-                float height = 20.0f + ((rand() % 100) / 100.0f) * 15.0f; // 20〜35mの高さ
+                // プレイヤー周辺の空中にまばらに散らす
+                float randomX = -25.0f + ((rand() % 100) / 100.0f) * 50.0f; // -25〜25mの範囲
+                float randomZ = -25.0f + ((rand() % 100) / 100.0f) * 50.0f; // -25〜25mの範囲
+                float height = 5.0f + ((rand() % 100) / 100.0f) * 15.0f; // 5〜20mの高さ（低めに調整）
 
-                Vector3 targetPos = { 0, height, 0 };
+                Vector3 targetPos = { randomX, height, randomZ };
                 if (target) {
-                    targetPos.x = target->GetWorldPosition().x + std::cos(angle) * radius;
-                    targetPos.z = target->GetWorldPosition().z + std::sin(angle) * radius;
+                    targetPos.x += target->GetWorldPosition().x;
+                    targetPos.z += target->GetWorldPosition().z;
                 }
                 blockTargetPos_.push_back(targetPos);
             }
@@ -66,10 +71,8 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
             armorBlocks[i]->SetTranslate(pos);
 
-            // コアと同じくらいのサイズに揃える
-            Vector3 targetScale = { 2.0f, 2.0f, 2.0f };
-            Vector3 scale = Math::Lerp(blockStartScale_[i], targetScale, easeT);
-            armorBlocks[i]->SetScale(scale);
+            // サイズは大きくせず元のサイズを維持
+            armorBlocks[i]->SetScale(blockStartScale_[i]);
             
             // 少し回転させながら飛ばす
             Vector3 rot = armorBlocks[i]->GetRotation();
@@ -132,7 +135,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 cConfig.size = { 1.0f, 1.0f, 1.0f };
                 laser->SetColliderConfig(cConfig);
 
-                laser->SetScale({ 0.1f, 80.0f, 0.1f }); // 予兆時点の細さ
+                laser->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないように設定
                 laser->SetCollisionAttribute(0);
 
                 CollisionManager::GetInstance()->RemoveObject(laser);
@@ -141,6 +144,8 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 laser->SetParent(armorBlocks[i]);
                 float rotX90 = std::numbers::pi_v<float> / 2.0f;
                 laser->SetRotation({ rotX90, 0.0f, 0.0f }); // ブロックの+Z方向（下）へ伸ばす
+                // ビームのYスケールが80の場合、モデルが中心基準だと長さが160になるため、80だけ前方にずらす
+                laser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 laser->GetTransform()->isQuaternionMaster = false;
 
                 activeLasers_.push_back(laser);
@@ -168,7 +173,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetUVTransform(uvMat);
 
                 coreLaser->SetColliderConfig(cConfig);
-                coreLaser->SetScale({ 0.05f, 80.0f, 0.05f });
+                coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないように設定
                 coreLaser->SetCollisionAttribute(0);
 
                 CollisionManager::GetInstance()->RemoveObject(coreLaser);
@@ -176,79 +181,102 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
 
                 coreLaser->SetParent(armorBlocks[i]);
                 coreLaser->SetRotation({ rotX90, 0.0f, 0.0f });
+                coreLaser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 coreLaser->GetTransform()->isQuaternionMaster = false;
 
                 activeCoreLasers_.push_back(coreLaser);
             }
         }
 
-        animTimer_ += deltaTime;
-        float duration = 2.0f;
-        float t = std::min(animTimer_ / duration, 1.0f);
-
-        // プレイヤーの方を向く（徐々に追従）
-        for (size_t i = 0; i < armorBlocks.size(); ++i) {
-            if (!armorBlocks[i]) continue;
-            
-            if (target) {
-                Vector3 toPlayer = target->GetWorldPosition() - armorBlocks[i]->GetWorldPosition();
-                
-                // ランダムな揺らぎを入れて、少し不気味に照準を合わせる
-                float noise = std::sin(animTimer_ * 10.0f + i) * 2.0f * (1.0f - t);
-                toPlayer.x += noise;
-                toPlayer.z += noise;
-
-                float targetRotY = std::atan2(toPlayer.x, toPlayer.z);
-                float distXZ = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
-                float targetRotX = -std::atan2(toPlayer.y, distXZ);
-
-                auto LerpAngle = [](float a, float b, float dt) {
-                    float diff = b - a;
-                    while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
-                    while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
-                    return a + diff * dt;
-                };
-
-                Vector3 currentRot = armorBlocks[i]->GetRotation();
-                currentRot.y = LerpAngle(currentRot.y, targetRotY, 5.0f * deltaTime);
-                currentRot.x = LerpAngle(currentRot.x, targetRotX, 5.0f * deltaTime);
-                
-                armorBlocks[i]->SetRotation(currentRot);
-                armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
-            }
-        }
-
-        if (t >= 1.0f) {
-            animPhase_ = 92;
-            animTimer_ = 0.0f;
-        }
+        // レーザーの生成が完了したら即座にPhase92へ移行
+        animPhase_ = 92;
+        animTimer_ = 0.0f;
     }
-    // --- Phase 92: 一斉発射（極太レーザー） ---
+    // --- Phase 92: ファンネルウェーブ攻撃（最大2個ずつ、計3ウェーブ） ---
     else if (animPhase_ == 92) {
         if (animTimer_ == 0.0f) {
-            for (auto* laser : activeLasers_) {
-                if (!laser) continue;
-                // 極太レーザーに変化！
-                laser->SetScale({ 1.0f, 80.0f, 1.0f });
-                laser->SetCollisionAttribute(kEnemyAttack); // 当たり判定ON
+            funnelStates_.clear();
+            funnelTimers_.clear();
+            funnelFireCounts_.clear();
+            for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                funnelStates_.push_back(0); // 0: デコイ待機
+                funnelTimers_.push_back(0.0f);
+                funnelFireCounts_.push_back(0);
             }
-            for (auto* core : activeCoreLasers_) {
-                if (!core) continue;
-                core->SetScale({ 0.4f, 80.0f, 0.4f });
-                core->SetCollisionAttribute(0);
+        }
+
+        // ウェーブ管理（5.0秒ごとに1ウェーブ、合計3ウェーブで終了）
+        int currentWave = (int)(animTimer_ / 5.0f);
+        int previousWave = (int)((animTimer_ - deltaTime) / 5.0f);
+
+        // 新しいウェーブの開始時に、1〜3個のランダムなファンネルに攻撃命令を下す
+        if ((animTimer_ == 0.0f || currentWave > previousWave) && currentWave < 3) {
+            int numShooters = 1 + (rand() % 3); // 1〜3個のランダム
+            std::vector<int> shooters;
+            int maxRetries = 20;
+            while (shooters.size() < numShooters && armorBlocks.size() > 0 && maxRetries > 0) {
+                int s = rand() % armorBlocks.size();
+                bool exists = false;
+                for (int existing : shooters) {
+                    if (existing == s) { exists = true; break; }
+                }
+                if (!exists) shooters.push_back(s);
+                maxRetries--;
+            }
+
+            for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                bool isShooter = false;
+                for (int s : shooters) {
+                    if (i == s) isShooter = true;
+                }
+
+                // すでに発射中のものはおかしくなるので、0（待機）か1（デコイ移動）のものだけ上書き
+                if (isShooter) {
+                    funnelStates_[i] = 10; // 10: 攻撃用移動へ
+                    funnelTimers_[i] = 0.0f;
+                    // 目的地セット
+                    blockStartPos_[i] = armorBlocks[i]->GetTranslate();
+                    float randomX = -30.0f + ((rand() % 100) / 100.0f) * 60.0f;
+                    float randomZ = -30.0f + ((rand() % 100) / 100.0f) * 60.0f;
+                    float height = 4.0f + ((rand() % 100) / 100.0f) * 4.0f; // 4m〜8m
+                    Vector3 targetP = { randomX, height, randomZ };
+                    if (target) {
+                        targetP.x += target->GetWorldPosition().x;
+                        targetP.z += target->GetWorldPosition().z;
+                    }
+                    blockTargetPos_[i] = targetP;
+                } else if (funnelStates_[i] == 0 || funnelStates_[i] == 1) {
+                    // 他のブロックは50%の確率でデコイとして移動
+                    if (rand() % 100 < 50) { 
+                        funnelStates_[i] = 1; // 1: デコイ移動
+                        funnelTimers_[i] = 0.0f;
+                        blockStartPos_[i] = armorBlocks[i]->GetTranslate();
+                        float randomX = -30.0f + ((rand() % 100) / 100.0f) * 60.0f;
+                        float randomZ = -30.0f + ((rand() % 100) / 100.0f) * 60.0f;
+                        float height = 4.0f + ((rand() % 100) / 100.0f) * 4.0f; // 4m〜8m
+                        Vector3 targetP = { randomX, height, randomZ };
+                        if (target) {
+                            targetP.x += target->GetWorldPosition().x;
+                            targetP.z += target->GetWorldPosition().z;
+                        }
+                        blockTargetPos_[i] = targetP;
+                    }
+                }
             }
         }
 
         animTimer_ += deltaTime;
-        float duration = 2.5f;
-        float t = std::min(animTimer_ / duration, 1.0f);
 
-        // 発射中も少しだけプレイヤーを追いかける（薙ぎ払い効果）
+        // 個別のファンネル処理
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             if (!armorBlocks[i]) continue;
             
-            if (target) {
-                Vector3 toPlayer = target->GetWorldPosition() - armorBlocks[i]->GetWorldPosition();
+            Object3d* laser = (i < activeLasers_.size()) ? activeLasers_[i] : nullptr;
+            Object3d* coreLaser = (i < activeCoreLasers_.size()) ? activeCoreLasers_[i] : nullptr;
+
+            auto TrackPlayer = [&](Object3d* block, Object3d* tgt, float speed) {
+                if (!tgt) return;
+                Vector3 toPlayer = tgt->GetWorldPosition() - block->GetWorldPosition();
                 float targetRotY = std::atan2(toPlayer.x, toPlayer.z);
                 float distXZ = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
                 float targetRotX = -std::atan2(toPlayer.y, distXZ);
@@ -259,32 +287,127 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                     while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
                     return a + diff * dt;
                 };
-
-                Vector3 currentRot = armorBlocks[i]->GetRotation();
-                // 追従速度は遅め（逃げ切れるように）
-                currentRot.y = LerpAngle(currentRot.y, targetRotY, 1.5f * deltaTime);
-                currentRot.x = LerpAngle(currentRot.x, targetRotX, 1.5f * deltaTime);
+                Vector3 currentRot = block->GetRotation();
+                currentRot.y = LerpAngle(currentRot.y, targetRotY, speed);
+                currentRot.x = LerpAngle(currentRot.x, targetRotX, speed);
                 
-                armorBlocks[i]->SetRotation(currentRot);
-                armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
+                // スタイリッシュな演出：Z軸回転（バレルロール）を追加してドリルっぽく回転しながら飛ぶ
+                currentRot.z = animTimer_ * 10.0f; // 常にくるくる回る
+                
+                block->SetRotation(currentRot);
+                block->GetTransform()->isQuaternionMaster = false;
+            };
+
+            // 状態に応じた処理
+            if (funnelStates_[i] == 0) {
+                // 0: デコイ待機
+                TrackPlayer(armorBlocks[i], target, 2.0f * deltaTime);
+                Vector3 pos = blockTargetPos_[i];
+                pos.y += std::sin(animTimer_ * 5.0f + i) * 0.5f;
+                armorBlocks[i]->SetTranslate(pos);
+            }
+            else if (funnelStates_[i] == 1) {
+                // 1: デコイ移動
+                funnelTimers_[i] += deltaTime;
+                float moveDuration = 1.5f; 
+                float t = std::min(funnelTimers_[i] / moveDuration, 1.0f);
+                float easeT = Easing::InOutSine(t);
+                
+                Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+                pos.y += std::sin(animTimer_ * 5.0f + i) * 0.5f;
+                armorBlocks[i]->SetTranslate(pos);
+
+                TrackPlayer(armorBlocks[i], target, 3.0f * deltaTime);
+
+                if (t >= 1.0f) {
+                    funnelStates_[i] = 0; // 移動し終わったら待機へ戻る
+                }
+            }
+            else if (funnelStates_[i] == 10) {
+                // 10: 攻撃用移動（1.5秒）
+                funnelTimers_[i] += deltaTime;
+                float moveDuration = 1.5f;
+                float t = std::min(funnelTimers_[i] / moveDuration, 1.0f);
+                float easeT = Easing::InOutSine(t);
+                
+                Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+                pos.y += std::sin(animTimer_ * 5.0f + i) * 0.5f;
+                armorBlocks[i]->SetTranslate(pos);
+
+                TrackPlayer(armorBlocks[i], target, 4.0f * deltaTime);
+
+                if (t >= 1.0f) {
+                    funnelStates_[i] = 11; // 予兆へ
+                    funnelTimers_[i] = 0.0f;
+                }
+            }
+            else if (funnelStates_[i] == 11) {
+                // 11: 予兆（1.2秒）
+                funnelTimers_[i] += deltaTime;
+                
+                // 予兆はずっと非常に細い赤い線（スナイパーレーザー）のまま
+                if (laser) { laser->SetScale({ 0.02f, 80.0f, 0.02f }); laser->SetCollisionAttribute(0); }
+                if (coreLaser) { coreLaser->SetScale({ 0.0f, 80.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+
+                if (funnelTimers_[i] < 0.7f) {
+                    // 最初の0.7秒間はプレイヤーをしっかり追従
+                    TrackPlayer(armorBlocks[i], target, 8.0f * deltaTime);
+                } else {
+                    // 撃つ直前（0.5秒間）：追従を停止（照準固定）して発射が来ることを知らせる
+                }
+                
+                Vector3 pos = blockTargetPos_[i];
+                if (funnelTimers_[i] < 0.7f) {
+                    pos.y += std::sin(animTimer_ * 5.0f + i) * 0.5f; // 追従中はゆらゆら
+                }
+                // ロックオン完了後はゆらゆらを完全に止めて静止する
+                armorBlocks[i]->SetTranslate(pos);
+
+                if (funnelTimers_[i] >= 1.2f) {
+                    funnelStates_[i] = 12; // 発射（当たり判定ON）へ
+                    funnelTimers_[i] = 0.0f;
+                }
+            }
+            else if (funnelStates_[i] == 12) {
+                // 12: 発射（1.5秒）
+                funnelTimers_[i] += deltaTime;
+                
+                if (laser) { laser->SetScale({ 1.0f, 80.0f, 1.0f }); laser->SetCollisionAttribute(kEnemyAttack); }
+                if (coreLaser) { coreLaser->SetScale({ 0.4f, 80.0f, 0.4f }); coreLaser->SetCollisionAttribute(0); }
+
+                // 追従はロック（固定）、上下のゆらゆらも完全に停止
+                Vector3 pos = blockTargetPos_[i];
+                armorBlocks[i]->SetTranslate(pos);
+
+                if (funnelTimers_[i] >= 1.5f) {
+                    funnelStates_[i] = 13; // 縮小へ
+                    funnelTimers_[i] = 0.0f;
+                }
+            }
+            else if (funnelStates_[i] == 13) {
+                // 13: 縮小（0.5秒）
+                funnelTimers_[i] += deltaTime;
+                float t = std::min(funnelTimers_[i] / 0.5f, 1.0f);
+                float shrinkT = 1.0f - t;
+                
+                if (laser) { laser->SetScale({ 1.0f * shrinkT, 80.0f, 1.0f * shrinkT }); laser->SetCollisionAttribute(0); }
+                if (coreLaser) { coreLaser->SetScale({ 0.4f * shrinkT, 80.0f, 0.4f * shrinkT }); coreLaser->SetCollisionAttribute(0); }
+
+                Vector3 pos = blockTargetPos_[i];
+                // 縮小中もゆらゆらは停止したまま
+                armorBlocks[i]->SetTranslate(pos);
+
+                if (t >= 1.0f) {
+                    // 発射シーケンス終了、デコイ待機状態へ戻る
+                    funnelStates_[i] = 0;
+                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
+                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                }
             }
         }
 
-        // 終了間近でレーザーを細くしていく
-        if (t > 0.8f) {
-            float shrinkT = (1.0f - t) / 0.2f; // 1.0 -> 0.0
-            for (auto* laser : activeLasers_) {
-                if (!laser) continue;
-                laser->SetScale({ 1.0f * shrinkT, 80.0f, 1.0f * shrinkT });
-                laser->SetCollisionAttribute(0);
-            }
-            for (auto* core : activeCoreLasers_) {
-                if (!core) continue;
-                core->SetScale({ 0.4f * shrinkT, 80.0f, 0.4f * shrinkT });
-            }
-        }
-
-        if (t >= 1.0f) {
+        // 3ウェーブ（5秒×3）が終わったらフェーズ移行
+        if (animTimer_ >= 15.0f) {
             animPhase_ = 93;
             animTimer_ = 0.0f;
             for (auto* laser : activeLasers_) {
