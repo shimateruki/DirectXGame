@@ -59,7 +59,7 @@ void EnemySlime::Update(float deltaTime) {
         velocity_.z *= friction;
     }
     // 5. 通常の移動AI（吹き飛び中・硬直中でない場合）
-    else if (!isBlownAway_ && target_) {
+    else if (!isBlownAway_ && IsTargetValid()) {
         // 常にターゲットの方を向く（線形補間によるスムーズな回転）
         Vector3 myPos = transform_.translate;
         Vector3 targetPos = target_->GetWorldPosition();

@@ -18,6 +18,11 @@ public:
     // プレイヤーを追いかけるためにターゲットを登録する関数
     void SetTarget(Object3d* target) { target_ = target; }
 
+    // ターゲットが有効（存在し、かつ死んでいない）かを確認する
+    bool IsTargetValid() const {
+        return target_ != nullptr && !target_->isDead;
+    }
+
 protected:
     Object3d* target_ = nullptr; // 追いかける対象（プレイヤー）
     float damageCooldownTimer_ = 0.0f; // 連続ヒットを防ぐ無敵タイマー

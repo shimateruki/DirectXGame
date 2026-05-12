@@ -141,7 +141,7 @@ void Player::Update(float deltaTime)
         if (postParams) {
             if (hp <= 0.0f) {
                 if (!dynamic_cast<PlayerStateDead*>(state_.get())) {
-                    isDead = true; // 念のためフラグは立てておく
+                    // isDead = true; // 削除されないようにコメントアウト
                     deathTimer_ = 0.0f;
                     ChangeState(std::make_unique<PlayerStateDead>());
                     DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡演出開始");
