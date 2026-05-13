@@ -21,10 +21,12 @@
 #include <MeshEffectManager.h>
 #include "GameDataManager.h"
 #include "engine/graphics/postprocess/Fade.h"
+#include "ProfilerManager.h"
 
 void Game::Initialize() {
     // Frameworkの初期化処理
     Framework::Initialize();
+    ProfilerManager::GetInstance()->Initialize();
     TextureManager::GetInstance()->LoadAllTexture("Resources/sprite/");
     TextureManager::GetInstance()->LoadAllTexture("Resources/texture/PBR/");
     ModelManager::GetInstance()->LoadAllModels();
@@ -427,6 +429,9 @@ void Game::Update() {
             if (ImGui::MenuItem(ICON_FA_BOOK " エンジン説明書")) {
                 engineManualWindow_.Open();
             }
+            if (ImGui::MenuItem(ICON_FA_CHART_BAR " システムプロファイラ")) {
+                ProfilerManager::GetInstance()->Open();
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -492,6 +497,7 @@ void Game::Update() {
         ImGui::End();
     }
     engineManualWindow_.Draw();
+    ProfilerManager::GetInstance()->DrawImGui();
     // ギズモ操作中はカメラ入力をオフにする
     Camera* mainCam = CameraManager::GetInstance()->GetActiveCamera();
     if (mainCam) { mainCam->SetInputEnabled(!(isSpriteEditorBusy || is3DGizmoBusy)); }

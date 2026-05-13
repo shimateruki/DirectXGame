@@ -4,6 +4,8 @@
 #include "d3dx12.h"
 #include "DirectXCommon.h" 
 #include <filesystem>
+#include "ProfilerManager.h"
+
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>
@@ -70,11 +72,15 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 
 
 uint32_t TextureManager::Load(const std::string& filePath) {
+
     // 1. 過去に読み込み済みのテクスチャか検索
     auto it = textureHandleMap_.find(filePath);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
+
+    // --- 計測開始 ---
+    auto start = std::chrono::high_resolution_clock::now();
 
     // 2. テクスチャファイルを読み込み、リソースを作成
     DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
@@ -114,7 +120,13 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
     uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
 
+    // --- 計測終了 ---
+    auto end = std::chrono::high_resolution_clock::now();
+    float duration = std::chrono::duration<float, std::milli>(end - start).count();
+    ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
+
     // 4. 新しいテクスチャデータをmapに格納
+
     TextureData& newData = textureDatas_[srvHandle];
     newData.filePath = filePath;
     newData.metadata = metadata;

@@ -218,6 +218,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\scene\GamePlayScene.cpp" />
     <ClCompile Include="game\scene\GameSelectScene.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\ProfilerManager.cpp" />
     <ClCompile Include="engine\graphics\3d\light\Light.cpp" />
     <ClCompile Include="engine\graphics\3d\light\LightManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\Log.cpp" />
@@ -678,6 +679,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\scene\GamePlayScene.h" />
     <ClInclude Include="game\scene\GameSelectScene.h" />
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\ProfilerManager.h" />
     <ClInclude Include="engine\graphics\particle\ParticleCommon.h" />
     <ClInclude Include="engine\graphics\particle\ParticleSystem.h" />
     <ClInclude Include="engine\graphics\3d\light\Light.h" />

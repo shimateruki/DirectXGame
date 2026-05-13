@@ -2,6 +2,8 @@
 #include "ModelCommon.h"
 #include <cassert>
 #include <filesystem> 
+#include "ProfilerManager.h"
+#include <chrono>
 
 
 // 静的メンバ変数の実体定義
@@ -64,12 +66,20 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     std::string fullPath = directoryPath + fileName;
     OutputDebugStringA(("【LoadModel】探索パス: " + fullPath + "\n").c_str());
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     auto newModel = std::make_unique<Model>();
     newModel->Initialize(modelCommon_.get(), directoryPath, fileName);
 
     models_[modelName] = std::move(newModel);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    float duration = std::chrono::duration<float, std::milli>(end - start).count();
+    ProfilerManager::GetInstance()->RecordLoadTime("Model", modelName, duration);
+
     return models_[modelName].get();
-}std::vector<std::string> ModelManager::GetLoadedModelNames() const {
+}
+std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     std::vector<std::string> names;
     for (const auto& pair : models_) {
         names.push_back(pair.first);
@@ -105,9 +115,15 @@ void ModelManager::LoadAllModels() {
 
                 // 登録キー例: "enemy_core_shards/enemy_core1"
                 if (!models_.contains(keyName)) {
+                    auto start = std::chrono::high_resolution_clock::now();
+
                     auto newModel = std::make_unique<Model>();
                     newModel->Initialize(modelCommon_.get(), dirPath, fileName);
                     models_[keyName] = std::move(newModel);
+
+                    auto end = std::chrono::high_resolution_clock::now();
+                    float duration = std::chrono::duration<float, std::milli>(end - start).count();
+                    ProfilerManager::GetInstance()->RecordLoadTime("Model", keyName, duration);
 
                     std::string logMsg = "[事前ロード成功] キー: [" + keyName + "] パス: " + dirPath + fileName + "\n";
                     OutputDebugStringA(logMsg.c_str());

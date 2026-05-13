@@ -129,6 +129,9 @@
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp">
       <Filter>ソース ファイル\engine\io</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\ProfilerManager.cpp">
+      <Filter>ソース ファイル\engine\io</Filter>
+    </ClCompile>
     <ClCompile Include="engine\graphics\particle\ParticleCommon.cpp">
       <Filter>ソース ファイル\engine\3d</Filter>
     </ClCompile>
@@ -508,6 +511,9 @@
       <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h">
+      <Filter>ヘッダー ファイル\engine\io</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\ProfilerManager.h">
       <Filter>ヘッダー ファイル\engine\io</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\particle\ParticleCommon.h">
