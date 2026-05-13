@@ -1,6 +1,7 @@
 #pragma once
 #include "Framework.h"
 #include <memory>
+#include <chrono>
 #include "SceneManager.h"
 #include"CameraManager.h"
 #include"AbstractSceneFactory.h"
@@ -50,7 +51,9 @@ private:
 	float updateTimeHistory_[120] = { 0 };
 	int timeHistoryIndex_ = 0;
 	float drawTimeMs_ = 0.0f;
+	float cpuCmdTimeMs_ = 0.0f;
 	float drawTimeHistory_[120] = { 0 };
+	std::chrono::high_resolution_clock::time_point prePostDrawTime_;
 #ifdef USE_IMGUI
 	std::unique_ptr<DebugEditor> debugEditor_;
 	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;

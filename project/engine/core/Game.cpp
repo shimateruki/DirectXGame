@@ -487,13 +487,32 @@ void Game::Update() {
         ImGui::Text("FPS: %.1f", 1.0f / deltaTime);
         ImGui::SliderFloat("時間倍率", &timeScale_, 0.0f, 2.0f);
         ImGui::Separator();
-        ImGui::Text("--- CPU Profiler ---");
-        ImGui::Text("Scene Update : %.3f ms", sceneUpdateTimeMs_);
-        ImGui::ProgressBar(sceneUpdateTimeMs_ / 16.66f, ImVec2(0.f, 0.f));
+        ImGui::Text("--- CPU パフォーマンス ---");
+        float cpuTotalWorkMs = sceneUpdateTimeMs_ + cpuCmdTimeMs_;
+        ImGui::Text("CPU 稼働合計: %.3f ms", cpuTotalWorkMs);
+        ImGui::ProgressBar(cpuTotalWorkMs / 16.66f, ImVec2(0.f, 0.f));
+        
+        if (ImGui::TreeNode("詳細内訳 (CPU)")) {
+            ImGui::Text("  シーン更新  : %.3f ms", sceneUpdateTimeMs_);
+            ImGui::Text("  描画命令発行: %.3f ms", cpuCmdTimeMs_);
+            ImGui::TreePop();
+        }
+        
         ImGui::PlotLines("##UpdateGraph", updateTimeHistory_, 120, timeHistoryIndex_,
-            "Update Time (ms)", 0.0f, 16.66f, ImVec2(ImGui::GetContentRegionAvail().x, 80.0f));
-        ImGui::Text("GPU Draw   : %.3f ms", dxCommon_->GetGpuDrawTimeMs());
-        ImGui::ProgressBar(dxCommon_->GetGpuDrawTimeMs() / 16.66f, ImVec2(0.f, 0.f));
+            "CPU負荷推移 (ms)", 0.0f, 16.66f, ImVec2(ImGui::GetContentRegionAvail().x, 60.0f));
+
+        ImGui::Separator();
+        ImGui::Text("--- GPU パフォーマンス ---");
+        float gpuTotalMs = dxCommon_->GetGpuDrawTimeMs();
+        ImGui::Text("GPU 稼働合計: %.3f ms", gpuTotalMs);
+        ImGui::ProgressBar(gpuTotalMs / 16.66f, ImVec2(0.f, 0.f));
+        
+        // GPU待機時間は「CPUが何もできずに待っている時間」
+        float gpuWaitMs = drawTimeMs_ - cpuCmdTimeMs_;
+        ImGui::Text("CPU 待機時間 : %.3f ms (VSync待ち含む)", gpuWaitMs > 0 ? gpuWaitMs : 0.0f);
+        
+        ImGui::PlotLines("##DrawGraph", drawTimeHistory_, 120, timeHistoryIndex_,
+            "フレーム全体 (ms)", 0.0f, 16.66f, ImVec2(ImGui::GetContentRegionAvail().x, 60.0f));
         ImGui::End();
     }
     engineManualWindow_.Draw();
@@ -506,10 +525,22 @@ void Game::Update() {
     // ↓ 計測開始
     auto startUpdate = std::chrono::high_resolution_clock::now();
 
-    if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
-    LightManager::GetInstance()->Update();
-    GPUParticleManager::GetInstance()->Update(deltaTime);
-    Fade::GetInstance()->Update(deltaTime);
+    {
+        PROFILE_SCOPE("  シーン");
+        if (sceneManager_) { sceneManager_->Update(finalDeltaTime); }
+    }
+    {
+        PROFILE_SCOPE("  ライト");
+        LightManager::GetInstance()->Update();
+    }
+    {
+        PROFILE_SCOPE("  パーティクル");
+        GPUParticleManager::GetInstance()->Update(deltaTime);
+    }
+    {
+        PROFILE_SCOPE("  フェード");
+        Fade::GetInstance()->Update(deltaTime);
+    }
     PostEffect::GetInstance()->GetParams()->time += deltaTime;
 
     if (sceneManager_) {
@@ -519,15 +550,18 @@ void Game::Update() {
     // ↓ 計測終了
     auto endUpdate = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float, std::milli> updateDuration = endUpdate - startUpdate;
-    sceneUpdateTimeMs_ = updateDuration.count(); // ミリ秒で保存
+    sceneUpdateTimeMs_ = updateDuration.count();
     updateTimeHistory_[timeHistoryIndex_] = sceneUpdateTimeMs_;
     timeHistoryIndex_ = (timeHistoryIndex_ + 1) % 120;
+
+    // プロファイラにCPU Update時間を送信
+    ProfilerManager::GetInstance()->RecordCpuTime("更新処理", sceneUpdateTimeMs_);
 }
 
 void Game::Draw() {
     PostEffect* postEffect_ = PostEffect::GetInstance();
     // ★ 前フレームのGPUの計測結果を読み取る
-    dxCommon_->ReadGpuProfile();
+    dxCommon_->ReadAllGpuProfiles();
 
     // CPUプロファイラ開始
     auto startDraw = std::chrono::high_resolution_clock::now();
@@ -548,34 +582,52 @@ void Game::Draw() {
         debugEditor_->GetProjectWindow()->CapturePendingThumbnails();
     }
 #endif
+    dxCommon_->StartGpuProfile("Total");
     dxCommon_->PreDrawShadow();
     SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
     // ★ GPUストップウォッチ開始！
-    dxCommon_->StartGpuProfile();
+    dxCommon_->StartGpuProfile("影描画");
     if (sceneManager_) {
         sceneManager_->DrawShadow();
     }
+    dxCommon_->EndGpuProfile("影描画");
     dxCommon_->PostDrawShadow();
+
+    dxCommon_->StartGpuProfile("メイン描画");
+    
+    dxCommon_->StartGpuProfile("  3Dシーン");
     if (sceneManager_) { sceneManager_->Draw(); }
+    dxCommon_->EndGpuProfile("  3Dシーン");
+    
+    dxCommon_->StartGpuProfile("  ゲームUI");
     if (sceneManager_) {
         sceneManager_->DrawUI();
     }
+    dxCommon_->EndGpuProfile("  ゲームUI");
+    
     // VFXSequencerが生成したエフェクトを描画
+    dxCommon_->StartGpuProfile("  エフェクト");
     {
         ID3D12Resource* pLight = LightManager::GetInstance()->GetPointLightResource();
         ID3D12Resource* sLight = LightManager::GetInstance()->GetSpotLightResource();
         MeshEffectManager::GetInstance()->Draw(pLight, sLight);
     }
+    dxCommon_->EndGpuProfile("  エフェクト");
 
+    dxCommon_->StartGpuProfile("  デバッグ");
     if (debugEditor_) { debugEditor_->DrawDebug(dxCommon_->GetCommandList()); }
     if (meshEffectEditor_ && EditorManager::GetInstance()->GetSelectedObject() == meshEffectEditor_.get()) {
         meshEffectEditor_->Draw();
     }
+    dxCommon_->EndGpuProfile("  デバッグ");
+    
+    dxCommon_->EndGpuProfile("メイン描画");
     dxCommon_->PostDrawRenderTexture();
 
     // ---------------------------------------------------------------
     // 2. ポストエフェクト・マルチパス (ブルーム生成)
     // ---------------------------------------------------------------
+    dxCommon_->StartGpuProfile("後処理");
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
 
@@ -620,17 +672,21 @@ void Game::Draw() {
     // ImGui(GameView)での表示用にリソースを変換
     postEffect_->TransitionToSRV(commandList, 1);
 
+    dxCommon_->EndGpuProfile("後処理");
+
     // ---------------------------------------------------------------
     // 4. バックバッファ描画 & エディタUI合成
     // ---------------------------------------------------------------
+    dxCommon_->StartGpuProfile("エディタUI");
     dxCommon_->PreDrawBackBuffer();
 
     if (spriteDebugEditor_) { spriteDebugEditor_->Draw(); }
     ImGuiManager::GetInstance()->Draw();
+    dxCommon_->EndGpuProfile("エディタUI");
 
-    // ★ GPUストップウォッチ終了！ (PostDrawの直前)
-    dxCommon_->EndGpuProfile();
+    dxCommon_->EndGpuProfile("Total");
 
+    prePostDrawTime_ = std::chrono::high_resolution_clock::now();
     dxCommon_->PostDraw();
     ImGuiManager::GetInstance()->EndFrame();
 
@@ -642,28 +698,32 @@ void Game::Draw() {
     // 1. シーンレンダリング
     dxCommon_->PreDrawRenderTexture();
 
-    // リリースビルドにもシャドウパスを追加！
+    dxCommon_->StartGpuProfile("Total");
     dxCommon_->PreDrawShadow();
     SRVManager::GetInstance()->SetDescriptorHeaps(dxCommon_->GetCommandList());
 
     // ★ GPUストップウォッチ開始！
-    dxCommon_->StartGpuProfile();
+    dxCommon_->StartGpuProfile("影描画");
 
     if (sceneManager_) {
         sceneManager_->DrawShadow();
     }
+    dxCommon_->EndGpuProfile("影描画");
     dxCommon_->PostDrawShadow();
 
     // メイン画面の描画
+    dxCommon_->StartGpuProfile("メイン描画");
     if (sceneManager_) { sceneManager_->Draw(); }
     // ゲームUIのオーバーレイ描画
     if (sceneManager_) {
         sceneManager_->DrawUI();
     }
+    dxCommon_->EndGpuProfile("メイン描画");
 
     dxCommon_->PostDrawRenderTexture();
 
     // 2. ポストエフェクト・マルチパス (ブルーム生成)
+    dxCommon_->StartGpuProfile("後処理");
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     uint32_t texA_Handle = dxCommon_->GetRenderTextureSrvHandle();
 
@@ -699,10 +759,11 @@ void Game::Draw() {
     // HDRからSDRへの変換と最終エフェクトの適用
     postEffect_->Draw(commandList, postEffect_->GetSRVHandle(0), 1);
 
-  
-    // ★ GPUストップウォッチ終了！ (PostDrawの直前)
-    dxCommon_->EndGpuProfile();
+    dxCommon_->EndGpuProfile("後処理");
 
+    dxCommon_->EndGpuProfile("Total");
+
+    prePostDrawTime_ = std::chrono::high_resolution_clock::now();
     dxCommon_->PostDraw();
 #endif
 
@@ -714,8 +775,34 @@ void Game::Draw() {
     // 履歴の保存 (Draw用)
     drawTimeHistory_[timeHistoryIndex_] = drawTimeMs_;
 
+    // プロファイラに分割して送信
+    ProfilerManager::GetInstance()->RecordCpuTime("描画 (合計)", drawTimeMs_);
+    std::chrono::duration<float, std::milli> cmdDuration = prePostDrawTime_ - startDraw;
+    float cmdTimeMs = cmdDuration.count();
+    cpuCmdTimeMs_ = cmdTimeMs; // ステータスウィンドウ用に保存
+    if (cmdTimeMs > 0.0f && cmdTimeMs < drawTimeMs_) {
+        ProfilerManager::GetInstance()->RecordCpuTime("  命令発行", cmdTimeMs);
+        ProfilerManager::GetInstance()->RecordCpuTime("  GPU待機", drawTimeMs_ - cmdTimeMs);
+    }
+
+    // ★ フレーム間隔の計測（前フレームから今フレームまでの実時間）
+    auto preFixFPS = std::chrono::high_resolution_clock::now();
     // FPS固定処理
     dxCommon_->UpdateFixFPS();
+
+    auto postFixFPS = std::chrono::high_resolution_clock::now();
+
+    // フレーム全体の時間をプロファイラに送信
+    static std::chrono::high_resolution_clock::time_point lastFrameStart;
+    float frameDelta = std::chrono::duration<float, std::milli>(postFixFPS - lastFrameStart).count();
+    lastFrameStart = postFixFPS;
+    if (frameDelta > 0.0f && frameDelta < 200.0f) { // 初回や異常値を除外
+        ProfilerManager::GetInstance()->RecordCpuTime("フレーム間隔", frameDelta);
+    }
+
+    // FixFPS の待ち時間だけを分離
+    float fixFpsWait = std::chrono::duration<float, std::milli>(postFixFPS - preFixFPS).count();
+    ProfilerManager::GetInstance()->RecordCpuTime("  FPS固定待ち", fixFpsWait);
 }
 
 void Game::SaveAllEditors() {

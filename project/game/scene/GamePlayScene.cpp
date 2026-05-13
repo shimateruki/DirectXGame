@@ -17,6 +17,7 @@
 #include <EventManager.h>
 #include "SceneManager.h"
 #include "DebugConsole.h"
+#include "ProfilerManager.h"
 #include <cassert>
 #include "BulletManager.h"
 #include "MoveStrategy3D.h"
@@ -284,6 +285,7 @@ void GamePlayScene::Update(float deltaTime) {
 		}
 	}
 	// --- 全体更新 ---
+	ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime); // オブジェクト一括更新
@@ -294,7 +296,10 @@ void GamePlayScene::Update(float deltaTime) {
 		sprite->Update();
 	}
 	BulletManager::GetInstance()->Update(deltaTime);
-	CollisionManager::GetInstance()->Update();
+	{
+		PROFILE_SCOPE("衝突判定");
+		CollisionManager::GetInstance()->Update();
+	}
 	UpdateUI();
 	if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
 		Vector3 effectPos = { 0.0f, 2.0f, 0.0f };

@@ -135,6 +135,8 @@ public:
     std::string GetTexturePath() const { return texturePath_; }
     uint32_t GetTextureHandle() const { return textureHandle_; }
 
+    bool GetEnableLighting() const { return materialData_ ? (materialData_->enableLighting != 0) : false; }
+
     void SetEnableEnvMap(bool enable);
     bool GetEnableEnvMap() const;
     void SetEnvIntensity(float intensity);

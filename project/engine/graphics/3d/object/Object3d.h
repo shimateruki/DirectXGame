@@ -194,6 +194,7 @@ public:
     std::string GetTexturePath() const { return meshRenderer_ ? meshRenderer_->GetTexturePath() : ""; }
     void SetEnableEnvMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableEnvMap(enable); }
     bool GetEnableEnvMap() const { return meshRenderer_ ? meshRenderer_->GetEnableEnvMap() : true; }
+    bool GetEnableLighting() const { return meshRenderer_ ? meshRenderer_->GetEnableLighting() : false; }
 
     void SetEnvIntensity(float intensity) { if (meshRenderer_) meshRenderer_->SetEnvIntensity(intensity); }
     float GetEnvIntensity() const { return meshRenderer_ ? meshRenderer_->GetEnvIntensity() : 1.0f; }
@@ -249,4 +250,16 @@ protected:
     bool isCollecting_ = false;
     float collectTimer_ = 0.0f;
     std::unique_ptr<GPUParticleEmitter> gpuEmitter_ = nullptr;
+
+    // --- パフォーマンス計測用 ---
+    float cpuUpdateTimeMs_ = 0.0f;
+    float cpuDrawTimeMs_ = 0.0f;
+    float cpuAnimTimeMs_ = 0.0f;
+    float cpuMatrixTimeMs_ = 0.0f;
+
+public:
+    float GetCpuUpdateTimeMs() const { return cpuUpdateTimeMs_; }
+    float GetCpuDrawTimeMs() const { return cpuDrawTimeMs_; }
+    float GetCpuAnimTimeMs() const { return cpuAnimTimeMs_; }
+    float GetCpuMatrixTimeMs() const { return cpuMatrixTimeMs_; }
 };

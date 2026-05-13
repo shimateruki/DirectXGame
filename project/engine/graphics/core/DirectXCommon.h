@@ -6,6 +6,7 @@
 #include <wrl.h> // ComPtrを使うのに必要
 #include <string>
 #include <chrono>
+#include <map>
 
 // ======== 外部ライブラリのヘッダーファイル ========
 #include <dxcapi.h> // シェーダーコンパイルに必要
@@ -136,9 +137,10 @@ public:
 	void PostDrawShadow();
 	float GetGpuDrawTimeMs() const { return gpuDrawTimeMs_; }
 	// GPUプロファイラ操作用
-	void StartGpuProfile();
-	void EndGpuProfile();
-	void ReadGpuProfile();
+	void StartGpuProfile(const std::string& name = "Total");
+	void EndGpuProfile(const std::string& name = "Total");
+	void ResetGpuProfiles(); // 計測項目をリセットする
+	void ReadAllGpuProfiles();
 	void CreateDepthSrv();
 	uint32_t GetDepthSrvHandle() const { return depthSrvHandle_; }
 
@@ -226,10 +228,16 @@ private:
 	static const int kShadowMapWidth = 2048;
 	static const int kShadowMapHeight = 2048;
 	//Gpuの時間計測用
+	static const uint32_t kMaxGpuQueries = 128; // 最大64項目まで計測可能
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
 	Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
 	uint64_t gpuFrequency_ = 0; // GPUのタイマーの周波数
 	float gpuDrawTimeMs_ = 0.0f; // 計測結果（ミリ秒）
+	
+	// 名前とクエリインデックスの対応マップ
+	std::map<std::string, uint32_t> gpuProfileMap_;
+	uint32_t nextQueryIndex_ = 0;
+	bool useVSync_ = true; // Present(1,0) = VSync ON → FixFPSの二重待ちを防止
 	Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
 	uint32_t grabSrvHandle_ = 0;
 };

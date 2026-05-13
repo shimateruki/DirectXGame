@@ -58,7 +58,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 // 1. クエリヒープの作成（開始と終了の2つのタイムスタンプを保存できる箱）
 	D3D12_QUERY_HEAP_DESC queryHeapDesc{};
 	queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
-	queryHeapDesc.Count = 2;
+	queryHeapDesc.Count = kMaxGpuQueries;
 	HRESULT hr = device_->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&queryHeap_));
 	assert(SUCCEEDED(hr));
 
@@ -67,7 +67,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 	heapProp.Type = D3D12_HEAP_TYPE_READBACK;
 	D3D12_RESOURCE_DESC resDesc{};
 	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resDesc.Width = sizeof(uint64_t) * 2;
+	resDesc.Width = sizeof(uint64_t) * kMaxGpuQueries;
 	resDesc.Height = 1;
 	resDesc.DepthOrArraySize = 1;
 	resDesc.MipLevels = 1;
@@ -169,6 +169,13 @@ void DirectXCommon::InitalaizeFixFPS()
 
 void DirectXCommon::UpdateFixFPS()
 {
+	// VSync ON (Present(1,0)) の場合、GPU側が既に60FPSを保証しているので
+	// CPU側のsleep待ちは不要（二重同期によるジッターを防止）
+	if (useVSync_) {
+		reference_ = std::chrono::steady_clock::now();
+		return;
+	}
+
 	//1/60秒びったりの時間
 	const std::chrono::microseconds kMinTimer(uint64_t(1000000.0f / 60.0f));
 	//1/60秒よりわずかに短い時間
@@ -275,6 +282,18 @@ void DirectXCommon::PostDraw() {
 	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	commandList_->ResourceBarrier(1, &barrier);
+
+    // フレームの最後で、記録した全クエリを一括でリゾルブする
+    if (nextQueryIndex_ > 0) {
+        commandList_->ResolveQueryData(
+            queryHeap_.Get(),
+            D3D12_QUERY_TYPE_TIMESTAMP,
+            0,
+            nextQueryIndex_,
+            queryResultBuffer_.Get(),
+            0
+        );
+    }
 
 	// コマンドリストへのコマンドの記録を終了します。
 	HRESULT hr = commandList_->Close();
@@ -926,33 +945,64 @@ void DirectXCommon::PostDrawShadow() {
 	commandList_->RSSetScissorRects(1, &scissorRect_);
 }
 
-void DirectXCommon::StartGpuProfile() {
-	// コマンドリストの先頭で「開始時間」を記録（インデックス0番）
-	commandList_->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
+void DirectXCommon::StartGpuProfile(const std::string& name) {
+    // まだ登録されていない名前なら、新しいインデックス（開始・終了ペア）を割り当てる
+    if (!gpuProfileMap_.contains(name)) {
+        if (nextQueryIndex_ + 2 > kMaxGpuQueries) return;
+        gpuProfileMap_[name] = nextQueryIndex_;
+        nextQueryIndex_ += 2;
+    }
+
+    uint32_t startIndex = gpuProfileMap_[name];
+    commandList_->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, startIndex);
 }
 
-void DirectXCommon::EndGpuProfile() {
-	// 全ての描画が終わった後に「終了時間」を記録（インデックス1番）
-	commandList_->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1);
+void DirectXCommon::EndGpuProfile(const std::string& name) {
+    if (!gpuProfileMap_.contains(name)) return;
 
-	// 記録した2つのタイムスタンプを、CPUが読めるバッファ（queryResultBuffer_）にコピーする命令
-	commandList_->ResolveQueryData(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0, 2, queryResultBuffer_.Get(), 0);
+    uint32_t startIndex = gpuProfileMap_[name];
+    uint32_t endIndex = startIndex + 1;
+    commandList_->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, endIndex);
+
+    // ※ 個別に Resolve せず、フレームの最後で一括で行うように変更
 }
 
-void DirectXCommon::ReadGpuProfile() {
-	// 前回のフレームでGPUが書き込んだ結果をCPU側で読み取る
-	uint64_t* mappedData = nullptr;
-	HRESULT hr = queryResultBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-	if (SUCCEEDED(hr)) {
-		uint64_t startTime = mappedData[0];
-		uint64_t endTime = mappedData[1];
-		queryResultBuffer_->Unmap(0, nullptr);
+void DirectXCommon::ResetGpuProfiles() {
+    gpuProfileMap_.clear();
+    nextQueryIndex_ = 0;
+}
 
-		// 終了時間から開始時間を引き、周波数で割ってミリ秒（ms）に変換
-		if (endTime > startTime && gpuFrequency_ > 0) {
-			gpuDrawTimeMs_ = static_cast<float>(endTime - startTime) / static_cast<float>(gpuFrequency_) * 1000.0f;
-		}
-	}
+#include "ProfilerManager.h"
+
+void DirectXCommon::ReadAllGpuProfiles() {
+    // 前フレームの結果を読み取る
+    D3D12_RANGE readRange = { 0, sizeof(uint64_t) * nextQueryIndex_ };
+    uint64_t* mappedData = nullptr;
+    
+    // 読み取り範囲を指定してMap（キャッシュの無効化を確実にする）
+    HRESULT hr = queryResultBuffer_->Map(0, &readRange, reinterpret_cast<void**>(&mappedData));
+    if (SUCCEEDED(hr)) {
+        for (auto& pair : gpuProfileMap_) {
+            const std::string& name = pair.first;
+            uint32_t startIndex = pair.second;
+
+            uint64_t start = mappedData[startIndex];
+            uint64_t end = mappedData[startIndex + 1];
+
+            if (end > start && gpuFrequency_ > 0) {
+                float timeMs = static_cast<float>(end - start) / static_cast<float>(gpuFrequency_) * 1000.0f;
+                ProfilerManager::GetInstance()->RecordGpuTime(name, timeMs);
+
+                if (name == "Total") {
+                    gpuDrawTimeMs_ = timeMs;
+                }
+            }
+        }
+        
+        // 読み終わったら、書き込みは行わないので Empty Range で Unmap
+        D3D12_RANGE writtenRange = { 0, 0 };
+        queryResultBuffer_->Unmap(0, &writtenRange);
+    }
 }
 void DirectXCommon::CreateDepthSrv() {
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};

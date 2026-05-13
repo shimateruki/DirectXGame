@@ -177,6 +177,11 @@ public: // メンバ関数
 
     void DrawMeshOnly();
     void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
+    
+    // --- 情報取得用 ---
+    uint32_t GetVertexCount() const;
+    uint32_t GetPolygonCount() const;
+    uint32_t GetMeshCount() const { return static_cast<uint32_t>(modelData_.meshes.size()); }
 private: // 内部処理関数
     static ModelData LoadFile(const std::string& directoryPath, const std::string& filename);
     static Node ReadNode(aiNode* node, std::vector<Node>& nodes);

@@ -222,6 +222,18 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), instanceCount, 0, 0, startInstanceLocation);
     }
 }
+
+uint32_t Model::GetVertexCount() const {
+    uint32_t count = 0;
+    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.vertices.size());
+    return count;
+}
+
+uint32_t Model::GetPolygonCount() const {
+    uint32_t count = 0;
+    for (const auto& mesh : modelData_.meshes) count += static_cast<uint32_t>(mesh.indices.size() / 3);
+    return count;
+}
 // ==========================================
 // 読み込み: Assimpのメッシュごとにデータを分ける
 // ==========================================

@@ -12,6 +12,7 @@
 #include <GPUParticleManager.h>
 #include <GPUParticleEmitter.h>
 #include <DebugConsole.h>
+#include <ProfilerManager.h>
 
 Object3d::~Object3d() {
     if (recorder_) {
@@ -59,6 +60,13 @@ void Object3d::Initialize(Object3dCommon* common) {
 // ========================================================================
 
 void Object3d::Update(float deltaTime) {
+    auto startAll = std::chrono::high_resolution_clock::now();
+    
+    // 毎フレームリセット
+    cpuUpdateTimeMs_ = 0.0f;
+    cpuAnimTimeMs_ = 0.0f;
+    cpuMatrixTimeMs_ = 0.0f;
+
     // 収集アニメーション
     if (isCollecting_) {
         collectTimer_ += deltaTime;
@@ -72,26 +80,24 @@ void Object3d::Update(float deltaTime) {
     }
     else if (eventType_ == EventType::StarCoin && isVisible_) {
         // --- スターコインの常駐演出 ---
-        // 1. くるくる回転
         transform_.rotate.y += 3.0f * deltaTime;
         transform_.isQuaternionMaster = false;
 
-        // 2. GPUパーティクル（エミッター経由）
         if (!gpuEmitter_) {
             gpuEmitter_ = std::make_unique<GPUParticleEmitter>();
             gpuEmitter_->Initialize("star_sparkle", this);
-            gpuEmitter_->SetInterval(0.1f); // 放出間隔
+            gpuEmitter_->SetInterval(0.1f);
             gpuEmitter_->Play();
         }
     }
 
-    // スターコイン用のエミッターがあれば、収集アニメーション中も常に更新して追尾させる
     if (gpuEmitter_) {
         gpuEmitter_->Update(deltaTime);
     }
 
+    // --- アニメーション計測 ---
+    auto startAnim = std::chrono::high_resolution_clock::now();
     if (meshRenderer_ && meshRenderer_->GetModel()) {
-        // アニメーション更新
         if (!animName_.empty()) {
             Model* model = meshRenderer_->GetModel();
             const Model::Animation* anim = model->GetAnimation(animName_);
@@ -105,12 +111,14 @@ void Object3d::Update(float deltaTime) {
                 }
                 model->ApplyAnimation(*anim, time);
             }
-        
         }
         meshRenderer_->GetModel()->Update();
     }
+    auto endAnim = std::chrono::high_resolution_clock::now();
+    cpuAnimTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endAnim - startAnim).count()) / 1000.0f;
 
-    // レンダラー更新 (WVP行列転送など)
+    // --- 行列・その他計測 ---
+    auto startMat = std::chrono::high_resolution_clock::now();
     if (meshRenderer_) {
         meshRenderer_->Update();
     }
@@ -119,9 +127,12 @@ void Object3d::Update(float deltaTime) {
     if (recorder_) {
         recorder_->Update();
     }
-    
     UpdateParticle();
+    auto endMat = std::chrono::high_resolution_clock::now();
+    cpuMatrixTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endMat - startMat).count()) / 1000.0f;
 
+    auto endAll = std::chrono::high_resolution_clock::now();
+    cpuUpdateTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endAll - startAll).count()) / 1000.0f;
 }
 
 void Object3d::UpdateParticle() {
@@ -142,7 +153,16 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
     }
 #endif
     if (meshRenderer_) {
+        bool sampling = ProfilerManager::GetInstance()->IsGpuSampling();
+        if (sampling) {
+            common_->GetDxCommon()->StartGpuProfile(name_);
+        }
+
         meshRenderer_->Draw(pointLightResource, spotLightResource);
+
+        if (sampling) {
+            common_->GetDxCommon()->EndGpuProfile(name_);
+        }
     }
 }
 
