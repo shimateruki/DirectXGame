@@ -507,6 +507,11 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::Update(float deltaTime) {
+    float originalDeltaTime = deltaTime;
+    // プレイヤーが死亡して演出時間が経過したら、世界の時間を止める（ただし遷移中は止めない）
+    if (player_ && player_->GetHp() <= 0.0f && player_->GetDeathTimer() > 3.5f && !isRestartTransition_ && !isTitleTransition_) {
+        deltaTime = 0.0f;
+    }
     // ---------------------------------------------------------
     // 0. ESCキーでの強制終了（オプション画面以外）
     // ---------------------------------------------------------
@@ -673,7 +678,34 @@ void GamePlayScene::Update(float deltaTime) {
         for (auto& sprite : sprites_) {
             sprite->Update();
         }
+        UpdateUI(originalDeltaTime); // ポーズ中もUIアニメーションは動かす
         return;
+    }
+
+    // =======================================================
+    // ★ ゲームオーバー・リトライ遷移処理 (復旧)
+    // =======================================================
+    if (isRestartTransition_ || isTitleTransition_) {
+        restartTimer_ += originalDeltaTime;
+        float transitionDuration = 1.0f;
+        float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
+
+        PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+        if (postParams) {
+            // CRTシャットダウン演出（縦に潰れる）
+            postParams->crtShutdown = t;
+        }
+
+        // 完全に終了（1秒経過）したらシーンを切り替え
+        if (restartTimer_ >= transitionDuration) {
+            if (isRestartTransition_) {
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            }
+            else {
+                SceneManager::GetInstance()->ChangeScene("TITLE");
+            }
+        }
+        return; // 遷移中はこれ以降の更新をスキップ
     }
     // =======================================================
     // チュートリアルドアの処理
@@ -1225,11 +1257,11 @@ void GamePlayScene::Update(float deltaTime) {
             if (!isGameOverUiReady_) {
                 bool allFadedIn = true;
 
-                auto FadeInSprite = [deltaTime, &allFadedIn](Sprite* sprite) {
+                auto FadeInSprite = [originalDeltaTime, &allFadedIn](Sprite* sprite) {
                     if (sprite) {
                         Vector4 color = sprite->GetColor();
                         if (color.w < 1.0f) {
-                            color.w += deltaTime * 0.5f; // 徐々に不透明にする
+                            color.w += originalDeltaTime * 0.5f; // 徐々に不透明にする
                             if (color.w > 1.0f)
                                 color.w = 1.0f;
                             sprite->SetColor(color);
