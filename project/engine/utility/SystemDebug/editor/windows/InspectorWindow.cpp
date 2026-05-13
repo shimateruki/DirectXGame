@@ -7,6 +7,7 @@
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
 #include "ParticleManager.h"
+#include "GPUParticleManager.h"
 #include "ModelManager.h"
 #include "GhostRecorder.h"
 #include "DebugConsole.h"
@@ -290,11 +291,15 @@ void InspectorWindow::Draw() {
                     }
                 }
                 if (enableNormal) {
-                    static std::vector<std::string> texturePaths;
+                    static std::vector<std::string> albedoPaths;
+                    static std::vector<std::string> normalPaths;
+                    static std::vector<std::string> armPaths;
                     static bool isListInitialized = false;
 
                     if (!isListInitialized) {
-                        texturePaths.clear();
+                        albedoPaths.clear();
+                        normalPaths.clear();
+                        armPaths.clear();
                         std::string targetDir = "Resources/texture/PBR/";
                         if (std::filesystem::exists(targetDir)) {
                             for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
@@ -303,7 +308,10 @@ void InspectorWindow::Draw() {
                                     if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
                                         std::string pathString = entry.path().string();
                                         std::replace(pathString.begin(), pathString.end(), '\\', '/');
-                                        texturePaths.push_back(pathString);
+                                        
+                                        if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
+                                        else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
+                                        else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
                                     }
                                 }
                             }
@@ -315,7 +323,7 @@ void InspectorWindow::Draw() {
                     const char* previewValue = currentPath.empty() ? "未設定 (クリックで選択)" : currentPath.c_str();
 
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " ノーマル画像", previewValue)) {
-                        for (const std::string& path : texturePaths) {
+                        for (const std::string& path : normalPaths) {
                             bool isSelected = (currentPath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
                                 selectedObject->SetNormalMap(path); isGraphicsChanged = true;
@@ -333,7 +341,7 @@ void InspectorWindow::Draw() {
                     const char* previewOrmValue = currentOrmPath.empty() ? "未設定 (クリックで選択)" : currentOrmPath.c_str();
 
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " ORMマップ (AO/粗さ/金属)", previewOrmValue)) {
-                        for (const std::string& path : texturePaths) {
+                        for (const std::string& path : armPaths) {
                             bool isSelected = (currentOrmPath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
                                 selectedObject->SetOrmMap(path); isGraphicsChanged = true;
@@ -350,7 +358,7 @@ void InspectorWindow::Draw() {
                     const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
 
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse)", previewTextureValue)) {
-                        for (const std::string& path : texturePaths) {
+                        for (const std::string& path : albedoPaths) {
                             bool isSelected = (currentTexturePath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
                                 selectedObject->SetTexture(path); isGraphicsChanged = true;
@@ -392,27 +400,50 @@ void InspectorWindow::Draw() {
 
             ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
-                const auto& paramsMap = ParticleManager::GetInstance()->GetParamsMap();
-                std::vector<const char*> itemNames;
-                int currentItemIndex = 0; int index = 0;
-                itemNames.push_back("None");
+                // --- CPU Particle (Old) ---
+                const auto& cpuParamsMap = ParticleManager::GetInstance()->GetParamsMap();
+                std::vector<const char*> cpuItemNames;
+                int currentCpuIndex = 0; int cpuIdx = 0;
+                cpuItemNames.push_back("None (CPU)");
 
-                std::string currentParticleName = selectedObject->GetParticleName();
-                if (currentParticleName.empty()) currentItemIndex = 0;
+                std::string currentCpuName = selectedObject->GetParticleName();
+                if (currentCpuName.empty()) currentCpuIndex = 0;
 
-                for (const auto& [name, param] : paramsMap) {
-                    itemNames.push_back(name.c_str());
-                    if (name == currentParticleName) currentItemIndex = index + 1;
-                    index++;
+                for (const auto& [name, param] : cpuParamsMap) {
+                    cpuItemNames.push_back(name.c_str());
+                    if (name == currentCpuName) currentCpuIndex = cpuIdx + 1;
+                    cpuIdx++;
                 }
 
-                if (ImGui::Combo("Effect Name", &currentItemIndex, itemNames.data(), (int)itemNames.size())) {
-                    if (currentItemIndex == 0) selectedObject->SetParticleName("");
-                    else selectedObject->SetParticleName(itemNames[currentItemIndex]);
+                if (ImGui::Combo("CPU Effect", &currentCpuIndex, cpuItemNames.data(), (int)cpuItemNames.size())) {
+                    if (currentCpuIndex == 0) selectedObject->SetParticleName("");
+                    else selectedObject->SetParticleName(cpuItemNames[currentCpuIndex]);
                 }
 
-                if (!currentParticleName.empty() && paramsMap.find(currentParticleName) == paramsMap.end()) {
-                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Warning: JSON not found!");
+                ImGui::Separator();
+
+                // --- GPU Particle (New) ---
+                const auto& gpuPresets = GPUParticleManager::GetInstance()->GetPresets();
+                std::vector<const char*> gpuItemNames;
+                int currentGpuIndex = 0; int gpuIdx = 0;
+                gpuItemNames.push_back("None (GPU)");
+
+                std::string currentGpuName = selectedObject->GetGPUParticleName();
+                if (currentGpuName.empty()) currentGpuIndex = 0;
+
+                for (const auto& [name, config] : gpuPresets) {
+                    gpuItemNames.push_back(name.c_str());
+                    if (name == currentGpuName) currentGpuIndex = gpuIdx + 1;
+                    gpuIdx++;
+                }
+
+                if (ImGui::Combo("GPU Effect", &currentGpuIndex, gpuItemNames.data(), (int)gpuItemNames.size())) {
+                    if (currentGpuIndex == 0) selectedObject->SetGPUParticleName("");
+                    else selectedObject->SetGPUParticleName(gpuItemNames[currentGpuIndex]);
+                }
+
+                if (!currentGpuName.empty() && gpuPresets.find(currentGpuName) == gpuPresets.end()) {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Warning: GPU JSON not found!");
                 }
             }
 

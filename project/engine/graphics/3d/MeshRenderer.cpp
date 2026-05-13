@@ -309,7 +309,7 @@ bool MeshRenderer::GetEnableNormalMap() const {
 void MeshRenderer::SetNormalMap(const std::string& texturePath) {
     normalMapPath_ = texturePath;
     if (!texturePath.empty()) {
-        normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath);
+        normalMapHandle_ = TextureManager::GetInstance()->Load(texturePath, true);
     } else {
         normalMapHandle_ = 0;
     }
@@ -318,7 +318,7 @@ void MeshRenderer::SetNormalMap(const std::string& texturePath) {
 void MeshRenderer::SetOrmMap(const std::string& texturePath) {
     ormMapPath_ = texturePath;
     if (!texturePath.empty()) {
-        ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath);
+        ormMapHandle_ = TextureManager::GetInstance()->Load(texturePath, true);
     } else {
         ormMapHandle_ = 0;
     }

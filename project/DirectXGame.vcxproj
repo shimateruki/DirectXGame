@@ -216,6 +216,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\core\Game.cpp" />
     <ClCompile Include="engine\system\input\InputManager.cpp" />
     <ClCompile Include="game\scene\GamePlayScene.cpp" />
+    <ClCompile Include="game\scene\PreviewScene.cpp" />
     <ClCompile Include="game\scene\GameSelectScene.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\ProfilerManager.cpp" />
@@ -677,6 +678,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\math\Math.h" />
     <ClInclude Include="engine\graphics\core\SrvManager.h" />
     <ClInclude Include="game\scene\GamePlayScene.h" />
+    <ClInclude Include="game\scene\PreviewScene.h" />
     <ClInclude Include="game\scene\GameSelectScene.h" />
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\ProfilerManager.h" />

@@ -30,6 +30,7 @@ public:
     void SetPresetName(const std::string& presetName) { presetName_ = presetName; }
 
     bool IsPlaying() const { return isPlaying_; }
+    const std::string& GetName() const { return presetName_; }
 
 private:
     std::string presetName_ = "";

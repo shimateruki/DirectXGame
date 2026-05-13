@@ -168,6 +168,9 @@ public:
     void SetParticleName(const std::string& name) { particleName_ = name; }
     const std::string& GetParticleName() const { return particleName_; }
 
+    void SetGPUParticleName(const std::string& name) { gpuParticleName_ = name; }
+    const std::string& GetGPUParticleName() const { return gpuParticleName_; }
+
     void StartCollectionAnimation() { isCollecting_ = true; collectTimer_ = 0.0f; }
     bool IsCollecting() const { return isCollecting_; }
 
@@ -244,6 +247,7 @@ protected:
     std::string gimmickType_ = "";
 
     std::string particleName_ = ""; // JSONファイル名
+    std::string gpuParticleName_ = ""; // GPUパーティクル用
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;

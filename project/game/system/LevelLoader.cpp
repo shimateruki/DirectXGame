@@ -329,6 +329,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
                 if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
+                if (objData.contains("particleName")) targetObject->SetParticleName(objData["particleName"].get<std::string>());
+                if (objData.contains("gpuParticleName")) targetObject->SetGPUParticleName(objData["gpuParticleName"].get<std::string>());
                 if (objData.contains("localFog")) {
                     if (auto* fogData = targetObject->GetLocalFogData()) {
                         auto& f = objData["localFog"];

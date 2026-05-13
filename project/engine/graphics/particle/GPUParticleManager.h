@@ -24,6 +24,8 @@ public:
     float GetTimeScale() const { return timeScale_; }
     void SetTimeScale(float timeScale) { timeScale_ = timeScale; }
 
+    const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
+
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position);
     uint32_t PlayAutoEmitter(const std::string& presetName, const Vector3& position, const Matrix4x4& transform);
     void StopAutoEmitter(uint32_t id);

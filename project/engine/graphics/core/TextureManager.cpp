@@ -4,6 +4,8 @@
 #include "d3dx12.h"
 #include "DirectXCommon.h" 
 #include <filesystem>
+#include <algorithm>
+#include <cctype>
 #include "ProfilerManager.h"
 
 /// <summary>
@@ -71,10 +73,42 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 
 
 
-uint32_t TextureManager::Load(const std::string& filePath) {
+uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap) {
+
+    // 0. 自動判定: 引数がfalseでもファイル名から推測する
+    if (!isNormalMap) {
+        std::string lowerPath = filePath;
+        std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::tolower);
+        if (lowerPath.find("normal") != std::string::npos ||
+            lowerPath.find("_n") != std::string::npos ||
+            lowerPath.find("nor") != std::string::npos ||  // nor_dx 等
+            lowerPath.find("arm") != std::string::npos ||  // AO, Roughness, Metal
+            lowerPath.find("orm") != std::string::npos) { // ORMもデータテクスチャなのでLinearに
+            isNormalMap = true;
+        }
+    }
+
+    // 1. すでに DDS パスが渡されているか、対応する DDS が存在するか確認
+    std::filesystem::path path(filePath);
+    std::filesystem::path ddsPath = path;
+    ddsPath.replace_extension(".dds");
+
+    std::string loadPath = filePath;
+    bool alreadyHasDDS = std::filesystem::exists(ddsPath);
+    bool ddsIsUpToDate = false;
+
+    // DDS が存在する場合、タイムスタンプを比較
+    if (alreadyHasDDS) {
+        auto srcTime = std::filesystem::last_write_time(path);
+        auto dstTime = std::filesystem::last_write_time(ddsPath);
+        if (srcTime <= dstTime) {
+            loadPath = ddsPath.string(); // DDSの方が新しい（または同じ）なら採用
+            ddsIsUpToDate = true;
+        }
+    }
 
     // 1. 過去に読み込み済みのテクスチャか検索
-    auto it = textureHandleMap_.find(filePath);
+    auto it = textureHandleMap_.find(loadPath);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
@@ -83,7 +117,7 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     auto start = std::chrono::high_resolution_clock::now();
 
     // 2. テクスチャファイルを読み込み、リソースを作成
-    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
+    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(loadPath);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
     if (!resource) {
@@ -125,20 +159,87 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     float duration = std::chrono::duration<float, std::milli>(end - start).count();
     ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
 
-    // 4. 新しいテクスチャデータをmapに格納
+    // 4. 重いテクスチャ（かつDDSが未生成または古い）なら、次回の為にDDS変換を実行
+    const float kThresholdMs = 20.0f; // 20ms を超えたら重いと判定
+    if (!ddsIsUpToDate && duration > kThresholdMs) {
+        // 0. 自動判定: 引数がfalseでもファイル名から推測する
+        if (!isNormalMap) {
+            if (filePath.find("Normal") != std::string::npos || 
+                filePath.find("_n") != std::string::npos ||
+                filePath.find("nor") != std::string::npos ||  // nor_dx 等
+                filePath.find("arm") != std::string::npos ||  // AO, Roughness, Metal
+                filePath.find("ORM") != std::string::npos) { // ORMもデータテクスチャなのでLinearに
+                isNormalMap = true;
+            }
+        }
+        // バックグラウンド的にDDS生成 (今回は同期実行だが、パスだけ返す)
+        ConvertToDDS(filePath, isNormalMap);
+    }
+
+    // 5. 新しいテクスチャデータをmapに格納
 
     TextureData& newData = textureDatas_[srvHandle];
-    newData.filePath = filePath;
+    newData.filePath = loadPath;
     newData.metadata = metadata;
     newData.resource = resource;
     newData.intermediateResource = intermediateResource;
     newData.srvHandle = srvHandle;
 
     // 5. ファイルパスと「本物のハンドル」の対応をマップに記録
-    textureHandleMap_[filePath] = srvHandle;
+    textureHandleMap_[loadPath] = srvHandle;
 
     // 6. 「本物のハンドル」を返す
     return srvHandle;
+}
+
+std::string TextureManager::ConvertToDDS(const std::string& filePath, bool isNormalMap) {
+    std::filesystem::path path(filePath);
+    std::string ext = path.extension().string();
+
+    // すでに DDS なら何もしない
+    if (ext == ".dds") return filePath;
+
+    // サポートされている形式以外なら何もしない
+    if (ext != ".png" && ext != ".jpg" && ext != ".tga" && ext != ".hdr") return filePath;
+
+    // 出力先 DDS パスの生成 (元のファイルと同じ場所に .dds を作る)
+    std::filesystem::path ddsPath = path;
+    ddsPath.replace_extension(".dds");
+
+    // 更新が必要かチェック (DDSがない、または元ファイルより古い)
+    bool needUpdate = false;
+    if (!std::filesystem::exists(ddsPath)) {
+        needUpdate = true;
+    }
+    else {
+        auto srcTime = std::filesystem::last_write_time(path);
+        auto dstTime = std::filesystem::last_write_time(ddsPath);
+        if (srcTime > dstTime) {
+            needUpdate = true;
+        }
+    }
+
+    if (needUpdate) {
+        // Texconv を実行 (Windows環境のパス形式に合わせる)
+        std::string tool = "Resources\\tools\\Texconv.exe";
+        if (!std::filesystem::exists(tool)) return filePath; // ツールがなければ諦めて元のをロード
+
+        std::string format = isNormalMap ? "BC7_UNORM" : "BC7_UNORM_SRGB";
+
+        // HDR の場合は特殊処理 (BC6H)
+        if (ext == ".hdr") format = "BC6H_UF16";
+
+        std::string outputDir = path.parent_path().string();
+
+        // コマンド構築
+        // -f: 形式指定, -y: 上書き許可, -o: 出力先, -m: ミップマップ生成(デフォルト)
+        std::string command = tool + " -f " + format + " -y -o \"" + outputDir + "\" \"" + filePath + "\"";
+
+        // 実行 (コンソールウィンドウを一瞬出さないために、本来は CreateProcess 等が良いが、一旦 system)
+        std::system(command.c_str());
+    }
+
+    return ddsPath.string();
 }
 
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
@@ -155,14 +256,14 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
             if (entry.is_regular_file()) {
                 if (entry.path().extension() == ".png" ||
                     entry.path().extension() == ".jpg" ||
+                    entry.path().extension() == ".hdr" ||
                     entry.path().extension() == ".dds") { 
                     std::string path = entry.path().string();
                     std::replace(path.begin(), path.end(), '\\', '/');
-                    Load(path);
-                } {
-                    std::string path = entry.path().string();
-                    std::replace(path.begin(), path.end(), '\\', '/');
-                    Load(path);
+
+                    // ファイル名に "Normal" が含まれていればノーマルマップとして扱う
+                    bool isNormal = (path.find("Normal") != std::string::npos || path.find("_n") != std::string::npos);
+                    Load(path, isNormal);
                 }
             }
         }

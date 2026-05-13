@@ -148,7 +148,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["texturePath"] = obj->GetTexturePath();
     d["enableEnvMap"] = obj->GetEnableEnvMap();
     d["envIntensity"] = obj->GetEnvIntensity();
-   d["emissive"] = obj->GetEmissive();
+    d["emissive"] = obj->GetEmissive();
+    d["particleName"] = obj->GetParticleName();
+    d["gpuParticleName"] = obj->GetGPUParticleName();
     // 9. アニメーション
     d["animation"]["animName"] = obj->animName_;
     d["animation"]["isAnimLoop"] = obj->isAnimLoop_;

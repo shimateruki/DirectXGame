@@ -136,12 +136,31 @@ void Object3d::Update(float deltaTime) {
 }
 
 void Object3d::UpdateParticle() {
-    // 名前が設定されていれば、マネージャー経由で発生させる
+    // 1. CPUパーティクル (旧仕様)
     if (!particleName_.empty()) {
-
         Vector3 pos = GetWorldPosition();
-
         ParticleManager::GetInstance()->Emit(particleName_, pos, particleTimer_);
+    }
+
+    // 2. GPUパーティクル (新仕様)
+    if (!gpuParticleName_.empty()) {
+        // 未作成なら作成
+        if (!gpuEmitter_) {
+            gpuEmitter_ = std::make_unique<GPUParticleEmitter>();
+            gpuEmitter_->Initialize(gpuParticleName_, this);
+            gpuEmitter_->Play();
+        }
+        // 名前が不一致なら作り直し
+        else if (gpuEmitter_->GetName() != gpuParticleName_) {
+            gpuEmitter_->Initialize(gpuParticleName_, this);
+            gpuEmitter_->Play();
+        }
+    }
+    else {
+        // 名前が消えたらエミッターも消す
+        if (gpuEmitter_) {
+            gpuEmitter_ = nullptr;
+        }
     }
 }
 
@@ -545,6 +564,10 @@ void Object3d::CopyFrom(const Object3d* other) {
     // 7. アニメーション
     this->animName_ = other->animName_;
     this->isAnimLoop_ = other->isAnimLoop_;
+
+    // パーティクル
+    this->particleName_ = other->particleName_;
+    this->gpuParticleName_ = other->gpuParticleName_;
 
     // 8. レコーダー (Ghost)
     this->recordPathName_ = other->recordPathName_;

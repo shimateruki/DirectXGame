@@ -29,11 +29,14 @@ private:
 
 public:
     void Initialize(DirectXCommon* dxCommon);
-    uint32_t Load(const std::string& fileName);
+    uint32_t Load(const std::string& fileName, bool isNormalMap = false);
     const DirectX::TexMetadata& GetMetadata(uint32_t textureHandle);
     void LoadAllTexture(const std::string& directoryPath);
     std::vector<std::string> GetLoadedTexturePaths() const;
     uint32_t GetSrvHandle(const std::string& filePath);
+
+private:
+    std::string ConvertToDDS(const std::string& filePath, bool isNormalMap);
 
 private:
     DirectXCommon* dxCommon_ = nullptr;
