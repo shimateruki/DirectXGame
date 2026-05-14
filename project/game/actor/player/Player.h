@@ -110,6 +110,10 @@ public:
     void SetForceLockOnTarget(Object3d* target) { forceLockOnTarget_ = target; }
     Object3d* GetForceLockOnTarget() const { return forceLockOnTarget_; }
 
+    // --- 攻撃方向の保存（吹き飛ばし用） ---
+    void SetAttackDirection(const Vector3& dir) { attackDirection_ = dir; }
+    Vector3 GetAttackDirection() const { return attackDirection_; }
+
     // ロックオンの強制解除要求
     void RequestClearLockOn() { requestClearLockOn_ = true; }
     bool ConsumeClearLockOnRequest() {
@@ -156,5 +160,6 @@ private:
     float deathTimer_ = 0.0f;    // 死亡してからの経過時間
     Object3d* forceLockOnTarget_ = nullptr; // 強制ロックオン対象
     bool requestClearLockOn_ = false;       // ロックオン解除要求フラグ
+    Vector3 attackDirection_ = { 0,0,1 };   // 攻撃開始時の向き
     void UpdateColor();
 };

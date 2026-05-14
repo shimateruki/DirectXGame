@@ -23,6 +23,8 @@
 #include "BossAttack/BossAttack6_Laser.h"
 #include "BossAttack/BossAttack7_Absorb.h"
 #include "BossAttack/BossAttack8_Final.h"
+#include "BossAttack/BossAttack9_Funnels.h"
+#include "BossAttack/BossAttack9_Spawn.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -173,6 +175,13 @@ int BossCore::GetNeededBlockCount() const {
 void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
 
+    // パラメータが未初期化ならデフォルト値で初期化（アクセス違反防止）
+    if (!param_.has_value()) {
+        param_ = EntityParameter();
+        param_->hp = 1000.0f; // デフォルトHP
+        param_->maxHp = 1000.0f;
+    }
+
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     director_ = std::make_unique<GhostDirector>();
@@ -221,6 +230,13 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     BossParticle6->Initialize("Boss6", this);
     BossParticle6->Play();
     //particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加！
+
+    isFinalPhase_ = false;
+    isWaitingForDeath_ = false;
+    isWaitingForFinisher_ = false;
+    deathPhase_ = 0;
+    isCompletelyDead_ = false;
+    isShardSpawnRequested_ = false;
 }
 
 void BossCore::Update(float deltaTime) {
@@ -252,6 +268,7 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
         if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
+        if (input->IsKeyTriggered(DIK_Y)) triggerAttack = 9; // Yキーでファンネル攻撃！
 
         // ==========================================
     // 9キーで即座にボスを爆散させるデバッグ機能！
@@ -384,7 +401,7 @@ void BossCore::Update(float deltaTime) {
     }
 
     // バリアへのダメージ処理
-    if (target_ && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
+    if (IsTargetValid() && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
         Object3d* weapon = FindWeaponRecursive(target_);
 
         // ==========================================
@@ -570,30 +587,25 @@ void BossCore::ChangeState(State nextState) {
 
     uint32_t coreAttribute;
     uint32_t blockAttribute;
-    // ==========================================
-    // トドメ待ち状態なら、カメラの邪魔になる kGround を外す！
-    // ==========================================
-    if (isWaitingForDeath_||isWaitingForFinisher_) {
-        coreAttribute = kEnemy; // トドメの攻撃を受けるために敵判定だけ残す
-        blockAttribute = 0;     // 装甲ブロックは完全に判定を消す
+
+    // トドメ待ち状態の判定
+    if (isWaitingForDeath_ || isWaitingForFinisher_) {
+        coreAttribute = kEnemy;
+        blockAttribute = 0;
     }
     else {
-        // 今までの通常の処理
         if (state_ == State::Attack) {
-            coreAttribute = kEnemyAttack | kGround;
+            coreAttribute = kEnemy | kEnemyAttack | kGround;
         }
         else if (state_ == State::Weak) {
             coreAttribute = kEnemy | kGround;
         }
         else {
-            // ====================================================
-            // ★ 修正：戦闘が始まっていたら「kEnemy」属性を付ける！
-            // ====================================================
             if (isBattleStarted_) {
-                coreAttribute = kEnemy | kGround; // 戦闘中は敵！
+                coreAttribute = kEnemy | kGround;
             }
             else {
-                coreAttribute = kGround; // 登場前・登場演出中はただの壁（無敵）
+                coreAttribute = kGround;
             }
         }
         blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
@@ -610,8 +622,6 @@ void BossCore::ChangeState(State nextState) {
         SetColor(originalColor_);
     }
 
-    //uint32_t blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
-
     for (Object3d* block : armorBlocks_) {
         if (block) {
             block->SetCollisionAttribute(blockAttribute);
@@ -627,13 +637,9 @@ void BossCore::ChangeState(State nextState) {
         break;
 
     case State::Attack: {
-        // ==========================================
-        // ★ 攻撃の確率（重み）設定
-        // 数値を大きくするほど、その攻撃が出やすくなります！
-        // ==========================================
         struct AttackWeight {
-            int id;      // 攻撃番号
-            int weight;  // 出やすさ（重み）
+            int id;
+            int weight;
         };
 
         std::vector<AttackWeight> attackList = {
@@ -644,29 +650,23 @@ void BossCore::ChangeState(State nextState) {
             { 5, 30 }, // 人型 (30%)
             { 6, 30 },  // レーザー (30%) ※超大技！
             { 7, 30 },  // 吸収 (重み30)
+            { 9, 30 },  // ファンネル・レーザー (30%)
+            { 1, 30 }, { 2, 30 }, { 3, 30 }, { 4, 30 },
+            { 5, 30 }, { 6, 30 }, { 7, 30 }, { 9, 25 },
         };
 
-        static int lastAttack = 0; // 前回撃った攻撃を記憶
+        static int lastAttack = 0;
         int totalWeight = 0;
         std::vector<AttackWeight> candidates;
 
-        // 前回と同じ攻撃を除外しながら、有効な攻撃の合計重みを計算
         for (const auto& a : attackList) {
-            // 1. 前回と同じ攻撃は選ばない
             if (a.id == lastAttack) continue;
-
-            // 2. 吸収攻撃(ID: 7)の場合、装甲が満タン(10個)なら候補から外す！
-            // ※IsArmorFull() は以前作った「10個あって壊れていないか」を判定する関数です
-            if (a.id == 7 && IsArmorFull()) {
-                continue;
-            }
-
+            if (a.id == 7 && IsArmorFull()) continue;
             candidates.push_back(a);
             totalWeight += a.weight;
         }
 
-        // 重みに基づいた抽選
-        int nextAttack = 1; // デフォルト
+        int nextAttack = 1;
         if (totalWeight > 0) {
             int randomVal = std::rand() % totalWeight;
             int currentSum = 0;
@@ -679,9 +679,8 @@ void BossCore::ChangeState(State nextState) {
             }
         }
 
-        lastAttack = nextAttack; // 記憶更新
+        lastAttack = nextAttack;
 
-        // デバッグ用強制上書き
         if (s_debugForceAttack != 0) {
             nextAttack = s_debugForceAttack;
             s_debugForceAttack = 0;
@@ -693,8 +692,7 @@ void BossCore::ChangeState(State nextState) {
 
         animTimer_ = 0.0f;
 
-        // 攻撃インスタンスの生成
-        if (nextAttack == 1)      currentAttack_ = std::make_unique<BossAttack1_Rush>();
+        if (nextAttack == 1) currentAttack_ = std::make_unique<BossAttack1_Rush>();
         else if (nextAttack == 2) currentAttack_ = std::make_unique<BossAttack2_Shoot>();
         else if (nextAttack == 3) currentAttack_ = std::make_unique<BossAttack3_Hammer>();
         else if (nextAttack == 4) currentAttack_ = std::make_unique<BossAttack4_Wall>();
@@ -702,6 +700,8 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 6) currentAttack_ = std::make_unique<BossAttack6_Laser>();
         else if (nextAttack == 7) currentAttack_ = std::make_unique<BossAttack7_Absorb>();
         else if (nextAttack == 8) currentAttack_ = std::make_unique<BossAttack8_Final>();
+        else if (nextAttack == 9) currentAttack_ = std::make_unique<BossAttack9_Funnels>();
+        else if (nextAttack == 10) currentAttack_ = std::make_unique<BossAttack9_Spawn>();
 
         if (currentAttack_) {
             currentAttack_->Initialize(this);
@@ -732,6 +732,17 @@ void BossCore::StartAppearance() {
 void BossCore::TakeBodyDamage(float damage) {
     // 既に爆散演出中なら何もしない
     if (deathPhase_ != 0) return;
+
+    // 赤色演出（ダメージフィードバック）
+    SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+    colorResetTimer_ = 0.15f;
+
+    // パラメータが設定されていなければ初期化する (安全策)
+    if (!param_.has_value()) {
+        param_ = EntityParameter();
+        param_->hp = 1000.0f;
+        param_->maxHp = 1000.0f;
+    }
 
     // ====================================================
     // ★ 追加：トドメ待ち状態の時に殴られたら、ついに撃破演出スタート！
@@ -801,6 +812,30 @@ void BossCore::UpdateIdle(float deltaTime) {
     }
 
     // ====================================================
+    // コア本体の待機モーション（鼓動と浮遊）
+    // ====================================================
+    if (isBattleStarted_ && !isWaitingForFinisher_) {
+        // 1. 鼓動（心音のように「ドクン、ドクン」と大きく変化させる）
+        float t = std::fmod(s_globalIdleTimer, 2.0f); // 2.0秒周期
+        float pulse = 0.0f;
+        if (t < 0.15f) {
+            // 1回目の強い拍動
+            pulse = std::sin((t / 0.15f) * std::numbers::pi_v<float>);
+        } else if (t > 0.25f && t < 0.4f) {
+            // 2回目の少し弱い拍動
+            pulse = std::sin(((t - 0.25f) / 0.15f) * std::numbers::pi_v<float>) * 0.7f;
+        }
+        
+        // 最大1.2倍までハッキリと大きくする
+        float scaleVal = 1.0f + pulse * 0.2f;
+        SetScale({ scaleVal, scaleVal, scaleVal });
+
+        // 2. 浮遊（Y軸が 4.0f を中心にゆっくり上下）
+        float hoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f;
+        SetTranslate({ GetTranslate().x, hoverY, GetTranslate().z });
+    }
+
+    // ====================================================
     // ★ ここが圧倒的カッコよさの秘密！
     // 1.8秒（咆哮が終わって元のサイズに戻る瞬間）までは 0% で完全待機。
     // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッ！と集める！
@@ -813,19 +848,33 @@ void BossCore::UpdateIdle(float deltaTime) {
     // カッコいいイージング計算（3乗アウト：最初は早く、ボスに近づくにつれてゆっくり）
     float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
 
+    // 親（コア）の鼓動によるスケールを取得
+    Vector3 coreScale = GetScale();
+
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
 
+        // コアのスケール変化の影響を打ち消す（ブロック自体は鼓動しないようにする）
+        Vector3 localPos = orbit.pos;
+        localPos.x /= coreScale.x;
+        localPos.y /= coreScale.y;
+        localPos.z /= coreScale.z;
+
+        Vector3 localScale = orbit.scale;
+        localScale.x /= coreScale.x;
+        localScale.y /= coreScale.y;
+        localScale.z /= coreScale.z;
+
         if (i < blockStartPos_.size()) {
-            // 散らばった位置(blockStartPos_)から、軌道の位置(orbit)へ補間！
-            Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
+            // 散らばった位置(blockStartPos_)から、軌道の位置へ補間
+            Vector3 pos = Math::Lerp(blockStartPos_[i], localPos, easeT);
             armorBlocks_[i]->SetTranslate(pos);
         }
         else {
-            armorBlocks_[i]->SetTranslate(orbit.pos);
+            armorBlocks_[i]->SetTranslate(localPos);
         }
 
-        armorBlocks_[i]->SetScale(orbit.scale);
+        armorBlocks_[i]->SetScale(localScale);
         armorBlocks_[i]->SetRotation(orbit.rot);
         armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
     }
@@ -859,33 +908,123 @@ void BossCore::UpdateIdle(float deltaTime) {
 void BossCore::UpdateWeak(float deltaTime) {
     animTimer_ += deltaTime;
 
-    float shakeX = std::sin(animTimer_ * 50.0f) * 0.05f;
-    float shakeZ = std::cos(animTimer_ * 45.0f) * 0.05f;
-    SetRotation({ shakeX, GetRotation().y, shakeZ });
+    // --- コア本体の落下・転がり（コロン）・復帰 ---
+    Vector3 bossPos = GetTranslate();
+    float fallDuration = 0.5f;
+    float rollAngle = 0.0f;
 
-    SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
+    // 1. 落下と転がり
+    if (animTimer_ <= fallDuration) {
+        float t = animTimer_ / fallDuration;
+        float easeT = std::pow(t, 2.0f); // 重力落下のようなEaseIn
+        bossPos.y = Math::Lerp(4.0f, 0.5f, easeT);
+        rollAngle = Math::Lerp(0.0f, 90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
+        SetTranslate(bossPos);
+    } 
+    // 2. 起き上がり（最後の2秒）
+    else if (animTimer_ > 8.0f) {
+        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+        float easeT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // ふわりと浮くEaseOut
+        bossPos.y = Math::Lerp(0.5f, 4.0f, easeT);
+        rollAngle = Math::Lerp(90.0f * (std::numbers::pi_v<float> / 180.0f), 0.0f, easeT);
+        SetTranslate(bossPos);
+    } 
+    // 3. 地面でダウン中
+    else {
+        bossPos.y = 0.5f;
+        rollAngle = 90.0f * (std::numbers::pi_v<float> / 180.0f);
+        SetTranslate(bossPos);
+    }
 
+    // コアの震えを完全に無くし、コロンと転がった状態を維持する
+    SetRotation({ rollAngle, GetRotation().y, 0.0f });
+
+    // --- フリッカー（明滅）エフェクト ---
+    int flicker = static_cast<int>(animTimer_ * 15.0f) % 4; // ランダムっぽくチカチカさせる
+    bool isLightOn = (flicker == 0 && animTimer_ < 8.0f);
+    
+    if (animTimer_ > 8.0f) {
+        // 起き上がり中は徐々に元の色に戻す
+        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+        Vector4 color;
+        color.x = Math::Lerp(0.3f, originalColor_.x, wakeUpT);
+        color.y = Math::Lerp(0.3f, originalColor_.y, wakeUpT);
+        color.z = Math::Lerp(0.3f, originalColor_.z, wakeUpT);
+        color.w = 1.0f;
+        SetColor(color);
+    } else {
+        SetColor(isLightOn ? originalColor_ : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
+    }
+
+    // --- 装甲ブロックの動き ---
     float scatterDuration = 0.8f;
-    float t = std::min(animTimer_ / scatterDuration, 1.0f);
-    float easeT = Easing::OutExpo(t);
+    float scatterT = std::min(animTimer_ / scatterDuration, 1.0f);
+    float easeT = 1.0f - std::pow(1.0f - scatterT, 3.0f); // OutCubic
 
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
+            // ダウン中の位置（散らばった位置）を計算
             Vector3 currentPos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
+            
+            // 落下中のバウンドエフェクト
+            if (scatterT < 1.0f) {
+                float bounce = std::abs(std::sin(scatterT * std::numbers::pi_v<float> * 2.0f)) * (1.0f - scatterT) * 4.0f;
+                currentPos.y += bounce;
+            }
+
+            // 起き上がり中のブロック補間（コアへスムーズに戻る）
+            if (animTimer_ > 8.0f) {
+                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+                float returnEaseT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // OutCubic
+                OrbitData orbit = GetIdleOrbit(i);
+                currentPos = Math::Lerp(currentPos, orbit.pos, returnEaseT);
+            }
+
             armorBlocks_[i]->SetTranslate(currentPos);
 
             Vector3 rot = armorBlocks_[i]->GetRotation();
-            rot.x += 1.0f * deltaTime;
-            rot.y += 1.5f * deltaTime;
+            // 落下中のみ回転
+            if (scatterT < 1.0f) {
+                rot.x += 5.0f * deltaTime;
+                rot.y += 3.0f * deltaTime;
+            } else if (animTimer_ > 8.0f) {
+                // 起き上がり中は軌道の回転へスムーズに補間（プルプルさせない）
+                OrbitData orbit = GetIdleOrbit(i);
+                auto LerpAngle = [](float a, float b, float t) {
+                    float diff = b - a;
+                    while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
+                    while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
+                    return a + diff * t;
+                };
+                rot.x = LerpAngle(rot.x, orbit.rot.x, 5.0f * deltaTime);
+                rot.y = LerpAngle(rot.y, orbit.rot.y, 5.0f * deltaTime);
+                rot.z = LerpAngle(rot.z, orbit.rot.z, 5.0f * deltaTime);
+            }
             armorBlocks_[i]->SetRotation(rot);
-            armorBlocks_[i]->SetColor({ 0.3f, 0.3f, 0.3f, 1.0f });
+
+            // ブロックも明滅
+            if (animTimer_ > 8.0f) {
+                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+                armorBlocks_[i]->SetColor({ 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
+            } else {
+                armorBlocks_[i]->SetColor(isLightOn ? Vector4{ 0.8f, 0.8f, 0.8f, 1.0f } : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
+            }
         }
     }
 
+    // --- 10秒経過でステート復帰 ---
     if (animTimer_ >= 10.0f) {
         animTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         SetColor(originalColor_);
+        Vector3 finalPos = GetTranslate();
+        finalPos.y = 4.0f;
+        SetTranslate(finalPos);
+
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            armorBlocks_[i]->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        }
+
         ChangeState(State::Idle);
     }
 }
@@ -908,7 +1047,8 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             if (distance < 0.5f) {
                 fb.block->SetTranslate(headPos);
 
-                if (target_) {
+                // ターゲット（プレイヤー）への追跡
+                if (IsTargetValid()) {
                     Vector3 targetPos = target_->GetWorldPosition();
                     targetPos.y = 0.0f;
 
@@ -1053,13 +1193,19 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
                 blockStartPos_.push_back(block->GetTranslate());
 
                 float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
-                float distance = 10.0f + (static_cast<float>(rand()) / RAND_MAX) * 5.0f;
-                float height = ((static_cast<float>(rand()) / RAND_MAX) * 10.0f) - 5.0f;
+                float distance = 5.0f + (static_cast<float>(rand()) / RAND_MAX) * 8.0f;
+                float height = 0.5f + (static_cast<float>(rand()) / RAND_MAX) * 1.0f; // 地面に転がす
 
+                float dx = std::cos(angle) * distance;
+                float dz = std::sin(angle) * distance;
+                float dy = height - 0.5f; // コアの最終高さが0.5fのため
+
+                // コアがダウン時にX軸へ90度コロンと転がるため、ローカル座標の軸が入れ替わる
+                // ワールド空間で (dx, dy, dz) の位置に散らばらせるには Local(dx, dz, -dy) にする
                 Vector3 scatterPos = {
-                    std::cos(angle) * distance,
-                    height,
-                    std::sin(angle) * distance
+                    dx,
+                    dz,
+                    -dy
                 };
                 blockTargetPos_.push_back(scatterPos);
             }
@@ -1098,7 +1244,9 @@ void BossCore::StartDeathSequence() {
             block->SetScale({ 0.0f, 0.0f, 0.0f });
             block->SetCollisionAttribute(0);
         }
-    }for (auto& emitter : particleEmitters_) {
+    }
+
+    for (auto& emitter : particleEmitters_) {
         if (emitter) {
             emitter->Stop();
         }
@@ -1169,7 +1317,7 @@ void BossCore::ActuallySpawnShards() {
             piece.rotSpeed = { 0.0f, 0.0f, 0.0f };
             corePieces_.push_back(piece);
 
-            currentScene->GetObjects().push_back(std::move(pieceObj));
+            currentScene->AddObject(std::move(pieceObj));
         }
     }
     isShardSpawnRequested_ = false; // 生成完了！
@@ -1209,8 +1357,12 @@ void BossCore::UpdateCorePieces(float deltaTime) {
 
     if (deathTimer_ > 5.0f) {
         for (auto& piece : corePieces_) {
-            if (piece.obj) piece.obj->isDead = true;
+            if (piece.obj) {
+                piece.obj->isDead = true;
+                piece.obj = nullptr; // ダングリングポインタ防止
+            }
         }
+        corePieces_.clear(); // リストもクリア
         isDead = true;
         isCompletelyDead_ = true;
         // ==========================================

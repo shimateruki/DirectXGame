@@ -8,7 +8,9 @@ private:
     Vector3 animStartPos_ = { 0,0,0 };
     Vector3 animTargetPos_ = { 0,0,0 };
     Vector3 animStartRot_ = { 0,0,0 }; // ハンマーは角度の記憶が必要！
+    Vector3 attackDir_ = { 0,0,1 };    // 攻撃開始時のプレイヤー方向
     std::vector<Vector3> blockStartPos_;
+    int attackCount_ = 0; // コンボ攻撃の回数カウント
 
 public:
     void Initialize(BossCore* boss) override;

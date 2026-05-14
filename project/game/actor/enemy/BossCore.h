@@ -53,6 +53,10 @@ public:
     // バリアHP
     float GetBarrierHp() const { return barrierHp_; }
     float GetMaxBarrierHp() const { return maxBarrierHp_; }
+    void SetBarrierHp(float hp) { barrierHp_ = hp; }
+
+    void TakeBarrierDamage(float damage, Object3d* hitBlock = nullptr);
+    void TakeBodyDamage(float damage);
 
     // ==========================================
     // 攻撃クラスがボスの部品をいじるためのゲッター！
@@ -111,6 +115,8 @@ public:
     void StartAppearance(); // 登場演出をスタートする関数
     bool IsAppearing() const { return isAppearing_; }
 
+    State GetState() const { return state_; } // 追加
+
     void ActuallySpawnShards();
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }
@@ -130,8 +136,8 @@ private:
 
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
-    void TakeBarrierDamage(float damage, Object3d* hitBlock = nullptr);
-    void TakeBodyDamage(float damage);
+
+    // void TakeBodyDamage(float damage);
 
     // ==================================================
     // 内部コンポーネント・変数

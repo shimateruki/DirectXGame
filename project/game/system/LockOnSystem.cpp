@@ -121,13 +121,35 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
     // (2) ロックオン中の挙動
     // ========================================================
     if (isLockingOn_) {
-        // ターゲット消失(死亡など)の場合の安全対策
+        // ターゲット消失(死亡や削除など)の場合の安全対策
         if (!lockOnTarget_) {
             isLockingOn_ = false;
             camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
             camera->SyncRotationToCurrentView();
             CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
+            return;
+        }
+
+        // --- ★ 追加: ターゲットが既に ObjectManager から削除されていないか(ダングリングポインタか)チェック ---
+        bool isTargetValid = false;
+        for (const auto& obj : objects) {
+            if (obj.get() == lockOnTarget_) {
+                isTargetValid = true;
+                break;
+            }
+        }
+        
+        // 見つからなかった（削除された）場合、または死亡フラグが立っている場合
+        if (!isTargetValid || lockOnTarget_->isDead) {
+            isLockingOn_ = false;
+            lockOnTarget_ = nullptr;
+            camera->SetFollowMode(Camera::FollowMode::kAimable);
+            camera->SetLockOnTarget(nullptr);
+            camera->SyncRotationToCurrentView();
+            CameraEditor::GetInstance()->SyncSettingsFromCamera();
+            lostSightTimer_ = 0.0f;
+            DebugConsole::GetInstance()->AddLog("LockOn Lost: Target destroyed.");
             return;
         }
 

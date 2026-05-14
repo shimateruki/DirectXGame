@@ -146,6 +146,58 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         float duration = 2.5f;
         float t = std::min(animTimer_ / duration, 1.0f);
 
+        // ==========================================
+        // ★ プレイヤーをゆっくり追いかけてプレッシャーを与える
+        // ==========================================
+        if (target) {
+            Vector3 targetPos = target->GetWorldPosition();
+            Vector3 currentPos = boss->GetTranslate();
+
+            // フェーズの最後(t > 0.8)で歩行のブレを収束させ、綺麗に倒れ込めるようにする
+            float fade = 1.0f;
+            if (t > 0.8f) fade = (1.0f - t) / 0.2f;
+
+            // 歩行サイクル（ドスッ、ドスッというリズム）
+            float walkCycle = std::abs(std::sin(animTimer_ * 6.0f)); 
+
+            // 追いかける速度（少し速くして、足を踏み出した時に加速する）
+            float baseMoveSpeed = 16.0f * deltaTime;
+            float moveSpeed = baseMoveSpeed * (walkCycle + 0.5f);
+            
+            Vector3 dir = { targetPos.x - currentPos.x, 0.0f, targetPos.z - currentPos.z };
+            float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+            if (length > 0.1f) {
+                dir.x /= length;
+                dir.z /= length;
+                currentPos.x += dir.x * moveSpeed;
+                currentPos.z += dir.z * moveSpeed;
+
+                // 左右の揺れ（巨体がのっしのっし歩く横揺れ）
+                float sway = std::sin(animTimer_ * 3.0f) * 10.0f * fade; 
+                currentPos.x += dir.z * sway * deltaTime; 
+                currentPos.z += -dir.x * sway * deltaTime;
+            }
+
+            // 歩くたびにY軸がバウンドする（最後は24.0fに着地）
+            currentPos.y = 24.0f + walkCycle * 4.0f * fade;
+
+            boss->SetTranslate(currentPos);
+
+            // 常にプレイヤーの方向を向き直す
+            float angleY = std::atan2(dir.x, dir.z) + std::numbers::pi_v<float>;
+            
+            auto LerpAngle = [](float a, float b, float t) {
+                float diff = b - a;
+                while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
+                while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
+                return a + diff * t;
+            };
+            
+            float newRotY = LerpAngle(boss->GetRotation().y, angleY, 5.0f * deltaTime);
+            boss->SetRotation({ boss->GetRotation().x, newRotY, boss->GetRotation().z });
+            boss->GetTransform()->isQuaternionMaster = false;
+        }
+
         float currentOverallScale = 1.0f;
 
         if (animTimer_ < 0.15f) {
@@ -221,6 +273,19 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         newPos.x = pivotWorldPos.x - dirX * rotLocalZ;
         newPos.y = pivotWorldPos.y - rotLocalY;
         newPos.z = pivotWorldPos.z - dirZ * rotLocalZ;
+
+        // ==========================================
+        // ★ 足がもつれて前に滑りながらこける挙動！
+        // ==========================================
+        float slideDistance = 15.0f; // 前に滑り込む距離
+        newPos.x += dirX * slideDistance * easeT;
+        newPos.z += dirZ * slideDistance * easeT;
+
+        // ★ 倒れ込んだ時に地面にめり込まないようにY軸を補正
+        // ブロックの前面(Z=3.5f)が地面(0.5f)にぴったりつくように調整
+        float buryOffset = 6.5f; 
+        newPos.y += buryOffset * easeT;
+
         boss->SetTranslate(newPos);
 
         float startArmAngle = std::numbers::pi_v<float> / 2.0f;
@@ -256,10 +321,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         if (t >= 1.0f) {
             animPhase_ = 54;
             animTimer_ = 0.0f;
-            // ★ 地面判定を復活させる
-            for (auto* block : armorBlocks) {
-                if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
-            }
+    
         }
     }
     // --- Phase 54: 倒れたまま待機（攻撃チャンス） ---
@@ -280,6 +342,11 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
                 blockStartScale_.push_back(armorBlocks[i]->GetScale());
             }
             animStartRot_ = boss->GetRotation();
+            animStartPos_ = boss->GetTranslate(); // ★ 倒れた位置を記録してワープを防ぐ！
+            // ★ 地面判定を復活させる
+            for (auto* block : armorBlocks) {
+                if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
+            }
         }
 
         animTimer_ += deltaTime;

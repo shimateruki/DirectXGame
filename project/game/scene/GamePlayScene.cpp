@@ -138,7 +138,10 @@ void GamePlayScene::Initialize() {
     for (auto& sprite : sprites_) {
         if (sprite->GetName() == "playerHpBar") {
             playerHpBarSprite_ = sprite.get();
-            playerHpBarMaxWidth_ = sprite->GetSize().x; // 元の長さを記憶！
+            playerHpBarMaxWidth_ = sprite->GetSize().x;
+        }
+        else if (sprite->GetName() == "playerDamageBar") {
+            playerDamageBarSprite_ = sprite.get();
         }
     }
 
@@ -166,10 +169,18 @@ void GamePlayScene::Initialize() {
             bossHpBarMaxWidth_ = sprite->GetSize().x;
             SetAlphaZero(bossHpBarSprite_);
         }
+        else if (sprite->GetName() == "bossDamageBar") {
+            bossDamageBarSprite_ = sprite.get();
+            SetAlphaZero(bossDamageBarSprite_);
+        }
         else if (sprite->GetName() == "bariaHp.png") {
             barrierHpBarSprite_ = sprite.get();
             barrierHpBarMaxWidth_ = sprite->GetSize().x;
-            SetAlphaZero(bossHpBarSprite_);
+            SetAlphaZero(barrierHpBarSprite_);
+        }
+        else if (sprite->GetName() == "barrierDamageBar") {
+            barrierDamageBarSprite_ = sprite.get();
+            SetAlphaZero(barrierDamageBarSprite_);
         }
         else if (sprite->GetName() == "bossHpBarback") {
             bossHpBackSprite_ = sprite.get();
@@ -462,6 +473,21 @@ void GamePlayScene::Initialize() {
         CameraManager::GetInstance()->Update();
     }
 
+    // --- 7. 初期HPの同期 (演出用変数の初期化) ---
+    if (player_) {
+        playerVisualHp_ = std::clamp(player_->GetHp() / player_->GetMaxHp(), 0.0f, 1.0f);
+        playerPrevHpRatio_ = playerVisualHp_;
+    }
+    if (boss_) {
+        bossVisualHp_ = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
+        bossPrevHpRatio_ = bossVisualHp_;
+
+        float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
+        barrierVisualMain_ = bRatio;
+        barrierVisualDamage_ = bRatio;
+        barrierPrevHpRatio_ = bRatio;
+    }
+
     dxCommon_->FlushCommandQueue(false);
 }
 
@@ -483,6 +509,11 @@ void GamePlayScene::Finalize() {
 }
 
 void GamePlayScene::Update(float deltaTime) {
+    float originalDeltaTime = deltaTime;
+    // プレイヤーが死亡して演出時間が経過したら、世界の時間を止める（ただし遷移中は止めない）
+    if (player_ && player_->GetHp() <= 0.0f && player_->GetDeathTimer() > 3.5f && !isRestartTransition_ && !isTitleTransition_) {
+        deltaTime = 0.0f;
+    }
     // ---------------------------------------------------------
     // 0. ESCキーでの強制終了（オプション画面以外）
     // ---------------------------------------------------------
@@ -649,7 +680,34 @@ void GamePlayScene::Update(float deltaTime) {
         for (auto& sprite : sprites_) {
             sprite->Update();
         }
+        UpdateUI(originalDeltaTime); // ポーズ中もUIアニメーションは動かす
         return;
+    }
+
+    // =======================================================
+    // ★ ゲームオーバー・リトライ遷移処理 (復旧)
+    // =======================================================
+    if (isRestartTransition_ || isTitleTransition_) {
+        restartTimer_ += originalDeltaTime;
+        float transitionDuration = 1.0f;
+        float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
+
+        PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+        if (postParams) {
+            // CRTシャットダウン演出（縦に潰れる）
+            postParams->crtShutdown = t;
+        }
+
+        // 完全に終了（1秒経過）したらシーンを切り替え
+        if (restartTimer_ >= transitionDuration) {
+            if (isRestartTransition_) {
+                SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            }
+            else {
+                SceneManager::GetInstance()->ChangeScene("TITLE");
+            }
+        }
+        return; // 遷移中はこれ以降の更新をスキップ
     }
     // =======================================================
     // チュートリアルドアの処理
@@ -1131,18 +1189,11 @@ void GamePlayScene::Update(float deltaTime) {
             Vector2 rightStick = inputManager_->GetRightStick();
 
             // =======================================================
-            // ★ 2. カメラ感度を倍率に変換する！
-            // =======================================================
-            int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
-            float speedMultiplier = 1.0f + (sens * 0.1f);
-
-            // =======================================================
-            // ★ 3. 入力値に感度を掛け算して「最終的な移動量」を出す！
+            // ★ 2. 入力値から「最終的な移動量」を出す（感度はCamera側で処理）
             // =======================================================
             Vector2 totalDelta;
-            totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f) * speedMultiplier;
-            totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f) *
-                speedMultiplier; // スティックの上下は反転
+            totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f);
+            totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f); // スティックの上下は反転
 
 #ifdef USE_IMGUI
             // ★ デバッグ(Develop)環境:
@@ -1203,11 +1254,11 @@ void GamePlayScene::Update(float deltaTime) {
             if (!isGameOverUiReady_) {
                 bool allFadedIn = true;
 
-                auto FadeInSprite = [deltaTime, &allFadedIn](Sprite* sprite) {
+                auto FadeInSprite = [originalDeltaTime, &allFadedIn](Sprite* sprite) {
                     if (sprite) {
                         Vector4 color = sprite->GetColor();
                         if (color.w < 1.0f) {
-                            color.w += deltaTime * 0.5f; // 徐々に不透明にする
+                            color.w += originalDeltaTime * 0.5f; // 徐々に不透明にする
                             if (color.w > 1.0f)
                                 color.w = 1.0f;
                             sprite->SetColor(color);
@@ -1295,7 +1346,7 @@ void GamePlayScene::Update(float deltaTime) {
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
     MeshEffectManager::GetInstance()->Update(deltaTime);
-    UpdateUI();
+    UpdateUI(deltaTime);
 
     // ========================================================
     // ★ ボス登場ムービー中の監視処理（時間で強制終了！）
@@ -1599,19 +1650,41 @@ void GamePlayScene::DrawShadow() {
     }
 }
 
-void GamePlayScene::UpdateUI() {
+void GamePlayScene::UpdateUI(float deltaTime) {
     // 1. プレイヤーのHP同期
     if (player_ && playerHpBarSprite_) {
         float currentHp = player_->GetHp();
         float maxHp = player_->GetMaxHp();
-
-        // 割合を計算 (0.0f ～ 1.0f の間に制限してエラーを防ぐ)
         float hpRatio = std::clamp(currentHp / maxHp, 0.0f, 1.0f);
 
-        // スプライトの幅を更新
-        Vector2 newSize = playerHpBarSprite_->GetSize();
-        newSize.x = playerHpBarMaxWidth_ * hpRatio;
-        playerHpBarSprite_->SetSize(newSize);
+        // ダメージを受けた瞬間を検知してタイマーをセット
+        if (hpRatio < playerPrevHpRatio_) {
+            playerDamageDelayTimer_ = 0.6f; // 0.6秒待機してから減り始める
+        }
+        playerPrevHpRatio_ = hpRatio;
+
+        // 緑色のメインバーは即座に反映
+        playerHpBarSprite_->SetSize({ playerHpBarMaxWidth_ * hpRatio, playerHpBarSprite_->GetSize().y });
+
+        // 赤色のダメージバー演出 (現在のHPを追いかける)
+        if (playerVisualHp_ > hpRatio) {
+            if (playerDamageDelayTimer_ > 0.0f) {
+                // 待機中
+                playerDamageDelayTimer_ -= deltaTime;
+            } else {
+                // 待機終了：徐々に減らす
+                playerVisualHp_ -= 0.15f * deltaTime; // 秒間15%減少 (よりゆっくりに)
+                if (playerVisualHp_ < hpRatio) playerVisualHp_ = hpRatio;
+            }
+        } else {
+            // 回復した、または初期化：即座に追いつく
+            playerVisualHp_ = hpRatio;
+            playerDamageDelayTimer_ = 0.0f;
+        }
+
+        if (playerDamageBarSprite_) {
+            playerDamageBarSprite_->SetSize({ playerHpBarMaxWidth_ * playerVisualHp_, playerDamageBarSprite_->GetSize().y });
+        }
     }
     if (boss_) {
         // =======================================================
@@ -1629,23 +1702,100 @@ void GamePlayScene::UpdateUI() {
             };
 
         SetAlpha(bossHpBarSprite_, alpha);
+        SetAlpha(bossDamageBarSprite_, alpha); // ダメージバーも同期
         SetAlpha(barrierHpBarSprite_, alpha);
+        SetAlpha(barrierDamageBarSprite_, alpha); // 追加
         SetAlpha(bossHpBackSprite_, alpha);
         SetAlpha(bossNameSprite_, alpha);
+
         // --- A. メインHPバーの同期 ---
         if (bossHpBarSprite_) {
-            float hpRatio =
-                std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
-            bossHpBarSprite_->SetSize(
-                { bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y });
+            float hpRatio = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
+            
+            // ダメージを受けた瞬間を検知
+            if (hpRatio < bossPrevHpRatio_) {
+                bossDamageDelayTimer_ = 0.8f; // ボスはより長く待機 (0.8秒)
+            }
+            bossPrevHpRatio_ = hpRatio;
+
+            // 赤色のメインバーは即座に反映
+            bossHpBarSprite_->SetSize({ bossHpBarMaxWidth_ * hpRatio, bossHpBarSprite_->GetSize().y });
+
+            // 白色のダメージバー演出
+            if (bossVisualHp_ > hpRatio) {
+                if (bossDamageDelayTimer_ > 0.0f) {
+                    bossDamageDelayTimer_ -= deltaTime;
+                } else {
+                    bossVisualHp_ -= 0.1f * deltaTime; // 秒間10%減少 (ボスは重厚感を出すためにさらにゆっくり)
+                    if (bossVisualHp_ < hpRatio) bossVisualHp_ = hpRatio;
+                }
+            } else {
+                bossVisualHp_ = hpRatio;
+                bossDamageDelayTimer_ = 0.0f;
+            }
+
+            if (bossDamageBarSprite_) {
+                bossDamageBarSprite_->SetSize({ bossHpBarMaxWidth_ * bossVisualHp_, bossDamageBarSprite_->GetSize().y });
+            }
         }
 
         // --- B. バリアHPバーの同期 ---
         if (barrierHpBarSprite_) {
             float bRatio = std::clamp(
                 boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
+
+            // スタン中かどうかの判定
+            bool isBossStunned = (boss_->GetState() == BossCore::State::Weak);
+
+            if (isBossStunned) {
+                // スタン（ダウン）中はバーを0で固定し、復帰を待つ
+                barrierVisualMain_ = 0.0f;
+                barrierVisualDamage_ = 0.0f;
+                barrierPrevHpRatio_ = bRatio; // 内部的には100%になっていても、ここでは現在の値（1.0）を追従させておく
+            }
+            else {
+                // 1. ダメージを受けた瞬間を検知
+                if (bRatio < barrierPrevHpRatio_) {
+                    barrierDamageDelayTimer_ = 0.5f;
+                }
+                barrierPrevHpRatio_ = bRatio;
+
+                // 2. メインバー (Cyan) の更新
+                if (barrierVisualMain_ < bRatio) {
+                    // 復帰時: 徐々に増やす (Kirby-style 0->100 recovery)
+                    barrierVisualMain_ += 0.4f * deltaTime; // 秒間40%回復
+                    if (barrierVisualMain_ > bRatio) barrierVisualMain_ = bRatio;
+                }
+                else {
+                    // 通常時・ダメージ時: 即座に反映
+                    barrierVisualMain_ = bRatio;
+                }
+
+                // 3. ダメージバー (White) の更新
+                if (barrierVisualDamage_ > bRatio) {
+                    // ダメージ中: 待機後に徐々に減らす
+                    if (barrierDamageDelayTimer_ > 0.0f) {
+                        barrierDamageDelayTimer_ -= deltaTime;
+                    }
+                    else {
+                        barrierVisualDamage_ -= 0.15f * deltaTime; // 秒間15%減少
+                        if (barrierVisualDamage_ < bRatio) barrierVisualDamage_ = bRatio;
+                    }
+                }
+                else {
+                    // 回復中または安定: メインバーに同期
+                    barrierVisualDamage_ = barrierVisualMain_;
+                }
+            }
+
+            // スプライトに反映
             barrierHpBarSprite_->SetSize(
-                { barrierHpBarMaxWidth_ * bRatio, barrierHpBarSprite_->GetSize().y });
+                { barrierHpBarMaxWidth_ * barrierVisualMain_, barrierHpBarSprite_->GetSize().y });
+
+            if (barrierDamageBarSprite_) {
+                barrierDamageBarSprite_->SetSize(
+                    { barrierHpBarMaxWidth_ * barrierVisualDamage_, barrierDamageBarSprite_->GetSize().y });
+            }
         }
     }
     auto SetAlpha = [](Sprite* s, float a) {
@@ -1771,6 +1921,22 @@ void GamePlayScene::DrawImGui() {
                     boss_->StartDeathSequence();
                 }
             }
+
+            ImGui::Separator();
+
+            if (ImGui::Button("Boss Stun Gauge -> 25%")) {
+                if (boss_) {
+                    boss_->SetBarrierHp(boss_->GetMaxBarrierHp() * 0.25f);
+                }
+            }
+
+            if (ImGui::Button("Boss Stun Gauge -> 0% (Force Stun)")) {
+                if (boss_) {
+                    // 現在のバリアHP分ダメージを与えて強制的にスタン演出をトリガーする
+                    boss_->TakeBarrierDamage(boss_->GetBarrierHp(), nullptr);
+                }
+            }
+
             ImGui::TreePop();
         }
 
