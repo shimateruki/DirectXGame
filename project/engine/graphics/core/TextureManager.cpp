@@ -5,8 +5,8 @@
 #include "DirectXCommon.h" 
 #include <filesystem>
 #include <algorithm>
-#include <cctype>
 #include "ProfilerManager.h"
+#include <set>
 
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
@@ -250,21 +250,42 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
     if (std::filesystem::exists(directoryPath)) {
+        std::vector<std::string> files;
+        std::set<std::string> ddsBaseNames;
 
+        // 1次スキャン：全ファイル取得とDDSの存在確認
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
-            // フォルダではなく「ファイル」だった場合のみ処理
             if (entry.is_regular_file()) {
-                if (entry.path().extension() == ".png" ||
-                    entry.path().extension() == ".jpg" ||
-                    entry.path().extension() == ".hdr" ||
-                    entry.path().extension() == ".dds") { 
-                    std::string path = entry.path().string();
-                    std::replace(path.begin(), path.end(), '\\', '/');
+                std::string path = entry.path().string();
+                std::replace(path.begin(), path.end(), '\\', '/');
+                files.push_back(path);
 
-                    // ファイル名に "Normal" が含まれていればノーマルマップとして扱う
-                    bool isNormal = (path.find("Normal") != std::string::npos || path.find("_n") != std::string::npos);
-                    Load(path, isNormal);
+                if (entry.path().extension() == ".dds") {
+                    std::string base = entry.path().parent_path().string() + "/" + entry.path().stem().string();
+                    std::replace(base.begin(), base.end(), '\\', '/');
+                    ddsBaseNames.insert(base);
                 }
+            }
+        }
+
+        // 2次スキャン：フィルタリングしてロード
+        for (const std::string& path : files) {
+            std::filesystem::path p(path);
+            std::string ext = p.extension().string();
+            std::string base = p.parent_path().string() + "/" + p.stem().string();
+            std::replace(base.begin(), base.end(), '\\', '/');
+
+            // 同じ名前のDDSがあれば、元の画像(png/jpg/hdr)はロードしない
+            if ((ext == ".png" || ext == ".jpg" || ext == ".hdr") && ddsBaseNames.count(base)) {
+                continue;
+            }
+
+            if (ext == ".png" || ext == ".jpg" || ext == ".hdr" || ext == ".dds") {
+                bool isNormal = (path.find("Normal") != std::string::npos || 
+                                 path.find("_n") != std::string::npos ||
+                                 path.find("ARM") != std::string::npos ||
+                                 path.find("ORM") != std::string::npos);
+                Load(path, isNormal);
             }
         }
     }

@@ -170,8 +170,8 @@
             "modelName": "heimen",
             "myEventID": -1,
             "name": "heimen_1",
-            "normalMapPath": "Resources/texture/PBR/Normal/rocky_terrain_02_nor_dx_2k.dds",
-            "ormMapPath": "Resources/texture/PBR/ARM/rocky_terrain_02_arm_2k.dds",
+            "normalMapPath": "",
+            "ormMapPath": "",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -203,7 +203,7 @@
                 10.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/rocky_terrain_02_diff_2k.dds",
+            "texturePath": "",
             "type": "Model"
         },
         {
@@ -531,9 +531,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8342281579971313,
-                1.2486577033996582,
-                0.8342281579971313
+                0.8579657077789307,
+                1.213051438331604,
+                0.8579657077789307
             ],
             "targetID": -1,
             "texturePath": "",

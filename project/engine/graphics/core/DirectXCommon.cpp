@@ -85,6 +85,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 }
 
 void DirectXCommon::PreDraw() {
+	frameCount_++;
 	// コマンドアロケータをリセットします。
 	HRESULT hr = commandAllocator_->Reset();
 	assert(SUCCEEDED(hr));
@@ -841,7 +842,7 @@ void DirectXCommon::PreDrawBackBuffer() {
 	// 4. ImGui用にヒープをセットし直す
 	ID3D12DescriptorHeap* descriptorHeaps[] = { SRVManager::GetInstance()->GetDescriptorHeap() };
 	commandList_->SetDescriptorHeaps(1, descriptorHeaps);
-};
+}
 
 void DirectXCommon::CreateShadowMap() {
 	// 1. デスクリプタヒープの作成 (DSV用)

@@ -198,7 +198,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     uint32_t ormHandleToBind = ormMapHandle;
 
     // 画像が未設定(0)、または異常な値の時は「white.png (RGBすべて1.0)」をセットする！
-    if (ormHandleToBind <= 0 || ormHandleToBind > 1000) {
+    if (ormHandleToBind <= 0 || ormHandleToBind >= DirectXCommon::kMaxSRVCount) {
         ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
     }
 
@@ -209,7 +209,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
-        if (overrideTextureHandle > 0 && overrideTextureHandle <= 1000) {
+        if (overrideTextureHandle > 0 && overrideTextureHandle < DirectXCommon::kMaxSRVCount) {
             // エディタで画像が選ばれていたら、そっちを優先して貼る！
             SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
         }
@@ -491,8 +491,16 @@ Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
 
 
 
+#include "DirectXCommon.h"
+
 // 毎フレーム呼ぶ更新処理
 void Model::Update() {
+    uint32_t currentFrame = DirectXCommon::GetInstance()->GetFrameCount();
+    if (lastUpdateFrame_ == currentFrame) {
+        return; // すでにこのフレームで更新済み
+    }
+    lastUpdateFrame_ = currentFrame;
+
     UpdateSkeleton(modelData_.skeleton);
 
     //  ボーン情報の更新

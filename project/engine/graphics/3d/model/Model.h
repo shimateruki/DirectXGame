@@ -220,6 +220,7 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12Resource> boneResource_;
     BoneForGPU* boneMappedData_ = nullptr;
     uint32_t boneSrvIndex_ = 0; //  ボーン情報SRVのインデックス
+    uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // ★追加：最後に更新したフレーム番号
 
     Vector3 localAabbMin_ = { 0.0f, 0.0f, 0.0f };
     Vector3 localAabbMax_ = { 0.0f, 0.0f, 0.0f };

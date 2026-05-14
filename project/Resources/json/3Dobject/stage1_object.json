@@ -39,6 +39,7 @@
             "envIntensity": 0.3089999854564667,
             "eventID": 0,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -77,6 +78,7 @@
                 "speed": 27.700000762939453
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 27.867902755737305,
                 -1.0916352272033691,
@@ -101,9 +103,9 @@
             "roughness": 0.16300000250339508,
             "saveCategory": "Object",
             "scale": [
-                2.0,
-                2.0,
-                2.0
+                1.0000003576278687,
+                1.0000003576278687,
+                1.0000003576278687
             ],
             "targetID": -1,
             "texturePath": "",
@@ -137,17 +139,18 @@
             "collisionMask": 4294967295,
             "color": [
                 1.0,
-                0.0,
-                0.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -167,9 +170,10 @@
             "modelName": "heimen",
             "myEventID": -1,
             "name": "heimen_1",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rocky_terrain_02_nor_dx_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rocky_terrain_02_arm_2k.dds",
             "parentName": "",
+            "particleName": "",
             "position": [
                 -2.235945463180542,
                 -2.602569818496704,
@@ -199,7 +203,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rocky_terrain_02_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -241,6 +245,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "MovingFloor",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -279,6 +284,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -21.00454330444336,
                 0.0,
@@ -350,6 +356,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "MovingFloor",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -388,6 +395,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -1.2122493982315063,
                 0.0,
@@ -459,6 +467,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -497,6 +506,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 2.7634358406066895,
                 -2.095599889755249,
@@ -521,9 +531,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8283832669258118,
-                1.257425308227539,
-                0.8283832669258118
+                0.8186222910881042,
+                1.2720668315887451,
+                0.8186222910881042
             ],
             "targetID": -1,
             "texturePath": "",
@@ -568,6 +578,7 @@
             "envIntensity": 1.0,
             "eventID": 4,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -590,6 +601,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
+            "particleName": "",
             "position": [
                 -40.16796112060547,
                 -2.001673460006714,
@@ -661,6 +673,7 @@
             "envIntensity": 1.0,
             "eventID": 5,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -683,6 +696,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
+            "particleName": "",
             "position": [
                 -8.645085334777832,
                 0.05562978982925415,
@@ -754,6 +768,7 @@
             "envIntensity": 1.0,
             "eventID": 7,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -776,6 +791,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
+            "particleName": "",
             "position": [
                 -21.524507522583008,
                 -0.16738349199295044,
@@ -847,6 +863,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "Trampoline",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -885,6 +902,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -3.5187578201293945,
                 2.3014276027679443,
@@ -956,6 +974,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -994,6 +1013,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -2.116698980331421,
                 3.898792266845703,
@@ -1065,6 +1085,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "ChikuwaBlock",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1103,6 +1124,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -57.65082550048828,
                 -0.6610406637191772,
@@ -1174,6 +1196,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "BlinkBlock",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1212,6 +1235,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -1.2451549768447876,
                 -0.36015361547470093,
@@ -1283,6 +1307,7 @@
             "envIntensity": 1.0,
             "eventID": 0,
             "gimmickType": "BlinkBlock",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1321,6 +1346,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 5.142672538757324,
                 -1.2505073547363281,
@@ -1392,6 +1418,7 @@
             "envIntensity": 1.0,
             "eventID": 7,
             "gimmickType": "",
+            "gpuParticleName": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1430,6 +1457,7 @@
                 "speed": 1.0
             },
             "parentName": "",
+            "particleName": "",
             "position": [
                 -6.70865535736084,
                 0.09478132426738739,

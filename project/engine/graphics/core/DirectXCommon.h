@@ -55,6 +55,7 @@ public:
 	ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
 	DXGI_FORMAT GetRTVFormat() const { return rtvFormat_; }
 	size_t GetBackBufferCount() const { return backBufferCount_; }
+	uint32_t GetFrameCount() const { return frameCount_; }
 
 	// 最大SRV数（最大テクスチャ枚数）
 	static const uint32_t kMaxSRVCount = 512;
@@ -240,4 +241,5 @@ private:
 	bool useVSync_ = true; // Present(1,0) = VSync ON → FixFPSの二重待ちを防止
 	Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
 	uint32_t grabSrvHandle_ = 0;
+	uint32_t frameCount_ = 0;
 };

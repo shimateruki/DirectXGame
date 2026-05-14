@@ -14,6 +14,7 @@
 #include "ImGuizmo.h"
 #include <filesystem>
 #include <algorithm>
+#include <set>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -302,17 +303,40 @@ void InspectorWindow::Draw() {
                         armPaths.clear();
                         std::string targetDir = "Resources/texture/PBR/";
                         if (std::filesystem::exists(targetDir)) {
+                            // まず全ファイルを走査して、DDSが存在するパスを特定する
+                            std::vector<std::string> allFiles;
+                            std::set<std::string> ddsBaseNames; // 拡張子を除いたパスの集合
+
                             for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
                                 if (entry.is_regular_file()) {
-                                    std::string ext = entry.path().extension().string();
-                                    if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
-                                        std::string pathString = entry.path().string();
-                                        std::replace(pathString.begin(), pathString.end(), '\\', '/');
-                                        
-                                        if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
-                                        else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
-                                        else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
+                                    std::string pathString = entry.path().string();
+                                    std::replace(pathString.begin(), pathString.end(), '\\', '/');
+                                    allFiles.push_back(pathString);
+
+                                    if (entry.path().extension() == ".dds") {
+                                        std::string base = entry.path().parent_path().string() + "/" + entry.path().stem().string();
+                                        std::replace(base.begin(), base.end(), '\\', '/');
+                                        ddsBaseNames.insert(base);
                                     }
+                                }
+                            }
+
+                            // フィルタリングしながらリストに追加
+                            for (const std::string& pathString : allFiles) {
+                                std::filesystem::path p(pathString);
+                                std::string ext = p.extension().string();
+                                std::string base = p.parent_path().string() + "/" + p.stem().string();
+                                std::replace(base.begin(), base.end(), '\\', '/');
+
+                                // もし拡張子が .dds でない（png/jpg等）かつ、同じ名前の .dds が既に存在するならスキップ
+                                if (ext != ".dds" && ddsBaseNames.count(base)) {
+                                    continue;
+                                }
+
+                                if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
+                                    if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
+                                    else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
+                                    else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
                                 }
                             }
                         }
