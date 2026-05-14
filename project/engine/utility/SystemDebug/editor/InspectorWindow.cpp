@@ -7,12 +7,14 @@
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
 #include "ParticleManager.h"
+#include "GPUParticleManager.h"
 #include "ModelManager.h"
 #include "GhostRecorder.h"
 #include "DebugConsole.h"
 #include "ImGuizmo.h"
 #include <filesystem>
 #include <algorithm>
+#include <set>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -268,21 +270,51 @@ void InspectorWindow::Draw() {
                     }
                 }
                 if (enableNormal) {
-                    static std::vector<std::string> texturePaths;
+                    static std::vector<std::string> albedoPaths;
+                    static std::vector<std::string> normalPaths;
+                    static std::vector<std::string> armPaths;
                     static bool isListInitialized = false;
 
                     if (!isListInitialized) {
-                        texturePaths.clear();
-                        std::string targetDir = "Resources/sprite/";
+                        albedoPaths.clear();
+                        normalPaths.clear();
+                        armPaths.clear();
+                        std::string targetDir = "Resources/texture/PBR/";
                         if (std::filesystem::exists(targetDir)) {
+                            // まず全ファイルを走査して、DDSが存在するパスを特定する
+                            std::vector<std::string> allFiles;
+                            std::set<std::string> ddsBaseNames; // 拡張子を除いたパスの集合
+
                             for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
                                 if (entry.is_regular_file()) {
-                                    std::string ext = entry.path().extension().string();
-                                    if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
-                                        std::string pathString = entry.path().string();
-                                        std::replace(pathString.begin(), pathString.end(), '\\', '/');
-                                        texturePaths.push_back(pathString);
+                                    std::string pathString = entry.path().string();
+                                    std::replace(pathString.begin(), pathString.end(), '\\', '/');
+                                    allFiles.push_back(pathString);
+
+                                    if (entry.path().extension() == ".dds") {
+                                        std::string base = entry.path().parent_path().string() + "/" + entry.path().stem().string();
+                                        std::replace(base.begin(), base.end(), '\\', '/');
+                                        ddsBaseNames.insert(base);
                                     }
+                                }
+                            }
+
+                            // フィルタリングしながらリストに追加
+                            for (const std::string& pathString : allFiles) {
+                                std::filesystem::path p(pathString);
+                                std::string ext = p.extension().string();
+                                std::string base = p.parent_path().string() + "/" + p.stem().string();
+                                std::replace(base.begin(), base.end(), '\\', '/');
+
+                                // もし拡張子が .dds でない（png/jpg等）かつ、同じ名前の .dds が既に存在するならスキップ
+                                if (ext != ".dds" && ddsBaseNames.count(base)) {
+                                    continue;
+                                }
+
+                                if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
+                                    if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
+                                    else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
+                                    else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
                                 }
                             }
                         }
@@ -293,7 +325,7 @@ void InspectorWindow::Draw() {
                     const char* previewValue = currentPath.empty() ? "未設定 (クリックで選択)" : currentPath.c_str();
 
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " ノーマル画像", previewValue)) {
-                        for (const std::string& path : texturePaths) {
+                        for (const std::string& path : normalPaths) {
                             bool isSelected = (currentPath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
                                 selectedObject->SetNormalMap(path); isGraphicsChanged = true;
@@ -311,7 +343,7 @@ void InspectorWindow::Draw() {
                     const char* previewOrmValue = currentOrmPath.empty() ? "未設定 (クリックで選択)" : currentOrmPath.c_str();
 
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " ORMマップ (AO/粗さ/金属)", previewOrmValue)) {
-                        for (const std::string& path : texturePaths) {
+                        for (const std::string& path : armPaths) {
                             bool isSelected = (currentOrmPath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
                                 selectedObject->SetOrmMap(path); isGraphicsChanged = true;
@@ -328,7 +360,7 @@ void InspectorWindow::Draw() {
                     const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
 
                     if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse)", previewTextureValue)) {
-                        for (const std::string& path : texturePaths) {
+                        for (const std::string& path : albedoPaths) {
                             bool isSelected = (currentTexturePath == path);
                             if (ImGui::Selectable(path.c_str(), isSelected)) {
                                 selectedObject->SetTexture(path); isGraphicsChanged = true;

@@ -4012,11 +4012,11 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Front",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "",
             "position": [
-                -2.9802322387695313e-08,
+                0.0,
                 3.0,
                 -88.0
             ],
@@ -4044,7 +4044,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -4104,8 +4104,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Center",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "",
             "position": [
                 0.0,
@@ -4136,7 +4136,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -4196,8 +4196,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Back",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "",
             "position": [
                 0.0,
@@ -4228,7 +4228,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -6632,8 +6632,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Front_02",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -6664,7 +6664,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -6724,8 +6724,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Front_03",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -6756,7 +6756,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -6816,8 +6816,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Center_02",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Center",
             "position": [
                 0.0,
@@ -6848,7 +6848,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -6908,8 +6908,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Center_03",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Center",
             "position": [
                 0.0,
@@ -6940,7 +6940,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7000,8 +7000,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Back_02",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Back",
             "position": [
                 0.0,
@@ -7032,7 +7032,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7092,8 +7092,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Back_03",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Back",
             "position": [
                 0.0,
@@ -7124,7 +7124,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
