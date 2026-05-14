@@ -11,6 +11,8 @@
 
 #include "CameraManager.h"
 #include "CameraEditor.h"
+#include "PostEffect.h"
+#include "GhostRecorder.h"
 
 // ==========================================
 // 攻撃クラスを読み込む
@@ -237,14 +239,18 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     deathPhase_ = 0;
     isCompletelyDead_ = false;
     isShardSpawnRequested_ = false;
+
+    isHpHalfTriggered_ = false;
+    isHpHalfEventActive_ = false;
+    hpHalfPhase_ = HpHalfEventPhase::None;
+    hpHalfEffectTimer_ = 0.0f;
 }
 
 void BossCore::Update(float deltaTime) {
-    deltaTime *= 1.5f;
+    // アクション速度（移動や回転など）用の補正DeltaTime
+    float actionDelta = deltaTime * kBaseSpeedMultiplier;
 
     InputManager* input = InputManager::GetInstance();
-
-    
 
 #ifdef USE_IMGUI
     if (SceneManager::GetInstance()->IsPlaying()) {
@@ -270,28 +276,36 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
         if (input->IsKeyTriggered(DIK_Y)) triggerAttack = 9; // Yキーでファンネル攻撃！
 
-        // ==========================================
-    // 9キーで即座にボスを爆散させるデバッグ機能！
-    // ==========================================
+        // 9キーで即座にボスを爆散させるデバッグ機能！
         if (input->IsKeyTriggered(DIK_9)) {
             if (!isCoreBroken_) {
                 DebugConsole::GetInstance()->AddLog("【DEBUG】 9キー入力：ボスを強制爆散させます！！！💥");
-
-                param_->hp = 0.0f;  // 念のためステータスもHP0にしておく
-                StartDeathSequence();       // 爆散演出を強制発動！
+                param_->hp = 0.0f;
+                StartDeathSequence();
             }
         }
 
-
+        // HキーでHP半分時の演出を強制発動させるデバッグ機能！
+        if (input->IsKeyTriggered(DIK_H)) {
+            DebugConsole::GetInstance()->AddLog("【DEBUG】 Hキー入力：HP半減演出を強制発動します！");
+            
+            // 強制的にフラグをリセットしてダメージを与えることで正規のルートで演出を開始する
+            isHpHalfTriggered_ = false;
+            isHpHalfEventActive_ = false;
+            hpHalfPhase_ = HpHalfEventPhase::None;
+            
+            if (param_.has_value()) {
+                param_->hp = param_->maxHp; // 一旦満タンにして確実に発動条件を満たす
+                TakeBodyDamage(param_->maxHp * 0.5f); 
+            }
+        }
 
         if (triggerAttack != 0) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 攻撃 " + std::to_string(triggerAttack) + " を予約！待機に戻ります！");
-
             s_debugForceAttack = triggerAttack;
 
-            // 強制的に状態をリセットして待機(Idle)に戻す
             if (currentAttack_) {
-                currentAttack_->Finalize(); // ★これが必要！エフェクトや音を止める
+                currentAttack_->Finalize();
                 currentAttack_.reset();
             }
             ChangeState(State::Idle);
@@ -316,35 +330,258 @@ void BossCore::Update(float deltaTime) {
                     warningArea_->SetParent(this);
                 }
             }
-
-            for (Object3d* block : armorBlocks_) {
-                if (!block) continue;
-                for (Object3d* child : block->GetChildren()) {
-                    if (child->GetName().find("Beam_Cylinder") != std::string::npos) {
-                        child->SetScale({ 0.0f, 0.0f, 0.0f });
-                        child->SetCollisionAttribute(0);
-                    }
-                }
-            }
         }
     }
-
-    
 #endif
 
     if (s_isTimeStopped_) {
         deltaTime = 0.0f;
+        actionDelta = 0.0f;
     }
 
     float preTimer = colorResetTimer_;
 
-    BaseEnemy::Update(deltaTime);
+    // ベースクラスの更新
+    BaseEnemy::Update(actionDelta);
+
+    // ==========================================
+    // ★ HP半分時の演出更新 (崩壊・復帰・強化シークエンス)
+    // ==========================================
+    if (isHpHalfEventActive_) {
+        hpHalfEffectTimer_ += deltaTime; // 演出タイマーは実時間
+
+        // ブロックの落下・散乱物理（Falling〜Pulsingの間、常に更新し続ける）
+        if (hpHalfPhase_ >= HpHalfEventPhase::Falling && hpHalfPhase_ < HpHalfEventPhase::Reassembling) {
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (armorBlocks_[i] && i < fallingBlockVelocities_.size()) {
+                    Vector3 bPos = armorBlocks_[i]->GetTranslate();
+                    if (fallingBlockVelocities_[i].x != 0.0f || fallingBlockVelocities_[i].y != 0.0f || fallingBlockVelocities_[i].z != 0.0f || bPos.y > 0.5f) {
+                        fallingBlockVelocities_[i].y -= 25.0f * actionDelta; // 重力
+                        bPos += fallingBlockVelocities_[i] * actionDelta;
+                        if (bPos.y <= 0.5f) {
+                            bPos.y = 0.5f;
+                            fallingBlockVelocities_[i] = { 0,0,0 }; // 地面についたら停止
+                        }
+                        armorBlocks_[i]->SetTranslate(bPos);
+
+                        // 空中にいる間は回転させる
+                        if (bPos.y > 0.5f) {
+                            Vector3 rot = armorBlocks_[i]->GetRotation();
+                            rot.x += 5.0f * actionDelta;
+                            rot.y += 3.0f * actionDelta;
+                            armorBlocks_[i]->SetRotation(rot);
+                        }
+                    }
+                }
+            }
+        }
+
+        switch (hpHalfPhase_) {
+        case HpHalfEventPhase::WaitIdle:
+            if (hpHalfEffectTimer_ > 0.0f) {
+                originalCoreRotation_ = GetRotation();
+                originalCorePosition_ = GetTranslate();
+                this->UpdateWorldMatrix();
+
+                fallingBlockVelocities_.clear();
+                for (Object3d* block : armorBlocks_) {
+                    if (!block) {
+                        fallingBlockVelocities_.push_back({ 0,0,0 });
+                        continue;
+                    }
+
+                    block->UpdateWorldMatrix();
+                    Vector3 worldPos = block->GetWorldPosition();
+                    block->SetParent(nullptr);
+                    block->SetTranslate(worldPos);
+
+                    // ボス中心から外側に向かって弾け飛ぶ速度を計算
+                    Vector3 dir = { worldPos.x - originalCorePosition_.x, 0.0f, worldPos.z - originalCorePosition_.z };
+                    float len = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+                    if (len > 0.001f) {
+                        dir.x /= len;
+                        dir.z /= len;
+                    } else {
+                        // 万が一重なっていた場合はランダム方向へ
+                        float angle = (static_cast<float>(rand()) / RAND_MAX) * 3.14159f * 2.0f;
+                        dir.x = std::cos(angle);
+                        dir.z = std::sin(angle);
+                    }
+
+                    float horizontalSpeed = 15.0f + (rand() % 50) * 0.1f; // 15〜20
+                    float verticalSpeed = 15.0f + (rand() % 50) * 0.1f;   // 15〜20
+
+                    fallingBlockVelocities_.push_back({
+                        dir.x * horizontalSpeed,
+                        verticalSpeed,
+                        dir.z * horizontalSpeed
+                    });
+                }
+
+                basePostEffectParams_ = *PostEffect::GetInstance()->GetParams();
+                hpHalfPhase_ = HpHalfEventPhase::Falling;
+                hpHalfEffectTimer_ = 0.0f;
+            }
+            break;
+
+        case HpHalfEventPhase::Falling:
+        {
+            // コアの落下
+            Vector3 pos = GetTranslate();
+            pos.y -= 30.0f * actionDelta;
+            if (pos.y <= 0.8f) {
+                pos.y = 0.8f;
+                hpHalfPhase_ = HpHalfEventPhase::Lying;
+                hpHalfEffectTimer_ = 0.0f;
+            }
+            SetTranslate(pos);
+
+            Vector3 rot = GetRotation();
+            rot.x = Math::Lerp(rot.x, 1.4f, 5.0f * actionDelta);
+            SetRotation(rot);
+        }
+        break;
+
+        case HpHalfEventPhase::Lying:
+            if (hpHalfEffectTimer_ >= 1.0f) {
+                hpHalfPhase_ = HpHalfEventPhase::Recovery;
+                hpHalfEffectTimer_ = 0.0f;
+            }
+            break;
+
+        case HpHalfEventPhase::Recovery:
+        {
+            Vector3 rot = GetRotation();
+            rot.x = Math::Lerp(rot.x, originalCoreRotation_.x, 2.0f * actionDelta);
+            rot.y = originalCoreRotation_.y + std::sin(hpHalfEffectTimer_ * 15.0f) * 0.4f;
+            SetRotation(rot);
+
+            Vector3 pos = GetTranslate();
+            pos.y = Math::Lerp(pos.y, originalCorePosition_.y, 2.0f * actionDelta);
+            SetTranslate(pos);
+
+            if (hpHalfEffectTimer_ >= 1.5f) {
+                hpHalfPhase_ = HpHalfEventPhase::Pulsing;
+                hpHalfEffectTimer_ = 0.0f;
+            }
+        }
+        break;
+
+        case HpHalfEventPhase::Pulsing:
+        {
+            float targetScale = 1.0f;
+            Vector3 rot = GetRotation();
+
+            if (hpHalfEffectTimer_ < 0.5f) {
+                // 最初の0.5秒：小さくなってピタッと止まる演出（溜め）
+                // 0.3秒で 0.6 倍まで縮み、残り0.2秒は完全に静止する
+                float shrinkT = std::min(hpHalfEffectTimer_ / 0.3f, 1.0f);
+                targetScale = Math::Lerp(1.0f, 0.6f, shrinkT);
+                
+                // この間は震えず、ただ斜めに傾くのみ
+                float targetRotX = originalCoreRotation_.x + 0.6f;
+                rot.x = Math::Lerp(rot.x, targetRotX, 2.5f * actionDelta);
+            } else {
+                // 0.5秒以降：縮んだ状態をベースにパルスし、震え始める
+                float pulseTime = hpHalfEffectTimer_ - 0.5f;
+                targetScale = 0.6f + std::sin(pulseTime * 40.0f) * 0.1f;
+
+                float targetRotX = originalCoreRotation_.x + 0.6f;
+                rot.x = Math::Lerp(rot.x, targetRotX, 2.5f * actionDelta);
+                // 小刻みな震え
+                rot.y = originalCoreRotation_.y + std::sin(pulseTime * 50.0f) * 0.05f;
+            }
+
+            SetScale({ targetScale, targetScale, targetScale });
+            SetColor({ 1.0f, 0.1f, 0.1f, 1.0f });
+            rot.z = originalCoreRotation_.z;
+            SetRotation(rot);
+
+            // 溜め時間を0.5秒使ったため、全体の演出時間を 1.5 -> 2.0秒 に延長
+            if (hpHalfEffectTimer_ >= 2.0f) {
+                hpHalfPhase_ = HpHalfEventPhase::Reassembling;
+                hpHalfEffectTimer_ = 0.0f;
+            }
+        }
+        break;
+
+        case HpHalfEventPhase::Reassembling:
+        {
+            // ★ アニメーションが終わって元に戻る時も、線形補間で滑らかに戻す
+            Vector3 coreRot = GetRotation();
+            coreRot.x = Math::Lerp(coreRot.x, originalCoreRotation_.x, 4.0f * actionDelta);
+            coreRot.y = Math::Lerp(coreRot.y, originalCoreRotation_.y, 4.0f * actionDelta);
+            coreRot.z = Math::Lerp(coreRot.z, originalCoreRotation_.z, 4.0f * actionDelta);
+            SetRotation(coreRot);
+
+            Vector3 coreScale = GetScale();
+            coreScale.x = Math::Lerp(coreScale.x, 1.0f, 4.0f * actionDelta);
+            coreScale.y = Math::Lerp(coreScale.y, 1.0f, 4.0f * actionDelta);
+            coreScale.z = Math::Lerp(coreScale.z, 1.0f, 4.0f * actionDelta);
+            SetScale(coreScale);
+
+            bool allDone = true;
+            for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+                if (armorBlocks_[i]) {
+                    // ブロックを親子関係に戻しつつ、元の軌道位置へLerp
+                    if (armorBlocks_[i]->GetParent() == nullptr) {
+                        armorBlocks_[i]->SetParent(this);
+                    }
+
+                    OrbitData orbit = GetIdleOrbit(i);
+                    Vector3 currentPos = armorBlocks_[i]->GetTranslate();
+                    Vector3 targetPos = orbit.pos;
+                    Vector3 nextPos = Math::Lerp(currentPos, targetPos, 4.0f * actionDelta);
+                    armorBlocks_[i]->SetTranslate(nextPos);
+
+                    if (Math::Length(nextPos - targetPos) > 0.1f) allDone = false;
+                }
+            }
+
+            if (allDone || hpHalfEffectTimer_ >= 2.0f) {
+                hpHalfPhase_ = HpHalfEventPhase::Finishing;
+            }
+        }
+        break;
+
+        case HpHalfEventPhase::Finishing:
+            isHpHalfEventActive_ = false;
+            hpHalfPhase_ = HpHalfEventPhase::None;
+            SetColor(originalColor_);
+            SetScale({ 1,1,1 });
+            SetRotation(originalCoreRotation_);
+            *PostEffect::GetInstance()->GetParams() = basePostEffectParams_;
+            DebugConsole::GetInstance()->AddLog("【EVENT】 フェーズ移行完了！ボスの猛攻に備えろ！");
+            break;
+        }
+
+        // ポストエフェクト演出：Recovery/Pulsingに合わせて発光させる
+        float glowT = 0.0f;
+        if (hpHalfPhase_ == HpHalfEventPhase::Falling) {
+            glowT = std::sin(std::min(hpHalfEffectTimer_ * 3.1415f, 3.1415f));
+        }
+
+        auto params = PostEffect::GetInstance()->GetParams();
+        params->threshold = Math::Lerp(basePostEffectParams_.threshold, 0.0f, glowT);
+        params->bloomIntensity = Math::Lerp(basePostEffectParams_.bloomIntensity, 0.7f, glowT);
+        params->spread = Math::Lerp(basePostEffectParams_.spread, 1.2f, glowT);
+        params->enableToneMapping = (glowT > 0.1f) ? 1 : basePostEffectParams_.enableToneMapping;
+
+
+
+        // ★ 演出中はここで return してしまうため、カメラアニメーション(GhostDirector)の更新もここで行う
+        if (director_) {
+            director_->Update(actionDelta);
+        }
+
+        return; // 演出中は以降の通常更新をスキップ
+    }
 
     // ==========================================
     // 死亡演出の進行ロジック
     // ==========================================
     if (deathPhase_ == 1 || deathPhase_ == 2) {
-        sequenceTimer_ -= deltaTime;
+        sequenceTimer_ -= deltaTime; // 死亡演出のカウントダウンは実時間
 
         // 1秒経つごとに次のフェーズへ進む！
         if (sequenceTimer_ <= 0.0f) {
@@ -364,7 +601,7 @@ void BossCore::Update(float deltaTime) {
     }
 
     if (director_) {
-        director_->Update(deltaTime);
+        director_->Update(actionDelta);
 
         // ゴーストディレクターのアニメーション終了を待っている場合
         if (isWaitingForDirector_ && director_->IsFinished()) {
@@ -388,7 +625,7 @@ void BossCore::Update(float deltaTime) {
     // ★ 登場演出中なら、それを更新する
     // ==========================================
     if (isAppearing_) {
-        UpdateAppearance(deltaTime);
+        UpdateAppearance(deltaTime); // 内部で使い分け
     }
 
     // ==========================================
@@ -396,7 +633,7 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     for (auto& emitter : particleEmitters_) {
         if (emitter) {
-            emitter->Update(deltaTime);
+            emitter->Update(actionDelta);
         }
     }
 
@@ -451,11 +688,11 @@ void BossCore::Update(float deltaTime) {
      // ====================================================
     if (SceneManager::GetInstance()->IsPlaying()) {
         if (isAppearing_ || isBattleStarted_) {
-            s_globalIdleTimer += deltaTime;
+            s_globalIdleTimer += actionDelta; // アイドルアニメは倍速
         }
     }
 
-    UpdateFlyingBlocks(deltaTime);
+    UpdateFlyingBlocks(actionDelta);
 
     // ==========================================
     // 4. 通常のステート更新
@@ -534,11 +771,11 @@ void BossCore::Update(float deltaTime) {
 
         switch (state_) {
         case State::Idle:
-            UpdateIdle(deltaTime);
+            UpdateIdle(deltaTime); // 内部で使い分け
             break;
         case State::Attack:
             if (currentAttack_) {
-                currentAttack_->Update(this, deltaTime);
+                currentAttack_->Update(this, actionDelta); // 攻撃モーションは倍速
 
                 if (currentAttack_->IsFinished()) {
                     currentAttack_.reset();
@@ -558,7 +795,7 @@ void BossCore::Update(float deltaTime) {
             }
             break;
         case State::Weak:
-            UpdateWeak(deltaTime);
+            UpdateWeak(deltaTime); // 内部で使い分け
             break;
         }
     }
@@ -576,7 +813,7 @@ void BossCore::Update(float deltaTime) {
     // ★ 追加：破片の物理計算・退場タイマーを進める！
     // これを呼ばないと、破片が飛び散りません。
     // ==========================================
-    UpdateCorePieces(deltaTime);
+    UpdateCorePieces(actionDelta);
 }
 
 // =================================================================
@@ -730,8 +967,8 @@ void BossCore::StartAppearance() {
 }
 
 void BossCore::TakeBodyDamage(float damage) {
-    // 既に爆散演出中なら何もしない
-    if (deathPhase_ != 0) return;
+    // 既に爆散演出中、またはHP半分演出中は無敵
+    if (deathPhase_ != 0 || isHpHalfEventActive_) return;
 
     // 赤色演出（ダメージフィードバック）
     SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
@@ -753,7 +990,72 @@ void BossCore::TakeBodyDamage(float damage) {
         return;
     }
 
-    param_->hp -= damage;
+    float halfHp = param_->maxHp * 0.5f;
+    float nextHp = param_->hp - damage;
+
+    // ====================================================
+    // ★ 追加：HPが50%を下回る瞬間に演出を開始し、HPを50%で止める
+    // ====================================================
+    if (!isHpHalfTriggered_ && nextHp <= halfHp) {
+        param_->hp = halfHp;
+        isHpHalfTriggered_ = true;
+
+        // 強制的に待機状態へリセット
+        if (currentAttack_) {
+            currentAttack_.reset();
+        }
+        ChangeState(State::Idle);
+        animTimer_ = 0.0f;
+
+        SetColor(originalColor_);
+        SetTranslate({ 0.0f, 4.0f, 0.0f }); // 演出開始時に強制的に真ん中へ移動
+        flyingBlocks_.clear();
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            if (armorBlocks_[i]) {
+                armorBlocks_[i]->SetParent(this);
+                armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+                OrbitData orbit = GetIdleOrbit(i);
+                armorBlocks_[i]->SetTranslate(orbit.pos);
+                armorBlocks_[i]->SetRotation(orbit.rot);
+                armorBlocks_[i]->SetScale(orbit.scale);
+            }
+        }
+
+        isHpHalfEventActive_ = true;
+        hpHalfPhase_ = HpHalfEventPhase::WaitIdle;
+        hpHalfEffectTimer_ = 0.0f;
+
+        // ★ 追加：作成いただいたカメラアニメーション（JSON）を再生する
+        // ゴーストレーダー（GhostRecorder）で作成されたアニメーションを直接再生（橋が落ちる処理と同じ方式）
+        bool isCameraFound = false;
+        if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+            auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+            for (auto& obj : objects) {
+                // ★ 修正：ユーザーが配置した専用のカメラオブジェクト「EnemyHP50_Animation」を探す！
+                if (obj->GetName() == "EnemyHP50_Animation") {
+                    isCameraFound = true;
+                    if (obj->recorder_) {
+                        obj->recorder_->Play("EnemyHP50_Animation", false, false, true);
+                        DebugConsole::GetInstance()->AddLog("【EVENT】 " + obj->GetName() + " を代用して EnemyHP50_Animation を再生指示！");
+                    } else {
+                        DebugConsole::GetInstance()->AddLog("【エラー】 " + obj->GetName() + " に GhostRecorder がアタッチされていません！");
+                    }
+                    break;
+                }
+            }
+        } else {
+            DebugConsole::GetInstance()->AddLog("【エラー】 sceneManager_ または GetCurrentScene() が nullptr です！");
+        }
+        
+        if (!isCameraFound && sceneManager_ && sceneManager_->GetCurrentScene()) {
+            DebugConsole::GetInstance()->AddLog("【エラー】 シネマティックカメラがシーン内に見つかりません！");
+        }
+
+        DebugConsole::GetInstance()->AddLog("【EVENT】 ボスHPが50%に到達！演出開始。");
+        return;
+    }
+
+    param_->hp = nextHp;
 
     if (param_->hp <= 0.0f) {
         if (!isFinalPhase_) {
@@ -786,6 +1088,7 @@ void BossCore::UpdateIdle(float deltaTime) {
     // ★ 追加：トドメ待ち状態（ヘロヘロ状態）の演出
     // ====================================================
     if (isWaitingForFinisher_) {
+        float actionDelta = deltaTime * kBaseSpeedMultiplier;
         SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // 暗くする
         float shake = std::sin(s_globalIdleTimer * 40.0f) * 0.05f;
         SetTranslate({ GetTranslate().x + shake, GetTranslate().y, GetTranslate().z }); // 震える
@@ -793,7 +1096,7 @@ void BossCore::UpdateIdle(float deltaTime) {
         for (Object3d* block : armorBlocks_) {
             if (block) {
                 Vector3 pos = block->GetTranslate();
-                if (pos.y > 0.0f) pos.y -= 10.0f * deltaTime; // ブロックを落とす
+                if (pos.y > 0.0f) pos.y -= 10.0f * actionDelta; // ブロックを落とす
                 block->SetTranslate(pos);
                 block->SetColor({ 0.2f, 0.2f, 0.2f, 1.0f });
             }
@@ -815,22 +1118,20 @@ void BossCore::UpdateIdle(float deltaTime) {
     // コア本体の待機モーション（鼓動と浮遊）
     // ====================================================
     if (isBattleStarted_ && !isWaitingForFinisher_) {
-        // 1. 鼓動（心音のように「ドクン、ドクン」と大きく変化させる）
-        float t = std::fmod(s_globalIdleTimer, 2.0f); // 2.0秒周期
+        float actionDelta = deltaTime * kBaseSpeedMultiplier;
+        // 1. 鼓動
+        float t = std::fmod(s_globalIdleTimer, 2.0f);
         float pulse = 0.0f;
         if (t < 0.15f) {
-            // 1回目の強い拍動
             pulse = std::sin((t / 0.15f) * std::numbers::pi_v<float>);
         } else if (t > 0.25f && t < 0.4f) {
-            // 2回目の少し弱い拍動
             pulse = std::sin(((t - 0.25f) / 0.15f) * std::numbers::pi_v<float>) * 0.7f;
         }
         
-        // 最大1.2倍までハッキリと大きくする
         float scaleVal = 1.0f + pulse * 0.2f;
         SetScale({ scaleVal, scaleVal, scaleVal });
 
-        // 2. 浮遊（Y軸が 4.0f を中心にゆっくり上下）
+        // 2. 浮遊
         float hoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f;
         SetTranslate({ GetTranslate().x, hoverY, GetTranslate().z });
     }
@@ -845,16 +1146,13 @@ void BossCore::UpdateIdle(float deltaTime) {
         t = std::min((assemblyTimer_ - 1.8f) / 0.7f, 1.0f);
     }
 
-    // カッコいいイージング計算（3乗アウト：最初は早く、ボスに近づくにつれてゆっくり）
     float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
-
-    // 親（コア）の鼓動によるスケールを取得
     Vector3 coreScale = GetScale();
+
+    float actionDelta = deltaTime * kBaseSpeedMultiplier;
 
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         OrbitData orbit = GetIdleOrbit(i);
-
-        // コアのスケール変化の影響を打ち消す（ブロック自体は鼓動しないようにする）
         Vector3 localPos = orbit.pos;
         localPos.x /= coreScale.x;
         localPos.y /= coreScale.y;
@@ -866,7 +1164,6 @@ void BossCore::UpdateIdle(float deltaTime) {
         localScale.z /= coreScale.z;
 
         if (i < blockStartPos_.size()) {
-            // 散らばった位置(blockStartPos_)から、軌道の位置へ補間
             Vector3 pos = Math::Lerp(blockStartPos_[i], localPos, easeT);
             armorBlocks_[i]->SetTranslate(pos);
         }
@@ -906,7 +1203,8 @@ void BossCore::UpdateIdle(float deltaTime) {
 }
 
 void BossCore::UpdateWeak(float deltaTime) {
-    animTimer_ += deltaTime;
+    float actionDelta = deltaTime * kBaseSpeedMultiplier;
+    animTimer_ += deltaTime; // スタン時間は実時間
 
     // --- コア本体の落下・転がり（コロン）・復帰 ---
     Vector3 bossPos = GetTranslate();
@@ -916,15 +1214,15 @@ void BossCore::UpdateWeak(float deltaTime) {
     // 1. 落下と転がり
     if (animTimer_ <= fallDuration) {
         float t = animTimer_ / fallDuration;
-        float easeT = std::pow(t, 2.0f); // 重力落下のようなEaseIn
+        float easeT = std::pow(t, 2.0f);
         bossPos.y = Math::Lerp(4.0f, 0.5f, easeT);
         rollAngle = Math::Lerp(0.0f, 90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
         SetTranslate(bossPos);
     } 
-    // 2. 起き上がり（最後の2秒）
-    else if (animTimer_ > 8.0f) {
-        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
-        float easeT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // ふわりと浮くEaseOut
+    // 2. 起き上がり
+    else if (animTimer_ > 4.0f) {
+        float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
+        float easeT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f);
         bossPos.y = Math::Lerp(0.5f, 4.0f, easeT);
         rollAngle = Math::Lerp(90.0f * (std::numbers::pi_v<float> / 180.0f), 0.0f, easeT);
         SetTranslate(bossPos);
@@ -936,16 +1234,15 @@ void BossCore::UpdateWeak(float deltaTime) {
         SetTranslate(bossPos);
     }
 
-    // コアの震えを完全に無くし、コロンと転がった状態を維持する
     SetRotation({ rollAngle, GetRotation().y, 0.0f });
 
     // --- フリッカー（明滅）エフェクト ---
     int flicker = static_cast<int>(animTimer_ * 15.0f) % 4; // ランダムっぽくチカチカさせる
-    bool isLightOn = (flicker == 0 && animTimer_ < 8.0f);
+    bool isLightOn = (flicker == 0 && animTimer_ < 4.0f);
     
-    if (animTimer_ > 8.0f) {
+    if (animTimer_ > 4.0f) {
         // 起き上がり中は徐々に元の色に戻す
-        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+        float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
         Vector4 color;
         color.x = Math::Lerp(0.3f, originalColor_.x, wakeUpT);
         color.y = Math::Lerp(0.3f, originalColor_.y, wakeUpT);
@@ -973,8 +1270,8 @@ void BossCore::UpdateWeak(float deltaTime) {
             }
 
             // 起き上がり中のブロック補間（コアへスムーズに戻る）
-            if (animTimer_ > 8.0f) {
-                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+            if (animTimer_ > 4.0f) {
+                float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
                 float returnEaseT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // OutCubic
                 OrbitData orbit = GetIdleOrbit(i);
                 currentPos = Math::Lerp(currentPos, orbit.pos, returnEaseT);
@@ -985,10 +1282,10 @@ void BossCore::UpdateWeak(float deltaTime) {
             Vector3 rot = armorBlocks_[i]->GetRotation();
             // 落下中のみ回転
             if (scatterT < 1.0f) {
-                rot.x += 5.0f * deltaTime;
-                rot.y += 3.0f * deltaTime;
-            } else if (animTimer_ > 8.0f) {
-                // 起き上がり中は軌道の回転へスムーズに補間（プルプルさせない）
+                rot.x += 5.0f * actionDelta;
+                rot.y += 3.0f * actionDelta;
+            } else if (animTimer_ > 4.0f) {
+                // 起き上がり中は軌道の回転へスムーズに補間
                 OrbitData orbit = GetIdleOrbit(i);
                 auto LerpAngle = [](float a, float b, float t) {
                     float diff = b - a;
@@ -996,15 +1293,15 @@ void BossCore::UpdateWeak(float deltaTime) {
                     while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
                     return a + diff * t;
                 };
-                rot.x = LerpAngle(rot.x, orbit.rot.x, 5.0f * deltaTime);
-                rot.y = LerpAngle(rot.y, orbit.rot.y, 5.0f * deltaTime);
-                rot.z = LerpAngle(rot.z, orbit.rot.z, 5.0f * deltaTime);
+                rot.x = LerpAngle(rot.x, orbit.rot.x, 5.0f * actionDelta);
+                rot.y = LerpAngle(rot.y, orbit.rot.y, 5.0f * actionDelta);
+                rot.z = LerpAngle(rot.z, orbit.rot.z, 5.0f * actionDelta);
             }
             armorBlocks_[i]->SetRotation(rot);
 
             // ブロックも明滅
-            if (animTimer_ > 8.0f) {
-                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+            if (animTimer_ > 4.0f) {
+                float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
                 armorBlocks_[i]->SetColor({ 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
             } else {
                 armorBlocks_[i]->SetColor(isLightOn ? Vector4{ 0.8f, 0.8f, 0.8f, 1.0f } : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
@@ -1012,8 +1309,8 @@ void BossCore::UpdateWeak(float deltaTime) {
         }
     }
 
-    // --- 10秒経過でステート復帰 ---
-    if (animTimer_ >= 10.0f) {
+    // --- 6秒経過でステート復帰 ---
+    if (animTimer_ >= 6.0f) {
         animTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         SetColor(originalColor_);
@@ -1030,6 +1327,7 @@ void BossCore::UpdateWeak(float deltaTime) {
 }
 
 void BossCore::UpdateFlyingBlocks(float deltaTime) {
+    float actionDelta = deltaTime * kBaseSpeedMultiplier;
     int landedCount = 0;
     static Math math;
 
@@ -1047,7 +1345,6 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             if (distance < 0.5f) {
                 fb.block->SetTranslate(headPos);
 
-                // ターゲット（プレイヤー）への追跡
                 if (IsTargetValid()) {
                     Vector3 targetPos = target_->GetWorldPosition();
                     targetPos.y = 0.0f;
@@ -1064,22 +1361,22 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             else {
                 dir.x /= distance; dir.y /= distance; dir.z /= distance;
                 float gatherSpeed = 30.0f;
-                currentPos.x += dir.x * gatherSpeed * deltaTime;
-                currentPos.y += dir.y * gatherSpeed * deltaTime;
-                currentPos.z += dir.z * gatherSpeed * deltaTime;
+                currentPos.x += dir.x * gatherSpeed * actionDelta;
+                currentPos.y += dir.y * gatherSpeed * actionDelta;
+                currentPos.z += dir.z * gatherSpeed * actionDelta;
                 fb.block->SetTranslate(currentPos);
 
-                fb.currentRot.x += 15.0f * deltaTime;
-                fb.currentRot.y += 30.0f * deltaTime;
+                fb.currentRot.x += 15.0f * actionDelta;
+                fb.currentRot.y += 30.0f * actionDelta;
                 fb.block->SetRotation(fb.currentRot);
             }
             fb.block->GetTransform()->isQuaternionMaster = false;
         }
         else if (fb.mode == 0) {
             Vector3 pos = fb.block->GetTranslate();
-            pos.x += fb.velocity.x * deltaTime;
-            pos.y += fb.velocity.y * deltaTime;
-            pos.z += fb.velocity.z * deltaTime;
+            pos.x += fb.velocity.x * actionDelta;
+            pos.y += fb.velocity.y * actionDelta;
+            pos.z += fb.velocity.z * actionDelta;
 
             if (pos.y <= 0.0f) {
                 pos.y = 0.0f;
@@ -1089,9 +1386,9 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             fb.block->SetTranslate(pos);
 
             Vector3 spinSpeed = { 30.0f, 45.0f, 60.0f };
-            fb.currentRot.x += spinSpeed.x * deltaTime;
-            fb.currentRot.y += spinSpeed.y * deltaTime;
-            fb.currentRot.z += spinSpeed.z * deltaTime;
+            fb.currentRot.x += spinSpeed.x * actionDelta;
+            fb.currentRot.y += spinSpeed.y * actionDelta;
+            fb.currentRot.z += spinSpeed.z * actionDelta;
             fb.block->SetRotation(fb.currentRot);
             fb.block->GetTransform()->isQuaternionMaster = false;
 
@@ -1112,15 +1409,15 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             else {
                 dir.x /= distance; dir.y /= distance; dir.z /= distance;
                 float returnSpeed = 60.0f;
-                blockPos.x += dir.x * returnSpeed * deltaTime;
-                blockPos.y += dir.y * returnSpeed * deltaTime;
-                blockPos.z += dir.z * returnSpeed * deltaTime;
+                blockPos.x += dir.x * returnSpeed * actionDelta;
+                blockPos.y += dir.y * returnSpeed * actionDelta;
+                blockPos.z += dir.z * returnSpeed * actionDelta;
                 fb.block->SetTranslate(blockPos);
 
                 Vector3 spinSpeed = { 60.0f, 60.0f, 60.0f };
-                fb.currentRot.x += spinSpeed.x * deltaTime;
-                fb.currentRot.y += spinSpeed.y * deltaTime;
-                fb.currentRot.z += spinSpeed.z * deltaTime;
+                fb.currentRot.x += spinSpeed.x * actionDelta;
+                fb.currentRot.y += spinSpeed.y * actionDelta;
+                fb.currentRot.z += spinSpeed.z * actionDelta;
                 fb.block->SetRotation(fb.currentRot);
                 fb.block->GetTransform()->isQuaternionMaster = false;
             }
