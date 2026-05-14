@@ -62,13 +62,13 @@ void TutorialDoll::Update(float deltaTime) {
             } else {
                 // 案山子役：今まで通りスケールダウンで消滅
                 transform_.scale = baseScale_ * t;
+                SetCollisionAttribute(0); // 当たり判定を抹消
             }
 
             if (deathAnimTimer_ <= 0.0f) {
                 if (respawnTimer_ != -1.0f) {
                     SetIsVisible(false);
                 }
-                SetCollisionAttribute(0); // 当たり判定を抹消
             }
         }
         UpdateWorldMatrix();

@@ -334,6 +334,11 @@ void GamePlayScene::Initialize() {
                 std::string::npos) {
                 obj->SetCollisionAttribute(kGround);
             }
+            else if (name.find("Tutorial_") != std::string::npos) {
+				obj->SetCollisionAttribute(0); // 当たり判定を消す
+                obj->SetIsVisible(false); // 見えなくする
+                obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
+			}
         }
 
         // 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
@@ -368,11 +373,8 @@ void GamePlayScene::Initialize() {
                 obj->SetCollisionAttribute(kGround);
 
                 // ドアは最初は閉まっている状態にする
-                if (name == "Tutorial_Door_Left") {
-                    obj->GetTransform()->translate.x = -5.0f; // 閉まった状態の位置
-                }
-                else if (name == "Tutorial_Door_Right") {
-                    obj->GetTransform()->translate.x = 5.0f; // 閉まった状態の位置
+                if (name == "Tutorial_Door_") {
+                    obj->GetTransform()->translate.x = 0.0f; // 閉まった状態の位置
                 }
                 obj->UpdateWorldMatrix();
             }
@@ -678,19 +680,9 @@ void GamePlayScene::Update(float deltaTime) {
                 doorOpenProgress_ = 1.0f;
                 // ドアが完全に開いた瞬間モデルを消しておく
                 for (auto& obj : objectManager_->GetObjects()) {
-                    if (obj->GetName() == "Tutorial_Door_Left") {
-                        obj->SetIsVisible(false);
+                    std::string name = obj->GetName();
+					if (name.find("Tutorial_Door") != std::string::npos) {
                         obj->SetCollisionAttribute(0); // 当たり判定も消す
-                        obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-                    }
-                    else if (obj->GetName() == "Tutorial_Door_Right") {
-                        std::string name = obj->GetName();
-                        if (name.find("Tutorial_Door") != std::string::npos &&
-                            name.find("Wall") == std::string::npos) { // Wallは残す
-                            obj->SetIsVisible(false);
-                            obj->SetCollisionAttribute(0); // 当たり判定も消す
-                            obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
-                        }
                     }
                 }
 
@@ -712,13 +704,13 @@ void GamePlayScene::Update(float deltaTime) {
         for (auto& obj : objectManager_->GetObjects()) {
             if (obj->GetName() == "Tutorial_Door_Left") {
                 Transform* trans = obj->GetTransform();
-                trans->translate.x = -5.0f - 15.0f * doorOpenProgress_;
+				trans->translate.x = 9.8f * doorOpenProgress_; // 親のbaseの都合上、左ドアは正方向に動かす
                 trans->isQuaternionMaster = false;
                 obj->UpdateWorldMatrix();
             }
             else if (obj->GetName() == "Tutorial_Door_Right") {
                 Transform* trans = obj->GetTransform();
-                trans->translate.x = 5.0f + 15.0f * doorOpenProgress_;
+				trans->translate.x = -9.8f * doorOpenProgress_; // 右ドアは負方向に動かす
                 trans->isQuaternionMaster = false;
                 obj->UpdateWorldMatrix();
             }
@@ -808,6 +800,11 @@ void GamePlayScene::Update(float deltaTime) {
                     std::string::
                     npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
                     obj->SetCollisionAttribute(kGround);
+                }
+                else if (name.find("Tutorial_") != std::string::npos) {
+                    obj->SetCollisionAttribute(0); // 当たり判定を消す
+                    obj->SetIsVisible(false); // 見えなくする
+                    obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
                 }
             }
             movieState_ = MovieState::kNone;
