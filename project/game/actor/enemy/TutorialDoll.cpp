@@ -62,7 +62,6 @@ void TutorialDoll::Update(float deltaTime) {
             } else {
                 // 案山子役：今まで通りスケールダウンで消滅
                 transform_.scale = baseScale_ * t;
-                SetCollisionAttribute(0); // 当たり判定を抹消
             }
 
             if (deathAnimTimer_ <= 0.0f) {
@@ -70,6 +69,7 @@ void TutorialDoll::Update(float deltaTime) {
                     SetIsVisible(false);
                 }
             }
+            SetCollisionAttribute(0); // 当たり判定を抹消
         }
         UpdateWorldMatrix();
         return;
@@ -125,7 +125,7 @@ void TutorialDoll::Respawn() {
     param_->hp = param_->maxHp;
     transform_.scale = baseScale_;
     SetIsVisible(true);
-    SetCollisionAttribute(kEnemy | kGround); // 当たり判定を元に戻す
+    SetCollisionAttribute(kGround); // 当たり判定を元に戻す
     SetColor(defaultColor_);       // 色を元に戻す（BaseEnemyの被弾赤色などをリセット）
 
     // 復活エフェクト（任意）
