@@ -231,6 +231,7 @@ void GamePlayScene::Initialize() {
             newBoss->Initialize(object3dCommon_.get(),
                 oldAddress->GetModelName()); // 新しいモデルで初期化
             newBoss->CopyFrom(oldAddress);                   // 座標などをコピー
+            newBoss->SetClassName("BossCore");               // ★ jsonからのコピー後に確実にクラス名を設定
             newBoss->SetTarget(player_); // プレイヤーをターゲットに設定
             this->boss_ = newBoss.get(); // コントロール用ポインタを保存
             BossCore* newAddress = newBoss.get();

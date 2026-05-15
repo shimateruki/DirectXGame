@@ -179,6 +179,7 @@ int BossCore::GetNeededBlockCount() const {
 
 void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
+    SetClassName("BossCore");
 
 
 
@@ -764,8 +765,8 @@ void BossCore::Update(float deltaTime) {
     }
 
     // バリアへのダメージ処理
-    if (IsTargetValid() && damageCooldownTimer_ <= 0.0f && state_ != State::Weak) {
-        // 1. 武器(剣)の直接攻撃チェック
+    if (IsTargetValid() && damageCooldownTimer_ <= 0.0f && state_ != State::Weak &&
+        !isFinalPhase_ && !isWaitingForFinisher_ && deathPhase_ == 0) {
         Object3d* weapon = FindWeaponRecursive(target_);
         bool hitFound = false;
 
@@ -1956,7 +1957,7 @@ bool BossCore::OnCollision(Object3d* other) {
         }
 
         TakeBodyDamage(10.0f);
-        return BaseEnemy::OnCollision(other);
+        return true;
     }
 
     return BaseEnemy::OnCollision(other);
