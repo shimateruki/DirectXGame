@@ -103,10 +103,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
                 attackDir_ = { 0.0f, 0.0f, 1.0f };
             }
 
-            if (warningArea) {
-                warningArea->GetTransform()->isQuaternionMaster = false;
-                warningArea->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f });
-            }
+            // 予兆エリアの設定を削除
         }
     }
     // --- Phase 21: 移動＆振りかぶり ---
@@ -180,22 +177,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
         
         boss->GetTransform()->isQuaternionMaster = false;
 
-        if (warningArea) {
-            warningArea->SetTranslate({ animTargetPos_.x, 1.0f, animTargetPos_.z });
-            if (attackCount_ == 0) { 
-                warningArea->SetScale({ 6.0f, 2.0f, 6.0f });
-                warningArea->SetRotation({ 0.0f, 0.0f, 0.0f });
-            } else { 
-                float s = (attackCount_ == 2) ? 1.5f : 1.0f;
-                if (armorBlocks.size() > 1 && armorBlocks[1]) {
-                    Vector3 block2Scale = armorBlocks[1]->GetScale();
-                    warningArea->SetScale({ block2Scale.x, 2.0f, block2Scale.z * s });
-                }
-                warningArea->SetRotation({ 0.0f, angleY + (std::numbers::pi_v<float> / 2.0f), 0.0f });
-            }
-            float currentGreen = Math::Lerp(1.0f, 0.0f, moveT);
-            warningArea->SetColor({ 1.0f, currentGreen, 0.0f, 0.9f });
-        }
+        // 予兆エリアの設定を削除
 
         if (moveT >= 1.0f) {
             animPhase_ = 22;
@@ -216,7 +198,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
 
         float t = std::min(animTimer_ / smashDuration, 1.0f);
 
-        if (warningArea) warningArea->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+        // 予兆エリアの色設定を削除
 
         if (attackCount_ == 0) {
             // ぶん回し
@@ -246,7 +228,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
                 boss->SetRotation({ 0.0f, animStartRot_.y, 270.0f * (std::numbers::pi_v<float> / 180.0f) });
             }
             
-            if (warningArea) { warningArea->SetScale({ 0.0f, 0.0f, 0.0f }); }
+            // 予兆エリアの非表示設定を削除（そもそも表示していないため）
             
             attackCount_++;
 
@@ -302,7 +284,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
                 animTargetPos_ = boss->GetTranslate(); 
             }
 
-            if (warningArea) warningArea->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f });
+            // 予兆エリアの色設定を削除
         }
     }
     // --- Phase 23: 地面に倒れたまま3秒待機 ---

@@ -5,6 +5,7 @@
 #include <string>
 #include "BossAttack/BaseBossAttack.h"
 #include "GPUParticleEmitter.h"
+#include "PostEffect.h"
 
 class SceneManager; // 前方宣言
 class MapBlock;
@@ -42,6 +43,7 @@ public:
         armorBlocks_.push_back(block);
         block->SetCollisionAttribute(kEnemyAttack);
         block->SetCollisionMask(kPlayer);
+        block->SetEnemyType("BossArmor"); // 属性を明確にする
 
         blockHps_.push_back(100.0f); // 例としてHPを100に設定
         blockBroken_.push_back(false);
@@ -115,6 +117,8 @@ public:
     void StartAppearance(); // 登場演出をスタートする関数
     bool IsAppearing() const { return isAppearing_; }
 
+    State GetState() const { return state_; } // 追加
+
     void ActuallySpawnShards();
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }
@@ -135,7 +139,6 @@ private:
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
 
-    // void TakeBodyDamage(float damage);
 
     // ==================================================
     // 内部コンポーネント・変数
@@ -193,6 +196,10 @@ private:
     // ==========================================
     std::vector<std::unique_ptr<GPUParticleEmitter>> particleEmitters_;
 
+    // コアとブロックを繋ぐエネルギーライン
+    std::vector<Object3d*> tetherBeams_;
+    std::vector<Vector3> prevBlockPositions_;
+
     // ==========================================
     // ★ 破片演出用の構造体と変数
     // ==========================================
@@ -218,6 +225,7 @@ private:
     bool isBattleStarted_ = false; // 戦闘開始フラグ（最初は false）
 
     void UpdateAppearance(float deltaTime); // 演出中の更新処理
+    void UpdateTethers(float deltaTime);    // 結線エフェクトの更新
 
     bool isAppearing_ = false;  // 登場演出中かどうか
     bool isWaitingForDirector_ = false; // ディレクターのアニメーション終了待ちかどうか
@@ -226,4 +234,28 @@ private:
     bool isCompletelyDead_ = false;
     float assemblyTimer_ = 0.0f;
 
+    // --- HP半分時の演出用 ---
+    enum class HpHalfEventPhase {
+        None,
+        WaitIdle,     // 追加: 1フレーム待機モーションに戻す
+        Falling,      // 落下
+        Lying,        // ダウン
+        Recovery,     // 起き上がり・首振り
+        Pulsing,      // 鼓動・強化
+        Reassembling, // ブロック再集結
+        Finishing     // 終了
+    };
+    HpHalfEventPhase hpHalfPhase_ = HpHalfEventPhase::None;
+    bool isHpHalfTriggered_ = false;
+    bool isHpHalfEventActive_ = false;
+    float hpHalfEffectTimer_ = 0.0f;
+    bool isPlayerRotated_ = false;  // 演出中に一度だけ向きを合わせるためのフラグ
+    PostEffect::Params basePostEffectParams_{};
+
+    // 演出用の一時変数
+    std::vector<Vector3> fallingBlockVelocities_;
+    Vector3 originalCoreRotation_;
+    Vector3 originalCorePosition_;
+    
+    static constexpr float kBaseSpeedMultiplier = 1.5f; // ボス固有の速度倍率
 };

@@ -369,7 +369,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     for (const auto& obj : objects) {
         if (!obj) continue;
-        if (!obj->GetIsVisible()) continue;
+        // 表示フラグがOFFでも、コライダー描画がONなら描画を続行する
+        if (!obj->GetIsVisible() && !drawColliders_) continue;
         // インスタンス描画の上限チェック
         if (instanceCount >= kMaxDrawLimit) break;
 

@@ -11,6 +11,28 @@
 
 class IMoveStrategy; // 前方宣言
 
+// プレイヤーの攻撃パラメータ（JSON保存・ImGui調整用）
+struct PlayerAttackParams {
+    float damageCombo1 = 10.0f;
+    float damageCombo2 = 15.0f;
+    float damageCombo3 = 30.0f;
+    float damagePlunge = 20.0f;
+
+    // JSON変換用
+    void ToJson(json& j) const {
+        j["damageCombo1"] = damageCombo1;
+        j["damageCombo2"] = damageCombo2;
+        j["damageCombo3"] = damageCombo3;
+        j["damagePlunge"] = damagePlunge;
+    }
+    void FromJson(const json& j) {
+        if (j.contains("damageCombo1")) damageCombo1 = j["damageCombo1"];
+        if (j.contains("damageCombo2")) damageCombo2 = j["damageCombo2"];
+        if (j.contains("damageCombo3")) damageCombo3 = j["damageCombo3"];
+        if (j.contains("damagePlunge")) damagePlunge = j["damagePlunge"];
+    }
+};
+
 // プレイヤーキャラクターの統合制御クラス
 class Player : public Character
 {
@@ -114,6 +136,11 @@ public:
     void SetAttackDirection(const Vector3& dir) { attackDirection_ = dir; }
     Vector3 GetAttackDirection() const { return attackDirection_; }
 
+    // --- 攻撃パラメータ管理 ---
+    PlayerAttackParams& GetAttackParams() { return attackParams_; }
+    void LoadAttackParams();
+    void SaveAttackParams();
+
     // ロックオンの強制解除要求
     void RequestClearLockOn() { requestClearLockOn_ = true; }
     bool ConsumeClearLockOnRequest() {
@@ -161,5 +188,6 @@ private:
     Object3d* forceLockOnTarget_ = nullptr; // 強制ロックオン対象
     bool requestClearLockOn_ = false;       // ロックオン解除要求フラグ
     Vector3 attackDirection_ = { 0,0,1 };   // 攻撃開始時の向き
+    PlayerAttackParams attackParams_;       // 攻撃力などのパラメータ
     void UpdateColor();
 };

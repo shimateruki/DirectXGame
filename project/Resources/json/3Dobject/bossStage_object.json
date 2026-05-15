@@ -3689,8 +3689,8 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.05000000074505806,
-                    -0.20000000298023224
+                    0.0,
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -3698,9 +3698,9 @@
                     0.0
                 ],
                 "size": [
-                    1.0,
-                    1.0,
-                    1.2000000476837158
+                    16.0,
+                    2.0,
+                    25.0
                 ],
                 "type": 3
             },
@@ -3734,7 +3734,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "map_corridor_01",
             "myEventID": -1,
             "name": "Tutorial_Corridor_Main",
             "normalMapPath": "",
@@ -3764,9 +3764,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                10.0,
-                2.0,
-                25.0
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -3781,7 +3781,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    26.049999237060547,
+                    0.0,
                     0.0
                 ],
                 "rotation": [
@@ -3790,9 +3790,9 @@
                     0.0
                 ],
                 "size": [
-                    40.0,
-                    4.0,
-                    30.0
+                    50.0,
+                    30.049999237060547,
+                    40.0
                 ],
                 "type": 3
             },
@@ -4012,11 +4012,11 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Front",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "",
             "position": [
-                -2.9802322387695313e-08,
+                0.0,
                 3.0,
                 -88.0
             ],
@@ -4044,7 +4044,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -4104,8 +4104,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Center",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "",
             "position": [
                 0.0,
@@ -4136,7 +4136,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -4196,8 +4196,8 @@
             "modelName": "bridge_01",
             "myEventID": -1,
             "name": "Bridge_Block_Back",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "",
             "position": [
                 0.0,
@@ -4228,7 +4228,7 @@
                 2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -4331,8 +4331,8 @@
             "blendMode": 0,
             "collider": {
                 "center": [
-                    -4.0,
-                    0.0,
+                    -11.0,
+                    13.0,
                     0.0
                 ],
                 "rotation": [
@@ -4341,18 +4341,18 @@
                     0.0
                 ],
                 "size": [
-                    5.0,
                     1.0,
-                    1.2999999523162842
+                    15.0,
+                    25.0
                 ],
-                "type": 3
+                "type": 0
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
+                0.1568627506494522,
+                0.1568627506494522,
+                0.1568627506494522,
                 1.0
             ],
             "emissive": 1.0,
@@ -4377,16 +4377,16 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "map_corridor_03",
             "myEventID": -1,
-            "name": "Tutorial_Room_Wall_Left",
+            "name": "Tutorial_Corridor_Left",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "",
+            "parentName": "Tutorial_Corridor_Main",
             "position": [
-                -40.99264144897461,
-                37.0,
-                -233.6719970703125
+                0.0,
+                0.0,
+                0.0
             ],
             "quaternion": [
                 0.0,
@@ -4408,8 +4408,8 @@
             "saveCategory": "Object",
             "scale": [
                 1.0,
-                15.0,
-                31.049997329711914
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -4423,9 +4423,9 @@
             "blendMode": 0,
             "collider": {
                 "center": [
-                    0.0,
-                    0.0,
-                    -4.0
+                    11.0,
+                    13.0,
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -4433,23 +4433,23 @@
                     0.0
                 ],
                 "size": [
-                    1.25,
                     1.0,
-                    5.0
+                    15.0,
+                    25.0
                 ],
-                "type": 3
+                "type": 0
             },
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
+                0.15830117464065552,
+                0.15830117464065552,
+                0.15830117464065552,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": true,
+            "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4469,108 +4469,16 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "map_corridor_02",
             "myEventID": -1,
-            "name": "Tutorial_Room_Wall_Back",
+            "name": "Tutorial_Corridor_Right",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "",
+            "parentName": "Tutorial_Corridor_Main",
             "position": [
                 0.0,
-                37.0,
-                -263.6000061035156
-            ],
-            "quaternion": [
                 0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
                 0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                40.0,
-                15.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    4.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    5.0,
-                    1.0,
-                    1.2999999523162842
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967075,
-            "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": true,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Room_Wall_Right",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                40.99300003051758,
-                37.0,
-                -233.6719970703125
             ],
             "quaternion": [
                 0.0,
@@ -4592,376 +4500,8 @@
             "saveCategory": "Object",
             "scale": [
                 1.0,
-                15.0,
-                31.049997329711914
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.25,
-                    0.0,
-                    4.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.25,
-                    1.0,
-                    5.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967075,
-            "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Room_Wall_Front_Right",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                25.0,
-                37.0,
-                -201.89999389648438
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                15.0,
-                15.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    -0.25,
-                    0.0,
-                    4.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.25,
-                    1.0,
-                    5.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967075,
-            "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Room_Wall_Front_Left",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                -25.0,
-                37.0,
-                -201.89999389648438
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                15.0,
-                15.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    3.9000000953674316,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    5.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967075,
-            "color": [
-                0.15830117464065552,
-                0.15830117464065552,
-                0.15830117464065552,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Corridor_Wall_Right",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                10.994999885559082,
-                34.0,
-                -177.6199951171875
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
                 1.0,
-                15.0,
-                25.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    -3.9000000953674316,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    5.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967075,
-            "color": [
-                0.15830117464065552,
-                0.15830117464065552,
-                0.15830117464065552,
                 1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Corridor_Wall_Left",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                -10.995190620422363,
-                34.0,
-                -177.6199951171875
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                15.0,
-                25.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -6861,7 +6401,7 @@
                 "center": [
                     0.0,
                     0.0,
-                    4.0
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -6869,202 +6409,18 @@
                     0.0
                 ],
                 "size": [
-                    1.5,
-                    1.5,
-                    5.0
+                    5.0,
+                    5.0,
+                    2.0
                 ],
-                "type": 3
+                "type": 2
             },
             "collisionAttribute": 4,
-            "collisionMask": 4294967265,
+            "collisionMask": 4294967295,
             "color": [
-                0.3629343509674072,
-                0.3629343509674072,
-                0.3629343509674072,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.16899999976158142,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Door_Left",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                -5.0,
-                28.0,
-                -200.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 1.0,
-            "saveCategory": "Object",
-            "scale": [
-                5.0,
-                5.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    4.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.5,
-                    1.5,
-                    5.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967265,
-            "color": [
-                0.3629343509674072,
-                0.3629343509674072,
-                0.3629343509674072,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.16899999976158142,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Tutorial_Door_Right",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                5.0,
-                28.0,
-                -200.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 1.0,
-            "saveCategory": "Object",
-            "scale": [
-                5.0,
-                5.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    4.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    5.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967265,
-            "color": [
-                0.15830117464065552,
-                0.15830117464065552,
-                0.15830117464065552,
+                0.364705890417099,
+                0.364705890417099,
+                0.364705890417099,
                 1.0
             ],
             "emissive": 1.0,
@@ -7089,16 +6445,16 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "map_tutorial_07",
             "myEventID": -1,
-            "name": "Tutorial_Door_Wall",
+            "name": "Tutorial_Door_Left",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "",
+            "parentName": "Tutorial_Room_Base",
             "position": [
                 0.0,
-                42.5,
-                -201.89999389648438
+                0.0,
+                0.0
             ],
             "quaternion": [
                 0.0,
@@ -7113,15 +6469,107 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                10.0,
-                9.5,
-                1.0700000524520874
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    5.0,
+                    2.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.364705890417099,
+                0.364705890417099,
+                0.364705890417099,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_08",
+            "myEventID": -1,
+            "name": "Tutorial_Door_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -7184,8 +6632,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Front_02",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -7216,7 +6664,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7276,8 +6724,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Front_03",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Front",
             "position": [
                 0.0,
@@ -7308,7 +6756,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7368,8 +6816,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Center_02",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Center",
             "position": [
                 0.0,
@@ -7400,7 +6848,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7460,8 +6908,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Center_03",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Center",
             "position": [
                 0.0,
@@ -7492,7 +6940,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7552,8 +7000,8 @@
             "modelName": "bridge_02",
             "myEventID": -1,
             "name": "Bridge_Block_Back_02",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Back",
             "position": [
                 0.0,
@@ -7584,7 +7032,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -7644,8 +7092,8 @@
             "modelName": "bridge_03",
             "myEventID": -1,
             "name": "Bridge_Block_Back_03",
-            "normalMapPath": "Resources/sprite/PBR/metal_nor.png",
-            "ormMapPath": "Resources/sprite/PBR/metal_arm.png",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/rusty_metal_04_arm_2k.dds",
             "parentName": "Bridge_Block_Back",
             "position": [
                 0.0,
@@ -7676,7 +7124,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/sprite/PBR/metal_diff.png",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -9480,6 +8928,1376 @@
                 13.699999809265137,
                 0.0,
                 -115.4000015258789
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    15.0,
+                    30.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.16862745583057404,
+                0.16862745583057404,
+                0.16862745583057404,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_03",
+            "myEventID": -1,
+            "name": "Tutorial_Room_Wall_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    30.0,
+                    15.0,
+                    5.000000953674316
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.16862745583057404,
+                0.16862745583057404,
+                0.16862745583057404,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_04",
+            "myEventID": -1,
+            "name": "Tutorial_Room_Wall_Back",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.600000023841858,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.034099102020264,
+                    15.10229778289795,
+                    30.2045955657959
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.16862745583057404,
+                0.16862745583057404,
+                0.16862745583057404,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_05",
+            "myEventID": -1,
+            "name": "Tutorial_Room_Wall_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.16862745583057404,
+                0.16862745583057404,
+                0.16862745583057404,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_06",
+            "myEventID": -1,
+            "name": "Tutorial_Room_Wall_Front",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.5,
+                    16.0,
+                    40.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -45.0,
+                38.04399871826172,
+                -232.61500549316406
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    16.0,
+                    5.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Back",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                38.04399871826172,
+                -267.614990234375
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.5,
+                    16.0,
+                    40.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                45.0,
+                38.04399871826172,
+                -232.61500549316406
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    20.0,
+                    16.0,
+                    5.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Flont_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -30.0,
+                38.04399871826172,
+                -197.9149932861328
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    20.0,
+                    16.0,
+                    5.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Flont_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                30.0,
+                38.04399871826172,
+                -197.9149932861328
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.0,
+                    10.0,
+                    3.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Flont_Top",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                42.29999923706055,
+                -200.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    8.0,
+                    6.0,
+                    4.050000190734863
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Door_Collision_Box_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -5.0,
+                28.0,
+                -198.11500549316406
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    8.0,
+                    6.0,
+                    4.050000190734863
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Door_Collision_Box_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                5.0,
+                28.0,
+                -198.11500549316406
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    27.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    10.0,
+                    1.0,
+                    25.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                0.1568627506494522,
+                0.1568627506494522,
+                0.1568627506494522,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_corridor_04",
+            "myEventID": -1,
+            "name": "Tutorial_Corridor_Top",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Corridor_Main",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.099999904632568,
+                    20.0,
+                    25.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Corridor_Collision_Box_Left",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -16.0,
+                30.0,
+                -177.6199951171875
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.099999904632568,
+                    20.0,
+                    25.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967075,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Corridor_Collision_Box_Right",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                16.0,
+                30.0,
+                -177.6199951171875
             ],
             "quaternion": [
                 0.0,

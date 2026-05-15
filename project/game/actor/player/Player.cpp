@@ -10,6 +10,8 @@
 #include "PostEffect.h"
 #include <DebugConsole.h>
 #include <algorithm>
+#include <fstream>
+#include <filesystem>
 
 // =================================================================
 // 初期化・更新・描画
@@ -19,6 +21,9 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
+
+    // 攻撃パラメータのロード
+    LoadAttackParams();
 
     // 外部システムの依存注入
     inputManager_ = inputManager;
@@ -365,9 +370,6 @@ void Player::UpdateColor() {
     if (isDamageInvincible_) {
         targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ★ ダメージ中は最優先で「赤」！
     }
-    else if (isDashInvincible_) {
-        targetColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // ★ 回避中は「青」！
-    }
 
     // 本体と子パーツの色を一括変更
     SetColor(targetColor);
@@ -415,4 +417,33 @@ bool Player::ConsumeBufferedAttackInput()
         return true;
     }
     return false;
+}
+void Player::LoadAttackParams() {
+    std::string filePath = "Resources/json/player/attack_params.json";
+    if (!std::filesystem::exists(filePath)) {
+        SaveAttackParams(); // デフォルト値で作成
+        return;
+    }
+
+    std::ifstream ifs(filePath);
+    if (ifs.is_open()) {
+        json j;
+        ifs >> j;
+        attackParams_.FromJson(j);
+    }
+}
+
+void Player::SaveAttackParams() {
+    std::string dirPath = "Resources/json/player";
+    if (!std::filesystem::exists(dirPath)) {
+        std::filesystem::create_directories(dirPath);
+    }
+
+    std::string filePath = dirPath + "/attack_params.json";
+    std::ofstream ofs(filePath);
+    if (ofs.is_open()) {
+        json j;
+        attackParams_.ToJson(j);
+        ofs << j.dump(4);
+    }
 }

@@ -137,8 +137,9 @@ void AudioPlayer::PlaySE(AudioHandle handle, bool loop, float volume)
 
 	xAudio2_->CreateSourceVoice(&data->sourceVoice, data->waveFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback, NULL, NULL);
 
-	// ★ 新しい引数 volume を設定 ★
-	data->sourceVoice->SetVolume(volume);
+	// マスター音量を掛け合わせる
+	float finalVolume = volume * masterVolumeSE_;
+	data->sourceVoice->SetVolume(finalVolume);
 
 	data->sourceVoice->Start(0);
 
@@ -306,9 +307,12 @@ void AudioPlayer::SoundPlayWave(const SoundData& soundData, bool loop)
 /// BGMを再生（または継続）します。
 /// </summary>
 void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
+	masterVolumeBGM_ = volume; // 音量を記憶
+
 	// 1. 既に再生したいBGMが再生中なら、何もしない
 	if (currentBgmHandle_ == handle && IsPlaying(handle)) {
-		return; // そのまま再生を続ける
+		SetBGMVolume(volume); // 音量だけ更新して終了
+		return; 
 	}
 
 	// 2. 違うBGMが再生中なら、それを止める
@@ -316,9 +320,25 @@ void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
 		StopSe(currentBgmHandle_);
 	}
 
-	// 3. 新しいBGMを再生する
-	PlaySE(handle, loop, volume); // 既存のPlay関数を呼び出す
-	currentBgmHandle_ = handle; // 今再生中のBGMとして記憶
+	// 3. 新しいBGMを再生する (SE再生を使いつつ、音量は masterVolumeSEの影響を受けないように細工)
+	// BGMは独立した音量管理をしたいので、ここでは1.0で呼び、SetBGMVolumeで調整する
+	PlaySE(handle, loop, 1.0f); 
+	currentBgmHandle_ = handle; 
+	SetBGMVolume(volume);
+}
+
+void AudioPlayer::SetBGMVolume(float volume) {
+	masterVolumeBGM_ = volume;
+	if (currentBgmHandle_ != kInvalidAudioHandle) {
+		auto it = streamingSoundDatas_.find(currentBgmHandle_);
+		if (it != streamingSoundDatas_.end() && it->second->sourceVoice) {
+			it->second->sourceVoice->SetVolume(volume);
+		}
+	}
+}
+
+void AudioPlayer::SetSEVolume(float volume) {
+	masterVolumeSE_ = volume;
 }
 
 /// <summary>

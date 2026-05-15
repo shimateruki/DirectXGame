@@ -1,7 +1,7 @@
 {
     "bloomIntensity": 0.0,
     "chromaticAberration": 0.0,
-    "cinemaBarHeight": 0.0,
+    "cinemaBarHeight": 4.203895392974451e-45,
     "damageFlash": 0.0,
     "enableToneMapping": 0,
     "filmGrainIntensity": 0.0,
@@ -11,8 +11,8 @@
     "radialCenterY": 0.0,
     "radialIntensity": 0.0,
     "scanlineIntensity": 0.0,
-    "spread": 1.0,
+    "spread": 0.0,
     "threshold": 0.0,
-    "vignetteIntensity": 1.0,
+    "vignetteIntensity": 0.0,
     "wobbleIntensity": 0.0
 }
