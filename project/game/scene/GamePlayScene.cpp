@@ -1617,24 +1617,57 @@ void GamePlayScene::DrawUI() {
     // --- 4. 2D描画 (UIスプライト) ---
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 
-    // ムービー中、かつポーズ中やオプションメニュー、ゲームオーバー表示中でないなら、
-    // 基本的なUIスプライトの描画をスキップする
-    bool showBaseUI = !isCinematic || isPaused_ || isOptionMenu_ || isGameOver;
+    // ヘルパー: システムUIかどうかの判定
+    auto IsPauseUI = [&](Sprite* sp) {
+        return sp == poseBackSprite_ || sp == poseTextSprite_ ||
+               sp == restartPoseTextSprite_ || sp == titleTextPoseSprite_ ||
+               sp == optionPoseTextSprite_;
+    };
+    auto IsGameOverUI = [&](Sprite* sp) {
+        return sp == gameOverTextSprite_ || sp == restartTextSprite_ ||
+               sp == titleTextSprite_;
+    };
 
-    if (showBaseUI) {
-        for (auto& sprite : sprites_) {
-            sprite->Draw();
+    // スプライト一括描画の制御
+    for (auto& sprite : sprites_) {
+        Sprite* sp = sprite.get();
+        if (!sp) continue;
+
+        bool isPause = IsPauseUI(sp);
+        bool isGameOverUI = IsGameOverUI(sp);
+        bool isOption = optionUI_.IsOptionSprite(sp);
+
+        if (isPaused_) {
+            // ポーズ中はポーズ関連のみ
+            if (isPause) sp->Draw();
+        }
+        else if (isOptionMenu_) {
+            // オプション中はオプション関連かつ現在のタブに該当するもののみ
+            if (isOption && optionUI_.IsSpriteVisibleInCurrentTab(sp)) {
+                sp->Draw();
+            }
+        }
+        else if (isGameOver) {
+            // ゲームオーバー中はゲームオーバー関連のみ
+            if (isGameOverUI) sp->Draw();
+        }
+        else if (!isCinematic) {
+            // 通常時（シネマティックでない時）はゲーム用UI（システム系以外）を表示
+            if (!isPause && !isGameOverUI && !isOption) {
+                sp->Draw();
+            }
         }
     }
 
-    // ロックオンアイコンとタイムアタックUIもムービー中は非表示にする
-    if (isDrawLockOn_ && lockOnSprite_ && !isOptionMenu_ && !isCinematic) {
+    // ロックオンアイコンとタイムアタックUI
+    if (isDrawLockOn_ && lockOnSprite_ && !isPaused_ && !isOptionMenu_ && !isCinematic && !isGameOver) {
         lockOnSprite_->Draw();
     }
-    if (timeAttackUI_ && hasBossAppeared_ && !isCinematic && !isOptionMenu_) {
+    if (timeAttackUI_ && hasBossAppeared_ && !isPaused_ && !isOptionMenu_ && !isCinematic && !isGameOver) {
         timeAttackUI_->Draw();
     }
 
+    // オプションUI固有の描画（動的生成アイコンなど）
     if (isOptionMenu_) {
         optionUI_.DrawKeyIcons();
     }
