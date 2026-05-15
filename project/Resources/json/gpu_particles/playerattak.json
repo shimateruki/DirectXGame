@@ -15,12 +15,12 @@
         2.0,
         2.0
     ],
-    "emitCount": 1,
+    "emitCount": 2,
     "emitInterval": 0.10000000149011612,
     "emitLife": 0.30000001192092896,
     "emitPos": [
-        0.0,
-        0.0,
+        16.299999237060547,
+        7.099999904632568,
         0.0
     ],
     "emitVelocity": [
@@ -64,6 +64,6 @@
     "sizeEaseType": 0,
     "sizeMidTime": 0.20000000298023224,
     "softParticleFade": 0.10000000149011612,
-    "texturePath": "Resources/sprite/particle.png",
+    "texturePath": "Resources/sprite/prticle_kira.png",
     "velocityVariance": 1.2000000476837158
 }
