@@ -324,6 +324,22 @@ void GamePlayScene::Initialize() {
     missionInitialShown_ = false;
     missionGoShown_ = false;
     missionBossShown_ = false;
+    hasTutorialMovieFinished_ = false; // ★ 追加
+
+    // ミッション演出用の初期値を保存
+    if (missionText_Mark_) missionMarkBaseSize_ = missionText_Mark_->GetSize();
+    if (missionText_lever_) {
+        missionLeverBasePos_ = missionText_lever_->GetPosition();
+        missionLeverBaseSize_ = missionText_lever_->GetSize();
+    }
+    if (missionText_go_) {
+        missionGoBasePos_ = missionText_go_->GetPosition();
+        missionGoBaseSize_ = missionText_go_->GetSize();
+    }
+    if (missionText_boss_) {
+        missionBossBasePos_ = missionText_boss_->GetPosition();
+        missionBossBaseSize_ = missionText_boss_->GetSize();
+    }
 
     // =======================================================
     // ★ 進行状況の復元：橋がすでに落ちている場合の処理
@@ -367,6 +383,7 @@ void GamePlayScene::Initialize() {
             // チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
             GameProgress::GetInstance()->hasFinishedTutorial = true;
             this->hasFinishedTutorial_ = true;
+            this->hasTutorialMovieFinished_ = true; // ★ スキップ時は完了扱い
             this->doorOpenProgress_ =
                 1.0f; // チュートリアル部屋のドアも全開にしておく
         }
@@ -476,14 +493,14 @@ void GamePlayScene::Initialize() {
 
     // --- 7. 初期HPの同期 (演出用変数の初期化) ---
     if (player_) {
-        playerVisualHp_ = std::clamp(player_->GetHp() / player_->GetMaxHp(), 0.0f, 1.0f);
+        playerVisualHp_ = Math::Clamp(player_->GetHp() / player_->GetMaxHp(), 0.0f, 1.0f);
         playerPrevHpRatio_ = playerVisualHp_;
     }
     if (boss_) {
-        bossVisualHp_ = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
+        bossVisualHp_ = Math::Clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
         bossPrevHpRatio_ = bossVisualHp_;
 
-        float bRatio = std::clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
+        float bRatio = Math::Clamp(boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
         barrierVisualMain_ = bRatio;
         barrierVisualDamage_ = bRatio;
         barrierPrevHpRatio_ = bRatio;
@@ -546,8 +563,7 @@ void GamePlayScene::Update(float deltaTime) {
     // 1. 状態判定 (ゲームオーバー・ムービー中などのフラグ)
     // ---------------------------------------------------------
     bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
-    bool isBossDying = boss_ && boss_->IsDyingSequence();
-    bool isCinematicMode = (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
+    bool isCinematicMode = IsCinematicMode();
 
     // ムービー中などはロックオンを無効化（強制解除）する
     if (lockOnSystem_) {
@@ -691,7 +707,7 @@ void GamePlayScene::Update(float deltaTime) {
     if (isRestartTransition_ || isTitleTransition_) {
         restartTimer_ += originalDeltaTime;
         float transitionDuration = 1.0f;
-        float t = std::clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
+        float t = Math::Clamp(restartTimer_ / transitionDuration, 0.0f, 1.0f);
 
         PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
         if (postParams) {
@@ -747,16 +763,7 @@ void GamePlayScene::Update(float deltaTime) {
 
                 // ここで missionText_go を表示（1回だけ）
                 if (!missionGoShown_ && missionText_go_) {
-                    Vector4 c = missionText_go_->GetColor();
-                    c.w = 1.0f;
-                    missionText_go_->SetColor(c);
                     missionGoShown_ = true;
-
-                    if (missionText_lever_) {
-                        Vector4 lc = missionText_lever_->GetColor();
-                        lc.w = 0.0f;
-                        missionText_lever_->SetColor(lc);
-                    }
                 }
             }
         }
@@ -887,6 +894,8 @@ void GamePlayScene::Update(float deltaTime) {
         // 1.5秒後にムービー終了
         if (movieTimer_ > 2.5f) {
             movieState_ = MovieState::kNone;
+            hasTutorialMovieFinished_ = true; // ★ ムービー終了
+            missionSwitchDelayTimer_ = 0.5f;  // ★ 0.5秒待機
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -909,6 +918,7 @@ void GamePlayScene::Update(float deltaTime) {
                 // ★到着！ movieState_ が kNone
                 // になるので、下のシャッター制御が「下げ」に転じます
                 movieState_ = MovieState::kNone;
+                missionSwitchDelayTimer_ = 0.5f; // ★ 0.5秒待機
                 player_->SetIsControlActive(true);
                 player_->SetIsPhysicsActive(true); // 物理復帰
 
@@ -923,17 +933,6 @@ void GamePlayScene::Update(float deltaTime) {
                 }
 
                 if (!missionInitialShown_) {
-                    auto ShowIfExists = [](Sprite* s) {
-                        if (!s)
-                            return;
-                        Vector4 c = s->GetColor();
-                        c.w = 1.0f;
-                        s->SetColor(c);
-                        };
-                    ShowIfExists(missionText_mission_);
-                    ShowIfExists(missionText_line_);
-                    ShowIfExists(missionText_Mark_);
-                    ShowIfExists(missionText_lever_);
                     missionInitialShown_ = true;
                 }
             }
@@ -1368,6 +1367,7 @@ void GamePlayScene::Update(float deltaTime) {
         // ====================================================
         if (movieTimer_ >= 4.0f) {
             isBossMoviePlaying_ = false;
+            missionSwitchDelayTimer_ = 0.5f; // ★ 0.5秒待機
 
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 camera->EndOverride(1.0f);
@@ -1382,22 +1382,7 @@ void GamePlayScene::Update(float deltaTime) {
 
             // ボス登場後に missionText_boss を表示（1回だけ）
             if (!missionBossShown_ && missionText_boss_) {
-                Vector4 c = missionText_boss_->GetColor();
-                c.w = 1.0f;
-                missionText_boss_->SetColor(c);
                 missionBossShown_ = true;
-
-                // 重なり防止：以前のミッションUIを確実に非表示にする
-                if (missionText_go_) {
-                    Vector4 gc = missionText_go_->GetColor();
-                    gc.w = 0.0f;
-                    missionText_go_->SetColor(gc);
-                }
-                if (missionText_lever_) {
-                    Vector4 lc = missionText_lever_->GetColor();
-                    lc.w = 0.0f;
-                    missionText_lever_->SetColor(lc);
-                }
             }
 
             if (timeAttackUI_) {
@@ -1627,18 +1612,63 @@ void GamePlayScene::Draw() {
 // UI描画専用の関数
 // ====================================================================
 void GamePlayScene::DrawUI() {
+    bool isCinematic = IsCinematicMode();
+    bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
+
     // --- 4. 2D描画 (UIスプライト) ---
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+
+    // ヘルパー: システムUIかどうかの判定
+    auto IsPauseUI = [&](Sprite* sp) {
+        return sp == poseBackSprite_ || sp == poseTextSprite_ ||
+               sp == restartPoseTextSprite_ || sp == titleTextPoseSprite_ ||
+               sp == optionPoseTextSprite_;
+    };
+    auto IsGameOverUI = [&](Sprite* sp) {
+        return sp == gameOverTextSprite_ || sp == restartTextSprite_ ||
+               sp == titleTextSprite_;
+    };
+
+    // スプライト一括描画の制御
     for (auto& sprite : sprites_) {
-        sprite->Draw();
+        Sprite* sp = sprite.get();
+        if (!sp) continue;
+
+        bool isPause = IsPauseUI(sp);
+        bool isGameOverUI = IsGameOverUI(sp);
+        bool isOption = optionUI_.IsOptionSprite(sp);
+
+        if (isPaused_) {
+            // ポーズ中はポーズ関連のみ
+            if (isPause) sp->Draw();
+        }
+        else if (isOptionMenu_) {
+            // オプション中はオプション関連かつ現在のタブに該当するもののみ
+            if (isOption && optionUI_.IsSpriteVisibleInCurrentTab(sp)) {
+                sp->Draw();
+            }
+        }
+        else if (isGameOver) {
+            // ゲームオーバー中はゲームオーバー関連のみ
+            if (isGameOverUI) sp->Draw();
+        }
+        else if (!isCinematic) {
+            // 通常時（シネマティックでない時）はゲーム用UI（システム系以外）を表示
+            if (!isPause && !isGameOverUI && !isOption) {
+                sp->Draw();
+            }
+        }
     }
-    if (isDrawLockOn_ && lockOnSprite_ && !isOptionMenu_) {
+
+    // ロックオンアイコンとタイムアタックUI
+    if (isDrawLockOn_ && lockOnSprite_ && !isPaused_ && !isOptionMenu_ && !isCinematic && !isGameOver) {
         lockOnSprite_->Draw();
     }
-    if (timeAttackUI_ && hasBossAppeared_ && !isBossMoviePlaying_ &&
-        !isOptionMenu_) {
+    if (timeAttackUI_ && hasBossAppeared_ && !isPaused_ && !isOptionMenu_ && !isCinematic && !isGameOver) {
         timeAttackUI_->Draw();
     }
+
+    // オプションUI固有の描画（動的生成アイコンなど）
     if (isOptionMenu_) {
         optionUI_.DrawKeyIcons();
     }
@@ -1651,12 +1681,17 @@ void GamePlayScene::DrawShadow() {
     }
 }
 
+bool GamePlayScene::IsCinematicMode() const {
+    bool isBossDying = boss_ && boss_->IsDyingSequence();
+    return (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
+}
+
 void GamePlayScene::UpdateUI(float deltaTime) {
     // 1. プレイヤーのHP同期
     if (player_ && playerHpBarSprite_) {
         float currentHp = player_->GetHp();
         float maxHp = player_->GetMaxHp();
-        float hpRatio = std::clamp(currentHp / maxHp, 0.0f, 1.0f);
+        float hpRatio = Math::Clamp(currentHp / maxHp, 0.0f, 1.0f);
 
         // ダメージを受けた瞬間を検知してタイマーをセット
         if (hpRatio < playerPrevHpRatio_) {
@@ -1711,7 +1746,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
 
         // --- A. メインHPバーの同期 ---
         if (bossHpBarSprite_) {
-            float hpRatio = std::clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
+            float hpRatio = Math::Clamp(boss_->GetHp() / boss_->GetMaxHp(), 0.0f, 1.0f);
             
             // ダメージを受けた瞬間を検知
             if (hpRatio < bossPrevHpRatio_) {
@@ -1742,7 +1777,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
 
         // --- B. バリアHPバーの同期 ---
         if (barrierHpBarSprite_) {
-            float bRatio = std::clamp(
+            float bRatio = Math::Clamp(
                 boss_->GetBarrierHp() / boss_->GetMaxBarrierHp(), 0.0f, 1.0f);
 
             // スタン中かどうかの判定
@@ -1799,6 +1834,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             }
         }
     }
+    // --- ミッションテキストのアニメーション演出 ---
     auto SetAlpha = [](Sprite* s, float a) {
         if (s) {
             Vector4 c = s->GetColor();
@@ -1807,25 +1843,99 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         }
         };
 
-    if (hasBridgeDropped_ && !hasBossAppeared_) {
-        // 橋が落ちてボス前なら「GO」を表示！
-        SetAlpha(missionText_go_, 1.0f);
-        SetAlpha(missionText_Mark_, 1.0f);
-        SetAlpha(missionText_line_, 1.0f);
+    // 1. missionText_mission & missionText_line (既存の処理を尊重)
+    if (hasBossAppeared_) {
         SetAlpha(missionText_mission_, 0.0f);
-        SetAlpha(missionText_lever_, 0.0f);
+        SetAlpha(missionText_line_, 1.0f); // ボス戦中もラインは維持
     }
-    else if (hasBossAppeared_) {
-        // ボス戦中なら「BOSS撃破」を表示！
-        SetAlpha(missionText_go_, 0.0f);
-        SetAlpha(missionText_boss_, 1.0f);
+    else if (hasBridgeDropped_) {
+        SetAlpha(missionText_mission_, 0.0f);
+        SetAlpha(missionText_line_, 1.0f);
     }
-    else if (!hasFinishedTutorial_) {
-        // チュートリアル中なら初期セットを表示
+    else if (missionInitialShown_) {
         SetAlpha(missionText_mission_, 1.0f);
         SetAlpha(missionText_line_, 1.0f);
+    }
+
+    // --- タイマー更新 ---
+    if (missionSwitchDelayTimer_ > 0.0f) {
+        missionSwitchDelayTimer_ -= deltaTime;
+    }
+
+    // 2. missionText_Mark (回転しながら出現)
+    if (missionInitialShown_ && missionText_Mark_) {
+        if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 待機中
+        missionMarkAnimProgress_ = std::min(1.0f, missionMarkAnimProgress_ + deltaTime * 2.0f);
+        float scale = missionMarkAnimProgress_;
+        float rot = (1.0f - missionMarkAnimProgress_) * 3.14159265f * 2.0f;
+        missionText_Mark_->SetSize({ missionMarkBaseSize_.x * scale, missionMarkBaseSize_.y * scale });
+        missionText_Mark_->SetRotation(rot);
         SetAlpha(missionText_Mark_, 1.0f);
-        SetAlpha(missionText_lever_, 1.0f);
+    }
+
+    // 3. lever -> go -> boss 遷移演出
+    // A. Lever (初期ミッション)
+    if (missionInitialShown_ && !isLeverOut_) {
+        if (!hasTutorialMovieFinished_) {
+            if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 待機中
+
+            // 出現アニメーション（または表示維持）
+            missionLeverAnimProgress_ = std::min(1.0f, missionLeverAnimProgress_ + deltaTime * 2.0f);
+            if (missionText_lever_) {
+                float offsetY = (1.0f - missionLeverAnimProgress_) * 20.0f;
+                missionText_lever_->SetPosition({ missionLeverBasePos_.x, missionLeverBasePos_.y + offsetY });
+                SetAlpha(missionText_lever_, missionLeverAnimProgress_);
+            }
+        }
+        else {
+            if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 0.2秒待機
+
+            // 完了アニメーション (Yスケール -> 0)
+            leverOutProgress_ = std::min(1.0f, leverOutProgress_ + deltaTime * 4.0f);
+            if (missionText_lever_) {
+                missionText_lever_->SetSize({ missionLeverBaseSize_.x, missionLeverBaseSize_.y * (1.0f - leverOutProgress_) });
+            }
+            if (leverOutProgress_ >= 1.0f) {
+                isLeverOut_ = true;
+                SetAlpha(missionText_lever_, 0.0f);
+            }
+        }
+    }
+
+    // B. Go (レバー完了後)
+    if (isLeverOut_ && !isGoOut_) {
+        if (!hasBossAppeared_ || isBossMoviePlaying_) { // ★ ムービー中も維持するように変更
+            // 出現アニメーション
+            missionGoAnimProgress_ = std::min(1.0f, missionGoAnimProgress_ + deltaTime * 2.0f);
+            if (missionText_go_) {
+                float offsetY = (1.0f - missionGoAnimProgress_) * 20.0f;
+                missionText_go_->SetPosition({ missionGoBasePos_.x, missionGoBasePos_.y + offsetY });
+                SetAlpha(missionText_go_, missionGoAnimProgress_);
+            }
+        }
+        else {
+            if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 0.2秒待機
+
+            // 完了アニメーション (Yスケール -> 0)
+            goOutProgress_ = std::min(1.0f, goOutProgress_ + deltaTime * 4.0f);
+            if (missionText_go_) {
+                missionText_go_->SetSize({ missionGoBaseSize_.x, missionGoBaseSize_.y * (1.0f - goOutProgress_) });
+            }
+            if (goOutProgress_ >= 1.0f) {
+                isGoOut_ = true;
+                SetAlpha(missionText_go_, 0.0f);
+            }
+        }
+    }
+
+    // C. Boss (ボス戦中)
+    if (isGoOut_) {
+        missionBossAnimProgress_ = std::min(1.0f, missionBossAnimProgress_ + deltaTime * 2.0f);
+        if (missionText_boss_) {
+            float offsetY = (1.0f - missionBossAnimProgress_) * 20.0f;
+            missionText_boss_->SetPosition({ missionBossBasePos_.x, missionBossBasePos_.y + offsetY });
+            SetAlpha(missionText_boss_, missionBossAnimProgress_);
+        }
     }
 }
 
@@ -1977,6 +2087,7 @@ void GamePlayScene::DrawImGui() {
 
                 // 3. 各種フラグを「完了」にセット
                 hasFinishedTutorial_ = true;
+                hasTutorialMovieFinished_ = true; // ★ 追加
                 hasBridgeDropped_ = true; // 橋の状態も同期
                 GameProgress::GetInstance()->hasFinishedTutorial = true;
                 doorOpenProgress_ = 1.0f;

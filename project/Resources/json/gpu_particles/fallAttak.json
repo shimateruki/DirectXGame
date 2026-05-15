@@ -64,6 +64,6 @@
     "sizeEaseType": 0,
     "sizeMidTime": 0.20000000298023224,
     "softParticleFade": 5.0,
-    "texturePath": "Resources/sprite/particle.png",
+    "texturePath": "Resources/sprite/prticle_kira.png",
     "velocityVariance": 1.0
 }
