@@ -5,6 +5,7 @@
 #include <string>
 #include "BossAttack/BaseBossAttack.h"
 #include "GPUParticleEmitter.h"
+#include "PostEffect.h"
 
 class SceneManager; // 前方宣言
 class MapBlock;
@@ -233,4 +234,28 @@ private:
     bool isCompletelyDead_ = false;
     float assemblyTimer_ = 0.0f;
 
+    // --- HP半分時の演出用 ---
+    enum class HpHalfEventPhase {
+        None,
+        WaitIdle,     // 追加: 1フレーム待機モーションに戻す
+        Falling,      // 落下
+        Lying,        // ダウン
+        Recovery,     // 起き上がり・首振り
+        Pulsing,      // 鼓動・強化
+        Reassembling, // ブロック再集結
+        Finishing     // 終了
+    };
+    HpHalfEventPhase hpHalfPhase_ = HpHalfEventPhase::None;
+    bool isHpHalfTriggered_ = false;
+    bool isHpHalfEventActive_ = false;
+    float hpHalfEffectTimer_ = 0.0f;
+    bool isPlayerRotated_ = false;  // 演出中に一度だけ向きを合わせるためのフラグ
+    PostEffect::Params basePostEffectParams_{};
+
+    // 演出用の一時変数
+    std::vector<Vector3> fallingBlockVelocities_;
+    Vector3 originalCoreRotation_;
+    Vector3 originalCorePosition_;
+    
+    static constexpr float kBaseSpeedMultiplier = 1.5f; // ボス固有の速度倍率
 };
