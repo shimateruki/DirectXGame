@@ -20,11 +20,12 @@ public:
     // 描画
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
 
-    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 });
+    void SpawnEffect(const std::string& jsonFilePath, float damage);
+    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 }, float damage = 10.0f);
 
     // ワールド座標を直接指定してエフェクトを配置する（TrailEmitter用）
     // jsonのPosition/Rotationフィールドを無視し、worldPos/worldRotをそのまま使う
-    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 });
+    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 }, float damage = 10.0f);
 
     // 課題用: 手動コードでRing波紋エフェクト(gradationLine.png)を発生させる
     void SpawnRingWaveEffect(const Vector3& position);

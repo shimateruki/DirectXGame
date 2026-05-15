@@ -1940,6 +1940,23 @@ void GamePlayScene::DrawImGui() {
             ImGui::TreePop();
         }
 
+        if (ImGui::TreeNode("Player Attack Balance")) {
+            if (player_) {
+                PlayerAttackParams& params = player_->GetAttackParams();
+                ImGui::DragFloat("Combo 1 Damage", &params.damageCombo1, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("Combo 2 Damage", &params.damageCombo2, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("Combo 3 Damage", &params.damageCombo3, 0.1f, 0.0f, 200.0f);
+                ImGui::DragFloat("Plunge Damage", &params.damagePlunge, 0.1f, 0.0f, 100.0f);
+
+                ImGui::Spacing();
+                if (ImGui::Button("Save Attack Params")) {
+                    player_->SaveAttackParams();
+                    DebugConsole::GetInstance()->AddLog("【SYSTEM】 Player attack parameters saved to JSON.");
+                }
+            }
+            ImGui::TreePop();
+        }
+
         ImGui::Separator();
 
         if (ImGui::Button("Skip Tutorial", ImVec2(-1, 30))) {
