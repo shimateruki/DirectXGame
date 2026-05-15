@@ -378,7 +378,8 @@ void BossCore::Update(float deltaTime) {
 
         switch (hpHalfPhase_) {
         case HpHalfEventPhase::WaitIdle:
-            if (hpHalfEffectTimer_ > 0.0f) {
+            // ★ 修正：いきなり落ちるのではなく、1.0秒間空中で「おや？」と思わせる溜めを作る
+            if (hpHalfEffectTimer_ >= 1.0f) {
                 originalCoreRotation_ = GetRotation();
                 originalCorePosition_ = GetTranslate();
                 this->UpdateWorldMatrix();
@@ -402,14 +403,13 @@ void BossCore::Update(float deltaTime) {
                         dir.x /= len;
                         dir.z /= len;
                     } else {
-                        // 万が一重なっていた場合はランダム方向へ
                         float angle = (static_cast<float>(rand()) / RAND_MAX) * 3.14159f * 2.0f;
                         dir.x = std::cos(angle);
                         dir.z = std::sin(angle);
                     }
 
-                    float horizontalSpeed = 15.0f + (rand() % 50) * 0.1f; // 15〜20
-                    float verticalSpeed = 15.0f + (rand() % 50) * 0.1f;   // 15〜20
+                    float horizontalSpeed = 15.0f + (rand() % 50) * 0.1f;
+                    float verticalSpeed = 15.0f + (rand() % 50) * 0.1f;
 
                     fallingBlockVelocities_.push_back({
                         dir.x * horizontalSpeed,
@@ -426,18 +426,22 @@ void BossCore::Update(float deltaTime) {
 
         case HpHalfEventPhase::Falling:
         {
-            // コアの落下
+            // ★ 修正：急落するのではなく、1.5秒かけてゆっくり（かつ加速しながら）地面へ
+            float duration = 1.5f;
+            float t = std::min(hpHalfEffectTimer_ / duration, 1.0f);
+            float easeT = t * t; // 加速して落ちる感じ
+
             Vector3 pos = GetTranslate();
-            pos.y -= 30.0f * actionDelta;
-            if (pos.y <= 0.8f) {
-                pos.y = 0.8f;
+            pos.y = Math::Lerp(4.0f, 0.8f, easeT);
+            SetTranslate(pos);
+
+            if (t >= 1.0f) {
                 hpHalfPhase_ = HpHalfEventPhase::Lying;
                 hpHalfEffectTimer_ = 0.0f;
             }
-            SetTranslate(pos);
 
             Vector3 rot = GetRotation();
-            rot.x = Math::Lerp(rot.x, 1.4f, 5.0f * actionDelta);
+            rot.x = Math::Lerp(rot.x, 1.4f, t); // 落下時間に合わせて倒れ込む
             SetRotation(rot);
         }
         break;
@@ -1278,7 +1282,7 @@ void BossCore::UpdateWeak(float deltaTime) {
 
     // --- コア本体の落下・転がり（コロン）・復帰 ---
     Vector3 bossPos = GetTranslate();
-    float fallDuration = 0.5f;
+    float fallDuration = 1.2f; // 0.5s -> 1.2sへ（重々しく倒れる）
     float rollAngle = 0.0f;
 
     // 1. 落下と転がり
@@ -1722,7 +1726,7 @@ void BossCore::UpdateCorePieces(float deltaTime) {
 
     deathTimer_ += deltaTime;
 
-    if (deathTimer_ > 5.0f) {
+    if (deathTimer_ > 8.0f) { // 5.0s -> 8.0sへ延長
         for (auto& piece : corePieces_) {
             if (piece.obj) {
                 piece.obj->isDead = true;
@@ -1744,11 +1748,11 @@ void BossCore::UpdateCorePieces(float deltaTime) {
 
     // --- スローモーション計算 ---
     float timeScale = 1.0f;
-    if (deathTimer_ < 0.1f) {
-        timeScale = 0.01f; // ヒットストップ
+    if (deathTimer_ < 0.2f) { // ヒットストップをわずかに延長
+        timeScale = 0.01f;
     }
-    else if (deathTimer_ < 1.5f) {
-        timeScale = 0.2f;  // スローモーション
+    else if (deathTimer_ < 2.5f) { // スロー時間を2.5sへ延長
+        timeScale = 0.05f;  // 0.2 -> 0.05へ（より深いスロー）
     }
     float slowDeltaTime = deltaTime * timeScale;
 
