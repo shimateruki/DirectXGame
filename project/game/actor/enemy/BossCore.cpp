@@ -350,12 +350,54 @@ void BossCore::Update(float deltaTime) {
     if (isHpHalfEventActive_) {
         hpHalfEffectTimer_ += deltaTime; // 演出タイマーは実時間
 
+        // ★ 追加：カメラ演出の終了を監視し、終わった瞬間に向きをボスに合わせる
+        if (!isPlayerRotated_) {
+            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                // カメラの再生が終わり、補間も含めてプレイヤーに完全に位置が戻った瞬間 (Weightが0)
+                // ※戻り中に SetRotation しても Camera::Update 内で逆算上書きされるため、0になるのを待つ
+                if (!camera->IsOverridden() && camera->GetOverrideWeight() <= 0.001f) {
+                    if (target_) {
+                        Vector3 playerPos = target_->GetWorldPosition();
+                        Vector3 bossPos = this->GetWorldPosition();
+                        Vector3 toBoss = bossPos - playerPos;
+                        float distXZ = std::sqrt(toBoss.x * toBoss.x + toBoss.z * toBoss.z);
+
+                        // 角度の計算
+                        float angleY = std::atan2(toBoss.x, toBoss.z);
+                        float angleX = std::atan2(-toBoss.y, distXZ);
+
+                        // プレイヤーとカメラの向きを強制同期
+                        target_->SetRotation({ 0.0f, angleY, 0.0f });
+                        camera->SetRotation({ angleX, angleY, 0.0f });
+                        
+                        isPlayerRotated_ = true; // 一度だけ実行
+                        DebugConsole::GetInstance()->AddLog("【EVENT】 カメラの復帰を確認。視点をボスに固定しました。");
+                    }
+                }
+            }
+        }
+
         // ブロックの落下・散乱物理（Falling〜Pulsingの間、常に更新し続ける）
         if (hpHalfPhase_ >= HpHalfEventPhase::Falling && hpHalfPhase_ < HpHalfEventPhase::Reassembling) {
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
                 if (armorBlocks_[i] && i < fallingBlockVelocities_.size()) {
                     Vector3 bPos = armorBlocks_[i]->GetTranslate();
-                    if (fallingBlockVelocities_[i].x != 0.0f || fallingBlockVelocities_[i].y != 0.0f || fallingBlockVelocities_[i].z != 0.0f || bPos.y > 0.5f) {
+
+                    // ★ 追加：Pulsing フェーズ（ボスの鼓動）中は、地面にいたブロックを浮かび上がらせる
+                    if (hpHalfPhase_ == HpHalfEventPhase::Pulsing) {
+                        float riseSpeed = 3.0f; // 上昇速度
+                        bPos.y += riseSpeed * actionDelta;
+                        
+                        // 浮かび上がりながらゆっくり回転させる
+                        Vector3 rot = armorBlocks_[i]->GetRotation();
+                        rot.x += 2.0f * actionDelta;
+                        rot.y += 1.5f * actionDelta;
+                        armorBlocks_[i]->SetRotation(rot);
+
+                        armorBlocks_[i]->SetTranslate(bPos);
+                    }
+                    // 落下中、または空中にいる場合の物理
+                    else if (fallingBlockVelocities_[i].x != 0.0f || fallingBlockVelocities_[i].y != 0.0f || fallingBlockVelocities_[i].z != 0.0f || bPos.y > 0.5f) {
                         fallingBlockVelocities_[i].y -= 25.0f * actionDelta; // 重力
                         bPos += fallingBlockVelocities_[i] * actionDelta;
                         if (bPos.y <= 0.5f) {
@@ -408,8 +450,8 @@ void BossCore::Update(float deltaTime) {
                         dir.z = std::sin(angle);
                     }
 
-                    float horizontalSpeed = 15.0f + (rand() % 50) * 0.1f;
-                    float verticalSpeed = 15.0f + (rand() % 50) * 0.1f;
+                    float horizontalSpeed = 7.0f + (rand() % 30) * 0.1f; // 15〜20 から半分程度に減少
+                    float verticalSpeed = 7.0f + (rand() % 30) * 0.1f;   // 15〜20 から半分程度に減少
 
                     fallingBlockVelocities_.push_back({
                         dir.x * horizontalSpeed,
@@ -542,8 +584,19 @@ void BossCore::Update(float deltaTime) {
                 }
             }
 
-            if (allDone || hpHalfEffectTimer_ >= 2.0f) {
-                hpHalfPhase_ = HpHalfEventPhase::Finishing;
+            // すべての復帰が終わった、またはタイムアウト
+            if (allDone || hpHalfEffectTimer_ >= 3.0f) {
+                // ★ 追加：カメラの演出（GhostRecorder等）が完全に終わるまで待機
+                if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                    // オーバーライドが終了し、かつ補間（戻り）も完全に終わっているかチェック
+                    if (!camera->IsOverridden() && camera->GetOverrideWeight() <= 0.01f) {
+                        hpHalfPhase_ = HpHalfEventPhase::Finishing;
+                        hpHalfEffectTimer_ = 0.0f;
+                    }
+                } else {
+                    hpHalfPhase_ = HpHalfEventPhase::Finishing;
+                    hpHalfEffectTimer_ = 0.0f;
+                }
             }
         }
         break;
@@ -551,11 +604,14 @@ void BossCore::Update(float deltaTime) {
         case HpHalfEventPhase::Finishing:
             isHpHalfEventActive_ = false;
             hpHalfPhase_ = HpHalfEventPhase::None;
+            isPlayerRotated_ = false; // 次回のためにリセット
             SetColor(originalColor_);
             SetScale({ 1,1,1 });
             SetRotation(originalCoreRotation_);
             *PostEffect::GetInstance()->GetParams() = basePostEffectParams_;
+
             DebugConsole::GetInstance()->AddLog("【EVENT】 フェーズ移行完了！ボスの猛攻に備えろ！");
+            break;
             break;
         }
 
@@ -584,7 +640,6 @@ void BossCore::Update(float deltaTime) {
                 float chargeT = std::min(hpHalfEffectTimer_ / 0.5f, 1.0f);
                 float easeCharge = chargeT * chargeT; // EaseIn で加速感
 
-                //params->chromaticAberration = Math::Lerp(basePostEffectParams_.chromaticAberration, 0.00f, easeCharge);
                 params->vignetteIntensity = Math::Lerp(basePostEffectParams_.vignetteIntensity, 0.0f, easeCharge);
                 params->radialIntensity = Math::Lerp(basePostEffectParams_.radialIntensity, 0.005f, easeCharge);
                 params->filmGrainIntensity = Math::Lerp(basePostEffectParams_.filmGrainIntensity, 0.04f, easeCharge);
@@ -599,11 +654,6 @@ void BossCore::Update(float deltaTime) {
                 // 時間経過で全体の強度を徐々に上げる（クライマックス感）
                 float progressT = std::min(pulseTime / 1.5f, 1.0f);
 
-                // 色収差：パルスに合わせて強弱する（ユーザー要望により無効化中）
-                //float caBase = 0.02f;
-                //float caPeak = 0.05f + progressT * 0.02f;
-                //params->chromaticAberration = Math::Lerp(caBase, caPeak, pulseNorm);
-
                 // ビネット：控えめな暗がり
                 params->vignetteIntensity = Math::Lerp(0.5f, 1.2f, pulseNorm * progressT);
 
@@ -614,11 +664,6 @@ void BossCore::Update(float deltaTime) {
 
                 // フィルムグレイン：ごく僅かなノイズ
                 params->filmGrainIntensity = Math::Lerp(0.04f, 0.06f, progressT);
-
-                // ブルーム：眩しすぎない程度に光らせる
-                //params->threshold = Math::Lerp(0.8f, 0.4f, pulseNorm);
-                //params->bloomIntensity = Math::Lerp(1.2f, 2.0f, pulseNorm);
-                //params->spread = Math::Lerp(basePostEffectParams_.spread, 2.0f, pulseNorm * progressT);
 
                 // 画面揺れ：ごく僅かな震え
                 params->wobbleIntensity = Math::Lerp(0.0f, 0.007f, progressT * progressT);
@@ -1082,7 +1127,9 @@ void BossCore::TakeBodyDamage(float damage) {
         animTimer_ = 0.0f;
 
         SetColor(originalColor_);
-        SetTranslate({ 0.0f, 4.0f, 0.0f }); // 演出開始時に強制的に真ん中へ移動
+        SetTranslate({ 0.0f, 4.0f, 0.0f }); // 演出開始時に強制的に真ん中へ移動(T)
+        SetScale({ 1.0f, 1.0f, 1.0f });     // スケールをリセット(S)
+        SetRotation({ 0.0f, 0.0f, 0.0f });  // 回転をリセット(R)
         flyingBlocks_.clear();
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             if (armorBlocks_[i]) {

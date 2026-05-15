@@ -242,6 +242,7 @@ private:
     bool isHpHalfTriggered_ = false;
     bool isHpHalfEventActive_ = false;
     float hpHalfEffectTimer_ = 0.0f;
+    bool isPlayerRotated_ = false;  // 演出中に一度だけ向きを合わせるためのフラグ
     PostEffect::Params basePostEffectParams_{};
 
     // 演出用の一時変数
