@@ -349,6 +349,19 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 if (laser) { laser->SetScale({ 0.02f, 80.0f, 0.02f }); laser->SetCollisionAttribute(0); }
                 if (coreLaser) { coreLaser->SetScale({ 0.0f, 80.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
 
+                // --- 子ブロック（Shard）の展開演出 ---
+                float expandT = std::min(funnelTimers_[i] / 1.2f, 1.0f);
+                float expandOffset = Easing::OutBack(expandT) * 1.5f; // 最大1.5m外側に展開
+                for (auto* child : armorBlocks[i]->GetChildren()) {
+                    if (child && child->GetName().find("Shard") != std::string::npos) {
+                        Vector3 basePos = child->GetTranslate();
+                        // 原点(0,0,0)からの方向を正規化して、展開方向にオフセットをかける
+                        Vector3 dir = Math::Normalize(basePos);
+                        if (Math::Length(dir) < 0.1f) dir = { 0.0f, 1.0f, 0.0f }; // 安全策
+                        child->SetTranslate(Math::Normalize(basePos) * (0.35f + expandOffset));
+                    }
+                }
+
                 if (funnelTimers_[i] < 0.7f) {
                     // 最初の0.7秒間はプレイヤーをしっかり追従
                     TrackPlayer(armorBlocks[i], target, 8.0f * deltaTime);
@@ -375,6 +388,15 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 if (laser) { laser->SetScale({ 1.0f, 80.0f, 1.0f }); laser->SetCollisionAttribute(kEnemyAttack); }
                 if (coreLaser) { coreLaser->SetScale({ 0.4f, 80.0f, 0.4f }); coreLaser->SetCollisionAttribute(0); }
 
+                // --- 子ブロック（Shard）の展開を維持（少し震わせる） ---
+                float shake = std::sin(funnelTimers_[i] * 50.0f) * 0.1f;
+                for (auto* child : armorBlocks[i]->GetChildren()) {
+                    if (child && child->GetName().find("Shard") != std::string::npos) {
+                        Vector3 basePos = child->GetTranslate();
+                        child->SetTranslate(Math::Normalize(basePos) * (0.35f + 1.5f + shake));
+                    }
+                }
+
                 // 追従はロック（固定）、上下のゆらゆらも完全に停止
                 Vector3 pos = blockTargetPos_[i];
                 armorBlocks[i]->SetTranslate(pos);
@@ -392,6 +414,14 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 
                 if (laser) { laser->SetScale({ 1.0f * shrinkT, 80.0f, 1.0f * shrinkT }); laser->SetCollisionAttribute(0); }
                 if (coreLaser) { coreLaser->SetScale({ 0.4f * shrinkT, 80.0f, 0.4f * shrinkT }); coreLaser->SetCollisionAttribute(0); }
+
+                // --- 子ブロック（Shard）の収束演出 ---
+                for (auto* child : armorBlocks[i]->GetChildren()) {
+                    if (child && child->GetName().find("Shard") != std::string::npos) {
+                        Vector3 basePos = child->GetTranslate();
+                        child->SetTranslate(Math::Normalize(basePos) * (0.35f + 1.5f * shrinkT));
+                    }
+                }
 
                 Vector3 pos = blockTargetPos_[i];
                 // 縮小中もゆらゆらは停止したまま

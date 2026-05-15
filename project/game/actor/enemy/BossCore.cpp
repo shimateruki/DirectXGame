@@ -666,7 +666,7 @@ void BossCore::Update(float deltaTime) {
         prevBlockPositions_[i] = currentPos;
     }
 
-    UpdateTethers(deltaTime);
+    // UpdateTethers(deltaTime);
 }
 
 // =================================================================
@@ -1628,83 +1628,9 @@ void BossCore::UpdateAppearance(float deltaTime) {
     }
 }
 void BossCore::UpdateTethers(float deltaTime) {
-    // 弱点露出中(Weak)や死亡演出中は結線を消す
-    bool shouldShow = (state_ != State::Weak) && !isCompletelyDead_;
-
-    if (!shouldShow) {
-        for (auto* beam : tetherBeams_) {
-            if (beam) beam->SetScale({ 0, 0, 0 });
-        }
-        return;
+    for (auto* beam : tetherBeams_) {
+        if (beam) beam->SetScale({ 0, 0, 0 });
     }
-
-    if (tetherBeams_.size() < armorBlocks_.size()) {
-        BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
-        for (size_t i = tetherBeams_.size(); i < armorBlocks_.size(); ++i) {
-            auto beam = std::make_unique<Object3d>();
-            beam->Initialize(common_);
-            beam->SetModel("Cylinder");
-            beam->SetTexture("Resources/sprite/beamNoice.png");
-            beam->SetMaterialType(9);
-            beam->SetBlendMode(BlendMode::kAdd);
-            beam->SetEmissive(6.0f);
-            beam->SetName("TetherBeam");
-
-            tetherBeams_.push_back(beam.get());
-            if (currentScene) {
-                currentScene->GetObjects().push_back(std::move(beam));
-            }
-        }
-    }
-
-    Vector3 corePos = GetWorldPosition();
-    static float s_scrollTimer = 0.0f;
-    s_scrollTimer += deltaTime * 5.0f;
-
-    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-        if (i >= tetherBeams_.size()) continue;
-
-        if (!armorBlocks_[i] || blockBroken_[i]) {
-            tetherBeams_[i]->SetScale({ 0, 0, 0 });
-            continue;
-        }
-
-        Vector3 blockPos = armorBlocks_[i]->GetWorldPosition();
-        Vector3 toBlock = blockPos - corePos;
-        float distance = std::sqrt(toBlock.x * toBlock.x + toBlock.y * toBlock.y + toBlock.z * toBlock.z);
-
-        if (distance < 0.1f) {
-            tetherBeams_[i]->SetScale({ 0, 0, 0 });
-            continue;
-        }
-
-        // ==================================================
-        // ★ 常にうっすら見えるように調整 (最小0.1)
-        // ==================================================
-        float alpha = 0.1f + std::clamp((distance - 1.0f) / 10.0f, 0.0f, 0.4f);
-
-        tetherBeams_[i]->SetTranslate((corePos + blockPos) * 0.5f);
-
-        float azim = std::atan2(toBlock.x, toBlock.z);
-        float xzLen = std::sqrt(toBlock.x * toBlock.x + toBlock.z * toBlock.z);
-        float elev = -std::atan2(toBlock.y, xzLen);
-
-        tetherBeams_[i]->SetRotation({ elev + std::numbers::pi_v<float>*0.5f, azim, 0.0f });
-        tetherBeams_[i]->GetTransform()->isQuaternionMaster = false;
-
-        // 太さも距離に応じて変化（最小 0.02 の極細から最大 0.15 の太いラインへ）
-        float thickness = 0.02f + std::clamp((distance - 1.0f) / 10.0f, 0.0f, 0.13f);
-        tetherBeams_[i]->SetScale({ thickness, distance * 0.5f, thickness });
-
-        // カラー：純粋な水色 (ふちが緑にならないよう微調整)
-        tetherBeams_[i]->SetColor({ 0.1f, 0.7f, 1.0f, alpha });
-
-        static Math math;
-        Vector3 uvScale = { 1.0f, distance * 0.5f, 1.0f };
-        Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, -s_scrollTimer, 0.0f });
-        tetherBeams_[i]->SetUVTransform(uvMat);
-
-        tetherBeams_[i]->Update(deltaTime);
-    }
+    return;
 }
 
