@@ -23,6 +23,7 @@
 #include <memory>
 #include <vector>
 #include <GPUParticleEmitter.h>
+#include "engine/utility/math/Math.h"
 
 // --- 前方宣言 ---
 class DirectXCommon;
@@ -100,6 +101,9 @@ private:
     float doorOpenProgress_ = 0.0f;
     bool tutorialMovieStarted_ = false;
     float tutorialMovieTimer_ = 0.0f;
+    bool hasTutorialMovieFinished_ = false; // ★ 追加
+
+    bool IsCinematicMode() const;
 
 private:
     // --- エンジンシステムへのポインタ ---
@@ -252,6 +256,26 @@ private:
 
     float tutorialTimer_ = 0.0f; // フェード／タイマー汎用
     bool tutorialUiCompleted_ = false;
+
+    // --- ミッション演出用 ---
+    float missionMarkAnimProgress_ = 0.0f;
+    float missionLeverAnimProgress_ = 0.0f;
+    float missionGoAnimProgress_ = 0.0f;
+    float missionBossAnimProgress_ = 0.0f;
+
+    bool isLeverOut_ = false;
+    float leverOutProgress_ = 0.0f;
+    bool isGoOut_ = false;
+    float goOutProgress_ = 0.0f;
+    float missionSwitchDelayTimer_ = 0.0f; // ★ 追加
+
+    Vector2 missionMarkBaseSize_;
+    Vector2 missionLeverBasePos_;
+    Vector2 missionGoBasePos_;
+    Vector2 missionBossBasePos_;
+    Vector2 missionLeverBaseSize_;
+    Vector2 missionGoBaseSize_;
+    Vector2 missionBossBaseSize_;
 
 
     bool isRestartTransition_ = false;

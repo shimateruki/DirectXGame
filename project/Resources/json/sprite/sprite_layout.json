@@ -585,12 +585,12 @@
             "emissive": 1.0,
             "name": "missionText_Mark.png",
             "position": [
-                210.0,
+                60.0,
                 245.0
             ],
             "size": [
-                400.0,
-                96.0
+                30.0,
+                30.0
             ],
             "texture": "missonText/missionText_Mark.png"
         },
