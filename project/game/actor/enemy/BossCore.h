@@ -42,6 +42,7 @@ public:
         armorBlocks_.push_back(block);
         block->SetCollisionAttribute(kEnemyAttack);
         block->SetCollisionMask(kPlayer);
+        block->SetEnemyType("BossArmor"); // 属性を明確にする
 
         blockHps_.push_back(100.0f); // 例としてHPを100に設定
         blockBroken_.push_back(false);
@@ -137,7 +138,6 @@ private:
     // 飛んでいるブロックを専用で更新する関数
     void UpdateFlyingBlocks(float deltaTime);
 
-    // void TakeBodyDamage(float damage);
 
     // ==================================================
     // 内部コンポーネント・変数
@@ -195,6 +195,10 @@ private:
     // ==========================================
     std::vector<std::unique_ptr<GPUParticleEmitter>> particleEmitters_;
 
+    // コアとブロックを繋ぐエネルギーライン
+    std::vector<Object3d*> tetherBeams_;
+    std::vector<Vector3> prevBlockPositions_;
+
     // ==========================================
     // ★ 破片演出用の構造体と変数
     // ==========================================
@@ -220,6 +224,7 @@ private:
     bool isBattleStarted_ = false; // 戦闘開始フラグ（最初は false）
 
     void UpdateAppearance(float deltaTime); // 演出中の更新処理
+    void UpdateTethers(float deltaTime);    // 結線エフェクトの更新
 
     bool isAppearing_ = false;  // 登場演出中かどうか
     bool isWaitingForDirector_ = false; // ディレクターのアニメーション終了待ちかどうか

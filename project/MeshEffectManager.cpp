@@ -49,7 +49,11 @@ void MeshEffectManager::Draw(ID3D12Resource* pLight, ID3D12Resource* sLight) {
     }
 }
 
-void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject, const Vector3& extOffset, const Vector3& extRot, const Vector3& extScale) {
+void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, float damage) {
+    SpawnEffect(jsonFilePath, nullptr, { 0,0,0 }, { 0,0,0 }, { 1,1,1 }, damage);
+}
+
+void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject, const Vector3& extOffset, const Vector3& extRot, const Vector3& extScale, float damage) {
     // common_ が null のとき、現在シーンから自動取得を試みる（Initialize呼び忘れ対策）
     if (!common_) {
         SceneManager* sm = SceneManager::GetInstance();
@@ -249,6 +253,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
                 // --- 属性とマスクの設定 ---
                 effect->SetCollisionAttribute(kPlayerAttack); // 例: kPlayerAttack 相当
                 effect->SetCollisionMask(kEnemy);      // 例: kEnemy 相当
+                effect->SetAttackDamage(damage);       // ★ ダメージを適用
 
                 CollisionManager::GetInstance()->AddObject(effect.get());
             }
@@ -292,7 +297,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
 //  JSONの Position / Rotation フィールドを無視し、
 //  worldPos / worldRot をそのまま最終座標として使う
 // ==========================================================
-void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale) {
+void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale, float damage) {
     // common_ が null なら現在シーンから自己修復
     if (!common_) {
         SceneManager* sm = SceneManager::GetInstance();
@@ -415,6 +420,7 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
                 // --- 属性とマスクの設定 ---
                 effect->SetCollisionAttribute(kPlayerAttack); // 例: kPlayerAttack 相当
                 effect->SetCollisionMask(kEnemy);      // 例: kEnemy 相当
+                effect->SetAttackDamage(damage);       // ★ ダメージを適用
 
                 CollisionManager::GetInstance()->AddObject(effect.get());
             }

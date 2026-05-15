@@ -36,6 +36,7 @@ void Character::Update(float deltaTime) {
     transform_.translate += velocity_ * deltaTime;
 }
 
+
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 
         Object3d::Draw(pointLightResource, spotLightResource);

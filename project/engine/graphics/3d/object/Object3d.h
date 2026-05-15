@@ -148,6 +148,10 @@ public:
 
     void SetClassName(const std::string& name) { className_ = name; }
     std::string GetClassName() const { return className_; }
+
+    // --- 攻撃力関連 ---
+    void SetAttackDamage(float damage) { attackDamage_ = damage; }
+    float GetAttackDamage() const { return attackDamage_; }
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
 
@@ -224,6 +228,7 @@ protected:
     std::string enemyType_ = "";
 
     std::string particleName_ = ""; // JSONファイル名
+    float attackDamage_ = 10.0f;
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;

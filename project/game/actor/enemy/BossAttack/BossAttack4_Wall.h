@@ -11,8 +11,10 @@ private:
 
     // ★ 追加：今まで shotCount_ にやらせていた往復回数のカウントを自前で持つ！
     int wallStep_ = 0;
+    BossCore* boss_ = nullptr;
 
 public:
     void Initialize(BossCore* boss) override;
     void Update(BossCore* boss, float deltaTime) override;
+    void Finalize() override;
 };
