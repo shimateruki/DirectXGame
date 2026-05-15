@@ -555,17 +555,87 @@ void BossCore::Update(float deltaTime) {
             break;
         }
 
-        // ポストエフェクト演出：Recovery/Pulsingに合わせて発光させる
-        float glowT = 0.0f;
-        if (hpHalfPhase_ == HpHalfEventPhase::Falling) {
-            glowT = std::sin(std::min(hpHalfEffectTimer_ * 3.1415f, 3.1415f));
-        }
-
+        // ポストエフェクト演出：各フェーズに合わせてエフェクトを動的に変化させる
         auto params = PostEffect::GetInstance()->GetParams();
-        params->threshold = Math::Lerp(basePostEffectParams_.threshold, 0.0f, glowT);
-        params->bloomIntensity = Math::Lerp(basePostEffectParams_.bloomIntensity, 0.7f, glowT);
-        params->spread = Math::Lerp(basePostEffectParams_.spread, 1.2f, glowT);
-        params->enableToneMapping = (glowT > 0.1f) ? 1 : basePostEffectParams_.enableToneMapping;
+
+        if (hpHalfPhase_ == HpHalfEventPhase::Falling) {
+            // --- 落下フェーズ：画面が一瞬光る（ブルーム強化） ---
+            float glowT = std::sin(std::min(hpHalfEffectTimer_ * 3.1415f, 3.1415f));
+            params->threshold = Math::Lerp(basePostEffectParams_.threshold, 0.0f, glowT);
+            params->bloomIntensity = Math::Lerp(basePostEffectParams_.bloomIntensity, 0.7f, glowT);
+            params->spread = Math::Lerp(basePostEffectParams_.spread, 1.2f, glowT);
+            params->enableToneMapping = (glowT > 0.1f) ? 1 : basePostEffectParams_.enableToneMapping;
+        }
+        else if (hpHalfPhase_ == HpHalfEventPhase::Recovery) {
+            // --- 起き上がりフェーズ：徐々に不穏な雰囲気を出す ---
+            float recoveryT = std::min(hpHalfEffectTimer_ / 1.5f, 1.0f); // 0→1 で徐々に
+            params->chromaticAberration = Math::Lerp(basePostEffectParams_.chromaticAberration, 0.00f, recoveryT);
+            params->vignetteIntensity = Math::Lerp(basePostEffectParams_.vignetteIntensity, 0.0f, recoveryT);
+            params->filmGrainIntensity = Math::Lerp(basePostEffectParams_.filmGrainIntensity, 0.08f, recoveryT);
+        }
+        else if (hpHalfPhase_ == HpHalfEventPhase::Pulsing) {
+            // --- パルスフェーズ：ボスの大小アニメーションに同期したポストエフェクト ---
+            if (hpHalfEffectTimer_ < 0.5f) {
+                // ★ 溜め段階（0〜0.5秒）：じわじわとエフェクトを強くする
+                float chargeT = std::min(hpHalfEffectTimer_ / 0.5f, 1.0f);
+                float easeCharge = chargeT * chargeT; // EaseIn で加速感
+
+                //params->chromaticAberration = Math::Lerp(basePostEffectParams_.chromaticAberration, 0.00f, easeCharge);
+                params->vignetteIntensity = Math::Lerp(basePostEffectParams_.vignetteIntensity, 0.0f, easeCharge);
+                params->radialIntensity = Math::Lerp(basePostEffectParams_.radialIntensity, 0.005f, easeCharge);
+                params->filmGrainIntensity = Math::Lerp(basePostEffectParams_.filmGrainIntensity, 0.04f, easeCharge);
+                params->threshold = Math::Lerp(basePostEffectParams_.threshold, 0.8f, easeCharge);
+                params->bloomIntensity = Math::Lerp(basePostEffectParams_.bloomIntensity, 1.2f, easeCharge);
+            } else {
+                // ★ パルス段階（0.5秒〜）：スケールの脈動に連動してエフェクトが波打つ
+                float pulseTime = hpHalfEffectTimer_ - 0.5f;
+                float pulseWave = std::sin(pulseTime * 40.0f); // スケールと同じ周波数
+                float pulseNorm = (pulseWave + 1.0f) * 0.5f;   // 0〜1 に正規化
+
+                // 時間経過で全体の強度を徐々に上げる（クライマックス感）
+                float progressT = std::min(pulseTime / 1.5f, 1.0f);
+
+                // 色収差：パルスに合わせて強弱する（ユーザー要望により無効化中）
+                //float caBase = 0.02f;
+                //float caPeak = 0.05f + progressT * 0.02f;
+                //params->chromaticAberration = Math::Lerp(caBase, caPeak, pulseNorm);
+
+                // ビネット：控えめな暗がり
+                params->vignetteIntensity = Math::Lerp(0.5f, 1.2f, pulseNorm * progressT);
+
+                // 放射ブラー：中心に軽く力が集まる程度の弱いボケ
+                params->radialCenterX = 0.5f;
+                params->radialCenterY = 0.5f;
+                params->radialIntensity = Math::Lerp(0.005f, 0.015f, pulseNorm * progressT);
+
+                // フィルムグレイン：ごく僅かなノイズ
+                params->filmGrainIntensity = Math::Lerp(0.04f, 0.06f, progressT);
+
+                // ブルーム：眩しすぎない程度に光らせる
+                //params->threshold = Math::Lerp(0.8f, 0.4f, pulseNorm);
+                //params->bloomIntensity = Math::Lerp(1.2f, 2.0f, pulseNorm);
+                //params->spread = Math::Lerp(basePostEffectParams_.spread, 2.0f, pulseNorm * progressT);
+
+                // 画面揺れ：ごく僅かな震え
+                params->wobbleIntensity = Math::Lerp(0.0f, 0.007f, progressT * progressT);
+            }
+            params->enableToneMapping = 1;
+        }
+        else if (hpHalfPhase_ == HpHalfEventPhase::Reassembling) {
+            // --- 再集結フェーズ：エフェクトをスムーズに元に戻す ---
+            float fadeT = std::min(hpHalfEffectTimer_ / 1.5f, 1.0f); // 1.5秒かけて戻す
+            float easeFade = 1.0f - std::pow(1.0f - fadeT, 2.0f); // EaseOut
+
+            params->chromaticAberration = Math::Lerp(params->chromaticAberration, basePostEffectParams_.chromaticAberration, easeFade);
+            params->vignetteIntensity = Math::Lerp(params->vignetteIntensity, basePostEffectParams_.vignetteIntensity, easeFade);
+            params->radialIntensity = Math::Lerp(params->radialIntensity, basePostEffectParams_.radialIntensity, easeFade);
+            params->filmGrainIntensity = Math::Lerp(params->filmGrainIntensity, basePostEffectParams_.filmGrainIntensity, easeFade);
+            params->threshold = Math::Lerp(params->threshold, basePostEffectParams_.threshold, easeFade);
+            params->bloomIntensity = Math::Lerp(params->bloomIntensity, basePostEffectParams_.bloomIntensity, easeFade);
+            params->spread = Math::Lerp(params->spread, basePostEffectParams_.spread, easeFade);
+            params->wobbleIntensity = Math::Lerp(params->wobbleIntensity, basePostEffectParams_.wobbleIntensity, easeFade);
+            params->enableToneMapping = basePostEffectParams_.enableToneMapping;
+        }
 
 
 
