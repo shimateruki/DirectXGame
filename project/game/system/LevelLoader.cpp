@@ -252,7 +252,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     targetObject->SetModel(nullptr);
                     targetObject->SetIsVisible(false);
                 } else {
-                    targetObject->SetIsVisible(true);
+                    bool isVisible = true;
+                    if (objData.contains("isVisible") && objData["isVisible"].is_boolean()) {
+                        isVisible = objData["isVisible"].get<bool>();
+                    }
+                    targetObject->SetIsVisible(isVisible);
+
                     if (objData.contains("modelName") && objData["modelName"].is_string()) {
                         std::string modelName = objData["modelName"].get<std::string>();
                         // モデルロードはManagerに任せる

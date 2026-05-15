@@ -11,18 +11,11 @@
 #include <DebugConsole.h>
 void BossAttack4_Wall::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
+    boss_ = boss;
 
     blockStartPos_.clear();
     blockTargetPos_.clear();
     wallStep_ = 0; // カウントリセット
-    Player* player = dynamic_cast<Player*>(boss->GetTarget());
-    if (player) {
-        player->SetForceLockOnTarget(boss);
-        DebugConsole::GetInstance()->AddLog("強制ロックオン命令を送信！"); // ★ここを追加
-    }
-    else {
-        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "エラー！プレイヤーが見つからない！"); // ★ここを追加
-    }
     animPhase_ = 39;
 }
 
@@ -67,19 +60,19 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 
             if (wallStep_ == 0) {
                 targetPos = { offset, 2.0f, 150.0f };
-                armorBlocks[i]->SetScale({ blockWidth, 4.0f, 1.0f });
+                armorBlocks[i]->SetScale({ blockWidth, 4.0f, 4.0f });
             }
             else if (wallStep_ == 1) {
                 targetPos = { offset, 2.0f, -150.0f };
-                armorBlocks[i]->SetScale({ blockWidth, 4.0f, 1.0f });
+                armorBlocks[i]->SetScale({ blockWidth, 4.0f, 4.0f });
             }
             else if (wallStep_ == 2) {
                 targetPos = { 150.0f, 2.0f, offset };
-                armorBlocks[i]->SetScale({ 1.0f, 4.0f, blockWidth });
+                armorBlocks[i]->SetScale({ 4.0f, 4.0f, blockWidth });
             }
             else if (wallStep_ == 3) {
                 targetPos = { -150.0f, 2.0f, offset };
-                armorBlocks[i]->SetScale({ 1.0f, 4.0f, blockWidth });
+                armorBlocks[i]->SetScale({ 4.0f, 4.0f, blockWidth });
             }
 
             blockTargetPos_.push_back(targetPos);
@@ -123,16 +116,19 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
         // --- 毎フレーム実行する処理 ---
         animTimer_ += deltaTime;
-        float duration = 1.5f;
+        float duration = 2.0f; // 1.5s から 2.0s に延長（予備動作をじっくり見せる）
         float t = std::min(animTimer_ / duration, 1.0f);
         float easeT = Easing::OutExpo(t);
 
         Vector3 bossPos = boss->GetTranslate();
 
-        if (wallStep_ == 0)      bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT), bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT), bossPos.z = Math::Lerp(animStartPos_.z, 150.0f, easeT);
-        else if (wallStep_ == 1) bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT), bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT), bossPos.z = Math::Lerp(animStartPos_.z, -150.0f, easeT);
-        else if (wallStep_ == 2) bossPos.x = Math::Lerp(animStartPos_.x, 150.0f, easeT), bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT), bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
-        else if (wallStep_ == 3) bossPos.x = Math::Lerp(animStartPos_.x, -150.0f, easeT), bossPos.y = Math::Lerp(animStartPos_.y, 8.0f, easeT), bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+        float retreatDist = 60.0f; // 150.0f から 60.0f に短縮（攻撃が届く範囲）
+        float retreatHeight = 8.0f;
+
+        if (wallStep_ == 0)      bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT), bossPos.y = Math::Lerp(animStartPos_.y, retreatHeight, easeT), bossPos.z = Math::Lerp(animStartPos_.z, retreatDist, easeT);
+        else if (wallStep_ == 1) bossPos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT), bossPos.y = Math::Lerp(animStartPos_.y, retreatHeight, easeT), bossPos.z = Math::Lerp(animStartPos_.z, -retreatDist, easeT);
+        else if (wallStep_ == 2) bossPos.x = Math::Lerp(animStartPos_.x, retreatDist, easeT), bossPos.y = Math::Lerp(animStartPos_.y, retreatHeight, easeT), bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+        else if (wallStep_ == 3) bossPos.x = Math::Lerp(animStartPos_.x, -retreatDist, easeT), bossPos.y = Math::Lerp(animStartPos_.y, retreatHeight, easeT), bossPos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
 
         boss->SetTranslate(bossPos);
 
@@ -143,7 +139,11 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             }
         }
 
-        boss->SetRotation({ 0.0f, 0.0f, 0.0f });
+        // ==================================================
+        // ★ 操っている感：予備動作中にコアが震えながら力を溜める
+        // ==================================================
+        float vibration = std::sin(animTimer_ * 50.0f) * 0.1f * t;
+        boss->SetRotation({ vibration, vibration, vibration });
         boss->GetTransform()->isQuaternionMaster = false;
 
         // ==================================================
@@ -236,6 +236,13 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             armorBlocks[i]->SetTranslate(blockPos);
         }
 
+        // ==================================================
+        // ★ 操っている感：壁が移動している間、コアが激しく回転する
+        // ==================================================
+        float rotSpeed = 20.0f;
+        boss->SetRotation({ 0.0f, animTimer_ * rotSpeed, 0.0f });
+        boss->GetTransform()->isQuaternionMaster = false;
+
         if (t >= 1.0f) {
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
@@ -251,8 +258,48 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
     else if (animPhase_ == 42) {
         animTimer_ += deltaTime;
 
-        if (animTimer_ >= 0.5f) {
+        // ==================================================
+        // ★ 攻撃チャンス演出：地上にゆっくり降りてくる
+        // ==================================================
+        float waitTime = 4.0f; // 2.5s から 4.0s にさらに大幅延長
+        float t = std::min(animTimer_ / waitTime, 1.0f);
+        
+        // 高度を下げて攻撃を届かせる（最初は速く、後半はゆっくり留まる）
+        Vector3 pos = boss->GetTranslate();
+        pos.y = Math::Lerp(8.0f, 2.0f, Easing::OutCubic(t)); 
+        boss->SetTranslate(pos);
+
+        // 静止中に少しだけ浮遊感を出す（死んでない感）
+        float hover = std::sin(animTimer_ * 2.0f) * 0.1f;
+        pos.y += hover;
+        boss->SetTranslate(pos);
+
+        // ==================================================
+        // ★ プレイヤーの方を向く（攻撃を受けた方向に正対する）
+        // ==================================================
+        Object3d* target = boss->GetTarget();
+        if (target) {
+            Vector3 toTarget = target->GetWorldPosition() - boss->GetWorldPosition();
+            float targetAngle = std::atan2(toTarget.x, toTarget.z);
+            
+            // 現在の角度を取得（前フェーズの回転を引き継ぐ）
+            Vector3 currentRot = boss->GetRotation();
+            
+            // 最短角度で補間
+            float diff = targetAngle - currentRot.y;
+            while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
+            while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
+
+            float rotateLerpRate = 5.0f; // 向き直る速さ
+            currentRot.y += diff * std::min(1.0f, rotateLerpRate * deltaTime);
+            boss->SetRotation(currentRot);
+        }
+
+        if (animTimer_ >= waitTime) {
             wallStep_++; // ★ ループ回数を進める
+
+            // 次の往復のために状態を戻す
+            boss->SetScale({ 1.0f, 1.0f, 1.0f });
 
             if (wallStep_ < 4) {
                 animPhase_ = 39; // まだ4回終わってなければ次へ
@@ -320,5 +367,11 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 
             isFinished_ = true; // 攻撃完了！
         }
+    }
+}
+
+void BossAttack4_Wall::Finalize() {
+    if (boss_) {
+        boss_->SetScale({ 1.0f, 1.0f, 1.0f });
     }
 }

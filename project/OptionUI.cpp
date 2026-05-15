@@ -5,6 +5,8 @@
 #include "SaveDataManager.h"
 #include "SpriteCommon.h"
 #include "TextureManager.h"
+#include "AudioPlayer.h"
+#include "CameraManager.h" // 追加
 #include <CameraEditor.h>
 
 
@@ -32,26 +34,32 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   bgmSelectSprite_ = scene->GetSpriteByName("option/BGM_select.png");
   seSelectSprite_ = scene->GetSpriteByName("option/SE_select.png");
   cameraSelectSprite_ = scene->GetSpriteByName("option/camera_select.png");
-  bgmBarSprite_ = scene->GetSpriteByName("option/BGM_bar.png"); // 仮の名前
-  seBarSprite_ = scene->GetSpriteByName("option/SE_bar.png"); // 仮の名前
+
+  bgmBarSprite_ = bgmSelectSprite_;
+  seBarSprite_ = seSelectSprite_;
+  sensitivityBarSprite_ = cameraSelectSprite_;
 
   currentTopTab_ = (int)TopTab::AudioCamera;
   currentState_ = MenuState::TabSelect; 
   currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
   currentOptionIndex_ = (int)OptionIndex::Sound;
   currentConfigIndex_ = 0;
-  sensitivityBarSprite_ = scene->GetSpriteByName("option/camera_pole.png"); // 仮
-  if (!sensitivityBarSprite_) sensitivityBarSprite_ = scene->GetSpriteByName("UI/pole.png");
 
   // サウンド用
   volumeBarSprite_ = scene->GetSpriteByName("UI/volume_pole.png");
   soundConfigCursorSprite_ = scene->GetSpriteByName("UI/sound_cursor.png");
 
   SaveDataManager::GetInstance()->Load();
+  float initialBGM = SaveDataManager::GetInstance()->GetBGMVolume();
+  float initialSE = SaveDataManager::GetInstance()->GetSEVolume();
+  int initialSens = SaveDataManager::GetInstance()->GetCameraSensitivity();
+  AudioPlayer::GetInstance()->SetBGMVolume(initialBGM);
+  AudioPlayer::GetInstance()->SetSEVolume(initialSE);
+  CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(initialSens);
 
-  bgmBarMaxPosX_ = bgmBarSprite_ ? bgmBarSprite_->GetPosition().x : 750.0f;
-  seBarMaxPosX_ = seBarSprite_ ? seBarSprite_->GetPosition().x : 750.0f;
-  cameraCenterPosX_ = sensitivityBarSprite_ ? sensitivityBarSprite_->GetPosition().x : 1168.0f;
+  bgmBarMaxPosX_ = 770.0f; // 全画面スプライトの中心を基準にする
+  seBarMaxPosX_ = 770.0f;
+  cameraCenterPosX_ = 770.0f;
 
   UpdateSensitivityBar();
   UpdateBGMBar();
@@ -78,20 +86,44 @@ bool OptionUI::Update(float deltaTime) {
 
   // --- タブなどの表示状態を更新 ---
   auto UpdateSelectHighlights = [&]() {
-      if (bgmSelectSprite_) bgmSelectSprite_->SetVisible(currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM);
-      if (seSelectSprite_) seSelectSprite_->SetVisible(currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == (int)SoundOptionIndex::SE);
-      if (cameraSelectSprite_) cameraSelectSprite_->SetVisible(currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera);
-
-      // アクティブな状態のときに色を濃くする（赤色など）
-      if (currentState_ == MenuState::ValueAdjust) {
-          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM && bgmSelectSprite_) bgmSelectSprite_->SetColor({1.0f, 0.0f, 0.0f, 1.0f}); // 決定時は赤
-          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE && seSelectSprite_) seSelectSprite_->SetColor({1.0f, 0.0f, 0.0f, 1.0f});
-          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera && cameraSelectSprite_) cameraSelectSprite_->SetColor({1.0f, 0.0f, 0.0f, 1.0f});
-      } else {
-          if (bgmSelectSprite_) bgmSelectSprite_->SetColor({1.0f, 1.0f, 0.0f, 1.0f}); // 選択中は黄色
-          if (seSelectSprite_) seSelectSprite_->SetColor({1.0f, 1.0f, 0.0f, 1.0f});
-          if (cameraSelectSprite_) cameraSelectSprite_->SetColor({1.0f, 1.0f, 0.0f, 1.0f});
+      bool isAudioTab = (currentTopTab_ == (int)TopTab::AudioCamera);
+      
+      // カーソルの表示制御
+      if (cursorSprite_) {
+          cursorSprite_->SetVisible(isAudioTab && currentState_ != MenuState::TabSelect);
       }
+
+      // 各項目の強調処理
+      auto ApplyHighlight = [&](Sprite* sp, int index, Vector2 cursorTargetPos) {
+          if (!sp) return;
+          
+          bool isSelected = (isAudioTab && currentState_ != MenuState::TabSelect && currentSoundOptionIndex_ == index);
+          
+          // タブが合っていれば表示、そうでなければ非表示
+          sp->SetVisible(isAudioTab);
+
+          if (isSelected) {
+              // 選択中：明るく表示
+              if (currentState_ == MenuState::ValueAdjust) {
+                  sp->SetColor({ 1.0f, 0.4f, 0.4f, 1.0f }); // 調整中は赤系
+              } else {
+                  sp->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 選択中は白（通常）
+              }
+              // カーソルをこの項目の横に持ってくる
+              if (cursorSprite_) {
+                  cursorSprite_->SetPosition(cursorTargetPos);
+              }
+          } else {
+              // 非選択：少し暗く、透明にする
+              sp->SetColor({ 0.5f, 0.5f, 0.5f, 0.7f });
+          }
+      };
+
+      // 各項目の座標（仮：エディタの配置に合わせて微調整してください）
+      // カーソルの位置を項目の左側にセットします
+      ApplyHighlight(bgmSelectSprite_, (int)SoundOptionIndex::BGM, { 250.0f, 310.0f });
+      ApplyHighlight(seSelectSprite_, (int)SoundOptionIndex::SE, { 250.0f, 560.0f });
+      ApplyHighlight(cameraSelectSprite_, (int)SoundOptionIndex::Camera, { 1080.0f, 310.0f });
   };
 
   switch (currentState_) {
@@ -158,6 +190,7 @@ bool OptionUI::Update(float deltaTime) {
           }
           if (isChanged) {
               SaveDataManager::GetInstance()->SetBGMVolume(vol);
+              AudioPlayer::GetInstance()->SetBGMVolume(vol); // 即座に反映
               UpdateBGMBar();
           }
       } else if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) {
@@ -174,6 +207,7 @@ bool OptionUI::Update(float deltaTime) {
           }
           if (isChanged) {
               SaveDataManager::GetInstance()->SetSEVolume(vol);
+              AudioPlayer::GetInstance()->SetSEVolume(vol); // 今後のSEに反映
               UpdateSEBar();
           }
       } else if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera) {
@@ -187,6 +221,7 @@ bool OptionUI::Update(float deltaTime) {
           if (isChanged) {
               SaveDataManager::GetInstance()->SetCameraSensitivity(sens);
               CameraEditor::GetInstance()->SetCameraSensitivity(sens);
+              CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(sens); // 即座に反映
               UpdateSensitivityBar();
           }
       }
@@ -432,12 +467,10 @@ void OptionUI::UpdateSensitivityBar() {
 
   int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
 
-  float offset = 0.0f;
-  if (sens > 0) {
-      offset = 45.0f + 50.0f * (sens - 1);
-  } else if (sens < 0) {
-      offset = -45.0f - 50.0f * (-sens - 1);
-  }
+  // ユーザー指定: -5 = 547.0, 5 = 994.0, 0 = 770.0
+  // (994 - 547) / 10 = 44.7px
+  float step = 44.7f;
+  float offset = (float)sens * step;
 
   Vector2 pos = sensitivityBarSprite_->GetPosition();
   pos.x = cameraCenterPosX_ + offset;
@@ -450,12 +483,13 @@ void OptionUI::UpdateBGMBar() {
 
   float vol = SaveDataManager::GetInstance()->GetBGMVolume();
 
-  // BGMバーの座標
-  float minPosX = 300.0f; 
-  float maxPosX = bgmBarMaxPosX_; 
+  // ユーザー指定: 100% = 770.0, 0% = 299.0
+  // 可動域は 770 - 299 = 471px
+  float range = 471.0f;
+  float offset = (vol - 1.0f) * range;
 
   Vector2 pos = bgmBarSprite_->GetPosition();
-  pos.x = minPosX + (maxPosX - minPosX) * vol;
+  pos.x = bgmBarMaxPosX_ + offset;
   bgmBarSprite_->SetPosition(pos);
 }
 
@@ -465,11 +499,11 @@ void OptionUI::UpdateSEBar() {
 
   float vol = SaveDataManager::GetInstance()->GetSEVolume();
 
-  // SEバーの座標
-  float minPosX = 300.0f; 
-  float maxPosX = seBarMaxPosX_; 
+  // BGMと同様の可動域
+  float range = 471.0f;
+  float offset = (vol - 1.0f) * range;
 
   Vector2 pos = seBarSprite_->GetPosition();
-  pos.x = minPosX + (maxPosX - minPosX) * vol;
+  pos.x = seBarMaxPosX_ + offset;
   seBarSprite_->SetPosition(pos);
 }

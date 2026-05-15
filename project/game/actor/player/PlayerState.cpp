@@ -282,7 +282,7 @@ static void TryFindSword(Player *player, Object3d *&swordOut) {
   FindSwordInSceneByName(player, swordOut);
 }
 
-static void SetSwordActive(Player *player, bool isActive) {
+static void SetSwordActive(Player *player, bool isActive, float damage = 10.0f) {
   Object3d *swordObj = nullptr;
   // ★最強の探索関数を使って、確実に剣を見つけ出す！
   TryFindSword(player, swordObj);
@@ -290,6 +290,9 @@ static void SetSwordActive(Player *player, bool isActive) {
   if (swordObj) {
     // 見つけたら、ONなら「kPlayerAttack」、OFFなら「0 (無害)」にする
     swordObj->SetCollisionAttribute(isActive ? kPlayerAttack : 0);
+    if (isActive) {
+      swordObj->SetAttackDamage(damage);
+    }
   }
 }
 
@@ -1221,17 +1224,17 @@ void PlayerStateAttack1::Enter(Player* player)
 		else dir = { 0,0,1 };
 		player->SetAttackDirection(dir);
 	}
-	SetSwordActive(player, true);
+	SetSwordActive(player, true, player->GetAttackParams().damageCombo1);
 	animTimer_ = 0.0f;
 	
 	// チームメンバーの変更: エフェクト名の変更とパーティクル生成
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak1.json");
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak1.json", player->GetAttackParams().damageCombo1);
 
 	Object3d* swordObj = nullptr;
 	TryFindSword(player, swordObj);
 	if (swordObj) {
 		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-		particleEmitter_->Initialize("playerAttak", swordObj);
+		particleEmitter_->Initialize("playerattak", swordObj);
 		particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
 		particleEmitter_->SetInterval(0.016f);
 		particleEmitter_->Play();
@@ -1620,18 +1623,18 @@ void PlayerStateAttack2::Enter(Player* player)
 		else dir = { 0,0,1 };
 		player->SetAttackDirection(dir);
 	}
-	SetSwordActive(player, true);
+	SetSwordActive(player, true, player->GetAttackParams().damageCombo2);
 	animTimer_ = 0.0f;
 	
 	// チームメンバーの変更: エフェクトパスの変更
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak2.json");
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak2.json", player->GetAttackParams().damageCombo2);
 
 	// チームメンバーの変更: パーティクルエミッターの追加
 	Object3d* swordObj = nullptr;
 	TryFindSword(player, swordObj);
 	if (swordObj) {
 		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-		particleEmitter_->Initialize("playerAttak", swordObj);
+		particleEmitter_->Initialize("playerattak", swordObj);
 		particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
 		particleEmitter_->SetInterval(0.016f);
 		particleEmitter_->Play();
@@ -2084,18 +2087,18 @@ void PlayerStateAttack3::Enter(Player* player)
 		else dir = { 0,0,1 };
 		player->SetAttackDirection(dir);
 	}
-	SetSwordActive(player, true);
+	SetSwordActive(player, true, player->GetAttackParams().damageCombo3);
 	animTimer_ = 0.0f;
 
 	// チームメンバーの変更: エフェクトパスの変更
-	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak3.json");
+	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak3.json", player->GetAttackParams().damageCombo3);
 
 	// チームメンバーの変更: パーティクルエミッターの追加
 	Object3d* swordObj = nullptr;
 	TryFindSword(player, swordObj);
 	if (swordObj) {
 		particleEmitter_ = std::make_unique<GPUParticleEmitter>();
-		particleEmitter_->Initialize("playerAttak", swordObj);
+		particleEmitter_->Initialize("playerattak", swordObj);
 		particleEmitter_->SetOffset({ 1.3f, 0.0f, 0.0f });
 		particleEmitter_->SetInterval(0.016f);
 		particleEmitter_->Play();
@@ -2932,7 +2935,7 @@ void PlayerStatePlungeAttack::Enter(Player *player) {
   DebugConsole::GetInstance()->AddLog(
       "★ ENTER: Plunge Attack (Genshin Greatsword Style)");
 
-  SetSwordActive(player, true);
+  SetSwordActive(player, true, player->GetAttackParams().damagePlunge);
   isPlunging_ = false;
   isLanded_ = false;
   recoveryTimer_ = 0.0f;
@@ -3012,7 +3015,8 @@ void PlayerStatePlungeAttack::Update(Player *player) {
             "Resources/json/effect/effect_bakuhatu.json",
             landPos,
             { 0.0f, 0.0f, 0.0f }, // 地面に合わせた回転
-            { 1.5f, 1.5f, 1.5f }  // 衝撃波のスケール
+            { 1.5f, 1.5f, 1.5f }, // 衝撃波のスケール
+            player->GetAttackParams().damagePlunge
         );
 
         // パーティクルの発生

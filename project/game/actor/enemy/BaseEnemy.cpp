@@ -60,7 +60,7 @@ bool BaseEnemy::OnCollision(Object3d* other) {
         DamageEvent dmgEvent;
         dmgEvent.target = this;
         dmgEvent.attacker = other;
-        dmgEvent.damageAmount = 10.0f;
+        dmgEvent.damageAmount = other->GetAttackDamage();
         EventManager::GetInstance()->Dispatch(dmgEvent);
 
    
