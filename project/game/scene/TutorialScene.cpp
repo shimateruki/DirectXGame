@@ -1,5 +1,5 @@
 #define NOMINMAX
-#include "GameSelectScene.h"
+#include "TutorialScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
 #include "AudioPlayer.h"
@@ -17,6 +17,7 @@
 #include <EventManager.h>
 #include "SceneManager.h"
 #include "DebugConsole.h"
+#include "ProfilerManager.h"
 #include <cassert>
 #include "BulletManager.h"
 #include "MoveStrategy3D.h"
@@ -28,6 +29,7 @@
 #include "BossCore.h"
 #include"MeshEffectManager.h"
 #include"WinApp.h"
+#include "IconsFontAwesome5.h"
 #ifdef _DEBUG
 #include "ParticleEditor.h"
 #endif
@@ -46,11 +48,13 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
+#include "StageManager.h"
+#include "GameDataManager.h"
 
-GameSelectScene::GameSelectScene() {}
-GameSelectScene::~GameSelectScene() {}
+TutorialScene::TutorialScene() {}
+TutorialScene::~TutorialScene() {}
 
-void GameSelectScene::Initialize() {
+void TutorialScene::Initialize() {
 	using json = nlohmann::json;
 
 	// --- 1. エンジン基盤・リソース初期化 ---
@@ -59,9 +63,11 @@ void GameSelectScene::Initialize() {
 	audioPlayer_ = AudioPlayer::GetInstance();
 
 
-	LOG("Game Select Initialized!");
+	LOG("Tutorial Scene Initialized!");
 
-	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+	// チュートリアル用の設定 (StageManagerがチュートリアル(-1)に対応している前提)
+	const StageData& currentStage = StageManager::GetInstance()->GetCurrentStage();
+	bgmHandle_ = audioPlayer_->LoadSoundFile(currentStage.bgmPath);
 
 	// --- 2. 各種マネージャ初期化 ---
 	EventManager::GetInstance()->ClearAllListeners();
@@ -101,7 +107,6 @@ void GameSelectScene::Initialize() {
 
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
 	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
 	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
 	// 1. キューブマップ（DDS）の読み込み
@@ -113,17 +118,36 @@ void GameSelectScene::Initialize() {
 
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
-	// セレクトシーン用のレイアウトがあればそれを読み込むが、一旦 bossStage.json で代用
-	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
-	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
+	
+	// チュートリアル用のパスがあればそちらを、なければ現在の設定に従う
+	std::string objectPath = "Resources/json/3Dobject/tutorial.json";
+	std::string spritePath = "Resources/json/sprite/tutorialScene.json";
+
+	// ファイルが存在しない場合は代替パス (GamePlayと同じものなど) を検討
+	levelLoader_->LoadObjectLayout(this, objectPath);
+	levelLoader_->LoadSpriteLayout(this, spritePath);
+
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
+	// 課題用アニメーションモデルの生成
+	animatedCube_ = std::make_unique<Object3d>();
+	animatedCube_->Initialize(object3dCommon_.get());
+	animatedCube_->SetModel("walk"); 
+	
+	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
+		animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;
+	}
+	
+	animatedCube_->isAnimLoop_ = true;
+	animatedCube_->SetTranslate({0.0f, 0.0f, 0.0f});
+	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
+
 	dxCommon_->FlushCommandQueue(false);
 }
 
-void GameSelectScene::Finalize() {
+void TutorialScene::Finalize() {
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
@@ -135,7 +159,18 @@ void GameSelectScene::Finalize() {
 	lockOnSystem_.reset();
 }
 
-void GameSelectScene::Update(float deltaTime) {
+void TutorialScene::Update(float deltaTime) {
+	if (isGoal_) {
+		// チュートリアルクリア状況を保存
+		GameDataManager::GetInstance()->MarkStageCleared(-1);
+
+		deltaTime = 0.0f; // 時を止める
+
+		if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
+			SceneManager::GetInstance()->ChangeScene("SELECT");
+			return;
+		}
+	}
 
 	// --- ポストエフェクト更新 ---
 	PostEffect::GetInstance()->Update(deltaTime);
@@ -149,16 +184,20 @@ void GameSelectScene::Update(float deltaTime) {
 
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-	// --- ロックオン & カメラ制御 ---
 	lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
 	CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
 
-	// ロックオンアイコン更新
 	Object3d* target = lockOnSystem_->GetTarget();
+
 	if (target && lockOnSystem_->IsLockingOn()) {
 		isDrawLockOn_ = true;
 		AABB aabb = target->GetAABB();
-		Vector3 targetCenter = (aabb.min + aabb.max) * 0.5f;
+
+		Vector3 targetCenter;
+		targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
+		targetCenter.y = (aabb.min.y + aabb.max.y) * 0.5f;
+		targetCenter.z = (aabb.min.z + aabb.max.z) * 0.5f;
+
 		Matrix4x4 viewProj = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
 		float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] + targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
@@ -181,7 +220,9 @@ void GameSelectScene::Update(float deltaTime) {
 
 			float baseSize = maxObjSize * 25.0f;
 			float distanceScale = 20.0f / w;
-			float finalSize = std::max(32.0f, std::min(baseSize * distanceScale, 256.0f));
+
+			float finalSize = baseSize * distanceScale;
+			finalSize = std::max(32.0f, std::min(finalSize, 256.0f));
 
 			lockOnSprite_->SetSize({ finalSize, finalSize });
 			lockOnSprite_->SetRotation(lockOnSprite_->GetRotation() + 2.0f * deltaTime);
@@ -195,56 +236,69 @@ void GameSelectScene::Update(float deltaTime) {
 		isDrawLockOn_ = false;
 	}
 
-	// カメラ操作
 	if (!CameraEditor::GetInstance()->IsEditorMode()) {
 		Camera::FollowMode currentMode = camera->GetFollowMode();
+
 		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
 			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
 #ifdef USE_IMGUI
 			if (inputManager_->IsMouseButtonPressed(1)) {
-				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) camera->AddRotation(mouseDelta);
+				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+					camera->AddRotation(mouseDelta);
+				}
 			}
 #else
-			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) camera->AddRotation(mouseDelta);
+			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+				camera->AddRotation(mouseDelta);
+			}
 #endif
 		}
 	}
 
-	// --- 全体更新 ---
+	ProfilerManager::GetInstance()->SetObjectList(&objectManager_->GetObjects());
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
 	objectManager_->Update(deltaTime);
 	GPUParticleManager::GetInstance()->Update(deltaTime);
-	for (auto& sprite : sprites_) sprite->Update();
+	for (auto& sprite : sprites_) {
+		sprite->Update();
+	}
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
 
-	if (animatedCube_) animatedCube_->Update(deltaTime);
+	if (animatedCube_) {
+		animatedCube_->Update(deltaTime);
+	}
 }
 
-void GameSelectScene::Draw() {
+void TutorialScene::Draw() {
 	bool isFirstPerson = false;
 	Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
-	// 一人称判定
 	if (player_ && camera) {
 		Vector3 pPos = player_->GetWorldPosition();
 		pPos.y += 1.0f;
 		Vector3 cPos = camera->GetEye();
 		Vector3 toCam = { cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z };
 		float dist = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
-		if (dist < 3.0f) isFirstPerson = true;
+
+		if (dist < 3.0f) {
+			isFirstPerson = true;
+		}
 	}
 
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
-	object3dCommon_->SetGraphicsCommand();
 
 	auto& objects = objectManager_->GetObjects();
 
-	// --- 1. 不透明描画 ---
+	object3dCommon_->SetGraphicsCommand();
+	object3dCommon_->SetPipelineState(BlendMode::kNone);
+
 	for (auto& obj : objects) {
+		if (!IsVisible(obj.get())) continue;
+
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
 			Object3d* current = obj.get();
@@ -253,19 +307,27 @@ void GameSelectScene::Draw() {
 				current = current->GetParent();
 			}
 		}
+
 		if (isPlayerPart) continue;
 		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
+
 		obj->Draw(pointLightRes, spotLightRes);
 	}
+	
+	if (player_ && player_->GetHookMarker()) {
+		player_->GetHookMarker()->Draw(pointLightRes, spotLightRes);
+	}
 
-	if (animatedCube_) animatedCube_->Draw(pointLightRes, spotLightRes);
+	if (animatedCube_) {
+		animatedCube_->Draw(pointLightRes, spotLightRes);
+	}
 
-	// --- 2. 中間描画 ---
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	LightEditor::GetInstance()->Draw3D();
-	if (skybox_) skybox_->Draw(camera->GetConstantBuffer());
+	if (skybox_) {
+		skybox_->Draw(camera->GetConstantBuffer());
+	}
 
-	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
@@ -276,48 +338,82 @@ void GameSelectScene::Draw() {
 			}
 		}
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1) obj->Draw(pointLightRes, spotLightRes);
+
+		if (obj->GetMaterialType() == 1) {
+			obj->Draw(pointLightRes, spotLightRes);
+		}
 	}
 	particleSystem_->Draw();
 
-	// 4. ローカルフォグ
 	bool hasFog = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() == 7) hasFog = true;
+	for (auto& obj : objects) if (obj->GetMaterialType() == 7) { hasFog = true; break; }
+
 	if (hasFog) {
 		dxCommon_->PreDrawLocalFog();
 		for (auto& obj : objects) if (obj->GetMaterialType() == 7) obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
 		dxCommon_->PostDrawLocalFog();
 	}
 
-	// 5. 流体描画
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) hasFluid = true;
-	if (hasFluid) {
+	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) { hasFluid = true; break; }
+
+	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
+	if (hasFluid || hasGPUParticles) {
 		dxCommon_->UpdateGrabTexture();
-		for (auto& obj : objects) {
-			int matType = obj->GetMaterialType();
-			if (matType == 8) obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+
+		if (hasFluid) {
+			for (auto& obj : objects) {
+				int matType = obj->GetMaterialType();
+				if (matType == 8) obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			}
+		}
+
+		if (hasGPUParticles) {
+			GPUParticleManager::GetInstance()->Draw(
+				dxCommon_->GetCommandList(),
+				camera->GetViewMatrix(),
+				camera->GetProjectionMatrix(),
+				gpuParticleTexHandle_,
+				dxCommon_->GetDepthSrvHandle()
+			);
 		}
 	}
-
-	// 6. GPUパーティクル
-	dxCommon_->UpdateGrabTexture();
-	dxCommon_->PreDrawLocalFog();
-	GPUParticleManager::GetInstance()->Draw(dxCommon_->GetCommandList(), camera->GetViewMatrix(), camera->GetProjectionMatrix(), gpuParticleTexHandle_, dxCommon_->GetDepthSrvHandle());
-	dxCommon_->PostDrawLocalFog();
 }
 
-void GameSelectScene::DrawUI() {
+void TutorialScene::DrawUI() {
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
 	for (auto& sprite : sprites_) sprite->Draw();
 	if (isDrawLockOn_ && lockOnSprite_) lockOnSprite_->Draw();
+	if (player_) player_->DrawUI();
 }
 
-void GameSelectScene::DrawShadow() {
+void TutorialScene::DrawShadow() {
 	if (objectManager_) objectManager_->DrawShadow();
 }
 
-void GameSelectScene::UpdateUI() {}
+void TutorialScene::UpdateUI() {}
+
+void TutorialScene::DrawImGui() {
+#ifdef USE_IMGUI
+    ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: Tutorial");
+    ImGui::Separator();
+    if (ImGui::Button("Back to SELECT")) {
+        SceneManager::GetInstance()->ChangeScene("SELECT");
+    }
+    ImGui::Separator();
+    ImGui::TextDisabled("※この項目は TutorialScene::DrawImGui() で編集可能です");
+#endif
+}
+
+void TutorialScene::StartBridgeDropMovie() {}
+
+bool TutorialScene::IsVisible(Object3d* obj) {
+    if (!obj) return false;
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) return true;
+    AABB worldAabb = obj->GetModelWorldAABB();
+    return Math::IntersectFrustumAABB(camera->GetFrustum(), worldAabb.min, worldAabb.max);
+}

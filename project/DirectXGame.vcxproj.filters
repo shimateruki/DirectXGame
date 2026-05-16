@@ -129,6 +129,9 @@
     <ClCompile Include="game\scene\PreviewScene.cpp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </ClCompile>
+    <ClCompile Include="game\scene\TutorialScene.cpp">
+      <Filter>ソース ファイル\engine\scene</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\ImguiManager.cpp">
       <Filter>ソース ファイル\engine\io</Filter>
     </ClCompile>
@@ -514,6 +517,9 @@
       <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\PreviewScene.h">
+      <Filter>ヘッダー ファイル\engine\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\TutorialScene.h">
       <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h">

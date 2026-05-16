@@ -5,6 +5,7 @@
 #include"GameOverScene.h"
 #include"GameClearScene.h"
 #include"PreviewScene.h"
+#include "TutorialScene.h"
 
 std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneName) {
 
@@ -26,6 +27,9 @@ std::unique_ptr<BaseScene> SceneFactory::CreateScene(const std::string& sceneNam
 	}
     else if (sceneName == "PREVIEW") {
         newScene = std::make_unique<PreviewScene>();
+    }
+    else if (sceneName == "TUTORIAL") {
+        newScene = std::make_unique<TutorialScene>();
     }
   
 
