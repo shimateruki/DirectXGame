@@ -2051,18 +2051,51 @@ void GamePlayScene::DrawImGui() {
             ImGui::TreePop();
         }
 
-        if (ImGui::TreeNode("Player Attack Balance")) {
+        if (ImGui::TreeNode("プレイヤーの攻撃力設定 (Player Attack Balance)")) {
             if (player_) {
                 PlayerAttackParams& params = player_->GetAttackParams();
-                ImGui::DragFloat("Combo 1 Damage", &params.damageCombo1, 0.1f, 0.0f, 100.0f);
-                ImGui::DragFloat("Combo 2 Damage", &params.damageCombo2, 0.1f, 0.0f, 100.0f);
-                ImGui::DragFloat("Combo 3 Damage", &params.damageCombo3, 0.1f, 0.0f, 200.0f);
-                ImGui::DragFloat("Plunge Damage", &params.damagePlunge, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("コンボ1 ダメージ", &params.damageCombo1, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("コンボ2 ダメージ", &params.damageCombo2, 0.1f, 0.0f, 100.0f);
+                ImGui::DragFloat("コンボ3 ダメージ", &params.damageCombo3, 0.1f, 0.0f, 200.0f);
+                ImGui::DragFloat("落下攻撃 ダメージ", &params.damagePlunge, 0.1f, 0.0f, 100.0f);
 
                 ImGui::Spacing();
-                if (ImGui::Button("Save Attack Params")) {
+                if (ImGui::Button("プレイヤーパラメータを保存")) {
                     player_->SaveAttackParams();
-                    DebugConsole::GetInstance()->AddLog("【SYSTEM】 Player attack parameters saved to JSON.");
+                    DebugConsole::GetInstance()->AddLog("【システム】 プレイヤーの攻撃パラメータをJSONに保存しました。");
+                }
+            }
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("ボス・エネミーの攻撃力設定 (Boss Attack Balance)")) {
+            if (boss_) {
+                BossAttackParams& params = boss_->GetAttackParams();
+                ImGui::DragFloat("突進攻撃力 (技1)", &params.damageRush, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("弾幕攻撃力 (技2)", &params.damageShoot, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("ハンマー攻撃力 (技3)", &params.damageHammer, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("壁挟み攻撃力 (技4)", &params.damageWall, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("人型叩きつけ攻撃力 (技5)", &params.damageHumanoid, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("極太レーザー攻撃力 (技6)", &params.damageLaser, 0.5f, 0.0f, 250.0f);
+                ImGui::DragFloat("吸収時接触攻撃力 (技7)", &params.damageAbsorb, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("最終奥義メテオ攻撃力 (技8)", &params.damageFinal, 0.5f, 0.0f, 250.0f);
+                ImGui::DragFloat("ファンネルレーザー攻撃力 (技9)", &params.damageFunnels, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("スライム接触ダメージ", &params.damageSlime, 0.5f, 0.0f, 100.0f);
+                ImGui::DragFloat("ボム爆発ダメージ", &params.damageBomb, 0.5f, 0.0f, 150.0f);
+
+                ImGui::Separator();
+                ImGui::DragFloat("ボス 最大バリアHP", &params.maxBarrierHp, 1.0f, 10.0f, 1000.0f);
+                ImGui::DragFloat("装甲ブロック単体のHP", &params.maxArmorBlockHp, 1.0f, 10.0f, 1000.0f);
+
+                if (ImGui::Button("ボスバリア・全装甲を全回復")) {
+                    boss_->FullyRecoverBarrierAndArmor();
+                    DebugConsole::GetInstance()->AddLog("【システム】 ボスのバリアと全装甲HPを全回復しました。");
+                }
+
+                ImGui::Spacing();
+                if (ImGui::Button("ボスパラメータを保存")) {
+                    boss_->SaveAttackParams();
+                    DebugConsole::GetInstance()->AddLog("【システム】 ボスの攻撃パラメータをJSONに保存しました。");
                 }
             }
             ImGui::TreePop();

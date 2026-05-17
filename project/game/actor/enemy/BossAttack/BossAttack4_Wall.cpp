@@ -9,6 +9,8 @@
 #include"Player.h"
 #include"LockOnSystem.h"
 #include <DebugConsole.h>
+#include "CollisionConfig.h"
+
 void BossAttack4_Wall::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
     boss_ = boss;
@@ -17,6 +19,14 @@ void BossAttack4_Wall::Initialize(BossCore* boss) {
     blockTargetPos_.clear();
     wallStep_ = 0; // カウントリセット
     animPhase_ = 39;
+
+    // 💥 攻撃力を適用し、物理的な押し出し（kGround）を防ぐために一時的にkGroundを外す！
+    for (auto* block : boss->GetArmorBlocks()) {
+        if (block) {
+            block->SetAttackDamage(boss->GetAttackParams().damageWall);
+            block->SetCollisionAttribute(kEnemyAttack); // kGroundを外してkEnemyAttackのみにする
+        }
+    }
 }
 
 void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
@@ -364,7 +374,13 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
-
+            // 💥 攻撃完了！元の地面属性(kGround)を復活させる
+            uint32_t blockAttribute = (boss->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
+            for (auto* block : armorBlocks) {
+                if (block) {
+                    block->SetCollisionAttribute(blockAttribute);
+                }
+            }
             isFinished_ = true; // 攻撃完了！
         }
     }
@@ -373,5 +389,12 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 void BossAttack4_Wall::Finalize() {
     if (boss_) {
         boss_->SetScale({ 1.0f, 1.0f, 1.0f });
+        // 💥 中断された場合も想定し、元の地面属性(kGround)を復活させる
+        uint32_t blockAttribute = (boss_->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
+        for (auto* block : boss_->GetArmorBlocks()) {
+            if (block) {
+                block->SetCollisionAttribute(blockAttribute);
+            }
+        }
     }
 }

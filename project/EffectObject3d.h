@@ -50,6 +50,7 @@ public:
         lifetime_ = lifetime;
         isPlaying_ = true;
         if (materialData_) materialData_->time = 0.0f;
+        ClearHitObjects();
     }
     bool IsPlaying() const { return isPlaying_; }
 
@@ -78,6 +79,12 @@ public:
     void SetProceduralType(int type) { materialData_->proceduralType = type; }
     void UpdateProceduralMesh();
     void ExportToObj(const std::string& filePath) const;
+
+    // --- 多段ヒット防止用の関数・メンバ ---
+    bool CanHit(Object3d* target) const;
+    void AddHitObject(Object3d* target);
+    void ClearHitObjects() { hitObjects_.clear(); }
+    bool OnCollision(Object3d* other) override;
 
     // --- プロシージャルメッシュ用パラメータ ---
     float editSlashAngle_ = 360.0f; // 斬撃の角度（360度以上も可能に）
@@ -122,6 +129,7 @@ private:
     float currentTime_ = 0.0f;
     float lifetime_ = 1.0f;
     bool isPlaying_ = false;
+    std::vector<Object3d*> hitObjects_;
     uint32_t noiseTextureHandle_ = 0;
     uint32_t rampTextureHandle_ = 0;
     Vector3 startScale_ = { 1.0f, 1.0f, 1.0f };

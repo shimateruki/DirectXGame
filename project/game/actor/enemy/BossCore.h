@@ -10,6 +10,57 @@
 class SceneManager; // 前方宣言
 class MapBlock;
 
+using json = nlohmann::json;
+
+// ボスの攻撃パラメータ（JSON保存・ImGui調整用）
+struct BossAttackParams {
+    float damageRush = 20.0f;      // 突進 (Attack 1)
+    float damageShoot = 10.0f;     // 弾幕 (Attack 2)
+    float damageHammer = 25.0f;    // ハンマー (Attack 3)
+    float damageWall = 30.0f;      // 壁挟み込み (Attack 4)
+    float damageHumanoid = 35.0f;  // 巨像攻撃 (Attack 5)
+    float damageLaser = 40.0f;     // 極太レーザー (Attack 6)
+    float damageAbsorb = 15.0f;    // 吸収弾幕 (Attack 7)
+    float damageFinal = 50.0f;     // 最終メテオ (Attack 8)
+    float damageFunnels = 12.0f;   // ファンネル (Attack 9)
+    float damageSlime = 8.0f;      // スライム体当たり
+    float damageBomb = 30.0f;      // ボム爆発
+    float maxBarrierHp = 100.0f;   // ボス最大バリアHP
+    float maxArmorBlockHp = 100.0f; // ボス最大装甲ブロックHP
+
+    // JSON変換用
+    void ToJson(json& j) const {
+        j["damageRush"] = damageRush;
+        j["damageShoot"] = damageShoot;
+        j["damageHammer"] = damageHammer;
+        j["damageWall"] = damageWall;
+        j["damageHumanoid"] = damageHumanoid;
+        j["damageLaser"] = damageLaser;
+        j["damageAbsorb"] = damageAbsorb;
+        j["damageFinal"] = damageFinal;
+        j["damageFunnels"] = damageFunnels;
+        j["damageSlime"] = damageSlime;
+        j["damageBomb"] = damageBomb;
+        j["maxBarrierHp"] = maxBarrierHp;
+        j["maxArmorBlockHp"] = maxArmorBlockHp;
+    }
+    void FromJson(const json& j) {
+        if (j.contains("damageRush")) damageRush = j["damageRush"];
+        if (j.contains("damageShoot")) damageShoot = j["damageShoot"];
+        if (j.contains("damageHammer")) damageHammer = j["damageHammer"];
+        if (j.contains("damageWall")) damageWall = j["damageWall"];
+        if (j.contains("damageHumanoid")) damageHumanoid = j["damageHumanoid"];
+        if (j.contains("damageLaser")) damageLaser = j["damageLaser"];
+        if (j.contains("damageAbsorb")) damageAbsorb = j["damageAbsorb"];
+        if (j.contains("damageFinal")) damageFinal = j["damageFinal"];
+        if (j.contains("damageFunnels")) damageFunnels = j["damageFunnels"];
+        if (j.contains("damageSlime")) damageSlime = j["damageSlime"];
+        if (j.contains("damageBomb")) damageBomb = j["damageBomb"];
+        if (j.contains("maxBarrierHp")) maxBarrierHp = j["maxBarrierHp"];
+        if (j.contains("maxArmorBlockHp")) maxArmorBlockHp = j["maxArmorBlockHp"];
+    }
+};
+
 // ボスのコア(中核)となる統合制御クラス
 class BossCore : public BaseEnemy {
 public:
@@ -45,7 +96,7 @@ public:
         block->SetCollisionMask(kPlayer);
         block->SetEnemyType("BossArmor"); // 属性を明確にする
 
-        blockHps_.push_back(100.0f); // 例としてHPを100に設定
+        blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録！
         blockBroken_.push_back(false);
     }
 
@@ -120,9 +171,18 @@ public:
     State GetState() const { return state_; } // 追加
 
     void ActuallySpawnShards();
+    void UpgradeToFunnel(Object3d* block); // 吸収したブロックをファンネル仕様（8分割）にアップグレードする
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }
     bool IsDyingSequence() const { return deathPhase_ > 0; }
+
+    // --- 攻撃力パラメータ管理 ---
+    BossAttackParams& GetAttackParams() { return attackParams_; }
+    void LoadAttackParams();
+    void SaveAttackParams();
+    float GetAttackDamage() const override { return attackParams_.damageRush; }
+
+    void FullyRecoverBarrierAndArmor();
 private:
 
     // 射出されたブロックのリスト
@@ -258,4 +318,5 @@ private:
     Vector3 originalCorePosition_;
     
     static constexpr float kBaseSpeedMultiplier = 1.5f; // ボス固有の速度倍率
+    BossAttackParams attackParams_;
 };

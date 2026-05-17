@@ -1,12 +1,15 @@
 #include "EnemySlime.h"
 #include "engine/utility/math/Math.h"
 #include "CollisionConfig.h"
+#include "EffectObject3d.h"
 #include "SceneManager.h"
 #include "engine/system/scene/BaseScene.h"
 #include "BossCore.h"
 #include "game/actor/player/Player.h"
 #include "engine/graphics/3d/camera/CameraManager.h"
 #include <cmath>
+#include <fstream>
+#include <filesystem>
 #include <algorithm>
 
 static Math math;
@@ -35,10 +38,24 @@ void EnemySlime::Initialize(Object3dCommon* common, const std::string& modelName
     SetCollisionAttribute(kEnemy | kEnemyAttack); // 接触ダメージを有効にする
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack | kEnemy);
 
-    // 親の Initialize で defaultColor_ が上書きされる可能性があるため、ここで再度確定させる
     defaultColor_ = { 0.0f, 1.0f, 0.0f, 1.0f };
     SetColor(defaultColor_);
     SetEnemyType("Slime");
+
+    // JSONファイルから攻撃パラメータを読み込んで攻撃力を設定
+    float slimeDamage = 8.0f; // デフォルト値
+    std::string filePath = "Resources/json/enemy/boss_attack_params.json";
+    if (std::filesystem::exists(filePath)) {
+        std::ifstream ifs(filePath);
+        if (ifs.is_open()) {
+            json j;
+            ifs >> j;
+            if (j.contains("damageSlime")) {
+                slimeDamage = j["damageSlime"];
+            }
+        }
+    }
+    SetAttackDamage(slimeDamage);
 }
 
 void EnemySlime::Update(float deltaTime) {
@@ -213,6 +230,10 @@ bool EnemySlime::OnCollision(Object3d* other) {
     if (attribute & kPlayerAttack) {
         // クールダウン中でなければヒット
         if (damageCooldownTimer_ <= 0.0f) {
+            // ★ エフェクトからの被弾を確定させてヒットリストに記録
+            if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
+                effect->AddHitObject(this);
+            }
             hitCount_++;
             shakeTimer_ = 0.5f; // シェイク開始
             damageCooldownTimer_ = 0.5f; // 連続ヒット防止

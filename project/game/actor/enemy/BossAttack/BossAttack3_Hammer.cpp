@@ -184,7 +184,10 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
             animStartRot_ = boss->GetRotation(); 
             for (auto* block : armorBlocks) {
-                if (block) block->SetCollisionAttribute(kEnemyAttack);
+                if (block) {
+                    block->SetCollisionAttribute(kEnemyAttack);
+                    block->SetAttackDamage(boss->GetAttackParams().damageHammer);
+                }
             }
         }
     }

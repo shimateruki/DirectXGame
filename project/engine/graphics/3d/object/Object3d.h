@@ -151,7 +151,7 @@ public:
 
     // --- 攻撃力関連 ---
     void SetAttackDamage(float damage) { attackDamage_ = damage; }
-    float GetAttackDamage() const { return attackDamage_; }
+    virtual float GetAttackDamage() const { return attackDamage_; }
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
 

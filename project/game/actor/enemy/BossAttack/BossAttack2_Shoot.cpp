@@ -116,6 +116,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
             int idx = (int)armorBlocks.size() - 1 - shotCount_;
             if (idx >= 0 && idx < armorBlocks.size()) {
                 Object3d* block = armorBlocks[idx];
+                block->SetAttackDamage(boss->GetAttackParams().damageShoot);
 
                 Vector3 bossPos = boss->GetTranslate();
                 float bossRotY = boss->GetRotation().y;

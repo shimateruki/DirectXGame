@@ -6,7 +6,7 @@
 class BossAttack9_Funnels : public BaseBossAttack {
 public:
     BossAttack9_Funnels() = default;
-    ~BossAttack9_Funnels() override = default;
+    ~BossAttack9_Funnels() override { Finalize(); }
 
     void Initialize(BossCore* boss) override;
     void Update(BossCore* boss, float deltaTime) override;

@@ -13,9 +13,14 @@ void BossAttack5_Humanoid::Initialize(BossCore* boss) {
     blockStartScale_.clear();
     blockTargetScale_.clear();
 
-
-
     animPhase_ = 50;
+
+    // 💥 攻撃力を適用
+    for (auto* block : boss->GetArmorBlocks()) {
+        if (block) {
+            block->SetAttackDamage(boss->GetAttackParams().damageHumanoid);
+        }
+    }
 }
 
 void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
