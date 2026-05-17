@@ -278,7 +278,7 @@ bool Player::OnCollision(Object3d* other)
             DamageEvent dmgEvent;
             dmgEvent.target = this;
             dmgEvent.attacker = other;
-            dmgEvent.damageAmount = 20.0f;
+            dmgEvent.damageAmount = other->GetAttackDamage();
             EventManager::GetInstance()->Dispatch(dmgEvent);
 
             // 無敵時間をセット

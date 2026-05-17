@@ -38,6 +38,11 @@ void BossAttack1_Rush::Initialize(BossCore* boss) {
     for (size_t i = 0; i < armorBlocks.size(); ++i) {
         blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
 
+        // 💥 突進攻撃力を各装甲ブロックに適用！
+        if (armorBlocks[i]) {
+            armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageRush);
+        }
+
         if (i < settings.size()) {
             blockTargetPos_.push_back(settings[i].translate);
             armorBlocks[i]->SetScale(settings[i].scale);

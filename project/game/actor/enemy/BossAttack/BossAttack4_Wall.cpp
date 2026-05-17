@@ -17,6 +17,13 @@ void BossAttack4_Wall::Initialize(BossCore* boss) {
     blockTargetPos_.clear();
     wallStep_ = 0; // カウントリセット
     animPhase_ = 39;
+
+    // 💥 攻撃力を適用
+    for (auto* block : boss->GetArmorBlocks()) {
+        if (block) {
+            block->SetAttackDamage(boss->GetAttackParams().damageWall);
+        }
+    }
 }
 
 void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {

@@ -332,6 +332,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 beam->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                 beam->SetCollisionAttribute(kEnemyAttack);
                 beam->SetCollisionMask(kPlayer);
+                beam->SetAttackDamage(boss->GetAttackParams().damageLaser);
                 
                 Vector3 uvScale = { 1.0f, 15.0f, 1.0f }; 
                 float scrollSpeed = -30.0f; 

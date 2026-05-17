@@ -121,6 +121,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 meteor->SetColliderType(ColliderType::kOBB);
                 meteor->SetCollisionAttribute(kEnemyAttack);
                 meteor->SetCollisionMask(kPlayer | kGround);
+                meteor->SetAttackDamage(boss->GetAttackParams().damageFinal);
 
                 meteor->UpdateLocalMatrix();
                 meteor->UpdateWorldMatrix();
@@ -251,6 +252,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
                 meteors_[meteorIdx]->SetScale({ 3.0f, 3.0f, 3.0f });
                 meteors_[meteorIdx]->SetCollisionAttribute(kEnemyAttack);
+                meteors_[meteorIdx]->SetAttackDamage(boss->GetAttackParams().damageFinal);
                 meteors_[meteorIdx]->SetTranslate({ cX + rx, 50.0f + (rand() % 10), cZ + rz });
                 meteors_[meteorIdx]->UpdateWorldMatrix();
                 rainCount_++;

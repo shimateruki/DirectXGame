@@ -385,7 +385,11 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 // 12: 発射（1.5秒）
                 funnelTimers_[i] += deltaTime;
                 
-                if (laser) { laser->SetScale({ 1.0f, 80.0f, 1.0f }); laser->SetCollisionAttribute(kEnemyAttack); }
+                if (laser) {
+                    laser->SetScale({ 1.0f, 80.0f, 1.0f });
+                    laser->SetCollisionAttribute(kEnemyAttack);
+                    laser->SetAttackDamage(boss->GetAttackParams().damageFunnels);
+                }
                 if (coreLaser) { coreLaser->SetScale({ 0.4f, 80.0f, 0.4f }); coreLaser->SetCollisionAttribute(0); }
 
                 // --- 子ブロック（Shard）の展開を維持（少し震わせる） ---

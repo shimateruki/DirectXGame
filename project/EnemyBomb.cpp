@@ -4,6 +4,8 @@
 #include "EventManager.h" 
 #include "CollisionConfig.h"
 #include <cmath>
+#include <fstream>
+#include <filesystem>
 #include <MeshEffectManager.h>
 
 void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -15,6 +17,21 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     if (GetTransform()) {
         defaultScale_ = GetTransform()->scale;
     }
+
+    // JSONファイルから攻撃パラメータを読み込んで攻撃力を設定
+    float bombDamage = 30.0f; // デフォルト値
+    std::string filePath = "Resources/json/enemy/boss_attack_params.json";
+    if (std::filesystem::exists(filePath)) {
+        std::ifstream ifs(filePath);
+        if (ifs.is_open()) {
+            json j;
+            ifs >> j;
+            if (j.contains("damageBomb")) {
+                bombDamage = j["damageBomb"];
+            }
+        }
+    }
+    SetAttackDamage(bombDamage);
 }
 
 void EnemyBomb::Update(float deltaTime) {

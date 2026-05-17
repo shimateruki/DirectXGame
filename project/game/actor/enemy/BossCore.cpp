@@ -4,6 +4,8 @@
 #include "easing.h"
 #include "DebugConsole.h"
 #include <cmath>
+#include <fstream>
+#include <filesystem>
 #include <numbers>
 #include <ctime>
 #include <cstdlib>
@@ -185,6 +187,9 @@ int BossCore::GetNeededBlockCount() const {
 void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     SetClassName("BossCore");
+
+    LoadAttackParams();
+    SetAttackDamage(attackParams_.damageRush); // 突進攻撃力を標準接触ダメージとしてセット
 
 
 
@@ -2158,6 +2163,36 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
     
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
         sceneManager_->GetCurrentScene()->AddObject(std::move(core));
+    }
+}
+
+void BossCore::LoadAttackParams() {
+    std::string filePath = "Resources/json/enemy/boss_attack_params.json";
+    if (!std::filesystem::exists(filePath)) {
+        SaveAttackParams(); // デフォルト値で作成
+        return;
+    }
+
+    std::ifstream ifs(filePath);
+    if (ifs.is_open()) {
+        json j;
+        ifs >> j;
+        attackParams_.FromJson(j);
+    }
+}
+
+void BossCore::SaveAttackParams() {
+    std::string dirPath = "Resources/json/enemy";
+    if (!std::filesystem::exists(dirPath)) {
+        std::filesystem::create_directories(dirPath);
+    }
+
+    std::string filePath = dirPath + "/boss_attack_params.json";
+    std::ofstream ofs(filePath);
+    if (ofs.is_open()) {
+        json j;
+        attackParams_.ToJson(j);
+        ofs << j.dump(4);
     }
 }
 
