@@ -9,5 +9,7 @@
     "damageRush": 20.0,
     "damageShoot": 10.0,
     "damageSlime": 8.0,
-    "damageWall": 30.0
+    "damageWall": 30.0,
+    "maxArmorBlockHp": 100.0,
+    "maxBarrierHp": 200.0
 }

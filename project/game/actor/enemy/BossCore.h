@@ -25,6 +25,8 @@ struct BossAttackParams {
     float damageFunnels = 12.0f;   // ファンネル (Attack 9)
     float damageSlime = 8.0f;      // スライム体当たり
     float damageBomb = 30.0f;      // ボム爆発
+    float maxBarrierHp = 100.0f;   // ボス最大バリアHP
+    float maxArmorBlockHp = 100.0f; // ボス最大装甲ブロックHP
 
     // JSON変換用
     void ToJson(json& j) const {
@@ -39,6 +41,8 @@ struct BossAttackParams {
         j["damageFunnels"] = damageFunnels;
         j["damageSlime"] = damageSlime;
         j["damageBomb"] = damageBomb;
+        j["maxBarrierHp"] = maxBarrierHp;
+        j["maxArmorBlockHp"] = maxArmorBlockHp;
     }
     void FromJson(const json& j) {
         if (j.contains("damageRush")) damageRush = j["damageRush"];
@@ -52,6 +56,8 @@ struct BossAttackParams {
         if (j.contains("damageFunnels")) damageFunnels = j["damageFunnels"];
         if (j.contains("damageSlime")) damageSlime = j["damageSlime"];
         if (j.contains("damageBomb")) damageBomb = j["damageBomb"];
+        if (j.contains("maxBarrierHp")) maxBarrierHp = j["maxBarrierHp"];
+        if (j.contains("maxArmorBlockHp")) maxArmorBlockHp = j["maxArmorBlockHp"];
     }
 };
 
@@ -90,7 +96,7 @@ public:
         block->SetCollisionMask(kPlayer);
         block->SetEnemyType("BossArmor"); // 属性を明確にする
 
-        blockHps_.push_back(100.0f); // 例としてHPを100に設定
+        blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録！
         blockBroken_.push_back(false);
     }
 
@@ -175,6 +181,8 @@ public:
     void LoadAttackParams();
     void SaveAttackParams();
     float GetAttackDamage() const override { return attackParams_.damageRush; }
+
+    void FullyRecoverBarrierAndArmor();
 private:
 
     // 射出されたブロックのリスト

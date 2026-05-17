@@ -131,7 +131,7 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (blockBroken_[i]) {
             armorBlocks_[i] = newBlock;
-            blockHps_[i] = 100.0f;
+            blockHps_[i] = attackParams_.maxArmorBlockHp;
             blockBroken_[i] = false;
 
             newBlock->SetCollisionAttribute(kEnemyAttack);
@@ -191,7 +191,13 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     LoadAttackParams();
     SetAttackDamage(attackParams_.damageRush); // 突進攻撃力を標準接触ダメージとしてセット
 
+    barrierHp_ = attackParams_.maxBarrierHp;
+    maxBarrierHp_ = attackParams_.maxBarrierHp;
 
+    // 現在登録されているブロックのHPを読み込んだパラメータに初期化！
+    for (size_t i = 0; i < blockHps_.size(); ++i) {
+        blockHps_[i] = attackParams_.maxArmorBlockHp;
+    }
 
     // パラメータが未初期化ならデフォルト値で初期化（アクセス違反防止）
     if (!param_.has_value()) {
@@ -265,6 +271,9 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
+    // 💥 JSON/ImGuiで動的に設定した最大バリアHPを同期
+    maxBarrierHp_ = attackParams_.maxBarrierHp;
+
     // アクション速度（移動や回転など）用の補正DeltaTime
     float actionDelta = deltaTime * kBaseSpeedMultiplier;
 
@@ -2193,6 +2202,18 @@ void BossCore::SaveAttackParams() {
         json j;
         attackParams_.ToJson(j);
         ofs << j.dump(4);
+    }
+}
+
+void BossCore::FullyRecoverBarrierAndArmor() {
+    barrierHp_ = attackParams_.maxBarrierHp;
+    maxBarrierHp_ = attackParams_.maxBarrierHp;
+    for (size_t i = 0; i < blockHps_.size(); ++i) {
+        blockHps_[i] = attackParams_.maxArmorBlockHp;
+        blockBroken_[i] = false;
+        if (i < armorBlocks_.size() && armorBlocks_[i]) {
+            armorBlocks_[i]->SetIsVisible(true);
+        }
     }
 }
 

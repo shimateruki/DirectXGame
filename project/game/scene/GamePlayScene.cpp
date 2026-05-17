@@ -2083,6 +2083,15 @@ void GamePlayScene::DrawImGui() {
                 ImGui::DragFloat("スライム接触ダメージ", &params.damageSlime, 0.5f, 0.0f, 100.0f);
                 ImGui::DragFloat("ボム爆発ダメージ", &params.damageBomb, 0.5f, 0.0f, 150.0f);
 
+                ImGui::Separator();
+                ImGui::DragFloat("ボス 最大バリアHP", &params.maxBarrierHp, 1.0f, 10.0f, 1000.0f);
+                ImGui::DragFloat("装甲ブロック単体のHP", &params.maxArmorBlockHp, 1.0f, 10.0f, 1000.0f);
+
+                if (ImGui::Button("ボスバリア・全装甲を全回復")) {
+                    boss_->FullyRecoverBarrierAndArmor();
+                    DebugConsole::GetInstance()->AddLog("【システム】 ボスのバリアと全装甲HPを全回復しました。");
+                }
+
                 ImGui::Spacing();
                 if (ImGui::Button("ボスパラメータを保存")) {
                     boss_->SaveAttackParams();
