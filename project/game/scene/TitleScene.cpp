@@ -91,6 +91,18 @@ void TitleScene::Initialize() {
   levelLoader_->LoadSpriteLayout(
       this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
 
+  // option/poseBack.png スプライトを最背面（sprites_ の先頭）に移動する
+  {
+      auto it = std::find_if(sprites_.begin(), sprites_.end(), [](const auto& sprite) {
+          return sprite && sprite->GetName() == "option/poseBack.png";
+      });
+      if (it != sprites_.end()) {
+          auto poseBack = std::move(*it);
+          sprites_.erase(it);
+          sprites_.insert(sprites_.begin(), std::move(poseBack));
+      }
+  }
+
   LightManager::GetInstance()->LoadState(
       "Resources/json/light/titleScene.json");
   CameraEditor::GetInstance()->Initialize();
@@ -229,7 +241,10 @@ void TitleScene::Update(float deltaTime) {
 
   // スプライトの表示切り替え（オプション中は他のUIを隠す）
   for (auto& sprite : sprites_) {
+      if (!sprite) continue;
       bool isOpt = optionUI_.IsOptionSprite(sprite.get());
+      bool isPoseBack = (sprite->GetName() == "option/poseBack.png");
+
       if (currentState_ == TitleState::OptionMenu) {
           if (isOpt) {
               sprite->SetVisible(optionUI_.IsSpriteVisibleInCurrentTab(sprite.get()));
@@ -238,7 +253,12 @@ void TitleScene::Update(float deltaTime) {
           }
       } else {
           if (isOpt) {
-              sprite->SetVisible(false);
+              // 特例：ポーズ背景はメインメニューでも表示する！
+              if (isPoseBack) {
+                  sprite->SetVisible(spritesAppear_);
+              } else {
+                  sprite->SetVisible(false);
+              }
           } else {
               sprite->SetVisible(spritesAppear_);
           }
@@ -252,6 +272,13 @@ void TitleScene::Update(float deltaTime) {
     spritesAppearTimer_ += deltaTime;
     for (size_t i = 0; i < sprites_.size(); ++i) {
       auto &sprite = sprites_[i];
+      if (!sprite) continue;
+
+      // オプション関係のスプライトは浮上演出の対象外とする
+      if (optionUI_.IsOptionSprite(sprite.get())) {
+        continue;
+      }
+
       float baseY = (i < spriteBaseYs_.size()) ? spriteBaseYs_[i]
                                                : sprite->GetPosition().y;
       float offsetY = (1.0f - easeT) * 60.0f; // 60px下から浮かぶ
@@ -288,6 +315,7 @@ void TitleScene::Update(float deltaTime) {
           SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
           break;
         case 1: // 設定
+          optionUI_.Reset();
           currentState_ = TitleState::OptionMenu;
           break;
         case 2: // 終了

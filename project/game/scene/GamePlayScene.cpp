@@ -126,6 +126,18 @@ void GamePlayScene::Initialize() {
         "Resources/json/sprite/sprite_layout.json");
     levelLoader_->LoadSpriteLayout(
         this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
+
+    // option/poseBack.png スプライトを最背面（sprites_ の先頭）に移動する
+    {
+        auto it = std::find_if(sprites_.begin(), sprites_.end(), [](const auto& sprite) {
+            return sprite && sprite->GetName() == "option/poseBack.png";
+        });
+        if (it != sprites_.end()) {
+            auto poseBack = std::move(*it);
+            sprites_.erase(it);
+            sprites_.insert(sprites_.begin(), std::move(poseBack));
+        }
+    }
     LightManager::GetInstance()->LoadState(
         "Resources/json/light/light_layout.json");
     CameraEditor::GetInstance()->Initialize();
@@ -574,7 +586,8 @@ void GamePlayScene::Update(float deltaTime) {
     if (!isGameOver && !isCinematicMode &&
         inputManager_->IsActionTriggered("pose")) {
         if (isOptionMenu_) {
-            isOptionMenu_ = false; // オプション中ならオプションを閉じる
+            // オプション表示中は、OptionUI::Update内部でTabキーを処理し、
+            // 段階的に戻る挙動を行うため、ここでは処理しない
         }
         else {
             isPaused_ = !isPaused_; // フラグを反転
@@ -656,6 +669,7 @@ void GamePlayScene::Update(float deltaTime) {
                 SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
             }
             else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Option) {
+                optionUI_.Reset();
                 isOptionMenu_ = true; // 設定画面遷移
             }
             else if (currentPauseMenuIndex_ == (int)PauseMenuIndex::Title) {
@@ -1638,15 +1652,15 @@ void GamePlayScene::DrawUI() {
         bool isGameOverUI = IsGameOverUI(sp);
         bool isOption = optionUI_.IsOptionSprite(sp);
 
-        if (isPaused_) {
-            // ポーズ中はポーズ関連のみ
-            if (isPause) sp->Draw();
-        }
-        else if (isOptionMenu_) {
+        if (isOptionMenu_) {
             // オプション中はオプション関連かつ現在のタブに該当するもののみ
             if (isOption && optionUI_.IsSpriteVisibleInCurrentTab(sp)) {
                 sp->Draw();
             }
+        }
+        else if (isPaused_) {
+            // ポーズ中はポーズ関連のみ
+            if (isPause) sp->Draw();
         }
         else if (isGameOver) {
             // ゲームオーバー中はゲームオーバー関連のみ
