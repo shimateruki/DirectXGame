@@ -120,6 +120,7 @@ public:
     State GetState() const { return state_; } // 追加
 
     void ActuallySpawnShards();
+    void UpgradeToFunnel(Object3d* block); // 吸収したブロックをファンネル仕様（8分割）にアップグレードする
 
     bool IsCompletelyDead() const { return isCompletelyDead_; }
     bool IsDyingSequence() const { return deathPhase_ > 0; }

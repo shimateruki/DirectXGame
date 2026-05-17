@@ -4,6 +4,7 @@
 #include <cmath> 
 #include <algorithm> // std::find
 #include "game/actor/CollisionConfig.h"
+#include "EffectObject3d.h"
 
 
 
@@ -205,6 +206,18 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
     if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
         (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
         return;
+    }
+
+    // ★ エフェクト（EffectObject3d）の多段ヒット防止処理
+    if (EffectObject3d* effectA = dynamic_cast<EffectObject3d*>(objA)) {
+        if (!effectA->CanHit(objB)) {
+            return;
+        }
+    }
+    if (EffectObject3d* effectB = dynamic_cast<EffectObject3d*>(objB)) {
+        if (!effectB->CanHit(objA)) {
+            return;
+        }
     }
 
     // 各オブジェクトのOnCollisionを呼び出す

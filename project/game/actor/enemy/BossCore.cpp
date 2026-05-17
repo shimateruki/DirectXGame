@@ -117,9 +117,14 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
         if (block == newBlock) return true; // 既に同化済み
     }
 
+    // ==========================================
+    // ★ 修正：吸収した瞬間にファンネル仕様へアップグレード
+    // ==========================================
+    UpgradeToFunnel(newBlock);
+
     newBlock->SetParent(this);
     newBlock->GetTransform()->isQuaternionMaster = false;
-    newBlock->SetIsVisible(true);
+    newBlock->SetIsVisible(false); // 内部パーツが表示されるため親は隠す
 
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (blockBroken_[i]) {
@@ -801,9 +806,10 @@ void BossCore::Update(float deltaTime) {
                     Object3d* block = armorBlocks_[i];
                     if (!block || blockBroken_[i]) continue;
 
-                    if (block->CheckCollision(effect.get()).isColliding) {
+                    if (effect->CanHit(block) && block->CheckCollision(effect.get()).isColliding) {
                         float dmg = effect->GetAttackDamage();
                         TakeBarrierDamage(dmg, block);
+                        effect->AddHitObject(block); // 💥 ヒットリストに追加
                         GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
 
                         blockHps_[i] -= dmg;
@@ -1079,6 +1085,22 @@ void BossCore::ChangeState(State nextState) {
             if (state_ == State::Weak) {
                 block->SetScale({ 1.0f, 1.0f, 1.0f });
                 block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+
+                // ★スタン時に子ブロック（Shard）の展開を強制収束（元のコンパクトな位置に戻す）
+                for (auto* child : block->GetChildren()) {
+                    if (child && child->GetName().find("Shard") != std::string::npos) {
+                        Vector3 basePos = child->GetTranslate();
+                        Vector3 dir = Math::Normalize(basePos);
+                        if (Math::Length(dir) < 0.1f) dir = { 0.0f, 1.0f, 0.0f };
+
+                        // 元の配置の基準距離（吸収したブロックなら0.25f、初期配置なら0.35f）に収束
+                        float defaultOffset = 0.35f;
+                        if (block->GetName().find("Enemy_Block") == std::string::npos) {
+                            defaultOffset = 0.25f;
+                        }
+                        child->SetTranslate(dir * defaultOffset);
+                    }
+                }
             }
         }
     }
@@ -1441,11 +1463,12 @@ void BossCore::UpdateWeak(float deltaTime) {
         rollAngle = Math::Lerp(0.0f, 90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
         SetTranslate(bossPos);
     }
-    // 2. 起き上がり（最後の2秒）
-    else if (animTimer_ > 8.0f) {
-        float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+    // 2. 起き上がり（最後の2秒：4.0s〜6.0s）
+    else if (animTimer_ > 4.0f) {
+        float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
         float easeT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // ふわりと浮くEaseOut
-        bossPos.y = Math::Lerp(0.5f, 4.0f, easeT);
+        float targetHoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f; // 待機浮遊アニメのY座標にブレンド
+        bossPos.y = Math::Lerp(0.5f, targetHoverY, easeT);
         rollAngle = Math::Lerp(90.0f * (std::numbers::pi_v<float> / 180.0f), 0.0f, easeT);
         SetTranslate(bossPos);
     }
@@ -1460,9 +1483,9 @@ void BossCore::UpdateWeak(float deltaTime) {
 
     // --- フリッカー（点滅）エフェクト ---
     int flicker = static_cast<int>(animTimer_ * 15.0f) % 4; // ランダムっぽくチカチカさせる
-    bool isLightOn = (flicker == 0 && animTimer_ < 8.0f);
+    bool isLightOn = (flicker == 0 && animTimer_ < 4.0f);
 
-    if (animTimer_ > 8.0f) {
+    if (animTimer_ > 4.0f) {
         // 起き上がり中は徐々に元の色に戻す
         float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
         Vector4 color;
@@ -1498,6 +1521,10 @@ void BossCore::UpdateWeak(float deltaTime) {
                 float returnEaseT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // OutCubic
                 OrbitData orbit = GetIdleOrbit(i);
                 currentPos = Math::Lerp(currentPos, orbit.pos, returnEaseT);
+
+                // スケールも1.0fから orbit.scale へスムーズにイージング補間（サイズ急変ポップを完全防止）
+                Vector3 currentScale = Math::Lerp({ 1.0f, 1.0f, 1.0f }, orbit.scale, returnEaseT);
+                armorBlocks_[i]->SetScale(currentScale);
             }
 
             armorBlocks_[i]->SetTranslate(currentPos);
@@ -1508,8 +1535,8 @@ void BossCore::UpdateWeak(float deltaTime) {
                 rot.x += 5.0f * deltaTime;
                 rot.y += 3.0f * deltaTime;
             }
-            else if (animTimer_ > 8.0f) {
-                // 起き上がり中は軌道の回転へスムーズに補間（プルプルさせない）
+            else if (animTimer_ > 4.0f) {
+                // 起起上がり中は軌道の回転へスムーズに補間（プルプルさせず、待機軌道の回転に完全に合わせる）
                 OrbitData orbit = GetIdleOrbit(i);
                 auto LerpAngle = [](float a, float b, float t) {
                     float diff = b - a;
@@ -1517,15 +1544,16 @@ void BossCore::UpdateWeak(float deltaTime) {
                     while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
                     return a + diff * t;
                     };
-                rot.x = LerpAngle(rot.x, orbit.rot.x, 5.0f * deltaTime);
-                rot.y = LerpAngle(rot.y, orbit.rot.y, 5.0f * deltaTime);
-                rot.z = LerpAngle(rot.z, orbit.rot.z, 5.0f * deltaTime);
+                // 収束速度を 5.0f から 18.0f に高めて 6.0秒までに完璧に一致させる
+                rot.x = LerpAngle(rot.x, orbit.rot.x, 18.0f * deltaTime);
+                rot.y = LerpAngle(rot.y, orbit.rot.y, 18.0f * deltaTime);
+                rot.z = LerpAngle(rot.z, orbit.rot.z, 18.0f * deltaTime);
             }
             armorBlocks_[i]->SetRotation(rot);
 
             // ブロックも点滅
-            if (animTimer_ > 8.0f) {
-                float wakeUpT = (animTimer_ - 8.0f) / 2.0f;
+            if (animTimer_ > 4.0f) {
+                float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
                 armorBlocks_[i]->SetColor({ 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
             }
             else {
@@ -1540,11 +1568,15 @@ void BossCore::UpdateWeak(float deltaTime) {
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         SetColor(originalColor_);
         Vector3 finalPos = GetTranslate();
-        finalPos.y = 4.0f;
+        finalPos.y = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f; // 完全に待機モーションの浮遊位置に同期
         SetTranslate(finalPos);
 
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             armorBlocks_[i]->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+
+            // 復帰時に完全に元のスケールに揃える
+            OrbitData orbit = GetIdleOrbit(i);
+            armorBlocks_[i]->SetScale(orbit.scale);
         }
 
         ChangeState(State::Idle);
@@ -1957,6 +1989,11 @@ bool BossCore::OnCollision(Object3d* other) {
         }
 
         TakeBodyDamage(10.0f);
+        // ★ エフェクトからの被弾を確定させてヒットリストに記録
+        if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
+            effect->AddHitObject(this);
+        }
+        damageCooldownTimer_ = 0.5f; // 💥 追加：連続ヒット防止クールダウンを設定！
         return true;
     }
 
@@ -2047,10 +2084,80 @@ void BossCore::UpdateAppearance(float deltaTime) {
         }
     }
 }
-void BossCore::UpdateTethers(float deltaTime) {
-    for (auto* beam : tetherBeams_) {
-        if (beam) beam->SetScale({ 0, 0, 0 });
+void BossCore::UpgradeToFunnel(Object3d* block) {
+    if (!block) return;
+
+    // 既に Shard があるかチェック（二重生成防止）
+    for (auto* child : block->GetChildren()) {
+        if (child && child->GetName().find("Shard") != std::string::npos) return;
     }
-    return;
+
+    // --- 元のブロックから見た目の情報をすべて抜き出す ---
+    std::string modelName = block->GetModelName();
+    Vector4 color = block->GetColor();
+    float metallic = block->GetMetallic();
+    float roughness = block->GetRoughness();
+    float emissive = block->GetEmissive();
+    float envIntensity = block->GetEnvIntensity();
+    bool enableNormal = block->GetEnableNormalMap();
+    bool enableEnv = block->GetEnableEnvMap();
+    int32_t matType = block->GetMaterialType();
+    std::string texPath = block->GetTexturePath();
+    std::string normalPath = block->GetNormalMapPath();
+    std::string ormPath = block->GetOrmMapPath();
+
+    // 親ブロック自体は当たり判定や座標の軸として使うため、見た目だけ消す
+    block->SetIsVisible(false);
+
+    // 1. 中心にコアを生成（攻撃時の発光体としての役割）
+    auto core = std::make_unique<Object3d>();
+    core->Initialize(common_);
+    core->SetModel("enemy_core");
+    core->SetName(block->GetName() + "_Core");
+    core->SetParent(block);
+    core->SetScale({ 0.5f, 0.5f, 0.5f }); // Shardより少し小さく
+    core->SetColor({ 0.0f, 0.7f, 1.0f, 1.0f });
+    core->SetMaterialType(2); // 発光マテリアル
+    core->SetEmissive(4.0f);
+    
+    // 2. 8つの Shard（分割パーツ）を生成
+    float offset = 0.25f;
+    Vector3 offsets[8] = {
+        {-offset, -offset, -offset}, {offset, -offset, -offset},
+        {-offset,  offset, -offset}, {offset,  offset, -offset},
+        {-offset, -offset,  offset}, {offset, -offset,  offset},
+        {-offset,  offset,  offset}, {offset,  offset,  offset}
+    };
+
+    for (int i = 0; i < 8; ++i) {
+        auto shard = std::make_unique<Object3d>();
+        shard->Initialize(common_);
+        shard->SetModel(modelName); // ★ 元のマップブロックと同じモデルを使用！
+        shard->SetName(block->GetName() + "_Shard" + std::to_string(i + 1));
+        shard->SetParent(block);
+        shard->SetTranslate(offsets[i]);
+        shard->SetScale({ 0.5f, 0.5f, 0.5f }); // 親のサイズを8分割した大きさ
+        
+        // --- 見た目の情報を完璧にコピー ---
+        shard->SetColor(color);
+        shard->SetMetallic(metallic);
+        shard->SetRoughness(roughness);
+        shard->SetEmissive(emissive);
+        shard->SetEnvIntensity(envIntensity);
+        shard->SetEnableNormalMap(enableNormal);
+        shard->SetEnableEnvMap(enableEnv);
+        shard->SetMaterialType(matType);
+        if (!texPath.empty()) shard->SetTexture(texPath);
+        if (!normalPath.empty()) shard->SetNormalMap(normalPath);
+        if (!ormPath.empty()) shard->SetOrmMap(ormPath);
+        
+        if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+            sceneManager_->GetCurrentScene()->AddObject(std::move(shard));
+        }
+    }
+    
+    if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+        sceneManager_->GetCurrentScene()->AddObject(std::move(core));
+    }
 }
 

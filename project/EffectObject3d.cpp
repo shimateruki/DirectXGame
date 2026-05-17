@@ -649,3 +649,19 @@ void EffectObject3d::UpdateProceduralMesh() {
 
     dynamicModel_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), proceduralVertices_, proceduralIndices_);
 }
+
+bool EffectObject3d::CanHit(Object3d* target) const {
+    for (Object3d* obj : hitObjects_) {
+        if (obj == target) return false;
+    }
+    return true;
+}
+
+void EffectObject3d::AddHitObject(Object3d* target) {
+    hitObjects_.push_back(target);
+}
+
+bool EffectObject3d::OnCollision(Object3d* other) {
+    (void)other;
+    return true;
+}

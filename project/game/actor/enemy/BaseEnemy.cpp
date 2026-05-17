@@ -1,5 +1,6 @@
 #include "BaseEnemy.h"
 #include "CollisionConfig.h" // kEnemyなどの定義を使うため
+#include "EffectObject3d.h"
 #include "Event.h"           //  DamageEventを使うため
 #include "EventManager.h"    //  イベントを発行(Dispatch)するため
 #include "Player.h"          //  プレイヤーの状態を見るため
@@ -54,6 +55,11 @@ bool BaseEnemy::OnCollision(Object3d* other) {
         // ★ クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
         if (damageCooldownTimer_ > 0.0f) {
             return true;
+        }
+
+        // ★ エフェクトからの被弾を確定させてヒットリストに記録
+        if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
+            effect->AddHitObject(this);
         }
 
         // ダメージイベントの発行
