@@ -1110,7 +1110,7 @@ void BossCore::ChangeState(State nextState) {
                         // 元の配置の基準距離（吸収したブロックなら0.25f、初期配置なら0.35f）に収束
                         float defaultOffset = 0.35f;
                         if (block->GetName().find("Enemy_Block") == std::string::npos) {
-                            defaultOffset = 0.25f;
+                            defaultOffset = 0.175f;
                         }
                         child->SetTranslate(dir * defaultOffset);
                     }
@@ -2135,7 +2135,7 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
     core->SetEmissive(4.0f);
     
     // 2. 8つの Shard（分割パーツ）を生成
-    float offset = 0.25f;
+    float offset = 0.175f; // スケール0.65fに合わせて外縁がピッタリ1.0（-0.5〜0.5）になるように配置
     Vector3 offsets[8] = {
         {-offset, -offset, -offset}, {offset, -offset, -offset},
         {-offset,  offset, -offset}, {offset,  offset, -offset},
@@ -2150,7 +2150,7 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
         shard->SetName(block->GetName() + "_Shard" + std::to_string(i + 1));
         shard->SetParent(block);
         shard->SetTranslate(offsets[i]);
-        shard->SetScale({ 0.5f, 0.5f, 0.5f }); // 親のサイズを8分割した大きさ
+        shard->SetScale({ 0.65f, 0.65f, 0.65f }); // 0.5f から 0.65f に変更（主の当たり判定にピッタリ一致）
         
         // --- 見た目の情報を完璧にコピー ---
         shard->SetColor(color);
