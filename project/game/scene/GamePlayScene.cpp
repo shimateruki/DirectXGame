@@ -2009,8 +2009,8 @@ void GamePlayScene::DrawImGui() {
     // ★ Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
     if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        if (ImGui::TreeNode("Player/Enemy Status")) {
-            if (ImGui::Button("Player HP -> 0")) {
+        if (ImGui::TreeNode("プレイヤー・ボス状態 (Player/Enemy Status)")) {
+            if (ImGui::Button("プレイヤー HP -> 0")) {
                 if (player_ && player_->param_.has_value()) {
                     player_->param_->hp = 0.0f;
                 }
@@ -2018,13 +2018,19 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
 
-            if (ImGui::Button("Boss HP -> 25%")) {
+            if (ImGui::Button("ボス HP -> 51% (半減演出の直前)")) {
+                if (boss_ && boss_->param_.has_value()) {
+                    boss_->param_->hp = boss_->param_->maxHp * 0.51f;
+                }
+            }
+
+            if (ImGui::Button("ボス HP -> 25%")) {
                 if (boss_ && boss_->param_.has_value()) {
                     boss_->param_->hp = boss_->param_->maxHp * 0.25f;
                 }
             }
 
-            if (ImGui::Button("Boss HP -> 0% (Force Death)")) {
+            if (ImGui::Button("ボス HP -> 0% (強制爆散)")) {
                 if (boss_) {
                     if (boss_->param_.has_value()) {
                         boss_->param_->hp = 0.0f;
@@ -2035,13 +2041,13 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
 
-            if (ImGui::Button("Boss Stun Gauge -> 25%")) {
+            if (ImGui::Button("ボス スタンゲージ -> 25%")) {
                 if (boss_) {
                     boss_->SetBarrierHp(boss_->GetMaxBarrierHp() * 0.25f);
                 }
             }
 
-            if (ImGui::Button("Boss Stun Gauge -> 0% (Force Stun)")) {
+            if (ImGui::Button("ボス スタンゲージ -> 0% (強制ダウン)")) {
                 if (boss_) {
                     // 現在のバリアHP分ダメージを与えて強制的にスタン演出をトリガーする
                     boss_->TakeBarrierDamage(boss_->GetBarrierHp(), nullptr);
@@ -2074,14 +2080,77 @@ void GamePlayScene::DrawImGui() {
                 ImGui::DragFloat("突進攻撃力 (技1)", &params.damageRush, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("弾幕攻撃力 (技2)", &params.damageShoot, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("ハンマー攻撃力 (技3)", &params.damageHammer, 0.5f, 0.0f, 150.0f);
-                ImGui::DragFloat("壁挟み攻撃力 (技4)", &params.damageWall, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("壁攻撃 (技4)", &params.damageWall, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("人型叩きつけ攻撃力 (技5)", &params.damageHumanoid, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("極太レーザー攻撃力 (技6)", &params.damageLaser, 0.5f, 0.0f, 250.0f);
-                ImGui::DragFloat("吸収時接触攻撃力 (技7)", &params.damageAbsorb, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("ブロック吸収 (技7)", &params.damageAbsorb, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("最終奥義メテオ攻撃力 (技8)", &params.damageFinal, 0.5f, 0.0f, 250.0f);
                 ImGui::DragFloat("ファンネルレーザー攻撃力 (技9)", &params.damageFunnels, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("スライム接触ダメージ", &params.damageSlime, 0.5f, 0.0f, 100.0f);
                 ImGui::DragFloat("ボム爆発ダメージ", &params.damageBomb, 0.5f, 0.0f, 150.0f);
+
+                ImGui::Separator();
+                ImGui::Text("=== ボス攻撃パターン・確率設定 ===");
+
+                // 攻撃名の定義
+                const char* attackNames[] = {
+                    "なし (None)",
+                    "突進 (技1) [Rush]",
+                    "弾幕 (技2) [Shoot]",
+                    "ハンマー (技3) [Hammer]",
+                    "壁攻撃 (技4) [Wall]",
+                    "人型攻撃 (技5) [Humanoid]",
+                    "極太レーザー (技6) [Laser]",
+                    "ブロック吸収 (技7) [Absorb]",
+                    "最終奥義 (技8) [Final]",
+                    "ファンネル (技9) [Funnels]",
+                    "スポーン (技10) [Spawn]"
+                };
+                int attackIds[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+                auto DrawAttackList = [&](const char* label, std::vector<AttackWeight>& attackList) {
+                    if (ImGui::TreeNode(label)) {
+                        for (size_t i = 0; i < attackList.size(); ++i) {
+                            ImGui::PushID(static_cast<int>(i));
+
+                            // 選択中のインデックスを特定
+                            int currentAttackIdx = 0;
+                            for (int idx = 0; idx < 11; ++idx) {
+                                if (attackIds[idx] == attackList[i].id) {
+                                    currentAttackIdx = idx;
+                                    break;
+                                }
+                            }
+
+                            ImGui::SetNextItemWidth(200.0f);
+                            if (ImGui::Combo("攻撃種類", &currentAttackIdx, attackNames, IM_ARRAYSIZE(attackNames))) {
+                                attackList[i].id = attackIds[currentAttackIdx];
+                            }
+
+                            ImGui::SameLine();
+                            ImGui::SetNextItemWidth(100.0f);
+                            ImGui::DragInt("確率", &attackList[i].weight, 1.0f, 0, 1000);
+
+                            ImGui::SameLine();
+                            if (ImGui::Button("❌ 削除")) {
+                                attackList.erase(attackList.begin() + i);
+                                ImGui::PopID();
+                                break;
+                            }
+
+                            ImGui::PopID();
+                        }
+
+                        if (ImGui::Button("➕ 攻撃パターンを追加 (ADD)")) {
+                            attackList.push_back({ 1, 30 }); // 突進・重み30をデフォルトで追加
+                        }
+
+                        ImGui::TreePop();
+                    }
+                };
+
+                DrawAttackList("第一形態の攻撃確率 (HP > 50%)", params.phase1Attacks);
+                DrawAttackList("第二形態の攻撃確率 (HP <= 50%)", params.phase2Attacks);
 
                 ImGui::Separator();
                 ImGui::DragFloat("ボス 最大バリアHP", &params.maxBarrierHp, 1.0f, 10.0f, 1000.0f);
@@ -2095,7 +2164,7 @@ void GamePlayScene::DrawImGui() {
                 ImGui::Spacing();
                 if (ImGui::Button("ボスパラメータを保存")) {
                     boss_->SaveAttackParams();
-                    DebugConsole::GetInstance()->AddLog("【システム】 ボスの攻撃パラメータをJSONに保存しました。");
+                    DebugConsole::GetInstance()->AddLog("【システム】 ボスの攻撃パラメータおよび確率設定をJSONに保存しました。");
                 }
             }
             ImGui::TreePop();

@@ -74,6 +74,9 @@ public:
         settings_.cameraSensitivity = val;
     }
 
+    void SetCinematicActive(bool active) { isCinematicActive_ = active; }
+    bool IsCinematicActive() const { return isCinematicActive_; }
+
 
 private:
     void UpdateFreeCamera(Camera* camera);
@@ -94,4 +97,5 @@ private:
     std::string selectedOverrideName_ = ""; // 現在エディタで選択中のカメラ名
     char newOverrideNameBuffer_[64] = "";   // 新規作成時の名前入力欄
     Object3d* targetPlayer_ = nullptr;
+    bool isCinematicActive_ = false;
 };

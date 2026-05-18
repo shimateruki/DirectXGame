@@ -31,6 +31,7 @@
 #include "BossAttack/BossAttack9_Spawn.h"
 #include "MeshEffectManager.h"
 #include "game/system/BulletManager.h"
+#include "Player.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -1129,33 +1130,28 @@ void BossCore::ChangeState(State nextState) {
         break;
 
     case State::Attack: {
-        struct AttackWeight {
-            int id;
-            int weight;
-        };
-
-        std::vector<AttackWeight> attackList = {
-            { 1, 30 }, // 突進 (30%)
-            { 2, 30 }, // 射撃 (30%)
-            { 3, 30 }, // ハンマー (30%)
-            { 4, 30 }, // 壁 (30%)
-            { 5, 30 }, // 人型 (30%)
-            { 6, 30 },  // レーザー (30%) ※超大技
-            { 7, 30 },  // 吸収 (重み30)
-            { 9, 30 },  // ファンネル・レーザー (30%)
-            { 1, 30 }, { 2, 30 }, { 3, 30 }, { 4, 30 },
-            { 5, 30 }, { 6, 30 }, { 7, 30 }, { 9, 25 },
-        };
-
         static int lastAttack = 0;
         int totalWeight = 0;
-        std::vector<AttackWeight> candidates;
+        std::vector<::AttackWeight> candidates;
 
-        for (const auto& a : attackList) {
-            if (a.id == lastAttack) continue;
+        // HP半分イベントがトリガーされたら第2形態のテーブル、それ以外なら第1形態のテーブルを使用
+        const auto& attackPool = isHpHalfTriggered_ ? attackParams_.phase2Attacks : attackParams_.phase1Attacks;
+
+        for (const auto& a : attackPool) {
+            // 他に候補がある場合は、連続して同じ攻撃を出すのを防ぐ
+            if (attackPool.size() > 1 && a.id == lastAttack) continue;
             if (a.id == 7 && IsArmorFull()) continue;
             candidates.push_back(a);
             totalWeight += a.weight;
+        }
+
+        // 連続制限などで候補が空になってしまった場合のセーフティ
+        if (candidates.empty() && !attackPool.empty()) {
+            for (const auto& a : attackPool) {
+                if (a.id == 7 && IsArmorFull()) continue;
+                candidates.push_back(a);
+                totalWeight += a.weight;
+            }
         }
 
         int nextAttack = 1;
@@ -1169,6 +1165,10 @@ void BossCore::ChangeState(State nextState) {
                     break;
                 }
             }
+        }
+        else if (!attackPool.empty()) {
+            // 重みが設定されていない場合のセーフティ
+            nextAttack = attackPool[std::rand() % attackPool.size()].id;
         }
 
         lastAttack = nextAttack;
@@ -1254,6 +1254,13 @@ void BossCore::TakeBodyDamage(float damage) {
     if (!isHpHalfTriggered_ && nextHp <= halfHp) {
         param_->hp = halfHp;
         isHpHalfTriggered_ = true;
+
+        // ★追加：ムービーに入るため、プレイヤーのロックオンを強制解除する
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->RequestClearLockOn();
+            }
+        }
 
         // 強制的に待機状態へリセット
         if (currentAttack_) {
@@ -2178,6 +2185,19 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
 void BossCore::LoadAttackParams() {
     std::string filePath = "Resources/json/enemy/boss_attack_params.json";
     if (!std::filesystem::exists(filePath)) {
+        // デフォルトの攻撃パターンを初期設定
+        attackParams_.phase1Attacks = {
+            { 1, 30 }, // 突進 (Rush)
+            { 2, 30 }, // 射撃 (Shoot)
+            { 3, 30 }, // ハンマー (Hammer)
+            { 4, 30 }  // 壁 (Wall)
+        };
+        attackParams_.phase2Attacks = {
+            { 5, 30 }, // 人型 (Humanoid)
+            { 6, 30 }, // レーザー (Laser)
+            { 7, 30 }, // 吸収 (Absorb)
+            { 9, 30 }  // ファンネル (Funnels)
+        };
         SaveAttackParams(); // デフォルト値で作成
         return;
     }
@@ -2187,6 +2207,24 @@ void BossCore::LoadAttackParams() {
         json j;
         ifs >> j;
         attackParams_.FromJson(j);
+    }
+
+    // 古いJSONなどで空の場合はデフォルトを流し込む
+    if (attackParams_.phase1Attacks.empty()) {
+        attackParams_.phase1Attacks = {
+            { 1, 30 },
+            { 2, 30 },
+            { 3, 30 },
+            { 4, 30 }
+        };
+    }
+    if (attackParams_.phase2Attacks.empty()) {
+        attackParams_.phase2Attacks = {
+            { 5, 30 },
+            { 6, 30 },
+            { 7, 30 },
+            { 9, 30 }
+        };
     }
 }
 

@@ -142,7 +142,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     // 1. 回転処理 (右クリック中のみ)
     // ----------------------------------------------------------
-    if (input->IsMouseButtonPressed(1)) { // 1 = Right Click
+    if (!isCinematicActive_ && input->IsMouseButtonPressed(1)) { // 1 = Right Click
         Vector2 mouseDelta = input->GetMouseMoveDelta();
 
         // 感度をかけて加算
@@ -185,7 +185,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ==========================================================
     // ★ GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
     // ==========================================================
-    if (isGameViewHovered_ || input->IsMouseButtonPressed(1)) {
+    if (!isCinematicActive_ && (isGameViewHovered_ || input->IsMouseButtonPressed(1))) {
 
         // Shiftキーで加速
         float speed = (input->IsKeyPressed(DIK_LSHIFT) || input->IsKeyPressed(DIK_RSHIFT))
@@ -238,7 +238,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     // ★ 中クリック (ホイール押し込み) : パン(平行)移動
     // これもGameViewホバー中か、すでに中クリックを押している時だけ許可
-    if (isGameViewHovered_ || input->IsMouseButtonPressed(2)) {
+    if (!isCinematicActive_ && (isGameViewHovered_ || input->IsMouseButtonPressed(2))) {
         if (input->IsMouseButtonPressed(2)) { // 2 = Middle Click
             Vector2 mouseDelta = input->GetMouseMoveDelta();
             float panSpeed = settings_.moveSpeed * 0.1f;
@@ -663,6 +663,9 @@ void CameraEditor::LoadFile(const std::string& fileName) {
 
 void CameraEditor::SetMode(Mode mode) {
     settings_.currentMode = mode;
+    if (mode == Mode::Game) {
+        isCinematicActive_ = false;
+    }
 }
 
 void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vector3& rotation) {
