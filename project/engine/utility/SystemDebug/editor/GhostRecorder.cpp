@@ -143,6 +143,7 @@ void GhostRecorder::Update() {
 					Vector3 camPos = target_->GetTranslate();
 					Vector3 camRot = target_->GetRotation();
 					camEditor->SetEditorCameraTransform(camPos, camRot);
+					camEditor->SetCinematicActive(true); // ★ シネマティック中であることをエディタに通知
 				}
 			}
 			currentFrameIndex_++;
@@ -189,6 +190,7 @@ void GhostRecorder::Stop(bool autoReset) {
 		CameraEditor* camEditor = CameraEditor::GetInstance();
 		if (camEditor) {
 			camEditor->SetMode(CameraEditor::Mode::Game);
+			camEditor->SetCinematicActive(false); // ★ シネマティック終了をエディタに通知
 			DebugConsole::GetInstance()->AddLog("Camera returned to Game Mode.");
 		}
 	}

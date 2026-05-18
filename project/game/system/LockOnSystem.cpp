@@ -71,9 +71,9 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
         DebugConsole::GetInstance()->AddLog("LockOn Cleared by Player Request.");
     }
     // ========================================================
-    // シネマティックカメラ（演出）起動時の強制解除
+    // シネマティックカメラ（演出）起動時や自由カメラモード時の強制解除
     // ========================================================
-    if (camera->IsOverridden()) {
+    if (camera->IsOverridden() || CameraEditor::GetInstance()->IsEditorMode()) {
         if (isLockingOn_) {
             isLockingOn_ = false;
             lockOnTarget_ = nullptr;
@@ -83,7 +83,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
             lostSightTimer_ = 0.0f;
 
-            DebugConsole::GetInstance()->AddLog("LockOn Canceled: Cinematic Camera Active.");
+            DebugConsole::GetInstance()->AddLog("LockOn Canceled: Cinematic or Editor Camera Active.");
         }
         return; // 以降のロックオン制御を行わない
     }
@@ -91,8 +91,8 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
     // ========================================================
     // (1) ボタン入力による手動ロックオン切り替え
     // ========================================================
-    // ムービー中（カメラのオーバーライド中）はロックオンを開始できないようにする
-    if (!camera->IsOverridden() && inputManager_->IsActionTriggered("LockOn")) {
+    // ムービー中（カメラのオーバーライド中・自由カメラモード中）はロックオンを開始できないようにする
+    if (!camera->IsOverridden() && !CameraEditor::GetInstance()->IsEditorMode() && inputManager_->IsActionTriggered("LockOn")) {
         isLockingOn_ = !isLockingOn_;
 
         if (isLockingOn_) {

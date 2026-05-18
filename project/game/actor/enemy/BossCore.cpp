@@ -31,6 +31,7 @@
 #include "BossAttack/BossAttack9_Spawn.h"
 #include "MeshEffectManager.h"
 #include "game/system/BulletManager.h"
+#include "Player.h"
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -1254,6 +1255,13 @@ void BossCore::TakeBodyDamage(float damage) {
     if (!isHpHalfTriggered_ && nextHp <= halfHp) {
         param_->hp = halfHp;
         isHpHalfTriggered_ = true;
+
+        // ★追加：ムービーに入るため、プレイヤーのロックオンを強制解除する
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->RequestClearLockOn();
+            }
+        }
 
         // 強制的に待機状態へリセット
         if (currentAttack_) {

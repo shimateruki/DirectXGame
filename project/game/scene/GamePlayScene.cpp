@@ -2009,8 +2009,8 @@ void GamePlayScene::DrawImGui() {
     // ★ Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
     if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-        if (ImGui::TreeNode("Player/Enemy Status")) {
-            if (ImGui::Button("Player HP -> 0")) {
+        if (ImGui::TreeNode("プレイヤー・ボス状態 (Player/Enemy Status)")) {
+            if (ImGui::Button("プレイヤー HP -> 0")) {
                 if (player_ && player_->param_.has_value()) {
                     player_->param_->hp = 0.0f;
                 }
@@ -2018,13 +2018,19 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
 
-            if (ImGui::Button("Boss HP -> 25%")) {
+            if (ImGui::Button("ボス HP -> 51% (半減演出の直前)")) {
+                if (boss_ && boss_->param_.has_value()) {
+                    boss_->param_->hp = boss_->param_->maxHp * 0.51f;
+                }
+            }
+
+            if (ImGui::Button("ボス HP -> 25%")) {
                 if (boss_ && boss_->param_.has_value()) {
                     boss_->param_->hp = boss_->param_->maxHp * 0.25f;
                 }
             }
 
-            if (ImGui::Button("Boss HP -> 0% (Force Death)")) {
+            if (ImGui::Button("ボス HP -> 0% (強制爆散)")) {
                 if (boss_) {
                     if (boss_->param_.has_value()) {
                         boss_->param_->hp = 0.0f;
@@ -2035,13 +2041,13 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
 
-            if (ImGui::Button("Boss Stun Gauge -> 25%")) {
+            if (ImGui::Button("ボス スタンゲージ -> 25%")) {
                 if (boss_) {
                     boss_->SetBarrierHp(boss_->GetMaxBarrierHp() * 0.25f);
                 }
             }
 
-            if (ImGui::Button("Boss Stun Gauge -> 0% (Force Stun)")) {
+            if (ImGui::Button("ボス スタンゲージ -> 0% (強制ダウン)")) {
                 if (boss_) {
                     // 現在のバリアHP分ダメージを与えて強制的にスタン演出をトリガーする
                     boss_->TakeBarrierDamage(boss_->GetBarrierHp(), nullptr);
