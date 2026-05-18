@@ -320,6 +320,7 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
+    void SetBlockColor(Object3d* block, const Vector4& color);
 
 
     // --- private: に追加 ---
