@@ -1,7 +1,7 @@
 {
     "damageAbsorb": 15.0,
     "damageBomb": 30.0,
-    "damageFinal": 50.0,
+    "damageFinal": 200.0,
     "damageFunnels": 12.0,
     "damageHammer": 25.0,
     "damageHumanoid": 35.0,
