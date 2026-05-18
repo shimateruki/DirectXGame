@@ -1063,7 +1063,7 @@ void BossCore::ChangeState(State nextState) {
     }
     else {
         if (state_ == State::Attack) {
-            coreAttribute = kEnemy | kEnemyAttack | kGround;
+            coreAttribute = kEnemy | kGround;
         }
         else if (state_ == State::Weak) {
             coreAttribute = kEnemy | kGround;
@@ -1395,9 +1395,19 @@ void BossCore::UpdateIdle(float deltaTime) {
         float scaleVal = 1.0f + pulse * 0.2f;
         SetScale({ scaleVal, scaleVal, scaleVal });
 
-        // 2. 浮遊
+        // 2. 浮遊 (登場ムービー終了の瞬間移動を防止するため、最初の1.5秒間は前の位置からスムーズにLerp)
         float hoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f;
-        SetTranslate({ GetTranslate().x, hoverY, GetTranslate().z });
+        Vector3 targetPos = { GetTranslate().x, hoverY, GetTranslate().z };
+
+        if (animTimer_ < 1.5f) {
+            float transitionT = std::min(animTimer_ / 1.5f, 1.0f);
+            float easeTransition = 1.0f - std::pow(1.0f - transitionT, 3.0f); // OutCubic
+            Vector3 currentPos = Math::Lerp(startBattlePos_, targetPos, easeTransition);
+            SetTranslate(currentPos);
+        }
+        else {
+            SetTranslate(targetPos);
+        }
     }
 
     // ====================================================
@@ -1527,50 +1537,57 @@ void BossCore::UpdateWeak(float deltaTime) {
 
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
-            // ダウン中の位置（散らばった位置）を計算
+            // 現在の補間位置（ワールド空間）
             Vector3 currentPos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
 
-            // 落下中のバウンドエフェクト
+            // 落下中のバウンドエフェクト（ワールド空間のY座標に加算するため、完全に真上に跳ねる！）
             if (scatterT < 1.0f) {
-                float bounce = std::abs(std::sin(scatterT * std::numbers::pi_v<float> *2.0f)) * (1.0f - scatterT) * 4.0f;
+                float bounce = std::abs(std::sin(scatterT * std::numbers::pi_v<float> * 2.0f)) * (1.0f - scatterT) * 4.0f;
                 currentPos.y += bounce;
+            }
+
+            Vector3 currentRot = Math::Lerp(blockStartRot_[i], blockTargetRot_[i], easeT);
+            // 落下中はワールド空間で追加の回転スピンを与える
+            if (scatterT < 1.0f) {
+                currentRot.x += 5.0f * animTimer_;
+                currentRot.y += 3.0f * animTimer_;
             }
 
             // 起き上がり中のブロック補間（コアへスムーズに戻る）
             if (animTimer_ > 4.0f) {
                 float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
                 float returnEaseT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // OutCubic
+                
                 OrbitData orbit = GetIdleOrbit(i);
-                currentPos = Math::Lerp(currentPos, orbit.pos, returnEaseT);
+                // 戻り先のターゲットワールド座標をボスの現在のワールド行列から計算
+                Vector3 targetWorldPos = Math::Transform(orbit.pos, GetWorldMatrix());
+                currentPos = Math::Lerp(currentPos, targetWorldPos, returnEaseT);
 
-                // スケールも1.0fから orbit.scale へスムーズにイージング補間（サイズ急変ポップを完全防止）
+                // スケールも1.0fから orbit.scale へスムーズにイージング補間
                 Vector3 currentScale = Math::Lerp({ 1.0f, 1.0f, 1.0f }, orbit.scale, returnEaseT);
                 armorBlocks_[i]->SetScale(currentScale);
-            }
 
-            armorBlocks_[i]->SetTranslate(currentPos);
+                // 戻り先のターゲットワールド回転（ボスの回転＋軌道自体の回転）
+                Vector3 targetWorldRot = {
+                    GetRotation().x + orbit.rot.x,
+                    GetRotation().y + orbit.rot.y,
+                    GetRotation().z + orbit.rot.z
+                };
 
-            Vector3 rot = armorBlocks_[i]->GetRotation();
-            // 落下中のみ回転
-            if (scatterT < 1.0f) {
-                rot.x += 5.0f * deltaTime;
-                rot.y += 3.0f * deltaTime;
-            }
-            else if (animTimer_ > 4.0f) {
-                // 起起上がり中は軌道の回転へスムーズに補間（プルプルさせず、待機軌道の回転に完全に合わせる）
-                OrbitData orbit = GetIdleOrbit(i);
                 auto LerpAngle = [](float a, float b, float t) {
                     float diff = b - a;
                     while (diff < -std::numbers::pi_v<float>) diff += 2.0f * std::numbers::pi_v<float>;
                     while (diff > std::numbers::pi_v<float>) diff -= 2.0f * std::numbers::pi_v<float>;
                     return a + diff * t;
-                    };
-                // 収束速度を 5.0f から 18.0f に高めて 6.0秒までに完璧に一致させる
-                rot.x = LerpAngle(rot.x, orbit.rot.x, 18.0f * deltaTime);
-                rot.y = LerpAngle(rot.y, orbit.rot.y, 18.0f * deltaTime);
-                rot.z = LerpAngle(rot.z, orbit.rot.z, 18.0f * deltaTime);
+                };
+                currentRot.x = LerpAngle(currentRot.x, targetWorldRot.x, returnEaseT);
+                currentRot.y = LerpAngle(currentRot.y, targetWorldRot.y, returnEaseT);
+                currentRot.z = LerpAngle(currentRot.z, targetWorldRot.z, returnEaseT);
             }
-            armorBlocks_[i]->SetRotation(rot);
+
+            armorBlocks_[i]->SetTranslate(currentPos);
+            armorBlocks_[i]->SetRotation(currentRot);
+            armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
 
             // ブロックも点滅
             if (animTimer_ > 4.0f) {
@@ -1593,11 +1610,17 @@ void BossCore::UpdateWeak(float deltaTime) {
         SetTranslate(finalPos);
 
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-            armorBlocks_[i]->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            if (armorBlocks_[i]) {
+                armorBlocks_[i]->SetParent(this);
+                armorBlocks_[i]->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
 
-            // 復帰時に完全に元のスケールに揃える
-            OrbitData orbit = GetIdleOrbit(i);
-            armorBlocks_[i]->SetScale(orbit.scale);
+                // 復帰時に完全に元のスケール・回転・位置に揃える
+                OrbitData orbit = GetIdleOrbit(i);
+                armorBlocks_[i]->SetTranslate(orbit.pos);
+                armorBlocks_[i]->SetRotation(orbit.rot);
+                armorBlocks_[i]->SetScale(orbit.scale);
+                armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
+            }
         }
 
         ChangeState(State::Idle);
@@ -1761,29 +1784,46 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
 
         blockStartPos_.clear();
         blockTargetPos_.clear();
+        blockStartRot_.clear();
+        blockTargetRot_.clear();
+
+        Vector3 bossWorldPos = GetWorldPosition();
 
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             Object3d* block = armorBlocks_[i];
             if (block) {
-                block->SetParent(this);
-                blockStartPos_.push_back(block->GetTranslate());
+                // まずブロックの現在のワールド座標とワールド回転を取得
+                Vector3 startWorldPos = block->GetWorldPosition();
+                Vector3 startWorldRot = block->GetRotation(); // ボス本体がまだ回転していないため、GetRotation()がそのままワールド回転と一致します。
 
+                // 親子関係を解除（ワールド空間へ移行）
+                block->SetParent(nullptr);
+                block->SetTranslate(startWorldPos);
+                block->SetRotation(startWorldRot);
+                block->UpdateWorldMatrix();
+
+                blockStartPos_.push_back(startWorldPos);
+                blockStartRot_.push_back(startWorldRot);
+
+                // 散らばり先のターゲット座標（ワールド空間）を計算
                 float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
                 float distance = 5.0f + (static_cast<float>(rand()) / RAND_MAX) * 8.0f;
-                float height = 0.5f + (static_cast<float>(rand()) / RAND_MAX) * 1.0f; // 地面に転がす
+                float height = 0.5f; // 地面の高さに平らに置く
 
-                float dx = std::cos(angle) * distance;
-                float dz = std::sin(angle) * distance;
-                float dy = height - 0.5f; // コアの最終高さが0.5fのため
-
-                // コアがダウン時にX軸へ90度コロンと転がるため、ローカル座標の軸が入れ替わる
-                // ワールド空間で (dx, dy, dz) の位置に散らばらせるには Local(dx, dz, -dy) にする
                 Vector3 scatterPos = {
-                    dx,
-                    dz,
-                    -dy
+                    bossWorldPos.x + std::cos(angle) * distance,
+                    height,
+                    bossWorldPos.z + std::sin(angle) * distance
                 };
                 blockTargetPos_.push_back(scatterPos);
+
+                // 散らばり先のターゲット回転（ワールド空間）
+                Vector3 scatterRot = {
+                    0.0f,
+                    (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>,
+                    0.0f
+                };
+                blockTargetRot_.push_back(scatterRot);
             }
         }
 
@@ -2028,6 +2068,7 @@ void BossCore::StartBattle() {
     if (isBattleStarted_) return; // 既に始まっていたら何もしない
 
     isBattleStarted_ = true;
+    startBattlePos_ = GetTranslate(); // ★ 登場ムービー終了時の初期座標を記憶
     animTimer_ = 0.0f; // ★ ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
 
     DebugConsole::GetInstance()->AddLog("[BATTLE START] ボスが行動を開始した！！！");
