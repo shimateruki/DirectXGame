@@ -871,7 +871,7 @@ void BossCore::Update(float deltaTime) {
 
     if (preTimer > 0.0f && colorResetTimer_ <= 0.0f) {
         for (Object3d* block : armorBlocks_) {
-            if (block) block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            if (block) SetBlockColor(block, { 1.0f, 1.0f, 1.0f, 1.0f });
         }
     }
 
@@ -1094,12 +1094,12 @@ void BossCore::ChangeState(State nextState) {
         if (block) {
             block->SetCollisionAttribute(blockAttribute);
             if (state_ == State::Attack) {
-                block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                SetBlockColor(block, { 1.0f, 1.0f, 1.0f, 1.0f });
             }
             // ★ 追加：スタン(Weak)時のスケールを元に戻す
             if (state_ == State::Weak) {
                 block->SetScale({ 1.0f, 1.0f, 1.0f });
-                block->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                SetBlockColor(block, { 1.0f, 1.0f, 1.0f, 1.0f });
 
                 // ★スタン時に子ブロック（Shard）の展開を強制収束（元のコンパクトな位置に戻す）
                 for (auto* child : block->GetChildren()) {
@@ -1127,6 +1127,7 @@ void BossCore::ChangeState(State nextState) {
     switch (state_) {
     case State::Idle:
         animTimer_ = 0.0f;
+        startIdlePos_ = GetTranslate(); // 遷移時の座標を保存
         break;
 
     case State::Attack: {
@@ -1362,7 +1363,7 @@ void BossCore::UpdateIdle(float deltaTime) {
                 Vector3 pos = block->GetTranslate();
                 if (pos.y > 0.0f) pos.y -= 10.0f * actionDelta; // ブロックを落とす
                 block->SetTranslate(pos);
-                block->SetColor({ 0.2f, 0.2f, 0.2f, 1.0f });
+                SetBlockColor(block, { 0.2f, 0.2f, 0.2f, 1.0f });
             }
         }
         return; // これ以上何もしない
@@ -1395,14 +1396,14 @@ void BossCore::UpdateIdle(float deltaTime) {
         float scaleVal = 1.0f + pulse * 0.2f;
         SetScale({ scaleVal, scaleVal, scaleVal });
 
-        // 2. 浮遊 (登場ムービー終了の瞬間移動を防止するため、最初の1.5秒間は前の位置からスムーズにLerp)
+        // 2. 浮遊 (登場ムービー終了時や攻撃終了時の瞬間移動を防止するため、最初の1.5秒間は前の位置からスムーズにLerp)
         float hoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f;
-        Vector3 targetPos = { GetTranslate().x, hoverY, GetTranslate().z };
+        Vector3 targetPos = { 0.0f, hoverY, 0.0f }; // 待機状態では常に中央を目標にする
 
         if (animTimer_ < 1.5f) {
             float transitionT = std::min(animTimer_ / 1.5f, 1.0f);
             float easeTransition = 1.0f - std::pow(1.0f - transitionT, 3.0f); // OutCubic
-            Vector3 currentPos = Math::Lerp(startBattlePos_, targetPos, easeTransition);
+            Vector3 currentPos = Math::Lerp(startIdlePos_, targetPos, easeTransition);
             SetTranslate(currentPos);
         }
         else {
@@ -1592,10 +1593,10 @@ void BossCore::UpdateWeak(float deltaTime) {
             // ブロックも点滅
             if (animTimer_ > 4.0f) {
                 float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
-                armorBlocks_[i]->SetColor({ 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
+                SetBlockColor(armorBlocks_[i], { 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
             }
             else {
-                armorBlocks_[i]->SetColor(isLightOn ? Vector4{ 0.8f, 0.8f, 0.8f, 1.0f } : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
+                SetBlockColor(armorBlocks_[i], isLightOn ? Vector4{ 0.8f, 0.8f, 0.8f, 1.0f } : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
             }
         }
     }
@@ -1612,7 +1613,7 @@ void BossCore::UpdateWeak(float deltaTime) {
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             if (armorBlocks_[i]) {
                 armorBlocks_[i]->SetParent(this);
-                armorBlocks_[i]->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                SetBlockColor(armorBlocks_[i], { 1.0f, 1.0f, 1.0f, 1.0f });
 
                 // 復帰時に完全に元のスケール・回転・位置に揃える
                 OrbitData orbit = GetIdleOrbit(i);
@@ -1771,7 +1772,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     // 全部ではなく、当たったブロックだけを赤くする！
     // ==========================================
     if (hitBlock) {
-        hitBlock->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
+        SetBlockColor(hitBlock, { 1.0f, 0.0f, 0.0f, 1.0f });
     }
 
     if (barrierHp_ <= 0.0f) {
@@ -2031,6 +2032,16 @@ void BossCore::UpdateCorePieces(float deltaTime) {
             piece.obj->SetRotation(rot);
 
             piece.obj->UpdateWorldMatrix();
+        }
+    }
+}
+
+void BossCore::SetBlockColor(Object3d* block, const Vector4& color) {
+    if (!block) return;
+    block->SetColor(color);
+    for (Object3d* child : block->GetChildren()) {
+        if (child) {
+            child->SetColor(color);
         }
     }
 }

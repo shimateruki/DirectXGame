@@ -202,6 +202,16 @@ void GamePlayScene::Initialize() {
             bossNameSprite_ = sprite.get();
             SetAlphaZero(bossNameSprite_);
         }
+        else if (sprite->GetName() == "bossIcon.png") {
+            bossIconSprite_ = sprite.get();
+            bossIconBasePos_ = bossIconSprite_->GetPosition();
+            SetAlphaZero(bossIconSprite_);
+        }
+        else if (sprite->GetName() == "shieldIcon.png") {
+            shieldIconSprite_ = sprite.get();
+            shieldIconBasePos_ = shieldIconSprite_->GetPosition();
+            SetAlphaZero(shieldIconSprite_);
+        }
     }
 
     // =======================================================
@@ -1757,6 +1767,8 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         SetAlpha(barrierDamageBarSprite_, alpha); // 追加
         SetAlpha(bossHpBackSprite_, alpha);
         SetAlpha(bossNameSprite_, alpha);
+        SetAlpha(bossIconSprite_, alpha); // 追加
+        SetAlpha(shieldIconSprite_, alpha); // 追加
 
         // --- A. メインHPバーの同期 ---
         if (bossHpBarSprite_) {
@@ -1765,6 +1777,9 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             // ダメージを受けた瞬間を検知
             if (hpRatio < bossPrevHpRatio_) {
                 bossDamageDelayTimer_ = 0.8f; // ボスはより長く待機 (0.8秒)
+                // ボスアイコンシェイクを設定
+                bossIconShakeTimer_ = 0.3f; // 0.3秒シェイク
+                bossIconShakeIntensity_ = 8.0f; // シェイクの強さ
             }
             bossPrevHpRatio_ = hpRatio;
 
@@ -1807,6 +1822,9 @@ void GamePlayScene::UpdateUI(float deltaTime) {
                 // 1. ダメージを受けた瞬間を検知
                 if (bRatio < barrierPrevHpRatio_) {
                     barrierDamageDelayTimer_ = 0.5f;
+                    // バリアアイコンシェイクを設定
+                    shieldIconShakeTimer_ = 0.3f; // 0.3秒シェイク
+                    shieldIconShakeIntensity_ = 8.0f; // シェイクの強さ
                 }
                 barrierPrevHpRatio_ = bRatio;
 
@@ -1845,6 +1863,31 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             if (barrierDamageBarSprite_) {
                 barrierDamageBarSprite_->SetSize(
                     { barrierHpBarMaxWidth_ * barrierVisualDamage_, barrierDamageBarSprite_->GetSize().y });
+            }
+        }
+
+        // --- C. アイコンのシェイク更新 ---
+        if (bossIconSprite_) {
+            if (bossIconShakeTimer_ > 0.0f) {
+                bossIconShakeTimer_ -= deltaTime;
+                float offsetX = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * bossIconShakeIntensity_;
+                float offsetY = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * bossIconShakeIntensity_;
+                bossIconSprite_->SetPosition({ bossIconBasePos_.x + offsetX, bossIconBasePos_.y + offsetY });
+                if (bossIconShakeTimer_ <= 0.0f) {
+                    bossIconSprite_->SetPosition(bossIconBasePos_);
+                }
+            }
+        }
+
+        if (shieldIconSprite_) {
+            if (shieldIconShakeTimer_ > 0.0f) {
+                shieldIconShakeTimer_ -= deltaTime;
+                float offsetX = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * shieldIconShakeIntensity_;
+                float offsetY = ((float)rand() / RAND_MAX * 2.0f - 1.0f) * shieldIconShakeIntensity_;
+                shieldIconSprite_->SetPosition({ shieldIconBasePos_.x + offsetX, shieldIconBasePos_.y + offsetY });
+                if (shieldIconShakeTimer_ <= 0.0f) {
+                    shieldIconSprite_->SetPosition(shieldIconBasePos_);
+                }
             }
         }
     }

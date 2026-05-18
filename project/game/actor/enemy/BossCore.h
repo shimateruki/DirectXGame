@@ -260,6 +260,7 @@ private:
     std::vector<Vector3> blockStartRot_;
     std::vector<Vector3> blockTargetRot_;
     Vector3 startBattlePos_ = { 0.0f, 4.0f, 0.0f };
+    Vector3 startIdlePos_ = { 0.0f, 4.0f, 0.0f };
 
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
@@ -319,6 +320,7 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
+    void SetBlockColor(Object3d* block, const Vector4& color);
 
 
     // --- private: に追加 ---
