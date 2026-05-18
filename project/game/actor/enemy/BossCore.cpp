@@ -1127,6 +1127,7 @@ void BossCore::ChangeState(State nextState) {
     switch (state_) {
     case State::Idle:
         animTimer_ = 0.0f;
+        startIdlePos_ = GetTranslate(); // 遷移時の座標を保存
         break;
 
     case State::Attack: {
@@ -1395,14 +1396,14 @@ void BossCore::UpdateIdle(float deltaTime) {
         float scaleVal = 1.0f + pulse * 0.2f;
         SetScale({ scaleVal, scaleVal, scaleVal });
 
-        // 2. 浮遊 (登場ムービー終了の瞬間移動を防止するため、最初の1.5秒間は前の位置からスムーズにLerp)
+        // 2. 浮遊 (登場ムービー終了時や攻撃終了時の瞬間移動を防止するため、最初の1.5秒間は前の位置からスムーズにLerp)
         float hoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f;
-        Vector3 targetPos = { GetTranslate().x, hoverY, GetTranslate().z };
+        Vector3 targetPos = { 0.0f, hoverY, 0.0f }; // 待機状態では常に中央を目標にする
 
         if (animTimer_ < 1.5f) {
             float transitionT = std::min(animTimer_ / 1.5f, 1.0f);
             float easeTransition = 1.0f - std::pow(1.0f - transitionT, 3.0f); // OutCubic
-            Vector3 currentPos = Math::Lerp(startBattlePos_, targetPos, easeTransition);
+            Vector3 currentPos = Math::Lerp(startIdlePos_, targetPos, easeTransition);
             SetTranslate(currentPos);
         }
         else {

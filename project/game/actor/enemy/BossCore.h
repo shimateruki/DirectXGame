@@ -260,6 +260,7 @@ private:
     std::vector<Vector3> blockStartRot_;
     std::vector<Vector3> blockTargetRot_;
     Vector3 startBattlePos_ = { 0.0f, 4.0f, 0.0f };
+    Vector3 startIdlePos_ = { 0.0f, 4.0f, 0.0f };
 
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
