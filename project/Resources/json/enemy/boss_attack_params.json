@@ -11,5 +11,45 @@
     "damageSlime": 8.0,
     "damageWall": 30.0,
     "maxArmorBlockHp": 100.0,
-    "maxBarrierHp": 200.0
+    "maxBarrierHp": 200.0,
+    "phase1Attacks": [
+        {
+            "id": 1,
+            "weight": 30
+        },
+        {
+            "id": 2,
+            "weight": 30
+        },
+        {
+            "id": 3,
+            "weight": 30
+        },
+        {
+            "id": 4,
+            "weight": 30
+        },
+        {
+            "id": 10,
+            "weight": 30
+        }
+    ],
+    "phase2Attacks": [
+        {
+            "id": 5,
+            "weight": 30
+        },
+        {
+            "id": 6,
+            "weight": 30
+        },
+        {
+            "id": 7,
+            "weight": 30
+        },
+        {
+            "id": 9,
+            "weight": 30
+        }
+    ]
 }

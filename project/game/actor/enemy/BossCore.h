@@ -12,6 +12,12 @@ class MapBlock;
 
 using json = nlohmann::json;
 
+// 攻撃IDと確率の重みのペア
+struct AttackWeight {
+    int id = 1;       // 攻撃ID (1:突進, 2:弾幕, 3:ハンマー, 4:壁, 5:人型, 6:極太レーザー, 7:吸収, 9:ファンネル, 10:スポーン)
+    int weight = 30;  // 抽選時の重み
+};
+
 // ボスの攻撃パラメータ（JSON保存・ImGui調整用）
 struct BossAttackParams {
     float damageRush = 20.0f;      // 突進 (Attack 1)
@@ -28,6 +34,9 @@ struct BossAttackParams {
     float maxBarrierHp = 100.0f;   // ボス最大バリアHP
     float maxArmorBlockHp = 100.0f; // ボス最大装甲ブロックHP
 
+    std::vector<AttackWeight> phase1Attacks; // 第1形態の攻撃抽選テーブル (HP > 50%)
+    std::vector<AttackWeight> phase2Attacks; // 第2形態の攻撃抽選テーブル (HP <= 50%)
+
     // JSON変換用
     void ToJson(json& j) const {
         j["damageRush"] = damageRush;
@@ -43,6 +52,18 @@ struct BossAttackParams {
         j["damageBomb"] = damageBomb;
         j["maxBarrierHp"] = maxBarrierHp;
         j["maxArmorBlockHp"] = maxArmorBlockHp;
+
+        json j1 = json::array();
+        for (const auto& a : phase1Attacks) {
+            j1.push_back({ {"id", a.id}, {"weight", a.weight} });
+        }
+        j["phase1Attacks"] = j1;
+
+        json j2 = json::array();
+        for (const auto& a : phase2Attacks) {
+            j2.push_back({ {"id", a.id}, {"weight", a.weight} });
+        }
+        j["phase2Attacks"] = j2;
     }
     void FromJson(const json& j) {
         if (j.contains("damageRush")) damageRush = j["damageRush"];
@@ -58,6 +79,25 @@ struct BossAttackParams {
         if (j.contains("damageBomb")) damageBomb = j["damageBomb"];
         if (j.contains("maxBarrierHp")) maxBarrierHp = j["maxBarrierHp"];
         if (j.contains("maxArmorBlockHp")) maxArmorBlockHp = j["maxArmorBlockHp"];
+
+        if (j.contains("phase1Attacks")) {
+            phase1Attacks.clear();
+            for (const auto& item : j["phase1Attacks"]) {
+                AttackWeight a;
+                if (item.contains("id")) a.id = item["id"];
+                if (item.contains("weight")) a.weight = item["weight"];
+                phase1Attacks.push_back(a);
+            }
+        }
+        if (j.contains("phase2Attacks")) {
+            phase2Attacks.clear();
+            for (const auto& item : j["phase2Attacks"]) {
+                AttackWeight a;
+                if (item.contains("id")) a.id = item["id"];
+                if (item.contains("weight")) a.weight = item["weight"];
+                phase2Attacks.push_back(a);
+            }
+        }
     }
 };
 
