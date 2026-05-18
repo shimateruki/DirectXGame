@@ -218,9 +218,10 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
         director_->LoadScenario("EntranceAnimation");
     }
 
-    // 色の初期設定 (水色で統一)
+    // 色の初期設定 (緑色で統一)
     originalColor_ = { 0.2f, 0.8f, 1.0f, 1.0f };
-    SetColor(originalColor_);
+    SetColor(greenColor_);
+    defaultColor_ = greenColor_;
 
     // --- 1. 紫 ---
     auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
@@ -633,7 +634,8 @@ void BossCore::Update(float deltaTime) {
             isHpHalfEventActive_ = false;
             hpHalfPhase_ = HpHalfEventPhase::None;
             isPlayerRotated_ = false; // 次回のためにリセット
-            SetColor(originalColor_);
+            SetColor(greenColor_);
+            defaultColor_ = greenColor_;
             SetScale({ 1,1,1 });
             SetRotation(originalCoreRotation_);
             *PostEffect::GetInstance()->GetParams() = basePostEffectParams_;
@@ -870,8 +872,10 @@ void BossCore::Update(float deltaTime) {
     }
 
     if (preTimer > 0.0f && colorResetTimer_ <= 0.0f) {
-        for (Object3d* block : armorBlocks_) {
-            if (block) SetBlockColor(block, { 1.0f, 1.0f, 1.0f, 1.0f });
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            if (armorBlocks_[i] && i < savedBlockColors_.size()) {
+                SetBlockColor(armorBlocks_[i], savedBlockColors_[i]);
+            }
         }
     }
 
@@ -1086,8 +1090,16 @@ void BossCore::ChangeState(State nextState) {
         }
     }
 
-    if (state_ == State::Attack) {
+    if (state_ == State::Idle) {
+        hasResetColorPreAttack_ = false;
+        if (!isWaitingForDeath_ && !isWaitingForFinisher_) {
+            SetColor(greenColor_);
+            defaultColor_ = greenColor_;
+        }
+    }
+    else if (state_ == State::Attack) {
         SetColor(originalColor_);
+        defaultColor_ = originalColor_;
     }
 
     for (Object3d* block : armorBlocks_) {
@@ -1226,6 +1238,9 @@ void BossCore::TakeBodyDamage(float damage) {
     // 既に爆散演出中、またはHP半分演出中は無敵
     if (deathPhase_ != 0 || isHpHalfEventActive_) return;
 
+    // 被弾前の色を保存
+    SaveOriginalColors();
+
     // 赤色演出（ダメージフィードバック）
     SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
     colorResetTimer_ = 0.15f;
@@ -1270,7 +1285,8 @@ void BossCore::TakeBodyDamage(float damage) {
         ChangeState(State::Idle);
         animTimer_ = 0.0f;
 
-        SetColor(originalColor_);
+        SetColor(greenColor_);
+        defaultColor_ = greenColor_;
         SetTranslate({ 0.0f, 4.0f, 0.0f }); // 演出開始時に強制的に真ん中へ移動(T)
         SetScale({ 1.0f, 1.0f, 1.0f });     // スケールをリセット(S)
         SetRotation({ 0.0f, 0.0f, 0.0f });  // 回転をリセット(R)
@@ -1471,6 +1487,13 @@ void BossCore::UpdateIdle(float deltaTime) {
 
         animTimer_ += deltaTime;
 
+        // 攻撃の1秒前に色を水色（青っぽい色）に戻す！
+        if (animTimer_ >= targetIdleTime - 1.5f && !hasResetColorPreAttack_) {
+            SetColor(originalColor_);
+            defaultColor_ = originalColor_;
+            hasResetColorPreAttack_ = true;
+        }
+
         // タイマーが「今回決めた目標時間」を超えたら攻撃へ！
         if (animTimer_ >= targetIdleTime) {
             ChangeState(State::Attack);
@@ -1521,14 +1544,14 @@ void BossCore::UpdateWeak(float deltaTime) {
         // 起き上がり中は徐々に元の色に戻す
         float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
         Vector4 color;
-        color.x = Math::Lerp(0.3f, originalColor_.x, wakeUpT);
-        color.y = Math::Lerp(0.3f, originalColor_.y, wakeUpT);
-        color.z = Math::Lerp(0.3f, originalColor_.z, wakeUpT);
+        color.x = Math::Lerp(0.3f, greenColor_.x, wakeUpT);
+        color.y = Math::Lerp(0.3f, greenColor_.y, wakeUpT);
+        color.z = Math::Lerp(0.3f, greenColor_.z, wakeUpT);
         color.w = 1.0f;
         SetColor(color);
     }
     else {
-        SetColor(isLightOn ? originalColor_ : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
+        SetColor(isLightOn ? greenColor_ : Vector4{ 0.3f, 0.3f, 0.3f, 1.0f });
     }
 
     // --- 装甲ブロックの動き ---
@@ -1605,7 +1628,8 @@ void BossCore::UpdateWeak(float deltaTime) {
     if (animTimer_ >= 6.0f) {
         animTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
-        SetColor(originalColor_);
+        SetColor(greenColor_);
+        defaultColor_ = greenColor_;
         Vector3 finalPos = GetTranslate();
         finalPos.y = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f; // 完全に待機モーションの浮遊位置に同期
         SetTranslate(finalPos);
@@ -1761,6 +1785,9 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
 
 
 void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
+    // 被弾前の色を保存
+    SaveOriginalColors();
+
     barrierHp_ -= damage;
 
     DebugConsole::GetInstance()->AddLog("[HIT!] Barrier Damaged! 残りHP: " + std::to_string(barrierHp_) + " / " + std::to_string(maxBarrierHp_));
@@ -2046,6 +2073,20 @@ void BossCore::SetBlockColor(Object3d* block, const Vector4& color) {
     }
 }
 
+void BossCore::SaveOriginalColors() {
+    if (colorResetTimer_ <= 0.0f) {
+        defaultColor_ = GetColor();
+        savedBlockColors_.resize(armorBlocks_.size());
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            if (armorBlocks_[i]) {
+                savedBlockColors_[i] = armorBlocks_[i]->GetColor();
+            } else {
+                savedBlockColors_[i] = { 1.0f, 1.0f, 1.0f, 1.0f };
+            }
+        }
+    }
+}
+
 bool BossCore::OnCollision(Object3d* other) {
     uint32_t attribute = other->GetCollisionAttribute();
 
@@ -2140,7 +2181,8 @@ void BossCore::UpdateAppearance(float deltaTime) {
     else {
         // ③ スッ…と元に戻る
         currentScale = { 1.0f, 1.0f, 1.0f };
-        SetColor(originalColor_);
+        SetColor(greenColor_);
+        defaultColor_ = greenColor_;
     }
 
     SetScale(currentScale);
@@ -2148,7 +2190,8 @@ void BossCore::UpdateAppearance(float deltaTime) {
     if (appearanceTimer_ <= 0.0f) {
         isAppearing_ = false;
         SetScale({ 1.0f, 1.0f, 1.0f });
-        SetColor(originalColor_);
+        SetColor(greenColor_);
+        defaultColor_ = greenColor_;
 
         // ゴーストディレクターのアニメーション（EntranceAnimation.json）を再生
         if (director_) {
