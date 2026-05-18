@@ -1199,7 +1199,7 @@ void GamePlayScene::Update(float deltaTime) {
     }
 
     // 自由カメラモード以外の操作
-    if (!CameraEditor::GetInstance()->IsEditorMode()) {
+    if (!CameraEditor::GetInstance()->IsEditorMode() && !isCinematicMode) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
 
         if (player_ && player_->GetHp() > 0.0f &&

@@ -598,6 +598,7 @@ void PlayerStateIdle::Update(Player *player) {
       swordDefaultLocalPos_ = swordObj_->GetTransform()->translate;
       swordDefaultWorldPos_ = swordObj_->GetWorldPosition();
       swordSaved_ = true;
+      SetSwordActive(player, false);
     }
   }
 
