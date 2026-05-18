@@ -587,7 +587,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 64,
+            "collisionAttribute": 0,
             "collisionMask": 4294967294,
             "color": [
                 1.0,
