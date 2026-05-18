@@ -113,7 +113,7 @@ void TitleScene::Initialize() {
   spriteBaseYs_.clear();
   for (int i = 0; i < (int)sprites_.size(); ++i) {
     const std::string &name = sprites_[i]->GetName();
-    if (name == "gameStartText.png" || name == "optionText.png" ||
+    if (name == "gameStartText.png" || name == "title_optionText.png" ||
         name == "exit.png") {
       menuSpriteIndices_.push_back(i);
     }
@@ -245,6 +245,14 @@ void TitleScene::Update(float deltaTime) {
       bool isOpt = optionUI_.IsOptionSprite(sprite.get());
       bool isPoseBack = (sprite->GetName() == "option/poseBack.png");
 
+      // タイトルシーン自体の描画にのみ使用するスプライトか判定
+      std::string name = sprite->GetName();
+      bool isTitleSprite = (name == "title.png" ||
+                            name == "gameStartText.png" ||
+                            name == "title_optionText.png" ||
+                            name == "exit.png" ||
+                            name == "enter_text.png");
+
       if (currentState_ == TitleState::OptionMenu) {
           if (isOpt) {
               sprite->SetVisible(optionUI_.IsSpriteVisibleInCurrentTab(sprite.get()));
@@ -260,7 +268,13 @@ void TitleScene::Update(float deltaTime) {
                   sprite->SetVisible(false);
               }
           } else {
-              sprite->SetVisible(spritesAppear_);
+              // オプション以外かつタイトル用スプライトのみメインメニューで表示
+              if (isTitleSprite) {
+                  sprite->SetVisible(spritesAppear_);
+              } else {
+                  // ゲームプレイ用のUIスプライトなど、タイトルシーンで不要なものは常に非表示
+                  sprite->SetVisible(false);
+              }
           }
       }
   }
@@ -277,6 +291,21 @@ void TitleScene::Update(float deltaTime) {
       // オプション関係のスプライトは浮上演出の対象外とする
       if (optionUI_.IsOptionSprite(sprite.get())) {
         continue;
+      }
+
+      // タイトル用以外のスプライト（ゲームプレイ用のUIスプライトなど）はアルファを0にして浮上処理をスキップ
+      std::string name = sprite->GetName();
+      bool isTitleSprite = (name == "title.png" ||
+                            name == "gameStartText.png" ||
+                            name == "title_optionText.png" ||
+                            name == "exit.png" ||
+                            name == "enter_text.png");
+      if (!isTitleSprite) {
+          Vector4 color = sprite->GetColor();
+          color.w = 0.0f;
+          sprite->SetColor(color);
+          sprite->SetVisible(false);
+          continue;
       }
 
       float baseY = (i < spriteBaseYs_.size()) ? spriteBaseYs_[i]
