@@ -14,6 +14,7 @@ public:
     ~OptionUI() = default;
 
     void Initialize(BaseScene* scene, SpriteCommon* spriteCommon);
+    void Reset();
     bool Update(float deltaTime);
     bool IsOptionSprite(Sprite* sp) const;
     bool IsSpriteVisibleInCurrentTab(Sprite* sp) const;
@@ -47,6 +48,7 @@ private:
     int currentConfigIndex_ = 0;
 
     // --- エディタで配置したスプライト群 ---
+    Sprite* optionBackSprite_ = nullptr;
     Sprite* bgSprite_ = nullptr;
     Sprite* titleSprite_ = nullptr;
     Sprite* soundSprite_ = nullptr;

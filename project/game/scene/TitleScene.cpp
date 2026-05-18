@@ -91,6 +91,18 @@ void TitleScene::Initialize() {
   levelLoader_->LoadSpriteLayout(
       this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
 
+  // option/poseBack.png スプライトを最背面（sprites_ の先頭）に移動する
+  {
+      auto it = std::find_if(sprites_.begin(), sprites_.end(), [](const auto& sprite) {
+          return sprite && sprite->GetName() == "option/poseBack.png";
+      });
+      if (it != sprites_.end()) {
+          auto poseBack = std::move(*it);
+          sprites_.erase(it);
+          sprites_.insert(sprites_.begin(), std::move(poseBack));
+      }
+  }
+
   LightManager::GetInstance()->LoadState(
       "Resources/json/light/titleScene.json");
   CameraEditor::GetInstance()->Initialize();
@@ -101,7 +113,7 @@ void TitleScene::Initialize() {
   spriteBaseYs_.clear();
   for (int i = 0; i < (int)sprites_.size(); ++i) {
     const std::string &name = sprites_[i]->GetName();
-    if (name == "gameStartText.png" || name == "optionText.png" ||
+    if (name == "gameStartText.png" || name == "title_optionText.png" ||
         name == "exit.png") {
       menuSpriteIndices_.push_back(i);
     }
@@ -229,7 +241,18 @@ void TitleScene::Update(float deltaTime) {
 
   // スプライトの表示切り替え（オプション中は他のUIを隠す）
   for (auto& sprite : sprites_) {
+      if (!sprite) continue;
       bool isOpt = optionUI_.IsOptionSprite(sprite.get());
+      bool isPoseBack = (sprite->GetName() == "option/poseBack.png");
+
+      // タイトルシーン自体の描画にのみ使用するスプライトか判定
+      std::string name = sprite->GetName();
+      bool isTitleSprite = (name == "title.png" ||
+                            name == "gameStartText.png" ||
+                            name == "title_optionText.png" ||
+                            name == "exit.png" ||
+                            name == "enter_text.png");
+
       if (currentState_ == TitleState::OptionMenu) {
           if (isOpt) {
               sprite->SetVisible(optionUI_.IsSpriteVisibleInCurrentTab(sprite.get()));
@@ -238,9 +261,20 @@ void TitleScene::Update(float deltaTime) {
           }
       } else {
           if (isOpt) {
-              sprite->SetVisible(false);
+              // 特例：ポーズ背景はメインメニューでも表示する！
+              if (isPoseBack) {
+                  sprite->SetVisible(spritesAppear_);
+              } else {
+                  sprite->SetVisible(false);
+              }
           } else {
-              sprite->SetVisible(spritesAppear_);
+              // オプション以外かつタイトル用スプライトのみメインメニューで表示
+              if (isTitleSprite) {
+                  sprite->SetVisible(spritesAppear_);
+              } else {
+                  // ゲームプレイ用のUIスプライトなど、タイトルシーンで不要なものは常に非表示
+                  sprite->SetVisible(false);
+              }
           }
       }
   }
@@ -252,6 +286,28 @@ void TitleScene::Update(float deltaTime) {
     spritesAppearTimer_ += deltaTime;
     for (size_t i = 0; i < sprites_.size(); ++i) {
       auto &sprite = sprites_[i];
+      if (!sprite) continue;
+
+      // オプション関係のスプライトは浮上演出の対象外とする
+      if (optionUI_.IsOptionSprite(sprite.get())) {
+        continue;
+      }
+
+      // タイトル用以外のスプライト（ゲームプレイ用のUIスプライトなど）はアルファを0にして浮上処理をスキップ
+      std::string name = sprite->GetName();
+      bool isTitleSprite = (name == "title.png" ||
+                            name == "gameStartText.png" ||
+                            name == "title_optionText.png" ||
+                            name == "exit.png" ||
+                            name == "enter_text.png");
+      if (!isTitleSprite) {
+          Vector4 color = sprite->GetColor();
+          color.w = 0.0f;
+          sprite->SetColor(color);
+          sprite->SetVisible(false);
+          continue;
+      }
+
       float baseY = (i < spriteBaseYs_.size()) ? spriteBaseYs_[i]
                                                : sprite->GetPosition().y;
       float offsetY = (1.0f - easeT) * 60.0f; // 60px下から浮かぶ
@@ -288,6 +344,7 @@ void TitleScene::Update(float deltaTime) {
           SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
           break;
         case 1: // 設定
+          optionUI_.Reset();
           currentState_ = TitleState::OptionMenu;
           break;
         case 2: // 終了

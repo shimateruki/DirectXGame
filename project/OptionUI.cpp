@@ -16,6 +16,10 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   spriteCommon_ = spriteCommon;
   KeyConfig::GetInstance()->Initialize();
   // エディタで配置したベースUIの取得
+  optionBackSprite_ = scene->GetSpriteByName("option/poseBack.png");
+  if (optionBackSprite_) {
+      optionBackSprite_->SetColor({ 0.0f, 0.0f, 0.0f, 0.6f }); // 半透明グレー
+  }
   bgSprite_ = scene->GetSpriteByName("UI/back_ground.png");
   titleSprite_ = scene->GetSpriteByName("UI/option_UI.png");
   soundSprite_ = scene->GetSpriteByName("UI/sound.png");
@@ -79,6 +83,14 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   RefreshKeyIcons(); // 初回生成
 }
 
+void OptionUI::Reset() {
+  currentState_ = MenuState::TabSelect;
+  currentTopTab_ = (int)TopTab::AudioCamera;
+  currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+  currentOptionIndex_ = (int)OptionIndex::Sound;
+  currentConfigIndex_ = 0;
+}
+
 bool OptionUI::Update(float deltaTime) {
   InputManager *input = InputManager::GetInstance();
   Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
@@ -135,7 +147,7 @@ bool OptionUI::Update(float deltaTime) {
           currentTopTab_ = (int)TopTab::Credit;
       }
 
-      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsKeyTriggered(DIK_TAB) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
           SaveDataManager::GetInstance()->Save();
           return true; // オプションを閉じる
       }
@@ -164,7 +176,7 @@ bool OptionUI::Update(float deltaTime) {
           }
       }
 
-      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsKeyTriggered(DIK_TAB) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
           currentState_ = MenuState::TabSelect;
       }
 
@@ -226,7 +238,7 @@ bool OptionUI::Update(float deltaTime) {
           }
       }
 
-      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+      if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsKeyTriggered(DIK_TAB) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START) || input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
           currentState_ = MenuState::ItemSelect;
       }
       UpdateSelectHighlights();
@@ -265,7 +277,7 @@ bool OptionUI::IsSpriteVisibleInCurrentTab(Sprite* sp) const {
     if (!sp) return false;
 
     // 常に表示する背景など
-    if (sp == bgSprite_ || sp == titleSprite_) return true;
+    if (sp == optionBackSprite_ || sp == bgSprite_ || sp == titleSprite_) return true;
 
     // タブに依存するスプライト
     bool isAudio = (currentTopTab_ == (int)TopTab::AudioCamera);
