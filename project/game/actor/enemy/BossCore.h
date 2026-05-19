@@ -216,6 +216,8 @@ public:
     bool IsCompletelyDead() const { return isCompletelyDead_; }
     bool IsDyingSequence() const { return deathPhase_ > 0; }
 
+    bool IsHpHalfEventActive() const { return isHpHalfEventActive_; }
+
     // --- 攻撃力パラメータ管理 ---
     BossAttackParams& GetAttackParams() { return attackParams_; }
     void LoadAttackParams();

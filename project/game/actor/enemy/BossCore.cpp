@@ -634,6 +634,12 @@ void BossCore::Update(float deltaTime) {
             isHpHalfEventActive_ = false;
             hpHalfPhase_ = HpHalfEventPhase::None;
             isPlayerRotated_ = false; // 次回のためにリセット
+
+            if (target_) {
+                if (auto player = dynamic_cast<Player*>(target_)) {
+                    player->SetIsControlActive(true);
+                }
+            }
             SetColor(greenColor_);
             defaultColor_ = greenColor_;
             SetScale({ 1,1,1 });
@@ -1305,6 +1311,15 @@ void BossCore::TakeBodyDamage(float damage) {
         isHpHalfEventActive_ = true;
         hpHalfPhase_ = HpHalfEventPhase::WaitIdle;
         hpHalfEffectTimer_ = 0.0f;
+
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetIsControlActive(false);
+                player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player->SetTranslate({ 0.0f, 1.231f, -60.0f });
+                player->UpdateWorldMatrix();
+            }
+        }
 
         // ★ 追加：作成いただいたカメラアニメーション（JSON）を再生する
         // ゴーストレーダー（GhostRecorder）で作成されたアニメーションを直接再生（橋が落ちる処理と同じ方式）

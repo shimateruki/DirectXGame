@@ -1707,7 +1707,8 @@ void GamePlayScene::DrawShadow() {
 
 bool GamePlayScene::IsCinematicMode() const {
     bool isBossDying = boss_ && boss_->IsDyingSequence();
-    return (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying;
+    bool isBossHpHalf = boss_ && boss_->IsHpHalfEventActive();
+    return (movieState_ != MovieState::kNone) || isBossMoviePlaying_ || isBossDying || isBossHpHalf;
 }
 
 void GamePlayScene::UpdateUI(float deltaTime) {
