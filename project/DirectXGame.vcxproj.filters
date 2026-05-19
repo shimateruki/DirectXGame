@@ -231,6 +231,9 @@
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyBomb.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="game\system\EnemyFactory.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -877,6 +880,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\EnemySlime.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyBomb.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\system\EnemyFactory.h">

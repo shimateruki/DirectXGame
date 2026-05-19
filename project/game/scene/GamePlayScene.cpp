@@ -611,9 +611,15 @@ void GamePlayScene::DrawImGui() {
 
             ImGui::Separator();
             int lives = GameDataManager::GetInstance()->GetLives();
+            int coins = GameDataManager::GetInstance()->GetCoins();
             ImGui::Text(ICON_FA_HEART " Remaining Lives: %d", lives);
+            ImGui::Text(ICON_FA_COINS " Coins: %d / 100", coins);
             if (ImGui::Button("Reset Lives to 3")) {
                 GameDataManager::GetInstance()->ResetLives();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Reset Coins")) {
+                GameDataManager::GetInstance()->ResetCoins();
             }
         }
         else {

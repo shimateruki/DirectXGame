@@ -68,7 +68,7 @@
                 "fallDuration": 2.0,
                 "gimmickType": "",
                 "gravity": 50.0,
-                "hp": 6.0,
+                "hp": 3.0,
                 "interval": 3.0,
                 "jumpPower": 24.0,
                 "maxCount": 5,
@@ -80,15 +80,15 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                27.867902755737305,
-                -1.0916352272033691,
-                -28.065723419189453
+                -18.92867660522461,
+                -2.094257116317749,
+                -9.634703636169434
             ],
             "quaternion": [
-                3.6583756468644424e-08,
-                -0.15151603519916534,
-                -4.982970835953893e-08,
-                -0.9884548187255859
+                -6.036136568354777e-08,
+                -0.8430114984512329,
+                -1.3337043469618948e-08,
+                0.5378955602645874
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -97,15 +97,15 @@
             },
             "rotation": [
                 3.1415927410125732,
-                -2.8373889923095703,
+                1.1358774900436401,
                 3.1415927410125732
             ],
             "roughness": 0.16300000250339508,
             "saveCategory": "Object",
             "scale": [
-                1.0000003576278687,
-                1.0000003576278687,
-                1.0000003576278687
+                1.574066400527954,
+                1.520467758178711,
+                1.574066400527954
             ],
             "targetID": -1,
             "texturePath": "",
@@ -170,8 +170,8 @@
             "modelName": "heimen",
             "myEventID": -1,
             "name": "heimen_1",
-            "normalMapPath": "",
-            "ormMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rocky_terrain_02_nor_dx_2k.dds",
+            "ormMapPath": "Resources/texture/PBR/ARM/blue_metal_plate_arm_2k.dds",
             "parentName": "",
             "particleName": "",
             "position": [
@@ -198,12 +198,12 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                10.0,
+                2.0,
                 1.0,
-                10.0
+                2.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rocky_terrain_02_diff_2k.dds",
             "type": "Model"
         },
         {
@@ -287,7 +287,7 @@
             "particleName": "",
             "position": [
                 -21.00454330444336,
-                0.0,
+                -1.8695780038833618,
                 5.417048454284668
             ],
             "quaternion": [
@@ -398,7 +398,7 @@
             "particleName": "",
             "position": [
                 -1.2122493982315063,
-                0.0,
+                -1.8695780038833618,
                 -10.007573127746582
             ],
             "quaternion": [
@@ -509,7 +509,7 @@
             "particleName": "",
             "position": [
                 2.7634358406066895,
-                -2.095646619796753,
+                -2.097102642059326,
                 -1.9983301162719727
             ],
             "quaternion": [
@@ -531,9 +531,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8579657077789307,
-                1.213051438331604,
-                0.8579657077789307
+                0.9999998807907104,
+                1.000000238418579,
+                0.9999998807907104
             ],
             "targetID": -1,
             "texturePath": "",
@@ -799,9 +799,9 @@
             ],
             "quaternion": [
                 0.0,
+                -0.8463923931121826,
                 0.0,
-                0.0,
-                1.0
+                0.5325598120689392
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -810,7 +810,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                73.37987518310547,
                 0.0
             ],
             "roughness": 0.5,
@@ -1015,9 +1015,9 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                -2.116698980331421,
-                6.706893444061279,
-                -38.68240737915039
+                -3.931511163711548,
+                -2.097102642059326,
+                -42.577205657958984
             ],
             "quaternion": [
                 0.0,
@@ -1032,15 +1032,15 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                3.888164758682251,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8000003099441528,
-                1.299999475479126,
-                0.8000003099441528
+                0.9999998807907104,
+                1.000000238418579,
+                0.9999998807907104
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1464,10 +1464,10 @@
                 -51.2886848449707
             ],
             "quaternion": [
-                0.6386045813560486,
-                0.21777720749378204,
-                -0.20545655488967896,
-                0.7089040875434875
+                0.5139925479888916,
+                -0.48403093218803406,
+                0.43109145760536194,
+                0.5618594884872437
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -1476,7 +1476,7 @@
             },
             "rotation": [
                 1.4698195457458496,
-                0.477826327085495,
+                73.85770416259766,
                 -0.13083212077617645
             ],
             "roughness": 0.5,
@@ -1489,6 +1489,520 @@
             "targetID": 0,
             "texturePath": "",
             "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 8,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "block_15",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -7.301819801330566,
+                -0.33009159564971924,
+                -86.81629943847656
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                16.799964904785156,
+                1.287667989730835,
+                7.291374683380127
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.6399999856948853,
+                "flowSpeedY": 0.6700000166893005,
+                "waveFrequency": 1.899999976158142,
+                "waveHeight": 0.0,
+                "waveSpeed": 4.800000190734863
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 9,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "block_16",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -8.93728256225586,
+                -1.298118233680725,
+                -102.91119384765625
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                18.89468002319336,
+                1.0,
+                5.126369476318359
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                0.0,
+                0.5019307136535645,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 10,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "block_17",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -40.57000732421875,
+                3.5516629219055176,
+                -91.51929473876953
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                6.1576948165893555,
+                1.0,
+                4.290921211242676
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "BreakableBlock",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Gimmick_BreakableBlock",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "BreakableBlock",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -34.52289962768555,
+                0.8902531862258911,
+                -65.83971405029297
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                2.052000045776367
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.800000011920929,
+                0.4000000059604645,
+                0.10000000149011612,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "BreakableBlock",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "Gimmick_BreakableBlock",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                2.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
         }
     ]
 }

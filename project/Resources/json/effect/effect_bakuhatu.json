@@ -1,0 +1,101 @@
+{
+    "AutoLoop": true,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": true,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 2.0,
+    "CylinderRadius": 1.0,
+    "DistortionSpeed": 15.0,
+    "DistortionStrength": 0.05000000074505806,
+    "EasingType": 0,
+    "EdgeFadeStrength": 4.791999816894531,
+    "EnableDistortion": true,
+    "EnableReveal": false,
+    "EndColor": [
+        0.5,
+        0.0,
+        1.0,
+        0.0
+    ],
+    "EndScale": [
+        3.0,
+        3.0,
+        3.0
+    ],
+    "InnerRadius": 0.5,
+    "Intensity": 1.1100000143051147,
+    "Lifetime": 1.0,
+    "MeshSegments": 16,
+    "ModelName": "plane",
+    "NoiseTexturePath": "Resources/sprite/image3.png",
+    "OuterRadius": 4.0,
+    "PlaneSize": [
+        2.0,
+        2.0
+    ],
+    "Position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ProceduralType": 4,
+    "RampTexturePath": "Resources/sprite/abc.dds",
+    "RingInnerRadius": 0.5,
+    "RingOuterRadius": 1.0,
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        1.0,
+        0.0
+    ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        2.0,
+        2.0,
+        2.0,
+        1.0
+    ],
+    "StartScale": [
+        0.10000000149011612,
+        0.10000000149011612,
+        0.10000000149011612
+    ],
+    "TargetName": "",
+    "TexturePath": "",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.800000011920929,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.30000001192092896,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        1.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

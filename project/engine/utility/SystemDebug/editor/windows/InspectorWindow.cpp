@@ -698,7 +698,7 @@ void InspectorWindow::DrawSpawnerSettings() {
         strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
     }
 
-    const char* enemyTypes[] = { "Slime", };
+    const char* enemyTypes[] = { "Slime", "Bomb" };
     int currentTypeIndex = -1;
     for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
         if (p.enemyType == enemyTypes[i]) currentTypeIndex = i;
@@ -721,7 +721,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* enemyTypes[] = { "Slime", "BossCore" };
+    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;
@@ -754,7 +754,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin" };
     std::string currentType = selectedObject->GetGimmickType();
 
     int currentIndex = 0;
@@ -766,12 +766,52 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     }
 
     if (ImGui::Combo("ギミックの種類 (Gimmick Type)", &currentIndex, gimmickTypes, IM_ARRAYSIZE(gimmickTypes))) {
-        selectedObject->SetGimmickType(gimmickTypes[currentIndex]);
+        std::string selectedGimmickType = gimmickTypes[currentIndex];
+        selectedObject->SetGimmickType(selectedGimmickType);
         
         if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
-        selectedObject->param_->gimmickType = gimmickTypes[currentIndex];
+        selectedObject->param_->gimmickType = selectedGimmickType;
         
-        selectedObject->SetName("Gimmick_" + std::string(gimmickTypes[currentIndex]));
+        // 各ギミックに合わせた初期状態（エディタ上のデフォルト初期値）を設定
+        if (selectedGimmickType == "BreakableBlock") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_BreakableBlock");
+            selectedObject->SetModel("block");
+            selectedObject->SetColor({ 0.8f, 0.4f, 0.1f, 1.0f }); // 壊せそうな土褐色・レンガ色
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+            
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "Coin") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_Coin");
+            selectedObject->SetModel("sphere");
+            selectedObject->SetColor({ 1.0f, 0.9f, 0.0f, 1.0f }); // ゴールドイエロー
+            selectedObject->SetScale({ 0.6f, 0.6f, 0.15f }); // 薄いコインの形
+            
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kSphere;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+            selectedObject->SetCollisionRadius(1.0f);
+        }
+        else if (selectedGimmickType == "Default") {
+            selectedObject->SetClassName("Default");
+            selectedObject->SetName("Cube");
+        }
+        else {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_" + selectedGimmickType);
+        }
     }
     
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成されるギミッククラスを指定します。");

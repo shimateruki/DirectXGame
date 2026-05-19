@@ -1,5 +1,6 @@
 #include "EnemyFactory.h"
 #include "EnemySlime.h"
+#include "EnemyBomb.h"
 #include <BossCore.h>
 #include "SceneManager.h"
 // 他の敵ができたらここに追加 (#include "EnemyRobot.h" 等)
@@ -52,6 +53,26 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(boss);
     }
+    else if (enemyName == "Bomb")
+    {
+        auto bomb = std::make_unique<EnemyBomb>();
+        
+        bomb->Initialize(common, "sphere");
+
+        if (!bomb->param_.has_value()) {
+            bomb->param_.emplace();
+        }
+
+        // ボム用ステータス設定
+        auto& p = bomb->param_.value();
+        p.hp = 30.0f;          // 体力
+        p.maxHp = 30.0f;
+        p.speed = 0.04f;       // スライムよりやや遅くじわじわ追いかける
+        p.gravity = 60.0f;     // 通常重力
+
+        newEnemy = std::move(bomb);
+    }
+
 
     //:作った敵に「名札」をつける
     if (newEnemy) {

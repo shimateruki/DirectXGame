@@ -29,6 +29,7 @@ public:
         }
 
         data["lives"] = lives_;
+        data["coins"] = coins_;
         data["clearedStages"] = clearedStages_; // クリア済みステージのインデックス
 
         // スターコイン情報の保存
@@ -59,6 +60,7 @@ public:
         file.close();
 
         if (data.contains("lives")) lives_ = data["lives"];
+        if (data.contains("coins")) coins_ = data["coins"];
         if (data.contains("clearedStages")) clearedStages_ = data["clearedStages"].get<std::vector<int>>();
         
         if (data.contains("starCoins")) {
@@ -74,6 +76,18 @@ public:
     int GetLives() const { return lives_; }
     void SubtractLife() { lives_--; if (lives_ < 0) lives_ = 0; Save(); }
     void ResetLives() { lives_ = 3; Save(); }
+
+    // --- コイン操作 ---
+    int GetCoins() const { return coins_; }
+    void AddCoin(int amount = 1) {
+        coins_ += amount;
+        while (coins_ >= 100) {
+            coins_ -= 100;
+            lives_++;
+        }
+        Save();
+    }
+    void ResetCoins() { coins_ = 0; Save(); }
 
     // --- ステージクリア状況 ---
     void MarkStageCleared(int index) {
@@ -108,16 +122,18 @@ public:
 
     void ResetAll() {
         lives_ = 3;
+        coins_ = 0;
         clearedStages_.clear();
         stageStarCoins_.clear();
         Save();
     }
 
 private:
-    GameDataManager() : lives_(3) {}
+    GameDataManager() : lives_(3), coins_(0) {}
     ~GameDataManager() = default;
 
     int lives_ = 3;
+    int coins_ = 0;
     std::vector<int> clearedStages_;
     std::map<int, std::vector<bool>> stageStarCoins_; // ステージ番号 -> [コイン0, コイン1, コイン2]
 };

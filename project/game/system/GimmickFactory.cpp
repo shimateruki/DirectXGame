@@ -4,6 +4,8 @@
 #include "GimmickTrampoline.h"
 #include "GimmickChikuwaBlock.h"
 #include "GimmickBlinkBlock.h"
+#include "GimmickBreakableBlock.h"
+#include "GimmickCoin.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -41,6 +43,18 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto blink = std::make_unique<GimmickBlinkBlock>();
         blink->Initialize(common, "block");
         newGimmick = std::move(blink);
+    }
+    // 壊せるブロックの場合
+    else if (gimmickName == "BreakableBlock") {
+        auto breakable = std::make_unique<GimmickBreakableBlock>();
+        breakable->Initialize(common, "block");
+        newGimmick = std::move(breakable);
+    }
+    // コインの場合
+    else if (gimmickName == "Coin") {
+        auto coin = std::make_unique<GimmickCoin>();
+        coin->Initialize(common, "sphere"); // sphereモデルをデフォルトに設定
+        newGimmick = std::move(coin);
     }
 
     // 該当するギミックがない場合、またはベースを直接生成する場合
