@@ -290,4 +290,17 @@ private:
     uint32_t bossContainerTopParticleId_ = 0;
     uint32_t bossContainerBottomParticleId_ = 0;
 
+    // ボス・バリアアイコン用
+    Sprite* bossIconSprite_ = nullptr;
+    Sprite* shieldIconSprite_ = nullptr;
+
+    // シェイク用変数
+    Vector2 bossIconBasePos_;
+    float bossIconShakeTimer_ = 0.0f;
+    float bossIconShakeIntensity_ = 0.0f;
+
+    Vector2 shieldIconBasePos_;
+    float shieldIconShakeTimer_ = 0.0f;
+    float shieldIconShakeIntensity_ = 0.0f;
+
 };

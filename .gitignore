@@ -370,3 +370,4 @@ FodyWeavers.xsd
 /project/GameLog.txt
 .aider*
 /project/Resources/json/save/savedata.json
+/project/Resources/json/user_config.json

@@ -272,6 +272,7 @@ private:
     std::vector<Vector3> blockStartRot_;
     std::vector<Vector3> blockTargetRot_;
     Vector3 startBattlePos_ = { 0.0f, 4.0f, 0.0f };
+    Vector3 startIdlePos_ = { 0.0f, 4.0f, 0.0f };
 
     float barrierHp_ = 100.0f;
     float maxBarrierHp_ = 100.0f;
@@ -281,6 +282,8 @@ private:
     Object3d* warningArea_ = nullptr;
 
     Vector4 originalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector4 greenColor_ = { 0.0f, 1.0f, 0.0f, 1.0f };
+    std::vector<Vector4> savedBlockColors_;
 
     // ==========================================
     // 現在実行中の新しい攻撃クラスを保持するポインタ
@@ -331,6 +334,8 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
+    void SetBlockColor(Object3d* block, const Vector4& color);
+    void SaveOriginalColors();
 
 
     // --- private: に追加 ---
@@ -365,6 +370,7 @@ private:
     bool isHpHalfEventActive_ = false;
     float hpHalfEffectTimer_ = 0.0f;
     bool isPlayerRotated_ = false;  // 演出中に一度だけ向きを合わせるためのフラグ
+    bool hasResetColorPreAttack_ = false; // 攻撃の1秒前に色を水色に戻したかどうかのフラグ
     PostEffect::Params basePostEffectParams_{};
 
     // 演出用の一時変数

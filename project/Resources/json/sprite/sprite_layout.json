@@ -3,6 +3,28 @@
         {
             "anchor": [
                 0.5,
+                0.5
+            ],
+            "color": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "option/poseBack.png",
+            "position": [
+                768.0,
+                432.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "white.png"
+        },
+        {
+            "anchor": [
+                0.5,
                 0.0
             ],
             "color": [
@@ -14,7 +36,7 @@
             "name": "bossText",
             "position": [
                 768.0,
-                0.0
+                20.0
             ],
             "size": [
                 120.0,
@@ -102,7 +124,7 @@
             "name": "bossHpBarback",
             "position": [
                 749.1428833007813,
-                41.97353744506836
+                70.0
             ],
             "size": [
                 485.0,
@@ -124,7 +146,7 @@
             "name": "bossDamageBar",
             "position": [
                 508.0,
-                41.9739990234375
+                70.0
             ],
             "size": [
                 482.0,
@@ -146,7 +168,7 @@
             "name": "bossrHpBar",
             "position": [
                 508.0,
-                41.9739990234375
+                70.0
             ],
             "size": [
                 482.0,
@@ -168,10 +190,10 @@
             "name": "barrierDamageBar",
             "position": [
                 505.0,
-                92.94139862060547
+                140.0
             ],
             "size": [
-                485.0,
+                452.6666564941406,
                 9.0
             ],
             "texture": "white.png"
@@ -190,10 +212,10 @@
             "name": "bariaHp.png",
             "position": [
                 505.0,
-                92.94139862060547
+                140.0
             ],
             "size": [
-                485.0,
+                452.6666564941406,
                 9.0
             ],
             "texture": "white.png"
@@ -524,7 +546,7 @@
             ],
             "size": [
                 400.0,
-                96.0
+                0.0
             ],
             "texture": "missonText/missionText_go.png"
         },
@@ -612,7 +634,7 @@
             ],
             "size": [
                 400.0,
-                96.0
+                0.0
             ],
             "texture": "missonText/missionText_lever.png"
         },
@@ -637,6 +659,270 @@
                 60.0
             ],
             "texture": "optionText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/cameraSaundUI.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/cameraSaundUI.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/optionUI.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/optionUI.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/optionUI_A.png",
+            "position": [
+                230.0,
+                90.0
+            ],
+            "size": [
+                38.400001525878906,
+                38.400001525878906
+            ],
+            "texture": "option/optionUI_A.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/optionUI_D.png",
+            "position": [
+                1125.0,
+                90.0
+            ],
+            "size": [
+                38.400001525878906,
+                38.400001525878906
+            ],
+            "texture": "option/optionUI_D.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/UI_selectLeft.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/UI_selectLeft.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/UI_selectRight.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/UI_selectRight.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "emissive": 1.0,
+            "name": "option/BGM_select.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/BGM_select.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "emissive": 1.0,
+            "name": "option/camera_select.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/camera_select.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                0.5,
+                0.5,
+                0.5
+            ],
+            "emissive": 1.0,
+            "name": "option/SE_select.png",
+            "position": [
+                770.0,
+                440.0
+            ],
+            "size": [
+                1536.0,
+                864.0
+            ],
+            "texture": "option/SE_select.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "option/operationUI.png",
+            "position": [
+                1150.0,
+                810.0
+            ],
+            "size": [
+                700.0,
+                52.5
+            ],
+            "texture": "option/operationUI.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "bossIcon.png",
+            "position": [
+                460.0,
+                80.0
+            ],
+            "size": [
+                70.0,
+                70.0
+            ],
+            "texture": "bossIcon.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "shieldIcon.png",
+            "position": [
+                460.0,
+                140.0
+            ],
+            "size": [
+                50.0,
+                50.0
+            ],
+            "texture": "shieldIcon.png"
         }
     ]
 }
