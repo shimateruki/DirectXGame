@@ -1297,6 +1297,8 @@ void BossCore::TakeBodyDamage(float damage) {
         SetScale({ 1.0f, 1.0f, 1.0f });     // スケールをリセット(S)
         SetRotation({ 0.0f, 0.0f, 0.0f });  // 回転をリセット(R)
         flyingBlocks_.clear();
+        FullyRecoverBarrierAndArmor();
+
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             if (armorBlocks_[i]) {
                 armorBlocks_[i]->SetParent(this);
@@ -1305,6 +1307,7 @@ void BossCore::TakeBodyDamage(float damage) {
                 armorBlocks_[i]->SetTranslate(orbit.pos);
                 armorBlocks_[i]->SetRotation(orbit.rot);
                 armorBlocks_[i]->SetScale(orbit.scale);
+                armorBlocks_[i]->SetCollisionAttribute(kGround);
             }
         }
 
