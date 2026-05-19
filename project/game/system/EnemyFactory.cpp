@@ -36,7 +36,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto bomb = std::make_unique<EnemyBomb>();
 
         // ボム用のモデル名を指定
-        bomb->Initialize(common, "block");
+        bomb->Initialize(common, "sphere");
 
         if (!bomb->param_.has_value()) {
             bomb->param_.emplace();

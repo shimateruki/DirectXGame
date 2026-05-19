@@ -2102,6 +2102,7 @@ void GamePlayScene::DrawImGui() {
                 ImGui::DragFloat("ファンネルレーザー攻撃力 (技9)", &params.damageFunnels, 0.5f, 0.0f, 150.0f);
                 ImGui::DragFloat("スライム接触ダメージ", &params.damageSlime, 0.5f, 0.0f, 100.0f);
                 ImGui::DragFloat("ボム爆発ダメージ", &params.damageBomb, 0.5f, 0.0f, 150.0f);
+                ImGui::DragFloat("ボム跳ね返しボスダメージ", &params.damageBombReflect, 0.5f, 0.0f, 150.0f);
 
                 ImGui::Separator();
                 ImGui::Text("=== ボス攻撃パターン・確率設定 ===");

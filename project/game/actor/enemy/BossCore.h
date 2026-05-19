@@ -31,6 +31,7 @@ struct BossAttackParams {
     float damageFunnels = 12.0f;   // ファンネル (Attack 9)
     float damageSlime = 8.0f;      // スライム体当たり
     float damageBomb = 30.0f;      // ボム爆発
+    float damageBombReflect = 20.0f; // ボム跳ね返しボスダメージ
     float maxBarrierHp = 100.0f;   // ボス最大バリアHP
     float maxArmorBlockHp = 100.0f; // ボス最大装甲ブロックHP
 
@@ -50,6 +51,7 @@ struct BossAttackParams {
         j["damageFunnels"] = damageFunnels;
         j["damageSlime"] = damageSlime;
         j["damageBomb"] = damageBomb;
+        j["damageBombReflect"] = damageBombReflect;
         j["maxBarrierHp"] = maxBarrierHp;
         j["maxArmorBlockHp"] = maxArmorBlockHp;
 
@@ -77,6 +79,7 @@ struct BossAttackParams {
         if (j.contains("damageFunnels")) damageFunnels = j["damageFunnels"];
         if (j.contains("damageSlime")) damageSlime = j["damageSlime"];
         if (j.contains("damageBomb")) damageBomb = j["damageBomb"];
+        if (j.contains("damageBombReflect")) damageBombReflect = j["damageBombReflect"];
         if (j.contains("maxBarrierHp")) maxBarrierHp = j["maxBarrierHp"];
         if (j.contains("maxArmorBlockHp")) maxArmorBlockHp = j["maxArmorBlockHp"];
 
