@@ -311,8 +311,8 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             // 次の往復のために状態を戻す
             boss->SetScale({ 1.0f, 1.0f, 1.0f });
 
-            if (wallStep_ < 4) {
-                animPhase_ = 39; // まだ4回終わってなければ次へ
+            if (wallStep_ < 2) {
+                animPhase_ = 39; // まだ2回終わってなければ次へ
             }
             else {
                 Player* player = dynamic_cast<Player*>(boss->GetTarget());
@@ -320,7 +320,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                     player->SetForceLockOnTarget(nullptr);
                     player->RequestClearLockOn();
                 }
-                animPhase_ = 43; // 4回終わったら復帰フェーズへ
+                animPhase_ = 43; // 2回終わったら復帰フェーズへ
             }
             animTimer_ = 0.0f;
         }

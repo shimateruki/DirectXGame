@@ -36,6 +36,9 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     mover_ = std::make_unique<PlayerMover>();
     mover_->Initialize(this, inputManager, particleSystem);
 
+    // 静的変数をリセット（前世のゴミデータ影響を防ぐ）
+    ResetPlayerStateStatics();
+
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
 }

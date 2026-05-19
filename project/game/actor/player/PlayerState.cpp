@@ -416,6 +416,18 @@ static struct PendingIdleBlend {
 } s_pendingIdleBlend;
 
 // ========================================================
+// 静的変数のリセット関数（シーン切り替えやリトライ時の初期化用）
+// ========================================================
+void ResetPlayerStateStatics() {
+  s_bodyBlendActive = false;
+  s_bodyStartY = 0.0f;
+  s_bodyTargetY = 0.0f;
+  s_bodyStartRotVec = {0, 0, 0};
+  s_bodyTargetRotVec = {0, 0, 0};
+  s_pendingIdleBlend = {};
+}
+
+// ========================================================
 // 待機状態 (Idle)
 // ========================================================
 void PlayerStateIdle::Enter(Player *player) {
@@ -598,6 +610,8 @@ void PlayerStateIdle::Update(Player *player) {
       swordDefaultLocalPos_ = swordObj_->GetTransform()->translate;
       swordDefaultWorldPos_ = swordObj_->GetWorldPosition();
       swordSaved_ = true;
+      // 剣がアタッチされた直後のこのタイミングで確実に初期判定（64）を無効化する
+      SetSwordActive(player, false);
     }
   }
 
@@ -3135,7 +3149,8 @@ void PlayerStatePlungeAttack::Exit(Player *player) {
     // - 可能なら bodyObj_ に再アタッチしてローカル位置を復元する（手元に戻す）
     // - bodyObj_ が無ければワールド座標を復元する
     if (swordObj_->GetParent() == nullptr) {
-      if (bodyObj_) {
+      Object3d* targetParent = rightArmObj_ ? rightArmObj_ : bodyObj_;
+      if (targetParent) {
         // 再アタッチする場合は、"保存したワールド座標/回転"
         // を親の逆行列でローカル行列に変換してから適用する。
         // これにより、親が変化してもワールド空間で期待される位置回転を保ちつつローカルに正しく戻せる。
@@ -3144,7 +3159,7 @@ void PlayerStatePlungeAttack::Exit(Player *player) {
         Matrix4x4 desiredWorld = Math::MakeAffineMatrix(
             stf->scale, swordDefaultWorldRot_, swordDefaultWorldPos_);
         // 2) 親のワールド行列の逆を掛けてローカル行列を得る
-        Matrix4x4 parentWorld = bodyObj_->GetWorldMatrix();
+        Matrix4x4 parentWorld = targetParent->GetWorldMatrix();
         Matrix4x4 invParent = Math::Inverse(parentWorld);
         Matrix4x4 localMat = Math::Multiply(desiredWorld, invParent);
         // 3) localMat から位置・回転・スケールを抜き出して Transform に設定
@@ -3170,7 +3185,7 @@ void PlayerStatePlungeAttack::Exit(Player *player) {
 
         // 再アタッチ -> 内部で UpdateWorldMatrix
         // が呼ばれるはずだが、確実に更新する
-        swordObj_->SetParent(bodyObj_);
+        swordObj_->SetParent(targetParent);
         swordObj_->UpdateLocalMatrix();
         swordObj_->UpdateWorldMatrix();
       } else {

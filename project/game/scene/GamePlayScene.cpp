@@ -1798,10 +1798,10 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             bool isBossStunned = (boss_->GetState() == BossCore::State::Weak);
 
             if (isBossStunned) {
-                // スタン（ダウン）中はバーを0で固定し、復帰を待つ
-                barrierVisualMain_ = 0.0f;
-                barrierVisualDamage_ = 0.0f;
-                barrierPrevHpRatio_ = bRatio; // 内部的には100%になっていても、ここでは現在の値（1.0）を追従させておく
+                // スタン（ダウン）中は、スタンゲージの回復（0 -> 100%）を直接表示する
+                barrierVisualMain_ = bRatio;
+                barrierVisualDamage_ = bRatio;
+                barrierPrevHpRatio_ = bRatio;
             }
             else {
                 // 1. ダメージを受けた瞬間を検知
@@ -2170,6 +2170,9 @@ void GamePlayScene::DrawImGui() {
                 ImGui::Separator();
                 ImGui::DragFloat("ボス 最大バリアHP", &params.maxBarrierHp, 1.0f, 10.0f, 1000.0f);
                 ImGui::DragFloat("装甲ブロック単体のHP", &params.maxArmorBlockHp, 1.0f, 10.0f, 1000.0f);
+                ImGui::DragFloat("ボス スタン時間 (秒)", &params.stunDuration, 0.1f, 1.0f, 60.0f);
+                ImGui::DragInt("低装甲時 吸収トリガー数", &params.lowArmorThreshold, 0.1f, 0, 10);
+                ImGui::SliderInt("低装甲時 吸収発動確率 (％)", &params.lowArmorAbsorbRate, 0, 100);
 
                 if (ImGui::Button("ボスバリア・全装甲を全回復")) {
                     boss_->FullyRecoverBarrierAndArmor();

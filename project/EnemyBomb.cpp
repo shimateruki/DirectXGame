@@ -320,7 +320,7 @@ bool EnemyBomb::OnCollision(Object3d* other) {
                 if (Math::Length(hitDir) > 0.001f) hitDir = Math::Normalize(hitDir);
             }
 
-            if (hitCount_ >= 3) {
+            if (hitCount_ >= 1) {
                 // 吹き飛ばし開始
                 isBlownAway_ = true;
                 state_ = State::Chase; // 点火カウントダウンを解除して飛ぶ

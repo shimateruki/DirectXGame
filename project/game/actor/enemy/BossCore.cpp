@@ -1137,38 +1137,65 @@ void BossCore::ChangeState(State nextState) {
         // HP半分イベントがトリガーされたら第2形態のテーブル、それ以外なら第1形態のテーブルを使用
         const auto& attackPool = isHpHalfTriggered_ ? attackParams_.phase2Attacks : attackParams_.phase1Attacks;
 
-        for (const auto& a : attackPool) {
-            // 他に候補がある場合は、連続して同じ攻撃を出すのを防ぐ
-            if (attackPool.size() > 1 && a.id == lastAttack) continue;
-            if (a.id == 7 && IsArmorFull()) continue;
-            candidates.push_back(a);
-            totalWeight += a.weight;
+        // 現在生きている（破壊されていない）装甲ブロックの数を数える
+        int activeArmorCount = 0;
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            if (!blockBroken_[i]) {
+                activeArmorCount++;
+            }
         }
 
-        // 連続制限などで候補が空になってしまった場合のセーフティ
-        if (candidates.empty() && !attackPool.empty()) {
+        // 残りの壊れていない装甲がしきい値以下、かつ満タンでない場合に発動
+        bool isLowArmorTriggered = (activeArmorCount <= attackParams_.lowArmorThreshold) && !IsArmorFull();
+
+        int nextAttack = 1;
+        bool isForcedAbsorb = false;
+
+        if (isLowArmorTriggered) {
+            // 0〜99の乱数を取得し、設定された確率（％）未満なら「吸収攻撃 (ID: 7)」を確定させる！
+            int roll = std::rand() % 100;
+            if (roll < attackParams_.lowArmorAbsorbRate) {
+                nextAttack = 7;
+                isForcedAbsorb = true;
+            }
+        }
+
+        if (!isForcedAbsorb) {
+            // 通常通りの重み付き抽選を行う
             for (const auto& a : attackPool) {
+                // 他に候補がある場合は、連続して同じ攻撃を出すのを防ぐ
+                if (attackPool.size() > 1 && a.id == lastAttack) continue;
+                // 通常抽選からは、装甲満タン時の吸収攻撃のみ除外
                 if (a.id == 7 && IsArmorFull()) continue;
+
                 candidates.push_back(a);
                 totalWeight += a.weight;
             }
-        }
 
-        int nextAttack = 1;
-        if (totalWeight > 0) {
-            int randomVal = std::rand() % totalWeight;
-            int currentSum = 0;
-            for (const auto& c : candidates) {
-                currentSum += c.weight;
-                if (randomVal < currentSum) {
-                    nextAttack = c.id;
-                    break;
+            // 連続制限などで候補が空になってしまった場合のセーフティ
+            if (candidates.empty() && !attackPool.empty()) {
+                for (const auto& a : attackPool) {
+                    if (a.id == 7 && IsArmorFull()) continue;
+                    candidates.push_back(a);
+                    totalWeight += a.weight;
                 }
             }
-        }
-        else if (!attackPool.empty()) {
-            // 重みが設定されていない場合のセーフティ
-            nextAttack = attackPool[std::rand() % attackPool.size()].id;
+
+            if (totalWeight > 0) {
+                int randomVal = std::rand() % totalWeight;
+                int currentSum = 0;
+                for (const auto& c : candidates) {
+                    currentSum += c.weight;
+                    if (randomVal < currentSum) {
+                        nextAttack = c.id;
+                        break;
+                    }
+                }
+            }
+            else if (!attackPool.empty()) {
+                // 重みが設定されていない場合のセーフティ
+                nextAttack = attackPool[std::rand() % attackPool.size()].id;
+            }
         }
 
         lastAttack = nextAttack;
@@ -1479,7 +1506,17 @@ void BossCore::UpdateIdle(float deltaTime) {
 
 void BossCore::UpdateWeak(float deltaTime) {
     float actionDelta = deltaTime * kBaseSpeedMultiplier;
-    animTimer_ += deltaTime; // スタン時間は実時間
+    float duration = attackParams_.stunDuration;
+    float wakeUpStart = duration > 2.0f ? duration - 2.0f : duration * 0.666f;
+    float wakeUpDuration = duration - wakeUpStart;
+
+    // スタンゲージ（barrierHp_）を duration 秒かけて0からmaxBarrierHp_まで回復（実時間で回復）
+    barrierHp_ += (maxBarrierHp_ / duration) * deltaTime;
+    if (barrierHp_ > maxBarrierHp_) {
+        barrierHp_ = maxBarrierHp_;
+    }
+    // ゲージの回復進捗に合わせてアニメーションタイマー(0.0s〜duration)を逆算同期
+    animTimer_ = (barrierHp_ / maxBarrierHp_) * duration;
 
     // --- コア本体の落下・転がり（コロン）・復帰 ---
     Vector3 bossPos = GetTranslate();
@@ -1494,9 +1531,9 @@ void BossCore::UpdateWeak(float deltaTime) {
         rollAngle = Math::Lerp(0.0f, 90.0f * (std::numbers::pi_v<float> / 180.0f), easeT);
         SetTranslate(bossPos);
     }
-    // 2. 起き上がり（最後の2秒：4.0s〜6.0s）
-    else if (animTimer_ > 4.0f) {
-        float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
+    // 2. 起き上がり（最後の wakeUpDuration 秒）
+    else if (animTimer_ > wakeUpStart) {
+        float wakeUpT = (animTimer_ - wakeUpStart) / wakeUpDuration;
         float easeT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // ふわりと浮くEaseOut
         float targetHoverY = 4.0f + std::sin(s_globalIdleTimer * 1.5f) * 0.3f; // 待機浮遊アニメのY座標にブレンド
         bossPos.y = Math::Lerp(0.5f, targetHoverY, easeT);
@@ -1514,11 +1551,11 @@ void BossCore::UpdateWeak(float deltaTime) {
 
     // --- フリッカー（点滅）エフェクト ---
     int flicker = static_cast<int>(animTimer_ * 15.0f) % 4; // ランダムっぽくチカチカさせる
-    bool isLightOn = (flicker == 0 && animTimer_ < 4.0f);
+    bool isLightOn = (flicker == 0 && animTimer_ < wakeUpStart);
 
-    if (animTimer_ > 4.0f) {
+    if (animTimer_ > wakeUpStart) {
         // 起き上がり中は徐々に元の色に戻す
-        float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
+        float wakeUpT = (animTimer_ - wakeUpStart) / wakeUpDuration;
         Vector4 color;
         color.x = Math::Lerp(0.3f, originalColor_.x, wakeUpT);
         color.y = Math::Lerp(0.3f, originalColor_.y, wakeUpT);
@@ -1554,8 +1591,8 @@ void BossCore::UpdateWeak(float deltaTime) {
             }
 
             // 起き上がり中のブロック補間（コアへスムーズに戻る）
-            if (animTimer_ > 4.0f) {
-                float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
+            if (animTimer_ > wakeUpStart) {
+                float wakeUpT = (animTimer_ - wakeUpStart) / wakeUpDuration;
                 float returnEaseT = 1.0f - std::pow(1.0f - wakeUpT, 3.0f); // OutCubic
                 
                 OrbitData orbit = GetIdleOrbit(i);
@@ -1590,8 +1627,8 @@ void BossCore::UpdateWeak(float deltaTime) {
             armorBlocks_[i]->GetTransform()->isQuaternionMaster = false;
 
             // ブロックも点滅
-            if (animTimer_ > 4.0f) {
-                float wakeUpT = (animTimer_ - 4.0f) / 2.0f;
+            if (animTimer_ > wakeUpStart) {
+                float wakeUpT = (animTimer_ - wakeUpStart) / wakeUpDuration;
                 armorBlocks_[i]->SetColor({ 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 0.3f + wakeUpT * 0.7f, 1.0f });
             }
             else {
@@ -1600,8 +1637,8 @@ void BossCore::UpdateWeak(float deltaTime) {
         }
     }
 
-    // --- 6秒経過でステート復帰 ---
-    if (animTimer_ >= 6.0f) {
+    // --- duration 秒経過でステート復帰 ---
+    if (animTimer_ >= duration) {
         animTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         SetColor(originalColor_);
@@ -1776,7 +1813,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
 
     if (barrierHp_ <= 0.0f) {
         DebugConsole::GetInstance()->AddLog("★★★ Barrier BROKEN! ★★★");
-        barrierHp_ = maxBarrierHp_;
+        barrierHp_ = 0.0f; // スタン開始時はゲージを0にする（ここから全回復に向けて増加）
 
         if (currentAttack_) currentAttack_.reset(); // ★ ダウン時の攻撃を強制終了！
         animTimer_ = 0.0f;

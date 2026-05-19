@@ -34,9 +34,12 @@ struct BossAttackParams {
     float damageBombReflect = 20.0f; // ボム跳ね返しボスダメージ
     float maxBarrierHp = 100.0f;   // ボス最大バリアHP
     float maxArmorBlockHp = 100.0f; // ボス最大装甲ブロックHP
+    float stunDuration = 6.0f;     // スタン時間（秒）
+    int lowArmorThreshold = 3;     // 残り装甲ブロック数がこの個数以下の場合に発動
+    int lowArmorAbsorbRate = 90;   // 低装甲時の吸収攻撃(ID: 7)の発動確率（0〜100%）
 
-    std::vector<AttackWeight> phase1Attacks; // 第1形態の攻撃抽選テーブル (HP > 50%)
-    std::vector<AttackWeight> phase2Attacks; // 第2形態の攻撃抽選テーブル (HP <= 50%)
+    std::vector<AttackWeight> phase1Attacks; // 第1形態 of 攻撃抽選テーブル (HP > 50%)
+    std::vector<AttackWeight> phase2Attacks; // 第2形態 of 攻撃抽選テーブル (HP <= 50%)
 
     // JSON変換用
     void ToJson(json& j) const {
@@ -54,6 +57,9 @@ struct BossAttackParams {
         j["damageBombReflect"] = damageBombReflect;
         j["maxBarrierHp"] = maxBarrierHp;
         j["maxArmorBlockHp"] = maxArmorBlockHp;
+        j["stunDuration"] = stunDuration;
+        j["lowArmorThreshold"] = lowArmorThreshold;
+        j["lowArmorAbsorbRate"] = lowArmorAbsorbRate;
 
         json j1 = json::array();
         for (const auto& a : phase1Attacks) {
@@ -82,6 +88,9 @@ struct BossAttackParams {
         if (j.contains("damageBombReflect")) damageBombReflect = j["damageBombReflect"];
         if (j.contains("maxBarrierHp")) maxBarrierHp = j["maxBarrierHp"];
         if (j.contains("maxArmorBlockHp")) maxArmorBlockHp = j["maxArmorBlockHp"];
+        if (j.contains("stunDuration")) stunDuration = j["stunDuration"];
+        if (j.contains("lowArmorThreshold")) lowArmorThreshold = j["lowArmorThreshold"];
+        if (j.contains("lowArmorAbsorbRate")) lowArmorAbsorbRate = j["lowArmorAbsorbRate"];
 
         if (j.contains("phase1Attacks")) {
             phase1Attacks.clear();
