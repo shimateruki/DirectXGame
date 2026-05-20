@@ -44,6 +44,8 @@ private:
     // プリセット名と写真のヒモヅケ辞書
     std::map<std::string, ThumbnailData> presetThumbnailAlbum_; // 追加
     const int kThumbnailSize = 256; // 写真の高解像度サイズ
+    
+    std::string currentModelDirectory_ = "Resources/3DModel/";
 
     // 撮影専用システム
     Camera studioCamera_;

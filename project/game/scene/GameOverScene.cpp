@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "GameOverScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -31,7 +31,7 @@ void GameOverScene::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
 
     // --- 2. リソースのロード ---
-    ModelManager::GetInstance()->LoadModel("player");
+    ModelManager::GetInstance()->LoadModel("Characters/player");
     LOG("GameOverScene Initialized!");
 
     bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/GameOver.mp3");

@@ -1,4 +1,4 @@
-#include "EnemyFactory.h"
+﻿#include "EnemyFactory.h"
 #include "EnemySlime.h"
 #include "EnemyBomb.h"
 #include <BossCore.h>
@@ -16,7 +16,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto slime = std::make_unique<EnemySlime>();
 
         // 1. 初期化 (モデル読み込み)
-        slime->Initialize(common, "block");
+        slime->Initialize(common, "Stages/block");
 
         if (!slime->param_.has_value()) {
             slime->param_.emplace();
@@ -38,7 +38,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
      
     boss->SetSceneManager(SceneManager::GetInstance());
         // 2. 引数を気にせずオーバーライドした Initialize を呼べる！
-        boss->Initialize(common, "block");
+        boss->Initialize(common, "Stages/block");
 
         if (!boss->param_.has_value()) {
             boss->param_.emplace();
@@ -57,7 +57,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     {
         auto bomb = std::make_unique<EnemyBomb>();
         
-        bomb->Initialize(common, "sphere");
+        bomb->Initialize(common, "Primitives/sphere");
 
         if (!bomb->param_.has_value()) {
             bomb->param_.emplace();
@@ -80,7 +80,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     } else {
         // デフォルト（ただの置物）の場合
         newEnemy = std::make_unique<BaseEnemy>();
-        newEnemy->Initialize(common, "cube");
+        newEnemy->Initialize(common, "Primitives/cube");
         newEnemy->SetEnemyType(""); // 特になし
     }
 

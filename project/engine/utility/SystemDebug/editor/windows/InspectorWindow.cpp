@@ -1,4 +1,4 @@
-#include "InspectorWindow.h"
+﻿#include "InspectorWindow.h"
 #include "DebugEditor.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -776,7 +776,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         if (selectedGimmickType == "BreakableBlock") {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_BreakableBlock");
-            selectedObject->SetModel("block");
+            selectedObject->SetModel("Stages/block");
             selectedObject->SetColor({ 0.8f, 0.4f, 0.1f, 1.0f }); // 壊せそうな土褐色・レンガ色
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
             
@@ -791,7 +791,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         else if (selectedGimmickType == "Coin") {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_Coin");
-            selectedObject->SetModel("sphere");
+            selectedObject->SetModel("Primitives/sphere");
             selectedObject->SetColor({ 1.0f, 0.9f, 0.0f, 1.0f }); // ゴールドイエロー
             selectedObject->SetScale({ 0.6f, 0.6f, 0.15f }); // 薄いコインの形
             

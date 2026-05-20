@@ -56,7 +56,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "slime.gltf",
+            "modelName": "Characters/slime",
             "myEventID": -1,
             "name": "block_0",
             "normalMapPath": "",
@@ -103,9 +103,9 @@
             "roughness": 0.16300000250339508,
             "saveCategory": "Object",
             "scale": [
-                1.574066400527954,
-                1.520467758178711,
-                1.574066400527954
+                1.0000003576278687,
+                1.0000003576278687,
+                1.0000003576278687
             ],
             "targetID": -1,
             "texturePath": "",
@@ -167,7 +167,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "heimen",
+            "modelName": "Primitives/heimen",
             "myEventID": -1,
             "name": "heimen_1",
             "normalMapPath": "Resources/texture/PBR/Normal/rocky_terrain_02_nor_dx_2k.dds",
@@ -262,7 +262,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Gimmick_MovingFloor",
             "normalMapPath": "",
@@ -287,7 +287,7 @@
             "particleName": "",
             "position": [
                 -21.00454330444336,
-                -1.8695780038833618,
+                0.0,
                 5.417048454284668
             ],
             "quaternion": [
@@ -373,7 +373,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "move_3",
             "normalMapPath": "",
@@ -398,7 +398,7 @@
             "particleName": "",
             "position": [
                 -1.2122493982315063,
-                -1.8695780038833618,
+                0.0,
                 -10.007573127746582
             ],
             "quaternion": [
@@ -484,7 +484,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "slime.gltf",
+            "modelName": "Characters/slime",
             "myEventID": -1,
             "name": "Enemy_Slime",
             "normalMapPath": "",
@@ -509,7 +509,7 @@
             "particleName": "",
             "position": [
                 2.7634358406066895,
-                -2.097102642059326,
+                -2.0955350399017334,
                 -1.9983301162719727
             ],
             "quaternion": [
@@ -531,9 +531,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.9999998807907104,
-                1.000000238418579,
-                0.9999998807907104
+                0.8107748031616211,
+                1.2838376760482788,
+                0.8107748031616211
             ],
             "targetID": -1,
             "texturePath": "",
@@ -595,7 +595,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "bunny",
+            "modelName": "Characters/bunny",
             "myEventID": -1,
             "name": "bunny_5",
             "normalMapPath": "",
@@ -690,7 +690,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "sample",
+            "modelName": "Samples/sample",
             "myEventID": -1,
             "name": "sample_6",
             "normalMapPath": "",
@@ -785,7 +785,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "goal",
+            "modelName": "Gimmicks/goal",
             "myEventID": -1,
             "name": "goal_7",
             "normalMapPath": "",
@@ -880,7 +880,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Gimmick_Trampoline",
             "normalMapPath": "",
@@ -991,7 +991,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "slime.gltf",
+            "modelName": "Characters/slime",
             "myEventID": -1,
             "name": "Slime_9",
             "normalMapPath": "",
@@ -1016,7 +1016,7 @@
             "particleName": "",
             "position": [
                 -3.931511163711548,
-                -2.097102642059326,
+                -2.0955350399017334,
                 -42.577205657958984
             ],
             "quaternion": [
@@ -1038,9 +1038,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.9999998807907104,
-                1.000000238418579,
-                0.9999998807907104
+                0.8107748031616211,
+                1.2838376760482788,
+                0.8107748031616211
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1102,7 +1102,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Gimmick_ChikuwaBlock",
             "normalMapPath": "",
@@ -1213,7 +1213,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Gimmick_BlinkBlock",
             "normalMapPath": "",
@@ -1324,7 +1324,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Gimmick_BlinkBlock1",
             "normalMapPath": "",
@@ -1435,7 +1435,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "star.gltf",
+            "modelName": "Gimmicks/star",
             "myEventID": -1,
             "name": "star.gltf_13",
             "normalMapPath": "",
@@ -1546,7 +1546,7 @@
             },
             "materialType": 8,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "block_15",
             "normalMapPath": "",
@@ -1648,7 +1648,7 @@
             },
             "materialType": 9,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "block_16",
             "normalMapPath": "",
@@ -1743,7 +1743,7 @@
             },
             "materialType": 10,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "block_17",
             "normalMapPath": "",
@@ -1804,117 +1804,6 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": true,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "BreakableBlock",
-            "gpuParticleName": "",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Gimmick_BreakableBlock",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "colorType": 0,
-                "detectionRange": 20.0,
-                "enemyType": "",
-                "fallDuration": 2.0,
-                "gimmickType": "BreakableBlock",
-                "gravity": 50.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "shakeDuration": 1.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "particleName": "",
-            "position": [
-                -34.52289962768555,
-                0.8902531862258911,
-                -65.83971405029297
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                2.052000045776367
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Gimmick"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
                 "type": 3
             },
             "collisionAttribute": 4,
@@ -1949,7 +1838,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "Gimmick_BreakableBlock",
             "normalMapPath": "",
@@ -1999,6 +1888,117 @@
                 1.0,
                 1.0,
                 1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0.0,
+                    1.9073486328125e-06,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    14.572802543640137,
+                    14.572803497314453,
+                    4.011283874511719
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [
+                1.0,
+                0.8999999761581421,
+                0.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.628999948501587,
+            "eventID": 0,
+            "gimmickType": "Coin",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Gimmicks/koin",
+            "myEventID": -1,
+            "name": "Gimmick_Coin",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "Coin",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -0.8346042633056641,
+                1.0875550508499146,
+                -66.79327392578125
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.05000000074505806,
+                0.05000000074505806,
+                0.05000000074505806
             ],
             "targetID": -1,
             "texturePath": "",

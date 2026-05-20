@@ -6,6 +6,7 @@
 #include <TextureManager.h>
 #include "IconsFontAwesome5.h"
 #include "GPUParticleSystem.h"
+#include "CameraManager.h"
 
 using json = nlohmann::json;
 
@@ -20,7 +21,7 @@ void GPUParticleEditor::Update(float deltaTime) {
     if (config_.isLooping) {
         emitTimer_ += scaledDelta;
         if (emitTimer_ >= config_.emitInterval) {
-            GPUParticleManager::GetInstance()->EmitFromConfig(config_);
+            EmitWithPreview();
             emitTimer_ = 0.0f;
         }
     }
@@ -36,6 +37,16 @@ void GPUParticleEditor::DrawImGui() {
             GPUParticleManager::GetInstance()->SetTimeScale(timeScale);
         }
         ImGui::Text("※0.5でスローモーション、2.0で倍速になります");
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_EYE " プレビュー環境 (Preview Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Checkbox("カメラの前に発生させる (Spawn in front of Camera)", &isPreviewMode_);
+        if (isPreviewMode_) {
+            ImGui::Indent();
+            ImGui::DragFloat("カメラからの距離 (Distance)", &previewDistance_, 0.1f, 1.0f, 50.0f);
+            ImGui::Unindent();
+        }
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "※プレビュー用です。実際の座標は「発生位置(Position)」に保存されます");
     }
 
     // ✨ 発生パラメータ
@@ -158,7 +169,7 @@ void GPUParticleEditor::DrawImGui() {
     // 🎮 エディタ操作
     if (ImGui::CollapsingHeader(ICON_FA_GAMEPAD " エディタ操作 (Editor Controls)", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (ImGui::Button(ICON_FA_PLAY " 1回発生 (Emit Once)", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
-            GPUParticleManager::GetInstance()->EmitFromConfig(config_);
+            EmitWithPreview();
         }
 
         ImGui::Checkbox(ICON_FA_REDO " 連続発生テスト (Loop Emit)", &config_.isLooping);
@@ -339,6 +350,19 @@ void GPUParticleEditor::DrawImGui() {
         }
 
         ImGui::Separator();
+        ImGui::Text(ICON_FA_IMAGES " プリセットギャラリー (Click to Preview)");
+        ImGui::BeginChild("Gallery", ImVec2(0, 150), true);
+        for (int i = 0; i < presetList.size(); ++i) {
+            if (ImGui::Button(presetList[i].c_str(), ImVec2(140, 30))) {
+                Load(presetList[i]);
+                strcpy_s(presetNameInput_, sizeof(presetNameInput_), presetList[i].c_str());
+                EmitWithPreview();
+            }
+            if ((i % 3) != 2) ImGui::SameLine();
+        }
+        ImGui::EndChild();
+
+        ImGui::Separator();
 
         ImGui::InputText(ICON_FA_FILE_SIGNATURE " プリセット名", presetNameInput_, sizeof(presetNameInput_));
 
@@ -351,6 +375,29 @@ void GPUParticleEditor::DrawImGui() {
         }
     }
 #endif
+}
+
+void GPUParticleEditor::EmitWithPreview() {
+    GPUParticleConfig tempConfig = config_;
+    if (isPreviewMode_) {
+        const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+        if (camera) {
+            Vector3 camEye = camera->GetEye();
+            Vector3 camTarget = camera->GetTargetPoint();
+            Vector3 dir = { camTarget.x - camEye.x, camTarget.y - camEye.y, camTarget.z - camEye.z };
+            float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+            Vector3 forward = { 0, 0, 1 };
+            if (length > 0.0001f) {
+                forward = { dir.x / length, dir.y / length, dir.z / length };
+            }
+            tempConfig.emitPos = {
+                camEye.x + forward.x * previewDistance_,
+                camEye.y + forward.y * previewDistance_,
+                camEye.z + forward.z * previewDistance_
+            };
+        }
+    }
+    GPUParticleManager::GetInstance()->EmitFromConfig(tempConfig);
 }
 
 void GPUParticleEditor::Save(const std::string& presetName) {

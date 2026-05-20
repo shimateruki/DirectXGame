@@ -310,6 +310,18 @@ void Game::Update() {
                     }
                 }
 
+                // [D] パーティクルが落ちてきた場合
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")) {
+                    const char* droppedParticleName = (const char*)payload->Data;
+
+                    if (debugEditor_) {
+                        ImVec2 mPos = ImGui::GetIO().MousePos;
+                        debugEditor_->SetGameViewMousePos({ mPos.x - imageScreenPos.x, mPos.y - imageScreenPos.y });
+
+                        debugEditor_->InstantiateParticleAtCursor(droppedParticleName);
+                    }
+                }
+
                 ImGui::EndDragDropTarget();
             }
             // =======================================================

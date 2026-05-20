@@ -207,7 +207,7 @@ void HierarchyWindow::Draw() {
                 const auto& presets = PresetManager::GetInstance()->GetPresets();
                 if (presets.count(presetName) > 0) {
                     const nlohmann::json& data = presets.at(presetName);
-                    std::string modelName = "cube.obj";
+                    std::string modelName = "Primitives/cube";
                     if (data.contains("modelName")) { modelName = data["modelName"]; ModelManager::GetInstance()->LoadModel(modelName); }
                     Object3dCommon* common = currentScene->GetObject3dCommon();
                     if (common) {
@@ -222,11 +222,32 @@ void HierarchyWindow::Draw() {
                 Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
                 if (common) {
                     auto newObj = std::make_unique<Object3d>();
-                    newObj->Initialize(common); newObj->SetModel("block"); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("CinematicCamera");
+                    newObj->Initialize(common); newObj->SetModel("Stages/block"); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("CinematicCamera");
                     newObj->SetTranslate({ 0.0f, 5.0f, -10.0f }); newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
                     editor_->SetSelectedObject(newObj.get());
                     currentScene->AddObject(std::move(newObj));
                     EditorManager::GetInstance()->SetSelectedObject(editor_);
+                }
+            }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")) {
+                const char* presetName = (const char*)payload->Data;
+                Object3dCommon* common = currentScene ? currentScene->GetObject3dCommon() : nullptr;
+                if (common) {
+                    auto newObj = std::make_unique<Object3d>();
+                    newObj->Initialize(common); 
+                    newObj->SetModel("Stages/block"); 
+                    newObj->SetName("VFX_" + std::string(presetName)); 
+                    newObj->SetClassName("GPUParticle");
+                    newObj->SetGPUParticleName(presetName);
+                    // エディタ上で分かりやすいように色をオレンジ半透明っぽくする
+                    newObj->SetColor({1.0f, 0.5f, 0.0f, 0.5f});
+                    newObj->SetBlendMode(BlendMode::kNormal);
+                    
+                    newObj->SetTranslate({ 0.0f, 0.0f, 0.0f }); 
+                    newObj->UpdateLocalMatrix(); 
+                    newObj->UpdateWorldMatrix();
+                    
+                    editor_->SetPreviewObject(std::move(newObj));
                 }
             }
             ImGui::EndDragDropTarget();
@@ -269,7 +290,7 @@ void HierarchyWindow::Draw() {
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (common) {
             auto newObj = std::make_unique<Object3d>();
-            newObj->Initialize(common); newObj->SetModel("block"); newObj->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("CinematicCamera"); newObj->SetName("Cinematic_Camera_01");
+            newObj->Initialize(common); newObj->SetModel("Stages/block"); newObj->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("CinematicCamera"); newObj->SetName("Cinematic_Camera_01");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetTranslate({ 0, 5.0f, -10.0f }); newObj->UpdateWorldMatrix();
             editor_->SetSelectedObject(newObj.get()); currentScene->AddObject(std::move(newObj)); EditorManager::GetInstance()->SetSelectedObject(editor_);

@@ -1,4 +1,4 @@
-{
+﻿{
     "AutoLoop": true,
     "BlendMode": 2,
     "BoxSize": [
@@ -45,7 +45,7 @@
     "Intensity": 1.1100000143051147,
     "Lifetime": 1.0,
     "MeshSegments": 16,
-    "ModelName": "plane",
+    "ModelName": "Primitives/plane",
     "NoiseTexturePath": "Resources/sprite/image3.png",
     "OuterRadius": 4.0,
     "PlaneSize": [

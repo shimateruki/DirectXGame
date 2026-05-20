@@ -128,7 +128,7 @@ void GamePlayScene::Initialize() {
 	// 課題用アニメーションモデルの生成
 	animatedCube_ = std::make_unique<Object3d>();
 	animatedCube_->Initialize(object3dCommon_.get());
-	animatedCube_->SetModel("walk"); 
+	animatedCube_->SetModel("Samples/walk"); 
 	
 	// モデルが持つ最初のアニメーション名を自動で取得して設定する
 	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {

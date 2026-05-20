@@ -92,6 +92,7 @@ public:
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
     void InstantiatePresetAtCursor(const std::string& presetName);
+    void InstantiateParticleAtCursor(const std::string& particleName);
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------

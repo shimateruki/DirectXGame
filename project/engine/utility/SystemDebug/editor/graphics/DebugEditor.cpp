@@ -1506,3 +1506,82 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
 
     DebugConsole::GetInstance()->AddLog("Dropped Preset: " + presetName);
 }
+
+void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
+    // 1. オブジェクト生成とパーティクル設定
+    auto newObj = std::make_unique<Object3d>();
+    newObj->Initialize(currentScene->GetObject3dCommon());
+    
+    newObj->SetModel("Stages/block"); 
+    newObj->SetName("VFX_" + particleName + "_" + std::to_string(currentScene->GetObjects().size())); 
+    newObj->SetClassName("GPUParticle");
+    newObj->SetGPUParticleName(particleName);
+    newObj->SetColor({1.0f, 0.5f, 0.0f, 0.5f});
+    newObj->SetBlendMode(BlendMode::kNormal);
+
+    // 2. マウス座標からのレイキャスト（配置場所の決定）
+    Math math;
+    Ray ray = ScreenPointToRay(gameViewMousePos_);
+    Vector3 finalPos = { 0, 0, 0 };
+    bool found = false;
+
+    auto& objects = currentScene->GetObjects();
+    RayResult best; best.isHit = false; best.distance = 1e5f;
+    for (auto& obj : objects) {
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        Matrix4x4 wm = obj->GetWorldMatrix();
+        Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
+        Vector3 ws = obj->GetTransform()->scale;
+        RayResult tmp;
+        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
+            if (tmp.distance < best.distance) best = tmp;
+        }
+    }
+
+    float yOffset = newObj->GetColliderConfig().size.y;
+    if (yOffset == 0.0f) yOffset = newObj->GetTransform()->scale.y;
+
+    if (best.isHit) {
+        finalPos = best.point;
+        finalPos.y += yOffset;
+        found = true;
+    }
+    else {
+        if (IntersectRayPlane(ray, finalPos)) {
+            float dx = finalPos.x - ray.origin.x;
+            float dy = finalPos.y - ray.origin.y;
+            float dz = finalPos.z - ray.origin.z;
+            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (distance > 20.0f) {
+                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
+            } else {
+                finalPos.y = yOffset;
+            }
+            found = true;
+        } else {
+            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
+            found = true;
+        }
+    }
+
+    // 3. 座標確定とスナップ
+    if (found && isGridSnapEnabled_) {
+        finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
+        finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
+    }
+    newObj->GetTransform()->translate = finalPos;
+    newObj->UpdateWorldMatrix();
+
+    // 4. シーンに追加
+    Object3d* ptr = newObj.get();
+    currentScene->AddObject(std::move(newObj));
+    SetSelectedObject(ptr);
+    EditorManager::GetInstance()->SetSelectedObject(this);
+
+    DebugConsole::GetInstance()->AddLog("Dropped Particle: " + particleName);
+
+}

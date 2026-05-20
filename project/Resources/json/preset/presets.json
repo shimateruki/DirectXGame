@@ -1,4 +1,4 @@
-{
+﻿{
     "move": {
         "animation": {
             "animName": "",
@@ -56,7 +56,7 @@
         },
         "materialType": 0,
         "metallic": 0.0,
-        "modelName": "block",
+        "modelName": "Stages/block",
         "myEventID": -1,
         "name": "Gimmick_MovingFloor",
         "normalMapPath": "",
@@ -105,7 +105,7 @@
         ],
         "type": "Gimmick"
     },
-    "player": {
+    "Characters/player": {
         "animation": {
             "animName": "",
             "isAnimLoop": true,
@@ -126,7 +126,7 @@
         },
         "enemyType": "",
         "eventType": 0,
-        "modelName": "teapot",
+        "modelName": "Samples/teapot",
         "name": "Player",
         "rotate": [
             6.278290811678744e-07,
@@ -139,7 +139,7 @@
             1.0
         ]
     },
-    "slime": {
+    "Characters/slime": {
         "animation": {
             "animName": "",
             "isAnimLoop": true
@@ -196,7 +196,7 @@
         },
         "materialType": 0,
         "metallic": 0.0,
-        "modelName": "slime.gltf",
+        "modelName": "Characters/slime",
         "myEventID": -1,
         "name": "Slime_9",
         "normalMapPath": "",

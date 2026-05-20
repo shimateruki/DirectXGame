@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "Player.h"
 #include "Model.h"
 #include "CollisionConfig.h"
@@ -44,7 +44,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     if (common) {
         hookMarker_ = std::make_unique<Object3d>();
         hookMarker_->Initialize(common);
-        hookMarker_->SetModel("slimeBody.gltf");
+        hookMarker_->SetModel("Characters/slimeBody");
         // スライムっぽい半透明な緑色
         hookMarker_->SetColor({ 0.3f, 1.0f, 0.5f, 0.6f });
         hookMarker_->SetIsVisible(false);

@@ -1,4 +1,4 @@
-#include "PlayerClone.h"
+﻿#include "PlayerClone.h"
 #include "engine/graphics/3d/model/ModelManager.h"
 
 void PlayerClone::Initialize(Object3dCommon* common, const Vector3& position, const Vector3& velocity) {
@@ -10,7 +10,7 @@ void PlayerClone::Initialize(Object3dCommon* common, const Vector3& position, co
     SetMaxFallSpeed(60.0f);
 
     // プレイヤーと同じモデルを設定
-    SetModel("slime"); 
+    SetModel("Characters/slime"); 
     
     transform_.translate = position;
     velocity_ = velocity;

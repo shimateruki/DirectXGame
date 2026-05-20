@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "TitleScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -31,8 +31,8 @@ void TitleScene::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
 
     // --- 2. モデルのプリロード ---
-    ModelManager::GetInstance()->LoadModel("player");
-    ModelManager::GetInstance()->LoadModel("teapot");
+    ModelManager::GetInstance()->LoadModel("Characters/player");
+    ModelManager::GetInstance()->LoadModel("Samples/teapot");
     LOG("TitleScene Initialized!");
 
     bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");

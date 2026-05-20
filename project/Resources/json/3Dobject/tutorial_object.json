@@ -1,4 +1,4 @@
-{
+﻿{
     "objects": [
         {
             "animation": {
@@ -56,7 +56,7 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "block",
+            "modelName": "Stages/block",
             "myEventID": -1,
             "name": "block_1",
             "normalMapPath": "",

@@ -1,4 +1,4 @@
-#include "LightEditor.h"
+﻿#include "LightEditor.h"
 #include "imgui.h"
 #include "json.hpp"
 #include <fstream>
@@ -55,7 +55,7 @@ void LightEditor::Update() {
             if (!pointLightGizmos_[i]) {
                 pointLightGizmos_[i] = std::make_unique<Object3d>();
                 pointLightGizmos_[i]->Initialize(common_);
-                pointLightGizmos_[i]->SetModel("block");
+                pointLightGizmos_[i]->SetModel("Stages/block");
                 pointLightGizmos_[i]->SetScale({ 0.5f, 0.5f, 0.5f });
             }
         }
@@ -87,7 +87,7 @@ void LightEditor::Update() {
             if (!spotLightGizmos_[i]) {
                 spotLightGizmos_[i] = std::make_unique<Object3d>();
                 spotLightGizmos_[i]->Initialize(common_);
-                spotLightGizmos_[i]->SetModel("block");
+                spotLightGizmos_[i]->SetModel("Stages/block");
                 spotLightGizmos_[i]->SetScale({ 0.5f, 0.5f, 0.5f });
             }
         }

@@ -1,4 +1,4 @@
-#include "LockOnSystem.h"
+﻿#include "LockOnSystem.h"
 #include "Object3d.h"
 #include "Camera.h"
 #include "Player.h"
@@ -153,7 +153,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
 
         // 3. ブロックなど無関係なものを除外
         std::string name = obj->GetName();
-        if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) continue;
+        if (name.find("Block") != std::string::npos || name.find("Stages/block") != std::string::npos) continue;
 
         // -----------------------------------------------------------------
         //  (D) 距離と角度のチェック（完全3D化！）

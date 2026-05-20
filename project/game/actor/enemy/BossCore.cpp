@@ -1,4 +1,4 @@
-#include "BossCore.h"
+﻿#include "BossCore.h"
 #include "InputManager.h"
 #include "imgui.h"
 #include "easing.h"
@@ -127,7 +127,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     for (int i = 0; i < 6; ++i) {
         auto beam = std::make_unique<Object3d>();
         beam->Initialize(common_);         // エンジンの共通データで初期化
-        beam->SetModel("cylinder");        // ※円柱モデルのファイル名に合わせてください！
+        beam->SetModel("Primitives/cylinder");        // ※円柱モデルのファイル名に合わせてください！
         beam->SetScale({ 0.0f, 0.0f, 0.0f }); // 最初は見えないようにする
         beam->SetCollisionAttribute(0);    // 当たり判定なし
         beam->SetCollisionMask(0);

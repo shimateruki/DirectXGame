@@ -1,4 +1,4 @@
-#define NOMINMAX
+﻿#define NOMINMAX
 #include "PreviewScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -116,7 +116,7 @@ void PreviewScene::Initialize() {
 
 	animatedCube_ = std::make_unique<Object3d>();
 	animatedCube_->Initialize(object3dCommon_.get());
-	animatedCube_->SetModel("walk"); 
+	animatedCube_->SetModel("Samples/walk"); 
 	
 	if (animatedCube_->GetModel() && !animatedCube_->GetModel()->GetModelData().animations.empty()) {
 		animatedCube_->animName_ = animatedCube_->GetModel()->GetModelData().animations[0].name;

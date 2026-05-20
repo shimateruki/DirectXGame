@@ -381,88 +381,121 @@ void ProjectWindow::Draw() {
     // 1. モデルファイル一覧 (Raw Models)
     // =================================================================================
     if (ImGui::CollapsingHeader("Models (Source)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        std::string baseDirectory = "Resources/3DModel";
+        std::string baseDirectory = "Resources/3DModel/";
 
-        if (fs::exists(baseDirectory) && fs::is_directory(baseDirectory)) {
+        if (currentModelDirectory_.empty() || currentModelDirectory_.find(baseDirectory) != 0) {
+            currentModelDirectory_ = baseDirectory;
+        }
+
+        if (currentModelDirectory_ != baseDirectory) {
+            if (ImGui::Button(ICON_FA_ARROW_UP " Back")) {
+                fs::path p(currentModelDirectory_);
+                currentModelDirectory_ = p.parent_path().parent_path().generic_string() + "/";
+                if (currentModelDirectory_.length() < baseDirectory.length() ||
+                    currentModelDirectory_.find(baseDirectory) == std::string::npos) {
+                    currentModelDirectory_ = baseDirectory;
+                }
+            }
+            ImGui::SameLine();
+        }
+        ImGui::TextDisabled("%s", currentModelDirectory_.c_str());
+        ImGui::Separator();
+
+        if (fs::exists(currentModelDirectory_) && fs::is_directory(currentModelDirectory_)) {
             ImGui::TextDisabled("Drag & Drop to Scene to Place");
             ImGui::Separator();
 
-            // サムネイル用レイアウトの計算
             float thumbnailSize = 64.0f;
             float padding = 16.0f;
             float cellSize = thumbnailSize + padding;
             float panelWidth = ImGui::GetContentRegionAvail().x;
             int columnCount = std::max(1, (int)(panelWidth / cellSize));
 
-            // テーブルを使った自動折り返しのグリッドレイアウト
             if (ImGui::BeginTable("ModelAssetTable", columnCount)) {
-                for (const auto& entry : fs::directory_iterator(baseDirectory)) {
-                    std::string displayModelName = ""; // ボタン表示名
-                    std::string payloadName = "";      // ロード用パス/名前
-
+                for (const auto& entry : fs::directory_iterator(currentModelDirectory_)) {
                     if (entry.is_directory()) {
                         std::string folderName = entry.path().filename().string();
+                        std::string payloadName = fs::relative(entry.path(), baseDirectory).generic_string();
+                        std::replace(payloadName.begin(), payloadName.end(), '\\', '/');
+                        std::string displayModelName = payloadName; // ModelManagerのキー名として使用
+                        
+                        bool isModelFolder = false;
                         for (const auto& subEntry : fs::directory_iterator(entry.path())) {
-                            std::string subExt = subEntry.path().extension().string();
-                            std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
-
-                            if (subExt == ".obj") {
-                                displayModelName = folderName;
-                                payloadName = folderName;
-                                break;
-                            }
-                            else if (subExt == ".gltf" || subExt == ".glb") {
-                                displayModelName = subEntry.path().filename().string();
-                                payloadName = subEntry.path().filename().string();
-                                break;
+                            if (subEntry.is_regular_file()) {
+                                std::string subExt = subEntry.path().extension().string();
+                                std::transform(subExt.begin(), subExt.end(), subExt.begin(), ::tolower);
+                                if (subExt == ".obj" || subExt == ".gltf" || subExt == ".glb") {
+                                    isModelFolder = true;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    // モデルが正しく見つかった場合のみサムネイルを描画
-                    if (!displayModelName.empty()) {
-                        ImGui::TableNextColumn(); // 次のマスへ移動
+                        ImGui::TableNextColumn();
+                        if (isModelFolder) {
+                            // 1. アルバムにこのモデル用の画用紙が無ければ作る
+                            if (thumbnailAlbum_.find(displayModelName) == thumbnailAlbum_.end()) {
+                                CreateThumbnailResource(displayModelName);
+                            }
 
-                        // 1. アルバムにこのモデル用の画用紙が無ければ作る
-                        if (thumbnailAlbum_.find(displayModelName) == thumbnailAlbum_.end()) {
-                            CreateThumbnailResource(displayModelName);
+                            // 2. 作った（あるいは既にある）画用紙の画像ハンドルを取得
+                            uint32_t srvHandle = thumbnailAlbum_[displayModelName].srvHandle;
+                            D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
+
+                            ImGui::PushID(displayModelName.c_str());
+                            ImGui::BeginGroup();
+
+                            // 3. 画用紙を表示
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                            ImGui::ImageButton(displayModelName.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
+                            ImGui::PopStyleColor();
+
+                            // ドラッグ＆ドロップ処理
+                            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                                ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
+                                ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
+                                ImGui::SameLine();
+                                ImGui::Text("Place: %s", folderName.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+
+                            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                            ImGui::TextWrapped("%s", folderName.c_str());
+                            ImGui::PopTextWrapPos();
+
+                            ImGui::EndGroup();
+                            ImGui::PopID();
+                        } else {
+                            // カテゴリフォルダとして扱う
+                            ImGui::PushID(folderName.c_str());
+                            ImGui::BeginGroup();
+
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.7f, 0.2f, 1.0f));
+
+                            ImGui::SetWindowFontScale(3.0f);
+                            if (ImGui::Button(ICON_FA_FOLDER, ImVec2(thumbnailSize, thumbnailSize))) {
+                                currentModelDirectory_ = entry.path().generic_string() + "/";
+                            }
+                            ImGui::SetWindowFontScale(1.0f);
+                            ImGui::PopStyleColor(4);
+
+                            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                            ImGui::TextWrapped("%s", folderName.c_str());
+                            ImGui::PopTextWrapPos();
+
+                            ImGui::EndGroup();
+                            ImGui::PopID();
                         }
-
-                        // 2. 作った（あるいは既にある）画用紙の画像ハンドルを取得
-                        uint32_t srvHandle = thumbnailAlbum_[displayModelName].srvHandle;
-                        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
-
-                        ImGui::PushID(displayModelName.c_str());
-                        ImGui::BeginGroup(); // 画像とテキストをグループ化
-
-                        // 3. 画用紙を表示
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0)); // 背景透過
-                        ImGui::ImageButton(displayModelName.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
-                        ImGui::PopStyleColor();
-
-                        // ドラッグ＆ドロップ処理
-                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-                            ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
-                            ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
-                            ImGui::SameLine();
-                            ImGui::Text("Place: %s", displayModelName.c_str());
-                            ImGui::EndDragDropSource();
-                        }
-
-                        // 名前表示 (長すぎたら自動折り返し)
-                        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
-                        ImGui::TextWrapped("%s", displayModelName.c_str());
-                        ImGui::PopTextWrapPos();
-
-                        ImGui::EndGroup();
-                        ImGui::PopID();
                     }
                 }
                 ImGui::EndTable();
             }
         }
         else {
-            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Directory Not Found: %s", baseDirectory.c_str());
+            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Directory Not Found: %s", currentModelDirectory_.c_str());
         }
     }
 
@@ -639,6 +672,56 @@ void ProjectWindow::Draw() {
                     DrawPresetGrid(rootPresets, "RootPresetsTable");
                     ImGui::TreePop();
                 }
+            }
+        }
+    }
+
+    // =================================================================================
+    // 3. パーティクル一覧 (GPU Particles)
+    // =================================================================================
+    if (ImGui::CollapsingHeader("VFX / Particles", ImGuiTreeNodeFlags_DefaultOpen)) {
+        std::string particleDir = "Resources/json/gpu_particles/";
+        if (fs::exists(particleDir)) {
+            float thumbnailSize = 64.0f;
+            float padding = 16.0f;
+            float cellSize = thumbnailSize + padding;
+            float panelWidth = ImGui::GetContentRegionAvail().x;
+            int columnCount = std::max(1, (int)(panelWidth / cellSize));
+            
+            if (ImGui::BeginTable("ParticleAssetTable", columnCount)) {
+                for (const auto& entry : fs::directory_iterator(particleDir)) {
+                    if (entry.path().extension() == ".json") {
+                        std::string presetName = entry.path().stem().string();
+                        ImGui::TableNextColumn();
+                        
+                        ImGui::PushID(("Particle_" + presetName).c_str());
+                        ImGui::BeginGroup();
+                        
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.1f, 0.1f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.15f, 0.15f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.2f, 0.2f, 1.0f));
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.6f, 0.0f, 1.0f));
+                        
+                        ImGui::SetWindowFontScale(2.5f);
+                        ImGui::Button(ICON_FA_FIRE, ImVec2(thumbnailSize, thumbnailSize));
+                        ImGui::SetWindowFontScale(1.0f);
+                        ImGui::PopStyleColor(4);
+                        
+                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                            ImGui::SetDragDropPayload("PARTICLE_ASSET", presetName.c_str(), presetName.size() + 1);
+                            ImGui::Text("Place Particle: %s", presetName.c_str());
+                            ImGui::EndDragDropSource();
+                        }
+                        
+                        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                        ImGui::TextWrapped("%s", presetName.c_str());
+                        ImGui::PopTextWrapPos();
+                        
+                        ImGui::EndGroup();
+                        ImGui::PopID();
+                    }
+                }
+                ImGui::EndTable();
             }
         }
     }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <memory>
 
@@ -26,7 +26,7 @@ public:
 	/// </summary>
 	/// <param name="objects">シーン内の全オブジェクトリスト</param>
 	/// <param name="camera">メインカメラ</param>
-	/// <param name="player">操作中のプレイヤー</param>
+	/// <param name="Characters/player">操作中のプレイヤー</param>
 	void Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player);
 
 	/// <summary>

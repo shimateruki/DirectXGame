@@ -167,7 +167,7 @@ void Object3d::UpdateParticle() {
 void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     if (!isVisible_) return;
 #ifdef DD // "Release" ビルドの時だけ有効になるマクロ
-    if (className_ == "CinematicCamera") {
+    if (className_ == "CinematicCamera" || className_ == "GPUParticle" || className_ == "InvisibleBox") {
         return; // 何も描画せずに帰る（門前払い）
     }
 #endif

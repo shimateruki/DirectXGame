@@ -1,4 +1,4 @@
-{
+﻿{
     "NewPreset": {
         "animation": {
             "animName": "anim_test",
@@ -19,7 +19,7 @@
             "type": 2
         },
         "eventType": 0,
-        "modelName": "sample",
+        "modelName": "Samples/sample",
         "name": "sample_1",
         "rotate": [
             0.0,
@@ -52,7 +52,7 @@
             "type": 2
         },
         "eventType": 0,
-        "modelName": "sample",
+        "modelName": "Samples/sample",
         "name": "sample_1",
         "rotate": [
             0.0,

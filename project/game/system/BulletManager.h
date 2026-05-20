@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Bullet.h" 
 #include <list>
 #include <memory>
@@ -40,7 +40,7 @@ public:
     /// </summary>
     void Fire(const Vector3& pos, const Vector3& vel,
         uint32_t attr, uint32_t mask,
-        const std::string& model = "sphere", float radius = 0.2f, float life = 120);
+        const std::string& model = "Primitives/sphere", float radius = 0.2f, float life = 120);
 
     const std::list<std::unique_ptr<Bullet>>& GetBullets() const { return bullets_; }
 

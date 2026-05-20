@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "engine/utility/math/Math.h"
 
 // 前方宣言
@@ -17,7 +17,7 @@ public:
     /// <summary>
     /// 入力と状態に基づき、このフレームの移動ベクトルを計算する
     /// </summary>
-    /// <param name="player">操作対象のプレイヤー</param>
+    /// <param name="Characters/player">操作対象のプレイヤー</param>
     /// <returns>移動速度ベクトル (X, Z)</returns>
     virtual Vector3 CalculateVelocity(Player* player) = 0; // 純粋仮想関数
 };

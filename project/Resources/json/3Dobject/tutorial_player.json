@@ -1,4 +1,4 @@
-{
+﻿{
     "objects": [
         {
             "animation": {
@@ -56,9 +56,9 @@
             },
             "materialType": 0,
             "metallic": 0.0,
-            "modelName": "slime.gltf",
+            "modelName": "Characters/slime",
             "myEventID": -1,
-            "name": "player",
+            "name": "Characters/player",
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {

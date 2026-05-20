@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "IEditable.h"
 #include "EffectObject3d.h"
 #include "Object3d.h"
@@ -42,7 +42,7 @@ private:
     Vector3 editRotation_ = { 0.0f, 0.0f, 0.0f };
     Vector3 editScale_ = { 1.0f, 1.0f, 1.0f }; // スケールは最初から 1.0 にしておく
 
-    char editModelName_[128] = "plane";
+    char editModelName_[128] = "Primitives/plane";
     char editTexturePath_[256] = "";
     Vector4 editColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector2 editScrollSpeed_ = { 0.0f, -1.0f };
