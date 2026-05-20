@@ -509,7 +509,7 @@
             "particleName": "",
             "position": [
                 2.7634358406066895,
-                -2.0955350399017334,
+                -2.095533847808838,
                 -1.9983301162719727
             ],
             "quaternion": [
@@ -531,9 +531,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8107748031616211,
-                1.2838376760482788,
-                0.8107748031616211
+                0.8469616770744324,
+                1.2295573949813843,
+                0.8469616770744324
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1016,7 +1016,7 @@
             "particleName": "",
             "position": [
                 -3.931511163711548,
-                -2.0955350399017334,
+                -2.095533847808838,
                 -42.577205657958984
             ],
             "quaternion": [
@@ -1038,9 +1038,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8107748031616211,
-                1.2838376760482788,
-                0.8107748031616211
+                0.8469616770744324,
+                1.2295573949813843,
+                0.8469616770744324
             ],
             "targetID": -1,
             "texturePath": "",
@@ -2003,6 +2003,196 @@
             "targetID": -1,
             "texturePath": "",
             "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    -0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Primitives/plane",
+            "myEventID": -1,
+            "name": "MFX_effect_bakuhatu_21",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -91.42510223388672,
+                1.3132460117340088,
+                -88.20171356201172
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.10000000149011612,
+                0.10000000149011612,
+                0.10000000149011612
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "MeshEffect"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    -0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    0.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Primitives/plane",
+            "myEventID": -1,
+            "name": "MFX_effect_bakuhatu_22",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -88.22820281982422,
+                0.0,
+                -82.43473052978516
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.10000000149011612,
+                0.10000000149011612,
+                0.10000000149011612
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "MeshEffect"
         }
     ]
 }
