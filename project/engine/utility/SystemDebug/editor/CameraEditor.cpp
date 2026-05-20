@@ -90,8 +90,8 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             // ★ Release環境：右クリック不要！マウスを動かしただけでも操作中とみなす
             bool isControllingCamera = input->IsMouseButtonPressed(1) || isMouseMoving ||
 #endif
-                (std::abs(input->GetRightStick().x) > 0.1f) ||
-                (std::abs(input->GetRightStick().y) > 0.1f) ||
+                (std::abs(input->GetRightStick().x) > 0.0f) ||
+                (std::abs(input->GetRightStick().y) > 0.0f) ||
                 isGyroActive;
 
             // =========================================================

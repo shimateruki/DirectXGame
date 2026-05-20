@@ -54,6 +54,7 @@ void Camera::Update() {
     // =================================================================
     if (followObject_) {
         Vector3 playerPos = followObject_->GetWorldPosition();
+        Vector3 aimableOffset = { 0.0f, 0.0f, 0.0f };
 
         // -----------------------------------------------------------------
         // (A) 注視点 (TargetPos) の基本計算
@@ -130,9 +131,9 @@ void Camera::Update() {
         case FollowMode::kAimable:
         {
             Matrix4x4 rotateMat = math.MakeRotateZMatrix(rotation_.z) * math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
-            Vector3 offset = { 0.0f, 0.0f, -aimDistance_ };
-            offset = math.TransformNormal(offset, rotateMat);
-            desiredEye = targetPos + offset;
+            aimableOffset = { 0.0f, 0.0f, -aimDistance_ };
+            aimableOffset = math.TransformNormal(aimableOffset, rotateMat);
+            desiredEye = targetPos + aimableOffset;
             break;
         }
         case FollowMode::kFixed:
@@ -196,9 +197,18 @@ void Camera::Update() {
         target_ = smoothTarget_;
 
         // カメラ位置の補間更新（ロックオン解除時にスムーズに戻すための smoothEye_ を活用）
-        float eyeLerpFactor = (followMode_ == FollowMode::kLockOn) ? 1.0f : 0.15f;
-        smoothEye_ = LerpVec3(smoothEye_, desiredEye, eyeLerpFactor);
-        eye_ = smoothEye_;
+        if (followMode_ == FollowMode::kAimable) {
+            // エイム（自由回転）モードでは、補間された注視点（target_）に回転オフセットを直接加算する
+            // これにより、回転操作時の一時的なショートカット（プレイヤー直上の通過）がなくなりジンバルロックを防ぎます。
+            // また、回転操作時のタイムラグ（重い慣性）がなくなり、3D酔いを完全に解消します。
+            smoothEye_ = target_ + aimableOffset;
+            eye_ = smoothEye_;
+        }
+        else {
+            float eyeLerpFactor = (followMode_ == FollowMode::kLockOn) ? 1.0f : 0.15f;
+            smoothEye_ = LerpVec3(smoothEye_, desiredEye, eyeLerpFactor);
+            eye_ = smoothEye_;
+        }
 
         // -----------------------------------------------------------------
         // (D) 障害物判定 (Collision)
@@ -358,8 +368,8 @@ void Camera::Update() {
     Vector3 forward = { target_.x - eye_.x, target_.y - eye_.y, target_.z - eye_.z };
     Vector3 currentUp = up_;
 
-    // 真上・真下を向いた際のジンバルロック回避
-    if (std::abs(forward.x) < 0.001f && std::abs(forward.z) < 0.001f) {
+    // 通常のジンバルロック回避（しきい値を広げてより安全に）
+    if (std::abs(forward.x) < 0.05f && std::abs(forward.z) < 0.05f) {
         if (forward.y < 0.0f) {
             currentUp = { 0.0f, 0.0f, 1.0f };
         }
@@ -399,9 +409,10 @@ void Camera::AddRotation(const Vector2& mouseDelta) {
     rotation_.x += mouseDelta.y * rotateSpeed * sensitivityMultiplier_;
     rotation_.y += mouseDelta.x * rotateSpeed * sensitivityMultiplier_;
 
-    // X軸（ピッチ）の回転制限
-    const float pitchLimit = PI / 2.0f - 0.01f;
-    rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
+    // X軸（ピッチ）の回転制限（真上・真下付近でのジンバルロックや画面反転を防ぐため、安全な範囲に制限）
+    const float pitchLimitMin = -1.20f; // 見上げる限界値（約-68度）
+    const float pitchLimitMax = 1.35f;  // 見下ろす限界値（約77度）
+    rotation_.x = std::max(pitchLimitMin, std::min(pitchLimitMax, rotation_.x));
 
     // Y軸（ヨー）のラップアラウンド
     if (rotation_.y > PI) { rotation_.y -= 2.0f * PI; }
@@ -437,8 +448,9 @@ void Camera::SyncRotationToCurrentView() {
     rotation_.y = std::atan2(forward.x, forward.z);
     rotation_.x = std::asin(-forward.y);
 
-    const float pitchLimit = PI / 2.0f - 0.01f;
-    rotation_.x = std::max(-pitchLimit, std::min(pitchLimit, rotation_.x));
+    const float pitchLimitMin = -1.20f;
+    const float pitchLimitMax = 1.35f;
+    rotation_.x = std::max(pitchLimitMin, std::min(pitchLimitMax, rotation_.x));
 }
 
 void Camera::StartOverride(const CameraOverrideParams& params) {

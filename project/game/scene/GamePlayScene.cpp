@@ -1215,9 +1215,15 @@ void GamePlayScene::Update(float deltaTime) {
             // =======================================================
             // ★ 2. 入力値から「最終的な移動量」を出す（感度はCamera側で処理）
             // =======================================================
+            // 感度曲線（3乗）を適用し、細かいエイム調整と素早い旋回を両立
+            float stickX = rightStick.x * rightStick.x * rightStick.x;
+            float stickY = rightStick.y * rightStick.y * rightStick.y;
+
+            // スティック入力にはdeltaTimeを掛けることでフレームレート（FPS）に依存しない速度にする
+            // マウス（mouseDelta）は1フレームあたりのピクセル移動量そのものなのでそのまま加算します。
             Vector2 totalDelta;
-            totalDelta.x = (mouseDelta.x + rightStick.x * 15.0f);
-            totalDelta.y = (mouseDelta.y - rightStick.y * 15.0f); // スティックの上下は反転
+            totalDelta.x = mouseDelta.x + (stickX * 900.0f * deltaTime);
+            totalDelta.y = mouseDelta.y - (stickY * 900.0f * deltaTime); // スティックの上下は反転
 
 #ifdef USE_IMGUI
             // ★ デバッグ(Develop)環境:
