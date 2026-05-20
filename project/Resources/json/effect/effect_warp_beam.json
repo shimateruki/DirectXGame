@@ -1,0 +1,101 @@
+{
+    "AutoLoop": false,
+    "BlendMode": 2,
+    "BoxSize": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Collision": {
+        "HasCollision": false,
+        "Offset": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "Shape": 0,
+        "Size": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "ConeHeight": 2.0,
+    "ConeRadius": 1.0,
+    "CylinderHeight": 8.0,
+    "CylinderRadius": 0.8,
+    "DistortionSpeed": 20.0,
+    "DistortionStrength": 0.12,
+    "EasingType": 5,
+    "EdgeFadeStrength": 2.0,
+    "EnableDistortion": true,
+    "EnableReveal": true,
+    "EndColor": [
+        0.3,
+        0.8,
+        2.5,
+        0.0
+    ],
+    "EndScale": [
+        1.8,
+        15.0,
+        1.8
+    ],
+    "InnerRadius": 0.5,
+    "Intensity": 3.5,
+    "Lifetime": 1.2,
+    "MeshSegments": 32,
+    "ModelName": "",
+    "NoiseTexturePath": "Resources/sprite/noise0.png",
+    "OuterRadius": 4.0,
+    "PlaneSize": [
+        2.0,
+        2.0
+    ],
+    "Position": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ProceduralType": 5,
+    "RampTexturePath": "",
+    "RingInnerRadius": 0.5,
+    "RingOuterRadius": 1.0,
+    "Rotation": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "ScrollSpeed": [
+        0.2,
+        -4.0
+    ],
+    "SlashAngle": 360.0,
+    "SphereRadius": 1.0,
+    "SphereRings": 16,
+    "SpiralPitch": 0.0,
+    "StartColor": [
+        2.5,
+        2.0,
+        0.8,
+        1.0
+    ],
+    "StartScale": [
+        0.3,
+        0.1,
+        0.3
+    ],
+    "TargetName": "",
+    "TexturePath": "Resources/sprite/gradationLine.png",
+    "Thickness": 0.5,
+    "ThrustLength": 5.0,
+    "ThrustRadius": 0.8,
+    "TorusMajorRadius": 1.0,
+    "TorusMinorRadius": 0.3,
+    "TriangleSize": 1.0,
+    "UvTiling": [
+        2.0,
+        1.0
+    ],
+    "VolumeMode": 0
+}

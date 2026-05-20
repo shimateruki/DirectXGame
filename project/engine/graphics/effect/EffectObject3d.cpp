@@ -1,10 +1,14 @@
 #include "EffectObject3d.h"
 #include "SRVManager.h"
-#include"Winapp.h"
+#include "Winapp.h"
 #include "Easing.h"
 #include <cassert>
 #include <DebugConsole.h>
 #include <ModelManager.h>
+#include "TextureManager.h"
+#include <fstream>
+#include <nlohmann/json.hpp>
+
 float ApplyEasing1(int type, float t) {
     switch (type) {
     case 0: return Easing::Linear(t);
@@ -111,13 +115,22 @@ void EffectObject3d::Update(float deltaTime) {
     currentColor.w = std::lerp(startColor_.w, endColor_.w, easeProgress);
     SetColor(currentColor);
 
-    // 寿命が来たら再生終了
+    // 寿命が来たら再生終了（またはループ）
     if (progress >= 1.0f) {
-        isPlaying_ = false;
+        if (isAutoLoop_) {
+            currentTime_ = 0.0f; // 経過時間をリセットしてループ
+        } else {
+            isPlaying_ = false;
+        }
     }
 
-    // 親のTransform更新（行列計算）を最後に呼ぶ
-    Object3d::Update(deltaTime);
+    // 行列の更新だけ行う（Object3d::Update を丸ごと呼ぶと
+    // UpdateAttachedEffects や UpdateParticle が再帰的に走ってしまうため）
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
+    if (meshRenderer_) {
+        meshRenderer_->Update();
+    }
 }
 
 void EffectObject3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
@@ -648,4 +661,190 @@ void EffectObject3d::UpdateProceduralMesh() {
     }
 
     dynamicModel_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), proceduralVertices_, proceduralIndices_);
+}
+
+bool EffectObject3d::LoadFromJson(const std::string& jsonFilePath) {
+    std::ifstream file(jsonFilePath);
+    if (!file.is_open()) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] LoadFromJson Failed to open file: " + jsonFilePath);
+        return false;
+    }
+
+    nlohmann::json j;
+    try {
+        file >> j;
+    } catch (const nlohmann::json::parse_error& e) {
+        DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[EffectObject3d] LoadFromJson JSON Parse Error in " + jsonFilePath + ": " + e.what());
+        return false;
+    }
+    file.close();
+
+    // デフォルト値リセット
+    SetProceduralType(0);
+    SetEnableNoiseTexture(false);
+    SetEnableColorRamp(false);
+    SetEnableDistortion(false);
+    SetEnableReveal(true);
+    SetDistortionStrength(0.0f);
+    SetEdgeFadeStrength(1.0f);
+
+    float lifetime = j.contains("Lifetime") ? (float)j["Lifetime"] : 1.0f;
+
+    // --- パラメータ復元 ---
+    if (j.contains("ModelName")) {
+        std::string modelName = j["ModelName"].get<std::string>();
+        if (!modelName.empty()) {
+            SetModel(modelName);
+        }
+    }
+
+    if (j.contains("TexturePath")) {
+        std::string tp = j["TexturePath"];
+        if (!tp.empty() && GetMeshRenderer()) {
+            GetMeshRenderer()->SetTexture(tp);
+        }
+    }
+
+    if (j.contains("NoiseTexturePath")) {
+        std::string np = j["NoiseTexturePath"];
+        if (!np.empty()) {
+            SetNoiseTexture(TextureManager::GetInstance()->Load(np));
+            SetEnableNoiseTexture(true);
+        }
+    }
+
+    if (j.contains("RampTexturePath")) {
+        std::string rp = j["RampTexturePath"];
+        if (!rp.empty()) {
+            SetRampTexture(TextureManager::GetInstance()->Load(rp));
+            SetEnableColorRamp(true);
+        }
+    }
+
+    // スケール・カラーアニメーション範囲
+    Vector3 scaleFactor = { 1.0f, 1.0f, 1.0f };
+    if (j.contains("StartScale")) {
+        SetStartScale({ j["StartScale"][0] * scaleFactor.x, j["StartScale"][1] * scaleFactor.y, j["StartScale"][2] * scaleFactor.z });
+    }
+    if (j.contains("EndScale")) {
+        SetEndScale({ j["EndScale"][0] * scaleFactor.x, j["EndScale"][1] * scaleFactor.y, j["EndScale"][2] * scaleFactor.z });
+    }
+
+    if (j.contains("StartColor")) {
+        SetStartColor({ j["StartColor"][0], j["StartColor"][1], j["StartColor"][2], j["StartColor"][3] });
+    }
+    if (j.contains("EndColor")) {
+        SetEndColor({ j["EndColor"][0], j["EndColor"][1], j["EndColor"][2], j["EndColor"][3] });
+    }
+
+    if (j.contains("ScrollSpeed")) {
+        SetScrollSpeed({ j["ScrollSpeed"][0], j["ScrollSpeed"][1] });
+    }
+    if (j.contains("Intensity")) {
+        SetIntensity(j["Intensity"]);
+    }
+    if (j.contains("DistortionStrength")) {
+        SetDistortionStrength(j["DistortionStrength"]);
+    }
+    if (j.contains("DistortionSpeed")) {
+        SetDistortionSpeed(j["DistortionSpeed"]);
+    }
+    if (j.contains("EdgeFadeStrength")) {
+        SetEdgeFadeStrength(j["EdgeFadeStrength"]);
+    }
+    if (j.contains("EnableDistortion")) {
+        SetEnableDistortion(j["EnableDistortion"].get<bool>());
+    }
+    if (j.contains("BlendMode")) {
+        SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
+    }
+    if (j.contains("EnableReveal")) {
+        SetEnableReveal(j["EnableReveal"].get<bool>());
+    }
+    if (j.contains("EasingType")) {
+        SetEasingType(j["EasingType"]);
+    }
+    if (j.contains("AlphaReference")) {
+        SetAlphaReference(j["AlphaReference"].get<float>());
+    } else {
+        SetAlphaReference(0.0f);
+    }
+    if (j.contains("AutoLoop")) {
+        SetAutoLoop(j["AutoLoop"].get<bool>());
+    }
+
+    // プロシージャルメッシュパラメータ
+    if (j.contains("ProceduralType")) {
+        int procType = j["ProceduralType"];
+        SetProceduralType(procType);
+        if (procType >= 1) {
+            if (j.contains("SlashAngle"))      editSlashAngle_      = j["SlashAngle"];
+            if (j.contains("InnerRadius"))     editInnerRadius_     = j["InnerRadius"];
+            if (j.contains("OuterRadius"))     editOuterRadius_     = j["OuterRadius"];
+            if (j.contains("Thickness"))       editThickness_       = j["Thickness"];
+            if (j.contains("SpiralPitch"))     editSpiralPitch_     = j["SpiralPitch"];
+            if (j.contains("ThrustLength"))    editThrustLength_    = j["ThrustLength"];
+            if (j.contains("ThrustRadius"))    editThrustRadius_    = j["ThrustRadius"];
+            if (j.contains("SphereRadius"))    editSphereRadius_    = j["SphereRadius"];
+            if (j.contains("SphereRings"))     editSphereRings_     = j["SphereRings"];
+            if (j.contains("CylinderRadius"))  editCylinderRadius_  = j["CylinderRadius"];
+            if (j.contains("CylinderHeight"))  editCylinderHeight_  = j["CylinderHeight"];
+            if (j.contains("BoxSize"))    { editBoxSize_.x = j["BoxSize"][0]; editBoxSize_.y = j["BoxSize"][1]; editBoxSize_.z = j["BoxSize"][2]; }
+            if (j.contains("PlaneSize"))  { editPlaneSize_.x = j["PlaneSize"][0]; editPlaneSize_.y = j["PlaneSize"][1]; }
+            if (j.contains("TorusMajorRadius")) editTorusMajorRadius_ = j["TorusMajorRadius"];
+            if (j.contains("TorusMinorRadius")) editTorusMinorRadius_ = j["TorusMinorRadius"];
+            if (j.contains("ConeRadius"))  editConeRadius_  = j["ConeRadius"];
+            if (j.contains("ConeHeight"))  editConeHeight_  = j["ConeHeight"];
+            if (j.contains("RingOuterRadius")) editRingOuterRadius_ = j["RingOuterRadius"];
+            if (j.contains("RingInnerRadius")) editRingInnerRadius_ = j["RingInnerRadius"];
+            if (j.contains("TriangleSize"))    editTriangleSize_ = j["TriangleSize"];
+            if (j.contains("MeshSegments"))    editMeshSegments_ = j["MeshSegments"];
+            if (j.contains("UvTiling"))        { editUvTiling_.x = j["UvTiling"][0]; editUvTiling_.y = j["UvTiling"][1]; }
+            if (procType == 2 && editSlashAngle_ < 360.0f) {
+                editSlashAngle_ = 400.0f;
+            }
+            UpdateProceduralMesh();
+        }
+    }
+
+    // コライダー関連
+    if (j.contains("Collision")) {
+        auto col = j["Collision"];
+        if (col.contains("HasCollision")) editHasCollision_ = col["HasCollision"].get<bool>();
+        if (col.contains("Shape")) editCollisionShape_ = col["Shape"].get<int>();
+        if (col.contains("Size") && col["Size"].is_array() && col["Size"].size() >= 3) {
+            editCollisionSize_ = { col["Size"][0].get<float>(), col["Size"][1].get<float>(), col["Size"][2].get<float>() };
+        }
+        if (col.contains("Offset") && col["Offset"].is_array() && col["Offset"].size() >= 3) {
+            editCollisionOffset_ = { col["Offset"][0].get<float>(), col["Offset"][1].get<float>(), col["Offset"][2].get<float>() };
+        }
+    }
+
+    // オフセット位置・回転の読み込み
+    if (j.contains("Position") && j.contains("Rotation")) {
+        auto posVal = j["Position"];
+        auto rotVal = j["Rotation"];
+        Vector3 offsetPos = { 0, 0, 0 };
+        Vector3 offsetRot = { 0, 0, 0 };
+        if (posVal.is_array() && posVal.size() >= 3) {
+            offsetPos = { posVal[0].get<float>(), posVal[1].get<float>(), posVal[2].get<float>() };
+        }
+        if (rotVal.is_array() && rotVal.size() >= 3) {
+            offsetRot = { rotVal[0].get<float>(), rotVal[1].get<float>(), rotVal[2].get<float>() };
+        }
+        SetOffsets(offsetPos, offsetRot);
+        
+        // アタッチ時の初期座標としても利用するため translate / rotate に一旦セットする
+        SetTranslate(offsetPos);
+        SetRotation(offsetRot);
+    }
+
+    Play(lifetime);
+    
+    // 一旦更新して行列を最新にする
+    Update(0.0f);
+    UpdateLocalMatrix();
+    UpdateWorldMatrix();
+
+    return true;
 }

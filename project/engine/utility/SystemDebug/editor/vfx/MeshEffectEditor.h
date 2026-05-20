@@ -58,6 +58,7 @@ private:
     Vector4 editStartColor_ = { 2.0f, 2.0f, 2.0f, 1.0f }; // 最初は白く発光
     Vector4 editEndColor_ = { 0.5f, 0.0f, 1.0f, 0.0f }; // 紫で消滅
     bool editEnableDistortion_ = true;
+    float editAlphaReference_ = 0.0f;
     // --- 歪みと透明化のパラメータ (エディタUI用) ---
     float editDistortionStrength_ = 0.05f;
     float editDistortionSpeed_ = 15.0f;

@@ -2,6 +2,7 @@
 #include "Object3d.h"
 #include "DirectXCommon.h"
 #include "ModelManager.h"
+#include "EffectObject3d.h"
 #include "SRVManager.h"
 #include "CameraManager.h"
 #include "SceneManager.h"
@@ -13,13 +14,29 @@
 #include <GPUParticleEmitter.h>
 #include <DebugConsole.h>
 #include <ProfilerManager.h>
+#include <fstream>
 
 Object3d::~Object3d() {
     if (recorder_) {
         delete recorder_;
         recorder_ = nullptr;
     }
-    // unique_ptr (collider_, meshRenderer_) は自動解放
+    
+    // 親がいる場合、親の子供リストから自分自身を取り除く
+    if (parent_) {
+        std::vector<Object3d*>& kids = parent_->children_;
+        kids.erase(std::remove(kids.begin(), kids.end(), this), kids.end());
+        parent_ = nullptr;
+    }
+    
+    // 自分が親で子供たちがいる場合、子供たちの親ポインタをクリアする
+    for (auto* child : children_) {
+        if (child) {
+            child->parent_ = nullptr;
+            child->transform_.parent = nullptr;
+        }
+    }
+    children_.clear();
 }
 
 // ========================================================================
@@ -128,6 +145,7 @@ void Object3d::Update(float deltaTime) {
         recorder_->Update();
     }
     UpdateParticle();
+    UpdateAttachedEffects(deltaTime);
     auto endMat = std::chrono::high_resolution_clock::now();
     cpuMatrixTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endMat - startMat).count()) / 1000.0f;
 
@@ -183,6 +201,9 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
             common_->GetDxCommon()->EndGpuProfile(name_);
         }
     }
+    // ★ DrawAttachedEffects はここでは呼ばない！
+    //    エフェクトの歪み(Distortion)がGrabTextureを参照するため、
+    //    GrabTexture更新後の専用パスで描画する必要がある。
 }
 
 // ========================================================================
@@ -569,6 +590,10 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->particleName_ = other->particleName_;
     this->gpuParticleName_ = other->gpuParticleName_;
 
+    // メッシュエフェクト
+    this->meshEffectName1_ = other->meshEffectName1_;
+    this->meshEffectName2_ = other->meshEffectName2_;
+
     // 8. レコーダー (Ghost)
     this->recordPathName_ = other->recordPathName_;
     this->isRecordLoop_ = other->isRecordLoop_;
@@ -655,6 +680,9 @@ json Object3d::ExportToJson() {
     // ★追加: 金属度と粗さ
     d["metallic"] = GetMetallic();
     d["roughness"] = GetRoughness();
+
+    d["meshEffect1"] = meshEffectName1_;
+    d["meshEffect2"] = meshEffectName2_;
 
     d["enableNormalMap"] = GetEnableNormalMap();
     d["normalMapPath"] = GetNormalMapPath();
@@ -759,6 +787,9 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("metallic")) SetMetallic(j["metallic"].get<float>());
     if (j.contains("roughness")) SetRoughness(j["roughness"].get<float>());
 
+    if (j.contains("meshEffect1")) meshEffectName1_ = j["meshEffect1"].get<std::string>();
+    if (j.contains("meshEffect2")) meshEffectName2_ = j["meshEffect2"].get<std::string>();
+
     if (j.contains("enableNormalMap")) SetEnableNormalMap(j["enableNormalMap"]);
     if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"]);
     if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"]);
@@ -800,5 +831,156 @@ void Object3d::ImportFromJson(const json& j) {
             if (jf.contains("scatteringG")) fogData->scatteringG = jf["scatteringG"];
             if (jf.contains("scatteringIntensity")) fogData->scatteringIntensity = jf["scatteringIntensity"];
         }
+    }
+}
+void Object3d::UpdateAttachedEffects(float deltaTime) {
+    // =================================================================
+    // ★ 追加: エフェクト用のアンカーを更新（エディタと同じ挙動を再現）
+    // 親のスケールやX,Z回転を無視し、座標と大元のY軸回転だけを反映する
+    // =================================================================
+    effectAnchor_.translate = GetWorldPosition();
+    effectAnchor_.scale = { 1.0f, 1.0f, 1.0f };
+
+    // ルート（大元）のY軸回転を取得
+    float rootRotY = transform_.rotate.y;
+    Object3d* rootObj = this;
+    while (rootObj && rootObj->GetParent()) {
+        rootObj = rootObj->GetParent();
+    }
+    if (rootObj) {
+        rootRotY = rootObj->GetRotation().y;
+    }
+    effectAnchor_.rotate = { 0.0f, rootRotY, 0.0f };
+    effectAnchor_.UpdateMatrix();
+
+    // ========================================================
+    // --- スロット1 ---
+    // ========================================================
+    if (!meshEffectName1_.empty()) {
+        if (attachedEffects1_.empty() || currentMeshEffect1_ != meshEffectName1_) {
+            attachedEffects1_.clear();
+            currentMeshEffect1_ = "";
+
+            std::ifstream file(meshEffectName1_);
+            if (file.is_open()) {
+                json j; file >> j; file.close();
+
+                int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
+                int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
+
+                for (int i = 0; i < numSpawns; ++i) {
+                    auto effect = std::make_unique<EffectObject3d>();
+                    effect->Initialize(common_);
+                    effect->SetName(meshEffectName1_ + "_" + std::to_string(i));
+
+                    if (effect->LoadFromJson(meshEffectName1_)) {
+                        Vector3 localRot = effect->GetRotation();
+                        Vector3 localPos = effect->GetTranslate();
+
+                        if (volumeMode == 1 && i == 1) {
+                            localRot.x += 1.570796f; // 90度クロス
+                        }
+                        else if (volumeMode == 2) {
+                            float gap = 0.02f;
+                            Vector3 localZ;
+                            localZ.x = sinf(localRot.y) * cosf(localRot.x);
+                            localZ.y = -sinf(localRot.x);
+                            localZ.z = cosf(localRot.y) * cosf(localRot.x);
+
+                            if (i == 1) { localPos.x += localZ.x * gap; localPos.y += localZ.y * gap; localPos.z += localZ.z * gap; }
+                            if (i == 2) { localPos.x -= localZ.x * gap; localPos.y -= localZ.y * gap; localPos.z -= localZ.z * gap; }
+                        }
+
+                        effect->SetTranslate(localPos);
+                        effect->SetRotation(localRot);
+
+                        // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
+                        effect->GetTransform()->parent = &effectAnchor_;
+
+                        attachedEffects1_.push_back(std::move(effect));
+                    }
+                }
+                currentMeshEffect1_ = meshEffectName1_;
+            }
+        }
+    }
+    else {
+        attachedEffects1_.clear();
+        currentMeshEffect1_ = "";
+    }
+
+    // ========================================================
+    // --- スロット2 ---
+    // ========================================================
+    if (!meshEffectName2_.empty()) {
+        if (attachedEffects2_.empty() || currentMeshEffect2_ != meshEffectName2_) {
+            attachedEffects2_.clear();
+            currentMeshEffect2_ = "";
+
+            std::ifstream file(meshEffectName2_);
+            if (file.is_open()) {
+                json j; file >> j; file.close();
+
+                int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
+                int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
+
+                for (int i = 0; i < numSpawns; ++i) {
+                    auto effect = std::make_unique<EffectObject3d>();
+                    effect->Initialize(common_);
+                    effect->SetName(meshEffectName2_ + "_" + std::to_string(i));
+
+                    if (effect->LoadFromJson(meshEffectName2_)) {
+                        Vector3 localRot = effect->GetRotation();
+                        Vector3 localPos = effect->GetTranslate();
+
+                        if (volumeMode == 1 && i == 1) {
+                            localRot.x += 1.570796f;
+                        }
+                        else if (volumeMode == 2) {
+                            float gap = 0.02f;
+                            Vector3 localZ;
+                            localZ.x = sinf(localRot.y) * cosf(localRot.x);
+                            localZ.y = -sinf(localRot.x);
+                            localZ.z = cosf(localRot.y) * cosf(localRot.x);
+
+                            if (i == 1) { localPos.x += localZ.x * gap; localPos.y += localZ.y * gap; localPos.z += localZ.z * gap; }
+                            if (i == 2) { localPos.x -= localZ.x * gap; localPos.y -= localZ.y * gap; localPos.z -= localZ.z * gap; }
+                        }
+
+                        effect->SetTranslate(localPos);
+                        effect->SetRotation(localRot);
+
+                        // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
+                        effect->GetTransform()->parent = &effectAnchor_;
+
+                        attachedEffects2_.push_back(std::move(effect));
+                    }
+                }
+                currentMeshEffect2_ = meshEffectName2_;
+            }
+        }
+    }
+    else {
+        attachedEffects2_.clear();
+        currentMeshEffect2_ = "";
+    }
+
+    // 配列内のすべてのエフェクトを更新
+    for (auto& effect : attachedEffects1_) {
+        effect->Update(deltaTime);
+    }
+    for (auto& effect : attachedEffects2_) {
+        effect->Update(deltaTime);
+    }
+}
+void Object3d::DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (!isVisible_) return;
+
+    // 配列内のすべてのエフェクトを描画
+    for (auto& effect : attachedEffects1_) {
+        effect->Draw(pointLightResource, spotLightResource);
+    }
+    for (auto& effect : attachedEffects2_) {
+        effect->Draw(pointLightResource, spotLightResource);
     }
 }

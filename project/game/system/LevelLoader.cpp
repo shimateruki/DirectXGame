@@ -331,6 +331,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());
                 if (objData.contains("particleName")) targetObject->SetParticleName(objData["particleName"].get<std::string>());
                 if (objData.contains("gpuParticleName")) targetObject->SetGPUParticleName(objData["gpuParticleName"].get<std::string>());
+                if (objData.contains("meshEffect1")) targetObject->SetMeshEffect1Name(objData["meshEffect1"].get<std::string>());
+                if (objData.contains("meshEffect2")) targetObject->SetMeshEffect2Name(objData["meshEffect2"].get<std::string>());
                 if (objData.contains("localFog")) {
                     if (auto* fogData = targetObject->GetLocalFogData()) {
                         auto& f = objData["localFog"];

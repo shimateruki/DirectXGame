@@ -185,6 +185,7 @@ void MeshEffectManager::SpawnEffect(const std::string& jsonFilePath, Object3d* b
         if (j.contains("BlendMode")) effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
         if (j.contains("EnableReveal")) effect->SetEnableReveal(j["EnableReveal"]);
         if (j.contains("EasingType")) effect->SetEasingType(j["EasingType"]);
+        if (j.contains("AlphaReference")) effect->SetAlphaReference(j["AlphaReference"]);
 
         // =========================================================
         // プロシージャルパラメータの完全復元と構築
@@ -348,6 +349,7 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
         if (j.contains("BlendMode"))         effect->SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
         if (j.contains("EnableReveal"))      effect->SetEnableReveal(j["EnableReveal"]);
         if (j.contains("EasingType"))        effect->SetEasingType(j["EasingType"]);
+        if (j.contains("AlphaReference"))    effect->SetAlphaReference(j["AlphaReference"]);
 
         // プロシージャルメッシュ
         if (j.contains("ProceduralType")) {

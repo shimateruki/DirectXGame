@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "PreviewScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -329,8 +329,10 @@ void PreviewScene::Draw() {
 		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) { hasFluid = true; break; }
 	}
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
+	bool grabUpdated = false;
 	if (hasFluid || hasGPUParticles) {
 		dxCommon_->UpdateGrabTexture();
+		grabUpdated = true;
 		if (hasFluid) {
 			for (auto& obj : objects) {
 				bool isPlayerPart = false;
@@ -357,6 +359,30 @@ void PreviewScene::Draw() {
 				gpuParticleTexHandle_,
 				dxCommon_->GetDepthSrvHandle()
 			);
+		}
+	}
+
+	// =======================================================
+	// 6. メッシュエフェクト（アタッチ済み）の描画
+	//    エフェクトの歪み(Distortion)はGrabTextureを参照するため、
+	//    Object3d::Draw() の中ではなくGrabTexture更新後にここで描画する。
+	// =======================================================
+	{
+		bool hasMeshEffects = false;
+		for (auto& obj : objects) {
+			if (!obj->GetMeshEffect1Name().empty() || !obj->GetMeshEffect2Name().empty()) {
+				hasMeshEffects = true;
+				break;
+			}
+		}
+		if (hasMeshEffects) {
+			if (!grabUpdated) {
+				dxCommon_->UpdateGrabTexture();
+			}
+			for (auto& obj : objects) {
+				if (!obj->GetIsVisible()) continue;
+				obj->DrawAttachedEffects(pointLightRes, spotLightRes);
+			}
 		}
 	}
 }

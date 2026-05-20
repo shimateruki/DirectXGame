@@ -18,6 +18,7 @@ using json = nlohmann::json;
 class GhostRecorder;
 class SceneManager;
 #include "GPUParticleEmitter.h"
+class EffectObject3d;
 
 class Object3d {
 public:
@@ -171,6 +172,14 @@ public:
     void SetGPUParticleName(const std::string& name) { gpuParticleName_ = name; }
     const std::string& GetGPUParticleName() const { return gpuParticleName_; }
 
+    void SetMeshEffect1Name(const std::string& name) { meshEffectName1_ = name; }
+    const std::string& GetMeshEffect1Name() const { return meshEffectName1_; }
+    void SetMeshEffect2Name(const std::string& name) { meshEffectName2_ = name; }
+    const std::string& GetMeshEffect2Name() const { return meshEffectName2_; }
+
+    void UpdateAttachedEffects(float deltaTime);
+    void DrawAttachedEffects(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+
     void StartCollectionAnimation() { isCollecting_ = true; collectTimer_ = 0.0f; }
     bool IsCollecting() const { return isCollecting_; }
 
@@ -229,6 +238,7 @@ protected:
     std::string name_ = "Object";
 
     Transform transform_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
+    Transform effectAnchor_ = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f} };
     Object3d* parent_ = nullptr;
 
     float animationTime_ = 0.0f;
@@ -254,6 +264,14 @@ protected:
     bool isCollecting_ = false;
     float collectTimer_ = 0.0f;
     std::unique_ptr<GPUParticleEmitter> gpuEmitter_ = nullptr;
+    // 先ほどは <EffectObject3d> にしていましたが、<Object3d> に変更します
+    std::string meshEffectName1_ = "";
+    std::string meshEffectName2_ = "";
+    std::string currentMeshEffect1_ = "";
+    std::string currentMeshEffect2_ = "";
+    std::vector<std::unique_ptr<Object3d>> attachedEffects1_;
+    std::vector<std::unique_ptr<Object3d>> attachedEffects2_;
+
 
     // --- パフォーマンス計測用 ---
     float cpuUpdateTimeMs_ = 0.0f;

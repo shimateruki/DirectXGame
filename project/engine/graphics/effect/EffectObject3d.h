@@ -72,6 +72,10 @@ public:
     void SetEasingType(int type) { easingType_ = type; }
     int GetEasingType() const { return easingType_; }
 
+    void SetAutoLoop(bool loop) { isAutoLoop_ = loop; }
+    bool GetAutoLoop() const { return isAutoLoop_; }
+    bool LoadFromJson(const std::string& jsonFilePath);
+
     void SetTargetObject(Object3d* target) { targetObject_ = target; }
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
@@ -129,6 +133,7 @@ private:
     Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     int easingType_ = 0; // デフォルトは 0 (Linear)
+    bool isAutoLoop_ = false;
     // 動的生成専用のモデル
     std::unique_ptr<Model> dynamicModel_;
     std::vector<Model::VertexData> proceduralVertices_;

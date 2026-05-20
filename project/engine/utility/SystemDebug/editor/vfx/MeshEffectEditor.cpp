@@ -191,7 +191,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         fx->SetEnableReveal(editEnableReveal_);
         fx->SetEasingType(editEasingType_);
         fx->SetProceduralType(editProceduralType_);
-
+        fx->SetAlphaReference(editAlphaReference_);
         bool useRamp = (strlen(editRampTexturePath_) > 0);
         bool useNoise = (strlen(editNoiseTexturePath_) > 0);
         fx->SetEnableColorRamp(useRamp);
@@ -563,6 +563,7 @@ void MeshEffectEditor::DrawImGui() {
 
         ImGui::Text(ICON_FA_CUT " [ エッジフェード (形状削り出し) ]");
         ImGui::SliderFloat("削り出しの強さ", &editEdgeFadeStrength_, 1.0f, 10.0f);
+        ImGui::SliderFloat("透過足切り (AlphaReference)", &editAlphaReference_, 0.0f, 1.0f);
     }
     // ---------------------------------------------------------
     // 当たり判定 (Collision) の設定
@@ -691,6 +692,7 @@ void MeshEffectEditor::SaveToJson() {
     j["DistortionStrength"] = editDistortionStrength_;
     j["DistortionSpeed"] = editDistortionSpeed_;
     j["EdgeFadeStrength"] = editEdgeFadeStrength_;
+    j["AlphaReference"] = editAlphaReference_;
     j["EnableDistortion"] = editEnableDistortion_;
     j["BlendMode"] = currentBlendModeIndex_;
     j["EnableReveal"] = editEnableReveal_;
@@ -846,6 +848,8 @@ void MeshEffectEditor::LoadFromJson() {
     if (j.contains("DistortionStrength")) editDistortionStrength_ = j["DistortionStrength"];
     if (j.contains("DistortionSpeed")) editDistortionSpeed_ = j["DistortionSpeed"];
     if (j.contains("EdgeFadeStrength")) editEdgeFadeStrength_ = j["EdgeFadeStrength"];
+    if (j.contains("AlphaReference")) editAlphaReference_ = j["AlphaReference"];
+    else editAlphaReference_ = 0.0f;
     if (j.contains("EnableDistortion")) editEnableDistortion_ = j["EnableDistortion"];
     if (j.contains("BlendMode")) currentBlendModeIndex_ = j["BlendMode"];
     if (j.contains("EnableReveal")) editEnableReveal_ = j["EnableReveal"];

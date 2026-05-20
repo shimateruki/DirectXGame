@@ -326,6 +326,23 @@ void GamePlayScene::Update(float deltaTime) {
 		Vector3 effectPos = { 0.0f, 1.5f, 0.0f };
 		MeshEffectManager::GetInstance()->SpawnPortalEffect(effectPos, 5.0f);
 	}
+	// Yキー = 常に表示される「旅の扉（ワープポータル）」を生成
+	if (inputManager_->IsKeyTriggered(DIK_Y)) {
+		Vector3 spawnPos = { 0.0f, 0.01f, 10.0f }; // デフォルト位置
+		if (player_) {
+			Vector3 playerPos = player_->GetWorldPosition();
+			float yaw = player_->GetRotation().y;
+			// プレイヤーの3.0m前方床に設置
+			spawnPos = {
+				playerPos.x + std::sin(yaw) * 3.0f,
+				playerPos.y,
+				playerPos.z + std::cos(yaw) * 3.0f
+			};
+		}
+		// 常に表示される渦巻床（リング）と、空間歪みの光柱（円柱）を生成
+		MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_floor.json", spawnPos, { 0.0f, 0.0f, 0.0f });
+		MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_warp_gate_pillar.json", spawnPos, { 0.0f, 0.0f, 0.0f });
+	}
 
 	if (animatedCube_) {
 		animatedCube_->Update(deltaTime);
@@ -469,9 +486,11 @@ void GamePlayScene::Draw() {
 	}
 
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
+	bool grabUpdated = false;
 	if (hasFluid || hasGPUParticles) {
 		// 画面をキャプチャして背景テクスチャにする (必要な時だけ1回呼ぶ)
 		dxCommon_->UpdateGrabTexture();
+		grabUpdated = true;
 
 		if (hasFluid) {
 			for (auto& obj : objects) {
@@ -509,6 +528,34 @@ void GamePlayScene::Draw() {
 				gpuParticleTexHandle_,
 				dxCommon_->GetDepthSrvHandle()
 			);
+		}
+	}
+
+	// =======================================================
+	// 6. メッシュエフェクト（アタッチ済み）の描画
+	//    エフェクトの歪み(Distortion)はGrabTextureを参照するため、
+	//    Object3d::Draw() の中ではなくGrabTexture更新後にここで描画する。
+	// =======================================================
+	{
+		bool hasMeshEffects = false;
+		for (auto& obj : objects) {
+			if (!obj->GetMeshEffect1Name().empty() || !obj->GetMeshEffect2Name().empty()) {
+				hasMeshEffects = true;
+				break;
+			}
+		}
+		if (hasMeshEffects) {
+			// GrabTextureがまだ更新されていなければ、ここで更新する
+			if (!grabUpdated) {
+				dxCommon_->UpdateGrabTexture();
+			}
+			// 各オブジェクトのアタッチ済みエフェクトを描画
+			for (auto& obj : objects) {
+				if (!obj->GetIsVisible()) continue;
+				ID3D12Resource* ptLight = pointLightRes;
+				ID3D12Resource* spLight = spotLightRes;
+				obj->DrawAttachedEffects(ptLight, spLight);
+			}
 		}
 	}
 }

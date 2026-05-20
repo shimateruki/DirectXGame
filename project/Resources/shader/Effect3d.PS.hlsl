@@ -123,14 +123,13 @@ float4 main(VertexOutput input) : SV_TARGET
         discard;
 // 4. マスク計算 (★プロシージャルTypeで形を分岐！)
     // ========================================================
-    float alphaMask = 1.0f;
-    float distMask = 1.0f;
+    float alphaMask = mainColor.a * baseNoiseValue;
+    float distMask = mainColor.a;
     
     if (proceduralType == 0)
     {
         // Type 0: 通常のテクスチャ
-        alphaMask = mainColor.a * baseNoiseValue;
-        distMask = mainColor.a;
+        // (デフォルト初期値を使用)
     }
     else if (proceduralType == 1)
     {
@@ -196,6 +195,10 @@ float4 main(VertexOutput input) : SV_TARGET
     // ========================================================
     // 6. 最終出力
     // ========================================================
+    // alphaReferenceで設定した閾値以下のピクセルを破棄 (歪み・通常共通)
+    if (glowColor.a <= alphaReference)
+        discard;
+
     if (enableDistortion == 1)
     {
         float2 ndc = input.clipPos.xy / input.clipPos.w;
@@ -211,15 +214,11 @@ float4 main(VertexOutput input) : SV_TARGET
         // 歪んだ背景の上に、純粋に「発光色(glowColor.rgb)」を足し合わせる！
         float3 finalRGB = distortedBg + glowColor.rgb;
 
-        // 歪み描画時は背景を自前で描いているため、アルファは強制1.0でOK
+        // 歪み描画時は背景を自前で描いているため、アルファは強制 1.0 で出力
         return float4(finalRGB, 1.0f);
     }
     else
     {
-        // alphaReferenceで設定した閾値以下のピクセルを破棄
-        // (0.0を指定すると完全透明のみdiscardする挙動になる)
-        if (glowColor.a <= alphaReference)
-            discard;
         return glowColor;
     }
 }

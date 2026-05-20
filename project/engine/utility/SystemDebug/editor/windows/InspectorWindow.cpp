@@ -1,4 +1,4 @@
-﻿#include "InspectorWindow.h"
+#include "InspectorWindow.h"
 #include "DebugEditor.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -468,6 +468,58 @@ void InspectorWindow::Draw() {
 
                 if (!currentGpuName.empty() && gpuPresets.find(currentGpuName) == gpuPresets.end()) {
                     ImGui::TextColored(ImVec4(1, 0, 0, 1), "Warning: GPU JSON not found!");
+                }
+            }
+
+            ImGui::Separator();
+            if (ImGui::CollapsingHeader(ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)")) {
+                std::vector<std::string> effectPaths;
+                std::vector<std::string> effectDisplayNames;
+                
+                effectPaths.push_back(""); 
+                effectDisplayNames.push_back("None");
+
+                std::string effectDir = "Resources/json/effect";
+                if (fs::exists(effectDir) && fs::is_directory(effectDir)) {
+                    for (const auto& entry : fs::directory_iterator(effectDir)) {
+                        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                            effectPaths.push_back(entry.path().generic_string());
+                            effectDisplayNames.push_back(entry.path().filename().generic_string());
+                        }
+                    }
+                }
+
+                std::vector<const char*> itemNames;
+                for (const auto& displayName : effectDisplayNames) {
+                    itemNames.push_back(displayName.c_str());
+                }
+
+                // --- スロット1 ---
+                std::string currentEff1 = selectedObject->GetMeshEffect1Name();
+                int selectIdx1 = 0;
+                for (size_t i = 0; i < effectPaths.size(); ++i) {
+                    if (effectPaths[i] == currentEff1) {
+                        selectIdx1 = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("Slot 1 (Floor etc.)", &selectIdx1, itemNames.data(), (int)itemNames.size())) {
+                    selectedObject->SetMeshEffect1Name(effectPaths[selectIdx1]);
+                }
+
+                // --- スロット2 ---
+                std::string currentEff2 = selectedObject->GetMeshEffect2Name();
+                int selectIdx2 = 0;
+                for (size_t i = 0; i < effectPaths.size(); ++i) {
+                    if (effectPaths[i] == currentEff2) {
+                        selectIdx2 = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("Slot 2 (Pillar etc.)", &selectIdx2, itemNames.data(), (int)itemNames.size())) {
+                    selectedObject->SetMeshEffect2Name(effectPaths[selectIdx2]);
                 }
             }
 
