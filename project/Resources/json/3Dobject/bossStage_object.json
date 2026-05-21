@@ -7919,7 +7919,7 @@
             "metallic": 0.6629999876022339,
             "modelName": "map_tutorial_09",
             "myEventID": -1,
-            "name": "Tutorial_Platform",
+            "name": "Tutorial_Platform_01",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
@@ -10385,7 +10385,7 @@
             "name": "Turorial_Platform_02",
             "normalMapPath": "",
             "ormMapPath": "",
-            "parentName": "Tutorial_Platform",
+            "parentName": "Tutorial_Platform_01",
             "position": [
                 0.0,
                 0.029999999329447746,

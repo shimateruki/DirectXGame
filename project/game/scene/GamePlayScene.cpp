@@ -397,6 +397,17 @@ void GamePlayScene::Initialize() {
                 obj->SetCollisionAttribute(kGround);
             }
             else if (name.find("Tutorial_") != std::string::npos) {
+                if (name.find("Tutorial_Platform_02") != std::string::npos) {
+                    continue;
+                }
+                else if (name.find("Tutorial_Platform_01") != std::string::npos) { // プラットフォーム装飾を確実に消す
+                    auto& children = obj->GetChildren();
+                    for (auto& child : children) {
+                        child->SetCollisionAttribute(0); // 当たり判定を消す
+                        child->SetIsVisible(false); // 見えなくする
+                        child->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
+                    }
+                }
 				obj->SetCollisionAttribute(0); // 当たり判定を消す
                 obj->SetIsVisible(false); // 見えなくする
                 obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
@@ -470,7 +481,7 @@ void GamePlayScene::Initialize() {
         // ★ チュートリアルプラットフォーム降下演出の初期化
         // =======================================================
         for (auto& obj : objects_ref) {
-            if (obj->GetName() == "Tutorial_Platform") {
+            if (obj->GetName() == "Tutorial_Platform_01") {
                 this->tutorialPlatform_ = obj.get();
                 // 初期位置を y:100 に (念のため)
                 obj->GetTransform()->translate.y = 100.0f;
@@ -904,6 +915,17 @@ void GamePlayScene::Update(float deltaTime) {
                     obj->SetCollisionAttribute(kGround);
                 }
                 else if (name.find("Tutorial_") != std::string::npos) {
+                    if (name.find("Tutorial_Platform_02") != std::string::npos) {
+                        continue;
+                    }
+                    else if (name.find("Tutorial_Platform_01") != std::string::npos) { // プラットフォーム装飾を確実に消す
+                        auto& children = obj->GetChildren();
+                        for (auto& child : children) {
+                            child->SetCollisionAttribute(0); // 当たり判定を消す
+                            child->SetIsVisible(false); // 見えなくする
+                            child->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
+                        }
+                    }
                     obj->SetCollisionAttribute(0); // 当たり判定を消す
                     obj->SetIsVisible(false); // 見えなくする
                     obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
