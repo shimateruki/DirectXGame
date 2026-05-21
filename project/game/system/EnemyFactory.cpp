@@ -3,6 +3,7 @@
 #include "EnemyBomb.h"
 #include <BossCore.h>
 #include "SceneManager.h"
+#include <EnemyBomber.h>
 // 他の敵ができたらここに追加 (#include "EnemyRobot.h" 等)
 
 EnemyFactory* EnemyFactory::GetInstance() {
@@ -73,7 +74,25 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         newEnemy = std::move(bomb);
     }
 
+    else if (enemyName == "Bomber")
+    {
+        auto bomber = std::make_unique<EnemyBomber>();
 
+        // モデルは適宜変更してください
+        bomber->Initialize(common, "Stages/block");
+
+        if (!bomber->param_.has_value()) {
+            bomber->param_.emplace();
+        }
+
+        auto& p = bomber->param_.value();
+        p.hp = 60.0f;
+        p.maxHp = 60.0f;
+        p.speed = 0.0f;       // 立ち止まって投げる想定なら0、動かすなら数値を設定
+        p.gravity = 60.0f;
+
+        newEnemy = std::move(bomber);
+    }
     //:作った敵に「名札」をつける
     if (newEnemy) {
         newEnemy->SetEnemyType(enemyName);

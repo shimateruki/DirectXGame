@@ -773,7 +773,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb" };
+    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;
