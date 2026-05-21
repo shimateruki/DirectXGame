@@ -55,11 +55,7 @@ void TutorialDoll::Update(float deltaTime) {
             deathAnimTimer_ -= deltaTime;
             float t = std::max(0.0f, deathAnimTimer_ / 0.5f);
             
-            if (respawnTimer_ == -1.0f) {
-                // レバー役：消えずに傾く（前に約70度倒れるイメージ）
-                transform_.rotate.x = baseRotation_.x + (1.0f - t) * 1.2f;
-                transform_.isQuaternionMaster = false; // 回転の更新を強制
-            } else {
+            if (respawnTimer_ != -1.0f) {
                 // 案山子役：今まで通りスケールダウンで消滅
                 transform_.scale = baseScale_ * t;
             }
@@ -67,9 +63,9 @@ void TutorialDoll::Update(float deltaTime) {
             if (deathAnimTimer_ <= 0.0f) {
                 if (respawnTimer_ != -1.0f) {
                     SetIsVisible(false);
+                    SetCollisionAttribute(0); // 当たり判定を抹消
                 }
             }
-            SetCollisionAttribute(0); // 当たり判定を抹消
         }
         UpdateWorldMatrix();
         return;

@@ -767,7 +767,7 @@ void GamePlayScene::Update(float deltaTime) {
     // =======================================================
     if (!hasFinishedTutorial_) {
         for (auto& obj : objectManager_->GetObjects()) {
-            if (obj->GetName() == "Tutorial_Doll_Lever") {
+            if (obj->GetName() == "Tutorial_Doll_Button_01") {
                 TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
                 if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
                     hasFinishedTutorial_ = true;
