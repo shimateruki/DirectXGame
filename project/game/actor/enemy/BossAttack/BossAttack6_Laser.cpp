@@ -214,7 +214,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                     laser->Initialize(boss->GetCommon());
                     laser->SetModel("Cylinder");
                     laser->SetName("Beam_Cylinder");
-                    if (currentScene) currentScene->GetObjects().push_back(std::move(newLaser));
+                    if (currentScene) currentScene->AddObject(std::move(newLaser));
                 }
 
                 laser->SetBlendMode(BlendMode::kAdd);
@@ -258,7 +258,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                     coreLaser->Initialize(boss->GetCommon());
                     coreLaser->SetModel("Cylinder");
                     coreLaser->SetName("Beam_Core_Cylinder");
-                    if (currentScene) currentScene->GetObjects().push_back(std::move(newCore));
+                    if (currentScene) currentScene->AddObject(std::move(newCore));
                 }
 
                 coreLaser->SetBlendMode(BlendMode::kAdd);

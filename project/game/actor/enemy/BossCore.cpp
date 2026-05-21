@@ -1435,7 +1435,7 @@ void BossCore::TakeBodyDamage(float damage) {
 
                     // 登録
                     CollisionManager::GetInstance()->AddObject(mapBlock.get());
-                    currentScene->GetObjects().push_back(std::move(mapBlock));
+                    currentScene->AddObject(std::move(mapBlock));
                 }
             }
         }

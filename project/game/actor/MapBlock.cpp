@@ -45,7 +45,7 @@ void MapBlock::Initialize(Object3dCommon* common) {
     // 🚨 注意： GetCurrentScene() の部分は、タイクラーさんの
     // SceneManagerクラスにある「現在のシーンを取得する関数名」に書き換えてください！
     if (BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene()) {
-        currentScene->GetObjects().push_back(std::move(laserBeam));
+        currentScene->AddObject(std::move(laserBeam));
     }
 }
 
