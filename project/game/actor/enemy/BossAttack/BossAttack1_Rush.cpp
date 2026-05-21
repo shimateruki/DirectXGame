@@ -1,6 +1,8 @@
 #include "BossAttack1_Rush.h"
 #include "../BossCore.h"
 #include "./easing.h" // ※環境に合わせてパス(../など)を調整してください
+#include "../../CollisionConfig.h"
+#include "../../MapBlock.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -184,15 +186,35 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
     }
     // --- フェーズ4: 加速突進 ---
     else if (animPhase_ == 4) {
+        // 移動前の座標（前フレームの位置）を保存
+        Vector3 prevPos = boss->GetTranslate();
+
         animTimer_ += deltaTime;
         float duration = 1.0f; // 1秒で駆け抜ける
         float t = std::min(animTimer_ / duration, 1.0f);
         float easedT = std::pow(t, 4.0f);
 
         boss->SetTranslate(Math::Lerp(animStartPos_, animTargetPos_, easedT));
+        boss->UpdateWorldMatrix(); // ★ 衝突判定のためにワールド行列を即座に更新
+
+        // 💥 ステージ上のアクティブなブロック（MapBlock）との衝突判定
+        for (MapBlock* block : MapBlock::s_activeBlocks) {
+            if (block && (block->GetCollisionAttribute() & kMapBlock)) {
+                CollisionInfo info = boss->CheckCollision(block);
+                if (info.isColliding) {
+                    // 完全に押し戻すとピッタリしすぎて違和感があるため、
+                    // 衝突する直前のフレーム（1フレーム前）の座標に戻すことで自然な衝突インパクトを表現
+                    boss->SetTranslate(prevPos);
+                    boss->UpdateWorldMatrix(); // 座標変更後のワールド行列を反映
+                    animPhase_ = 5;
+                    animTimer_ = 0.0f;
+                    break;
+                }
+            }
+        }
 
         // ドリル回転
-        float totalRotation = std::numbers::pi_v<float> *2.0f * 5.0f;
+        float totalRotation = std::numbers::pi_v<float> * 2.0f * 5.0f;
         boss->SetRotation({ easedT * totalRotation, boss->GetRotation().y, boss->GetRotation().z });
         boss->GetTransform()->isQuaternionMaster = false;
 
@@ -202,7 +224,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
         }
 
-        if (t >= 1.0f) {
+        if (t >= 1.0f && animPhase_ == 4) {
             animPhase_ = 5;
             animTimer_ = 0.0f;
         }
