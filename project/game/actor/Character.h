@@ -46,6 +46,9 @@ public:
 
     void ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attribute);
 
+    void SetVelocity(const Vector3& v) { velocity_ = v; }
+    const Vector3& GetVelocity() const { return velocity_; }
+
     std::unique_ptr<Object3d> Clone() const override;
 protected:
     Vector3 velocity_ = { 0.0f, 0.0f, 0.0f }; // 速度

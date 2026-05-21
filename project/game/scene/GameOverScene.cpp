@@ -65,9 +65,7 @@ void GameOverScene::Initialize() {
 
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(), CollisionManager::GetInstance());
 
-    // ★追加: GPUパーティクルの初期化
-    GPUParticleManager::GetInstance()->Initialize(dxCommon_);
-    GPUParticleManager::GetInstance()->LoadAllPresets();
+
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
     // --- 5. レベルデータの読み込み (LevelLoaderへ委譲) ---

@@ -1,9 +1,14 @@
-#include "TextureManager.h"
+﻿#include "TextureManager.h"
 #include <cassert>
 #include "SRVManager.h"
 #include "d3dx12.h"
 #include "DirectXCommon.h" 
 #include <filesystem>
+#include <chrono>
+#include <debugapi.h>
+#include <format>
+#include "DebugConsole.h"
+
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
 /// </summary>
@@ -67,17 +72,31 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
     device_ = dxCommon->GetDevice();
 }
 
-
-
 uint32_t TextureManager::Load(const std::string& filePath) {
-    // 1. 過去に読み込み済みのテクスチャか検索
-    auto it = textureHandleMap_.find(filePath);
+    // 優先的に読み込むパスを決定（DDSがあればそっちを使う）
+    std::string pathToLoad = filePath;
+
+    std::filesystem::path p(filePath);
+    if (p.extension() == ".png" || p.extension() == ".jpg") {
+        std::filesystem::path ddsPath = p;
+        ddsPath.replace_extension(".dds");
+        if (std::filesystem::exists(ddsPath)) {
+            pathToLoad = ddsPath.string();
+        }
+    }
+
+    // 1. すでに読み込み済みのテクスチャか検索（変換後のパスでチェック）
+    std::replace(pathToLoad.begin(), pathToLoad.end(), '\\', '/');
+    auto it = textureHandleMap_.find(pathToLoad);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
 
+    // --- 計測開始 ---
+    auto start = std::chrono::high_resolution_clock::now();
+
     // 2. テクスチャファイルを読み込み、リソースを作成
-    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(filePath);
+    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(pathToLoad);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
     if (!resource) {
@@ -85,14 +104,12 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     }
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
 
-
     UploadTextureData(
         resource.Get(), mipImages, &intermediateResource,
-        device_.Get(), dxCommon_->GetCommandList()); //コマンドが積まれる
+        device_.Get(), dxCommon_->GetLoadCommandList()); //ロード用コマンドリスト
 
-    // FlushCommandQueue(true) を呼び出す
-    dxCommon_->FlushCommandQueue(true);
- 
+    // ロード用コマンドを実行する
+    dxCommon_->ExecuteLoadCommands(); //専用実行関数
 
     // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -100,16 +117,16 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     // キューブマップ対応
-    if (metadata.IsCubemap()) {
+    if (metadata.IsCubemap() || (metadata.arraySize == 6 && metadata.width == metadata.height)) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
         srvDesc.TextureCube.MipLevels = UINT(metadata.mipLevels);
         srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
-    } else if (metadata.dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+    }
+    else if (metadata.dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
     }
-
 
     // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
     uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
@@ -123,7 +140,20 @@ uint32_t TextureManager::Load(const std::string& filePath) {
     newData.srvHandle = srvHandle;
 
     // 5. ファイルパスと「本物のハンドル」の対応をマップに記録
-    textureHandleMap_[filePath] = srvHandle;
+    textureHandleMap_[pathToLoad] = srvHandle;
+
+    // もしPNGを指定してDDSを読んだなら、元のパスでも引けるようにしておく
+    if (pathToLoad != filePath) {
+        textureHandleMap_[filePath] = srvHandle;
+    }
+
+    // --- 計測終了 ---
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> diff = end - start;
+
+    // 出力
+    std::string log = std::format("[TextureManager] Load: {} (Format: {}, {:.2f} ms)\n", filePath, (int)metadata.format, diff.count());
+    DebugConsole::GetInstance()->AddLog(log);
 
     // 6. 「本物のハンドル」を返す
     return srvHandle;
@@ -137,17 +167,30 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
     if (std::filesystem::exists(directoryPath)) {
+        // --- 全体計測開始 ---
+        auto totalStart = std::chrono::high_resolution_clock::now();
+        int count = 0;
 
         for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
             // フォルダではなく「ファイル」だった場合のみ処理
             if (entry.is_regular_file()) {
-                if (entry.path().extension() == ".png" || entry.path().extension() == ".jpg") {
+                std::string ext = entry.path().extension().string();
+                if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
                     std::string path = entry.path().string();
                     std::replace(path.begin(), path.end(), '\\', '/');
                     Load(path);
+                    count++;
                 }
             }
         }
+
+        // --- 全体計測終了 ---
+        auto totalEnd = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> totalDiff = totalEnd - totalStart;
+
+        std::string totalLog = std::format("========== [TextureManager] Total Load Time: {:.3f} s ({} files) ==========\n",
+            totalDiff.count(), count);
+        DebugConsole::GetInstance()->AddLog(totalLog);
     }
 }
 
@@ -161,7 +204,9 @@ std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
 }
 
 uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
-    auto it = textureHandleMap_.find(filePath);
+    std::string normalizedPath = filePath;
+    std::replace(normalizedPath.begin(), normalizedPath.end(), '\\', '/');
+    auto it = textureHandleMap_.find(normalizedPath);
     if (it != textureHandleMap_.end()) {
         return it->second;
     }

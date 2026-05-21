@@ -1,15 +1,156 @@
 {
+    "Overrides": {
+        "a": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                0.22204479575157166,
+                13.760502815246582,
+                -12.058536529541016
+            ],
+            "fixedTargetPos": [
+                0.07232095301151276,
+                13.160861015319824,
+                -2.0776538848876953
+            ],
+            "trackEyeX": false,
+            "trackEyeY": false,
+            "trackEyeZ": false,
+            "trackTargetX": false,
+            "trackTargetY": false,
+            "trackTargetZ": false
+        },
+        "down": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                2.1726033687591553,
+                21.728757858276367,
+                140.91558837890625
+            ],
+            "fixedTargetPos": [
+                2.226524591445923,
+                20.889741897583008,
+                130.95098876953125
+            ],
+            "trackEyeX": true,
+            "trackEyeY": false,
+            "trackEyeZ": true,
+            "trackTargetX": true,
+            "trackTargetY": false,
+            "trackTargetZ": true
+        },
+        "hukan": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                -0.33398303389549255,
+                142.75045776367188,
+                -30.22251319885254
+            ],
+            "fixedTargetPos": [
+                -0.3233727812767029,
+                132.7755126953125,
+                -29.515220642089844
+            ],
+            "trackEyeX": true,
+            "trackEyeY": false,
+            "trackEyeZ": true,
+            "trackTargetX": true,
+            "trackTargetY": false,
+            "trackTargetZ": true
+        },
+        "left": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "fixedTargetPos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "trackEyeX": true,
+            "trackEyeY": false,
+            "trackEyeZ": true,
+            "trackTargetX": true,
+            "trackTargetY": false,
+            "trackTargetZ": true
+        },
+        "right": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                114.49762725830078,
+                22.265010833740234,
+                1.6256554126739502
+            ],
+            "fixedTargetPos": [
+                104.58158111572266,
+                20.97858238220215,
+                1.4947102069854736
+            ],
+            "trackEyeX": true,
+            "trackEyeY": false,
+            "trackEyeZ": true,
+            "trackTargetX": true,
+            "trackTargetY": false,
+            "trackTargetZ": true
+        },
+        "tutorial movie": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                0.38418835401535034,
+                33.01767349243164,
+                -241.37237548828125
+            ],
+            "fixedTargetPos": [
+                0.23484916985034943,
+                32.089012145996094,
+                -231.41671752929688
+            ],
+            "trackEyeX": false,
+            "trackEyeY": false,
+            "trackEyeZ": false,
+            "trackTargetX": false,
+            "trackTargetY": false,
+            "trackTargetZ": false
+        },
+        "up": {
+            "duration": 1.0,
+            "fixedEyePos": [
+                -4.403578281402588,
+                22.821462631225586,
+                -110.3228759765625
+            ],
+            "fixedTargetPos": [
+                -4.226495742797852,
+                21.031166076660156,
+                -100.48603057861328
+            ],
+            "trackEyeX": true,
+            "trackEyeY": false,
+            "trackEyeZ": true,
+            "trackTargetX": true,
+            "trackTargetY": false,
+            "trackTargetZ": true
+        }
+    },
     "angle": [
-        8.097743034362793,
-        -156.0269012451172,
+        12.225481986999512,
+        -3.575286388397217,
         0.0
     ],
     "boostSpeed": 2.0,
+    "cameraSensitivity": 0,
     "distance": 21.100000381469727,
-    "fixedPointPos": [
+    "fixedPointAngle": [
         0.0,
-        5.0,
-        -15.0
+        0.0,
+        0.0
+    ],
+    "fixedPointPos": [
+        4.050004005432129,
+        16.750011444091797,
+        -48.5
     ],
     "gameFollowMode": 1,
     "height": 1.600000023841858,

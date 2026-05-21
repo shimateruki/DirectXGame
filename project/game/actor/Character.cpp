@@ -27,14 +27,15 @@ void Character::Update(float deltaTime) {
         velocity_.y = -param_->maxFallSpeed;
     }
 
-    // 死亡判定
-    if (param_->hp <= 0) {
+    // 死亡判定 (Player, BossCore, TutorialDoll以外はHP0で自動消滅フラグを立てる)
+    if (param_->hp <= 0 && className_ != "Player" && className_ != "BossCore" && className_ != "TutorialDoll") {
         isDead = true;
     }
 
     // 速度を座標に適用
     transform_.translate += velocity_ * deltaTime;
 }
+
 
 void Character::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
 

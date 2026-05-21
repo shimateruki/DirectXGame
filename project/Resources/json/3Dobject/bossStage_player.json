@@ -24,7 +24,7 @@
                 ],
                 "type": 3
             },
-            "collisionAttribute": 5,
+            "collisionAttribute": 1,
             "collisionMask": 4294967294,
             "color": [
                 1.0,
@@ -32,6 +32,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -61,19 +62,19 @@
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 54.0,
-                "hp": 1000.0,
+                "hp": 500.0,
                 "interval": 3.0,
                 "jumpPower": 30.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 1000.0,
+                "maxHp": 500.0,
                 "speed": 15.0
             },
             "parentName": "",
             "position": [
                 0.0,
-                1.281618595123291,
-                0.0
+                94.69999694824219,
+                -244.0
             ],
             "quaternion": [
                 0.0,
@@ -110,97 +111,6 @@
             "blendMode": 0,
             "collider": {
                 "center": [
-                    0.44999998807907104,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.6000000238418579,
-                    0.10000000149011612,
-                    0.10000000149011612
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 65,
-            "collisionMask": 4294967294,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.9549999833106995,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.8029999732971191,
-            "modelName": "sword",
-            "myEventID": -1,
-            "name": "Player_sword",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Player_rightArm",
-            "position": [
-                0.4501490890979767,
-                -0.14000000059604645,
-                0.0
-            ],
-            "quaternion": [
-                0.18301278352737427,
-                -0.6830123662948608,
-                0.18301261961460114,
-                0.6830130219459534
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.5235987901687622,
-                -1.5707954168319702,
-                0.0
-            ],
-            "roughness": 1.0,
-            "saveCategory": "Player",
-            "scale": [
-                1.5000532865524292,
-                1.5000051259994507,
-                1.4999796152114868
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
                     0.0,
                     0.36000001430511475,
                     0.019999999552965164
@@ -225,6 +135,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -316,6 +227,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -407,6 +319,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -498,6 +411,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -589,6 +503,7 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
             "enemyType": "",
@@ -638,6 +553,742 @@
                 0.0
             ],
             "roughness": 0.0,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.4480000138282776,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.5830000042915344,
+                    0.15000000596046448,
+                    0.008104000240564346
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967294,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.8539999723434448,
+            "modelName": "sword_blade",
+            "myEventID": -1,
+            "name": "sword_blade",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_rightArm",
+            "position": [
+                0.45001673698425293,
+                -0.14226531982421875,
+                0.36527252197265625
+            ],
+            "quaternion": [
+                0.18301278352737427,
+                -0.6830123066902161,
+                0.18301260471343994,
+                0.6830130219459534
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.5235987901687622,
+                -1.5707952976226807,
+                0.0
+            ],
+            "roughness": 0.753000020980835,
+            "saveCategory": "Player",
+            "scale": [
+                1.2000210285186768,
+                1.5000019073486328,
+                1.5000759363174438
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.2944745123386383,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.1549524962902069,
+                    0.014082999899983406,
+                    0.014016999863088131
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 64,
+            "collisionMask": 4294967294,
+            "color": [
+                0.10038608312606812,
+                0.056095946580171585,
+                0.024418232962489128,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sword_handle",
+            "myEventID": -1,
+            "name": "sword_handle",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "sword_blade",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.2254519909620285,
+                    0.0018300004303455353,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.24319599568843842,
+                    0.05643099918961525,
+                    0.018055999651551247
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 64,
+            "collisionMask": 4294967294,
+            "color": [
+                0.0,
+                0.8262548446655273,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.7129999995231628,
+            "modelName": "sword_onament",
+            "myEventID": -1,
+            "name": "sword_onament",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "sword_blade",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 1.0,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.14274999499320984,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.04649600014090538,
+                    0.10499999672174454,
+                    0.019999999552965164
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 64,
+            "collisionMask": 4294967294,
+            "color": [
+                0.07721996307373047,
+                0.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 1.0,
+            "modelName": "sword_Tsuba",
+            "myEventID": -1,
+            "name": "sword_Tsuba",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "sword_blade",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.6800000071525574,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.002499490976333618,
+                    -0.050561998039484024,
+                    0.0020919963717460632
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.28799450397491455,
+                    0.17300499975681305,
+                    0.24969398975372314
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967294,
+            "color": [
+                0.08494210243225098,
+                0.012134585529565811,
+                0.012134585529565811,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sword_string",
+            "myEventID": -1,
+            "name": "sword_string",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Player_body",
+            "position": [
+                0.0,
+                7.62939453125e-06,
+                -0.04723358154296875
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                -4.3711896324794e-08
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                3.1415927410125732,
+                -8.742378554416064e-08,
+                3.1415927410125732
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Player",
+            "scale": [
+                0.9999209642410278,
+                0.9999997615814209,
+                0.9999209642410278
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.06806400418281555,
+                    -0.16163550317287445,
+                    -0.016969501972198486
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.2559030055999756,
+                    0.025809496641159058,
+                    0.23179049789905548
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967294,
+            "color": [
+                0.8416988849639893,
+                1.0,
+                0.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 2.611999988555908,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 1.0,
+            "modelName": "sword_fastener",
+            "myEventID": -1,
+            "name": "sword_fastener",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "sword_string",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8429999947547913,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.008753493428230286,
+                    -0.07755900919437408,
+                    0.21999499201774597
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.4346435070037842,
+                    0.26898401975631714,
+                    0.02250000089406967
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967294,
+            "color": [
+                0.0,
+                0.4324324131011963,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sword_scabbard",
+            "myEventID": -1,
+            "name": "sword_scabbard",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "sword_string",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Player",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.044354505836963654,
+                    -0.16855649650096893,
+                    0.006730496883392334
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    0.2786405086517334,
+                    0.03814549744129181,
+                    0.20674049854278564
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967294,
+            "color": [
+                0.16988414525985718,
+                0.08728338032960892,
+                0.02820470929145813,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "sword_bag",
+            "myEventID": -1,
+            "name": "sword_bag",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "sword_string",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
             "saveCategory": "Player",
             "scale": [
                 1.0,

@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 
 // ======== DirectXの基本機能に必要なヘッダーファイル ========
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <wrl.h> // ComPtrを使うのに必要
+#include <wrl.h> // ComPtrを使うために必要
 #include <string>
 #include <chrono>
 
@@ -11,7 +11,7 @@
 #include <dxcapi.h> // シェーダーコンパイルに必要
 #include "DirectXTex.h"
 
-// 前方宣言 
+// 前方宣言
 class WinApp;
 
 // =================================================================
@@ -47,7 +47,6 @@ public:
 	/// </summary>
 	void PostDraw();
 
-
 	// --- ゲッター関数（privateなメンバ変数を外部から安全に取得する） ---
 
 	ID3D12Device* GetDevice() const { return device_.Get(); }
@@ -65,7 +64,7 @@ public:
 	/// <summary>
 	/// HLSLシェーダーファイルをコンパイルする
 	/// </summary>
-	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst , const wchar_t* entryPoint = L"main");
+	Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(const std::wstring& filePath, const wchar_t* profileconst, const wchar_t* entryPoint = L"main");
 
 	/// <summary>
 	/// 汎用的なバッファリソースを作成する
@@ -95,7 +94,6 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
 
-
 	/// <summary>
 	/// 標準的な深度ステンシルデスクリプタを取得する
 	/// </summary>
@@ -106,11 +104,7 @@ public:
 	/// </summary>
 	DXGI_FORMAT GetDSVFormat() const;
 
-
-
 	void WaitForGPUAndReset();
-
-
 
 	ID3D12CommandAllocator* GetCommandAllocator() const { return commandAllocator_.Get(); }
 	ID3D12CommandQueue* GetCommandQueue() const { return commandQueue_.Get(); }
@@ -118,27 +112,30 @@ public:
 	uint64_t GetFenceValue() const { return fenceValue_; }
 	HANDLE GetFenceEvent() const { return fenceEvent_; }
 
-	//  レンダーテクスチャの初期化
+	// レンダーテクスチャの初期化
 	void CreateRenderTexture();
 
-	//  描画先を「レンダーテクスチャ」に切り替える (GameView描画開始)
+	// 描画先を「レンダーテクスチャ」に切り替える (GameView描画開始)
 	void PreDrawRenderTexture();
 
-	//  描画先を「画面(バックバッファ)」に戻す (GameView描画終了)
+	// 描画先を「画面(バックバッファ)」に戻す (GameView描画終了)
 	void PostDrawRenderTexture();
 
-	//  ImGuiで表示するための SRVハンドルを取得
+	// ImGuiで表示するための SRVハンドルを取得
 	uint32_t GetRenderTextureSrvHandle() const { return renderTextureSrvHandle_; }
 	void PreDrawBackBuffer(); // 描画先をバックバッファに戻す（リセットなし）
+
 	void CreateShadowMap();
 	uint32_t GetShadowMapSrvHandle() const { return shadowMapSrvHandle_; }
 	void PreDrawShadow();
 	void PostDrawShadow();
 	float GetGpuDrawTimeMs() const { return gpuDrawTimeMs_; }
+
 	// GPUプロファイラ操作用
 	void StartGpuProfile();
 	void EndGpuProfile();
 	void ReadGpuProfile();
+
 	void CreateDepthSrv();
 	uint32_t GetDepthSrvHandle() const { return depthSrvHandle_; }
 
@@ -147,6 +144,11 @@ public:
 	uint32_t GetGrabSrvHandle() const { return grabSrvHandle_; }
 	void UpdateGrabTexture();
 	void ResizeSwapChain(int32_t width, int32_t height);
+
+	// ロード専用コマンドリストの取得と実行
+	ID3D12GraphicsCommandList* GetLoadCommandList() const { return loadCommandList_.Get(); }
+	void ExecuteLoadCommands();
+
 private:
 	// ======== privateなメンバ関数（このクラスの内部でのみ使う機能） ========
 
@@ -167,14 +169,12 @@ private:
 	// DSV用のテクスチャリソースを作成するヘルパー
 	Microsoft::WRL::ComPtr<ID3D12Resource> CreateDepthStencilTextureResource(int32_t width, int32_t height);
 
-
-
 private:
 	// ======== privateなメンバ変数（このクラスが内部で保持するデータ） ========
 
 	WinApp* winApp_ = nullptr; // WindowsAPIクラス
 
-	//記録時間
+	// 記録時間
 	std::chrono::steady_clock::time_point reference_;
 
 	// --- DirectXオブジェクト ---
@@ -188,7 +188,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_ = nullptr;
-	uint32_t depthSrvHandle_ = 0; 
+	uint32_t depthSrvHandle_ = 0;
+
 	// --- GPUとの同期用 ---
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence_ = nullptr;
 	uint64_t fenceValue_ = 0;
@@ -207,29 +208,37 @@ private:
 	Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler_ = nullptr;
 	Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_ = nullptr;
-	//  レンダーテクスチャのリソース
+
+	// レンダーテクスチャのリソース
 	Microsoft::WRL::ComPtr<ID3D12Resource> renderTexture_;
 
-	//  レンダーテクスチャ専用のRTVヒープ (ここに描画するためのハンドル)
+	// レンダーテクスチャ専用のRTVヒープ (ここに描画するためのハンドル)
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtRtvHeap_;
 
-	//  SRVManager上のインデックス番号
+	// SRVManager上のインデックス番号
 	uint32_t renderTextureSrvHandle_ = 0;
 
-	//  GameViewのクリアカラー (動作確認用に「緑」にしておきます)
+	// GameViewのクリアカラー (動作確認用に「緑」にしておきます)
 	float clearColor_[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;
 	uint32_t shadowMapSrvHandle_ = 0;
+
 	// シャドウマップの解像度（とりあえず1024x1024。綺麗にしたいなら2048や4096に）
 	static const int kShadowMapWidth = 2048;
 	static const int kShadowMapHeight = 2048;
-	//Gpuの時間計測用
+
+	// GPUの時間計測用
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
 	Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
 	uint64_t gpuFrequency_ = 0; // GPUのタイマーの周波数
 	float gpuDrawTimeMs_ = 0.0f; // 計測結果（ミリ秒）
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> grabTexture_;
 	uint32_t grabSrvHandle_ = 0;
+
+	// ロード専用のコマンドアロケータとリスト
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> loadCommandAllocator_ = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> loadCommandList_ = nullptr;
 };

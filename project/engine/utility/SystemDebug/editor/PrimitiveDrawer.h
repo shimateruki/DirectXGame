@@ -31,6 +31,7 @@ public:
     // キューブの描画
     void DrawWireCube(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
     void DrawWireSphere(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
+    void DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const Matrix4x4& worldMatrix, const Vector4& color, int instanceIndex);
 private:
     DirectXCommon* dxCommon_ = nullptr;
     static const int kMaxInstances = 2048;
@@ -50,4 +51,9 @@ private:
     D3D12_VERTEX_BUFFER_VIEW sphereVertexBufferView_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> sphereIndexBuffer_;
     D3D12_INDEX_BUFFER_VIEW sphereIndexBufferView_{};
+    Microsoft::WRL::ComPtr<ID3D12Resource> cylinderVertexBuffer_;
+    D3D12_VERTEX_BUFFER_VIEW cylinderVertexBufferView_{};
+    Microsoft::WRL::ComPtr<ID3D12Resource> cylinderIndexBuffer_;
+    D3D12_INDEX_BUFFER_VIEW cylinderIndexBufferView_{};
+
 };

@@ -17,11 +17,14 @@ Object3d* FindModelObject(Object3d* obj) {
 void GPUParticleEmitter::Initialize(const std::string& presetName, Object3d* targetObject) {
     presetName_ = presetName; targetObject_ = targetObject; isPlaying_ = false; emitTimer_ = 0.0f;
 }
+
+
 void GPUParticleEmitter::Update(float deltaTime) {
     if (!isPlaying_ || presetName_.empty()) return;
     emitTimer_ += deltaTime;
     if (emitTimer_ >= emitInterval_) { EmitOnce(); emitTimer_ = fmod(emitTimer_, emitInterval_); }
 }
+
 void GPUParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
 void GPUParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
 

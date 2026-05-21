@@ -90,7 +90,7 @@ public:
     void ConfigFixed(const Vector3& offset);
     void ConfigAimable(float distance, float height, const Vector3& angle);
     void ConfigFirstPerson(const Vector3& eyeOffset);
-    void ConfigFixedPoint(const Vector3& position);
+    void ConfigFixedPoint(const Vector3& position, const Vector3& angle);
 
     void SetOrbitParams(float radius, float height, float speed) {
         orbitRadius_ = radius;
@@ -103,6 +103,11 @@ public:
     // 操作・同期
     // ==================================================
     void AddRotation(const Vector2& mouseDelta);
+    
+    /// <summary>
+    /// 感度を設定します (-5 ~ 5)
+    /// </summary>
+    void SetSensitivity(int level);
     void SyncRotationToCurrentView();
 
     // ==================================================
@@ -112,7 +117,7 @@ public:
     void EndOverride(float duration);
     bool IsOverridden() const { return isOverridden_; }
     float GetOverrideWeight() const { return overrideWeight_; }
-
+    const Frustum& GetFrustum() const { return frustum_; }
 private:
     // ==================================================
     // メンバ変数
@@ -160,6 +165,7 @@ private:
     float aimHeight_ = 5.0f;
     Vector3 aimAngle_ = { 0.0f, 0.0f, 0.0f };
     bool isEyeFrozen_ = false;
+    float sensitivityMultiplier_ = 1.0f; // 感度倍率
 
     float orbitRadius_ = 15.0f;
     float orbitHeight_ = 5.0f;
@@ -175,4 +181,6 @@ private:
     float overrideWeight_ = 0.0f;         // 0.0(通常) ～ 1.0(完全オーバーライド)
     Vector3 overrideStartEye_ = { 0.0f, 0.0f, 0.0f };
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
+    Frustum frustum_;
 };

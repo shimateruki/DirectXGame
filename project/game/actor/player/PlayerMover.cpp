@@ -29,7 +29,7 @@ void PlayerMover::Initialize(Player* player, InputManager* inputManager, Particl
 {
     player_ = player;
     inputManager_ = inputManager;
-    particleSystem_ = particleSystem;
+    particleSystem_ = particleSystem;  
 
     // デフォルト戦略
     strategy_ = std::make_unique<MoveStrategy3D>();
@@ -64,7 +64,7 @@ void PlayerMover::Update(float deltaTime)
     Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
     // --- 4. ダッシュ(回避)開始判定 ---
-    bool shiftTriggered = inputManager_->IsKeyTriggered(DIK_LSHIFT) || inputManager_->IsKeyTriggered(DIK_RSHIFT);
+    bool shiftTriggered = inputManager_->IsActionTriggered("Dash");
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
     if (shiftTriggered && hasMoveInput && !isDashing_ && dashAvailable_)

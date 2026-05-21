@@ -16,6 +16,20 @@ Object3d::~Object3d() {
         delete recorder_;
         recorder_ = nullptr;
     }
+    // 1. 親のリストから自分を外す
+    if (parent_) {
+        auto& siblings = parent_->children_;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+    }
+
+    // 2. 子が持っている「自分（親）への参照」を無効化する
+    for (Object3d* child : children_) {
+        if (child) {
+            child->parent_ = nullptr;
+            child->GetTransform()->parent = nullptr;
+            child->UpdateWorldMatrix(); // 親が消えた状態で即座に行列を再計算させる
+        }
+    }
     // unique_ptr (collider_, meshRenderer_) は自動解放
 }
 
@@ -104,6 +118,9 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 #endif
     if (meshRenderer_) {
         meshRenderer_->Draw(pointLightResource, spotLightResource);
+        if (enableOutline_) {
+            meshRenderer_->DrawOutline();
+        }
     }
 }
 
@@ -358,6 +375,22 @@ MeshRenderer::LocalFogData* Object3d::GetLocalFogData() {
     return meshRenderer_ ? meshRenderer_->GetLocalFogData() : nullptr;
 }
 
+void Object3d::DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawWater(depthSrvHandle, grabSrvHandle);
+    }
+}
+
+void Object3d::DrawMagma(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawMagma(depthSrvHandle, grabSrvHandle);
+    }
+}
+
+MeshRenderer::WaterParamForGPU* Object3d::GetWaterParamData() {
+    return meshRenderer_ ? meshRenderer_->GetWaterParamData() : nullptr;
+}
+
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
 
@@ -367,6 +400,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->saveCategory_ = other->saveCategory_;
     this->enemyType_ = other->enemyType_;
     this->isVisible_ = other->isVisible_;
+    this->enableOutline_ = other->enableOutline_;
     this->isLocked_ = other->isLocked_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
@@ -433,6 +467,11 @@ void Object3d::CopyFrom(const Object3d* other) {
     if (myFog && otherFog) {
         *myFog = *otherFog;
     }
+    auto myWater = this->GetWaterParamData();
+    auto otherWater = const_cast<Object3d*>(other)->GetWaterParamData();
+    if (myWater && otherWater) {
+        *myWater = *otherWater;
+    }
 }
 json Object3d::ExportToJson() {
     json d;
@@ -444,6 +483,7 @@ json Object3d::ExportToJson() {
     d["saveCategory"] = saveCategory_;
     d["enemyType"] = enemyType_;
     d["isVisible"] = isVisible_;
+    d["enableOutline"] = enableOutline_;
     d["isLocked"] = isLocked_;
 
     // 2. Transform
@@ -518,6 +558,13 @@ json Object3d::ExportToJson() {
         d["localFog"]["scatteringG"] = fogData->scatteringG;
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
     }
+    if (auto* waterData = GetWaterParamData()) {
+        d["waterParam"]["waveSpeed"] = waterData->waveSpeed;
+        d["waterParam"]["waveHeight"] = waterData->waveHeight;
+        d["waterParam"]["waveFrequency"] = waterData->waveFrequency;
+        d["waterParam"]["flowSpeedX"] = waterData->flowSpeedX;
+        d["waterParam"]["flowSpeedY"] = waterData->flowSpeedY;
+    }
 
     return d;
 }
@@ -529,6 +576,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
+    if (j.contains("enableOutline")) enableOutline_ = j["enableOutline"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
 
     // 2. Transform
@@ -629,6 +677,16 @@ void Object3d::ImportFromJson(const json& j) {
             if (jf.contains("noiseScale")) fogData->noiseScale = jf["noiseScale"];
             if (jf.contains("scatteringG")) fogData->scatteringG = jf["scatteringG"];
             if (jf.contains("scatteringIntensity")) fogData->scatteringIntensity = jf["scatteringIntensity"];
+        }
+    }
+    if (j.contains("waterParam")) {
+        if (auto* waterData = GetWaterParamData()) {
+            const auto& jw = j["waterParam"];
+            if (jw.contains("waveSpeed")) waterData->waveSpeed = jw["waveSpeed"];
+            if (jw.contains("waveHeight")) waterData->waveHeight = jw["waveHeight"];
+            if (jw.contains("waveFrequency")) waterData->waveFrequency = jw["waveFrequency"];
+            if (jw.contains("flowSpeedX")) waterData->flowSpeedX = jw["flowSpeedX"];
+            if (jw.contains("flowSpeedY")) waterData->flowSpeedY = jw["flowSpeedY"];
         }
     }
 }

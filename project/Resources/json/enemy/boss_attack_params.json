@@ -1,0 +1,63 @@
+{
+    "damageAbsorb": 15.0,
+    "damageBomb": 30.0,
+    "damageBombReflect": 20.0,
+    "damageFinal": 50.0,
+    "damageFunnels": 12.0,
+    "damageHammer": 25.0,
+    "damageHumanoid": 35.0,
+    "damageLaser": 40.0,
+    "damageRush": 20.0,
+    "damageShoot": 10.0,
+    "damageSlime": 8.0,
+    "damageWall": 30.0,
+    "lowArmorAbsorbRate": 90,
+    "lowArmorThreshold": 3,
+    "maxArmorBlockHp": 200.0,
+    "maxBarrierHp": 300.0,
+    "phase1Attacks": [
+        {
+            "id": 10,
+            "weight": 30
+        },
+        {
+            "id": 7,
+            "weight": 30
+        },
+        {
+            "id": 1,
+            "weight": 30
+        },
+        {
+            "id": 2,
+            "weight": 30
+        },
+        {
+            "id": 3,
+            "weight": 30
+        },
+        {
+            "id": 4,
+            "weight": 30
+        }
+    ],
+    "phase2Attacks": [
+        {
+            "id": 5,
+            "weight": 30
+        },
+        {
+            "id": 6,
+            "weight": 30
+        },
+        {
+            "id": 7,
+            "weight": 30
+        },
+        {
+            "id": 9,
+            "weight": 30
+        }
+    ],
+    "stunDuration": 6.0
+}

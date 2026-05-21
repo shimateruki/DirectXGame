@@ -134,6 +134,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["color"] = { color.x, color.y, color.z, color.w };
     d["blendMode"] = static_cast<int>(obj->GetBlendMode());
     d["materialType"] = obj->GetMaterialType();
+    d["enableOutline"] = obj->GetEnableOutline();
     d["metallic"] = obj->GetMetallic();
     d["roughness"] = obj->GetRoughness();
     d["enableNormalMap"] = obj->GetEnableNormalMap();
@@ -161,6 +162,13 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["localFog"]["noiseScale"] = fogData->noiseScale;
         d["localFog"]["scatteringG"] = fogData->scatteringG;
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
+    }
+    if (auto* waterData = obj->GetWaterParamData()) {
+        d["waterParam"]["waveSpeed"] = waterData->waveSpeed;
+        d["waterParam"]["waveHeight"] = waterData->waveHeight;
+        d["waterParam"]["waveFrequency"] = waterData->waveFrequency;
+        d["waterParam"]["flowSpeedX"] = waterData->flowSpeedX;
+        d["waterParam"]["flowSpeedY"] = waterData->flowSpeedY;
     }
 
     return d;

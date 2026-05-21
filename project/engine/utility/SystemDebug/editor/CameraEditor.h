@@ -27,12 +27,13 @@ public:
         float orbitRadius = 15.0f;
         float orbitHeight = 5.0f;
         float orbitSpeed = 0.005f;
-
+        int cameraSensitivity = 0;
         // --- Editorモード用パラメータ ---
         float moveSpeed = 0.5f;
         float boostSpeed = 2.0f;
         float mouseSensitivity = 0.003f;
         Vector3 fixedPointPos = { 0.0f, 5.0f, -15.0f };
+        Vector3 fixedPointAngle = { 0.0f, 0.0f, 0.0f };
     };
 
 public:
@@ -49,7 +50,14 @@ public:
 
     void SaveSettings();
     void LoadSettings();
+    // ファイルから設定を読み込む
     void LoadFile(const std::string& fileName);
+
+    /// <summary>
+    /// 現在のカメラの状態を設定値(settings_)に同期する
+    /// </summary>
+    void SyncSettingsFromCamera();
+
     void RefreshFileList();
 
     bool IsEditorMode() const { return settings_.currentMode == Mode::Editor; }
@@ -61,6 +69,15 @@ public:
     /// 保存されている名前を呼び出すだけで、指定カメラを自動でオーバーライドさせる
     /// </summary>
     bool PlayOverrideCamera(Camera* camera, const std::string& cameraName);
+    int GetCameraSensitivity() const { return settings_.cameraSensitivity; }
+    void SetCameraSensitivity(int val) {
+        settings_.cameraSensitivity = val;
+    }
+
+    void SetCinematicActive(bool active) { isCinematicActive_ = active; }
+    bool IsCinematicActive() const { return isCinematicActive_; }
+
+
 private:
     void UpdateFreeCamera(Camera* camera);
 
@@ -80,4 +97,5 @@ private:
     std::string selectedOverrideName_ = ""; // 現在エディタで選択中のカメラ名
     char newOverrideNameBuffer_[64] = "";   // 新規作成時の名前入力欄
     Object3d* targetPlayer_ = nullptr;
+    bool isCinematicActive_ = false;
 };

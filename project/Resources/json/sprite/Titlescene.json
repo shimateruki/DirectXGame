@@ -3,21 +3,22 @@
         {
             "anchor": [
                 0.5,
-                0.0
+                0.5
             ],
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "title.png",
             "position": [
-                800.5714111328125,
-                151.40452575683594
+                440.0,
+                370.0
             ],
             "size": [
-                300.0,
-                54.0
+                700.0,
+                100.0
             ],
             "texture": "title.png"
         },
@@ -31,37 +32,83 @@
                 1.0,
                 1.0
             ],
+            "emissive": 1.0,
             "name": "gameStartText.png",
             "position": [
-                903.4285888671875,
-                570.390380859375
+                440.0,
+                550.0
             ],
             "size": [
-                600.0,
-                240.0
+                228.39999389648438,
+                71.4000015258789
             ],
             "texture": "gameStartText.png"
         },
         {
             "anchor": [
                 0.5,
-                1.0
+                0.5
             ],
             "color": [
                 1.0,
                 1.0,
                 1.0
             ],
-            "name": "setting.png",
+            "emissive": 1.0,
+            "name": "title_optionText.png",
             "position": [
-                846.8571166992188,
-                629.60302734375
+                440.0,
+                650.0
             ],
             "size": [
-                300.0,
-                54.0
+                160.0,
+                80.0
             ],
-            "texture": "setting.png"
+            "texture": "optionText.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "exit.png",
+            "position": [
+                440.0,
+                750.0
+            ],
+            "size": [
+                160.0,
+                80.0
+            ],
+            "texture": "exit.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "name": "enter_text.png",
+            "position": [
+                1350.0,
+                820.0
+            ],
+            "size": [
+                250.0,
+                50.0
+            ],
+            "texture": "enter_text.png"
         }
     ]
 }

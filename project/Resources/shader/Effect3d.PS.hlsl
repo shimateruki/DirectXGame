@@ -1,7 +1,6 @@
 // ========================================================
 // Effect3d.PS.hlsl - メッシュエフェクト用ピクセルシェーダー（完全版）
 // ========================================================
-
 Texture2D<float4> mainTex : register(t0); // 斬撃の画像
 Texture2D<float4> grabTex : register(t1); // 背景コピー（歪み用）
 Texture2D<float4> noiseTex : register(t2); // ノイズ画像（ディゾルブ用）
@@ -26,15 +25,17 @@ cbuffer EffectMaterial : register(b0)
     int enableColorRamp; // ★追加
     int enableNoiseTexture; // ★追加
     int enableReveal;
-    int proceduralType; 
+    int proceduralType;
     float3 padding2;
 };
+
 // --- プロシージャル計算用関数 ---
 // 2Dランダムハッシュ
 float hash(float2 p)
 {
     return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
 }
+
 // シンプルなバリューノイズ
 float valueNoise(float2 p)
 {
@@ -44,6 +45,7 @@ float valueNoise(float2 p)
     return lerp(lerp(hash(i + float2(0.0, 0.0)), hash(i + float2(1.0, 0.0)), u.x),
                 lerp(hash(i + float2(0.0, 1.0)), hash(i + float2(1.0, 1.0)), u.x), u.y);
 }
+
 struct VertexOutput
 {
     float4 svpos : SV_POSITION;
@@ -71,6 +73,7 @@ float noise(float2 uv)
     float2 u = f * f * (3.0 - 2.0 * f);
     return lerp(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
 }
+
 // ③ 軽量版FBM (3回重ね)
 // 命令数を抑えつつ、複雑な揺らぎを作ります
 float fbm_light(float2 uv)
@@ -86,6 +89,7 @@ float fbm_light(float2 uv)
     }
     return v;
 }
+
 float4 main(VertexOutput input) : SV_TARGET
 {
     // 1. エディタからの制御で進行方向に合わせて消す (Reveal)
@@ -121,7 +125,8 @@ float4 main(VertexOutput input) : SV_TARGET
     // 3. ディゾルブ消滅
     if (baseNoiseValue < dissolveFade)
         discard;
-// 4. マスク計算 (★プロシージャルTypeで形を分岐！)
+
+    // 4. マスク計算 (★プロシージャルTypeで形を分岐！)
     // ========================================================
     float alphaMask = 1.0f;
     float distMask = 1.0f;
@@ -134,48 +139,71 @@ float4 main(VertexOutput input) : SV_TARGET
     }
     else if (proceduralType == 1)
     {
-        // Type 1: プロシージャル「鋭い斬撃 (SAO風)」ガチ版
+        // ========================================================
+        // ★ Type 1: プロシージャル「鋭い斬撃」超進化プラズマ版
+        // ========================================================
         
         // ① 尻尾に向かって細くなる「えぐり」の計算
-        float trail = 1.0f - saturate(input.uv.x); // 先端(1.0) -> 尻尾(0.0)
-        float thickness = pow(trail, 0.5f); // 尻尾に向かって急激に細くなるカーブ
+        float trail = 1.0f - saturate(input.uv.x);
+        float thickness = pow(trail, 0.5f);
         
-        // ② Y軸の中心(0.5)から端への距離を計算し、刃の鋭さを作る
-        float yDist = abs(input.uv.y - 0.5f) * 2.0f;
-        float widthMask = 1.0f - (yDist / max(thickness, 0.001f)); // 0除算防止
-        
-        // edgeFadeStrengthで刃先のシャープさを極限まで高める
-        widthMask = saturate(pow(max(widthMask, 0.0f), abs(edgeFadeStrength) + 1.0f));
-        float trailMask = smoothstep(0.0f, 1.0f, trail); // 尻尾をスッとフェードアウト
+        // ★NEW: FBMノイズを使った「空間の歪み（Domain Warping）」
+        // 進行方向と逆向きに高速スクロールするノイズを作り、輪郭を荒らす
+        float2 warpUV = float2(input.uv.x * 2.0f - time * 12.0f, input.uv.y * 8.0f);
+        float warpNoise = (fbm_light(warpUV) - 0.5f) * 2.0f; // -1.0 ~ 1.0 の揺らぎ
 
-        float2 streakUV = float2(input.uv.x * 2.0f - (time * 8.0f), input.uv.y * 5.0f);
-        float streakNoise = smoothstep(0.1f, 0.9f, fbm_light(streakUV));
+        // ② Y軸の中心(0.5)からの距離計算
+        float yDist = abs(input.uv.y - 0.5f) * 2.0f;
+        
+        // ★進化ポイント：刃のフチ（輪郭）にノイズを足してプラズマのように荒らす！
+        // 尻尾(trail)にいくほど荒れ狂い、刃の先端(0.0付近)は鋭くブレないようにする
+        float distortedY = yDist + (warpNoise * 0.35f * edgeFadeStrength * trail);
+        
+        // 荒らした距離を使って幅マスクを作る
+        float widthMask = 1.0f - (distortedY / max(thickness, 0.001f));
+        widthMask = saturate(pow(max(widthMask, 0.0f), abs(edgeFadeStrength) + 1.0f));
+        float trailMask = smoothstep(0.0f, 1.0f, trail);
+
+        // ③ 内部のエネルギーの筋（スピード線）
+        // Y軸の座標にもノイズを足すことで、直線的な筋ではなく「稲妻」のようにウネウネさせる
+        float2 streakUV = float2(input.uv.x * 5.0f - (time * 20.0f), input.uv.y * 15.0f + warpNoise);
+        float streakNoise = fbm_light(streakUV);
+        streakNoise = smoothstep(0.4f, 0.8f, streakNoise); // コントラストを上げてバチバチ感を強調
+
+        // ④ 斬撃の中心（コア）の計算。最も熱量が高い部分は真っ白にする
+        float core = smoothstep(0.7f, 1.0f, widthMask);
 
         // 全部掛け合わせる！
         float baseShape = widthMask * trailMask;
-        float energyMask = (streakNoise * 0.7f) + 0.3f;
         
-        alphaMask = baseShape * energyMask * baseNoiseValue;
+        // コアは100%の明るさ、外側は稲妻ノイズの明るさ
+        float energyMask = max(core, streakNoise * 0.8f);
+        
+        // ベースノイズ(全体)も少し掛けて、消え際のランダムさを出す
+        alphaMask = baseShape * energyMask * saturate(baseNoiseValue + 0.5f);
         distMask = baseShape;
-        mainColor.r = 1.0f;
+        
+        // 色の強さ(R)にコアとエネルギーを渡し、ランプテクスチャで綺麗に色分けさせる
+        mainColor.r = max(core, streakNoise);
     }
     else if (proceduralType == 2)
     {
         // Type 2: プロシージャル「オーラ・球体」
-        // ★修正: smoothstep(0, 0.5, dist) の形にしてから 1.0 から引く！
         float dist = distance(input.uv, float2(0.5f, 0.5f));
         float sphere = 1.0f - smoothstep(0.0f, 0.5f, dist);
         
-        alphaMask = sphere * baseNoiseValue;
+        // 球体の縁をFBMでモヤモヤさせる
+        float auraNoise = fbm_light(input.uv * 5.0f - time * 2.0f);
+        alphaMask = sphere * auraNoise;
         distMask = sphere;
-        mainColor.r = 1.0f;
+        mainColor.r = auraNoise;
     }
     else if (proceduralType == 3)
     {
         // Type 3: プロシージャル「モヤモヤノイズ（広範囲オーラ）」
         alphaMask = baseNoiseValue;
         distMask = baseNoiseValue;
-        mainColor.r = 1.0f;
+        mainColor.r = baseNoiseValue;
     }
 
     // ========================================================
@@ -207,7 +235,6 @@ float4 main(VertexOutput input) : SV_TARGET
         // 背景を切り抜く
         float3 distortedBg = grabTex.Sample(smp, screenUV + offset).rgb;
         
-        // ★ max(0.3)を完全に削除！
         // 歪んだ背景の上に、純粋に「発光色(glowColor.rgb)」を足し合わせる！
         float3 finalRGB = distortedBg + glowColor.rgb;
 

@@ -155,12 +155,27 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack9_Spawn.cpp" />
+    <ClCompile Include="CinematicFade.cpp" />
+    <ClCompile Include="GameProgress.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack8_Final.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack9_Funnels.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.cpp" />
+    <ClCompile Include="EnemyBomb.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack4_Wall.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack1_Rush.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BaseBossAttack.cpp" />
     <ClCompile Include="EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp" />
+    <ClCompile Include="game\actor\enemy\TutorialDoll.cpp" />
     <ClCompile Include="game\actor\MapBlock.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
@@ -269,8 +284,14 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\graphics\particle\VFXSequencer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.cpp" />
     <ClCompile Include="engine\system\input\KeyConfig.cpp" />
+    <ClCompile Include="GPUParticleSystem.cpp" />
     <ClCompile Include="MeshEffectEditor.cpp" />
     <ClCompile Include="MeshEffectManager.cpp" />
+    <ClCompile Include="OptionUI.cpp" />
+    <ClCompile Include="SaveDataManager.cpp" />
+    <ClCompile Include="TimeAttackUI.cpp" />
+    <ClCompile Include="TrailEmitter.cpp" />
+    <ClCompile Include="TrailEmitterEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -288,6 +309,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <None Include="Resources\shader\DebugPrimitive.VS.hlsl" />
     <None Include="Resources\shader\Particle.VS.hlsl" />
     <None Include="Resources\shader\Object3d.hlsli" />
+    <None Include="Resources\shader\Water.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\shader\Effect3d.PS.hlsl">
@@ -303,11 +325,12 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\shader\LocalFog.PS.hlsl">
+    <None Include="Resources\shader\LocalFog.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-    </FxCompile>
+      <FileType>Document</FileType>
+    </None>
     <FxCompile Include="Resources\shader\LocalFog.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
@@ -361,6 +384,44 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
+    <FxCompile Include="Resources\shader\Outline.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Resources\shader\Outline.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <None Include="Resources\shader\Magma.PS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <FxCompile Include="Resources\shader\Magma.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <None Include="Resources\shader\Water.PS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <FxCompile Include="Resources\shader\Water.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Resources\shader\PostEffect.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
@@ -375,6 +436,20 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack9_Spawn.h" />
+    <ClInclude Include="CinematicFade.h" />
+    <ClInclude Include="GameProgress.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack8_Final.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack9_Funnels.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.h" />
+    <ClInclude Include="EnemyBomb.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack4_Wall.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack1_Rush.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BaseBossAttack.h" />
     <ClInclude Include="EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h" />
@@ -385,6 +460,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h" />
+    <ClInclude Include="game\actor\enemy\TutorialDoll.h" />
     <ClInclude Include="game\actor\MapBlock.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />
@@ -651,13 +727,19 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\PrimitiveDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\ProjectWindow.h" />
     <ClInclude Include="engine\system\input\KeyConfig.h" />
+    <ClInclude Include="GPUParticleSystem.h" />
     <ClInclude Include="MeshEffectEditor.h" />
     <ClInclude Include="MeshEffectManager.h" />
+    <ClInclude Include="OptionUI.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />
     <ClInclude Include="engine\graphics\particle\VFXSequencer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
+    <ClInclude Include="SaveDataManager.h" />
+    <ClInclude Include="TimeAttackUI.h" />
+    <ClInclude Include="TrailEmitter.h" />
+    <ClInclude Include="TrailEmitterEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

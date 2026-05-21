@@ -9,7 +9,7 @@ DebugConsole* DebugConsole::GetInstance() {
 void DebugConsole::Initialize() {
 #ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
-    logs_.clear();
+    //logs_.clear();
     scrollToBottom_ = true;
 #endif
 }

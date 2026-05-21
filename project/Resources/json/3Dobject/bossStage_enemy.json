@@ -1,1289 +1,2260 @@
 {
-    "objects": [
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "color": [
-                0.0,
-                0.5945944786071777,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": true,
-            "enemyType": "",
-            "envIntensity": 1.034999966621399,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 2,
-            "metallic": 0.0,
-            "modelName": "enemy_core",
-            "myEventID": -1,
-            "name": "Enemy_BossCore",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Goblin",
-                "gravity": 0.0,
-                "hp": 1000.0,
-                "interval": 3.0,
-                "jumpPower": 10.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 1000.0,
-                "speed": 0.05000000074505806
-            },
-            "parentName": "",
-            "position": [
-                -5.001794815063477,
-                2.9021353721618652,
-                -11.78464412689209
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 1,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.10000000149011612,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.6000000238418579,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy_Block1",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
-            "position": [
-                -1.9410762786865234,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": true,
-                "isRecordRelative": false,
-                "recordPathName": "StandbyAnimationBlock1"
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.64743971824646
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 1,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.10000000149011612,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.6000000238418579,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy_Block2",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
-            "position": [
-                3.5,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Enemy",
-            "scale": [
-                0.5,
-                0.5,
-                0.5
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 1,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.10000000149011612,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.6000000238418579,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy_Block3",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
-            "position": [
-                2.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Enemy",
-            "scale": [
-                0.9999998807907104,
-                1.0,
-                1.6589478254318237
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 1,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.10000000149011612,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.6000000238418579,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy_Block4",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
-            "position": [
-                -3.5,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Enemy",
-            "scale": [
-                0.5,
-                0.5,
-                0.5
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 1,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.10000000149011612,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.6000000238418579,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy_Block5",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
-            "position": [
-                0.0,
-                -1.5036234855651855,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Enemy",
-            "scale": [
-                2.0,
-                0.5114206671714783,
-                1.6651026010513306
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 1,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.10000000149011612,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.6000000238418579,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "Enemy_Block6",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_BossCore",
-            "position": [
-                0.0,
-                1.5102386474609375,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.800000011920929,
-            "saveCategory": "Enemy",
-            "scale": [
-                2.0,
-                0.5059356689453125,
-                1.6252961158752441
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 0,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "WarningArea",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                -3.7701148986816406,
-                5.241372108459473,
-                -20.881349563598633
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder1",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_Block1",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder2",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_Block2",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder3",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_Block3",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder4",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_Block4",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder5",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_Block5",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 0,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder6",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Enemy_Block6",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Enemy",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
-        }
-    ]
+  "objects": [
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 4,
+      "collisionMask": 4294967295,
+      "color": [
+        0.0,
+        0.5945944786071777,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": true,
+      "enemyType": "",
+      "envIntensity": 1.034999966621399,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "materialType": 2,
+      "metallic": 0.0,
+      "modelName": "enemy_core",
+      "myEventID": -1,
+      "name": "Enemy_BossCore",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "param": {
+        "enemyType": "Goblin",
+        "gravity": 0.0,
+        "hp": 1000.0,
+        "interval": 3.0,
+        "jumpPower": 10.0,
+        "maxCount": 5,
+        "maxFallSpeed": 60.0,
+        "maxHp": 1000.0,
+        "speed": 0.05000000074505806
+      },
+      "parentName": "",
+      "position": [
+        0.0,
+        12.676591873168945,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.5,
+      "saveCategory": "Enemy",
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 0.10000000149011612,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "isVisible": false,
+      "materialType": 0,
+      "metallic": 0.6000000238418579,
+      "modelName": "enemy_block",
+      "myEventID": -1,
+      "name": "Enemy_Block1",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        -1.9410762786865234,
+        0.0,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": true,
+        "isRecordRelative": false,
+        "recordPathName": "StandbyAnimationBlock1"
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.800000011920929,
+      "saveCategory": "Enemy",
+      "scale": [
+        1.0,
+        1.0,
+        1.64743971824646
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 0.10000000149011612,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "isVisible": false,
+      "materialType": 0,
+      "metallic": 0.6000000238418579,
+      "modelName": "enemy_block",
+      "myEventID": -1,
+      "name": "Enemy_Block2",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        3.5,
+        0.0,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.800000011920929,
+      "saveCategory": "Enemy",
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 0.10000000149011612,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "isVisible": false,
+      "materialType": 0,
+      "metallic": 0.6000000238418579,
+      "modelName": "enemy_block",
+      "myEventID": -1,
+      "name": "Enemy_Block3",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.800000011920929,
+      "saveCategory": "Enemy",
+      "scale": [
+        0.9999998807907104,
+        1.0,
+        1.6589478254318237
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 0.10000000149011612,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "isVisible": false,
+      "materialType": 0,
+      "metallic": 0.6000000238418579,
+      "modelName": "enemy_block",
+      "myEventID": -1,
+      "name": "Enemy_Block4",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        -3.5,
+        0.0,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.800000011920929,
+      "saveCategory": "Enemy",
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 0.10000000149011612,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "isVisible": false,
+      "materialType": 0,
+      "metallic": 0.6000000238418579,
+      "modelName": "enemy_block",
+      "myEventID": -1,
+      "name": "Enemy_Block5",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        0.0,
+        -1.5036234855651855,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.800000011920929,
+      "saveCategory": "Enemy",
+      "scale": [
+        2.0,
+        0.5114206671714783,
+        1.6651026010513306
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 3
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": true,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 0.10000000149011612,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "isVisible": false,
+      "materialType": 0,
+      "metallic": 0.6000000238418579,
+      "modelName": "enemy_block",
+      "myEventID": -1,
+      "name": "Enemy_Block6",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        0.0,
+        1.5102386474609375,
+        0.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.800000011920929,
+      "saveCategory": "Enemy",
+      "scale": [
+        2.0,
+        0.5059356689453125,
+        1.6252961158752441
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 1,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "type": 2
+      },
+      "collisionAttribute": 128,
+      "collisionMask": 1,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": false,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 1.0,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "materialType": 0,
+      "metallic": 0.0,
+      "modelName": "yazirusi.gltf",
+      "myEventID": -1,
+      "name": "WarningArea",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "Enemy_BossCore",
+      "position": [
+        -3.7701148986816406,
+        5.241372108459473,
+        -20.881349563598633
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "roughness": 0.5,
+      "saveCategory": "Enemy",
+      "scale": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "Model"
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 0,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 2
+      },
+      "collisionAttribute": 16,
+      "collisionMask": 4294967073,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": false,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 1.0,
+      "eventID": 4,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "materialType": 0,
+      "metallic": 0.0,
+      "myEventID": -1,
+      "name": "Movie_Boss",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "",
+      "position": [
+        0.0,
+        7.0,
+        -56.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.5,
+      "saveCategory": "Enemy",
+      "scale": [
+        73.0,
+        7.0,
+        0.10000000149011612
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "InvisibleBox"
+    },
+    {
+      "name": "Enemy_Block1_Core",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_core",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "color": [
+        0.0,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "materialType": 2,
+      "emissive": 2.0,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard1",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard2",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard3",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard4",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard5",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard6",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard7",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block1_Shard8",
+      "parentName": "Enemy_Block1",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Core",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_core",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "color": [
+        0.0,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "materialType": 2,
+      "emissive": 2.0,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard1",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard2",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard3",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard4",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard5",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard6",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard7",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block2_Shard8",
+      "parentName": "Enemy_Block2",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Core",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_core",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "color": [
+        0.0,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "materialType": 2,
+      "emissive": 2.0,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard1",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard2",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard3",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard4",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard5",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard6",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard7",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block3_Shard8",
+      "parentName": "Enemy_Block3",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Core",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_core",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "color": [
+        0.0,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "materialType": 2,
+      "emissive": 2.0,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard1",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard2",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard3",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard4",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard5",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard6",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard7",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block4_Shard8",
+      "parentName": "Enemy_Block4",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Core",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_core",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "color": [
+        0.0,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "materialType": 2,
+      "emissive": 2.0,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard1",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard2",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard3",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard4",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard5",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard6",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard7",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block5_Shard8",
+      "parentName": "Enemy_Block5",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Core",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_core",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "color": [
+        0.0,
+        0.7,
+        1.0,
+        1.0
+      ],
+      "materialType": 2,
+      "emissive": 2.0,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard1",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard2",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard3",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard4",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        -0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard5",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard6",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        -0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard7",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        -0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "name": "Enemy_Block6_Shard8",
+      "parentName": "Enemy_Block6",
+      "modelName": "enemy_block",
+      "position": [
+        0.35,
+        0.35,
+        0.35
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "metallic": 0.6,
+      "roughness": 0.8,
+      "enableEnvMap": true,
+      "envIntensity": 0.1,
+      "saveCategory": "Enemy",
+      "type": "Model",
+      "collider": {
+        "type": 0
+      }
+    },
+    {
+      "animation": {
+        "animName": "",
+        "isAnimLoop": true
+      },
+      "blendMode": 1,
+      "collider": {
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "type": 2
+      },
+      "collisionAttribute": 0,
+      "collisionMask": 4294967295,
+      "color": [
+        0.800000011920929,
+        0.20000000298023224,
+        0.800000011920929,
+        1.0
+      ],
+      "emissive": 1.0,
+      "enableEnvMap": false,
+      "enableNormalMap": false,
+      "enemyType": "",
+      "envIntensity": 1.0,
+      "eventID": 0,
+      "localFog": {
+        "color": [
+          0.20000000298023224,
+          0.800000011920929,
+          0.5,
+          1.0
+        ],
+        "density": 0.5,
+        "edgeFade": 0.0,
+        "noiseScale": 0.0,
+        "noiseSpeed": 0.0,
+        "scatteringG": 0.0,
+        "scatteringIntensity": 0.0
+      },
+      "materialType": 0,
+      "metallic": 0.0,
+      "modelName": "block",
+      "myEventID": -1,
+      "name": "EnemyHP50_Animation",
+      "normalMapPath": "",
+      "ormMapPath": "",
+      "parentName": "",
+      "position": [
+        0.0,
+        -5.696657180786133,
+        -10.0
+      ],
+      "quaternion": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "recorder": {
+        "isRecordLoop": false,
+        "isRecordRelative": false,
+        "recordPathName": ""
+      },
+      "rotation": [
+        0.0,
+        -0.0,
+        0.0
+      ],
+      "roughness": 0.5,
+      "saveCategory": "Enemy",
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "targetID": -1,
+      "texturePath": "",
+      "type": "CinematicCamera"
+    }
+  ]
 }

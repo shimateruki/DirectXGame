@@ -22,6 +22,7 @@
 #include "GPUParticleEditor.h"
 #include "EngineManualWindow.h"
 #include"MeshEffectEditor.h"
+#include "TrailEmitterEditor.h"
 
 class WinApp;
 
@@ -59,6 +60,7 @@ private:
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
 	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
+	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
 	EngineManualWindow engineManualWindow_;
 	bool showLightEditor_ = false;
 	bool showParticleEditor_ = false;
@@ -68,7 +70,7 @@ private:
 	bool showCameraEditor = false;
 	bool showGhostRecorder_ = false;
 	bool showTimeController_ = true;
-	bool showPostEffectEditor_ = false; 
+	bool showPostEffectEditor_ = false;
 	bool showBossDebug_ = false;
 	ImVec2 lastGameViewSize_ = { 0, 0 };
 #endif

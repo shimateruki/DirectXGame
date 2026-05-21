@@ -40,6 +40,8 @@ public:
     // --- 形状計算 (Object3dから移動) ---
     AABB GetAABB() const;
     OBB GetOBB() const;
+    Ring GetRing() const;
+    Cylinder GetCylinder() const;
 
     // --- 衝突判定 (Object3dから移動) ---
     // 相手も Object3d ではなく Collider として受け取るように変更

@@ -11,6 +11,28 @@
 
 class IMoveStrategy; // 前方宣言
 
+// プレイヤーの攻撃パラメータ（JSON保存・ImGui調整用）
+struct PlayerAttackParams {
+    float damageCombo1 = 10.0f;
+    float damageCombo2 = 15.0f;
+    float damageCombo3 = 30.0f;
+    float damagePlunge = 20.0f;
+
+    // JSON変換用
+    void ToJson(json& j) const {
+        j["damageCombo1"] = damageCombo1;
+        j["damageCombo2"] = damageCombo2;
+        j["damageCombo3"] = damageCombo3;
+        j["damagePlunge"] = damagePlunge;
+    }
+    void FromJson(const json& j) {
+        if (j.contains("damageCombo1")) damageCombo1 = j["damageCombo1"];
+        if (j.contains("damageCombo2")) damageCombo2 = j["damageCombo2"];
+        if (j.contains("damageCombo3")) damageCombo3 = j["damageCombo3"];
+        if (j.contains("damagePlunge")) damagePlunge = j["damagePlunge"];
+    }
+};
+
 // プレイヤーキャラクターの統合制御クラス
 class Player : public Character
 {
@@ -67,6 +89,9 @@ public:
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
     void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
+    void SetIsPhysicsActive(bool active) { isPhysicsActive_ = active; }
+    bool GetIsControlActive() const { return isControlActive_; }
+    bool IsPhysicsActive() const { return isPhysicsActive_; }
 
     // --- コンボ：次のクリックで2段目を出すためのフラグ操作 ---
     void SetPendingAttack2(bool pending) { pendingAttack2_ = pending; }
@@ -104,6 +129,27 @@ public:
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
+    void SetForceLockOnTarget(Object3d* target) { forceLockOnTarget_ = target; }
+    Object3d* GetForceLockOnTarget() const { return forceLockOnTarget_; }
+
+    // --- 攻撃方向の保存（吹き飛ばし用） ---
+    void SetAttackDirection(const Vector3& dir) { attackDirection_ = dir; }
+    Vector3 GetAttackDirection() const { return attackDirection_; }
+
+    // --- 攻撃パラメータ管理 ---
+    PlayerAttackParams& GetAttackParams() { return attackParams_; }
+    void LoadAttackParams();
+    void SaveAttackParams();
+
+    // ロックオンの強制解除要求
+    void RequestClearLockOn() { requestClearLockOn_ = true; }
+    bool ConsumeClearLockOnRequest() {
+        bool r = requestClearLockOn_;
+        requestClearLockOn_ = false;
+        return r;
+    }
+
+
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先
@@ -116,6 +162,7 @@ private:
     // --- プレイヤー状態フラグ ---
     bool isLockingOn_ = false;       // 敵をロックオンしているか
     bool isControlActive_ = true;    // 入力を受け付ける状態か（デモシーン等で制限用）
+    bool isPhysicsActive_ = true;    // 物理演算・移動計算を行うか（座標固定用）
 
     // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
     bool pendingAttack2_ = false;
@@ -138,5 +185,9 @@ private:
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
     float deathTimer_ = 0.0f;    // 死亡してからの経過時間
+    Object3d* forceLockOnTarget_ = nullptr; // 強制ロックオン対象
+    bool requestClearLockOn_ = false;       // ロックオン解除要求フラグ
+    Vector3 attackDirection_ = { 0,0,1 };   // 攻撃開始時の向き
+    PlayerAttackParams attackParams_;       // 攻撃力などのパラメータ
     void UpdateColor();
 };

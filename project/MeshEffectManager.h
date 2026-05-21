@@ -20,11 +20,25 @@ public:
     // 描画
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr);
 
-    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr);
+    void SpawnEffect(const std::string& jsonFilePath, float damage);
+    void SpawnEffect(const std::string& jsonFilePath, Object3d* baseObject = nullptr, const Vector3& extOffset = { 0,0,0 }, const Vector3& extRot = { 0,0,0 }, const Vector3& extScale = { 1,1,1 }, float damage = 10.0f);
+
+    // ワールド座標を直接指定してエフェクトを配置する（TrailEmitter用）
+    // jsonのPosition/Rotationフィールドを無視し、worldPos/worldRotをそのまま使う
+    void SpawnEffectAt(const std::string& jsonFilePath, const Vector3& worldPos, const Vector3& worldRot, const Vector3& scale = { 1,1,1 }, float damage = 10.0f);
+
+    // 課題用: 手動コードでRing波紋エフェクト(gradationLine.png)を発生させる
+    void SpawnRingWaveEffect(const Vector3& position);
+
+    // ★課題: Cylinderを使った横UVスクロール・色アニメのポータルエフェクト
+    void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
 
     // シーン切り替え時などに全てのエフェクトを消す
-    void Clear() { activeEffects_.clear(); }
-
+    // common_ も一緒にリセットし、次のSpawn時に自己修復させる
+    void Clear() { activeEffects_.clear(); common_ = nullptr; }
+    const std::vector<std::unique_ptr<EffectObject3d>>& GetActiveEffects() const { return activeEffects_; }
+    void SetPreviewEffectForDebug(EffectObject3d* effect) { previewEffectForDebug_ = effect; }
+    EffectObject3d* GetPreviewEffectForDebug() const { return previewEffectForDebug_; }
 private:
     MeshEffectManager() = default;
     ~MeshEffectManager() = default;
@@ -35,4 +49,6 @@ private:
 
     // 現在再生中のエフェクトリスト
     std::vector<std::unique_ptr<EffectObject3d>> activeEffects_;
+    EffectObject3d* previewEffectForDebug_ = nullptr;
+
 };

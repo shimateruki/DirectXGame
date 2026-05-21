@@ -1,7 +1,9 @@
 #include "EnemyFactory.h"
 #include "EnemySlime.h"
+#include "TutorialDoll.h"
 #include <BossCore.h>
 #include "SceneManager.h"
+#include "EnemyBomb.h"
 // 他の敵ができたらここに追加 (#include "EnemyRobot.h" 等)
 
 EnemyFactory* EnemyFactory::GetInstance() {
@@ -30,6 +32,25 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
         newEnemy = std::move(slime);
     }
+    else if (enemyName == "Bomb") {
+        auto bomb = std::make_unique<EnemyBomb>();
+
+        // ボム用のモデル名を指定
+        bomb->Initialize(common, "sphere");
+
+        if (!bomb->param_.has_value()) {
+            bomb->param_.emplace();
+        }
+
+        // ステータス設定
+        auto& p = bomb->param_.value();
+        p.hp = 10.0f;         
+        p.maxHp = 10.0f;
+        p.speed = 0.15f;     
+        p.gravity = 60.0f;
+
+        newEnemy = std::move(bomb);
+    }
     else if (enemyName == "BossCore") 
     {
         auto boss = std::make_unique<BossCore>();
@@ -51,6 +72,23 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.gravity = 0.0f;      // 無相の雷のように常に浮いているなら重力を切るのもあり
 
         newEnemy = std::move(boss);
+    }
+    else if (enemyName == "Tutorial_Doll") {
+        auto doll = std::make_unique<TutorialDoll>();
+
+        // 共通の初期化（モデル名は後ほど JSON などで上書きされるが、デフォルトを設定）
+        doll->Initialize(common, "tutorialDoll");
+
+        if (!doll->param_.has_value()) {
+            doll->param_.emplace();
+        }
+
+        // 初期ステータス（JSON でも設定可能）
+        auto& p = doll->param_.value();
+        p.hp = 100.0f;
+        p.maxHp = 100.0f;
+
+        newEnemy = std::move(doll);
     }
 
     //:作った敵に「名札」をつける

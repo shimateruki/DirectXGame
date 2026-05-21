@@ -143,6 +143,7 @@ void GhostRecorder::Update() {
 					Vector3 camPos = target_->GetTranslate();
 					Vector3 camRot = target_->GetRotation();
 					camEditor->SetEditorCameraTransform(camPos, camRot);
+					camEditor->SetCinematicActive(true); // ★ シネマティック中であることをエディタに通知
 				}
 			}
 			currentFrameIndex_++;
@@ -189,6 +190,7 @@ void GhostRecorder::Stop(bool autoReset) {
 		CameraEditor* camEditor = CameraEditor::GetInstance();
 		if (camEditor) {
 			camEditor->SetMode(CameraEditor::Mode::Game);
+			camEditor->SetCinematicActive(false); // ★ シネマティック終了をエディタに通知
 			DebugConsole::GetInstance()->AddLog("Camera returned to Game Mode.");
 		}
 	}
@@ -820,6 +822,7 @@ void GhostRecorder::DrawImGui() {
 			}
 			ImGui::DragFloat3("Pos##Start", &genParams_.startPos.x, 0.1f);
 			ImGui::DragFloat3("Rot##Start", &genParams_.startRot.x, 1.0f);
+			ImGui::DragFloat("移動時間(sec)##Start", &genParams_.startDurationToNext, 0.1f, 0.1f, 10.0f);
 			ImGui::DragFloat("待機(sec)##Start", &genParams_.startWaitTime, 0.1f, 0.0f, 10.0f);
 			ImGui::Combo("次へのEasing##Start", &genParams_.startEasingToNext, easingNames, IM_ARRAYSIZE(easingNames));
 
@@ -846,6 +849,7 @@ void GhostRecorder::DrawImGui() {
 						waypointToDelete = i;
 					}
 					ImGui::DragFloat3("Pos", &genParams_.waypoints[i].pos.x, 0.1f);
+					ImGui::DragFloat("移動時間(sec)", &genParams_.waypoints[i].durationToNext, 0.1f, 0.1f, 10.0f);
 					ImGui::DragFloat("待機(sec)", &genParams_.waypoints[i].waitTime, 0.1f, 0.0f, 10.0f);
 					ImGui::Combo("Easing", &genParams_.waypoints[i].easingToNext, easingNames, IM_ARRAYSIZE(easingNames));
 					ImGui::TreePop();
@@ -882,8 +886,9 @@ void GhostRecorder::DrawImGui() {
 			ImGui::SameLine();
 			ImGui::Checkbox(ICON_FA_PROJECT_DIAGRAM " 相対データ化", &genParams_.generateRelative);
 
+		
 			// =========================================================================
-			// ★ 消失していた生成ロジックを完全復活！(クォータニオン対応版)
+			// ★ 生成ロジックの改善 (可変移動時間・待機時間対応版)
 			// =========================================================================
 			if (ImGui::Button(ICON_FA_MAGIC " ★ 生成実行 (Generate & AutoSave)", ImVec2(-1, 40))) {
 				frames_.clear();
@@ -910,27 +915,34 @@ void GhostRecorder::DrawImGui() {
 				for (const auto& wp : genParams_.waypoints) {
 					pts.push_back({ wp.pos, wp.rot, wp.scale, wp.eventID, wp.waitTime, wp.durationToNext, wp.easingToNext });
 				}
-				pts.push_back({ genParams_.endPos, genParams_.endRot, genParams_.endScale, genParams_.endEventID, genParams_.endWaitTime, 1.0f, 0 });
+				// 最後の点は到着地点なので、移動時間は関係ない
+				pts.push_back({ genParams_.endPos, genParams_.endRot, genParams_.endScale, genParams_.endEventID, genParams_.endWaitTime, 0.0f, 0 });
 
 				Vector3 offset = genParams_.generateRelative ? genParams_.startPos : Vector3{ 0,0,0 };
 				Vector3 rotOffset = genParams_.generateRelative ? genParams_.startRot : Vector3{ 0,0,0 };
 
+				// 全ポイントを順番に処理
 				for (int i = 0; i < (int)pts.size(); ++i) {
+
+					// 1. まず、そのポイントでの「待機時間」のフレームを生成
 					int waitFrames = static_cast<int>(pts[i].waitTime * 60.0f);
 					for (int w = 0; w < waitFrames; ++w) {
 						GhostFrame f;
 						f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
-						f.rotation = SubEuler(pts[i].rot, rotOffset); // ★クォータニオンでの差分計算
+						f.rotation = SubEuler(pts[i].rot, rotOffset);
 						f.scale = pts[i].scale;
+						// イベントは待機開始の最初の1フレーム目だけ発火させる
 						f.eventID = (w == 0) ? pts[i].eventID : 0;
 						frames_.push_back(f);
 					}
 
+					// もし最後のポイント（End）なら、ここで終了！
 					if (i == (int)pts.size() - 1) {
+						// 待機時間が0だった場合は、最低1フレームはその状態を作る（イベント発火用）
 						if (waitFrames == 0) {
 							GhostFrame f;
 							f.position = { pts[i].pos.x - offset.x, pts[i].pos.y - offset.y, pts[i].pos.z - offset.z };
-							f.rotation = SubEuler(pts[i].rot, rotOffset); // ★クォータニオンでの差分計算
+							f.rotation = SubEuler(pts[i].rot, rotOffset);
 							f.scale = pts[i].scale;
 							f.eventID = pts[i].eventID;
 							frames_.push_back(f);
@@ -938,10 +950,13 @@ void GhostRecorder::DrawImGui() {
 						break;
 					}
 
+					// 2. 次のポイントへの「移動時間」のフレームを生成
+					// pts[i].durationToNext (秒) をフレーム数に変換！
 					int travelFrames = static_cast<int>(pts[i].durationToNext * 60.0f);
-					if (travelFrames < 1) travelFrames = 1;
+					if (travelFrames < 1) travelFrames = 1; // 最低でも1フレームは確保
 
 					for (int f = 0; f < travelFrames; ++f) {
+						// 既に待機時間でフレームを作っている場合、移動の開始点(0フレーム目)は飛ばす
 						if (f == 0 && waitFrames > 0) continue;
 
 						float rawT = (float)f / (float)travelFrames;
@@ -959,14 +974,14 @@ void GhostRecorder::DrawImGui() {
 							currentPos = Lerp(pts[i].pos, pts[i + 1].pos, t);
 						}
 
-						// ★クォータニオンによる最短経路補間（Slerp）
 						Vector3 currentRot = SlerpEuler(pts[i].rot, pts[i + 1].rot, t);
 						Vector3 currentScale = Lerp(pts[i].scale, pts[i + 1].scale, t);
 
 						GhostFrame frame;
 						frame.position = { currentPos.x - offset.x, currentPos.y - offset.y, currentPos.z - offset.z };
-						frame.rotation = SubEuler(currentRot, rotOffset); // ★クォータニオンでの差分計算
+						frame.rotation = SubEuler(currentRot, rotOffset);
 						frame.scale = currentScale;
+						// 待機時間が0だった場合、移動開始の1フレーム目でイベントを発火させる
 						frame.eventID = (f == 0 && waitFrames == 0) ? pts[i].eventID : 0;
 						frames_.push_back(frame);
 					}

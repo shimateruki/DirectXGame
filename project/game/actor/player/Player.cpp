@@ -10,6 +10,8 @@
 #include "PostEffect.h"
 #include <DebugConsole.h>
 #include <algorithm>
+#include <fstream>
+#include <filesystem>
 
 // =================================================================
 // 初期化・更新・描画
@@ -19,6 +21,9 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 {
     // 親クラス(Character)の初期化
     Character::Initialize(common);
+
+    // 攻撃パラメータのロード
+    LoadAttackParams();
 
     // 外部システムの依存注入
     inputManager_ = inputManager;
@@ -30,6 +35,9 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 移動コンポーネントの構築
     mover_ = std::make_unique<PlayerMover>();
     mover_->Initialize(this, inputManager, particleSystem);
+
+    // 静的変数をリセット（前世のゴミデータ影響を防ぐ）
+    ResetPlayerStateStatics();
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
@@ -88,9 +96,29 @@ void Player::Update(float deltaTime)
         }
     }
 
-    // 4. 親クラスの更新 (重力計算・行列計算・衝突リストのリセットなど)
-    Character::Update(deltaTime);
+    // 4. 物理フラグ有効時のみ親クラスの更新（物理演算など）を行う
+    if (isPhysicsActive_)
+    {
+        Character::Update(deltaTime);
+    }
+    else
+    {
+        // 物理無効時は行列計算のみ更新
+        Object3d::Update(deltaTime);
+    }
+    if (transform_.translate.y < -40.0f) {
+        // 1. 指定の座標(0, 5, -55)へ座標をセット
+        transform_.translate = { 0.0f, 5.0f, -55.0f };
 
+        // 2. 落下時の勢い（速度）が残っているとワープ直後にまた落ちるため、速度をリセット
+        velocity_ = { 0.0f, 0.0f, 0.0f };
+
+        UpdateLocalMatrix();
+        // 3. 座標の変更を即座に行列へ反映させる（描画や次フレームの計算のズレ防止）
+        UpdateWorldMatrix();
+
+        DebugConsole::GetInstance()->AddLog("【SYSTEM】 プレイヤーが落下したため、初期地点に復帰させました");
+    }
     // =======================================================
     // 5. モデルアニメ適用後の最終上書き処理 (PostUpdate)
     // =======================================================
@@ -121,7 +149,7 @@ void Player::Update(float deltaTime)
         if (postParams) {
             if (hp <= 0.0f) {
                 if (!dynamic_cast<PlayerStateDead*>(state_.get())) {
-                    isDead = true; // 念のためフラグは立てておく
+                    // isDead = true; // 削除されないようにコメントアウト
                     deathTimer_ = 0.0f;
                     ChangeState(std::make_unique<PlayerStateDead>());
                     DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡演出開始");
@@ -155,7 +183,6 @@ void Player::Update(float deltaTime)
                 // 画面の邪魔になる歪みやフラッシュは全てオフ
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
             }
             else if (hpRatio <= 0.2f) {
                 // ---------------------------------------------------
@@ -172,7 +199,7 @@ void Player::Update(float deltaTime)
 
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
+  
             }
             else {
                 // ---------------------------------------------------
@@ -185,7 +212,6 @@ void Player::Update(float deltaTime)
                 postParams->blackout = 0.0f; // リセット
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
-                postParams->filmGrainIntensity = 0.03f;
             }
         }
     }
@@ -240,15 +266,12 @@ bool Player::OnCollision(Object3d* other)
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
     // =======================================================
-    if (attribute & kAllSolid)
+    if (isPhysicsActive_ && (attribute & kAllSolid))
     {
         ApplyPhysicsCollision(info, attribute);
     }
 
-    // =======================================================
-    // 2. ダメージ処理 (敵の攻撃に当たった時)
-    // =======================================================
-    // 属性が「kEnemyAttack」の時のみダメージ判定を行います。
+    // 2. 敵の攻撃に接触した場合
     if (attribute & kEnemyAttack)
     {
         // タイマーと「総合的な無敵状態」の両方をチェック
@@ -258,7 +281,7 @@ bool Player::OnCollision(Object3d* other)
             DamageEvent dmgEvent;
             dmgEvent.target = this;
             dmgEvent.attacker = other;
-            dmgEvent.damageAmount = 20.0f;
+            dmgEvent.damageAmount = other->GetAttackDamage();
             EventManager::GetInstance()->Dispatch(dmgEvent);
 
             // 無敵時間をセット
@@ -266,9 +289,11 @@ bool Player::OnCollision(Object3d* other)
 
             // ★重要: ダメージ用の無敵フラグのみを立てる (赤色になる)
             SetDamageInvincible(true);
+
+            // ★追加: ここで新しい「被弾ステート」に強制遷移させる！
+            ChangeState(std::make_unique<PlayerStateDamage>());
         }
     }
-
     // =======================================================
     // 3. ギミック・汎用イベントの発行
     // =======================================================
@@ -348,9 +373,6 @@ void Player::UpdateColor() {
     if (isDamageInvincible_) {
         targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ★ ダメージ中は最優先で「赤」！
     }
-    else if (isDashInvincible_) {
-        targetColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // ★ 回避中は「青」！
-    }
 
     // 本体と子パーツの色を一括変更
     SetColor(targetColor);
@@ -398,4 +420,33 @@ bool Player::ConsumeBufferedAttackInput()
         return true;
     }
     return false;
+}
+void Player::LoadAttackParams() {
+    std::string filePath = "Resources/json/player/attack_params.json";
+    if (!std::filesystem::exists(filePath)) {
+        SaveAttackParams(); // デフォルト値で作成
+        return;
+    }
+
+    std::ifstream ifs(filePath);
+    if (ifs.is_open()) {
+        json j;
+        ifs >> j;
+        attackParams_.FromJson(j);
+    }
+}
+
+void Player::SaveAttackParams() {
+    std::string dirPath = "Resources/json/player";
+    if (!std::filesystem::exists(dirPath)) {
+        std::filesystem::create_directories(dirPath);
+    }
+
+    std::string filePath = dirPath + "/attack_params.json";
+    std::ofstream ofs(filePath);
+    if (ofs.is_open()) {
+        json j;
+        attackParams_.ToJson(j);
+        ofs << j.dump(4);
+    }
 }

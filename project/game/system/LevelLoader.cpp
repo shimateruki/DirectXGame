@@ -252,7 +252,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     targetObject->SetModel(nullptr);
                     targetObject->SetIsVisible(false);
                 } else {
-                    targetObject->SetIsVisible(true);
+                    bool isVisible = true;
+                    if (objData.contains("isVisible") && objData["isVisible"].is_boolean()) {
+                        isVisible = objData["isVisible"].get<bool>();
+                    }
+                    targetObject->SetIsVisible(isVisible);
+
                     if (objData.contains("modelName") && objData["modelName"].is_string()) {
                         std::string modelName = objData["modelName"].get<std::string>();
                         // モデルロードはManagerに任せる
@@ -323,6 +328,16 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (f.contains("noiseScale")) fogData->noiseScale = f["noiseScale"];
                         if (f.contains("scatteringG")) fogData->scatteringG = f["scatteringG"];
                         if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
+                    }
+                }
+                if (objData.contains("waterParam")) {
+                    if (auto* waterData = targetObject->GetWaterParamData()) {
+                        auto& w = objData["waterParam"];
+                        if (w.contains("waveSpeed")) waterData->waveSpeed = w["waveSpeed"];
+                        if (w.contains("waveHeight")) waterData->waveHeight = w["waveHeight"];
+                        if (w.contains("waveFrequency")) waterData->waveFrequency = w["waveFrequency"];
+                        if (w.contains("flowSpeedX")) waterData->flowSpeedX = w["flowSpeedX"];
+                        if (w.contains("flowSpeedY")) waterData->flowSpeedY = w["flowSpeedY"];
                     }
                 }
                 // 5. Collider

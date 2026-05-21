@@ -51,8 +51,11 @@ public:
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawShadow();
     void DrawLocalFog(uint32_t depthSrvHandle);
+    void DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawMagma(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     MeshRenderer::LocalFogData* GetLocalFogData();
+    MeshRenderer::WaterParamForGPU* GetWaterParamData();
     virtual std::unique_ptr<Object3d> Clone() const;
 
     // トランスフォーム
@@ -62,7 +65,7 @@ public:
     Transform* GetTransform() { return &transform_; }
     const Transform& GetTransform() const { return transform_; }
 
-    const Vector3& GetWorldPosition() const { return transform_.translate; }
+    Vector3 GetWorldPosition() const { return { transform_.matWorld.m[3][0], transform_.matWorld.m[3][1], transform_.matWorld.m[3][2] }; }
     const Matrix4x4& GetWorldMatrix() const { return transform_.matWorld; }
     const Vector3& GetScale() const { return transform_.scale; }
     const Vector3& GetRotation() const { return transform_.rotate; }
@@ -148,8 +151,14 @@ public:
 
     void SetClassName(const std::string& name) { className_ = name; }
     std::string GetClassName() const { return className_; }
+
+    // --- 攻撃力関連 ---
+    void SetAttackDamage(float damage) { attackDamage_ = damage; }
+    virtual float GetAttackDamage() const { return attackDamage_; }
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
+    void SetEnableOutline(bool enable) { enableOutline_ = enable; }
+    bool GetEnableOutline() const { return enableOutline_; }
 
     void SetEventID(int id) { eventID_ = id; }
     int GetEventID() const { return eventID_; }
@@ -188,6 +197,7 @@ public:
     void SetIsUIPreview(bool isPreview) { 
         if (meshRenderer_) meshRenderer_->SetIsUIPreview(isPreview); 
     }
+    void SetUVTransform(const Matrix4x4& mat) { if (meshRenderer_) meshRenderer_->SetUVTransform(mat); }
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;
@@ -218,11 +228,13 @@ protected:
     std::vector<Object3d*> children_;
     std::string className_ = "Model";
     bool isVisible_ = true;
+    bool enableOutline_ = false;
     int eventID_ = -1;
     int targetID_ = -1;
     std::string enemyType_ = "";
 
     std::string particleName_ = ""; // JSONファイル名
+    float attackDamage_ = 10.0f;
     float particleTimer_ = 0.0f;    // 発射タイミング管理用
     std::string saveCategory_ = "Object";
     bool isLocked_ = false;
