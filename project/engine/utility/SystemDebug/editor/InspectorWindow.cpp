@@ -225,6 +225,12 @@ void InspectorWindow::Draw() {
                     isGraphicsChanged = true;
                 }
 
+                bool enableOutline = selectedObject->GetEnableOutline();
+                if (ImGui::Checkbox("Black Outline", &enableOutline)) {
+                    selectedObject->SetEnableOutline(enableOutline);
+                    isGraphicsChanged = true;
+                }
+
                 if (currentMatType == 0) {
                     float metallic = selectedObject->GetMetallic();
                     if (ImGui::SliderFloat("金属度 (Metallic)", &metallic, 0.0f, 1.0f)) {

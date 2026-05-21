@@ -53,6 +53,10 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     localFogResource_->Map(0, nullptr, reinterpret_cast<void**>(&localFogData_));
     localFogData_->fogColor = { 0.2f, 0.8f, 0.5f, 1.0f }; // 毒沼カラー
     localFogData_->fogDensity = 0.5f;
+
+    outlineResource_ = dxCommon->CreateBufferResource(sizeof(OutlineData));
+    outlineResource_->Map(0, nullptr, reinterpret_cast<void**>(&outlineData_));
+    *outlineData_ = OutlineData{};
     
 }
 
@@ -141,6 +145,21 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         spotLightResource,
         materialResource_.Get(), normalMapHandle_, ormMapHandle_, textureHandle_
     );
+}
+
+void MeshRenderer::DrawOutline() {
+    if (!model_ || !common_ || !wvpResource_ || !outlineResource_) return;
+
+    if (outlineData_) {
+        outlineData_->localMin = model_->GetLocalAabbMin();
+        outlineData_->localMax = model_->GetLocalAabbMax();
+        outlineData_->thickness = 0.025f;
+    }
+
+    common_->SetOutlineGraphicsCommand();
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    commandList->SetGraphicsRootConstantBufferView(13, outlineResource_->GetGPUVirtualAddress());
+    model_->DrawOutline(wvpResource_.Get());
 }
 
 void MeshRenderer::SetModel(const std::string& modelName) {

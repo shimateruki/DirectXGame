@@ -128,6 +128,7 @@ public: // メンバ関数
         uint32_t instanceCount = 1,          
         uint32_t startInstanceLocation = 0   
     );
+    void DrawOutline(ID3D12Resource* wvpResource);
     void DrawShadow(ID3D12Resource* wvpResource);
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)

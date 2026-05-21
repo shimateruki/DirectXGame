@@ -606,7 +606,7 @@ void GamePlayScene::Update(float deltaTime) {
             float textAlpha = isPaused_ ? 1.0f : 0.0f;
 
             // 背景用のアルファ値 (0.6 = 半透明。もっと薄くしたければ 0.4 や 0.5 に！)
-            float backAlpha = isPaused_ ? 0.6f : 0.0f;
+            float backAlpha = isPaused_ ? 0.8f : 0.0f;
             auto SetAlpha = [](Sprite* sprite, float a) {
                 if (sprite) {
                     Vector4 c = sprite->GetColor();
