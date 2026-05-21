@@ -3517,8 +3517,9 @@ void PlayerStateJump::Update(Player *player) {
 
   // 先に攻撃入力チェック：空中で攻撃されたら落下攻撃へ遷移
   InputManager *im = player->GetInputManager();
-  bool attackTriggered =
-      im && (im->IsKeyTriggered(DIK_K) || im->IsMouseButtonTriggered(0));
+  bool attackTriggered = im && (im->IsActionTriggered("Attack") ||
+                                im->IsKeyTriggered(DIK_K) ||
+                                im->IsMouseButtonTriggered(0));
 
   if (attackTriggered && !player->IsGrounded()) {
     if (apexReached_) {

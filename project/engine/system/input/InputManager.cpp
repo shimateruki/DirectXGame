@@ -158,7 +158,8 @@ void InputManager::Update()
         }
         if (abs(rightX) > 0 || abs(rightY) > 0) {
             gamepadState.Gamepad.sThumbRX = rightX;
-            gamepadState.Gamepad.sThumbRY = (short)-rightY;
+            if (rightY <= -32768) rightY = -32767;
+            gamepadState.Gamepad.sThumbRY = static_cast<SHORT>(-rightY);
         }
 
         // トリガー (ZLR)

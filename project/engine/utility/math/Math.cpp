@@ -338,7 +338,12 @@ Vector3 Math::Cross(const Vector3& v1, const Vector3& v2)
 Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, const Vector3& up)
 {
 	Vector3 zaxis = Normalize(target - eye);
-	Vector3 xaxis = Normalize(Cross(up, zaxis));
+	Vector3 xaxis = Cross(up, zaxis);
+	if (Length(xaxis) < 0.0001f) {
+		Vector3 fallbackUp = (std::abs(zaxis.y) > 0.9f) ? Vector3{ 0.0f, 0.0f, 1.0f } : Vector3{ 0.0f, 1.0f, 0.0f };
+		xaxis = Cross(fallbackUp, zaxis);
+	}
+	xaxis = Normalize(xaxis);
 	Vector3 yaxis = Cross(zaxis, xaxis);
 
 	Matrix4x4 result = MakeIdentity4x4();

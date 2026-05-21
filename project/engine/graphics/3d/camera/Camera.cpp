@@ -13,6 +13,8 @@
 #endif
 
 const float PI = static_cast<float>(M_PI);
+const float kCameraPitchLimitMin = -1.20f;
+const float kCameraPitchLimitMax = 1.20f;
 static Math math;
 
 void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
@@ -394,7 +396,7 @@ void Camera::ConfigAimable(float distance, float height, const Vector3& angle) {
     aimHeight_ = height;
     aimAngle_ = angle;
     float toRad = PI / 180.0f;
-    rotation_.x = angle.x * toRad;
+    rotation_.x = std::max(kCameraPitchLimitMin, std::min(kCameraPitchLimitMax, angle.x * toRad));
     rotation_.y = angle.y * toRad;
     rotation_.z = angle.z * toRad;
 }
@@ -410,9 +412,7 @@ void Camera::AddRotation(const Vector2& mouseDelta) {
     rotation_.y += mouseDelta.x * rotateSpeed * sensitivityMultiplier_;
 
     // X軸（ピッチ）の回転制限（真上・真下付近でのジンバルロックや画面反転を防ぐため、安全な範囲に制限）
-    const float pitchLimitMin = -1.20f; // 見上げる限界値（約-68度）
-    const float pitchLimitMax = 1.35f;  // 見下ろす限界値（約77度）
-    rotation_.x = std::max(pitchLimitMin, std::min(pitchLimitMax, rotation_.x));
+    rotation_.x = std::max(kCameraPitchLimitMin, std::min(kCameraPitchLimitMax, rotation_.x));
 
     // Y軸（ヨー）のラップアラウンド
     if (rotation_.y > PI) { rotation_.y -= 2.0f * PI; }
@@ -448,9 +448,7 @@ void Camera::SyncRotationToCurrentView() {
     rotation_.y = std::atan2(forward.x, forward.z);
     rotation_.x = std::asin(-forward.y);
 
-    const float pitchLimitMin = -1.20f;
-    const float pitchLimitMax = 1.35f;
-    rotation_.x = std::max(pitchLimitMin, std::min(pitchLimitMax, rotation_.x));
+    rotation_.x = std::max(kCameraPitchLimitMin, std::min(kCameraPitchLimitMax, rotation_.x));
 }
 
 void Camera::StartOverride(const CameraOverrideParams& params) {

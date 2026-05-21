@@ -39,7 +39,7 @@
         "key": 19,
         "keySub": 0,
         "mouse": -1,
-        "pad": 512
+        "pad": 2048
     },
     "Right": {
         "key": 32,
