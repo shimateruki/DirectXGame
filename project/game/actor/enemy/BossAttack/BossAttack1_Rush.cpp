@@ -206,9 +206,11 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
                     // 衝突する直前のフレーム（1フレーム前）の座標に戻すことで自然な衝突インパクトを表現
                     boss->SetTranslate(prevPos);
                     boss->UpdateWorldMatrix(); // 座標変更後のワールド行列を反映
-                    animPhase_ = 5;
-                    animTimer_ = 0.0f;
-                    break;
+                    
+                    // 自爆スタンを誘発する（currentAttack_.reset() により this が破棄されるため、
+                    // この呼び出しの後は即座に return して、メンバ変数に一切アクセスしない！）
+                    boss->TriggerCrashStun();
+                    return;
                 }
             }
         }
