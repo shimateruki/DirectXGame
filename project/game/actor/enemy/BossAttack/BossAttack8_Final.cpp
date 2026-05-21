@@ -89,7 +89,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 warn->SetEmissive(1.0f); // データ上のデフォルト値
 
                 areaWarnings_.push_back(warn.get());
-                if (currentScene) currentScene->GetObjects().push_back(std::move(warn));
+                if (currentScene) currentScene->AddObject(std::move(warn));
             }
             for (int i = 0; i < 11; ++i) {
                 auto meteor = std::make_unique<Object3d>();
@@ -130,7 +130,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 meteors_.push_back(meteor.get());
 
                 if (currentScene) {
-                    currentScene->GetObjects().push_back(std::move(meteor));
+                    currentScene->AddObject(std::move(meteor));
                 }
             }
         }
