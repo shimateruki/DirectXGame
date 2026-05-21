@@ -216,10 +216,11 @@ void InspectorWindow::Draw() {
                                 "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
                                 "ホログラム (Hologram)", "消滅 (Dissolve)", "マグマ・覚醒 (Emissive)",
                                 "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
+                                "Tiling Padding", "Water", "Magma",
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 7) currentMatType = 0;
+                if (currentMatType >= IM_ARRAYSIZE(matTypes)) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -256,6 +257,18 @@ void InspectorWindow::Draw() {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), ICON_FA_SUN " --- Light Scattering ---");
                         ImGui::DragFloat("Scattering G (光の芯の強さ)", &fogData->scatteringG, 0.01f, 0.0f, 0.99f);
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
+                    }
+                }
+                if (currentMatType == 9 || currentMatType == 10) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ICON_FA_WATER " --- Fluid Settings ---");
+                    auto* waterData = selectedObject->GetWaterParamData();
+                    if (waterData) {
+                        ImGui::DragFloat("Wave Speed", &waterData->waveSpeed, 0.05f, 0.0f, 10.0f);
+                        ImGui::DragFloat("Wave Height", &waterData->waveHeight, 0.05f, 0.0f, 10.0f);
+                        ImGui::DragFloat("Wave Frequency", &waterData->waveFrequency, 0.05f, 0.0f, 20.0f);
+                        ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f);
+                        ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f);
                     }
                 }
                 ImGui::Separator();

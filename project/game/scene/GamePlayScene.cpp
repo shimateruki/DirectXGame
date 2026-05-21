@@ -1567,7 +1567,8 @@ void GamePlayScene::Draw() {
         if (isPlayerPart)
             continue; // プレイヤーの一部なら描画をスキップ！
 
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() == 9)
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 ||
+            obj->GetMaterialType() == 9 || obj->GetMaterialType() == 10)
             continue;
 
         totalCount++;
@@ -1603,7 +1604,7 @@ void GamePlayScene::Draw() {
         if (isPlayerPart)
             continue;
 
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 9) { // 透明のみ描画
+        if (obj->GetMaterialType() == 1) { // 透明のみ描画
             totalCount++;
             // ★ カリング判定！
             if (IsVisible(obj.get())) {
@@ -1640,6 +1641,28 @@ void GamePlayScene::Draw() {
     // 5. GPUパーティクルの描画！
     // =======================================================
     dxCommon_->UpdateGrabTexture();
+
+    for (auto& obj : objects) {
+        bool isPlayerPart = false;
+        if (isFirstPerson) {
+            Object3d* current = obj.get();
+            while (current) {
+                if (current == player_) {
+                    isPlayerPart = true;
+                    break;
+                }
+                current = current->GetParent();
+            }
+        }
+        if (isPlayerPart)
+            continue;
+
+        if (obj->GetMaterialType() == 9 && IsVisible(obj.get())) {
+            obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+        } else if (obj->GetMaterialType() == 10 && IsVisible(obj.get())) {
+            obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+        }
+    }
 
     GPUParticleManager::GetInstance()->Draw(
         dxCommon_->GetCommandList(), camera->GetViewMatrix(),
