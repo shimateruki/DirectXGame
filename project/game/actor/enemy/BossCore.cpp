@@ -1309,36 +1309,58 @@ void BossCore::TakeBodyDamage(float damage) {
         if (auto currentScene = SceneManager::GetInstance()->GetCurrentScene()) {
             if (common_) {
                 struct BlockSpawnInfo {
-                    int x, y, z;
+                    int x;
+                    float y;
+                    int z;
                     float scale;
                     float rotY;
                     float rotZ;
                 };
-                std::vector<BlockSpawnInfo> spawnInfos = {
-                    // 中距離・中心に近いエリア (10個)
-                    {-12, 1, 18, 1.1f, 0.4f, 0.2f},
-                    {15, 1, 10, 1.3f, 1.2f, -0.1f},
-                    {-10, 1, -22, 1.0f, 0.8f, 0.3f},
-                    {8, 1, -15, 1.4f, 2.1f, -0.3f},
-                    {-18, 1, 5, 1.2f, 0.5f, 0.1f},
-                    {22, 1, -8, 1.5f, 1.5f, -0.2f},
-                    {-5, 1, 25, 1.3f, 2.7f, 0.4f},
-                    {12, 1, 20, 1.1f, 0.3f, -0.4f},
-                    {-22, 1, -12, 1.4f, 1.9f, 0.2f},
-                    {20, 1, -24, 1.2f, 0.9f, -0.1f},
+                std::vector<BlockSpawnInfo> spawnInfos;
+                spawnInfos.reserve(20);
 
-                    // 外側エリア (10個)
-                    {-35, 1, 35, 1.2f, 0.7f, -0.3f},
-                    {40, 1, 25, 1.5f, 1.8f, 0.4f},
-                    {-30, 1, -45, 1.0f, 0.2f, -0.1f},
-                    {45, 1, -35, 1.3f, 2.4f, 0.3f},
-                    {-48, 1, 10, 1.1f, 0.9f, -0.2f},
-                    {50, 1, -15, 1.4f, 1.1f, 0.2f},
-                    {-15, 1, 50, 1.5f, 2.9f, -0.4f},
-                    {25, 1, 42, 1.2f, 0.5f, 0.1f},
-                    {-42, 1, -28, 1.3f, 1.6f, -0.3f},
-                    {38, 1, -48, 1.4f, 2.2f, 0.4f}
-                };
+                // 動的にまばらな配置を生成（最小距離を保証したランダム配置）
+                for (int i = 0; i < 20; ++i) {
+                    float x = 0.0f, z = 0.0f;
+                    bool farEnough = false;
+                    int attempts = 0;
+                    while (!farEnough && attempts < 100) {
+                        // 半径 15.0f 〜 65.0f の範囲に散布
+                        float radius = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 50.0f;
+                        float angle = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
+                        x = std::cos(angle) * radius;
+                        z = std::sin(angle) * radius;
+
+                        // 他のブロックと十分に離れているかチェック（最小距離 15.0f）
+                        farEnough = true;
+                        for (const auto& existing : spawnInfos) {
+                            float dx = x - static_cast<float>(existing.x);
+                            float dz = z - static_cast<float>(existing.z);
+                            float distSq = dx * dx + dz * dz;
+                            if (distSq < 15.0f * 15.0f) {
+                                farEnough = false;
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+
+                    float scale = 1.0f + (static_cast<float>(rand()) / RAND_MAX) * 0.5f;
+                    // Y軸、Z軸ともに完全にランダムな回転角を適用
+                    float rotY = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
+                    float rotZ = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
+
+                    // 浮動小数点数は整数値（例：1.0f, -2.0f）となるように丸める
+                    // 埋まり具合を表現するため、y座標は 0.7f に下げる
+                    spawnInfos.push_back({
+                        static_cast<int>(std::round(x)),
+                        0.7f,
+                        static_cast<int>(std::round(z)),
+                        scale,
+                        rotY,
+                        rotZ
+                    });
+                }
 
                 int blockIdx = 0;
                 for (const auto& info : spawnInfos) {
