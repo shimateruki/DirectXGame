@@ -118,6 +118,9 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 #endif
     if (meshRenderer_) {
         meshRenderer_->Draw(pointLightResource, spotLightResource);
+        if (enableOutline_) {
+            meshRenderer_->DrawOutline();
+        }
     }
 }
 
@@ -381,6 +384,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->saveCategory_ = other->saveCategory_;
     this->enemyType_ = other->enemyType_;
     this->isVisible_ = other->isVisible_;
+    this->enableOutline_ = other->enableOutline_;
     this->isLocked_ = other->isLocked_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
@@ -458,6 +462,7 @@ json Object3d::ExportToJson() {
     d["saveCategory"] = saveCategory_;
     d["enemyType"] = enemyType_;
     d["isVisible"] = isVisible_;
+    d["enableOutline"] = enableOutline_;
     d["isLocked"] = isLocked_;
 
     // 2. Transform
@@ -543,6 +548,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
+    if (j.contains("enableOutline")) enableOutline_ = j["enableOutline"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
 
     // 2. Transform

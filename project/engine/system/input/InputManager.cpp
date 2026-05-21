@@ -158,7 +158,8 @@ void InputManager::Update()
         }
         if (abs(rightX) > 0 || abs(rightY) > 0) {
             gamepadState.Gamepad.sThumbRX = rightX;
-            gamepadState.Gamepad.sThumbRY = (short)-rightY;
+            if (rightY <= -32768) rightY = -32767;
+            gamepadState.Gamepad.sThumbRY = static_cast<SHORT>(-rightY);
         }
 
         // トリガー (ZLR)
@@ -352,10 +353,18 @@ Vector2 InputManager::GetGamepadLeftStick() const {
     SHORT lx = gamepadState.Gamepad.sThumbLX; // 生の入力値 (-32768 ~ 32767)
     SHORT ly = gamepadState.Gamepad.sThumbLY;
 
-    // デッドゾーン内の入力を0として扱う
-    // デッドゾーン外なら、値を-1.0f ~ 1.0fの範囲に正規化する
-    float x = (abs(lx) > deadZone) ? lx / 32768.0f : 0.0f;
-    float y = (abs(ly) > deadZone) ? ly / 32768.0f : 0.0f;
+    float x = 0.0f;
+    float y = 0.0f;
+
+    // デッドゾーン外なら、値をデッドゾーン位置(0.0f)から端(1.0f or -1.0f)まで滑らかに線形マッピングする
+    if (abs(lx) > deadZone) {
+        float sign = (lx > 0) ? 1.0f : -1.0f;
+        x = sign * (static_cast<float>(abs(lx) - deadZone) / (32768.0f - deadZone));
+    }
+    if (abs(ly) > deadZone) {
+        float sign = (ly > 0) ? 1.0f : -1.0f;
+        y = sign * (static_cast<float>(abs(ly) - deadZone) / (32768.0f - deadZone));
+    }
     return { x, y };
 }
 
@@ -365,9 +374,18 @@ Vector2 InputManager::GetGamepadRightStick() const {
     SHORT rx = gamepadState.Gamepad.sThumbRX; // 生の入力値
     SHORT ry = gamepadState.Gamepad.sThumbRY;
 
-    // 左スティックと同様に、デッドゾーン処理と正規化を行う
-    float x = (abs(rx) > deadZone) ? rx / 32768.0f : 0.0f;
-    float y = (abs(ry) > deadZone) ? ry / 32768.0f : 0.0f;
+    float x = 0.0f;
+    float y = 0.0f;
+
+    // デッドゾーン外なら、値をデッドゾーン位置(0.0f)から端(1.0f or -1.0f)まで滑らかに線形マッピングする
+    if (abs(rx) > deadZone) {
+        float sign = (rx > 0) ? 1.0f : -1.0f;
+        x = sign * (static_cast<float>(abs(rx) - deadZone) / (32768.0f - deadZone));
+    }
+    if (abs(ry) > deadZone) {
+        float sign = (ry > 0) ? 1.0f : -1.0f;
+        y = sign * (static_cast<float>(abs(ry) - deadZone) / (32768.0f - deadZone));
+    }
     return { x, y };
 }
 
@@ -454,17 +472,19 @@ Vector2 InputManager::GetRightStick() const {
         Sint16 axisX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTX);
         Sint16 axisY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTY);
 
-        // デッドゾーン (遊び) の設定
-        const int kDeadZone = 3000;
+        // デッドゾーン (遊び) の設定 (XInput基準に合わせてドリフトを防止)
+        const int kDeadZone = 8689;
 
         float x = 0.0f;
         float y = 0.0f;
 
         if (abs(axisX) > kDeadZone) {
-            x = (float)axisX / 32768.0f;
+            float sign = (axisX > 0) ? 1.0f : -1.0f;
+            x = sign * (static_cast<float>(abs(axisX) - kDeadZone) / (32768.0f - kDeadZone));
         }
         if (abs(axisY) > kDeadZone) {
-            y = ((float)axisY / 32768.0f) * -1.0f;
+            float sign = (axisY > 0) ? 1.0f : -1.0f;
+            y = sign * (static_cast<float>(abs(axisY) - kDeadZone) / (32768.0f - kDeadZone)) * -1.0f;
         }
 
         return { x, y };
@@ -493,16 +513,17 @@ Vector2 InputManager::GetLeftStick() const {
         Sint16 axisX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTX);
         Sint16 axisY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTY);
 
-        const int kDeadZone = 3000;
+        const int kDeadZone = 8689;
         float x = 0.0f;
         float y = 0.0f;
 
         if (abs(axisX) > kDeadZone) {
-            x = (float)axisX / 32768.0f;
+            float sign = (axisX > 0) ? 1.0f : -1.0f;
+            x = sign * (static_cast<float>(abs(axisX) - kDeadZone) / (32768.0f - kDeadZone));
         }
         if (abs(axisY) > kDeadZone) {
-            // SDLのY軸は上がマイナスなので、反転(-1.0f)させて上をプラスにする
-            y = ((float)axisY / 32768.0f) * -1.0f;
+            float sign = (axisY > 0) ? 1.0f : -1.0f;
+            y = sign * (static_cast<float>(abs(axisY) - kDeadZone) / (32768.0f - kDeadZone)) * -1.0f;
         }
 
         return { x, y };

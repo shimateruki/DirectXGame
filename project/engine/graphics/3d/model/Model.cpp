@@ -221,6 +221,23 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
 // ==========================================
 // 読み込み: Assimpのメッシュごとにデータを分ける
 // ==========================================
+void Model::DrawOutline(ID3D12Resource* wvpResource) {
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+
+    if (wvpResource) {
+        commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
+    }
+    if (!modelData_.bones.empty()) {
+        SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, boneSrvIndex_);
+    }
+
+    for (const auto& mesh : modelData_.meshes) {
+        commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
+        commandList->IASetIndexBuffer(&mesh.indexBufferView);
+        commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
+    }
+}
+
 Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::string& filename) {
 
     ModelData modelData;

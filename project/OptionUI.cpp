@@ -8,6 +8,7 @@
 #include "AudioPlayer.h"
 #include "CameraManager.h" // 追加
 #include <CameraEditor.h>
+#include <cmath>
 
 
 void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
@@ -18,7 +19,7 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   // エディタで配置したベースUIの取得
   optionBackSprite_ = scene->GetSpriteByName("option/poseBack.png");
   if (optionBackSprite_) {
-      optionBackSprite_->SetColor({ 0.0f, 0.0f, 0.0f, 0.6f }); // 半透明グレー
+      optionBackSprite_->SetColor({ 0.0f, 0.0f, 0.0f, 0.8f }); // 半透明グレー
   }
   bgSprite_ = scene->GetSpriteByName("UI/back_ground.png");
   titleSprite_ = scene->GetSpriteByName("UI/option_UI.png");
@@ -34,6 +35,14 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   cameraSoundUISprite_ = scene->GetSpriteByName("option/cameraSaundUI.png");
   selectLeftSprite_ = scene->GetSpriteByName("option/UI_selectLeft.png");
   selectRightSprite_ = scene->GetSpriteByName("option/UI_selectRight.png");
+  optionAIconSprite_ = scene->GetSpriteByName("option/optionUI_A.png");
+  optionDIconSprite_ = scene->GetSpriteByName("option/optionUI_D.png");
+  if (optionAIconSprite_) {
+      optionAIconBaseSize_ = optionAIconSprite_->GetSize();
+  }
+  if (optionDIconSprite_) {
+      optionDIconBaseSize_ = optionDIconSprite_->GetSize();
+  }
 
   bgmSelectSprite_ = scene->GetSpriteByName("option/BGM_select.png");
   seSelectSprite_ = scene->GetSpriteByName("option/SE_select.png");
@@ -48,6 +57,8 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
   currentOptionIndex_ = (int)OptionIndex::Sound;
   currentConfigIndex_ = 0;
+  tabConfirmBlinkTime_ = 0.0f;
+  confirmedTopTab_ = currentTopTab_;
 
   // サウンド用
   volumeBarSprite_ = scene->GetSpriteByName("UI/volume_pole.png");
@@ -89,16 +100,54 @@ void OptionUI::Reset() {
   currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
   currentOptionIndex_ = (int)OptionIndex::Sound;
   currentConfigIndex_ = 0;
+  tabConfirmBlinkTime_ = 0.0f;
+  confirmedTopTab_ = currentTopTab_;
 }
 
 bool OptionUI::Update(float deltaTime) {
   InputManager *input = InputManager::GetInstance();
   Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
   Vector4 selectColor = {1.0f, 1.0f, 1.0f, 1.0f};
+  if (currentState_ != MenuState::TabSelect) {
+      tabConfirmBlinkTime_ += deltaTime;
+  } else {
+      tabConfirmBlinkTime_ = 0.0f;
+  }
 
   // --- タブなどの表示状態を更新 ---
   auto UpdateSelectHighlights = [&]() {
       bool isAudioTab = (currentTopTab_ == (int)TopTab::AudioCamera);
+      if (selectLeftSprite_) {
+          selectLeftSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+      }
+      if (selectRightSprite_) {
+          selectRightSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+      }
+      const float activeIconScale = 1.25f;
+      const float inactiveIconScale = 0.7f;
+      if (optionAIconSprite_) {
+          float scale = isAudioTab ? inactiveIconScale : activeIconScale;
+          optionAIconSprite_->SetSize({ optionAIconBaseSize_.x * scale, optionAIconBaseSize_.y * scale });
+      }
+      if (optionDIconSprite_) {
+          float scale = isAudioTab ? activeIconScale : inactiveIconScale;
+          optionDIconSprite_->SetSize({ optionDIconBaseSize_.x * scale, optionDIconBaseSize_.y * scale });
+      }
+      if (currentState_ != MenuState::TabSelect) {
+          Sprite* blinkSprite = nullptr;
+          if (confirmedTopTab_ == (int)TopTab::AudioCamera) {
+              blinkSprite = selectLeftSprite_;
+          } else if (confirmedTopTab_ == (int)TopTab::Credit) {
+              blinkSprite = selectRightSprite_;
+          }
+          if (blinkSprite) {
+              const float blinkPeriod = 1.2f;
+              float blinkT = std::fmod(tabConfirmBlinkTime_, blinkPeriod) / blinkPeriod;
+              float pulse = (blinkT < 0.5f) ? (blinkT * 2.0f) : ((1.0f - blinkT) * 2.0f);
+              float alpha = 0.35f + (0.65f * pulse);
+              blinkSprite->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+          }
+      }
       
       // カーソルの表示制御
       if (cursorSprite_) {
@@ -117,9 +166,9 @@ bool OptionUI::Update(float deltaTime) {
           if (isSelected) {
               // 選択中：明るく表示
               if (currentState_ == MenuState::ValueAdjust) {
-                  sp->SetColor({ 1.0f, 0.4f, 0.4f, 1.0f }); // 調整中は赤系
+                  sp->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 調整中は赤
               } else {
-                  sp->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 選択中は白（通常）
+                  sp->SetColor({ 1.0f, 1.0f, 0.0f, 1.0f }); // 選択中は黄色
               }
               // カーソルをこの項目の横に持ってくる
               if (cursorSprite_) {
@@ -153,6 +202,8 @@ bool OptionUI::Update(float deltaTime) {
       }
 
       if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+          tabConfirmBlinkTime_ = 0.0f;
+          confirmedTopTab_ = currentTopTab_;
           if (currentTopTab_ == (int)TopTab::AudioCamera) {
               currentState_ = MenuState::ItemSelect;
           }

@@ -154,6 +154,8 @@ public:
     virtual float GetAttackDamage() const { return attackDamage_; }
     void SetIsVisible(bool visible) { isVisible_ = visible; }
     bool GetIsVisible() const { return isVisible_; }
+    void SetEnableOutline(bool enable) { enableOutline_ = enable; }
+    bool GetEnableOutline() const { return enableOutline_; }
 
     void SetEventID(int id) { eventID_ = id; }
     int GetEventID() const { return eventID_; }
@@ -223,6 +225,7 @@ protected:
     std::vector<Object3d*> children_;
     std::string className_ = "Model";
     bool isVisible_ = true;
+    bool enableOutline_ = false;
     int eventID_ = -1;
     int targetID_ = -1;
     std::string enemyType_ = "";

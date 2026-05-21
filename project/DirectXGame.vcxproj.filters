@@ -10,6 +10,8 @@
     <FxCompile Include="Resources\shader\Particle.PS.hlsl" />
     <FxCompile Include="Resources\shader\Object3d.PS.hlsl" />
     <FxCompile Include="Resources\shader\Object3d.VS.hlsl" />
+    <FxCompile Include="Resources\shader\Outline.PS.hlsl" />
+    <FxCompile Include="Resources\shader\Outline.VS.hlsl" />
     <FxCompile Include="Resources\shader\PostEffect.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>

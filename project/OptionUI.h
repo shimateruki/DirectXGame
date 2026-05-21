@@ -60,6 +60,12 @@ private:
     Sprite* cameraSoundUISprite_ = nullptr;
     Sprite* selectLeftSprite_ = nullptr;
     Sprite* selectRightSprite_ = nullptr;
+    Sprite* optionAIconSprite_ = nullptr;
+    Sprite* optionDIconSprite_ = nullptr;
+    Vector2 optionAIconBaseSize_ = { 0.0f, 0.0f };
+    Vector2 optionDIconBaseSize_ = { 0.0f, 0.0f };
+    float tabConfirmBlinkTime_ = 0.0f;
+    int confirmedTopTab_ = (int)TopTab::AudioCamera;
 
     Sprite* bgmSelectSprite_ = nullptr;
     Sprite* seSelectSprite_ = nullptr;
