@@ -375,6 +375,22 @@ MeshRenderer::LocalFogData* Object3d::GetLocalFogData() {
     return meshRenderer_ ? meshRenderer_->GetLocalFogData() : nullptr;
 }
 
+void Object3d::DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawWater(depthSrvHandle, grabSrvHandle);
+    }
+}
+
+void Object3d::DrawMagma(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawMagma(depthSrvHandle, grabSrvHandle);
+    }
+}
+
+MeshRenderer::WaterParamForGPU* Object3d::GetWaterParamData() {
+    return meshRenderer_ ? meshRenderer_->GetWaterParamData() : nullptr;
+}
+
 void Object3d::CopyFrom(const Object3d* other) {
     if (!other) return;
 
@@ -450,6 +466,11 @@ void Object3d::CopyFrom(const Object3d* other) {
     auto otherFog = const_cast<Object3d*>(other)->GetLocalFogData();
     if (myFog && otherFog) {
         *myFog = *otherFog;
+    }
+    auto myWater = this->GetWaterParamData();
+    auto otherWater = const_cast<Object3d*>(other)->GetWaterParamData();
+    if (myWater && otherWater) {
+        *myWater = *otherWater;
     }
 }
 json Object3d::ExportToJson() {
@@ -536,6 +557,13 @@ json Object3d::ExportToJson() {
         d["localFog"]["noiseScale"] = fogData->noiseScale;
         d["localFog"]["scatteringG"] = fogData->scatteringG;
         d["localFog"]["scatteringIntensity"] = fogData->scatteringIntensity;
+    }
+    if (auto* waterData = GetWaterParamData()) {
+        d["waterParam"]["waveSpeed"] = waterData->waveSpeed;
+        d["waterParam"]["waveHeight"] = waterData->waveHeight;
+        d["waterParam"]["waveFrequency"] = waterData->waveFrequency;
+        d["waterParam"]["flowSpeedX"] = waterData->flowSpeedX;
+        d["waterParam"]["flowSpeedY"] = waterData->flowSpeedY;
     }
 
     return d;
@@ -649,6 +677,16 @@ void Object3d::ImportFromJson(const json& j) {
             if (jf.contains("noiseScale")) fogData->noiseScale = jf["noiseScale"];
             if (jf.contains("scatteringG")) fogData->scatteringG = jf["scatteringG"];
             if (jf.contains("scatteringIntensity")) fogData->scatteringIntensity = jf["scatteringIntensity"];
+        }
+    }
+    if (j.contains("waterParam")) {
+        if (auto* waterData = GetWaterParamData()) {
+            const auto& jw = j["waterParam"];
+            if (jw.contains("waveSpeed")) waterData->waveSpeed = jw["waveSpeed"];
+            if (jw.contains("waveHeight")) waterData->waveHeight = jw["waveHeight"];
+            if (jw.contains("waveFrequency")) waterData->waveFrequency = jw["waveFrequency"];
+            if (jw.contains("flowSpeedX")) waterData->flowSpeedX = jw["flowSpeedX"];
+            if (jw.contains("flowSpeedY")) waterData->flowSpeedY = jw["flowSpeedY"];
         }
     }
 }

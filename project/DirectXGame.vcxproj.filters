@@ -12,6 +12,8 @@
     <FxCompile Include="Resources\shader\Object3d.VS.hlsl" />
     <FxCompile Include="Resources\shader\Outline.PS.hlsl" />
     <FxCompile Include="Resources\shader\Outline.VS.hlsl" />
+    <FxCompile Include="Resources\shader\Magma.VS.hlsl" />
+    <FxCompile Include="Resources\shader\Water.VS.hlsl" />
     <FxCompile Include="Resources\shader\PostEffect.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
@@ -462,6 +464,9 @@
     <None Include="Resources\shader\Sprite.PS.hlsl" />
     <None Include="Resources\shader\Sprite.VS.hlsl" />
     <None Include="Resources\shader\LocalFog.PS.hlsl" />
+    <None Include="Resources\shader\Water.hlsli" />
+    <None Include="Resources\shader\Magma.PS.hlsl" />
+    <None Include="Resources\shader\Water.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

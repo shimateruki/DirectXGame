@@ -51,8 +51,11 @@ public:
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawShadow();
     void DrawLocalFog(uint32_t depthSrvHandle);
+    void DrawWater(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawMagma(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     MeshRenderer::LocalFogData* GetLocalFogData();
+    MeshRenderer::WaterParamForGPU* GetWaterParamData();
     virtual std::unique_ptr<Object3d> Clone() const;
 
     // トランスフォーム

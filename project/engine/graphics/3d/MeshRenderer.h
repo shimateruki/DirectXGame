@@ -75,6 +75,16 @@ public:
         Vector3 lightColor;                            // 12 byte
         float scatteringG = 0.6f;                      // 4 byte (光の芯の強さ: 0.0~0.99)
     };
+    struct WaterParamForGPU {
+        float time = 0.0f;
+        float waveSpeed = 2.0f;
+        float waveHeight = 0.5f;
+        float waveFrequency = 1.5f;
+        float flowSpeedX = 0.1f;
+        float flowSpeedY = 0.1f;
+        float uvOffsetX = 0.0f;
+        float uvOffsetY = 0.0f;
+    };
     struct OutlineData {
         Vector3 localMin = { -0.5f, -0.5f, -0.5f };
         float thickness = 0.025f;
@@ -95,6 +105,8 @@ public:
     // 描画
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
     void DrawOutline();
+    void DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     // --- アクセッサ (Setters) ---
     void SetModel(Model* model) { model_ = model; }
@@ -140,6 +152,7 @@ public:
     void DrawShadow(); 
     void DrawLocalFog(uint32_t depthSrvHandle);
     LocalFogData* GetLocalFogData() { return localFogData_; } // 後でエディタから操作するため
+    WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
     ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }
     ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
     void SetEmissive(float emissive);
@@ -184,6 +197,8 @@ private:
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
     LocalFogData* localFogData_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
+    WaterParamForGPU* waterParamData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> outlineResource_;
     OutlineData* outlineData_ = nullptr;
     float time_ = 0.0f;
