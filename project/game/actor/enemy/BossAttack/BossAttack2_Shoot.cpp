@@ -11,6 +11,7 @@ void BossAttack2_Shoot::Initialize(BossCore* boss) {
     blockStartPos_.clear();
     blockTargetPos_.clear();
     shotCount_ = 0;
+    descendTimer_ = 0.0f;
 
     animStartPos_ = boss->GetTranslate();
     animPhase_ = 10;
@@ -147,6 +148,16 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
     }
     // --- Phase 13: 待機 ---
     else if (animPhase_ == 13) {
+        // 徐々に下に下がる処理
+        descendTimer_ += deltaTime;
+        float descendDuration = 4.0f; // 4秒かけて元の高さへ下降
+        float t = std::min(descendTimer_ / descendDuration, 1.0f);
+        float easeT = Easing::InOutQuad(t);
+
+        Vector3 pos = boss->GetTranslate();
+        pos.y = Math::Lerp(animStartPos_.y + 8.0f, animStartPos_.y, easeT);
+        boss->SetTranslate(pos);
+
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             bool isFlying = false;
             for (auto& fb : boss->GetFlyingBlocks()) {

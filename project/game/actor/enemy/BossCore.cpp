@@ -1888,6 +1888,9 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
         if (returnDelayTimer_ >= 5.0f) {
             for (auto& fb : flyingBlocks_) {
                 fb.mode = 2;
+                if (fb.block) {
+                    fb.block->SetCollisionAttribute(kGround); // 戻るときに攻撃判定をなくす
+                }
             }
             returnDelayTimer_ = 0.0f;
         }
