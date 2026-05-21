@@ -294,6 +294,10 @@ private:
     Sprite* bossIconSprite_ = nullptr;
     Sprite* shieldIconSprite_ = nullptr;
 
+    Sprite* bossHpFrameSprite_ = nullptr;
+    Sprite* bariaFrameSprite_ = nullptr;
+    Sprite* hpFrameSprite_ = nullptr;
+
     // シェイク用変数
     Vector2 bossIconBasePos_;
     float bossIconShakeTimer_ = 0.0f;

@@ -212,6 +212,18 @@ void GamePlayScene::Initialize() {
             shieldIconBasePos_ = shieldIconSprite_->GetPosition();
             SetAlphaZero(shieldIconSprite_);
         }
+        else if (sprite->GetName() == "bossHpFrame.png") {
+            bossHpFrameSprite_ = sprite.get();
+            SetAlphaZero(bossHpFrameSprite_);
+        }
+        else if (sprite->GetName() == "bariaFrame.png") {
+            bariaFrameSprite_ = sprite.get();
+            SetAlphaZero(bariaFrameSprite_);
+        }
+        else if (sprite->GetName() == "hpFrame.png") {
+            hpFrameSprite_ = sprite.get();
+            SetAlphaZero(hpFrameSprite_);
+        }
     }
 
     // =======================================================
@@ -1769,6 +1781,9 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         SetAlpha(bossNameSprite_, alpha);
         SetAlpha(bossIconSprite_, alpha); // 追加
         SetAlpha(shieldIconSprite_, alpha); // 追加
+        SetAlpha(bossHpFrameSprite_, alpha);
+        SetAlpha(bariaFrameSprite_, alpha);
+        SetAlpha(hpFrameSprite_, alpha);
 
         // --- A. メインHPバーの同期 ---
         if (bossHpBarSprite_) {
