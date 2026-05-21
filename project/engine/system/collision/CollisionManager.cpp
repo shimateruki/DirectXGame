@@ -3,6 +3,8 @@
 #include "engine/utility/math/Math.h"
 #include <cmath> 
 #include <algorithm> // std::find
+#include "game/actor/CollisionConfig.h"
+#include "EffectObject3d.h"
 
 
 
@@ -18,12 +20,10 @@ void CollisionManager::AddObject(Object3d* object) {
 }
 
 void CollisionManager::RemoveObject(Object3d* object) {
-    auto it = std::find(objects_.begin(), objects_.end(), object);
-    if (it != objects_.end()) {
-        objects_.erase(it);
-        // 静的グリッドの再構築が必要
-        needsStaticGridRebuild_ = true;
-    }
+    // ★修正: std::find ではなく std::list::remove を使う
+    // これにより、もし重複して登録されていても全て削除され、ダングリングポインタを防げます
+    objects_.remove(object);
+    needsStaticGridRebuild_ = true;
 }
 
 void CollisionManager::ClearObjects() {
@@ -208,6 +208,18 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
         return;
     }
 
+    // ★ エフェクト（EffectObject3d）の多段ヒット防止処理
+    if (EffectObject3d* effectA = dynamic_cast<EffectObject3d*>(objA)) {
+        if (!effectA->CanHit(objB)) {
+            return;
+        }
+    }
+    if (EffectObject3d* effectB = dynamic_cast<EffectObject3d*>(objB)) {
+        if (!effectB->CanHit(objA)) {
+            return;
+        }
+    }
+
     // 各オブジェクトのOnCollisionを呼び出す
     // (精密判定と応答は OnCollision 側が担当する)
     objA->OnCollision(objB);
@@ -330,23 +342,43 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
     for (Object3d* object : objects_) {
 
         // =========================================================
-        // ★ プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
-        // 壁（レイキャストの障害物）として扱わないように完全に除外する！
+        // ★ キャラクター（プレイヤー＆敵）の除外処理
         // =========================================================
-        bool isPlayerPart = false;
+        bool isIgnoreObject = false;
         Object3d* current = object;
         while (current) {
-            // クラス名が "Player"、または名前(Name)に "Player" が含まれていたら除外
-            if (current->GetClassName() == "Player" ||
-                current->GetName().find("Player") != std::string::npos) {
-                isPlayerPart = true;
+            std::string className = current->GetClassName();
+            std::string name = current->GetName();
+
+            std::string cat = current->GetSaveCategory();
+
+            // ① プレイヤーカテゴリは常に除外
+            if (cat == "Player") {
+                isIgnoreObject = true;
                 break;
             }
+
+            // ② エネミーカテゴリは、エネミーを探していないレイキャスト（地形探索など）の時だけ除外
+            if (cat == "Enemy") {
+                if (!(mask & kEnemy)) {
+                    isIgnoreObject = true;
+                    break;
+                }
+            }
+
+            // ③ その他、特定の名前（Blockなど）を持つオブジェクトの除外
+       /*     if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) {
+                if (!(mask & kEnemy)) {
+                    isIgnoreObject = true;
+                    break;
+                }
+            }*/
+
             current = current->GetParent();
         }
 
-        // プレイヤーの一部だったら、このオブジェクトへのレイキャストはスキップ！
-        if (isPlayerPart) {
+        // 無視すべきオブジェクトだったら、このオブジェクトへのレイキャストはスキップ！
+        if (isIgnoreObject) {
             continue;
         }
 
@@ -358,7 +390,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                // (2) 形状判定 (AABB と OBB に対応)
                // =========================================================
             ColliderType colType = object->GetColliderType();
-            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB) {
+            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB && colType != ColliderType::kCylinder) {
                 continue; // 球や判定なしはスキップ
             }
 
@@ -373,7 +405,7 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                 OBB obb = object->GetOBB(); 
                 distance = IntersectRayOBB(start, direction, obb);
             }
-
+         
             // (4) 一番近いものを採用
             if (distance < closestHit.distance) {
                 closestHit.isHit = true;

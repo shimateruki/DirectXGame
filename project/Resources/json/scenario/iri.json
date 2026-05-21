@@ -1,0 +1,19 @@
+{
+    "tracks": [
+        {
+            "delayTime": 1.0499999523162842,
+            "pathFileName": "anim_door02",
+            "targetName": "Map_Equipment_Door_02"
+        },
+        {
+            "delayTime": 1.0399999618530273,
+            "pathFileName": "anim_door03",
+            "targetName": "Map_Equipment_Door_03"
+        },
+        {
+            "delayTime": 0.0,
+            "pathFileName": "anim_down",
+            "targetName": "Map_Under_Equipment_04"
+        }
+    ]
+}

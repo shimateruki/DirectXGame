@@ -38,6 +38,17 @@ public:
 	/// 現在のターゲットを取得（弾の発射などで使用）
 	/// </summary>
 	Object3d* GetTarget() const { return lockOnTarget_; }
+	/// <summary>
+	/// ロックオンを強制するかどうかを設定する
+	/// </summary>
+	/// <param name="target">強制するターゲット（nullなら強制解除）</param>
+	/// <param name="isForced">強制中フラグ</param>
+	void SetForceLockOn(Object3d* target, bool isForced);
+
+	/// <summary>
+	/// ロックオン機能の有効・無効を設定する
+	/// </summary>
+	void SetEnabled(bool enabled) { isEnabled_ = enabled; }
 
 private:
 	/// <summary>
@@ -54,4 +65,6 @@ private:
 	const float kMaxLockOnDistance_ = 500.0f; // 届く距離
 	const float kMinLockOnDot_ = 0.0f;
 	float lostSightTimer_ = 0.0f;
+	bool isForced_ = false; // 強制ロックオン中か
+	bool isEnabled_ = true; // システム自体が有効か
 };

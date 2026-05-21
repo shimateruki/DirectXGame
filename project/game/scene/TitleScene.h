@@ -16,9 +16,12 @@
 #include "LevelLoader.h"
 #include <GhostRecorder.h>
 #include <GameRule.h>
-
+#include "OptionUI.h"
 #include <memory>
 #include <vector>
+
+#include <GPUParticleEmitter.h>
+#include <memory>
 
 // --- 前方宣言 ---
 class DirectXCommon;
@@ -77,14 +80,29 @@ private:
     Player* player_ = nullptr;
 
     uint32_t bgmHandle_ = 0;
+    // --- スプライト演出用 ---
+    bool spritesAppear_ = false; // フェード後にスプライトを浮かび上がらせる演出開始
+    float spritesAppearTimer_ = 0.0f; // 演出タイマー
+    const float spritesAppearDuration_ = 0.6f; // 演出時間（秒）
+    std::vector<int> menuSpriteIndices_; // メニュー項目スプライトのインデックス
+    std::vector<float> spriteBaseYs_;    // スプライトの初期Y座標
+
 
     // --- ライト・GPUリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
-
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
+
+    // ==========================================
+    // 状態管理用 (追加部分)
+    // ==========================================
+    enum class TitleState {
+        MainMenu,   // 最初から表示されている「Game Start / Setting」を選ぶ画面
+        OptionMenu  // Settingを選んだ後の「Sound / Keyboard」などを選ぶ画面
+    };
+    TitleState currentState_ = TitleState::MainMenu;
 
     // メニューの選択肢
     enum class MenuIndex {
@@ -92,10 +110,31 @@ private:
         Setting,
         Max // 項目数を取るためのダミー
     };
-
     int currentMenuIndex_ = (int)MenuIndex::GameStart; // 現在の選択番号
 
-    // スプライトのポインタを保持しておく
-    Sprite* startTextSprite_ = nullptr;
-    Sprite* settingTextSprite_ = nullptr;
+    // 設定項目を無効化するフラグ（falseにしておけば設定へは遷移できない）
+    bool settingEnabled_ = false;
+
+    // オプションメニューの選択肢 (追加部分)
+    enum class OptionIndex {
+        Sound,
+        KeyConfig,
+        Max
+    };
+    int currentOptionIndex_ = (int)OptionIndex::Sound;
+
+    OptionUI optionUI_;
+
+
+    // ==========================================
+    // enemy_core を上下に動かすための変数（複数対応）
+    // ==========================================
+    std::vector<Object3d*> enemyCores_;       // 見つけた enemy_core オブジェクト群
+    std::vector<float> enemyCoreBaseYs_;      // 各オブジェクトの基準Y
+    float enemyCoreAmplitude_ = 0.5f;         // 振幅
+    float enemyCoreSpeed_ = 1.5f;             // 速度（係数）
+    float enemyCoreTimer_ = 0.0f;             // 共通タイマー
+
+    // ボスコンテナのパーティクル（複数コア対応・追従用）
+    std::vector<std::unique_ptr<GPUParticleEmitter>> bossContainerEmitters_;
 };

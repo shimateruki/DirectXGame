@@ -90,8 +90,8 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             // ★ Release環境：右クリック不要！マウスを動かしただけでも操作中とみなす
             bool isControllingCamera = input->IsMouseButtonPressed(1) || isMouseMoving ||
 #endif
-                (std::abs(input->GetRightStick().x) > 0.1f) ||
-                (std::abs(input->GetRightStick().y) > 0.1f) ||
+                (std::abs(input->GetRightStick().x) > 0.0f) ||
+                (std::abs(input->GetRightStick().y) > 0.0f) ||
                 isGyroActive;
 
             // =========================================================
@@ -115,10 +115,9 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
                 // 操作していない時だけ、設定値をカメラに流し込む
                 camera->ConfigAimable(settings_.distance, settings_.height, settings_.angle);
             }
-
             // これらは操作中でも反映してOK
             camera->SetLockOnOffset(settings_.lockOnOffset);
-            camera->ConfigFixedPoint(settings_.fixedPointPos);
+            camera->ConfigFixedPoint(settings_.fixedPointPos, settings_.fixedPointAngle); 
         }
 
         if (settings_.gameFollowMode == Camera::FollowMode::kOrbit) {
@@ -143,7 +142,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ----------------------------------------------------------
     // 1. 回転処理 (右クリック中のみ)
     // ----------------------------------------------------------
-    if (input->IsMouseButtonPressed(1)) { // 1 = Right Click
+    if (!isCinematicActive_ && input->IsMouseButtonPressed(1)) { // 1 = Right Click
         Vector2 mouseDelta = input->GetMouseMoveDelta();
 
         // 感度をかけて加算
@@ -186,7 +185,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     // ==========================================================
     // ★ GameViewをホバーしているか、右クリック中のみ移動・ズームを許可
     // ==========================================================
-    if (isGameViewHovered_ || input->IsMouseButtonPressed(1)) {
+    if (!isCinematicActive_ && (isGameViewHovered_ || input->IsMouseButtonPressed(1))) {
 
         // Shiftキーで加速
         float speed = (input->IsKeyPressed(DIK_LSHIFT) || input->IsKeyPressed(DIK_RSHIFT))
@@ -239,7 +238,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     // ★ 中クリック (ホイール押し込み) : パン(平行)移動
     // これもGameViewホバー中か、すでに中クリックを押している時だけ許可
-    if (isGameViewHovered_ || input->IsMouseButtonPressed(2)) {
+    if (!isCinematicActive_ && (isGameViewHovered_ || input->IsMouseButtonPressed(2))) {
         if (input->IsMouseButtonPressed(2)) { // 2 = Middle Click
             Vector2 mouseDelta = input->GetMouseMoveDelta();
             float panSpeed = settings_.moveSpeed * 0.1f;
@@ -273,6 +272,7 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
 
     camera->SetTarget(newTarget);
 }
+
 void CameraEditor::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::Text(ICON_FA_VIDEO " --- カメラエディタ (Camera Editor) ---");
@@ -356,6 +356,7 @@ void CameraEditor::DrawImGui() {
             ImGui::Separator();
             ImGui::Text(ICON_FA_MAP_MARKER_ALT " 定点カメラ設定");
             ImGui::DragFloat3(" カメラ座標", &settings_.fixedPointPos.x, 0.1f);
+            ImGui::DragFloat3(" カメラ角度", &settings_.fixedPointAngle.x, 0.05f);
             if (ImGui::Button(ICON_FA_CROSSHAIRS " 現在のカメラ位置をセット")) {
                 Camera* cam = CameraManager::GetInstance()->GetMainCamera();
                 if (cam) settings_.fixedPointPos = cam->GetEye();
@@ -376,9 +377,15 @@ void CameraEditor::DrawImGui() {
         if (camera) {
             Vector3 pos = camera->GetEye();
             ImGui::TextDisabled(ICON_FA_LOCATION_ARROW " 現在座標: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+
+            ImGui::Spacing();
+            if (ImGui::Button(ICON_FA_MAP_MARKER_ALT " 現在位置を「定点カメラ」の座標・角度にセット")) {
+                settings_.fixedPointPos = pos;
+                settings_.fixedPointAngle = camera->GetRotation(); // ★角度も記録する
+                SaveSettings(); // セットしたら自動でセーブ
+            }
         }
     }
-
     ImGui::Spacing();
     ImGui::Separator();
 
@@ -425,15 +432,7 @@ void CameraEditor::DrawImGui() {
                 if (camera) {
                     // 位置をそのままコピー
                     p.fixedEyePos = camera->GetEye();
-
-                    if (targetPlayer_) {
-                        Vector3 pPos = targetPlayer_->GetWorldPosition();
-                        pPos.y += 5.0f; // プレイヤーの少し上（注視点）を基準にする
-                        p.fixedTargetPos = pPos;
-                    }
-                    else {
-                        p.fixedTargetPos = camera->GetTargetPoint();
-                    }
+                    p.fixedTargetPos = camera->GetTargetPoint();
 
                     // その場所・その角度に完全に固定するため、追従フラグはすべてOFFにする
                     p.trackEyeX = false; p.trackEyeY = false; p.trackEyeZ = false;
@@ -506,12 +505,13 @@ void CameraEditor::SaveSettings() {
     j["orbitRadius"] = settings_.orbitRadius;
     j["orbitHeight"] = settings_.orbitHeight;
     j["orbitSpeed"] = settings_.orbitSpeed;
-
+    j["cameraSensitivity"] = settings_.cameraSensitivity;
     // エディタ設定
     j["moveSpeed"] = settings_.moveSpeed;
     j["boostSpeed"] = settings_.boostSpeed;
     j["mouseSensitivity"] = settings_.mouseSensitivity;
     j["fixedPointPos"] = { settings_.fixedPointPos.x, settings_.fixedPointPos.y, settings_.fixedPointPos.z };
+    j["fixedPointAngle"] = { settings_.fixedPointAngle.x, settings_.fixedPointAngle.y, settings_.fixedPointAngle.z };
     json overridesJson = json::object();
     for (const auto& [name, param] : overrideParamsMap_) {
         json p;
@@ -573,6 +573,7 @@ void CameraEditor::LoadSettings() {
         if (j.contains("orbitRadius")) settings_.orbitRadius = j["orbitRadius"];
         if (j.contains("orbitHeight")) settings_.orbitHeight = j["orbitHeight"];
         if (j.contains("orbitSpeed"))  settings_.orbitSpeed = j["orbitSpeed"];
+        if (j.contains("cameraSensitivity")) settings_.cameraSensitivity = j["cameraSensitivity"];
 
         if (j.contains("moveSpeed")) settings_.moveSpeed = j["moveSpeed"];
         if (j.contains("boostSpeed")) settings_.boostSpeed = j["boostSpeed"];
@@ -581,6 +582,11 @@ void CameraEditor::LoadSettings() {
             settings_.fixedPointPos.x = j["fixedPointPos"][0];
             settings_.fixedPointPos.y = j["fixedPointPos"][1];
             settings_.fixedPointPos.z = j["fixedPointPos"][2];
+        }
+        if (j.contains("fixedPointAngle") && j["fixedPointAngle"].is_array()) {
+            settings_.fixedPointAngle.x = j["fixedPointAngle"][0];
+            settings_.fixedPointAngle.y = j["fixedPointAngle"][1];
+            settings_.fixedPointAngle.z = j["fixedPointAngle"][2];
         }
         overrideParamsMap_.clear();
         if (j.contains("Overrides")) {
@@ -610,6 +616,28 @@ void CameraEditor::LoadSettings() {
 }
 
 
+void CameraEditor::SyncSettingsFromCamera() {
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    if (!camera) return;
+
+    Vector3 rot = camera->GetRotation();
+    float toDeg = 180.0f / 3.14159265f;
+
+    // 角度を同期 (ラジアン -> 度)
+    settings_.angle.x = rot.x * toDeg;
+    settings_.angle.y = rot.y * toDeg;
+    settings_.angle.z = rot.z * toDeg;
+
+    // 距離は動的に変わるもの（ロックオン中など）を基本設定に書き戻すと
+    // 解除後に戻らなくなるため、角度（向き）のみを同期する
+    /*Vector3 eye = camera->GetEye();
+    Vector3 target = camera->GetTargetPoint();
+    float dx = eye.x - target.x;
+    float dy = eye.y - target.y;
+    float dz = eye.z - target.z;
+    settings_.distance = std::sqrt(dx * dx + dy * dy + dz * dz);*/
+}
+
 void CameraEditor::LoadFile(const std::string& fileName) {
     // 1. ファイル名バッファを更新
     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), fileName.c_str());
@@ -635,6 +663,9 @@ void CameraEditor::LoadFile(const std::string& fileName) {
 
 void CameraEditor::SetMode(Mode mode) {
     settings_.currentMode = mode;
+    if (mode == Mode::Game) {
+        isCinematicActive_ = false;
+    }
 }
 
 void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vector3& rotation) {

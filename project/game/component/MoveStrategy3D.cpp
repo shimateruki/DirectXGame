@@ -13,36 +13,48 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
 
     if (!camera || !input) { return move; }
 
-    // --- 方向ベクトルの準備 ---
-    Vector3 forward, right;
+    Vector3 forward = camera->GetTargetPoint() - camera->GetEye();
+    forward.y = 0.0f;
 
-    if (player->IsLockingOn()) {
-        // --- (A) ロックオン中の移動 (自キャラ基準) ---
-        forward = { 0, 0, 1 };
-        right = { 1, 0, 0 };
-        Matrix4x4 rotateMat = math.MakeRotateYMatrix(player->GetRotation().y);
-        forward = math.TransformNormal(forward, rotateMat);
-        right = math.TransformNormal(right, rotateMat);
+    if (math.Length(forward) > 0.001f) {
+        forward = math.Normalize(forward);
     }
     else {
-        // --- (B) 通常時の移動 (カメラ基準) ---
-        forward = camera->GetTargetPoint() - camera->GetEye();
-        forward.y = 0.0f;
-        right = math.Cross({ 0.0f, 1.0f, 0.0f }, forward);
-
-        if (math.Length(forward) > 0.001f) { forward = math.Normalize(forward); }
-        if (math.Length(right) > 0.001f) { right = math.Normalize(right); }
+        forward = { 0.0f, 0.0f, 1.0f };
     }
 
-    // --- ★ KeyConfig対応：アクション名で入力をチェック！ ---
-    if (input->IsActionPressed("Forward")) { move += forward; }
-    if (input->IsActionPressed("Backward")) { move += (forward * -1.0f); }
-    if (input->IsActionPressed("Left")) { move += (right * -1.0f); }
-    if (input->IsActionPressed("Right")) { move += right; }
+    Vector3 right = math.Cross({ 0.0f, 1.0f, 0.0f }, forward);
+    if (math.Length(right) > 0.001f) {
+        right = math.Normalize(right);
+    }
 
-    // 速度を適用
+    // =========================================================
+    // ★ 修正ポイント：スティックとキーボードを完全に独立させる
+    // =========================================================
+    // 1. スティックの入力を取得
+    Vector2 stick = input->GetLeftStick();
+    float stickX = stick.x;
+    float stickZ = stick.y;
+
+    // 2. キーボードの入力を取得 (別の変数に分ける)
+    float keyX = 0.0f;
+    float keyZ = 0.0f;
+    if (input->IsActionPressed("Forward")) { keyZ += 1.0f; }
+    if (input->IsActionPressed("Backward")) { keyZ -= 1.0f; }
+    if (input->IsActionPressed("Right")) { keyX += 1.0f; }
+    if (input->IsActionPressed("Left")) { keyX -= 1.0f; }
+
+    // 3. スティックとキーボード、どちらか「入力が強い方」を採用する（干渉を完全回避）
+    float inputX = (abs(stickX) > abs(keyX)) ? stickX : keyX;
+    float inputZ = (abs(stickZ) > abs(keyZ)) ? stickZ : keyZ;
+
+    // ベクトルに適用
+    move += forward * inputZ;
+    move += right * inputX;
+
     if (math.Length(move) > 0.001f) {
         move = math.Normalize(move) * moveSpeed;
     }
+
     return move;
 }

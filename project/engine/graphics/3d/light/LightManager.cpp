@@ -4,6 +4,8 @@
 #include <fstream>
 #include <cmath>      // sin, cos
 #include "json.hpp"
+#include <Camera.h>
+#include <CameraManager.h>
 
 using json = nlohmann::json;
 
@@ -15,7 +17,7 @@ LightManager* LightManager::GetInstance() {
 void LightManager::Initialize(DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
-    uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/rostock_laage_airport_4k.dds");
+    uint32_t envHandle = TextureManager::GetInstance()->Load("Resources/skybox.dds");
     LightManager::GetInstance()->SetEnvironmentMapHandle(envHandle);
 
     // --- バッファ作成 (サイズはConstData構造体に合わせる) ---
@@ -42,11 +44,12 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
     spotLights_.clear();
 }
 
+
 void LightManager::Update() {
 
     // ---------------------------------------------------
-    // 1. 平行光源 (Directional Light)
-    // ---------------------------------------------------
+      // 1. 平行光源 (Directional Light)
+      // ---------------------------------------------------
     if (directionalLightResource_) {
         DirectionalLight* dirMap = nullptr;
 
@@ -56,17 +59,48 @@ void LightManager::Update() {
             // 2. Normalizeする前に、ベクトルの長さが0でないかチェック(0除算防止)
             if (Math::Length(directionalLightData_.direction) > 0.0001f) {
                 directionalLightData_.direction = Math::Normalize(directionalLightData_.direction);
-            } else {
+            }
+            else {
                 // 長さが0ならデフォルトの向きをセット
                 directionalLightData_.direction = { 0.0f, -1.0f, 0.0f };
             }
+
+            // =======================================================
+            //  シャドウマップ用のライトVP行列計算
+            // =======================================================
+            Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+            if (camera) {
+                Vector3 target = camera->GetEye();
+
+                // 太陽の位置を、カメラから光の逆方向へ離す
+                Vector3 lightPos = {
+                    target.x - directionalLightData_.direction.x * 200.0f,
+                    target.y - directionalLightData_.direction.y * 200.0f,
+                    target.z - directionalLightData_.direction.z * 200.0f
+                };
+
+                Vector3 up = { 0.0f, 1.0f, 0.0f };
+                // 真上・真下を向いている時の特異点対策
+                if (std::abs(directionalLightData_.direction.x) < 0.001f && std::abs(directionalLightData_.direction.z) < 0.001f) {
+                    up = { 0.0f, 0.0f, 1.0f };
+                }
+
+                // 太陽目線のビュー行列と正投影行列を計算（Math::を付けて静的関数として呼び出し）
+                Matrix4x4 lightView = Math::MakeLookAtMatrix(lightPos, target, up);
+                Matrix4x4 lightProj = Math::MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
+
+                // 計算結果を構造体に保存（この後すぐ下の行でGPUへ送られます）
+                directionalLightData_.lightViewProj = Math::Multiply(lightView, lightProj);
+            }
+            // =======================================================
 
             // 3. 安全が確認できたので書き込む
             *dirMap = directionalLightData_;
 
             // 4. アンマップ
             directionalLightResource_->Unmap(0, nullptr);
-        } else {
+        }
+        else {
             // ここに来る場合は、GPUデバイスが失われている可能性があります
             // OutputDebugStringA("Warning: DirectionalLight Map failed.\n");
         }

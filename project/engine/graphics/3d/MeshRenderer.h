@@ -75,6 +75,12 @@ public:
         Vector3 lightColor;                            // 12 byte
         float scatteringG = 0.6f;                      // 4 byte (光の芯の強さ: 0.0~0.99)
     };
+    struct OutlineData {
+        Vector3 localMin = { -0.5f, -0.5f, -0.5f };
+        float thickness = 0.025f;
+        Vector3 localMax = { 0.5f, 0.5f, 0.5f };
+        float padding = 0.0f;
+    };
 public:
     // コンストラクタ: 描画対象のTransformを受け取る
     MeshRenderer(Transform* transform);
@@ -88,6 +94,7 @@ public:
 
     // 描画
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    void DrawOutline();
 
     // --- アクセッサ (Setters) ---
     void SetModel(Model* model) { model_ = model; }
@@ -138,7 +145,7 @@ public:
     void SetEmissive(float emissive);
     float GetEmissive() const;
     void SetIsUIPreview(bool isPreview) { isUIPreview_ = isPreview; }
-
+    void SetUVTransform(const Matrix4x4& mat) { if (materialData_) materialData_->uvTransform = mat; }
 private:
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -177,6 +184,8 @@ private:
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
     LocalFogData* localFogData_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> outlineResource_;
+    OutlineData* outlineData_ = nullptr;
     float time_ = 0.0f;
 
     bool isUIPreview_ = false;

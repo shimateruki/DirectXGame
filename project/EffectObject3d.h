@@ -1,5 +1,7 @@
 #pragma once
 #include "Object3d.h"
+#include"Model.h"
+#include <vector>
 #include <wrl.h>
 
 // ========================================================
@@ -18,7 +20,7 @@ public:
         float distortionStrength;
         float distortionSpeed;
         float edgeFadeStrength;
-        float padding1;
+        float alphaReference; // ★discardの閾値 (シェーダー側の padding1 と一致)
         Vector2 screenSize;
         int enableDistortion; // 0: 加算/通常, 1: 背景歪みモード
         int enableColorRamp;  //カラーランプ有効フラグ
@@ -48,6 +50,7 @@ public:
         lifetime_ = lifetime;
         isPlaying_ = true;
         if (materialData_) materialData_->time = 0.0f;
+        ClearHitObjects();
     }
     bool IsPlaying() const { return isPlaying_; }
 
@@ -59,6 +62,7 @@ public:
     void SetDistortionSpeed(float s) { materialData_->distortionSpeed = s; }
     void SetEdgeFadeStrength(float s) { materialData_->edgeFadeStrength = s; }
     void SetEnableDistortion(bool enable) { materialData_->enableDistortion = enable ? 1 : 0; }
+    void SetAlphaReference(float ref) { materialData_->alphaReference = ref; }
     void SetNoiseTexture(uint32_t handle) { noiseTextureHandle_ = handle; }
     void SetRampTexture(uint32_t handle) { rampTextureHandle_ = handle; }
     void SetEnableColorRamp(bool enable) { materialData_->enableColorRamp = enable ? 1 : 0; }
@@ -73,6 +77,46 @@ public:
     void SetOffsets(const Vector3& pos, const Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
     Object3d* GetTargetObject() const { return targetObject_; }
     void SetProceduralType(int type) { materialData_->proceduralType = type; }
+    void UpdateProceduralMesh();
+    void ExportToObj(const std::string& filePath) const;
+
+    // --- 多段ヒット防止用の関数・メンバ ---
+    bool CanHit(Object3d* target) const;
+    void AddHitObject(Object3d* target);
+    void ClearHitObjects() { hitObjects_.clear(); }
+    bool OnCollision(Object3d* other) override;
+
+    // --- プロシージャルメッシュ用パラメータ ---
+    float editSlashAngle_ = 360.0f; // 斬撃の角度（360度以上も可能に）
+    float editInnerRadius_ = 0.5f;  // 内径（剣の根元）
+    float editOuterRadius_ = 4.0f;  // 外径（剣の先端）
+    float editThickness_ = 0.5f;    // 軌跡の厚み
+    float editSpiralPitch_ = 0.0f;  // 螺旋の高さ（スパイラル）
+    float editThrustLength_ = 5.0f; // 突きの長さ
+    float editThrustRadius_ = 0.8f; // 突きの根本の太さ
+    int   editMeshSegments_ = 16;   // ポリゴンの分割数（滑らかさ）
+
+    // 基本プリミティブ用
+    float editSphereRadius_ = 1.0f;
+    int   editSphereRings_ = 16;
+    float editCylinderRadius_ = 1.0f;
+    float editCylinderHeight_ = 2.0f;
+    Vector3 editBoxSize_ = { 1.0f, 1.0f, 1.0f };
+    Vector2 editPlaneSize_ = { 2.0f, 2.0f };
+    int   editPlaneSubdivisions_ = 1;
+    float editTorusMajorRadius_ = 1.0f;
+    float editTorusMinorRadius_ = 0.3f;
+    float editConeRadius_ = 1.0f;
+    float editConeHeight_ = 2.0f;
+    float editRingOuterRadius_ = 1.0f;
+    float editRingInnerRadius_ = 0.5f;
+    float editTriangleSize_ = 1.0f;
+    Vector2 editUvTiling_ = { 1.0f, 1.0f };
+
+    bool editHasCollision_ = false;
+    int editCollisionShape_ = 0; // 0:Sphere, 1:AABB, 2:OBB, 3:Cylinder
+    Vector3 editCollisionSize_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 editCollisionOffset_ = { 0.0f, 0.0f, 0.0f };
 private:
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
@@ -85,11 +129,29 @@ private:
     float currentTime_ = 0.0f;
     float lifetime_ = 1.0f;
     bool isPlaying_ = false;
+    std::vector<Object3d*> hitObjects_;
     uint32_t noiseTextureHandle_ = 0;
-	uint32_t rampTextureHandle_ = 0;
+    uint32_t rampTextureHandle_ = 0;
     Vector3 startScale_ = { 1.0f, 1.0f, 1.0f };
     Vector3 endScale_ = { 1.0f, 1.0f, 1.0f };
     Vector4 startColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector4 endColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     int easingType_ = 0; // デフォルトは 0 (Linear)
+    // 動的生成専用のモデル
+    std::unique_ptr<Model> dynamicModel_;
+    std::vector<Model::VertexData> proceduralVertices_;
+    std::vector<uint32_t> proceduralIndices_;
+
+    // 形状別の生成ロジック
+    void GenerateSlashVertices(float angleDeg, float inRad, float outRad, float thickness, float spiralPitch, int segments, bool isCrescent = false);
+    void GenerateThrustVertices(float length, float radius, int segments);
+    void GenerateSphereVertices(float radius, int segments, int rings);
+    void GenerateCylinderVertices(float radius, float height, int segments);
+    void GenerateBoxVertices(const Vector3& size);
+    void GeneratePlaneVertices(const Vector2& size, int subdivisions);
+    void GenerateTorusVertices(float majorRad, float minorRad, int segments, int rings);
+    void GenerateConeVertices(float radius, float height, int segments);
+    void GenerateRingVertices(float outerRad, float innerRad, int segments);
+    void GenerateTriangleVertices(float size);
+
 };

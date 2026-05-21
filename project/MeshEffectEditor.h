@@ -47,7 +47,7 @@ private:
     Vector4 editColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     Vector2 editScrollSpeed_ = { 0.0f, -1.0f };
     float editIntensity_ = 2.0f;
-    
+
     // --- アニメーションパラメータ ---
     bool isAutoLoop_ = true;
     float editLifetime_ = 1.0f;

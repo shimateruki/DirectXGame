@@ -27,6 +27,7 @@ void KeyConfig::Initialize() {
     Load();
 }
 
+
 void KeyConfig::Load(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open()) {
@@ -42,11 +43,14 @@ void KeyConfig::Load(const std::string& filepath) {
             // もし古い形式 (ただの数値) で保存されていた場合の互換性維持
             if (data.is_number()) {
                 bindings_[action].keyCode = data.get<int>();
+                bindings_[action].keyCodeSub = 0; // ★ 昔のデータにはサブキーがないので0
+                bindings_[action].mouseButton = -1;
                 bindings_[action].padCode = 0;
             }
             // 新しい形式 (オブジェクト) 
             else if (data.is_object()) {
                 bindings_[action].keyCode = data.value("key", 0);
+                bindings_[action].keyCodeSub = data.value("keySub", 0); // サブキーの読み込み
                 bindings_[action].mouseButton = data.value("mouse", -1);
                 bindings_[action].padCode = data.value("pad", 0);
             }
@@ -65,9 +69,10 @@ void KeyConfig::Save(const std::string& filepath) {
     }
 
     json j;
-    // 辞書をJSONに変換（キーとパッドの2つを保存する）
+    // 辞書をJSONに変換（メインキー、サブキー、マウス、パッドの4つを保存する）
     for (const auto& pair : bindings_) {
         j[pair.first]["key"] = pair.second.keyCode;
+        j[pair.first]["keySub"] = pair.second.keyCodeSub; 
         j[pair.first]["mouse"] = pair.second.mouseButton;
         j[pair.first]["pad"] = pair.second.padCode;
     }
@@ -81,7 +86,6 @@ void KeyConfig::Save(const std::string& filepath) {
         DebugConsole::GetInstance()->AddLog("KeyConfig: [ERROR] 保存に失敗しました");
     }
 }
-
 int KeyConfig::GetKeyCode(const std::string& actionName) const {
     auto it = bindings_.find(actionName);
     return (it != bindings_.end()) ? it->second.keyCode : 0;
@@ -151,23 +155,26 @@ std::string KeyConfig::GetKeyName(int keyCode) const {
 }
 std::string KeyConfig::GetPadName(WORD padCode) const {
     if (padCode == 0) return "None";
-    switch (padCode) {
-    case XINPUT_GAMEPAD_A: return "A";
-    case XINPUT_GAMEPAD_B: return "B";
-    case XINPUT_GAMEPAD_X: return "X";
-    case XINPUT_GAMEPAD_Y: return "Y";
-    case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "RB";
-    case XINPUT_GAMEPAD_LEFT_SHOULDER:  return "LB";
-    case XINPUT_GAMEPAD_DPAD_UP:    return "D-Up";
-    case XINPUT_GAMEPAD_DPAD_DOWN:  return "D-Down";
-    case XINPUT_GAMEPAD_DPAD_LEFT:  return "D-Left";
-    case XINPUT_GAMEPAD_DPAD_RIGHT: return "D-Right";
-    case XINPUT_GAMEPAD_START: return "Start";
-    case XINPUT_GAMEPAD_BACK:  return "Back";
-    case XINPUT_GAMEPAD_LEFT_THUMB:  return "L3 (Stick)";
-    case XINPUT_GAMEPAD_RIGHT_THUMB: return "R3 (Stick)";
-    }
-    return "Pad:" + std::to_string(padCode);
+
+    // == XInput標準ボタン ==
+    if (padCode == XINPUT_GAMEPAD_DPAD_UP) return "D-Pad Up";
+    if (padCode == XINPUT_GAMEPAD_DPAD_DOWN) return "D-Pad Down";
+    if (padCode == XINPUT_GAMEPAD_DPAD_LEFT) return "D-Pad Left";
+    if (padCode == XINPUT_GAMEPAD_DPAD_RIGHT) return "D-Pad Right";
+    if (padCode == XINPUT_GAMEPAD_START) return "Start";
+    if (padCode == XINPUT_GAMEPAD_BACK) return "Back";
+    if (padCode == XINPUT_GAMEPAD_LEFT_THUMB) return "L3 (Left Stick)";
+    if (padCode == XINPUT_GAMEPAD_RIGHT_THUMB) return "R3 (Right Stick)";
+    if (padCode == XINPUT_GAMEPAD_LEFT_SHOULDER) return "LB / L1";
+    if (padCode == XINPUT_GAMEPAD_RIGHT_SHOULDER) return "RB / R1";
+    if (padCode == XINPUT_GAMEPAD_A) return "A Button";
+    if (padCode == XINPUT_GAMEPAD_B) return "B Button";
+    if (padCode == XINPUT_GAMEPAD_X) return "X Button";
+    if (padCode == XINPUT_GAMEPAD_Y) return "Y Button";
+    if (padCode == 0x0400) return "LT / L2"; // 未使用ビットをLTに
+    if (padCode == 0x0800) return "RT / R2"; // 未使用ビットをRTに
+
+    return "Unknown Pad";
 }
 
 // =================================================================
@@ -202,7 +209,8 @@ void KeyConfig::DrawImGui() {
         std::string newName(newActionName_);
         // 空文字ではなく、まだ登録されていない名前なら辞書に追加！
         if (!newName.empty() && bindings_.find(newName) == bindings_.end()) {
-            bindings_[newName] = { 0, 0 }; // 初期値（未設定）で登録
+            // ★ 初期値を { メイン, サブ, マウス, パッド } の4つに修正！
+            bindings_[newName] = { 0, 0, -1, 0 };
             newActionName_[0] = '\0';      // 入力欄を綺麗にクリア
         }
     }
@@ -211,12 +219,13 @@ void KeyConfig::DrawImGui() {
     // ---------------------------------------------------------
     // 3. キーバインド設定一覧（テーブル表示）
     // ---------------------------------------------------------
-    // テーブルの設定（4列、境界線あり、背景色を交互に変える）
-    if (ImGui::BeginTable("ConfigTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
+    // ★ テーブルの設定を「5列」に変更！
+    if (ImGui::BeginTable("ConfigTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
 
         // カラム(列)のヘッダー設定とアイコン
         ImGui::TableSetupColumn(ICON_FA_RUNNING " アクション", ImGuiTableColumnFlags_WidthFixed, 110.0f);
-        ImGui::TableSetupColumn(ICON_FA_KEYBOARD " キーボード", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+        ImGui::TableSetupColumn(ICON_FA_KEYBOARD " メインキー", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+        ImGui::TableSetupColumn(ICON_FA_KEYBOARD " サブキー", ImGuiTableColumnFlags_WidthFixed, 110.0f); // ★ 追加
         ImGui::TableSetupColumn(ICON_FA_GAMEPAD " パッド", ImGuiTableColumnFlags_WidthFixed, 130.0f);
         ImGui::TableSetupColumn(ICON_FA_TRASH_ALT " 削除", ImGuiTableColumnFlags_WidthFixed, 45.0f);
         ImGui::TableHeadersRow();
@@ -237,14 +246,13 @@ void KeyConfig::DrawImGui() {
             ImGui::TableSetColumnIndex(0);
             ImGui::Text("%s", actionName.c_str());
 
-    
-          // -------------------------------------------------
-            // ② キーボード / マウス設定 (ボタンを押して割り当て)
+            // -------------------------------------------------
+            // ② メインキー / マウス設定 (ボタンを押して割り当て)
             // -------------------------------------------------
             ImGui::TableSetColumnIndex(1);
             if (waitMode_ == WaitMode::Key && waitingForInputAction_ == actionName) {
                 // 入力待ち状態：キーボードとマウスの両方を監視！
-                ImGui::Button((ICON_FA_SPINNER " 入力待ち...##" + actionName).c_str(), ImVec2(-1, 0));
+                ImGui::Button((ICON_FA_SPINNER " 入力待ち...##1_" + actionName).c_str(), ImVec2(-1, 0));
 
                 // A. キーボードチェック
                 const auto& pressedKeys = input->GetPressedKeys();
@@ -255,7 +263,7 @@ void KeyConfig::DrawImGui() {
                     waitingForInputAction_ = "";
                 }
 
-                // B. マウスボタンチェック (★追加)
+                // B. マウスボタンチェック
                 int mBtn = input->GetPressedMouseButton();
                 if (mBtn != -1) {
                     bind.mouseButton = mBtn;
@@ -276,31 +284,59 @@ void KeyConfig::DrawImGui() {
                     label = GetKeyName(bind.keyCode);
                 }
 
-                std::string btnLabel = "[ " + label + " ] ##Key_" + actionName;
+                std::string btnLabel = "[ " + label + " ] ##Key1_" + actionName;
                 if (ImGui::Button(btnLabel.c_str(), ImVec2(-1, 0))) {
                     waitingForInputAction_ = actionName;
                     waitMode_ = WaitMode::Key;
                 }
             }
 
-            // -------------------------------------------------
-            // ③ ゲームパッド設定（プルダウンで選択）
-            // -------------------------------------------------
+            // =========================================================
+            // ③ サブキー設定 (★新しく追加された列！)
+            // =========================================================
             ImGui::TableSetColumnIndex(2);
+            if (waitMode_ == WaitMode::KeySub && waitingForInputAction_ == actionName) {
+                // 入力待ち状態
+                ImGui::Button((ICON_FA_SPINNER " 入力待ち...##2_" + actionName).c_str(), ImVec2(-1, 0));
+
+                const auto& pressedKeys = input->GetPressedKeys();
+                if (!pressedKeys.empty()) {
+                    bind.keyCodeSub = pressedKeys[0]; // サブキーに登録！
+                    waitMode_ = WaitMode::None;
+                    waitingForInputAction_ = "";
+                }
+            }
+            else {
+                // 通常表示
+                std::string label = GetKeyName(bind.keyCodeSub);
+                std::string btnLabel = "[ " + label + " ] ##Key2_" + actionName;
+                if (ImGui::Button(btnLabel.c_str(), ImVec2(-1, 0))) {
+                    waitingForInputAction_ = actionName;
+                    waitMode_ = WaitMode::KeySub; // サブキーの入力待ちモードへ
+                }
+            }
+
+            // -------------------------------------------------
+            // ④ ゲームパッド設定（プルダウンで選択）
+            // -------------------------------------------------
+            ImGui::TableSetColumnIndex(3);
 
             // プルダウン用のデータ群
             const WORD padValues[] = {
                 0,
                 XINPUT_GAMEPAD_A, XINPUT_GAMEPAD_B, XINPUT_GAMEPAD_X, XINPUT_GAMEPAD_Y,
                 XINPUT_GAMEPAD_RIGHT_SHOULDER, XINPUT_GAMEPAD_LEFT_SHOULDER,
+                0x0400, 0x0800, // LTとRTの仮想コード
                 XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, XINPUT_GAMEPAD_DPAD_RIGHT,
                 XINPUT_GAMEPAD_START, XINPUT_GAMEPAD_BACK,
                 XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB
             };
+
             const char* padNames[] = {
                 "None",
                 "A", "B", "X", "Y",
                 "RB", "LB",
+                "LT (L2)", "RT (R2)",
                 "D-Up", "D-Down", "D-Left", "D-Right",
                 "Start", "Back",
                 "L3 (Stick)", "R3 (Stick)"
@@ -324,9 +360,9 @@ void KeyConfig::DrawImGui() {
             ImGui::PopItemWidth();
 
             // -------------------------------------------------
-            // ④ 削除ボタン
+            // ⑤ 削除ボタン
             // -------------------------------------------------
-            ImGui::TableSetColumnIndex(3);
+            ImGui::TableSetColumnIndex(4);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // ボタンを赤くする
 
             // アイコンだけの「X」ボタン
@@ -354,11 +390,16 @@ void KeyConfig::DrawImGui() {
     }
 #endif
 }
-
 const BindData* KeyConfig::GetBindData(const std::string& actionName) const {
     auto it = bindings_.find(actionName);
     if (it != bindings_.end()) {
         return &it->second; // データのポインタを返す
     }
     return nullptr; // 見つからない場合
+}
+
+void KeyConfig::SetKeyCode(const std::string& actionName, int keyCode) {
+    bindings_[actionName].keyCode = keyCode;
+    bindings_[actionName].mouseButton = -1; // キー入力が優先されたのでマウスはリセット
+    Save(); // 変更されたら自動でJSONに即セーブ！
 }

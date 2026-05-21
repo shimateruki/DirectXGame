@@ -16,6 +16,20 @@ Object3d::~Object3d() {
         delete recorder_;
         recorder_ = nullptr;
     }
+    // 1. 親のリストから自分を外す
+    if (parent_) {
+        auto& siblings = parent_->children_;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+    }
+
+    // 2. 子が持っている「自分（親）への参照」を無効化する
+    for (Object3d* child : children_) {
+        if (child) {
+            child->parent_ = nullptr;
+            child->GetTransform()->parent = nullptr;
+            child->UpdateWorldMatrix(); // 親が消えた状態で即座に行列を再計算させる
+        }
+    }
     // unique_ptr (collider_, meshRenderer_) は自動解放
 }
 
@@ -104,6 +118,9 @@ void Object3d::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 #endif
     if (meshRenderer_) {
         meshRenderer_->Draw(pointLightResource, spotLightResource);
+        if (enableOutline_) {
+            meshRenderer_->DrawOutline();
+        }
     }
 }
 
@@ -367,6 +384,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->saveCategory_ = other->saveCategory_;
     this->enemyType_ = other->enemyType_;
     this->isVisible_ = other->isVisible_;
+    this->enableOutline_ = other->enableOutline_;
     this->isLocked_ = other->isLocked_;
     if (!other->GetModelName().empty()) {
         this->SetModel(other->GetModelName());
@@ -444,6 +462,7 @@ json Object3d::ExportToJson() {
     d["saveCategory"] = saveCategory_;
     d["enemyType"] = enemyType_;
     d["isVisible"] = isVisible_;
+    d["enableOutline"] = enableOutline_;
     d["isLocked"] = isLocked_;
 
     // 2. Transform
@@ -529,6 +548,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
+    if (j.contains("enableOutline")) enableOutline_ = j["enableOutline"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
 
     // 2. Transform

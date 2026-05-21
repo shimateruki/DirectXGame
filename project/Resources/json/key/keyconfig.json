@@ -1,37 +1,56 @@
 {
     "Attack": {
-        "key": 44,
-        "mouse": -1,
-        "pad": 0
+        "key": 0,
+        "keySub": 0,
+        "mouse": 0,
+        "pad": 32768
     },
     "Backward": {
         "key": 31,
+        "keySub": 208,
         "mouse": -1,
-        "pad": 0
+        "pad": 2
     },
     "Dash": {
         "key": 42,
+        "keySub": 0,
         "mouse": -1,
-        "pad": 0
+        "pad": 256
     },
     "Forward": {
         "key": 17,
+        "keySub": 200,
         "mouse": -1,
-        "pad": 0
+        "pad": 1
     },
     "Jump": {
         "key": 57,
+        "keySub": 0,
         "mouse": -1,
-        "pad": 0
+        "pad": 8192
     },
     "Left": {
         "key": 30,
+        "keySub": 203,
         "mouse": -1,
-        "pad": 0
+        "pad": 4
+    },
+    "LockOn": {
+        "key": 19,
+        "keySub": 0,
+        "mouse": -1,
+        "pad": 2048
     },
     "Right": {
         "key": 32,
+        "keySub": 205,
         "mouse": -1,
-        "pad": 0
+        "pad": 8
+    },
+    "pose": {
+        "key": 15,
+        "keySub": 0,
+        "mouse": -1,
+        "pad": 16
     }
 }

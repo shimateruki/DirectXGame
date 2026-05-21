@@ -86,6 +86,83 @@ AABB Collider::GetAABB() const {
     return { minPos, maxPos };
 }
 
+Ring Collider::GetRing() const {
+    Ring ring;
+    if (!transform_) return ring;
+
+    Math math;
+
+    // 1. 回転を計算
+    Matrix4x4 matRotX = math.MakeRotateXMatrix(config_.rotation.x);
+    Matrix4x4 matRotY = math.MakeRotateYMatrix(config_.rotation.y);
+    Matrix4x4 matRotZ = math.MakeRotateZMatrix(config_.rotation.z);
+    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+
+    // 2. 持ち主のワールド回転と合成
+    // matWorld から回転成分だけ抽出するのが理想だが、ここでは簡易的に normal を変換
+    Vector3 localNormal = { 0, 1, 0 }; // ローカル空間でのリングの向き (上向き)
+
+    // 回転行列を適用
+    Matrix4x4 worldRot = math.Multiply(matRot, transform_->matWorld);
+    // スケールを除去した回転成分だけ取り出すのが正しいが、
+    // ここでは normal を変換して正規化する
+    ring.normal = math.Normalize({
+        localNormal.x * worldRot.m[0][0] + localNormal.y * worldRot.m[1][0] + localNormal.z * worldRot.m[2][0],
+        localNormal.x * worldRot.m[0][1] + localNormal.y * worldRot.m[1][1] + localNormal.z * worldRot.m[2][1],
+        localNormal.x * worldRot.m[0][2] + localNormal.y * worldRot.m[1][2] + localNormal.z * worldRot.m[2][2]
+        });
+
+    // 3. 中心座標 (オフセット加味)
+    Matrix4x4 matTrans = math.MakeTranslateMatrix(config_.center);
+    Matrix4x4 matFinal = math.Multiply(matTrans, transform_->matWorld);
+    ring.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
+
+    // 4. サイズ (スケールを反映)
+    // X を外径、Z を内径、Y を厚みとして扱う
+    ring.outerRadius = config_.size.x * std::abs(transform_->scale.x);
+    ring.innerRadius = config_.size.z * std::abs(transform_->scale.z);
+    ring.height = config_.size.y * 2.0f * std::abs(transform_->scale.y);
+
+    // 外径が内径より小さくならないように調整
+    if (ring.outerRadius < ring.innerRadius) {
+        std::swap(ring.outerRadius, ring.innerRadius);
+    }
+
+    return ring;
+}
+
+Cylinder Collider::GetCylinder() const {
+    Cylinder cyl;
+    if (!transform_) return cyl;
+    Math math;
+
+    // 1. 回転
+    Matrix4x4 matRotX = math.MakeRotateXMatrix(config_.rotation.x);
+    Matrix4x4 matRotY = math.MakeRotateYMatrix(config_.rotation.y);
+    Matrix4x4 matRotZ = math.MakeRotateZMatrix(config_.rotation.z);
+    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+
+    // 2. 中心 (オフセット加味)
+    Matrix4x4 matTrans = math.MakeTranslateMatrix(config_.center);
+    Matrix4x4 matFinal = math.Multiply(math.Multiply(matRot, matTrans), transform_->matWorld);
+    cyl.center = { matFinal.m[3][0], matFinal.m[3][1], matFinal.m[3][2] };
+
+    // 3. 軸 (Y軸を想定)
+    Vector3 localAxis = { 0, 1, 0 };
+    Matrix4x4 worldRot = math.Multiply(matRot, transform_->matWorld);
+    cyl.axis = math.Normalize({
+        localAxis.x * worldRot.m[0][0] + localAxis.y * worldRot.m[1][0] + localAxis.z * worldRot.m[2][0],
+        localAxis.x * worldRot.m[0][1] + localAxis.y * worldRot.m[1][1] + localAxis.z * worldRot.m[2][1],
+        localAxis.x * worldRot.m[0][2] + localAxis.y * worldRot.m[1][2] + localAxis.z * worldRot.m[2][2]
+        });
+
+    // 4. サイズ
+    cyl.radius = config_.size.x * std::abs(transform_->scale.x);
+    cyl.height = config_.size.y * 2.0f * std::abs(transform_->scale.y);
+
+    return cyl;
+}
+
 CollisionInfo Collider::CheckCollision(const Collider* other) const {
     CollisionInfo collision;
     collision.isColliding = false;
@@ -96,36 +173,74 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
     ColliderType otherType = other->GetType();
 
     // 自身のワールド座標 
-    Vector3 myPos = transform_->translate; 
+    Vector3 myPos = transform_->translate;
 
     Vector3 otherPos = other->transform_->translate;
 
     // --- 同種形状 ---
     if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
         collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
+    }
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
         collision = CheckSphereCollision(
             myPos, this->GetRadius(),
             otherPos, other->GetRadius());
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
+    }
+    else if (myType == ColliderType::kOBB && otherType == ColliderType::kOBB) {
         collision = CheckOBBCollision(this->GetOBB(), other->GetOBB());
     }
     // --- 異種形状 ---
     else if (myType == ColliderType::kSphere && otherType == ColliderType::kAABB) {
         collision = CheckSphereAABBCollision(myPos, this->GetRadius(), other->GetAABB());
-    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
+    }
+    else if (myType == ColliderType::kAABB && otherType == ColliderType::kSphere) {
         collision = CheckSphereAABBCollision(otherPos, other->GetRadius(), this->GetAABB());
         collision.normal = collision.normal * -1.0f;
-    } else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
+    }
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kOBB) {
         collision = CheckSphereOBBCollision(myPos, this->GetRadius(), other->GetOBB());
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
+    }
+    else if (myType == ColliderType::kOBB && otherType == ColliderType::kSphere) {
         collision = CheckSphereOBBCollision(otherPos, other->GetRadius(), this->GetOBB());
         collision.normal = collision.normal * -1.0f;
-    } else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
+    }
+    else if (myType == ColliderType::kAABB && otherType == ColliderType::kOBB) {
         collision = CheckAABBOBBCollision(this->GetAABB(), other->GetOBB());
 
-    } else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
+    }
+    else if (myType == ColliderType::kOBB && otherType == ColliderType::kAABB) {
         collision = CheckAABBOBBCollision(other->GetAABB(), this->GetOBB());
+        collision.normal = collision.normal * -1.0f;
+    }
+    // --- Ring 関連 ---
+    else if (myType == ColliderType::kRing && otherType == ColliderType::kSphere) {
+        collision = CheckRingSphereCollision(this->GetRing(), otherPos, other->GetRadius());
+    }
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kRing) {
+        collision = CheckRingSphereCollision(other->GetRing(), myPos, this->GetRadius());
+        collision.normal = collision.normal * -1.0f;
+    }
+    else if (myType == ColliderType::kRing && (otherType == ColliderType::kOBB || otherType == ColliderType::kAABB)) {
+        collision = CheckRingOBBCollision(this->GetRing(), other->GetOBB());
+    }
+    else if ((myType == ColliderType::kOBB || myType == ColliderType::kAABB) && otherType == ColliderType::kRing) {
+        collision = CheckRingOBBCollision(other->GetRing(), this->GetOBB());
+        collision.normal = collision.normal * -1.0f;
+    }
+
+    // --- Cylinder 関連 ---
+    else if (myType == ColliderType::kCylinder && otherType == ColliderType::kSphere) {
+        collision = CheckCylinderSphereCollision(this->GetCylinder(), otherPos, other->GetRadius());
+    }
+    else if (myType == ColliderType::kSphere && otherType == ColliderType::kCylinder) {
+        collision = CheckCylinderSphereCollision(other->GetCylinder(), myPos, this->GetRadius());
+        collision.normal = collision.normal * -1.0f;
+    }
+    else if (myType == ColliderType::kCylinder && (otherType == ColliderType::kOBB || otherType == ColliderType::kAABB)) {
+        collision = CheckCylinderOBBCollision(this->GetCylinder(), other->GetOBB());
+    }
+    else if ((myType == ColliderType::kOBB || myType == ColliderType::kAABB) && otherType == ColliderType::kCylinder) {
+        collision = CheckCylinderOBBCollision(other->GetCylinder(), this->GetOBB());
         collision.normal = collision.normal * -1.0f;
     }
 

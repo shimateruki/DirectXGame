@@ -1,5 +1,6 @@
 #include "BaseEnemy.h"
 #include "CollisionConfig.h" // kEnemyなどの定義を使うため
+#include "EffectObject3d.h"
 #include "Event.h"           //  DamageEventを使うため
 #include "EventManager.h"    //  イベントを発行(Dispatch)するため
 #include "Player.h"          //  プレイヤーの状態を見るため
@@ -12,7 +13,7 @@ void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName)
     SetModel(modelName);
 
     // 3. 当たり判定の設定
-    SetCollisionAttribute(kEnemy);       // 自分は「敵」グループ
+    SetCollisionAttribute(kEnemy);      
     SetCollisionMask(kPlayer | kGround | kAttributePlayerBullet | kPlayerAttack);
     SetClassName("Enemy");
     defaultColor_ = GetColor();
@@ -51,16 +52,21 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     // ========================================================
     if (attribute & kPlayerAttack) {
 
-        // ★ 追加: クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
+        // ★ クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
         if (damageCooldownTimer_ > 0.0f) {
             return true;
+        }
+
+        // ★ エフェクトからの被弾を確定させてヒットリストに記録
+        if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
+            effect->AddHitObject(this);
         }
 
         // ダメージイベントの発行
         DamageEvent dmgEvent;
         dmgEvent.target = this;
         dmgEvent.attacker = other;
-        dmgEvent.damageAmount = 10.0f;
+        dmgEvent.damageAmount = other->GetAttackDamage();
         EventManager::GetInstance()->Dispatch(dmgEvent);
 
    

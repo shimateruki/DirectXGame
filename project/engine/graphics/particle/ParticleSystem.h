@@ -67,7 +67,7 @@ public:
         float endSize = 0.1f;   // 終了時のサイズ
         float hdrIntensity = 1.0f;
 
-        bool isEmitting = true; // 発生させるかどうか
+        bool isEmitting = false; // 発生させるかどうか
         float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
         ParticleBlendMode blendMode = ParticleBlendMode::kAlpha;
         float initialRotationSpeed = 0.0f;      // 基本の回転スピード
@@ -137,4 +137,6 @@ private:
     UINT particleCount_ = 0;
 
     float spawnTimer_ = 0.0f;
+
+
 };

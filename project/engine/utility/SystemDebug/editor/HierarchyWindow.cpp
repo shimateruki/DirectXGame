@@ -22,6 +22,7 @@
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
 #include "json.hpp"
+#include "TrailEmitterEditor.h"
 #include <filesystem>
 #include <algorithm> // std::transform用
 #ifndef M_PI
@@ -49,6 +50,7 @@ void HierarchyWindow::Draw() {
     if (currentScene == nullptr) return;
 
     ImGui::Begin(ICON_FA_SITEMAP " Hierarchy###Hierarchy");
+
 
     if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
         IEditable* currentObj = EditorManager::GetInstance()->GetSelectedObject();
@@ -82,9 +84,18 @@ void HierarchyWindow::Draw() {
         if (editor_->GetGhostDirector() && ImGui::Selectable("  " ICON_FA_BULLHORN " ゴーストディレクター (Ghost Director)", currentObj == editor_->GetGhostDirector())) {
             editor_->SetSelectedObject(nullptr); EditorManager::GetInstance()->SetSelectedObject(editor_->GetGhostDirector());
         }
-     if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
-            editor_->SetSelectedObject(nullptr); 
+        if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
+            editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetMeshEffectEditor());
+        }
+        if (editor_->GetTrailEmitterEditor() && ImGui::Selectable("  " ICON_FA_FIRE " トレイルエミッター (Trail Emitter)", currentObj == editor_->GetTrailEmitterEditor())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetTrailEmitterEditor());
+        }
+        ImGui::Separator();
+        if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(currentScene);
         }
     }
 

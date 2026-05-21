@@ -30,44 +30,46 @@ void ModelManager::Finalize() {
 }
 
 
-
 Model* ModelManager::LoadModel(const std::string& modelName) {
-    // 1. 既に読み込んでいるかチェック
     if (models_.contains(modelName)) {
         return models_[modelName].get();
     }
 
+    std::filesystem::path path(modelName);
+    std::string parentPath = path.parent_path().string(); // "enemy_core_shards"
+    std::string stem = path.stem().string();              // "enemy_core1"
+    std::string ext = path.extension().string();
+
     std::string directoryPath;
     std::string fileName;
 
-    // 2. 拡張子があるかチェック (.obj, .gltf, .glb)
-    if (modelName.find(".obj") != std::string::npos ||
-        modelName.find(".gltf") != std::string::npos ||
-        modelName.find(".glb") != std::string::npos) {
-
-
-        // 拡張子抜きの名前（フォルダ名）を取得
-        std::string folderName = std::filesystem::path(modelName).stem().string();
-
-        // ディレクトリパス: "resources/" + "sampleBlock" + "/"
-        directoryPath = kDefaultBaseDirectory + folderName + "/";
-        fileName = modelName;
-    } else {
-        // Bパターン: 拡張子がない場合 (既存のOBJ互換用)
-        directoryPath = kDefaultBaseDirectory + modelName + "/";
-        fileName = modelName + ".obj";
+    // ==========================================
+    // ★ 修正：モデル自身のフォルダ名(stem)もしっかりパスに含める！
+    // ==========================================
+    if (!parentPath.empty()) {
+        // "enemy_core_shards" + "/" + "enemy_core1" + "/"
+        directoryPath = kDefaultBaseDirectory + parentPath + "/" + stem + "/";
+    }
+    else {
+        directoryPath = kDefaultBaseDirectory + stem + "/";
     }
 
-    // 3. 読み込み実行
+    if (!ext.empty()) {
+        fileName = path.filename().string();
+    }
+    else {
+        fileName = stem + ".obj";
+    }
+
+    std::string fullPath = directoryPath + fileName;
+    OutputDebugStringA(("【LoadModel】探索パス: " + fullPath + "\n").c_str());
+
     auto newModel = std::make_unique<Model>();
     newModel->Initialize(modelCommon_.get(), directoryPath, fileName);
 
-    // 4. 登録
     models_[modelName] = std::move(newModel);
     return models_[modelName].get();
-}
-
-std::vector<std::string> ModelManager::GetLoadedModelNames() const {
+}std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     std::vector<std::string> names;
     for (const auto& pair : models_) {
         names.push_back(pair.first);
@@ -75,35 +77,43 @@ std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     return names;
 }
 
+#include <Windows.h> // ★ OutputDebugStringA を使うために追加
 
 // ---------------------------------------------------------
-// ★修正版：フォルダ内を自動スキャンして一括ロード
+// ★修正版：フォルダ内を自動スキャンして一括ロード（ログ出力付き）
 // ---------------------------------------------------------
 void ModelManager::LoadAllModels() {
-    if (!std::filesystem::exists(kDefaultBaseDirectory)) {
-        return; // フォルダが存在しなければ終了
-    }
+    if (!std::filesystem::exists(kDefaultBaseDirectory)) return;
 
-    // ★修正点: recursive_directory_iterator を使ってサブフォルダの中の「ファイル」まで直接探す
+    OutputDebugStringA("=== 【ModelManager】事前ロード開始 ===\n");
+
     for (const auto& entry : std::filesystem::recursive_directory_iterator(kDefaultBaseDirectory)) {
-
-        // フォルダではなく「ファイル」だった場合のみ処理する
         if (entry.is_regular_file()) {
             std::string ext = entry.path().extension().string();
+            if (ext == ".obj" || ext == ".gltf" || ext == ".glb") {
 
-            // パターンA: .obj ファイルの場合
-            if (ext == ".obj") {
-                // これまでの書き方に合わせて、拡張子なしの名前でロード (例: "player")
-                std::string stemName = entry.path().stem().string();
-                LoadModel(stemName);
-            }
-            // パターンB: .gltf, .glb ファイルの場合
-            else if (ext == ".gltf" || ext == ".glb") {
-                // 拡張子付きの名前でロード (例: "sampleBlock.gltf")
+                // ファイルの本当の場所をそのまま使う！
+                std::string dirPath = entry.path().parent_path().string() + "/";
                 std::string fileName = entry.path().filename().string();
-                LoadModel(fileName);
+
+                // ==========================================
+                // ★ 修正：LoadModelを使わず、相対パスから完璧な「登録キー」を自動生成する
+                // ==========================================
+                std::filesystem::path relPath = std::filesystem::relative(entry.path(), kDefaultBaseDirectory);
+                std::string keyName = relPath.parent_path().string(); // フォルダまでのパスを取得
+                std::replace(keyName.begin(), keyName.end(), '\\', '/'); // Windowsの「\」を「/」に統一
+
+                // 登録キー例: "enemy_core_shards/enemy_core1"
+                if (!models_.contains(keyName)) {
+                    auto newModel = std::make_unique<Model>();
+                    newModel->Initialize(modelCommon_.get(), dirPath, fileName);
+                    models_[keyName] = std::move(newModel);
+
+                    std::string logMsg = "[事前ロード成功] キー: [" + keyName + "] パス: " + dirPath + fileName + "\n";
+                    OutputDebugStringA(logMsg.c_str());
+                }
             }
-            // .png や .mtl や .bin などは自動的に無視されるので安全！
         }
     }
+    OutputDebugStringA("=== 【ModelManager】事前ロード終了 ===\n");
 }

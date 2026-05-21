@@ -38,7 +38,7 @@
 #include <CollisionManager.h>
 #include <filesystem> // ファイル操作用
 #include <BulletManager.h>
-#include <PresetManager.h>
+#include <MeshEffectManager.h>
 namespace fs = std::filesystem;
 const float PI = (float)M_PI;
 
@@ -53,9 +53,8 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     dxCommon_ = dxCommon;
     selectedObject_ = nullptr;
     lastUpdatedScene_ = nullptr;
-    PresetManager::GetInstance()->LoadPresets();
     hierarchyWindow_.Initialize(this);
-    projectWindow_.Initialize(this,dxCommon);
+    projectWindow_.Initialize(this, dxCommon);
     inspectorWindow_.Initialize(this);
     serializer_.Initialize(this);
     primitiveDrawer_.Initialize(dxCommon);
@@ -76,14 +75,23 @@ void DebugEditor::Update() {
     Math math;
 
     // =========================================================
-    // 1. エディタ状態の同期と更新
+    // 1. シーン変更リセット (最優先で行う: ダングリングポインタ防止)
+    // =========================================================
+    if (lastUpdatedScene_ != currentScene) {
+        selectedObject_ = nullptr;
+        previewObject_ = nullptr;
+        lastUpdatedScene_ = currentScene;
+        EditorManager::GetInstance()->ClearSelection();
+    }
+
+    // =========================================================
+    // 2. エディタ状態の同期と更新
     // =========================================================
     IEditable* current = EditorManager::GetInstance()->GetSelectedObject();
     static std::string s_lastSyncedSceneFilename = "";
     std::string currentLoadedName = currentScene->GetLoadedFilename();
 
     // ファイル名が前フレームから変わった時「だけ」同期する
-    // （コンボボックスでの手動切り替え操作を邪魔しないための工夫）
     if (!currentLoadedName.empty() && s_lastSyncedSceneFilename != currentLoadedName) {
         SetSceneFilename(currentLoadedName);
         s_lastSyncedSceneFilename = currentLoadedName;
@@ -99,11 +107,23 @@ void DebugEditor::Update() {
         }
     }
 
-    // シーン変更リセット
-    if (lastUpdatedScene_ != currentScene) {
-        selectedObject_ = nullptr;
-        previewObject_ = nullptr;
-        lastUpdatedScene_ = currentScene;
+    // =========================================================
+    // ★追加: ダングリングポインタ対策（削除されたオブジェクトを参照し続けない）
+    // =========================================================
+    if (selectedObject_) {
+        bool isAlive = false;
+        for (const auto& obj : currentScene->GetObjects()) {
+            if (obj.get() == selectedObject_) {
+                isAlive = true;
+                break;
+            }
+        }
+        if (!isAlive) {
+            selectedObject_ = nullptr;
+            if (EditorManager::GetInstance()->GetSelectedObject() == this) {
+                EditorManager::GetInstance()->ClearSelection();
+            }
+        }
     }
 
     // --- カメラ制御 (設置モード用) ---
@@ -313,6 +333,7 @@ void DebugEditor::Update() {
     // =========================================================
     DrawSaveNotification();
     Draw3DIcons();
+    DrawEventIDOverlay();
 #endif
 }
 // ========================================================================
@@ -321,8 +342,6 @@ void DebugEditor::Update() {
 void DebugEditor::Finalize() {
     primitiveDrawer_.Finalize();
 }
-
-
 
 
 // ========================================================================
@@ -350,7 +369,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
     for (const auto& obj : objects) {
         if (!obj) continue;
-        if (!obj->GetIsVisible()) continue;
+        // 表示フラグがOFFでも、コライダー描画がONなら描画を続行する
+        if (!obj->GetIsVisible() && !drawColliders_) continue;
         // インスタンス描画の上限チェック
         if (instanceCount >= kMaxDrawLimit) break;
 
@@ -401,6 +421,15 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
             }
+            else if (type == ColliderType::kCylinder) {
+                // size.x を半径、size.y を高さ(の半分)として扱っている想定
+                float radius = config.size.x;
+                float height = config.size.y;
+                Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
+            }
 
         }
         else {
@@ -421,6 +450,8 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             case ColliderType::kOBB:    color = { 1.0f, 0.2f, 0.2f, 1.0f }; break; // 赤
             case ColliderType::kAABB:   color = { 0.0f, 1.0f, 0.0f, 1.0f }; break; // 緑
             case ColliderType::kSphere: color = { 0.0f, 0.5f, 1.0f, 1.0f }; break; // 青
+            case ColliderType::kCylinder: color = { 1.0f, 0.5f, 0.0f, 1.0f }; break; // オレンジ
+            case ColliderType::kRing:   color = { 1.0f, 1.0f, 0.0f, 1.0f }; break; // 黄色
             default:                    color = { 1.0f, 1.0f, 1.0f, 1.0f }; break; // 白
             }
         }
@@ -431,10 +462,75 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
         if (type == ColliderType::kSphere) {
             primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
         }
+        else if (type == ColliderType::kCylinder) {
+            primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+        }
+        else if (type == ColliderType::kRing) {
+            // リング形状の描画 (クリーン版)
+            Ring ring = obj->GetCollider()->GetRing();
+            float outerR = ring.outerRadius;
+            float innerR = ring.innerRadius;
+
+            float halfH = (obj->GetColliderConfig().size.y > 0.01f) ? obj->GetColliderConfig().size.y : 0.1f;
+            halfH *= std::abs(obj->GetTransform()->scale.y);
+
+            // 基準行列 (回転 * 平行移動 * オブジェクトのワールド(スケール抜き))
+            Matrix4x4 matRotX = math.MakeRotateXMatrix(obj->GetColliderConfig().rotation.x);
+            Matrix4x4 matRotY = math.MakeRotateYMatrix(obj->GetColliderConfig().rotation.y);
+            Matrix4x4 matRotZ = math.MakeRotateZMatrix(obj->GetColliderConfig().rotation.z);
+            Matrix4x4 matCollRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+
+            Matrix4x4 matObjWorldNoScale = obj->GetWorldMatrix();
+            for (int i = 0; i < 3; ++i) {
+                Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                matObjWorldNoScale.m[i][0] = axis.x; matObjWorldNoScale.m[i][1] = axis.y; matObjWorldNoScale.m[i][2] = axis.z;
+            }
+            Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(obj->GetColliderConfig().center)), matObjWorldNoScale);
+
+            // 1. 外周・内周のワイヤーフレーム (上下の円)
+            if (instanceCount < kMaxDrawLimit) {
+                // 外周
+                Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                primitiveDrawer_.DrawWireCylinder(commandList, matOuter, color, instanceCount++);
+            }
+            if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
+                // 内周
+                Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                primitiveDrawer_.DrawWireCylinder(commandList, matInner, { color.x, color.y * 0.5f, 0, 1 }, instanceCount++);
+            }
+
+            // 2. 断面をつなぐ線 (上下それぞれ8方向)
+            const int kLineCount = 8;
+            for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
+                float angle = (2.0f * 3.14159265f / kLineCount) * i;
+                float s = std::sin(angle);
+                float c = std::cos(angle);
+
+                // 上下の断面をつなぐ線 (内径から外径へ)
+                for (float h : {-halfH, halfH}) {
+                    Vector3 pInner = { innerR * c, h, innerR * s };
+                    Vector3 pOuter = { outerR * c, h, outerR * s };
+
+                    // 線を細い箱で代用 (PrimitiveDrawerにDrawLineがあればそちらが良いが、無ければ極小Box)
+                    Vector3 center = (pInner + pOuter) * 0.5f;
+                    Vector3 diff = pOuter - pInner;
+                    float len = math.Length(diff);
+
+                    Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
+                    Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                    Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                    Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+
+                    primitiveDrawer_.DrawWireCube(commandList, lineWorld, color, instanceCount++);
+                }
+            }
+            continue;
+        }
         else {
             primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
         }
-        instanceCount++;
+        instanceCount++; // あたり判定を描画したのでカウントを進める
+
     }
 
     // =========================================================
@@ -492,10 +588,159 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             if (type == ColliderType::kSphere) {
                 primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
             }
+            else if (type == ColliderType::kCylinder) {
+                primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+            }
             else {
                 primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
             }
             instanceCount++;
+        }
+        // =========================================================
+    // 3. エフェクトのコライダー描画
+    // =========================================================
+        if (drawColliders_) {
+            // ★ 修正：ゲーム中のエフェクト ＋ エディタのプレビューエフェクト を両方集める
+            std::vector<EffectObject3d*> effectsToDraw;
+
+            for (const auto& eff : MeshEffectManager::GetInstance()->GetActiveEffects()) {
+                if (eff) effectsToDraw.push_back(eff.get());
+            }
+            if (EffectObject3d* preview = MeshEffectManager::GetInstance()->GetPreviewEffectForDebug()) {
+                effectsToDraw.push_back(preview);
+            }
+
+            // 集めたエフェクトを描画！
+            for (EffectObject3d* effect : effectsToDraw) {
+                if (instanceCount >= kMaxDrawLimit) break;
+
+                ColliderType type = effect->GetColliderType();
+                if (type == ColliderType::kNone) continue;
+
+                // エフェクトの判定枠はシアン（水色）にして区別
+                Vector4 color = { 0.0f, 1.0f, 1.0f, 1.0f };
+                Matrix4x4 drawWorldMatrix = math.MakeIdentity4x4();
+
+                Object3d::ColliderConfig config = effect->GetColliderConfig();
+
+                if (type == ColliderType::kOBB) {
+                    Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    Matrix4x4 matRotX = math.MakeRotateXMatrix(config.rotation.x);
+                    Matrix4x4 matRotY = math.MakeRotateYMatrix(config.rotation.y);
+                    Matrix4x4 matRotZ = math.MakeRotateZMatrix(config.rotation.z);
+                    Matrix4x4 matRot = math.Multiply(matRotZ, math.Multiply(matRotX, matRotY));
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, math.Multiply(matRot, matTrans));
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+
+                }
+                else if (type == ColliderType::kAABB) {
+                    Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+
+                }
+                else if (type == ColliderType::kSphere) {
+                    float radius = config.size.x;
+                    Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, radius * 2.0f, radius * 2.0f });
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+
+                }
+                else if (type == ColliderType::kCylinder) {
+                    float radius = config.size.x;
+                    float height = config.size.y;
+                    Matrix4x4 matScale = math.MakeScaleMatrix({ radius * 2.0f, height * 2.0f, radius * 2.0f });
+                    Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
+                    Matrix4x4 matColliderLocal = math.Multiply(matScale, matTrans);
+                    drawWorldMatrix = math.Multiply(matColliderLocal, effect->GetWorldMatrix());
+                }
+
+                // =========================================================
+                // ★ Ring形状の場合 (クリーン版)
+                // =========================================================
+                if (type == ColliderType::kRing) {
+                    Ring ring;
+                    if (effect->GetCollider()) {
+                        ring = effect->GetCollider()->GetRing();
+                    }
+                    else {
+                        // コライダーがない場合(エフェクト単体)の救済
+                        ring.center = effect->GetWorldPosition();
+                        ring.normal = { 0, 1, 0 };
+                        ring.innerRadius = effect->editRingInnerRadius_;
+                        ring.outerRadius = effect->editRingOuterRadius_;
+                    }
+                    float outerR = ring.outerRadius;
+                    float innerR = ring.innerRadius;
+                    if (innerR > outerR) std::swap(innerR, outerR);
+
+                    float halfH = (config.size.y > 0.01f) ? config.size.y : 0.1f;
+                    halfH *= std::abs(effect->GetTransform()->scale.y);
+
+                    // リングの基準行列
+                    Matrix4x4 matCollRot = math.MakeIdentity4x4();
+                    if (effect->GetCollider()) {
+                        Matrix4x4 mRX = math.MakeRotateXMatrix(config.rotation.x);
+                        Matrix4x4 mRY = math.MakeRotateYMatrix(config.rotation.y);
+                        Matrix4x4 mRZ = math.MakeRotateZMatrix(config.rotation.z);
+                        matCollRot = math.Multiply(mRZ, math.Multiply(mRX, mRY));
+                    }
+
+                    Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
+                    for (int i = 0; i < 3; ++i) {
+                        Vector3 axis = math.Normalize({ matObjWorldNoScale.m[i][0], matObjWorldNoScale.m[i][1], matObjWorldNoScale.m[i][2] });
+                        matObjWorldNoScale.m[i][0] = axis.x; matObjWorldNoScale.m[i][1] = axis.y; matObjWorldNoScale.m[i][2] = axis.z;
+                    }
+                    Matrix4x4 matRingBase = math.Multiply(math.Multiply(matCollRot, math.MakeTranslateMatrix(config.center)), matObjWorldNoScale);
+
+                    Vector4 ringColor = { 1.0f, 1.0f, 0.0f, 1.0f };
+
+                    // 1. シリンダー (外周・内周)
+                    if (instanceCount < kMaxDrawLimit) {
+                        Matrix4x4 matOuter = math.Multiply(math.MakeScaleMatrix({ outerR * 2.0f, halfH * 2.0f, outerR * 2.0f }), matRingBase);
+                        primitiveDrawer_.DrawWireCylinder(commandList, matOuter, { 1.0f, 0.9f, 0.0f, 0.8f }, instanceCount++);
+                    }
+                    if (innerR > 0.01f && instanceCount < kMaxDrawLimit) {
+                        Matrix4x4 matInner = math.Multiply(math.MakeScaleMatrix({ innerR * 2.0f, halfH * 2.0f, innerR * 2.0f }), matRingBase);
+                        primitiveDrawer_.DrawWireCylinder(commandList, matInner, { 1.0f, 0.5f, 0.0f, 0.8f }, instanceCount++);
+                    }
+
+                    // 2. 断面をつなぐ線
+                    const int kLineCount = 8;
+                    for (int i = 0; i < kLineCount && instanceCount < kMaxDrawLimit; ++i) {
+                        float angle = (2.0f * 3.14159265f / kLineCount) * i;
+                        float s = std::sin(angle);
+                        float c = std::cos(angle);
+                        for (float h : { -halfH, halfH }) {
+                            Vector3 pInner = { innerR * c, h, innerR * s };
+                            Vector3 pOuter = { outerR * c, h, outerR * s };
+                            Vector3 center = (pInner + pOuter) * 0.5f;
+                            Vector3 diff = pOuter - pInner;
+                            float len = math.Length(diff);
+                            Matrix4x4 matL = math.MakeScaleMatrix({ 0.02f, 0.02f, len });
+                            Matrix4x4 matLR = math.MakeRotateYMatrix(angle);
+                            Matrix4x4 matLT = math.MakeTranslateMatrix(center);
+                            Matrix4x4 lineWorld = math.Multiply(math.Multiply(matL, math.Multiply(matLR, matLT)), matRingBase);
+                            primitiveDrawer_.DrawWireCube(commandList, lineWorld, ringColor, instanceCount++);
+                        }
+                    }
+                    continue;
+                }
+
+                if (type == ColliderType::kSphere) {
+                    primitiveDrawer_.DrawWireSphere(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                else if (type == ColliderType::kCylinder) {
+                    primitiveDrawer_.DrawWireCylinder(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                else {
+                    primitiveDrawer_.DrawWireCube(commandList, drawWorldMatrix, color, instanceCount);
+                }
+                instanceCount++;
+            }
         }
     }
 }
@@ -556,7 +801,7 @@ void DebugEditor::DuplicateSelected() {
     newObj->SetName(selectedObject_->GetName() + "_Copy" + std::to_string(duplicateCount++));
 
     // =========================================================
-    // ★追加: マウスカーソルの位置(レイキャスト)を計算してペースト！
+    //  マウスカーソルの位置(レイキャスト)を計算してペースト！
     // =========================================================
     Math math;
     Ray ray = ScreenPointToRay(gameViewMousePos_);
@@ -603,7 +848,7 @@ void DebugEditor::DuplicateSelected() {
                      ray.origin.z + rayDir.z * distToRef };
         found = true;
     }
-  
+
 
     // C. 座標の最終決定
     if (found) {
@@ -636,14 +881,24 @@ void DebugEditor::DuplicateSelected() {
 void DebugEditor::DeleteSelected() {
     if (!selectedObject_ || !sceneManager_->GetCurrentScene()) return;
 
+    // ：Undo/Redoスタックから、削除されるオブジェクトの履歴を安全に消去する
+    undoStack_.erase(
+        std::remove_if(undoStack_.begin(), undoStack_.end(),
+            [this](const TransformCommand& cmd) { return cmd.target == selectedObject_; }),
+        undoStack_.end()
+    );
+    redoStack_.erase(
+        std::remove_if(redoStack_.begin(), redoStack_.end(),
+            [this](const TransformCommand& cmd) { return cmd.target == selectedObject_; }),
+        redoStack_.end()
+    );
+
     std::string name = selectedObject_->GetName();
     sceneManager_->GetCurrentScene()->RequestRemoveObject(selectedObject_);
 
     // 重要：削除したポインタを持ち続けないようにする
     selectedObject_ = nullptr;
-
 }
-
 // ==========================================
 //  Undo処理 
 // ==========================================
@@ -701,8 +956,8 @@ Ray DebugEditor::ScreenPointToRay(const Vector2& mousePos) {
     Matrix4x4 matInverseVP = math_.Inverse(matViewProj);
 
 
-    float localMouseX = mousePos.x; 
-    float localMouseY = mousePos.y; 
+    float localMouseX = mousePos.x;
+    float localMouseY = mousePos.y;
 
     // 2. 範囲外チェック
     if (localMouseX < 0 || localMouseX > gameViewSize_.x ||
@@ -934,6 +1189,49 @@ void DebugEditor::Draw3DIcons() {
 #endif
 }
 
+// ========================================================================
+// イベントIDのオーバーレイ描画
+// ========================================================================
+void DebugEditor::DrawEventIDOverlay() {
+#ifdef USE_IMGUI
+    if (!drawEventIDs_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
+
+    for (const auto& obj : objects) {
+        if (!obj->GetIsVisible()) continue;
+
+        // イベント関連のIDを取得
+        int myID = obj->GetEventID();
+        int targetID = obj->GetTargetID();
+
+        // 描画テキストの構築
+        std::string label = "";
+        if (myID != -1) label += "[ID: " + std::to_string(myID) + "] ";
+        if (targetID != -1) label += "[Target: " + std::to_string(targetID) + "]";
+
+        if (label.empty()) continue;
+
+        // 3D座標の取得と変換（頭上に表示）
+        Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
+        worldPos.y += obj->GetTransform()->scale.y + 0.5f;
+
+        Vector3 screenPos = WorldToScreen(worldPos);
+
+        if (screenPos.z >= 0.0f) {
+            ImVec2 pos = ImVec2(screenPos.x, screenPos.y);
+            ImU32 color = (myID != -1) ? IM_COL32(255, 255, 0, 255) : IM_COL32(100, 200, 255, 255);
+
+            // アウトライン
+            drawList->AddText(NULL, 0.0f, ImVec2(pos.x + 1, pos.y + 1), IM_COL32(0, 0, 0, 255), label.c_str());
+            // 本体
+            drawList->AddText(NULL, 0.0f, pos, color, label.c_str());
+        }
+    }
+#endif
+}
+
 // ==========================================
 //  一発・床ピタッ！ (接地機能)
 // ==========================================
@@ -1105,4 +1403,82 @@ void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
     EditorManager::GetInstance()->SetSelectedObject(this);
 
     DebugConsole::GetInstance()->AddLog("Dropped 3D Model: " + modelName);
+}
+
+void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+
+    // 1. オブジェクト生成とプリセット適用
+    auto newObj = std::make_unique<Object3d>();
+    newObj->Initialize(currentScene->GetObject3dCommon());
+
+    // プリセットの設定（モデル、色、パラメータ等）を流し込む
+
+    // 名前をプリセット名ベースにする
+    newObj->SetName(presetName + "_" + std::to_string(currentScene->GetObjects().size()));
+
+    // 2. マウス座標からのレイキャスト（配置場所の決定）
+    Math math;
+    Ray ray = ScreenPointToRay(gameViewMousePos_);
+    Vector3 finalPos = { 0, 0, 0 };
+    bool found = false;
+
+    auto& objects = currentScene->GetObjects();
+    RayResult best; best.isHit = false; best.distance = 1e5f;
+    for (auto& obj : objects) {
+        if (obj->GetName() == "Cursor" || obj->GetName() == "Line" || !obj->GetIsVisible()) continue;
+        Matrix4x4 wm = obj->GetWorldMatrix();
+        Vector3 wp = { wm.m[3][0], wm.m[3][1], wm.m[3][2] };
+        Vector3 ws = obj->GetTransform()->scale;
+        RayResult tmp;
+        if (math.IntersectRayAABB(ray, wp - ws, wp + ws, &tmp)) {
+            if (tmp.distance < best.distance) best = tmp;
+        }
+    }
+
+    float yOffset = newObj->GetColliderConfig().size.y;
+    if (yOffset == 0.0f) yOffset = newObj->GetTransform()->scale.y;
+
+    if (best.isHit) {
+        finalPos = best.point;
+        finalPos.y += yOffset;
+        found = true;
+    }
+    else {
+        if (IntersectRayPlane(ray, finalPos)) {
+            float dx = finalPos.x - ray.origin.x;
+            float dy = finalPos.y - ray.origin.y;
+            float dz = finalPos.z - ray.origin.z;
+            float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (distance > 20.0f) {
+                finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
+            }
+            else {
+                finalPos.y = yOffset;
+            }
+            found = true;
+        }
+        else {
+            finalPos = ray.origin + math.Normalize(ray.diff) * 10.0f;
+            found = true;
+        }
+    }
+
+    // 3. 座標確定とスナップ
+    if (found && isGridSnapEnabled_) {
+        finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
+        finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
+    }
+    newObj->GetTransform()->translate = finalPos;
+    newObj->UpdateWorldMatrix();
+
+    // 4. シーンに追加
+    Object3d* ptr = newObj.get();
+    currentScene->AddObject(std::move(newObj));
+    SetSelectedObject(ptr);
+    EditorManager::GetInstance()->SetSelectedObject(this);
+
+    DebugConsole::GetInstance()->AddLog("Dropped Preset: " + presetName);
 }

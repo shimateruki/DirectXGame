@@ -39,6 +39,7 @@ class GPUParticleEditor;
 class VFXSequencerEditor;
 class LightEditor;
 class MeshEffectEditor;
+class TrailEmitterEditor;
 
 // ========================================================================
 // DebugEditor クラス
@@ -90,6 +91,7 @@ public:
     void PerformRedo();           // やり直し
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
+    void InstantiatePresetAtCursor(const std::string& presetName);
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------
@@ -117,7 +119,8 @@ public:
         GhostRecorder* ghostRecorder,
         GhostDirector* ghostDirector,
         LightEditor* lightEditor,
-        MeshEffectEditor* meshEffectEditor) 
+        MeshEffectEditor* meshEffectEditor,
+        TrailEmitterEditor* trailEmitterEditor)
     {
         postEffectEditor_ = postEffectEditor;
         spriteDebugEditor_ = spriteDebugEditor;
@@ -127,7 +130,8 @@ public:
         ghostRecorder_ = ghostRecorder;
         ghostDirector_ = ghostDirector;
         lightEditor_ = lightEditor;
-        meshEffectEditor_ = meshEffectEditor; 
+        meshEffectEditor_ = meshEffectEditor;
+        trailEmitterEditor_ = trailEmitterEditor;
     }
     // --------------------------------------------------------------------
     // ゲッター (Getters)
@@ -155,7 +159,9 @@ public:
 
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
+    TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
+    bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
 private:
     // --------------------------------------------------------------------
@@ -165,6 +171,7 @@ private:
     bool IntersectRayPlane(const Ray& ray, Vector3& intersectOut);
     Vector3 WorldToScreen(const Vector3& worldPos);
     void Draw3DIcons();
+    void DrawEventIDOverlay();
 private:
     // ====================================================================
     // メンバ変数
@@ -181,6 +188,7 @@ private:
     BaseScene* lastUpdatedScene_ = nullptr;
 
     bool drawColliders_ = true;
+    bool drawEventIDs_ = true;
     bool isPathEditMode_ = false;
 
     // --- ファイル関連 ---
@@ -238,4 +246,6 @@ private:
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
     MeshEffectEditor* meshEffectEditor_ = nullptr;
+    TrailEmitterEditor* trailEmitterEditor_ = nullptr;
+
 };

@@ -102,6 +102,16 @@ public:
 	/// 現在再生中のBGMを停止します。
 	/// </summary>
 	void StopBGM();
+	
+	/// <summary>
+	/// 再生中のBGMの音量を変更します。
+	/// </summary>
+	void SetBGMVolume(float volume);
+
+	/// <summary>
+	/// SEのマスター音量を設定します（今後のPlaySEに反映）。
+	/// </summary>
+	void SetSEVolume(float volume);
 
 	// ▼▼▼ IsPlaying を追加（あると便利） ▼▼▼
 	/// <summary>
@@ -128,4 +138,7 @@ private:
 	std::map<std::string, AudioHandle> audioHandleMap_; // ファイルパスからハンドルを引くためのマップ
 	AudioHandle nextHandle_ = 0; // 次に割り当てるハンドル番号
 	AudioHandle currentBgmHandle_ = kInvalidAudioHandle;
+
+	float masterVolumeBGM_ = 1.0f;
+	float masterVolumeSE_ = 1.0f;
 };

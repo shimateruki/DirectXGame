@@ -47,6 +47,21 @@ void GameRule::Initialize(BaseScene* scene) {
                 }
             }
             break;
+        case EventType::Movie_Boss:
+            if (scene_) {
+                if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
+                    gps->StartBossAppearanceMovie(); // シーンに合図を送る！
+
+                    // ====================================================
+                    // ★ 修正：踏んだスイッチの当たり判定を「0（無し）」にする！
+                    // これにより、このスイッチは二度とイベントを発生させなくなります。
+                    // ====================================================
+                    if (objectHit) {
+                        objectHit->SetCollisionAttribute(0);
+                    }
+                }
+            }
+            break;
 
         case EventType::None:
         default:

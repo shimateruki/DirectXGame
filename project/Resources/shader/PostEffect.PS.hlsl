@@ -33,8 +33,7 @@ cbuffer PostEffectParams : register(b0)
     float mosaicSize;
     float dangerVignette;
     float blackout;
-    float padding1;
-
+    float crtShutdown; // ★ 変更: padding1 を crtShutdown にリネーム
 };
 
 Texture2D<float4> lutTex : register(t1);
@@ -120,6 +119,42 @@ float3 ApplyLUT(float3 color)
 float4 mainComposite(PSInput input) : SV_TARGET
 {
     float2 uv = input.uv;
+    
+    // ★ エラー回避：定数バッファの変数をローカル変数に移して操作可能にする
+    float currentAberration = chromaticAberration;
+    float currentScanline = scanlineIntensity;
+    
+    // ===================================================
+    // ★ 電脳リブート（CRT Shutdown）演出
+    // ===================================================
+    float isOutOfBounds = 0.0;
+    float crtBrightness = 1.0;
+    
+    if (crtShutdown > 0.0)
+    {
+        // 前半(0.0~0.6): ノイズと色収差（RGBズレ）を極端に強める
+        float glitchPhase = saturate(crtShutdown / 0.6);
+        float noise = rand(float2(uv.y * 15.0, time)) - 0.5;
+        uv.x += noise * 0.03 * glitchPhase;
+        
+        currentAberration += 0.05 * glitchPhase;
+        currentScanline = max(currentScanline, 0.8 * glitchPhase);
+        
+        // 後半(0.6~1.0): 画面が縦に圧縮され、強烈に発光する
+        float squashPhase = saturate((crtShutdown - 0.6) / 0.4);
+        float currentHeight = max(1.0 - pow(squashPhase, 3.0), 0.001);
+        
+        uv.y = (uv.y - 0.5) / currentHeight + 0.5;
+        
+        if (uv.y < 0.0 || uv.y > 1.0)
+        {
+            isOutOfBounds = 1.0;
+        }
+        else
+        {
+            crtBrightness += squashPhase * 8.0;
+        }
+    }
 
     // Wobble (波打ち)
     if (wobbleIntensity > 0.0)
@@ -151,18 +186,20 @@ float4 mainComposite(PSInput input) : SV_TARGET
         for (int i = 0; i < NUM_SAMPLES; i++)
         {
             float2 offsetUv = uv - radialDir * (i * step);
-            float r = tex.Sample(smp, offsetUv - dir * chromaticAberration).r;
+            // ★ local変数を使用
+            float r = tex.Sample(smp, offsetUv - dir * currentAberration).r;
             float g = tex.Sample(smp, offsetUv).g;
-            float b = tex.Sample(smp, offsetUv + dir * chromaticAberration).b;
+            float b = tex.Sample(smp, offsetUv + dir * currentAberration).b;
             baseColor += float4(r, g, b, 1.0);
         }
         baseColor /= (float) NUM_SAMPLES;
     }
     else
     {
-        float r = tex.Sample(smp, uv - dir * chromaticAberration).r;
+        // ★ local変数を使用
+        float r = tex.Sample(smp, uv - dir * currentAberration).r;
         float g = tex.Sample(smp, uv).g;
-        float b = tex.Sample(smp, uv + dir * chromaticAberration).b;
+        float b = tex.Sample(smp, uv + dir * currentAberration).b;
         baseColor = float4(r, g, b, 1.0);
     }
 
@@ -190,36 +227,32 @@ float4 mainComposite(PSInput input) : SV_TARGET
         float3 lutColor = ApplyLUT(finalColor.rgb);
         finalColor.rgb = lerp(finalColor.rgb, lutColor, lutIntensity);
     }
+    
+    // Danger Vignette
     if (dangerVignette > 0.0)
     {
-        // 1. 画面端に行くほど値が大きくなるマスクを作る
-        // dot(dir, dir)は中心で0.0、四隅で0.5になるので2倍して調整
         float edgeMask = saturate(dot(dir, dir) * 2.0);
-        
-        // 2. timeを使ってドクン…ドクン…という鼓動(サイン波)を作る
-        // sin関数を使って0.4 ~ 1.0の間で脈打たせる
         float pulse = 0.4 + 0.6 * saturate(sin(time * 5.0));
-        
-        // 3. 少しドス黒い血のような赤色を定義
         float3 bloodColor = float3(0.8, 0.0, 0.0);
-        
-        // 4. 元の映像に、血の色をブレンドする
         finalColor.rgb = lerp(finalColor.rgb, bloodColor, edgeMask * dangerVignette * pulse);
     }
+    
     // Vignette & Film Grain
     float v = 1.0 - dot(dir, dir) * vignetteIntensity;
     finalColor.rgb *= saturate(v);
     finalColor.rgb -= rand(uv + time) * filmGrainIntensity;
+    
+    // Blackout
     if (blackout > 0.0)
     {
-        // 画面全体を黒に近づける（1.0 で完全な漆黒になる）
         finalColor.rgb *= (1.0 - saturate(blackout));
     }
+    
     // Scanline (ブラウン管)
-    if (scanlineIntensity > 0.0)
+    if (currentScanline > 0.0) // ★ local変数を使用
     {
         float scanline = sin(input.uv.y * 1000.0) * 0.5 + 0.5;
-        finalColor.rgb -= scanline * 0.15 * scanlineIntensity;
+        finalColor.rgb -= scanline * 0.15 * currentScanline;
     }
 
     // Damage Flash
@@ -228,10 +261,22 @@ float4 mainComposite(PSInput input) : SV_TARGET
         finalColor.rgb = lerp(finalColor.rgb, float3(1.0, 0.0, 0.0), damageFlash);
     }
 
-    // Cinema Bars (元のUVを使って歪みを防ぐ)
+    // Cinema Bars
     if (input.uv.y < cinemaBarHeight || input.uv.y > 1.0 - cinemaBarHeight)
     {
         finalColor.rgb = float3(0.0, 0.0, 0.0);
+    }
+
+    // ===================================================
+    // ★ CRT Shutdown の画面外と発光の最終適用
+    // ===================================================
+    if (isOutOfBounds > 0.0)
+    {
+        finalColor.rgb = float3(0.0, 0.0, 0.0); // 潰れた外側は漆黒
+    }
+    else
+    {
+        finalColor.rgb *= crtBrightness; // 潰れた中央部分は強烈に発光
     }
 
     return finalColor;
