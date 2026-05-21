@@ -32,6 +32,12 @@
 #include "MeshEffectManager.h"
 #include "game/system/BulletManager.h"
 #include "Player.h"
+#include "SceneManager.h"
+#include "BaseScene.h"
+#include "MapBlock.h"
+#include "CollisionConfig.h"
+#include "CollisionManager.h"
+
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -1298,6 +1304,92 @@ void BossCore::TakeBodyDamage(float damage) {
         SetRotation({ 0.0f, 0.0f, 0.0f });  // 回転をリセット(R)
         flyingBlocks_.clear();
         FullyRecoverBarrierAndArmor();
+
+        // HPが半分になった時、ステージの地面にまばらに20個のブロックを設置する
+        if (auto currentScene = SceneManager::GetInstance()->GetCurrentScene()) {
+            if (common_) {
+                struct BlockSpawnInfo {
+                    int x, y, z;
+                    float scale;
+                    float rotY;
+                    float rotZ;
+                };
+                std::vector<BlockSpawnInfo> spawnInfos = {
+                    // 中距離・中心に近いエリア (10個)
+                    {-12, 1, 18, 1.1f, 0.4f, 0.2f},
+                    {15, 1, 10, 1.3f, 1.2f, -0.1f},
+                    {-10, 1, -22, 1.0f, 0.8f, 0.3f},
+                    {8, 1, -15, 1.4f, 2.1f, -0.3f},
+                    {-18, 1, 5, 1.2f, 0.5f, 0.1f},
+                    {22, 1, -8, 1.5f, 1.5f, -0.2f},
+                    {-5, 1, 25, 1.3f, 2.7f, 0.4f},
+                    {12, 1, 20, 1.1f, 0.3f, -0.4f},
+                    {-22, 1, -12, 1.4f, 1.9f, 0.2f},
+                    {20, 1, -24, 1.2f, 0.9f, -0.1f},
+
+                    // 外側エリア (10個)
+                    {-35, 1, 35, 1.2f, 0.7f, -0.3f},
+                    {40, 1, 25, 1.5f, 1.8f, 0.4f},
+                    {-30, 1, -45, 1.0f, 0.2f, -0.1f},
+                    {45, 1, -35, 1.3f, 2.4f, 0.3f},
+                    {-48, 1, 10, 1.1f, 0.9f, -0.2f},
+                    {50, 1, -15, 1.4f, 1.1f, 0.2f},
+                    {-15, 1, 50, 1.5f, 2.9f, -0.4f},
+                    {25, 1, 42, 1.2f, 0.5f, 0.1f},
+                    {-42, 1, -28, 1.3f, 1.6f, -0.3f},
+                    {38, 1, -48, 1.4f, 2.2f, 0.4f}
+                };
+
+                int blockIdx = 0;
+                for (const auto& info : spawnInfos) {
+                    auto mapBlock = std::make_unique<MapBlock>();
+                    mapBlock->Initialize(common_);
+
+                    // JSON設定と同一の設定を適用
+                    mapBlock->SetName("HP_Half_Placed_Block_" + std::to_string(blockIdx++));
+                    mapBlock->SetClassName("MapBlock");
+                    mapBlock->SetModel("block");
+                    
+                    // スケールを1〜1.5の範囲でまばらに適用
+                    mapBlock->SetScale({ info.scale, info.scale, info.scale });
+                    
+                    // 回転（Y軸とZ軸の両方）をまばらに適用
+                    mapBlock->SetRotation({ 0.0f, info.rotY, info.rotZ });
+                    
+                    mapBlock->SetTranslate({ static_cast<float>(info.x), static_cast<float>(info.y), static_cast<float>(info.z) });
+
+                    // 衝突属性とマスク (kGround | kMapBlock / kPlayer | kEnemy)
+                    mapBlock->SetCollisionAttribute(kGround | kMapBlock);
+                    mapBlock->SetCollisionMask(kPlayer | kEnemy);
+
+                    // グラフィックス/マテリアル
+                    mapBlock->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    mapBlock->SetEmissive(1.0f);
+                    mapBlock->SetEnableEnvMap(true);
+                    mapBlock->SetEnvIntensity(0.1f);
+                    mapBlock->SetMetallic(0.6f);
+                    mapBlock->SetRoughness(0.8f);
+                    mapBlock->SetEnableNormalMap(false);
+                    mapBlock->SetNormalMap("Resources/sprite/b.png");
+
+                    // コライダー (OBB, size 1x1x1, center 0,0,0)
+                    Object3d::ColliderConfig config = mapBlock->GetColliderConfig();
+                    config.type = ColliderType::kOBB;
+                    config.center = { 0.0f, 0.0f, 0.0f };
+                    config.size = { 1.0f, 1.0f, 1.0f };
+                    config.rotation = { 0.0f, 0.0f, 0.0f };
+                    mapBlock->SetColliderConfig(config);
+
+                    // 行列更新
+                    mapBlock->UpdateLocalMatrix();
+                    mapBlock->UpdateWorldMatrix();
+
+                    // 登録
+                    CollisionManager::GetInstance()->AddObject(mapBlock.get());
+                    currentScene->GetObjects().push_back(std::move(mapBlock));
+                }
+            }
+        }
 
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             if (armorBlocks_[i]) {
