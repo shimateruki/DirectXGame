@@ -33,6 +33,11 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
                 for (MapBlock* block : MapBlock::s_activeBlocks) {
                     if (block && block->GetIsVisible()) {
                         targetMapBlocks_.push_back(block);
+                        
+                        // ★ 吸い込まれるブロックは当たり判定を消す！（ボスを押し出さないようにするため）
+                        block->SetCollisionAttribute(0);
+                        block->SetCollisionMask(0);
+
                         // 必要な数に達したら、もう探さない
                         if (targetMapBlocks_.size() >= neededCount) {
                             break;
@@ -48,9 +53,10 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
         float easeT = Easing::InOutSine(t);
 
         Vector3 pos = boss->GetTranslate();
-        pos.x = Math::Lerp(animStartPos_.x, 0.0f, easeT);
+        // ★ 横への移動（スライド）を無くし、元のX, Z座標を維持したまま上へ上がるようにします
+        pos.x = animStartPos_.x;
         pos.y = Math::Lerp(animStartPos_.y, 10.0f, easeT);
-        pos.z = Math::Lerp(animStartPos_.z, 0.0f, easeT);
+        pos.z = animStartPos_.z;
         boss->SetTranslate(pos);
 
         Vector3 rot = boss->GetRotation();

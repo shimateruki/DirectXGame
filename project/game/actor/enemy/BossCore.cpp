@@ -32,6 +32,12 @@
 #include "MeshEffectManager.h"
 #include "game/system/BulletManager.h"
 #include "Player.h"
+#include "SceneManager.h"
+#include "BaseScene.h"
+#include "MapBlock.h"
+#include "CollisionConfig.h"
+#include "CollisionManager.h"
+
 
 // =================================================================
 // ★ 待機アニメーション用のタイマーと軌道計算関数
@@ -634,6 +640,12 @@ void BossCore::Update(float deltaTime) {
             isHpHalfEventActive_ = false;
             hpHalfPhase_ = HpHalfEventPhase::None;
             isPlayerRotated_ = false; // 次回のためにリセット
+
+            if (target_) {
+                if (auto player = dynamic_cast<Player*>(target_)) {
+                    player->SetIsControlActive(true);
+                }
+            }
             SetColor(greenColor_);
             defaultColor_ = greenColor_;
             SetScale({ 1,1,1 });
@@ -1318,6 +1330,116 @@ void BossCore::TakeBodyDamage(float damage) {
         SetScale({ 1.0f, 1.0f, 1.0f });     // スケールをリセット(S)
         SetRotation({ 0.0f, 0.0f, 0.0f });  // 回転をリセット(R)
         flyingBlocks_.clear();
+        FullyRecoverBarrierAndArmor();
+
+        // HPが半分になった時、ステージの地面にまばらに20個のブロックを設置する
+        if (auto currentScene = SceneManager::GetInstance()->GetCurrentScene()) {
+            if (common_) {
+                struct BlockSpawnInfo {
+                    int x;
+                    float y;
+                    int z;
+                    float scale;
+                    float rotY;
+                    float rotZ;
+                };
+                std::vector<BlockSpawnInfo> spawnInfos;
+                spawnInfos.reserve(20);
+
+                // 動的にまばらな配置を生成（最小距離を保証したランダム配置）
+                for (int i = 0; i < 20; ++i) {
+                    float x = 0.0f, z = 0.0f;
+                    bool farEnough = false;
+                    int attempts = 0;
+                    while (!farEnough && attempts < 100) {
+                        // 半径 15.0f 〜 65.0f の範囲に散布
+                        float radius = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 50.0f;
+                        float angle = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
+                        x = std::cos(angle) * radius;
+                        z = std::sin(angle) * radius;
+
+                        // 他のブロックと十分に離れているかチェック（最小距離 15.0f）
+                        farEnough = true;
+                        for (const auto& existing : spawnInfos) {
+                            float dx = x - static_cast<float>(existing.x);
+                            float dz = z - static_cast<float>(existing.z);
+                            float distSq = dx * dx + dz * dz;
+                            if (distSq < 15.0f * 15.0f) {
+                                farEnough = false;
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+
+                    float scale = 1.0f + (static_cast<float>(rand()) / RAND_MAX) * 0.5f;
+                    // Y軸、Z軸ともに完全にランダムな回転角を適用
+                    float rotY = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
+                    float rotZ = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
+
+                    // 浮動小数点数は整数値（例：1.0f, -2.0f）となるように丸める
+                    // 埋まり具合を表現するため、y座標は 0.7f に下げる
+                    spawnInfos.push_back({
+                        static_cast<int>(std::round(x)),
+                        0.7f,
+                        static_cast<int>(std::round(z)),
+                        scale,
+                        rotY,
+                        rotZ
+                    });
+                }
+
+                int blockIdx = 0;
+                for (const auto& info : spawnInfos) {
+                    auto mapBlock = std::make_unique<MapBlock>();
+                    mapBlock->Initialize(common_);
+
+                    // JSON設定と同一の設定を適用
+                    mapBlock->SetName("HP_Half_Placed_Block_" + std::to_string(blockIdx++));
+                    mapBlock->SetClassName("MapBlock");
+                    mapBlock->SetModel("block");
+                    
+                    // スケールを1〜1.5の範囲でまばらに適用
+                    mapBlock->SetScale({ info.scale, info.scale, info.scale });
+                    
+                    // 回転（Y軸とZ軸の両方）をまばらに適用
+                    mapBlock->SetRotation({ 0.0f, info.rotY, info.rotZ });
+                    
+                    mapBlock->SetTranslate({ static_cast<float>(info.x), static_cast<float>(info.y), static_cast<float>(info.z) });
+
+                    // 衝突属性とマスク (kGround | kMapBlock / kPlayer | kEnemy)
+                    mapBlock->SetCollisionAttribute(kGround | kMapBlock);
+                    mapBlock->SetCollisionMask(kPlayer | kEnemy);
+
+                    // グラフィックス/マテリアル
+                    mapBlock->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    mapBlock->SetEmissive(1.0f);
+                    mapBlock->SetEnableEnvMap(true);
+                    mapBlock->SetEnvIntensity(0.1f);
+                    mapBlock->SetMetallic(0.6f);
+                    mapBlock->SetRoughness(0.8f);
+                    mapBlock->SetEnableNormalMap(false);
+                    mapBlock->SetNormalMap("Resources/sprite/b.png");
+
+                    // コライダー (OBB, size 1x1x1, center 0,0,0)
+                    Object3d::ColliderConfig config = mapBlock->GetColliderConfig();
+                    config.type = ColliderType::kOBB;
+                    config.center = { 0.0f, 0.0f, 0.0f };
+                    config.size = { 1.0f, 1.0f, 1.0f };
+                    config.rotation = { 0.0f, 0.0f, 0.0f };
+                    mapBlock->SetColliderConfig(config);
+
+                    // 行列更新
+                    mapBlock->UpdateLocalMatrix();
+                    mapBlock->UpdateWorldMatrix();
+
+                    // 登録
+                    CollisionManager::GetInstance()->AddObject(mapBlock.get());
+                    currentScene->GetObjects().push_back(std::move(mapBlock));
+                }
+            }
+        }
+
         for (size_t i = 0; i < armorBlocks_.size(); ++i) {
             if (armorBlocks_[i]) {
                 armorBlocks_[i]->SetParent(this);
@@ -1326,12 +1448,22 @@ void BossCore::TakeBodyDamage(float damage) {
                 armorBlocks_[i]->SetTranslate(orbit.pos);
                 armorBlocks_[i]->SetRotation(orbit.rot);
                 armorBlocks_[i]->SetScale(orbit.scale);
+                armorBlocks_[i]->SetCollisionAttribute(kGround);
             }
         }
 
         isHpHalfEventActive_ = true;
         hpHalfPhase_ = HpHalfEventPhase::WaitIdle;
         hpHalfEffectTimer_ = 0.0f;
+
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetIsControlActive(false);
+                player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player->SetTranslate({ 0.0f, 1.231f, -60.0f });
+                player->UpdateWorldMatrix();
+            }
+        }
 
         // ★ 追加：作成いただいたカメラアニメーション（JSON）を再生する
         // ゴーストレーダー（GhostRecorder）で作成されたアニメーションを直接再生（橋が落ちる処理と同じ方式）
@@ -1793,6 +1925,9 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
         if (returnDelayTimer_ >= 5.0f) {
             for (auto& fb : flyingBlocks_) {
                 fb.mode = 2;
+                if (fb.block) {
+                    fb.block->SetCollisionAttribute(kGround); // 戻るときに攻撃判定をなくす
+                }
             }
             returnDelayTimer_ = 0.0f;
         }
