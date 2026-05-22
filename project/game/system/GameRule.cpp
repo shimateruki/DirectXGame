@@ -164,7 +164,7 @@ void GameRule::Initialize(BaseScene* scene) {
 void GameRule::ApplyDamage(Object3d* target, float damage) {
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);
-        // 被弾無敵（赤色）または回避ダッシュ（青色）中ならダメージを無効化！
+        // 被弾無敵または回避ダッシュ中ならダメージを無効化
         if (player->IsInvincible()) {
             return;
         }

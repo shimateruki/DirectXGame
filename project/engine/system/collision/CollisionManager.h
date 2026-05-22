@@ -58,6 +58,7 @@ public:
     /// 衝突判定リストから全てのオブジェクトをクリア
     /// </summary>
     void ClearObjects();
+    void MarkStaticGridDirty() { needsStaticGridRebuild_ = true; }
 
     /// <summary>
     /// （デバッグ用）グリッドの1辺のサイズを設定

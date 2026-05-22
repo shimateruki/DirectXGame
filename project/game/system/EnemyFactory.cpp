@@ -90,6 +90,8 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.maxHp = 60.0f;
         p.speed = 0.0f;       // 立ち止まって投げる想定なら0、動かすなら数値を設定
         p.gravity = 60.0f;
+        p.detectionRange = 32.0f;
+        bomber->SetDetectionRange(p.detectionRange);
 
         newEnemy = std::move(bomber);
     }

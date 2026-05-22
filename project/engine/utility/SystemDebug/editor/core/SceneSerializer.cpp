@@ -151,6 +151,8 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["emissive"] = obj->GetEmissive();
     d["particleName"] = obj->GetParticleName();
     d["gpuParticleName"] = obj->GetGPUParticleName();
+    d["meshEffect1"] = obj->GetMeshEffect1Name();
+    d["meshEffect2"] = obj->GetMeshEffect2Name();
     // 9. アニメーション
     d["animation"]["animName"] = obj->animName_;
     d["animation"]["isAnimLoop"] = obj->isAnimLoop_;

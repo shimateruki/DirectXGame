@@ -3,6 +3,7 @@
 #include "json.hpp"
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <Windows.h> // OutputDebugStringA用
 
 // 生成するクラス群のインクルード
@@ -12,6 +13,7 @@
 #include "EnemyFactory.h"
 #include "EnemySpawner.h"
 #include "BaseEnemy.h"
+#include "EnemyBomber.h"
 #include "GimmickFactory.h"
 #include "BaseGimmick.h"
 #include "MoveStrategy3D.h"
@@ -23,6 +25,43 @@
 #include "PresetManager.h"
 
 using json = nlohmann::json;
+
+namespace {
+void ConfigureBomberSpawnCallback(BaseScene* scene, EnemyBomber* bomber) {
+    if (!scene || !bomber) {
+        return;
+    }
+
+    bomber->SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> spawned) {
+        if (!spawned) {
+            return;
+        }
+
+        spawned->SetTarget(scene->GetPlayer());
+        scene->AddObject(std::move(spawned));
+    });
+}
+
+void ConfigureEnemyRuntimeReferences(BaseScene* scene) {
+    if (!scene) {
+        return;
+    }
+
+    Player* player = scene->GetPlayer();
+    auto& objects = scene->GetObjects();
+    for (auto& object : objects) {
+        auto* enemy = dynamic_cast<BaseEnemy*>(object.get());
+        if (!enemy) {
+            continue;
+        }
+
+        enemy->SetTarget(player);
+        if (auto* bomber = dynamic_cast<EnemyBomber*>(enemy)) {
+            ConfigureBomberSpawnCallback(scene, bomber);
+        }
+    }
+}
+}
 
 
 // ========================================================================
@@ -96,6 +135,8 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
             childObj->SetParent(parentObj);
         }
     }
+
+    ConfigureEnemyRuntimeReferences(scene);
 }
 // ========================================================================
 // 2. 1ファイル分の読み込み処理 (実際の生成とパラメータ設定)
@@ -161,6 +202,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             if (auto base = dynamic_cast<BaseEnemy*>(enemy.get())) {
                                 base->SetTarget(scene->GetPlayer());
                             }
+                            if (auto bomber = dynamic_cast<EnemyBomber*>(enemy.get())) {
+                                ConfigureBomberSpawnCallback(scene, bomber);
+                            }
                             newObj = std::move(enemy);
                         }
                     }
@@ -204,6 +248,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                                 newEnemy->SetEnemyType(spawnEnemyType);
                                 if (auto base = dynamic_cast<BaseEnemy*>(newEnemy.get())) {
                                     base->SetTarget(scene->GetPlayer());
+                                }
+                                if (auto bomber = dynamic_cast<EnemyBomber*>(newEnemy.get())) {
+                                    ConfigureBomberSpawnCallback(scene, bomber);
                                 }
                                 // 直接シーンに追加
                                 CollisionManager::GetInstance()->AddObject(newEnemy.get());
@@ -268,7 +315,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 std::string type = targetObject->GetClassName();
                 if (type == "InvisibleBox" || type == "Spawner") {
                     targetObject->SetModel(nullptr);
-                    targetObject->SetIsVisible(false);
+                    targetObject->SetIsVisible(true);
                 } else {
                     targetObject->SetIsVisible(true);
                     if (objData.contains("modelName") && objData["modelName"].is_string()) {

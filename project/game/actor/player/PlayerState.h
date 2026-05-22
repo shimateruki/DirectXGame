@@ -71,8 +71,10 @@ public:
     void Exit(Player* player) override;
 private:
     Vector3 knockbackDir_;
+    Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector3 baseRotation_ = { 0.0f, 0.0f, 0.0f };
     float timer_ = 0.0f;
-    const float duration_ = 0.5f; // ノックバック時間
+    const float duration_ = 0.58f;
 };
 
 // --------------------------------------------------------

@@ -171,6 +171,9 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
 
     ColliderType myType = this->GetType();
     ColliderType otherType = other->GetType();
+    if (myType == ColliderType::kNone || otherType == ColliderType::kNone) {
+        return collision;
+    }
 
     // 自身のワールド座標 
     Vector3 myPos = transform_->translate; 

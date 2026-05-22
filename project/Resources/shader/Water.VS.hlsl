@@ -11,7 +11,7 @@ VSOutput main(VSInput input)
     float waveX = sin(phaseX);
     float waveZ = cos(phaseZ);
 
-    float topMask = smoothstep(0.0f, 0.1f, input.pos.y);
+    float topMask = step(0.9f, input.normal.y);
 
     localPos.y += (waveX + waveZ) * waveHeight * topMask;
 

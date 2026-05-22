@@ -18,6 +18,7 @@ public:
     
     void SetCarried(bool isCarried) override;
     void ExecuteAbility(class Player* player) override;
+    void Ignite(float fuseTime = 3.0f);
 
 private:
     void UpdateChase(float deltaTime);

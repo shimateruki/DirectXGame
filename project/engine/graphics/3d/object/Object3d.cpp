@@ -7,6 +7,7 @@
 #include "CameraManager.h"
 #include "SceneManager.h"
 #include "GhostRecorder.h"
+#include "CollisionManager.h"
 #include <cassert>
 #include <algorithm> // min, max
 #include <ParticleManager.h>
@@ -374,7 +375,10 @@ void Object3d::SetSelectedLighting(int32_t type) {
 // ========================================================================
 
 void Object3d::SetColliderConfig(const ColliderConfig& config) {
-    if (collider_) collider_->SetConfig(config);
+    if (collider_) {
+        collider_->SetConfig(config);
+        if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+    }
 }
 const Object3d::ColliderConfig& Object3d::GetColliderConfig() const {
     return collider_->GetConfig();
@@ -385,6 +389,7 @@ void Object3d::SetColliderType(ColliderType type) {
     ColliderConfig config = collider_->GetConfig();
     config.type = type;
     collider_->SetConfig(config);
+    if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 ColliderType Object3d::GetColliderType() const {
     return collider_ ? collider_->GetType() : ColliderType::kNone;
@@ -395,6 +400,7 @@ void Object3d::SetCollisionSize(const Vector3& size) {
     ColliderConfig config = collider_->GetConfig();
     config.size = size;
     collider_->SetConfig(config);
+    if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 Vector3 Object3d::GetCollisionSize() const {
     return collider_ ? collider_->GetSize() : Vector3{ 0,0,0 };
@@ -408,14 +414,20 @@ float Object3d::GetCollisionRadius() const {
 }
 
 void Object3d::SetCollisionAttribute(uint32_t attribute) {
-    if (collider_) collider_->SetAttribute(attribute);
+    if (collider_) {
+        collider_->SetAttribute(attribute);
+        if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+    }
 }
 uint32_t Object3d::GetCollisionAttribute() const {
     return collider_ ? collider_->GetAttribute() : 0;
 }
 
 void Object3d::SetCollisionMask(uint32_t mask) {
-    if (collider_) collider_->SetMask(mask);
+    if (collider_) {
+        collider_->SetMask(mask);
+        if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+    }
 }
 uint32_t Object3d::GetCollisionMask() const {
     return collider_ ? collider_->GetMask() : 0;
@@ -470,6 +482,14 @@ AABB Object3d::GetModelWorldAABB() const {
 
 CollisionInfo Object3d::CheckCollision(Object3d* other) {
     if (!collider_ || !other || !other->GetCollider()) {
+        CollisionInfo info;
+        info.isColliding = false;
+        return info;
+    }
+    if (GetColliderType() == ColliderType::kNone ||
+        other->GetColliderType() == ColliderType::kNone ||
+        GetCollisionAttribute() == 0 || other->GetCollisionAttribute() == 0 ||
+        GetCollisionMask() == 0 || other->GetCollisionMask() == 0) {
         CollisionInfo info;
         info.isColliding = false;
         return info;

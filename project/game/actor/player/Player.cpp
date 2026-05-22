@@ -311,11 +311,13 @@ void Player::Update(float deltaTime)
 
     // --- スケールの自然な復元（Squash & Stretch のための自動リセット） ---
     // どの状態からでも、変形させられたスケールを 0.15 の速度で 1.0 に戻します
-    Vector3 currentScale = transform_.scale;
-    Vector3 targetScale = { 1.0f, 1.0f, 1.0f };
-    transform_.scale.x = Math::Lerp(currentScale.x, targetScale.x, 0.15f);
-    transform_.scale.y = Math::Lerp(currentScale.y, targetScale.y, 0.15f);
-    transform_.scale.z = Math::Lerp(currentScale.z, targetScale.z, 0.15f);
+    if (!dynamic_cast<PlayerStateDamage*>(state_.get())) {
+        Vector3 currentScale = transform_.scale;
+        Vector3 targetScale = { 1.0f, 1.0f, 1.0f };
+        transform_.scale.x = Math::Lerp(currentScale.x, targetScale.x, 0.15f);
+        transform_.scale.y = Math::Lerp(currentScale.y, targetScale.y, 0.15f);
+        transform_.scale.z = Math::Lerp(currentScale.z, targetScale.z, 0.15f);
+    }
 }
 
 
@@ -520,10 +522,7 @@ void Player::SetDashInvincible(bool inv) {
 void Player::UpdateColor() {
     Vector4 targetColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
 
-    if (isDamageInvincible_) {
-        targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ダメージ中は赤色を優先
-    }
-    else if (isDashInvincible_) {
+    if (isDashInvincible_) {
         targetColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // 回避中は青色を設定
     }
 

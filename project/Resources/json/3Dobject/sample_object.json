@@ -55,6 +55,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Characters/slime",
             "myEventID": -1,
@@ -166,6 +168,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Primitives/heimen",
             "myEventID": -1,
@@ -261,6 +265,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -372,6 +378,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -483,6 +491,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Characters/slime",
             "myEventID": -1,
@@ -531,9 +541,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8469616770744324,
-                1.2295573949813843,
-                0.8469616770744324
+                0.8087021112442017,
+                1.2869467735290527,
+                0.8087021112442017
             ],
             "targetID": -1,
             "texturePath": "",
@@ -594,6 +604,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Characters/bunny",
             "myEventID": -1,
@@ -656,7 +668,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 0
             },
             "collisionAttribute": 16,
             "collisionMask": 4294967295,
@@ -689,6 +701,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Samples/sample",
             "myEventID": -1,
@@ -699,7 +713,7 @@
             "particleName": "",
             "position": [
                 -8.645085334777832,
-                0.05562978982925415,
+                0.055629804730415344,
                 -34.54420471191406
             ],
             "quaternion": [
@@ -784,6 +798,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Gimmicks/goal",
             "myEventID": -1,
@@ -879,6 +895,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -990,6 +1008,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Characters/slime",
             "myEventID": -1,
@@ -1038,9 +1058,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8469616770744324,
-                1.2295573949813843,
-                0.8469616770744324
+                0.8087021112442017,
+                1.2869467735290527,
+                0.8087021112442017
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1101,6 +1121,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1212,6 +1234,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1323,6 +1347,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1434,6 +1460,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Gimmicks/star",
             "myEventID": -1,
@@ -1512,7 +1540,7 @@
                     1.0,
                     1.0
                 ],
-                "type": 2
+                "type": 0
             },
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
@@ -1545,6 +1573,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 8,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1555,8 +1585,8 @@
             "particleName": "",
             "position": [
                 -7.301819801330566,
-                -0.33009159564971924,
-                -86.81629943847656
+                -2.4301023483276367,
+                -81.43973541259766
             ],
             "quaternion": [
                 0.0,
@@ -1577,16 +1607,16 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                16.799964904785156,
-                1.287667989730835,
-                7.291374683380127
+                3.7838494777679443,
+                0.6310000419616699,
+                10.0
             ],
             "targetID": -1,
             "texturePath": "",
             "type": "Model",
             "waterParam": {
-                "flowSpeedX": 0.6399999856948853,
-                "flowSpeedY": 0.6700000166893005,
+                "flowSpeedX": 0.0,
+                "flowSpeedY": 0.20999999344348907,
                 "waveFrequency": 1.899999976158142,
                 "waveHeight": 0.0,
                 "waveSpeed": 4.800000190734863
@@ -1647,6 +1677,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 9,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1742,6 +1774,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 10,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1809,9 +1843,9 @@
             "collisionAttribute": 4,
             "collisionMask": 255,
             "color": [
-                0.800000011920929,
-                0.4000000059604645,
-                0.10000000149011612,
+                0.1814671754837036,
+                0.11981037259101868,
+                0.11981037259101868,
                 1.0
             ],
             "emissive": 1.0,
@@ -1837,6 +1871,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1948,6 +1984,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Gimmicks/koin",
             "myEventID": -1,
@@ -2014,7 +2052,7 @@
                 "center": [
                     0.0,
                     0.0,
-                    -0.0
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -2024,11 +2062,11 @@
                 "size": [
                     1.0,
                     1.0,
-                    0.0
+                    1.0
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 16,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -2041,7 +2079,7 @@
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.0,
-            "eventID": 0,
+            "eventID": 2,
             "gimmickType": "",
             "gpuParticleName": "",
             "localFog": {
@@ -2059,18 +2097,19 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "Resources/json/effect/effect_warp_gate_floor.json",
+            "meshEffect2": "Resources/json/effect/effect_warp_gate_pillar.json",
             "metallic": 0.0,
-            "modelName": "Primitives/plane",
-            "myEventID": -1,
-            "name": "MFX_effect_bakuhatu_21",
+            "myEventID": 1,
+            "name": "Trigger_Box",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -91.42510223388672,
-                1.3132460117340088,
-                -88.20171356201172
+                -42.52873611450195,
+                -1.3766123056411743,
+                -22.274816513061523
             ],
             "quaternion": [
                 0.0,
@@ -2091,13 +2130,13 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.10000000149011612,
-                0.10000000149011612,
-                0.10000000149011612
+                1.0,
+                1.0,
+                1.0
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MeshEffect"
+            "type": "InvisibleBox"
         },
         {
             "animation": {
@@ -2109,7 +2148,7 @@
                 "center": [
                     0.0,
                     0.0,
-                    -0.0
+                    0.0
                 ],
                 "rotation": [
                     0.0,
@@ -2119,11 +2158,11 @@
                 "size": [
                     1.0,
                     1.0,
-                    0.0
+                    1.0
                 ],
                 "type": 2
             },
-            "collisionAttribute": 0,
+            "collisionAttribute": 16,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -2136,7 +2175,7 @@
             "enableNormalMap": false,
             "enemyType": "",
             "envIntensity": 1.0,
-            "eventID": 0,
+            "eventID": 2,
             "gimmickType": "",
             "gpuParticleName": "",
             "localFog": {
@@ -2154,18 +2193,19 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "Resources/json/effect/effect_warp_gate_floor.json",
+            "meshEffect2": "Resources/json/effect/effect_warp_gate_pillar.json",
             "metallic": 0.0,
-            "modelName": "Primitives/plane",
             "myEventID": -1,
-            "name": "MFX_effect_bakuhatu_22",
+            "name": "Trigger_Box_Copy1",
             "normalMapPath": "",
             "ormMapPath": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                -88.22820281982422,
-                0.0,
-                -82.43473052978516
+                -40.15719985961914,
+                -1.3892666101455688,
+                6.861211776733398
             ],
             "quaternion": [
                 0.0,
@@ -2180,19 +2220,19 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.10000000149011612,
-                0.10000000149011612,
-                0.10000000149011612
+                1.0,
+                1.0,
+                1.0
             ],
-            "targetID": -1,
+            "targetID": 1,
             "texturePath": "",
-            "type": "MeshEffect"
+            "type": "InvisibleBox"
         }
     ]
 }

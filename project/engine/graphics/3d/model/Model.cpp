@@ -106,8 +106,12 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 void Model::CreateBoneBuffer() {
     DirectXCommon* dxCommon = common_->GetDxCommon();
 
-    // LoadFileでダミーボーンを作っているので、必ず1つ以上ボーンがある状態になります
-    // (なので empty チェックで return はしません)
+    if (modelData_.bones.empty()) {
+        boneResource_.Reset();
+        boneMappedData_ = nullptr;
+        boneSrvIndex_ = 0;
+        return;
+    }
 
     // 1. リソース作成
     UINT sizeInBytes = sizeof(BoneForGPU) * static_cast<UINT>(modelData_.bones.size());

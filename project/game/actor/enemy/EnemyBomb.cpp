@@ -1,12 +1,52 @@
+#define NOMINMAX
 #include "EnemyBomb.h"
 #include "game/actor/player/Player.h"
 #include "PlayerState.h"
 #include "Event.h"          
 #include "EventManager.h" 
 #include "CollisionConfig.h"
+#include "json.hpp"
+#include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <MeshEffectManager.h>
 #include <DebugConsole.h>
+
+namespace {
+constexpr const char* kExplosionEffectPath = "Resources/json/effect/effect_bakuhatu.json";
+constexpr float kFallbackExplosionRadius = 3.0f;
+constexpr float kGroundFriction = 0.985f;
+constexpr float kStopSpeed = 0.02f;
+
+float MaxScaleComponent(const nlohmann::json& values) {
+    if (!values.is_array() || values.size() < 3) return 1.0f;
+    return std::max({ values[0].get<float>(), values[1].get<float>(), values[2].get<float>() });
+}
+
+float LoadExplosionRadiusFromEffectJson() {
+    std::ifstream file(kExplosionEffectPath);
+    if (!file.is_open()) return kFallbackExplosionRadius;
+
+    nlohmann::json effectJson;
+    try {
+        file >> effectJson;
+    } catch (...) {
+        return kFallbackExplosionRadius;
+    }
+
+    const float endScale = effectJson.contains("EndScale") ? MaxScaleComponent(effectJson["EndScale"]) : 1.0f;
+    if (effectJson.contains("Collision") && effectJson["Collision"].is_object()) {
+        const auto& collision = effectJson["Collision"];
+        if (collision.value("HasCollision", false) && collision.value("Shape", -1) == 0 && collision.contains("Size")) {
+            return collision["Size"][0].get<float>() * endScale;
+        }
+    }
+    if (effectJson.contains("SphereRadius")) {
+        return effectJson["SphereRadius"].get<float>() * endScale;
+    }
+    return kFallbackExplosionRadius;
+}
+}
 
 void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
@@ -19,6 +59,8 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     isThrown_ = false;
     isAbilityExecuted_ = false;
 
+    SetColliderType(ColliderType::kSphere);
+    SetCollisionRadius(1.0f);
     // 当たり判定の初期属性とマスク設定（野生の敵属性）
     SetCollisionAttribute(kEnemy);
     SetCollisionMask(kPlayer | kPlayerAttack);
@@ -57,12 +99,12 @@ void EnemyBomb::Update(float deltaTime) {
         // 接地している場合かつ、投げられた後のみ、フリクション（地面の摩擦）を適用して少し転がってから自然に止まるようにする
         // ※野生の追尾歩行時（speed = 0.04f）は摩擦でかき消されないようにします。
         if (isGrounded_ && isThrown_) {
-            // フリクション係数 (少し長めに転がるように 0.96f に設定)
-            velocity_.x *= 0.96f;
-            velocity_.z *= 0.96f;
+            // 着地後に少し長めに転がす
+            velocity_.x *= kGroundFriction;
+            velocity_.z *= kGroundFriction;
 
-            if (std::abs(velocity_.x) < 0.05f) velocity_.x = 0.0f;
-            if (std::abs(velocity_.z) < 0.05f) velocity_.z = 0.0f;
+            if (std::abs(velocity_.x) < kStopSpeed) velocity_.x = 0.0f;
+            if (std::abs(velocity_.z) < kStopSpeed) velocity_.z = 0.0f;
 
             // 完全に静止したら投擲状態を解除する
             if (velocity_.x == 0.0f && velocity_.z == 0.0f) {
@@ -173,19 +215,24 @@ void EnemyBomb::UpdateIgnited(float deltaTime) {
 
     // --- 演出部 2: 爆発寸前のドクンドクンと波打つ鼓動（3.0秒スケール対応） ---
     // 爆発に近づくにつれて鼓動周波数を上げる
-    float pulseSpeed = (4.0f - fuseTimer_) * 4.0f;
+    float pulseSpeed = (3.4f - fuseTimer_) * 3.0f;
     pulseTimer_ += deltaTime * pulseSpeed;
 
-    // 爆発直前ほど激しく伸縮変形
-    float amplitude = 0.25f * (3.0f - fuseTimer_) / 3.0f; 
+    // 爆発直前ほど少しだけ膨らむ。大きな潰れ変形は転がりと干渉して不自然に見える。
+    float progress = 1.0f - (fuseTimer_ / 3.0f);
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    float amplitude = 0.015f + 0.045f * progress;
     float offset = std::sin(pulseTimer_) * amplitude;
+    float scale = 1.0f + offset;
     
     // 球体モデルが転がる回転と干渉しないよう、スケール（鼓動の伸縮）のみを更新します
-    SetScale({ 1.0f + offset, 1.0f - offset, 1.0f + offset });
+    SetScale({ scale, scale, scale });
 }
 
 void EnemyBomb::Explode() {
     state_ = State::Exploded;
+    SetScale({ 1.0f, 1.0f, 1.0f });
 
     // モデルを即座に非表示にする（投擲爆発後や自爆後にモデルがその場に残るバグを完全に解消）
     SetIsVisible(false);
@@ -193,20 +240,20 @@ void EnemyBomb::Explode() {
     // --- 爆風による衝突判定の生成と属性切り替え ---
     // 爆発したその瞬間の1フレームだけ判定を広げる
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(8.0f);
+    SetCollisionRadius(LoadExplosionRadiusFromEffectJson());
 
     // プレイヤー（kPlayer）および他の敵（kEnemy）の双方に爆発が当たるように属性・マスクを無差別化！
     // これにより、自爆でも敵に当たり、投げられた爆弾でも近すぎるとプレイヤーにダメージが入るスリリングな仕様になります。
     SetCollisionAttribute(kPlayerAttack | kEnemyAttack);
-    SetCollisionMask(kPlayer | kEnemy); 
+    SetCollisionMask(kPlayer | kEnemy | kGround | kMapBlock);
 
     // --- 新しい美麗な「爆発用エフェクト」の発生 ---
     Vector3 myPos = GetTranslate();
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(
-            "Resources/json/effect/effect_bakuhatu.json", 
-            myPos, 
-            { 0.0f, 0.0f, 0.0f }, 
+            kExplosionEffectPath,
+            myPos,
+            { 0.0f, 0.0f, 0.0f },
             { 1.0f, 1.0f, 1.0f }
         );
     }
@@ -223,16 +270,20 @@ void EnemyBomb::SetCarried(bool isCarried) {
 
     if (isCarried) {
         // プレイヤーに掴まれた瞬間、強制的に点火状態にする
-        state_ = State::Ignited;
-        fuseTimer_ = 3.0f; // 爆発時間を3秒に設定
-        pulseTimer_ = 0.0f;
-        flashTimer_ = 0.0f;
-        flashState_ = false;
+        Ignite(3.0f);
         isThrown_ = false;
     } else {
         // 投げられた（isCarried_ が false になり、プレイヤーから速度を与えられた状態）
         isThrown_ = true;
     }
+}
+
+void EnemyBomb::Ignite(float fuseTime) {
+    state_ = State::Ignited;
+    fuseTimer_ = fuseTime;
+    pulseTimer_ = 0.0f;
+    flashTimer_ = 0.0f;
+    flashState_ = false;
 }
 
 void EnemyBomb::ExecuteAbility(Player* player) {

@@ -11,6 +11,21 @@ CollisionManager* CollisionManager::GetInstance() {
     return &instance;
 }
 
+namespace {
+bool IsCollisionActive(Object3d* object) {
+    if (!object || !object->GetCollider()) {
+        return false;
+    }
+    if (object->GetColliderType() == ColliderType::kNone) {
+        return false;
+    }
+    if (object->GetCollisionAttribute() == 0 || object->GetCollisionMask() == 0) {
+        return false;
+    }
+    return true;
+}
+}
+
 void CollisionManager::AddObject(Object3d* object) {
     objects_.push_back(object);
     // 静的グリッドの再構築が必要
@@ -93,7 +108,7 @@ void CollisionManager::BuildStaticGrid() {
 
     for (Object3d* obj : objects_) {
         // 静的なオブジェクトでなければスキップ
-        if (!obj->IsStatic()) {
+        if (!obj->IsStatic() || !IsCollisionActive(obj)) {
             continue;
         }
 
@@ -130,7 +145,7 @@ void CollisionManager::Update() {
 
     // 3. 「動的オブジェクト」だけを「動的グリッド (grid_)」に登録
     for (Object3d* objA : objects_) {
-        if (objA->IsStatic()) {
+        if (objA->IsStatic() || !IsCollisionActive(objA)) {
             continue;
         }
 
@@ -151,7 +166,7 @@ void CollisionManager::Update() {
 
     // 4. 「動的オブジェクト」を主語にして衝突チェック
     for (Object3d* objA : objects_) {
-        if (objA->IsStatic()) {
+        if (objA->IsStatic() || !IsCollisionActive(objA)) {
             continue;
         }
 
@@ -170,7 +185,7 @@ void CollisionManager::Update() {
                         std::list<Object3d*>& cellObjects = it_dynamic->second;
                         for (Object3d* objB : cellObjects) {
 
-                            if (objA == objB) continue;
+                            if (objA == objB || !IsCollisionActive(objB)) continue;
 
                             Object3d* pairA = (objA < objB) ? objA : objB;
                             Object3d* pairB = (objA < objB) ? objB : objA;
@@ -189,6 +204,7 @@ void CollisionManager::Update() {
                     if (it_static != staticGrid_.end()) {
                         std::list<Object3d*>& cellObjects = it_static->second;
                         for (Object3d* objB : cellObjects) {
+                            if (!IsCollisionActive(objB)) continue;
                             // (objB は静的なので、ペアチェックは不要)
                             CheckCollisionPair(objA, objB);
                         }
@@ -202,6 +218,9 @@ void CollisionManager::Update() {
 
 // 2つのオブジェクトの衝突をチェックする
 void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
+    if (!IsCollisionActive(objA) || !IsCollisionActive(objB)) {
+        return;
+    }
     // 衝突フィルタリング
     if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
         (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
@@ -317,6 +336,34 @@ float IntersectRayOBB(const Vector3& start, const Vector3& direction, const OBB&
     return tMin;
 }
 
+float IntersectRaySphere(const Vector3& start, const Vector3& direction, const Vector3& center, float radius) {
+    Vector3 m = start - center;
+    float a = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+    if (a <= 1e-6f) {
+        return std::numeric_limits<float>::max();
+    }
+
+    float b = 2.0f * (m.x * direction.x + m.y * direction.y + m.z * direction.z);
+    float c = (m.x * m.x + m.y * m.y + m.z * m.z) - radius * radius;
+    float discriminant = b * b - 4.0f * a * c;
+    if (discriminant < 0.0f) {
+        return std::numeric_limits<float>::max();
+    }
+
+    float sqrtDiscriminant = std::sqrt(discriminant);
+    float invDenominator = 1.0f / (2.0f * a);
+    float t0 = (-b - sqrtDiscriminant) * invDenominator;
+    float t1 = (-b + sqrtDiscriminant) * invDenominator;
+
+    if (t0 >= 0.0f) {
+        return t0;
+    }
+    if (t1 >= 0.0f) {
+        return 0.0f;
+    }
+    return std::numeric_limits<float>::max();
+}
+
 /// <summary>
 /// レイキャスト本体
 /// </summary>
@@ -328,6 +375,9 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
 
     // 【簡易版】登録されている全てのオブジェクトをチェック
     for (Object3d* object : objects_) {
+        if (!IsCollisionActive(object)) {
+            continue;
+        }
 
         // =========================================================
         // ★ プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
@@ -358,7 +408,9 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                // (2) 形状判定 (AABB と OBB に対応)
                // =========================================================
             ColliderType colType = object->GetColliderType();
-            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB) {
+            if (colType != ColliderType::kAABB &&
+                colType != ColliderType::kOBB &&
+                colType != ColliderType::kSphere) {
                 continue; // 球や判定なしはスキップ
             }
 
@@ -373,6 +425,13 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                 OBB obb = object->GetOBB(); 
                 distance = IntersectRayOBB(start, direction, obb);
             }
+            else if (colType == ColliderType::kSphere) {
+                distance = IntersectRaySphere(
+                    start,
+                    direction,
+                    object->GetWorldPosition(),
+                    object->GetCollisionRadius());
+            }
 
             // (4) 一番近いものを採用
             if (distance < closestHit.distance) {
@@ -381,6 +440,13 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
                 closestHit.hitObject = object;
                 closestHit.hitPoint = start + direction * distance;
 
+                if (colType == ColliderType::kSphere) {
+                    Vector3 normal = closestHit.hitPoint - object->GetWorldPosition();
+                    float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                    if (length > 1e-6f) {
+                        closestHit.normal = normal / length;
+                    }
+                }
 
             }
         }

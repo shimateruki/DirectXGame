@@ -86,9 +86,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.42512378096580505,
+                -0.13767960667610168,
                 0.0,
-                0.9051352143287659
+                0.9904768466949463
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -97,7 +97,7 @@
             },
             "rotation": [
                 0.0,
-                0.8781972527503967,
+                -0.2762366533279419,
                 0.0
             ],
             "roughness": 0.5,
@@ -197,9 +197,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.42512378096580505,
+                0.09977328032255173,
                 0.0,
-                0.9051352143287659
+                0.9950101971626282
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -208,7 +208,7 @@
             },
             "rotation": [
                 0.0,
-                0.8781972527503967,
+                0.19987912476062775,
                 0.0
             ],
             "roughness": 0.5,
@@ -217,6 +217,117 @@
                 0.9999999403953552,
                 1.0,
                 0.9999999403953552
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 6,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "Bomber",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Enemy_Bomber",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -7.220317840576172,
+                -0.5494763851165771,
+                -3.345318078994751
+            ],
+            "quaternion": [
+                0.36220723390579224,
+                -0.608035147190094,
+                0.6057245135307312,
+                0.36358895897865295
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                1.5669888257980347,
+                -2.0637364387512207,
+                -6.29779464134117e-08
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Enemy",
+            "scale": [
+                0.9999881982803345,
+                0.9999833703041077,
+                0.9999790787696838
             ],
             "targetID": -1,
             "texturePath": "",

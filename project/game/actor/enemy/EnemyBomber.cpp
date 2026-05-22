@@ -1,87 +1,169 @@
 #include "EnemyBomber.h"
-#include "EnemyFactory.h"
 #include "CollisionConfig.h"
+#include "EnemyBomb.h"
+#include "EnemyFactory.h"
+#include <algorithm>
 #include <cmath>
+
+namespace {
+constexpr float kMinThrowDistance = 1.0f;
+constexpr float kBombSpawnHeight = 2.0f;
+constexpr float kFootworkSpeed = 1.25f;
+constexpr float kPreferredDistance = 13.0f;
+}
 
 void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
     common_ = common;
-    throwTimer_ = throwInterval_;
+    throwTimer_ = initialThrowDelay_;
+    windupTimer_ = 0.0f;
+    footworkTimer_ = 1.2f;
+    footworkDirection_ = 1.0f;
+    throwState_ = ThrowState::Idle;
 
     SetCollisionAttribute(kEnemy);
     SetCollisionMask(kPlayer | kPlayerAttack);
 }
 
 void EnemyBomber::Update(float deltaTime) {
-    // プレイヤーがいない場合や倒された後は何もしない
     if (!target_ || isDead) {
         BaseEnemy::Update(deltaTime);
         return;
     }
 
-    // プレイヤーへのベクトルと距離を計算
-    Vector3 playerPos = target_->GetTranslate();
-    Vector3 myPos = GetTranslate();
-    Vector3 toPlayer = playerPos - myPos;
-    float distance = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
+    float distance = 0.0f;
+    Vector3 direction{};
+    const bool inRange = IsTargetInRange(&distance, &direction);
+    UpdateFacing(direction);
+    UpdateFootwork(deltaTime, direction, distance, inRange);
 
-    // 常にプレイヤーの方を向く
-    if (distance > 0.1f) {
-        SetRotationY(std::atan2(toPlayer.x, toPlayer.z));
-    }
-
-    // プレイヤーが検知範囲（detectionRange_）内にいたらボムを投げる
-    if (distance <= detectionRange_) {
-        throwTimer_ -= deltaTime;
-        if (throwTimer_ <= 0.0f) {
-            ThrowBomb();
-            throwTimer_ = throwInterval_; // タイマーリセット
+    if (inRange) {
+        switch (throwState_) {
+        case ThrowState::Idle:
+            throwTimer_ -= deltaTime;
+            if (throwTimer_ <= 0.0f) {
+                BeginThrow();
+            }
+            break;
+        case ThrowState::Windup:
+            windupTimer_ -= deltaTime;
+            SetColor({ 1.0f, 0.55f, 0.15f, 1.0f });
+            if (windupTimer_ <= 0.0f) {
+                ThrowBomb();
+                throwTimer_ = throwInterval_;
+                throwState_ = ThrowState::Idle;
+                SetColor(defaultColor_);
+            }
+            break;
         }
-    }
-
-    // 重力処理
-    if (param_.has_value()) {
-        velocity_.y -= param_.value().gravity * deltaTime;
+    } else {
+        const bool wasWindup = throwState_ == ThrowState::Windup;
+        throwState_ = ThrowState::Idle;
+        windupTimer_ = 0.0f;
+        throwTimer_ = std::min(throwTimer_, initialThrowDelay_);
+        if (wasWindup) {
+            SetColor(defaultColor_);
+        }
     }
 
     BaseEnemy::Update(deltaTime);
 }
 
-void EnemyBomber::ThrowBomb() {
-    // コールバックが設定されていない場合は投げられない
-    if (!spawnCallback_ || !common_ || !target_) return;
+bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) const {
+    if (!target_) return false;
 
-    // EnemyFactory を使ってボムを生成
-    auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", common_);
+    Vector3 toTarget = target_->GetTranslate() - GetTranslate();
+    toTarget.y = 0.0f;
 
-    // ボムの出現位置を自身の少し上（頭上など）に設定
-    Vector3 myPos = GetTranslate();
-    myPos.y += 2.0f;
-    bomb->SetTranslate(myPos);
-
-    // ボムにもプレイヤーを追いかけさせるためにターゲットをセット
-    bomb->SetTarget(target_);
-
-    // プレイヤーへ向かって投げるための方向ベクトルを計算
-    Vector3 playerPos = target_->GetTranslate();
-    Vector3 toPlayer = playerPos - myPos;
-    toPlayer.y = 0.0f; // 高低差は一旦無視して水平方向のみで正規化
-    float dist = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
-
-    if (dist > 0.001f) {
-        toPlayer.x /= dist;
-        toPlayer.z /= dist;
+    const float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+    if (outDistance) {
+        *outDistance = distance;
     }
 
-    // 投げられた状態（isThrown_=true）にするため、EnemyBomb側の処理を走らせる
+    if (distance > 0.001f) {
+        toTarget.x /= distance;
+        toTarget.z /= distance;
+    } else {
+        toTarget = { 0.0f, 0.0f, 1.0f };
+    }
+
+    if (outDirection) {
+        *outDirection = toTarget;
+    }
+
+    return distance <= detectionRange_ && distance >= kMinThrowDistance;
+}
+
+void EnemyBomber::UpdateFacing(const Vector3& direction) {
+    const float lengthSq = direction.x * direction.x + direction.z * direction.z;
+    if (lengthSq > 0.0001f) {
+        SetRotationY(std::atan2(direction.x, direction.z));
+    }
+}
+
+void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, float distance, bool inRange) {
+    Vector3 velocity = GetVelocity();
+    velocity.x = 0.0f;
+    velocity.z = 0.0f;
+
+    if (inRange) {
+        footworkTimer_ -= deltaTime;
+        if (footworkTimer_ <= 0.0f) {
+            footworkDirection_ *= -1.0f;
+            footworkTimer_ = 1.4f;
+        }
+
+        Vector3 side = { direction.z * footworkDirection_, 0.0f, -direction.x * footworkDirection_ };
+        velocity.x += side.x * kFootworkSpeed;
+        velocity.z += side.z * kFootworkSpeed;
+
+        if (distance < kPreferredDistance) {
+            velocity.x -= direction.x * 0.8f;
+            velocity.z -= direction.z * 0.8f;
+        } else if (distance > kPreferredDistance + 4.0f) {
+            velocity.x += direction.x * 0.6f;
+            velocity.z += direction.z * 0.6f;
+        }
+    }
+
+    SetVelocity(velocity);
+}
+
+void EnemyBomber::BeginThrow() {
+    throwState_ = ThrowState::Windup;
+    windupTimer_ = throwWindup_;
+}
+
+void EnemyBomber::ThrowBomb() {
+    if (!spawnCallback_ || !common_ || !target_) return;
+
+    auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", common_);
+    if (!bomb) return;
+
+    Vector3 spawnPos = GetTranslate();
+    spawnPos.y += kBombSpawnHeight;
+    bomb->SetTranslate(spawnPos);
+    bomb->SetTarget(target_);
+
+    Vector3 toTarget = target_->GetTranslate() - spawnPos;
+    toTarget.y = 0.0f;
+    float distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+    if (distance > 0.001f) {
+        toTarget.x /= distance;
+        toTarget.z /= distance;
+    } else {
+        toTarget = { 0.0f, 0.0f, 1.0f };
+    }
+
     bomb->SetCarried(false);
 
-    // ボムに初速を与える（斜め上に向かって投げる）
-    // ※ 届かない場合や飛びすぎる場合は forwardSpeed と upSpeed を調整してください
-    float forwardSpeed = 15.0f;
-    float upSpeed = 20.0f;
-    bomb->SetVelocity({ toPlayer.x * forwardSpeed, upSpeed, toPlayer.z * forwardSpeed });
+    const float forwardSpeed = std::clamp(distance * 0.75f, 13.0f, 22.0f);
+    const float upSpeed = std::clamp(5.5f + distance * 0.10f, 6.5f, 9.5f);
+    bomb->SetVelocity({ toTarget.x * forwardSpeed, upSpeed, toTarget.z * forwardSpeed });
 
-    // コールバック経由で生成したボムをシーンの敵リストに登録する
+    if (auto* enemyBomb = dynamic_cast<EnemyBomb*>(bomb.get())) {
+        enemyBomb->Ignite(2.8f);
+    }
+
     spawnCallback_(std::move(bomb));
 }
