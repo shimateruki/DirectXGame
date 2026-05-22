@@ -9732,6 +9732,106 @@
                 "center": [
                     0.0,
                     0.0,
+                    -0.30000001192092896
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 10,
+            "metallic": 0.0,
+            "modelName": "block",
+            "myEventID": -1,
+            "name": "maguma",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                0.0,
+                -48.5,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                200.0,
+                1.0,
+                200.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
                     0.0
                 ],
                 "rotation": [
@@ -11510,106 +11610,6 @@
                 0.0,
                 0.0,
                 0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model",
-            "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.5,
-                "waveSpeed": 2.0
-            }
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enableOutline": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 10,
-            "metallic": 0.0,
-            "modelName": "block",
-            "myEventID": -1,
-            "name": "maguma",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                0.0,
-                -48.5,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                200.0,
-                1.0,
-                200.0
             ],
             "targetID": -1,
             "texturePath": "",
