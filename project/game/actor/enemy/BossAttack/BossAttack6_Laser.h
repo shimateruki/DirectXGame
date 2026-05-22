@@ -7,6 +7,7 @@ class Object3d;
 
 class BossAttack6_Laser : public BaseBossAttack {
 private:
+    BossCore* boss_ = nullptr;
     Vector3 animStartPos_ = { 0,0,0 };
 
     Vector3 animStartRot_ = { 0.0f, 0.0f, 0.0f };

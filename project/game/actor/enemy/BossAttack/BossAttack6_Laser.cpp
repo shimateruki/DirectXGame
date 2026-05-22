@@ -12,6 +12,14 @@
 #include "GPUParticleManager.h"
 
 void BossAttack6_Laser::Finalize() {
+    if (boss_) {
+        for (auto* block : boss_->GetArmorBlocks()) {
+            if (block) {
+                block->SetCollisionAttribute(kGround);
+            }
+        }
+    }
+
     for (Object3d* beam : activeBeams_) {
         if (beam) {
             CollisionManager::GetInstance()->RemoveObject(beam);
@@ -39,6 +47,7 @@ BossAttack6_Laser::~BossAttack6_Laser() {
 }
 void BossAttack6_Laser::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
+    boss_ = boss;
 
     blockStartPos_.clear();
     blockTargetPos_.clear();
@@ -221,7 +230,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 laser->SetEmissive(5.0f);
                 laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
                 laser->SetTexture("Resources/sprite/beamNoice.png");
-                laser->SetMaterialType(9);
+                laser->SetMaterialType(12);
 
                 static Math math;
                 Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
@@ -244,6 +253,9 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 laser->SetRotation({ rotX90, 0.0f, 0.0f });
                 laser->SetTranslate({ 0.0f, 0.0f, 80.0f }); // 前方に出す
                 laser->GetTransform()->isQuaternionMaster = false;
+
+                // 自傷（レイキャスト自己衝突）防止のために一時的に装甲ブロックの地形判定を消す
+                armorBlocks[i]->SetCollisionAttribute(0);
 
                 activeBeams_.push_back(laser);
                 laserLengths_.push_back(160.0f);
@@ -268,7 +280,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetEmissive(8.0f); // コアはさらに強く光らせる
                 coreLaser->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 真っ白
                 coreLaser->SetTexture("Resources/sprite/beamNoice.png");
-                coreLaser->SetMaterialType(9);
+                coreLaser->SetMaterialType(12);
                 coreLaser->SetUVTransform(uvMat);
 
                 coreLaser->SetColliderConfig(cConfig); // 当たり判定は持たないが設定だけ入れておく
@@ -426,6 +438,14 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animPhase_ = 65;
             animTimer_ = 0.0f;
             animStartRot_ = boss->GetRotation();
+
+            // ビーム終了：装甲ブロックの地形判定（kGround）を元に戻す
+            for (auto* block : armorBlocks) {
+                if (block) {
+                    block->SetCollisionAttribute(kGround);
+                }
+            }
+
             for (Object3d* beam : activeBeams_) {
                 if (beam) {
                     CollisionManager::GetInstance()->RemoveObject(beam); 
