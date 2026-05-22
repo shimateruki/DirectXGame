@@ -3,14 +3,27 @@
 #include "engine/utility/math/Math.h"
 #include <cmath> 
 #include <algorithm> // std::find
-#include "game/actor/CollisionConfig.h"
-#include "EffectObject3d.h"
 
 
 
 CollisionManager* CollisionManager::GetInstance() {
     static CollisionManager instance;
     return &instance;
+}
+
+namespace {
+    bool IsCollisionActive(Object3d* object) {
+        if (!object || !object->GetCollider()) {
+            return false;
+        }
+        if (object->GetColliderType() == ColliderType::kNone) {
+            return false;
+        }
+        if (object->GetCollisionAttribute() == 0 || object->GetCollisionMask() == 0) {
+            return false;
+        }
+        return true;
+    }
 }
 
 void CollisionManager::AddObject(Object3d* object) {
@@ -20,10 +33,12 @@ void CollisionManager::AddObject(Object3d* object) {
 }
 
 void CollisionManager::RemoveObject(Object3d* object) {
-    // ★修正: std::find ではなく std::list::remove を使う
-    // これにより、もし重複して登録されていても全て削除され、ダングリングポインタを防げます
-    objects_.remove(object);
-    needsStaticGridRebuild_ = true;
+    auto it = std::find(objects_.begin(), objects_.end(), object);
+    if (it != objects_.end()) {
+        objects_.erase(it);
+        // 静的グリッドの再構築が必要
+        needsStaticGridRebuild_ = true;
+    }
 }
 
 void CollisionManager::ClearObjects() {
@@ -93,7 +108,7 @@ void CollisionManager::BuildStaticGrid() {
 
     for (Object3d* obj : objects_) {
         // 静的なオブジェクトでなければスキップ
-        if (!obj->IsStatic()) {
+        if (!obj->IsStatic() || !IsCollisionActive(obj)) {
             continue;
         }
 
@@ -130,7 +145,7 @@ void CollisionManager::Update() {
 
     // 3. 「動的オブジェクト」だけを「動的グリッド (grid_)」に登録
     for (Object3d* objA : objects_) {
-        if (objA->IsStatic()) {
+        if (objA->IsStatic() || !IsCollisionActive(objA)) {
             continue;
         }
 
@@ -151,7 +166,7 @@ void CollisionManager::Update() {
 
     // 4. 「動的オブジェクト」を主語にして衝突チェック
     for (Object3d* objA : objects_) {
-        if (objA->IsStatic()) {
+        if (objA->IsStatic() || !IsCollisionActive(objA)) {
             continue;
         }
 
@@ -170,7 +185,7 @@ void CollisionManager::Update() {
                         std::list<Object3d*>& cellObjects = it_dynamic->second;
                         for (Object3d* objB : cellObjects) {
 
-                            if (objA == objB) continue;
+                            if (objA == objB || !IsCollisionActive(objB)) continue;
 
                             Object3d* pairA = (objA < objB) ? objA : objB;
                             Object3d* pairB = (objA < objB) ? objB : objA;
@@ -189,6 +204,7 @@ void CollisionManager::Update() {
                     if (it_static != staticGrid_.end()) {
                         std::list<Object3d*>& cellObjects = it_static->second;
                         for (Object3d* objB : cellObjects) {
+                            if (!IsCollisionActive(objB)) continue;
                             // (objB は静的なので、ペアチェックは不要)
                             CheckCollisionPair(objA, objB);
                         }
@@ -202,22 +218,13 @@ void CollisionManager::Update() {
 
 // 2つのオブジェクトの衝突をチェックする
 void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
+    if (!IsCollisionActive(objA) || !IsCollisionActive(objB)) {
+        return;
+    }
     // 衝突フィルタリング
     if (!((objA->GetCollisionMask() & objB->GetCollisionAttribute()) &&
         (objB->GetCollisionMask() & objA->GetCollisionAttribute()))) {
         return;
-    }
-
-    // ★ エフェクト（EffectObject3d）の多段ヒット防止処理
-    if (EffectObject3d* effectA = dynamic_cast<EffectObject3d*>(objA)) {
-        if (!effectA->CanHit(objB)) {
-            return;
-        }
-    }
-    if (EffectObject3d* effectB = dynamic_cast<EffectObject3d*>(objB)) {
-        if (!effectB->CanHit(objA)) {
-            return;
-        }
     }
 
     // 各オブジェクトのOnCollisionを呼び出す
@@ -329,6 +336,34 @@ float IntersectRayOBB(const Vector3& start, const Vector3& direction, const OBB&
     return tMin;
 }
 
+float IntersectRaySphere(const Vector3& start, const Vector3& direction, const Vector3& center, float radius) {
+    Vector3 m = start - center;
+    float a = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+    if (a <= 1e-6f) {
+        return std::numeric_limits<float>::max();
+    }
+
+    float b = 2.0f * (m.x * direction.x + m.y * direction.y + m.z * direction.z);
+    float c = (m.x * m.x + m.y * m.y + m.z * m.z) - radius * radius;
+    float discriminant = b * b - 4.0f * a * c;
+    if (discriminant < 0.0f) {
+        return std::numeric_limits<float>::max();
+    }
+
+    float sqrtDiscriminant = std::sqrt(discriminant);
+    float invDenominator = 1.0f / (2.0f * a);
+    float t0 = (-b - sqrtDiscriminant) * invDenominator;
+    float t1 = (-b + sqrtDiscriminant) * invDenominator;
+
+    if (t0 >= 0.0f) {
+        return t0;
+    }
+    if (t1 >= 0.0f) {
+        return 0.0f;
+    }
+    return std::numeric_limits<float>::max();
+}
+
 /// <summary>
 /// レイキャスト本体
 /// </summary>
@@ -340,45 +375,28 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
 
     // 【簡易版】登録されている全てのオブジェクトをチェック
     for (Object3d* object : objects_) {
+        if (!IsCollisionActive(object)) {
+            continue;
+        }
 
         // =========================================================
-        // ★ キャラクター（プレイヤー＆敵）の除外処理
+        // ★ プレイヤー本体だけでなく「子パーツ（武器やブロック等）」も
+        // 壁（レイキャストの障害物）として扱わないように完全に除外する！
         // =========================================================
-        bool isIgnoreObject = false;
+        bool isPlayerPart = false;
         Object3d* current = object;
         while (current) {
-            std::string className = current->GetClassName();
-            std::string name = current->GetName();
-
-            std::string cat = current->GetSaveCategory();
-
-            // ① プレイヤーカテゴリは常に除外
-            if (cat == "Player") {
-                isIgnoreObject = true;
+            // クラス名が "Player"、または名前(Name)に "Player" が含まれていたら除外
+            if (current->GetClassName() == "Player" ||
+                current->GetName().find("Player") != std::string::npos) {
+                isPlayerPart = true;
                 break;
             }
-
-            // ② エネミーカテゴリは、エネミーを探していないレイキャスト（地形探索など）の時だけ除外
-            if (cat == "Enemy") {
-                if (!(mask & kEnemy)) {
-                    isIgnoreObject = true;
-                    break;
-                }
-            }
-
-            // ③ その他、特定の名前（Blockなど）を持つオブジェクトの除外
-       /*     if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) {
-                if (!(mask & kEnemy)) {
-                    isIgnoreObject = true;
-                    break;
-                }
-            }*/
-
             current = current->GetParent();
         }
 
-        // 無視すべきオブジェクトだったら、このオブジェクトへのレイキャストはスキップ！
-        if (isIgnoreObject) {
+        // プレイヤーの一部だったら、このオブジェクトへのレイキャストはスキップ！
+        if (isPlayerPart) {
             continue;
         }
 
@@ -386,36 +404,52 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
         if (!((object->GetCollisionAttribute()) & mask)) {
             continue; // 対象外 
         }
-            // =========================================================
-               // (2) 形状判定 (AABB と OBB に対応)
-               // =========================================================
-            ColliderType colType = object->GetColliderType();
-            if (colType != ColliderType::kAABB && colType != ColliderType::kOBB && colType != ColliderType::kCylinder) {
-                continue; // 球や判定なしはスキップ
-            }
-
-            float distance = std::numeric_limits<float>::max();
-
-            // (3) 交差判定 (形状によって計算を分ける)
-            if (colType == ColliderType::kAABB) {
-                AABB aabb = object->GetAABB();
-                distance = IntersectRayAABB(start, direction, aabb);
-            }
-            else if (colType == ColliderType::kOBB) {
-                OBB obb = object->GetOBB(); 
-                distance = IntersectRayOBB(start, direction, obb);
-            }
-         
-            // (4) 一番近いものを採用
-            if (distance < closestHit.distance) {
-                closestHit.isHit = true;
-                closestHit.distance = distance;
-                closestHit.hitObject = object;
-                closestHit.hitPoint = start + direction * distance;
-
-
-            }
+        // =========================================================
+           // (2) 形状判定 (AABB と OBB に対応)
+           // =========================================================
+        ColliderType colType = object->GetColliderType();
+        if (colType != ColliderType::kAABB &&
+            colType != ColliderType::kOBB &&
+            colType != ColliderType::kSphere) {
+            continue; // 球や判定なしはスキップ
         }
 
-        return closestHit;
+        float distance = std::numeric_limits<float>::max();
+
+        // (3) 交差判定 (形状によって計算を分ける)
+        if (colType == ColliderType::kAABB) {
+            AABB aabb = object->GetAABB();
+            distance = IntersectRayAABB(start, direction, aabb);
+        }
+        else if (colType == ColliderType::kOBB) {
+            OBB obb = object->GetOBB();
+            distance = IntersectRayOBB(start, direction, obb);
+        }
+        else if (colType == ColliderType::kSphere) {
+            distance = IntersectRaySphere(
+                start,
+                direction,
+                object->GetWorldPosition(),
+                object->GetCollisionRadius());
+        }
+
+        // (4) 一番近いものを採用
+        if (distance < closestHit.distance) {
+            closestHit.isHit = true;
+            closestHit.distance = distance;
+            closestHit.hitObject = object;
+            closestHit.hitPoint = start + direction * distance;
+
+            if (colType == ColliderType::kSphere) {
+                Vector3 normal = closestHit.hitPoint - object->GetWorldPosition();
+                float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                if (length > 1e-6f) {
+                    closestHit.normal = normal / length;
+                }
+            }
+
+        }
     }
+
+    return closestHit;
+}
