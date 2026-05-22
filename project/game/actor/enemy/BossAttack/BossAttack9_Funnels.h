@@ -13,6 +13,7 @@ public:
     void Finalize() override;
 
 private:
+    BossCore* boss_ = nullptr;
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
     std::vector<Vector3> blockStartScale_;

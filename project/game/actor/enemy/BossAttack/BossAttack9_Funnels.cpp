@@ -11,6 +11,7 @@
 
 void BossAttack9_Funnels::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
+    boss_ = boss;
 
     blockStartPos_.clear();
     blockTargetPos_.clear();
@@ -388,6 +389,11 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 if (t >= 1.0f) {
                     funnelStates_[i] = 11; // 予兆へ
                     funnelTimers_[i] = 0.0f;
+
+                    // 自傷防止のため、ビームを撃つファンネルの判定を一時的に消す
+                    if (armorBlocks[i]) {
+                        armorBlocks[i]->SetCollisionAttribute(0);
+                    }
                 }
             }
             else if (funnelStates_[i] == 11) {
@@ -506,6 +512,11 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                     funnelStates_[i] = 0;
                     if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
                     if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+
+                    // ビーム終了：地形属性判定を元に戻す
+                    if (armorBlocks[i]) {
+                        armorBlocks[i]->SetCollisionAttribute(kGround);
+                    }
                 }
             }
         }
@@ -593,6 +604,14 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
 }
 
 void BossAttack9_Funnels::Finalize() {
+    if (boss_) {
+        for (auto* block : boss_->GetArmorBlocks()) {
+            if (block) {
+                block->SetCollisionAttribute(kGround);
+            }
+        }
+    }
+
     for (auto* laser : activeLasers_) {
         if (laser) {
             laser->SetScale({ 0.0f, 0.0f, 0.0f });
