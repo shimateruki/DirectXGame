@@ -146,6 +146,12 @@ void Model::CreateBoneBuffer() {
 // ボーン行列の更新 
 // ==========================================
 void Model::UpdateBoneBuffer() {
+    if (!modelData_.hasSkinning && !modelData_.usesNodeAnimationProxy) {
+        for (size_t i = 0; i < modelData_.bones.size(); ++i) {
+            boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
+        }
+        return;
+    }
     // ボーンごとに計算
     for (size_t i = 0; i < modelData_.bones.size(); ++i) {
         // ボーン名に対応するJointを探す
@@ -326,6 +332,9 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         }
 
         // ボーン解析
+        if (aiMesh->mNumBones > 0) {
+            modelData.hasSkinning = true;
+        }
         for (unsigned int b = 0; b < aiMesh->mNumBones; ++b) {
             aiBone* aiBone = aiMesh->mBones[b];
             std::string boneName = aiBone->mName.C_Str();
@@ -383,10 +392,11 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         Bone dummyBone;
         if (scene->mNumAnimations > 0 && scene->mAnimations[0]->mNumChannels > 0) {
             dummyBone.name = scene->mAnimations[0]->mChannels[0]->mNodeName.C_Str();
+            modelData.usesNodeAnimationProxy = true;
         } else if (scene->mRootNode && scene->mRootNode->mNumChildren > 0) {
-            dummyBone.name = scene->mRootNode->mChildren[0]->mName.C_Str();
+            dummyBone.name = "__StaticMeshIdentityBone";
         } else {
-            dummyBone.name = "DummyBone";
+            dummyBone.name = "__StaticMeshIdentityBone";
         }
         Math math;
         dummyBone.inverseBindPoseMatrix = math.MakeIdentity4x4();

@@ -127,6 +127,8 @@ public:
         std::vector<Node> nodes;
         std::vector<Bone> bones;
         std::vector<Animation> animations;
+        bool hasSkinning = false;
+        bool usesNodeAnimationProxy = false;
         Skeleton skeleton; // ★追加
     };
 

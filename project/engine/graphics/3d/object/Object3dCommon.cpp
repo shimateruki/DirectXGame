@@ -134,7 +134,7 @@ void Object3dCommon::CreatePipelineStates() {
     builder.SetRootSignature(rootSignature_.Get());
     builder.SetInputLayout(inputLayout, _countof(inputLayout));
     builder.SetShaders(vsBlob.Get(), psBlob.Get());
-    builder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
+    builder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
     // レンダーターゲットと深度の設定 (HDR用 16bit Float + Depth 24bit)
     DXGI_FORMAT rtvFormats[] = { DXGI_FORMAT_R16G16B16A16_FLOAT };
@@ -160,7 +160,7 @@ void Object3dCommon::CreatePipelineStates() {
 
     // ★ 影なのでピクセルシェーダーは不要！
     shadowBuilder.SetShaders(shadowVsBlob.Get(), nullptr);
-    shadowBuilder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
+    shadowBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
     // ★ 影のギザギザノイズ（シャドウアクネ）を防ぐ設定を一撃で！
     shadowBuilder.SetDepthBias(10000, 0.0f, 1.0f);
