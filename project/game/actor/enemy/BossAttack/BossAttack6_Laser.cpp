@@ -8,6 +8,7 @@
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include <CollisionManager.h>
+#include "CollisionConfig.h"
 #include "GPUParticleManager.h"
 
 void BossAttack6_Laser::Finalize() {
@@ -50,9 +51,8 @@ void BossAttack6_Laser::Initialize(BossCore* boss) {
     // ==========================================
     activeBeams_.clear();
     activeCoreBeams_.clear();
-
-    // ★ 修正：ここに残っていた「古いレーザー生成コード」は
-    // クラッシュの原因になるため綺麗に削除しました！
+    laserLengths_.clear();
+    laserDelayTimers_.clear();
 
     animPhase_ = 60;
 }
@@ -242,9 +242,12 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 laser->SetParent(armorBlocks[i]);
                 float rotX90 = std::numbers::pi_v<float> / 2.0f;
                 laser->SetRotation({ rotX90, 0.0f, 0.0f });
+                laser->SetTranslate({ 0.0f, 0.0f, 80.0f }); // 前方に出す
                 laser->GetTransform()->isQuaternionMaster = false;
 
                 activeBeams_.push_back(laser);
+                laserLengths_.push_back(160.0f);
+                laserDelayTimers_.push_back(0.0f);
 
                 // ==========================================
                 // 2. 白いコア（内側のビーム）の生成
@@ -277,6 +280,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
 
                 coreLaser->SetParent(armorBlocks[i]);
                 coreLaser->SetRotation({ rotX90, 0.0f, 0.0f });
+                coreLaser->SetTranslate({ 0.0f, 0.0f, 80.0f }); // 前方に出す
                 coreLaser->GetTransform()->isQuaternionMaster = false;
 
                 activeCoreBeams_.push_back(coreLaser);
@@ -324,11 +328,56 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             Object3d* beam = activeBeams_[i];
             Object3d* coreBeam = (i < activeCoreBeams_.size()) ? activeCoreBeams_[i] : nullptr;
 
+            // ★ レイキャストで障害物までの距離を測る
+            float maxDistance = 160.0f;
+            float actualDistance = maxDistance;
+            float parentScaleZ = 1.0f;
+            if (i < armorBlocks.size() && armorBlocks[i]) {
+                Vector3 startPos = armorBlocks[i]->GetWorldPosition();
+                Matrix4x4 blockWorld = armorBlocks[i]->GetWorldMatrix();
+                Vector3 dir = { blockWorld.m[2][0], blockWorld.m[2][1], blockWorld.m[2][2] }; // Z軸
+                
+                parentScaleZ = Math::Length(dir);
+                if (parentScaleZ < 0.0001f) parentScaleZ = 1.0f;
+
+                dir = Math::Normalize(dir);
+                
+                RaycastHit hit = CollisionManager::GetInstance()->Raycast(startPos, dir, maxDistance, kGround | kMapBlock);
+                if (hit.isHit) {
+                    actualDistance = hit.distance;
+                }
+            }
+
+            // ★ 追加: ヒット距離を使った遅延付きの長さ復元処理
+            if (i < laserLengths_.size()) {
+                if (actualDistance < laserLengths_[i]) {
+                    // より近い障害物に当たった場合は即座に縮める＆タイマーリセット
+                    laserLengths_[i] = actualDistance;
+                    laserDelayTimers_[i] = 0.3f; // 0.3秒間キープ
+                } else {
+                    // 障害物が無くなった（または遠ざかった）場合
+                    if (laserDelayTimers_[i] > 0.0f) {
+                        laserDelayTimers_[i] -= deltaTime;
+                    } else {
+                        // タイマー終了後、徐々に長さを戻す (秒間 300 ユニット)
+                        laserLengths_[i] += 300.0f * deltaTime;
+                        if (laserLengths_[i] > actualDistance) {
+                            laserLengths_[i] = actualDistance;
+                        }
+                    }
+                }
+                actualDistance = laserLengths_[i];
+            }
+
+            float beamScaleY = (actualDistance / 2.0f) / parentScaleZ;
+            float beamOffsetZ = beamScaleY;
+
             static Math math;
 
             // --- 1. 外側の赤いオーラ ---
             if (beam) {
-                beam->SetScale({ currentThickness, 80.0f, currentThickness });
+                beam->SetScale({ currentThickness, beamScaleY, currentThickness });
+                beam->SetTranslate({ 0.0f, 0.0f, beamOffsetZ });
                 beam->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                 beam->SetCollisionAttribute(kEnemyAttack);
                 beam->SetCollisionMask(kPlayer);
@@ -344,7 +393,8 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             if (coreBeam) {
                 // コアはオーラの 60% の太さにする
                 float coreThickness = currentThickness * 0.6f;
-                coreBeam->SetScale({ coreThickness, 80.0f, coreThickness });
+                coreBeam->SetScale({ coreThickness, beamScaleY, coreThickness });
+                coreBeam->SetTranslate({ 0.0f, 0.0f, beamOffsetZ });
                 coreBeam->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f }); // 真っ白
                 
                 // コアは当たり判定を持たない（オーラに任せる）

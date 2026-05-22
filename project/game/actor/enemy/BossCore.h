@@ -211,6 +211,7 @@ public:
 
 
     // --- public: に追加 ---
+    void TriggerCrashStun();   // 自爆スタンの誘発
     void StartDeathSequence(); // 死亡演出の開始
     void ShowCrackedCore();    // 段階2：亀裂モデルへの差し替え
 
@@ -382,4 +383,8 @@ private:
     
     static constexpr float kBaseSpeedMultiplier = 1.5f; // ボス固有の速度倍率
     BossAttackParams attackParams_;
+
+    // 自爆スタン用のフラグとタイマー
+    bool isCrashStun_ = false;
+    float crashStunTimer_ = 0.0f;
 };

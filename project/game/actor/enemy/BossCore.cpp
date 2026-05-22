@@ -10,6 +10,8 @@
 #include <ctime>
 #include <cstdlib>
 #include "GPUParticleManager.h"
+#include <algorithm>
+#undef max
 
 #include "CameraManager.h"
 #include "CameraEditor.h"
@@ -985,7 +987,9 @@ void BossCore::Update(float deltaTime) {
             if (currentAttack_) {
                 currentAttack_->Update(this, actionDelta); // 攻撃モーションは倍速
 
-                if (currentAttack_->IsFinished()) {
+                // ★ TriggerCrashStun() 等でステートが Weak に変わった場合、
+                //    currentAttack_ がリセット済みの可能性があるため再チェック
+                if (currentAttack_ && currentAttack_->IsFinished()) {
                     currentAttack_.reset();
 
                     if (isFinalPhase_) {
@@ -1662,17 +1666,27 @@ void BossCore::UpdateIdle(float deltaTime) {
 
 void BossCore::UpdateWeak(float deltaTime) {
     float actionDelta = deltaTime * kBaseSpeedMultiplier;
-    float duration = attackParams_.stunDuration;
+    float duration = std::max(0.0f, attackParams_.stunDuration - 2.0f); // Reduce stun time by 2 seconds
     float wakeUpStart = duration > 2.0f ? duration - 2.0f : duration * 0.666f;
     float wakeUpDuration = duration - wakeUpStart;
 
-    // スタンゲージ（barrierHp_）を duration 秒かけて0からmaxBarrierHp_まで回復（実時間で回復）
-    barrierHp_ += (maxBarrierHp_ / duration) * deltaTime;
-    if (barrierHp_ > maxBarrierHp_) {
-        barrierHp_ = maxBarrierHp_;
+    if (isCrashStun_) {
+        // 自爆スタンの場合はバリアHPを変動させず、専用タイマーを進める
+        crashStunTimer_ += deltaTime;
+        if (crashStunTimer_ > duration) {
+            crashStunTimer_ = duration;
+        }
+        animTimer_ = crashStunTimer_;
     }
-    // ゲージの回復進捗に合わせてアニメーションタイマー(0.0s〜duration)を逆算同期
-    animTimer_ = (barrierHp_ / maxBarrierHp_) * duration;
+    else {
+        // スタンゲージ（barrierHp_）を duration 秒かけて0からmaxBarrierHp_まで回復（実時間で回復）
+        barrierHp_ += (maxBarrierHp_ / duration) * deltaTime;
+        if (barrierHp_ > maxBarrierHp_) {
+            barrierHp_ = maxBarrierHp_;
+        }
+        // ゲージの回復進捗に合わせてアニメーションタイマー(0.0s〜duration)を逆算同期
+        animTimer_ = (barrierHp_ / maxBarrierHp_) * duration;
+    }
 
     // --- コア本体の落下・転がり（コロン）・復帰 ---
     Vector3 bossPos = GetTranslate();
@@ -1796,6 +1810,8 @@ void BossCore::UpdateWeak(float deltaTime) {
     // --- duration 秒経過でステート復帰 ---
     if (animTimer_ >= duration) {
         animTimer_ = 0.0f;
+        isCrashStun_ = false;
+        crashStunTimer_ = 0.0f;
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         SetColor(greenColor_);
         defaultColor_ = greenColor_;
@@ -2030,6 +2046,74 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
         SetRotation({ 0.0f, GetRotation().y, 0.0f });
         ChangeState(State::Weak);
     }
+}
+
+void BossCore::TriggerCrashStun() {
+    DebugConsole::GetInstance()->AddLog("★★★ Boss CRASH STUN! ★★★");
+    
+    // バリアHP（barrierHp_）は変更せず、現在の値を維持する！
+
+    // ★ currentAttack_.reset() でダウン時の攻撃を強制終了！
+    //    呼び出し元（BossAttack1_Rush::Update 等）は TriggerCrashStun() の直後に
+    //    即座に return するため、this (攻撃オブジェクト) が破棄されても安全。
+    if (currentAttack_) currentAttack_.reset();
+    animTimer_ = 0.0f;
+    // ★ 予測線を完全に消す（突進終了時と同じ方法）
+    if (auto* warning = GetWarningArea()) {
+        warning->SetScale({ 0.0f, 0.0f, 0.0f });
+        warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    }
+    isCrashStun_ = true;
+    crashStunTimer_ = 0.0f;
+    flyingBlocks_.clear();
+
+    blockStartPos_.clear();
+    blockTargetPos_.clear();
+    blockStartRot_.clear();
+    blockTargetRot_.clear();
+
+    Vector3 bossWorldPos = GetWorldPosition();
+
+    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+        Object3d* block = armorBlocks_[i];
+        if (block) {
+            // まずブロックの現在のワールド座標とワールド回転を取得
+            Vector3 startWorldPos = block->GetWorldPosition();
+            Vector3 startWorldRot = block->GetRotation(); // ボス本体がまだ回転していないため、GetRotation()がそのままワールド回転と一致します。
+
+            // 親子関係を解除（ワールド空間へ移行）
+            block->SetParent(nullptr);
+            block->SetTranslate(startWorldPos);
+            block->SetRotation(startWorldRot);
+            block->UpdateWorldMatrix();
+
+            blockStartPos_.push_back(startWorldPos);
+            blockStartRot_.push_back(startWorldRot);
+
+            // 散らばり先のターゲット座標（ワールド空間）を計算
+            float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
+            float distance = 5.0f + (static_cast<float>(rand()) / RAND_MAX) * 8.0f;
+            float height = 0.5f; // 地面の高さに平らに置く
+
+            Vector3 scatterPos = {
+                bossWorldPos.x + std::cos(angle) * distance,
+                height,
+                bossWorldPos.z + std::sin(angle) * distance
+            };
+            blockTargetPos_.push_back(scatterPos);
+
+            // 散らばり先のターゲット回転（ワールド空間）
+            Vector3 scatterRot = {
+                0.0f,
+                (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>,
+                0.0f
+            };
+            blockTargetRot_.push_back(scatterRot);
+        }
+    }
+
+    SetRotation({ 0.0f, GetRotation().y, 0.0f });
+    ChangeState(State::Weak);
 }
 
 void BossCore::StartDeathSequence() {

@@ -4,6 +4,7 @@
 #include "./easing.h"
 #include "SceneManager.h"
 #include "engine/system/collision/CollisionManager.h"
+#include "CollisionConfig.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -16,6 +17,8 @@ void BossAttack9_Funnels::Initialize(BossCore* boss) {
     blockStartScale_.clear();
     activeLasers_.clear();
     activeCoreLasers_.clear();
+    laserLengths_.clear();
+    laserDelayTimers_.clear();
     funnelStates_.clear();
     funnelTimers_.clear();
     funnelFireCounts_.clear();
@@ -149,6 +152,8 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 laser->GetTransform()->isQuaternionMaster = false;
 
                 activeLasers_.push_back(laser);
+                laserLengths_.push_back(160.0f);
+                laserDelayTimers_.push_back(0.0f);
 
                 // ==========================================
                 // 2. 白いコア（内側のビーム）の生成
@@ -298,6 +303,50 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 block->GetTransform()->isQuaternionMaster = false;
             };
 
+            // ★ レーザーのレイキャスト処理 (フェーズ11〜13で使う)
+            float maxDist = 160.0f;
+            float actualDist = maxDist;
+            float parentScaleZ = 1.0f;
+            if (armorBlocks[i] && (funnelStates_[i] >= 11 && funnelStates_[i] <= 13)) {
+                Vector3 startPos = armorBlocks[i]->GetWorldPosition();
+                Matrix4x4 blockWorld = armorBlocks[i]->GetWorldMatrix();
+                Vector3 dir = { blockWorld.m[2][0], blockWorld.m[2][1], blockWorld.m[2][2] };
+                
+                parentScaleZ = Math::Length(dir);
+                if (parentScaleZ < 0.0001f) parentScaleZ = 1.0f;
+
+                dir = Math::Normalize(dir);
+                
+                RaycastHit hit = CollisionManager::GetInstance()->Raycast(startPos, dir, maxDist, kGround | kMapBlock);
+                if (hit.isHit) {
+                    actualDist = hit.distance;
+                }
+            }
+
+            // ★ 追加: ヒット距離を使った遅延付きの長さ復元処理
+            if (i < laserLengths_.size()) {
+                if (actualDist < laserLengths_[i]) {
+                    // より近い障害物に当たった場合は即座に縮める＆タイマーリセット
+                    laserLengths_[i] = actualDist;
+                    laserDelayTimers_[i] = 0.3f; // 0.3秒間キープ
+                } else {
+                    // 障害物が無くなった（または遠ざかった）場合
+                    if (laserDelayTimers_[i] > 0.0f) {
+                        laserDelayTimers_[i] -= deltaTime;
+                    } else {
+                        // タイマー終了後、徐々に長さを戻す (秒間 300 ユニット)
+                        laserLengths_[i] += 300.0f * deltaTime;
+                        if (laserLengths_[i] > actualDist) {
+                            laserLengths_[i] = actualDist;
+                        }
+                    }
+                }
+                actualDist = laserLengths_[i];
+            }
+
+            float scaleY = (actualDist / 2.0f) / parentScaleZ;
+            float offsetZ = scaleY;
+
             // 状態に応じた処理
             if (funnelStates_[i] == 0) {
                 // 0: デコイ待機
@@ -346,8 +395,16 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 funnelTimers_[i] += deltaTime;
                 
                 // 予兆はずっと非常に細い赤い線（スナイパーレーザー）のまま
-                if (laser) { laser->SetScale({ 0.02f, 80.0f, 0.02f }); laser->SetCollisionAttribute(0); }
-                if (coreLaser) { coreLaser->SetScale({ 0.0f, 80.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                if (laser) { 
+                    laser->SetScale({ 0.02f, scaleY, 0.02f }); 
+                    laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetCollisionAttribute(0); 
+                }
+                if (coreLaser) { 
+                    coreLaser->SetScale({ 0.0f, scaleY, 0.0f }); 
+                    coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    coreLaser->SetCollisionAttribute(0); 
+                }
 
                 // --- 子ブロック（Shard）の展開演出 ---
                 float expandT = std::min(funnelTimers_[i] / 1.2f, 1.0f);
@@ -386,11 +443,16 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 funnelTimers_[i] += deltaTime;
                 
                 if (laser) {
-                    laser->SetScale({ 1.0f, 80.0f, 1.0f });
+                    laser->SetScale({ 1.0f, scaleY, 1.0f });
+                    laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     laser->SetCollisionAttribute(kEnemyAttack);
                     laser->SetAttackDamage(boss->GetAttackParams().damageFunnels);
                 }
-                if (coreLaser) { coreLaser->SetScale({ 0.4f, 80.0f, 0.4f }); coreLaser->SetCollisionAttribute(0); }
+                if (coreLaser) { 
+                    coreLaser->SetScale({ 0.4f, scaleY, 0.4f }); 
+                    coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    coreLaser->SetCollisionAttribute(0); 
+                }
 
                 // --- 子ブロック（Shard）の展開を維持（少し震わせる） ---
                 float shake = std::sin(funnelTimers_[i] * 50.0f) * 0.1f;
@@ -416,8 +478,16 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 float t = std::min(funnelTimers_[i] / 0.5f, 1.0f);
                 float shrinkT = 1.0f - t;
                 
-                if (laser) { laser->SetScale({ 1.0f * shrinkT, 80.0f, 1.0f * shrinkT }); laser->SetCollisionAttribute(0); }
-                if (coreLaser) { coreLaser->SetScale({ 0.4f * shrinkT, 80.0f, 0.4f * shrinkT }); coreLaser->SetCollisionAttribute(0); }
+                if (laser) { 
+                    laser->SetScale({ 1.0f * shrinkT, scaleY, 1.0f * shrinkT }); 
+                    laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetCollisionAttribute(0); 
+                }
+                if (coreLaser) { 
+                    coreLaser->SetScale({ 0.4f * shrinkT, scaleY, 0.4f * shrinkT }); 
+                    coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    coreLaser->SetCollisionAttribute(0); 
+                }
 
                 // --- 子ブロック（Shard）の収束演出 ---
                 for (auto* child : armorBlocks[i]->GetChildren()) {
