@@ -127,7 +127,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 laser->SetEmissive(5.0f);
                 laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
                 laser->SetTexture("Resources/sprite/beamNoice.png");
-                laser->SetMaterialType(9);
+                laser->SetMaterialType(12);
 
                 static Math math;
                 Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
@@ -175,7 +175,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetEmissive(8.0f);
                 coreLaser->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
                 coreLaser->SetTexture("Resources/sprite/beamNoice.png");
-                coreLaser->SetMaterialType(9);
+                coreLaser->SetMaterialType(12);
                 coreLaser->SetUVTransform(uvMat);
 
                 coreLaser->SetColliderConfig(cConfig);

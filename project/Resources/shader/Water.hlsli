@@ -20,6 +20,20 @@ cbuffer cbWaterParam : register(b1)
 cbuffer cbMaterial : register(b2)
 {
     float4 color;
+    int enableLighting;
+    float3 padding1;
+    matrix uvTransform;
+    int selectedLighting;
+    float shininess;
+    int materialType;
+    float roughness;
+    float metallic;
+    
+    int enableNormalMap;
+    int enableEnvMap;
+    float envIntensity;
+    float emissive;
+    float padding2;
 };
 
 struct VSInput

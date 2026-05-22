@@ -75,6 +75,23 @@ float4 main(VSOutput input) : SV_TARGET
     float foam = step(0.6f, waveNoise) * foamMask;
 
     float4 finalColor = color;
+    if (materialType == 12)
+    {
+        // Beam specific rendering:
+        // Apply refraction distortion to make the beam shimmer, but skip water-specific
+        // features such as sky reflection color, underwater caustics, and foam.
+        finalColor.rgb = lerp(refractionColor, finalColor.rgb, waterDepthFactor);
+        finalColor.a = lerp(0.0f, 1.0f, saturate(waterDepthFactor * 4.0f));
+        finalColor.rgb = (finalColor.rgb * diffuse) + (float3(1.0f, 1.0f, 1.0f) * specular * 1.5f);
+        
+        // Emissive glow boost for beams
+        if (emissive > 1.0f)
+        {
+            finalColor.rgb += color.rgb * (emissive - 1.0f);
+        }
+        return finalColor;
+    }
+
     finalColor.rgb = lerp(refractionColor, finalColor.rgb, waterDepthFactor);
     finalColor.a = lerp(0.0f, 1.0f, saturate(waterDepthFactor * 4.0f));
     finalColor.rgb = (finalColor.rgb * diffuse) + (float3(1.0f, 1.0f, 1.0f) * specular * 1.5f);
