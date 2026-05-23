@@ -5,6 +5,7 @@
 #include "Event.h" 
 #include "Player.h"
 #include "GamePlayScene.h"
+#include "PreviewScene.h"
 #include "GameDataManager.h"
 #include "SceneManager.h"
 #include "GPUParticleManager.h"
@@ -73,9 +74,10 @@ void GameRule::Initialize(BaseScene* scene) {
 
         case EventType::StarCoin:
         {
+            int coinIdx = objectHit->GetTargetID();
+
             if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
                 // TargetID をコインの番号 (0, 1, 2) として扱う
-                int coinIdx = objectHit->GetTargetID();
                 gps->CollectStarCoin(coinIdx);
 
                 // 演出を開始して消す (Object3d側で上昇回転する)
@@ -85,6 +87,12 @@ void GameRule::Initialize(BaseScene* scene) {
                 GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
 
                 DebugConsole::GetInstance()->AddLog("Star Coin " + std::to_string(coinIdx) + " Collected!");
+            }
+            else if (PreviewScene* preview = dynamic_cast<PreviewScene*>(scene_)) {
+                preview->CollectStarCoin(coinIdx);
+                objectHit->StartCollectionAnimation();
+                GPUParticleManager::GetInstance()->Emit("star_sparkleGet", objectHit->GetWorldPosition());
+                DebugConsole::GetInstance()->AddLog("Preview Star Coin " + std::to_string(coinIdx) + " Collected!");
             }
         }
         break;

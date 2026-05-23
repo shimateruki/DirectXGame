@@ -423,6 +423,22 @@ void PreviewScene::DrawImGui() {
             SceneManager::GetInstance()->ChangeScene("PREVIEW");
         }
     }
+
+    if (ImGui::CollapsingHeader(ICON_FA_HEART " Life / Coin Preview", ImGuiTreeNodeFlags_DefaultOpen)) {
+        int lives = GameDataManager::GetInstance()->GetLives();
+        int coins = GameDataManager::GetInstance()->GetCoins();
+        ImGui::Text(ICON_FA_HEART " Remaining Lives: %d", lives);
+        ImGui::Text(ICON_FA_COINS " Coins: %d / 100", coins);
+        if (ImGui::Button("Add 100 Coins (1UP Test)")) {
+            GameDataManager::GetInstance()->AddCoin(100);
+        }
+        if (ImGui::Button("Reset Lives to 3")) {
+            GameDataManager::GetInstance()->ResetLives();
+        }
+        if (ImGui::Button("Reset Coins")) {
+            GameDataManager::GetInstance()->ResetCoins();
+        }
+    }
     
     ImGui::Separator();
     ImGui::TextDisabled("※PreviewScene is a perfect clone of GamePlayScene.");
