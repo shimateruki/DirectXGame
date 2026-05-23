@@ -216,7 +216,7 @@ void InspectorWindow::Draw() {
                                 "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
                                 "ホログラム (Hologram)", "消滅 (Dissolve)", "マグマ・覚醒 (Emissive)",
                                 "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
-                                "Tiling Padding", "Water", "Magma",
+                                "Tiling Padding", "Beam", "Water", "Magma",
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
@@ -259,7 +259,7 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
-                if (currentMatType == 9 || currentMatType == 10) {
+                if (currentMatType == 10 || currentMatType == 11) {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ICON_FA_WATER " --- Fluid Settings ---");
                     auto* waterData = selectedObject->GetWaterParamData();
