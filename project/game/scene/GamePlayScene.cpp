@@ -1568,7 +1568,7 @@ void GamePlayScene::Draw() {
             continue; // プレイヤーの一部なら描画をスキップ！
 
         if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 ||
-            obj->GetMaterialType() == 9 || obj->GetMaterialType() == 10|| obj->GetMaterialType() == 11 || obj->GetMaterialType() == 12)
+            obj->GetMaterialType() == 10 || obj->GetMaterialType() == 11)
             continue;
 
         totalCount++;
@@ -1657,12 +1657,10 @@ void GamePlayScene::Draw() {
         if (isPlayerPart)
             continue;
 
-        if (obj->GetMaterialType() == 9 && IsVisible(obj.get())) {
+        if (obj->GetMaterialType() == 10 && IsVisible(obj.get())) {
             obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-        } else if (obj->GetMaterialType() == 10 && IsVisible(obj.get())) {
+        } else if (obj->GetMaterialType() == 11 && IsVisible(obj.get())) {
             obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-        } else if (obj->GetMaterialType() == 12 && IsVisible(obj.get())) {
-            obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
         }
     }
 
