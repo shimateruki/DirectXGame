@@ -270,6 +270,9 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     isFinalPhase_ = false;
     isWaitingForDeath_ = false;
     isWaitingForFinisher_ = false;
+    isFinisherFalling_ = false;
+    finisherFallVelocity_ = 0.0f;
+    finisherBounceCount_ = 0;
     deathPhase_ = 0;
     isCompletelyDead_ = false;
     isShardSpawnRequested_ = false;
@@ -310,7 +313,11 @@ void BossCore::Update(float deltaTime) {
         if (input->IsKeyTriggered(DIK_5)) triggerAttack = 5;
         if (input->IsKeyTriggered(DIK_6)) triggerAttack = 6;
         if (input->IsKeyTriggered(DIK_7)) triggerAttack = 7;
-        if (input->IsKeyTriggered(DIK_8)) triggerAttack = 8;
+        if (input->IsKeyTriggered(DIK_8)) {
+            if (param_.has_value()) {
+                param_->hp = 1.0f; // 8キーを押したらHPを1にする
+            }
+        }
         if (input->IsKeyTriggered(DIK_Y)) triggerAttack = 9; // Yキーでファンネル攻撃！
 
         // 9キーで即座にボスを爆散させるデバッグ機能！
@@ -380,6 +387,28 @@ void BossCore::Update(float deltaTime) {
 
     // ベースクラスの更新
     BaseEnemy::Update(actionDelta);
+
+    // ==========================================
+    // ★ HPが1以下の時の最終奥義発動チェック
+    // ==========================================
+    if (param_.has_value() && param_->hp <= 1.0f) {
+        if (!isFinalPhase_) {
+            param_->hp = 1.0f;
+            isFinalPhase_ = true;
+            DebugConsole::GetInstance()->AddLog("[LAST STAND] ボスが最後の大技を準備している…！！");
+
+            if (currentAttack_) {
+                currentAttack_->Finalize();
+                currentAttack_.reset();
+            }
+            ChangeState(State::Idle);   // 一度Idle状態にしてパラメータ等をリセット
+            ChangeState(State::Attack); // 自動で最終奥義(ID: 8)が選ばれる
+        }
+        else if (!isWaitingForFinisher_ && deathPhase_ == 0) {
+            // 大技の最中などは絶対に死なない！HP1を維持！
+            param_->hp = 1.0f;
+        }
+    }
 
     // ==========================================
     // ★ HP半分時の演出更新 (崩壊・復帰・強化シークエンス)
@@ -993,12 +1022,7 @@ void BossCore::Update(float deltaTime) {
                     currentAttack_.reset();
 
                     if (isFinalPhase_) {
-                        // ====================================================
-                        // ★ 変更：大技が終わったら「トドメ待ち状態」にする
-                        // ====================================================
-                        isWaitingForFinisher_ = true;
-                        DebugConsole::GetInstance()->AddLog("[CHANCE] ボスが力尽きた！トドメを刺せ！！");
-                        ChangeState(State::Idle); // 隙だらけの待機へ
+                        ChangeState(State::Idle); 
                     }
                     else {
                         ChangeState(State::Idle);
@@ -1108,7 +1132,7 @@ void BossCore::ChangeState(State nextState) {
 
     if (state_ == State::Idle) {
         hasResetColorPreAttack_ = false;
-        if (!isWaitingForDeath_ && !isWaitingForFinisher_) {
+        if (!isWaitingForDeath_) {
             SetColor(greenColor_);
             defaultColor_ = greenColor_;
         }
@@ -1278,8 +1302,8 @@ void BossCore::StartAppearance() {
 }
 
 void BossCore::TakeBodyDamage(float damage) {
-    // 既に爆散演出中、またはHP半分演出中は無敵
-    if (deathPhase_ != 0 || isHpHalfEventActive_) return;
+    // 既に爆散演出中、またはHP半分演出中、またはトドメ落下中は無敵
+    if (deathPhase_ != 0 || isHpHalfEventActive_ || isFinisherFalling_) return;
 
     // 被弾前の色を保存
     SaveOriginalColors();
@@ -1293,15 +1317,6 @@ void BossCore::TakeBodyDamage(float damage) {
         param_ = EntityParameter();
         param_->hp = 1000.0f;
         param_->maxHp = 1000.0f;
-    }
-
-    // ====================================================
-    // ★ 追加：トドメ待ち状態の時に殴られたら、ついに爆散演出スタート！
-    // ====================================================
-    if (isWaitingForFinisher_) {
-        param_->hp = 0.0f;
-        StartDeathSequence();
-        return;
     }
 
     float halfHp = param_->maxHp * 0.5f;
@@ -1501,20 +1516,10 @@ void BossCore::TakeBodyDamage(float damage) {
 
     param_->hp = nextHp;
 
+    // HPが0以下になったら死亡演出を開始
     if (param_->hp <= 0.0f) {
-        if (!isFinalPhase_) {
-            // 初めてHP0になったら、1で耐えて最終攻撃(ID: 8)へ
-            param_->hp = 1.0f;
-            isFinalPhase_ = true;
-            DebugConsole::GetInstance()->AddLog("[LAST STAND] ボスが最後の大技を準備している…！！");
-
-            if (currentAttack_) currentAttack_.reset();
-            ChangeState(State::Attack); // 自動で ID:8 が選ばれます
-        }
-        else {
-            // 大技の最中は絶対に死なない！HP1を維持！
-            param_->hp = 1.0f;
-        }
+        param_->hp = 0.0f;
+        StartDeathSequence();
     }
 }
 
@@ -1523,30 +1528,75 @@ void BossCore::TakeBodyDamage(float damage) {
 // =================================================================
 
 void BossCore::UpdateIdle(float deltaTime) {
+    if (isWaitingForFinisher_) {
+        // 周りのブロックを念のため消去（通常は消えているはず）
+        for (Object3d* block : armorBlocks_) {
+            if (block) {
+                block->SetScale({ 0.0f, 0.0f, 0.0f });
+                block->SetCollisionAttribute(0);
+            }
+        }
+
+        if (isFinisherFalling_) {
+            // 落下物理
+            float gravity = 40.0f;
+            finisherFallVelocity_ -= gravity * deltaTime;
+
+            Vector3 pos = GetTranslate();
+            pos.y += finisherFallVelocity_ * deltaTime;
+
+            float groundY = 0.8f;
+            if (pos.y <= groundY) {
+                pos.y = groundY;
+
+                // バウンド処理
+                if (finisherBounceCount_ < 2) {
+                    finisherFallVelocity_ = -finisherFallVelocity_ * 0.4f; // 反発係数0.4
+                    finisherBounceCount_++;
+
+                    // 着地時の土煙エフェクト
+                    GPUParticleManager::GetInstance()->Emit("BossHitSpark", pos, Math::MakeIdentity4x4());
+                } else {
+                    pos.y = groundY;
+                    finisherFallVelocity_ = 0.0f;
+                    isFinisherFalling_ = false; // 落下終了
+                    DebugConsole::GetInstance()->AddLog("【トドメ待ち】 ボスが着地した！プレイヤーよ、とどめを刺せ！");
+                }
+            }
+            SetTranslate(pos);
+
+            // 落下中の回転（ぐるぐる回りながら落ちる）
+            Vector3 rot = GetRotation();
+            rot.y += 10.0f * deltaTime;
+            rot.x += 5.0f * deltaTime;
+            SetRotation(rot);
+        }
+        else {
+            // 着地後の弱々しい待機モーション（ピクピク動く、またはゆっくり明滅する）
+            float time = s_globalIdleTimer * 2.0f;
+            float hover = 0.8f + std::sin(time * 3.0f) * 0.1f; // 低い位置でピクピク
+            Vector3 pos = GetTranslate();
+            pos.y = hover;
+            pos.x = 0.0f;
+            pos.z = 0.0f; // 中央固定
+            SetTranslate(pos);
+
+            // 弱々しい回転
+            SetRotation({ 0.3f, std::sin(time * 0.5f) * 0.5f, 0.0f });
+
+            // 赤と黒の弱々しい明滅
+            float pulse = (std::sin(time * 4.0f) + 1.0f) * 0.5f;
+            SetColor({ 1.0f, pulse * 0.2f, pulse * 0.2f, 1.0f });
+        }
+        return;
+    }
+
     if (isWaitingForDeath_) {
         // (トドメ待ちのボロボロ処理…そのまま)
         return;
     }
 
-    // ====================================================
-    // ★ 追加：トドメ待ち状態（ボロボロ状態）の演出
-    // ====================================================
-    if (isWaitingForFinisher_) {
-        float actionDelta = deltaTime * kBaseSpeedMultiplier;
-        SetColor({ 0.3f, 0.3f, 0.3f, 1.0f }); // 暗くする
-        float shake = std::sin(s_globalIdleTimer * 40.0f) * 0.05f;
-        SetTranslate({ GetTranslate().x + shake, GetTranslate().y, GetTranslate().z }); // 震える
 
-        for (Object3d* block : armorBlocks_) {
-            if (block) {
-                Vector3 pos = block->GetTranslate();
-                if (pos.y > 0.0f) pos.y -= 10.0f * actionDelta; // ブロックを落とす
-                block->SetTranslate(pos);
-                SetBlockColor(block, { 0.2f, 0.2f, 0.2f, 1.0f });
-            }
-        }
-        return; // これ以上何もしない
-    }
 
     // ====================================================
     // フェーズ1（咆哮開始）になってから、初めて合体タイマーを進める
@@ -1561,7 +1611,7 @@ void BossCore::UpdateIdle(float deltaTime) {
     // ====================================================
     // コア本体の待機モーション（鼓動と浮遊）
     // ====================================================
-    if (isBattleStarted_ && !isWaitingForFinisher_) {
+    if (isBattleStarted_) {
         float actionDelta = deltaTime * kBaseSpeedMultiplier;
         // 1. 鼓動
         float t = std::fmod(s_globalIdleTimer, 2.0f);
@@ -2119,6 +2169,8 @@ void BossCore::TriggerCrashStun() {
 void BossCore::StartDeathSequence() {
     if (deathPhase_ != 0) return; // 既に死亡処理中なら何もしない
 
+    isWaitingForFinisher_ = false; // トドメ待ちモーションを解除し、座標の固定を防ぐ
+
     deathPhase_ = 1;         // ★ フェーズ1（無音で静止）
     sequenceTimer_ = 1.0f;   // ★ 1秒間待機！
 
@@ -2152,20 +2204,19 @@ void BossCore::StartDeathSequence() {
         }
     }
 
-    // 上空へワープ
-    Vector3 currentPos = this->GetTranslate();
-    float targetY = currentPos.y + 10.0f;
+    // ボス登場演出の際のコアの高さ（13.16f）から、周囲の遮蔽物（巨大ブロックなど）を避けるため10m上に配置（Y=23.16f）
+    float targetY = 23.160861015319824f;
     this->SetRotation({ 0.0f, 0.0f, 0.0f });
-    this->SetTranslate({ 0.0f, targetY, 0.0f });
+    this->SetTranslate({ 0.07232095301151276f, targetY, -2.0776538848876953f });
 
-    // カメラをパッと切り替え（0秒）
+    // カメラをパッと切り替え（0秒） - カメラ「a」のアングルと距離（2.5倍）を完全に維持したまま、高さを10m上に平行移動
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         Camera::CameraOverrideParams params;
         params.duration = 0.0f;
         params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
-        params.fixedEyePos = { 0.0f, targetY + 5.0f, -20.0f };
+        params.fixedEyePos = { 0.4466233355404443f, 24.659861015319824f, -27.02978838708496f };
         params.trackTargetX = false; params.trackTargetY = false; params.trackTargetZ = false;
-        params.fixedTargetPos = { 0.0f, targetY, 0.0f };
+        params.fixedTargetPos = { 0.07232095301151276f, 23.160861015319824f, -2.0776538848876953f };
         camera->StartOverride(params);
     }
 }
