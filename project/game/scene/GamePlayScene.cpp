@@ -429,17 +429,34 @@ void GamePlayScene::Initialize() {
 
     // ミッション演出用の初期値を保存
     if (missionText_Mark_) missionMarkBaseSize_ = missionText_Mark_->GetSize();
+    Vector2 missionTaskBaseSize = { 400.0f, 96.0f };
+    if (missionText_line_ && missionText_line_->GetSize().y > 0.0f) {
+        missionTaskBaseSize = missionText_line_->GetSize();
+    }
+
     if (missionText_lever_) {
         missionLeverBasePos_ = missionText_lever_->GetPosition();
         missionLeverBaseSize_ = missionText_lever_->GetSize();
+        if (missionLeverBaseSize_.y <= 0.0f) {
+            missionLeverBaseSize_ = missionTaskBaseSize;
+            missionText_lever_->SetSize(missionLeverBaseSize_);
+        }
     }
     if (missionText_go_) {
         missionGoBasePos_ = missionText_go_->GetPosition();
         missionGoBaseSize_ = missionText_go_->GetSize();
+        if (missionGoBaseSize_.y <= 0.0f) {
+            missionGoBaseSize_ = missionTaskBaseSize;
+            missionText_go_->SetSize(missionGoBaseSize_);
+        }
     }
     if (missionText_boss_) {
         missionBossBasePos_ = missionText_boss_->GetPosition();
         missionBossBaseSize_ = missionText_boss_->GetSize();
+        if (missionBossBaseSize_.y <= 0.0f) {
+            missionBossBaseSize_ = missionTaskBaseSize;
+            missionText_boss_->SetSize(missionBossBaseSize_);
+        }
     }
 
     // =======================================================
@@ -2055,6 +2072,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             if (missionText_lever_) {
                 float offsetY = (1.0f - missionLeverAnimProgress_) * 20.0f;
                 missionText_lever_->SetPosition({ missionLeverBasePos_.x, missionLeverBasePos_.y + offsetY });
+                missionText_lever_->SetSize(missionLeverBaseSize_);
                 SetAlpha(missionText_lever_, missionLeverAnimProgress_);
             }
         }
@@ -2081,6 +2099,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             if (missionText_go_) {
                 float offsetY = (1.0f - missionGoAnimProgress_) * 20.0f;
                 missionText_go_->SetPosition({ missionGoBasePos_.x, missionGoBasePos_.y + offsetY });
+                missionText_go_->SetSize(missionGoBaseSize_);
                 SetAlpha(missionText_go_, missionGoAnimProgress_);
             }
         }
@@ -2105,6 +2124,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         if (missionText_boss_) {
             float offsetY = (1.0f - missionBossAnimProgress_) * 20.0f;
             missionText_boss_->SetPosition({ missionBossBasePos_.x, missionBossBasePos_.y + offsetY });
+            missionText_boss_->SetSize(missionBossBaseSize_);
             SetAlpha(missionText_boss_, missionBossAnimProgress_);
         }
     }

@@ -30,6 +30,52 @@ void LockOnSystem::SetForceLockOn(Object3d* target, bool isForced) {
 void LockOnSystem::Initialize(InputManager* inputManager) {
     inputManager_ = inputManager;
 }
+
+bool LockOnSystem::IsTargetOnScreen(Object3d* target, Camera* camera) const {
+    if (!target || !camera) {
+        return false;
+    }
+
+    static Math math;
+    Matrix4x4 viewProjection = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    AABB aabb = target->GetAABB();
+    Vector3 targetCenter = {
+        (aabb.min.x + aabb.max.x) * 0.5f,
+        (aabb.min.y + aabb.max.y) * 0.5f,
+        (aabb.min.z + aabb.max.z) * 0.5f
+    };
+
+    float w =
+        targetCenter.x * viewProjection.m[0][3] +
+        targetCenter.y * viewProjection.m[1][3] +
+        targetCenter.z * viewProjection.m[2][3] +
+        viewProjection.m[3][3];
+    if (w <= 0.001f) {
+        return false;
+    }
+
+    float ndcX =
+        (targetCenter.x * viewProjection.m[0][0] +
+         targetCenter.y * viewProjection.m[1][0] +
+         targetCenter.z * viewProjection.m[2][0] +
+         viewProjection.m[3][0]) / w;
+    float ndcY =
+        (targetCenter.x * viewProjection.m[0][1] +
+         targetCenter.y * viewProjection.m[1][1] +
+         targetCenter.z * viewProjection.m[2][1] +
+         viewProjection.m[3][1]) / w;
+    float ndcZ =
+        (targetCenter.x * viewProjection.m[0][2] +
+         targetCenter.y * viewProjection.m[1][2] +
+         targetCenter.z * viewProjection.m[2][2] +
+         viewProjection.m[3][2]) / w;
+
+    constexpr float kScreenMargin = 1.05f;
+    return ndcX >= -kScreenMargin && ndcX <= kScreenMargin &&
+           ndcY >= -kScreenMargin && ndcY <= kScreenMargin &&
+           ndcZ >= 0.0f && ndcZ <= 1.0f;
+}
+
 void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player) {
     if (!inputManager_ || !camera || !player) return;
 
@@ -163,7 +209,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
         Vector3 toEnemyDist = { enemyPos.x - playerPos.x, enemyPos.y - playerPos.y, enemyPos.z - playerPos.z };
         float currentDist = math.Length(toEnemyDist);
 
-        if (currentDist > kMaxLockOnDistance_ + 5.0f) {
+        if (currentDist > kMaxLockOnDistance_) {
             isLockingOn_ = false;
             lockOnTarget_ = nullptr;
             camera->SetFollowMode(Camera::FollowMode::kAimable);
@@ -172,7 +218,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
             lostSightTimer_ = 0.0f;
 
-            DebugConsole::GetInstance()->AddLog("LockOn Lost: Target too far.");
+            DebugConsole::GetInstance()->AddLog("LockOn Lost: Target exceeded release distance.");
             return;
         }
 
@@ -266,6 +312,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         // 3. ブロックなど無関係なものを除外
         std::string name = obj->GetName();
         if (name.find("Block") != std::string::npos || name.find("block") != std::string::npos) continue;
+        if (!IsTargetOnScreen(obj.get(), camera)) continue;
 
         // -----------------------------------------------------------------
         //  (D) 距離と角度のチェック（完全3D化！）
@@ -294,9 +341,9 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         float dot = math.Dot(cameraForward, toEnemyFromCam);
 
         // ========================================================
-        // ★ 修正3: カメラの視野内(dot > -0.2f)にいて、一番近い敵を探す！
+        // ★ 修正3: カメラの正面かつ画面内にいて、一番近い敵を探す！
         // ========================================================
-        if (dot > -0.2f && distance < minDistance) {
+        if (dot > kMinLockOnDot_ && distance < minDistance) {
 
             // 15m以内なら壁を無視して確定（激甘判定）
             if (distance < 15.0f) {
