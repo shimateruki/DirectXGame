@@ -104,6 +104,9 @@ private:
     bool hasTutorialMovieFinished_ = false; // ★ 追加
 
     bool IsCinematicMode() const;
+    void ApplyPauseInputUiIfNeeded();
+    void ApplyTutorialInputUiIfNeeded();
+    void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
 
 private:
     // --- エンジンシステムへのポインタ ---
@@ -209,6 +212,9 @@ private:
     Sprite* restartPoseTextSprite_ = nullptr;
     Sprite* optionPoseTextSprite_ = nullptr; // 追加: optionText.png
     Sprite* titleTextPoseSprite_ = nullptr;
+    Sprite* tabPauseTextSprite_ = nullptr;
+    bool pauseUiUsesGamepad_ = false;
+    bool hasAppliedPauseInputUi_ = false;
     bool isGameClearSequence_ = false;
     float gameClearTimer_ = 0.0f;
     bool isBossMoviePlaying_ = false; // ボスムービー中かどうか
@@ -240,6 +246,8 @@ private:
     Sprite* tutorialLockOnSprite_ = nullptr;
     Sprite* tutorialAttackSprite_ = nullptr;
     Sprite* tutorialDodgeSprite_ = nullptr;
+    bool tutorialUiUsesGamepad_ = false;
+    bool hasAppliedTutorialInputUi_ = false;
 
     // ミッションタスクスプライト（6枚）
     Sprite* missionText_mission_ = nullptr;

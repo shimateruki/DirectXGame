@@ -18,6 +18,7 @@
 #include <GameRule.h>
 #include "OptionUI.h"
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <GPUParticleEmitter.h>
@@ -59,6 +60,9 @@ public:
 
 
 private:
+    void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
+    void ApplyInputUiIfNeeded();
+
     // --- システムポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -86,6 +90,9 @@ private:
     const float spritesAppearDuration_ = 0.6f; // 演出時間（秒）
     std::vector<int> menuSpriteIndices_; // メニュー項目スプライトのインデックス
     std::vector<float> spriteBaseYs_;    // スプライトの初期Y座標
+    Sprite* enterTextSprite_ = nullptr;
+    bool titleUiUsesGamepad_ = false;
+    bool hasAppliedTitleInputUi_ = false;
 
 
     // --- ライト・GPUリソース ---
