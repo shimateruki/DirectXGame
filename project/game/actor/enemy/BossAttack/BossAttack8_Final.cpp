@@ -150,14 +150,11 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             if (Math::Length(toPlayer) < 0.1f) toPlayer = {0,0,1};
             toPlayer = Math::Normalize(toPlayer);
             
-            // プレイヤーの反対側へ回り込む
+            // プレイヤーの反対側へ回り込む (最初の1回のみ)
             animStartPos_ = { targetPos.x - toPlayer.x * 60.0f, 2.0f, targetPos.z - toPlayer.z * 60.0f };
             boss->SetTranslate(animStartPos_);
 
-            // 突進目標地点
-            animTargetPos_ = { animStartPos_.x + toPlayer.x * 120.0f, 2.0f, animStartPos_.z + toPlayer.z * 120.0f };
-
-            // 予測線表示
+            // 予測線表示の基本設定 (最初の1回のみ)
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetParent(nullptr);
@@ -165,31 +162,17 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 warning->SetMaterialType(0);
                 warning->SetEmissive(3.0f);
                 warning->SetTexture("Resources/sprite/yazirusi1.png");
-                
-                float angleY = std::atan2(toPlayer.x, toPlayer.z);
-                warning->SetRotation({0.0f, angleY, 0.0f});
                 warning->SetScale({ 10.0f, 0.1f, 120.0f });
-                warning->SetTranslate({ animStartPos_.x + toPlayer.x * 60.0f, 0.7f, animStartPos_.z + toPlayer.z * 60.0f });
-                warning->GetTransform()->isQuaternionMaster = false;
                 warning->SetColor({ 1.0f, 0.5f, 0.0f, 0.8f });
+                warning->GetTransform()->isQuaternionMaster = false;
             }
 
-            // ブロックを剣のように配置 (先頭6個のみ使用)
+            // ブロックを剣のように配置する基本設定 (最初の1回のみ)
             size_t useCount = std::min(armorBlocks.size(), (size_t)6);
             for (size_t i = 0; i < useCount; ++i) {
                 if (!armorBlocks[i]) continue;
                 armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageRush);
                 armorBlocks[i]->SetParent(nullptr);
-                float offset = (float)i * 3.0f;
-                Vector3 localPos = { 0.0f, 0.0f, offset };
-                float angleY = std::atan2(toPlayer.x, toPlayer.z);
-                Vector3 worldPos = {
-                    animStartPos_.x + localPos.z * std::sin(angleY),
-                    animStartPos_.y,
-                    animStartPos_.z + localPos.z * std::cos(angleY)
-                };
-                armorBlocks[i]->SetTranslate(worldPos);
-                armorBlocks[i]->SetRotation({0, angleY, 0});
                 armorBlocks[i]->SetScale({ 2.0f, 2.0f, 4.0f });
                 armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
             }
@@ -198,18 +181,57 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         animTimer_ += deltaTime;
         float duration = 2.0f; // 突進するまでのタメ時間（予測線表示）を2倍に延長
         
+        // -----------------------------------------------------------------
+        // ★ 修正: タメ時間中、常にプレイヤーを注視（方向・位置・回転を毎フレーム追従更新）
+        // -----------------------------------------------------------------
+        Vector3 currentBossPos = boss->GetTranslate();
+        Vector3 targetPos = target ? target->GetWorldPosition() : Vector3{0,0,0};
+        Vector3 toPlayer = { targetPos.x - currentBossPos.x, 0.0f, targetPos.z - currentBossPos.z };
+        if (Math::Length(toPlayer) < 0.1f) toPlayer = {0,0,1};
+        toPlayer = Math::Normalize(toPlayer);
+
+        float angleY = std::atan2(toPlayer.x, toPlayer.z);
+
+        // ボス本体をプレイヤーに向ける
+        boss->SetRotation({ boss->GetRotation().x, angleY, boss->GetRotation().z });
+        boss->GetTransform()->isQuaternionMaster = false;
+
+        // 予測線（予兆エリア）の位置と回転をプレイヤーに向けて更新
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
+            warning->SetRotation({ 0.0f, angleY, 0.0f });
+            warning->SetTranslate({ currentBossPos.x + toPlayer.x * 60.0f, 0.7f, currentBossPos.z + toPlayer.z * 60.0f });
+            
             static Math math;
             Vector3 uvScale = { 3.0f, 20.0f, 1.0f };
             Vector3 uvTranslate = { 0.0f, animTimer_ * 10.0f, 0.0f };
             warning->SetUVTransform(math.MakeAffineMatrix(uvScale, {0,0,0}, uvTranslate));
+            warning->UpdateWorldMatrix();
+        }
+
+        // 剣ブロックの位置と回転をプレイヤーに向けて更新
+        size_t useCount = std::min(armorBlocks.size(), (size_t)6);
+        for (size_t i = 0; i < useCount; ++i) {
+            if (!armorBlocks[i]) continue;
+            float offset = (float)i * 3.0f;
+            Vector3 localPos = { 0.0f, 0.0f, offset };
+            Vector3 worldPos = {
+                currentBossPos.x + localPos.z * toPlayer.x,
+                currentBossPos.y,
+                currentBossPos.z + localPos.z * toPlayer.z
+            };
+            armorBlocks[i]->SetTranslate(worldPos);
+            armorBlocks[i]->SetRotation({ 0, angleY, 0 });
+            armorBlocks[i]->UpdateWorldMatrix();
         }
 
         if (animTimer_ >= duration) {
             animPhase_ = 811;
             animTimer_ = 0.0f;
             if (warning) warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
+            
+            // 突進目標地点をタメ終了時のプレイヤー方向に基づいて確定
+            animTargetPos_ = { currentBossPos.x + toPlayer.x * 120.0f, 2.0f, currentBossPos.z + toPlayer.z * 120.0f };
         }
     }
     else if (animPhase_ == 811) { // 突進
@@ -359,16 +381,17 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         
         animTimer_ += deltaTime;
         
-        // コアの移動
+        // コアの移動 (常にプレイヤーの頭上を追従)
         Vector3 coreTarget = target ? target->GetWorldPosition() : Vector3{0,0,0};
         coreTarget.y = 18.0f; // プレイヤーの頭上
         Vector3 corePos = boss->GetTranslate();
-        corePos = Math::Lerp(corePos, coreTarget, 3.0f * deltaTime);
+        // 追従速度を大幅にアップ（15.0f * deltaTime）して、ほぼプレイヤーの真上に張り付くようにする
+        corePos = Math::Lerp(corePos, coreTarget, 15.0f * deltaTime);
         boss->SetTranslate(corePos);
         
-        // ボム召喚 (1.5秒ごとに合計4体)
+        // ボム召喚 (1.5秒ごとに合計6体)
         spawnTimer_ += deltaTime;
-        if (spawnTimer_ >= 1.5f && spawnCount_ < 4) {
+        if (spawnTimer_ >= 1.5f && spawnCount_ < 6) {
             spawnTimer_ = 0.0f;
             spawnCount_++;
             
@@ -380,13 +403,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             bomb->param_ = param;
             bomb->SetTarget(target);
             
+            // ボスのコアの真下から生成して落下させる
             Vector3 spawnPos = boss->GetTranslate();
-            float angle = spawnCount_ * (3.1415f * 2.0f / 4.0f);
-            spawnPos.x += std::cos(angle) * 3.0f;
-            spawnPos.z += std::sin(angle) * 3.0f;
             bomb->SetTranslate(spawnPos);
             
-            Vector3 initialVel = { std::cos(angle) * 10.0f, 5.0f, std::sin(angle) * 10.0f };
+            // 初速は真下に向けることで、ポロッと頭上から落ちるようにする
+            Vector3 initialVel = { 0.0f, -10.0f, 0.0f };
             bomb->SetVelocity(initialVel);
             
             if (currentScene) currentScene->AddObject(std::move(bomb));
@@ -481,7 +503,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
                 if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
                 
-                if (animTimer_ > 2.0f + i * 0.8f) {
+                if (animTimer_ < 11.5f && animTimer_ > 2.0f + i * 0.8f) {
                     funnelStates_[i] = 11; 
                     funnelTimers_[i] = 0.0f;
 
@@ -603,7 +625,20 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             }
         }
         
-        if (animTimer_ >= 8.5f) {
+        // 11.5秒経過し、かつ「すべてのファンネルが待機状態(0)に戻った」場合のみ、次のフェーズへ移行する
+        bool allFinished = true;
+        if (animTimer_ >= 11.5f) {
+            for (size_t i = 0; i < useCount; ++i) {
+                if (funnelStates_[i] != 0) {
+                    allFinished = false;
+                    break;
+                }
+            }
+        } else {
+            allFinished = false;
+        }
+
+        if (allFinished) {
             for (auto* laser : activeLasers_) {
                 if (laser) {
                     laser->SetScale({0,0,0});
@@ -648,35 +683,36 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             DebugConsole::GetInstance()->AddLog("【最終奥義】 壁迫り＆4分割ビーム！");
         }
     }
-    // --- Phase 83: 壁迫り＆4分割ビーム ---
-    else if (animPhase_ == 83) {
+    // --- Phase 83: 4分割ビームのみ（右上・左上・右下・左下、壁ブロックなし） ---
+    else if (animPhase_ == 83 || animPhase_ == 830 || animPhase_ == 831 || animPhase_ == 832) {
+        // もし古いサブフェーズ名に入っていた場合は 83 に一本化してリセットする
+        if (animPhase_ != 83) {
+            animPhase_ = 83;
+            animTimer_ = 0.0f;
+        }
+
         if (animTimer_ == 0.0f) {
-            float blockWidth = 30.0f;
-            size_t useCount = std::min(armorBlocks.size(), (size_t)6);
-            for (size_t i = 0; i < useCount; ++i) {
-                if (!armorBlocks[i]) continue;
-                armorBlocks[i]->SetParent(nullptr);
-                
-                float centerIndex = (useCount - 1.0f) / 2.0f;
-                float offset = -(static_cast<float>(i) - centerIndex) * blockWidth;
-                
-                float zPos = (i % 2 == 0) ? 120.0f : -120.0f;
-                Vector3 targetP = { offset, 2.0f, zPos };
-                
-                armorBlocks[i]->SetTranslate(targetP);
-                armorBlocks[i]->SetScale({ blockWidth, 10.0f, 4.0f });
-                armorBlocks[i]->SetRotation({0,0,0});
-                armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
-                armorBlocks[i]->SetCollisionAttribute(kEnemyAttack);
-                armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageWall);
+            // 1. 迫りくるブロックを完全に消去（非表示・無効化）
+            for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                if (armorBlocks[i]) {
+                    armorBlocks[i]->SetScale({ 0.0f, 0.0f, 0.0f });
+                    armorBlocks[i]->SetCollisionAttribute(0);
+                }
             }
-            
+
+            // 壁の警告Planeも非表示にする
+            Object3d* warning = boss->GetWarningArea();
+            if (warning) {
+                warning->SetScale({ 0.0f, 0.0f, 0.0f });
+            }
+
+            // 2. 4分割縦ビーム用のオブジェクトを生成・初期化
             coreBeams_.clear();
             areaWarnings_.clear(); 
             for (int i = 0; i < 4; ++i) {
                 auto laser = std::make_unique<Object3d>();
                 laser->Initialize(boss->GetCommon());
-                laser->SetModel("Cylinder");
+                laser->SetModel("enemy_block");
                 laser->SetBlendMode(BlendMode::kAdd);
                 laser->SetEmissive(8.0f);
                 laser->SetColor({ 1.0f, 1.0f, 0.0f, 0.9f }); 
@@ -692,89 +728,112 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 
                 auto warn = std::make_unique<Object3d>();
                 warn->Initialize(boss->GetCommon());
-                warn->SetModel("yazirusi.gltf");
-                warn->SetBlendMode(BlendMode::kNormal);
+                warn->SetModel("enemy_block");
+                warn->SetBlendMode(BlendMode::kAdd);
                 warn->SetScale({ 0, 0, 0 });
                 warn->SetCollisionAttribute(0);
-                warn->SetEmissive(2.0f);
+                warn->SetEmissive(4.0f);
                 areaWarnings_.push_back(warn.get());
                 if (currentScene) currentScene->AddObject(std::move(warn));
             }
         }
-        
+
         animTimer_ += deltaTime;
-        
-        // 壁迫り
-        float wallProgress = std::min(animTimer_ / 6.0f, 1.0f);
-        float wallEase = Easing::InOutSine(wallProgress);
-        size_t useCount = std::min(armorBlocks.size(), (size_t)6);
-        for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
-            Vector3 pos = armorBlocks[i]->GetTranslate();
-            float startZ = (i % 2 == 0) ? 120.0f : -120.0f;
-            float endZ = (i % 2 == 0) ? 10.0f : -10.0f; 
-            pos.z = Math::Lerp(startZ, endZ, wallEase);
-            armorBlocks[i]->SetTranslate(pos);
-        }
-        
-        // コアは上空で待機
-        Vector3 corePos = boss->GetTranslate();
-        corePos.x = 0; corePos.y = 20.0f; corePos.z = 0;
+
+        // コアは上空中央で待機し、チャージ（激しく回転＆少し震える）する
+        Vector3 corePos = { 0.0f, 20.0f, 0.0f };
         boss->SetTranslate(corePos);
         
-        // 4分割ビーム (-45, -15, 15, 45)
+        float rotSpeed = 20.0f;
+        float vibration = std::sin(animTimer_ * 50.0f) * 0.05f;
+        boss->SetRotation({ vibration, animTimer_ * rotSpeed, vibration });
+        boss->GetTransform()->isQuaternionMaster = false;
+
+        // 3. 4分割ビーム（右上・左上・右下・左下）のタイムライン制御
+        Vector3 beamPositions[4] = {
+            { 37.5f, 0.0f,  37.5f }, // 右上 (i=0)
+            {-37.5f, 0.0f,  37.5f }, // 左上 (i=1)
+            { 37.5f, 0.0f, -37.5f }, // 右下 (i=2)
+            {-37.5f, 0.0f, -37.5f }  // 左下 (i=3)
+        };
+
         for (int i = 0; i < 4; ++i) {
-            float laneX = -45.0f + i * 30.0f;
-            float startTime = 1.0f + i * 1.0f; 
+            float startTime = 0.5f + static_cast<float>(i) * 2.0f; // 2倍遅く：0.5s, 2.5s, 4.5s, 6.5s から開始
             
-            if (animTimer_ >= startTime && animTimer_ < startTime + 2.0f) {
+            if (animTimer_ >= startTime && animTimer_ < startTime + 3.1f) {
                 float localTime = animTimer_ - startTime;
-                Object3d* laser = coreBeams_[i];
-                Object3d* warn = areaWarnings_[i];
-                
-                if (localTime < 1.0f) {
+                Object3d* laser = (i < coreBeams_.size()) ? coreBeams_[i] : nullptr;
+                Object3d* warn = (i < areaWarnings_.size()) ? areaWarnings_[i] : nullptr;
+
+                if (localTime < 1.5f) {
+                    // 予兆フェーズ (1.5秒)：1/4正方形エリアの警告表示
                     if (warn) {
-                        warn->SetTranslate({ laneX, 0.1f, 0.0f });
-                        warn->SetScale({ 30.0f, 0.1f, 150.0f });
-                        warn->SetTexture("Resources/sprite/yazirusi1.png");
-                        warn->SetColor({ 1.0f, 0.0f, 0.0f, 0.5f });
+                        warn->SetTranslate({ beamPositions[i].x, 0.2f, beamPositions[i].z });
+                        warn->SetScale({ 37.5f, 0.2f, 37.5f }); // blockモデルを薄くして床の上に配置
+                        
+                        // 警告色が時間とともに点滅し、射出直前に最も濃く（赤く）なる
+                        float pulse = (std::sin(localTime * 15.0f) + 1.0f) * 0.5f;
+                        float progress = localTime / 1.5f; // 0.0 〜 1.0
+                        float warnAlpha = Math::Lerp(0.15f, 0.6f, progress) + pulse * 0.15f;
+                        
+                        // 黄色から赤へと警告色が徐々に変化する演出
+                        Vector4 warnColor = { 1.0f, Math::Lerp(0.5f, 0.0f, progress), 0.0f, warnAlpha };
+                        warn->SetColor(warnColor);
+                        warn->UpdateWorldMatrix();
                     }
-                } else if (localTime >= 1.0f && localTime < 1.8f) {
-                    if (warn) warn->SetScale({ 0,0,0 });
+                    if (laser) laser->SetScale({0, 0, 0});
+                } else if (localTime >= 1.5f && localTime < 3.1f) {
+                    // 射出フェーズ (1.6秒間)：極太縦ビームを射出
+                    if (warn) warn->SetScale({ 0, 0, 0 });
+                    
                     if (laser) {
-                        laser->SetTranslate({ laneX, 50.0f, 0.0f }); 
-                        laser->SetRotation({ 0.0f, 0.0f, 0.0f }); 
-                        laser->SetScale({ 15.0f, 100.0f, 15.0f });
+                        laser->SetTranslate({ beamPositions[i].x, 50.0f, beamPositions[i].z });
+                        laser->SetRotation({ 0.0f, 0.0f, 0.0f });
+                        laser->SetScale({ 37.5f, 100.0f, 37.5f }); // 1/4エリアを完全に覆い尽くす極太ボックスビーム
                         laser->SetCollisionAttribute(kEnemyAttack);
                         laser->SetAttackDamage(boss->GetAttackParams().damageFinal);
                         
                         static Math math;
                         Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
-                        Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, localTime*5.0f, 0.0f });
+                        Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, localTime * 5.0f, 0.0f });
                         laser->SetUVTransform(uvMat);
+                        laser->UpdateWorldMatrix();
                     }
                 } else {
+                    // 射撃終了
                     if (laser) {
-                        laser->SetScale({0,0,0});
+                        laser->SetScale({0, 0, 0});
                         laser->SetCollisionAttribute(0);
                     }
                 }
             } else {
-                if (coreBeams_[i]) coreBeams_[i]->SetScale({0,0,0});
-                if (areaWarnings_[i]) areaWarnings_[i]->SetScale({0,0,0});
+                if (i < coreBeams_.size() && coreBeams_[i]) coreBeams_[i]->SetScale({0, 0, 0});
+                if (i < areaWarnings_.size() && areaWarnings_[i]) areaWarnings_[i]->SetScale({0, 0, 0});
             }
         }
-        
-        if (animTimer_ >= 7.0f) {
+
+        // 4分割ビーム射撃がすべて終了したらクリーンアップして Phase 84 へ
+        if (animTimer_ >= 10.5f) {
             for (auto* laser : coreBeams_) {
-                if (laser) { laser->SetScale({0,0,0}); laser->SetCollisionAttribute(0); /* laser->isDead = true; */ }
+                if (laser) {
+                    laser->SetScale({0,0,0});
+                    laser->SetCollisionAttribute(0);
+                    laser->SetParent(nullptr);
+                    CollisionManager::GetInstance()->RemoveObject(laser);
+                }
             }
             coreBeams_.clear();
+
             for (auto* warn : areaWarnings_) {
-                if (warn) { warn->SetScale({0,0,0}); warn->SetCollisionAttribute(0); /* warn->isDead = true; */ }
+                if (warn) {
+                    warn->SetScale({0,0,0});
+                    warn->SetCollisionAttribute(0);
+                    warn->SetParent(nullptr);
+                    CollisionManager::GetInstance()->RemoveObject(warn);
+                }
             }
             areaWarnings_.clear();
-            
+
             animPhase_ = 84; 
             animTimer_ = 0.0f;
             DebugConsole::GetInstance()->AddLog("【最終奥義】 巨大ブロック落下！！");
@@ -784,8 +843,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
     else if (animPhase_ == 84) {
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
-            warning->SetTranslate({ 0.0f, 0.05f, 0.0f });
-            warning->SetScale({ 30.0f, 0.7f, 30.0f }); 
+            warning->SetTranslate({ 0.0f, 0.2f, 0.0f });
+            warning->SetScale({ 15.0f, 0.7f, 15.0f }); 
             warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
             warning->UpdateWorldMatrix();
         }
@@ -793,7 +852,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ == 0.0f) {
             if (!meteors_.empty() && meteors_[0]) {
                 meteors_[0]->SetTranslate({ 0.0f, 150.0f, 0.0f }); 
-                meteors_[0]->SetScale({ 30.0f, 30.0f, 30.0f });
+                meteors_[0]->SetScale({ 15.0f, 15.0f, 15.0f });
                 meteors_[0]->SetCollisionAttribute(kEnemyAttack);
             }
         }
