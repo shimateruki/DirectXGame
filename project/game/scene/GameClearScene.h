@@ -17,6 +17,7 @@
 #include <GhostRecorder.h>
 #include <GameRule.h>
 #include <memory>
+#include <string>
 #include <vector>
 
 class DirectXCommon;
@@ -46,6 +47,9 @@ public:
     void SetPlayer(Player* player) override { player_ = player; }
 
 private:
+    void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
+    void ApplyInputUiIfNeeded();
+
     // --- システム ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -79,6 +83,9 @@ private:
     Sprite* titleTextSprite_ = nullptr;
     Sprite* playerTimeSprite_ = nullptr;
     Sprite* bestTimeSprite_ = nullptr;
+    Sprite* enterTextSprite_ = nullptr;
+    bool clearUiUsesGamepad_ = false;
+    bool hasAppliedClearInputUi_ = false;
     enum class ClearState {
         kRunIn,
         kVictoryMotion,

@@ -25,6 +25,8 @@ private:
     bool IsValidKey(int keyCode) const;
     std::string GetKeySpriteName(int keyCode) const;
     void RefreshKeyIcons();
+    void ApplyInputUiIfNeeded();
+    void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
     void UpdateSensitivityBar();        // バーの座標を更新する関数
 private:
     enum class MenuState { TabSelect, ItemSelect, ValueAdjust, Top, KeyConfig, WaitInput };
@@ -60,12 +62,15 @@ private:
     Sprite* cameraSoundUISprite_ = nullptr;
     Sprite* selectLeftSprite_ = nullptr;
     Sprite* selectRightSprite_ = nullptr;
+    Sprite* optionControlSprite_ = nullptr;
     Sprite* optionAIconSprite_ = nullptr;
     Sprite* optionDIconSprite_ = nullptr;
     Vector2 optionAIconBaseSize_ = { 0.0f, 0.0f };
     Vector2 optionDIconBaseSize_ = { 0.0f, 0.0f };
     float tabConfirmBlinkTime_ = 0.0f;
     int confirmedTopTab_ = (int)TopTab::AudioCamera;
+    bool optionUiUsesGamepad_ = false;
+    bool hasAppliedOptionInputUi_ = false;
 
     Sprite* bgmSelectSprite_ = nullptr;
     Sprite* seSelectSprite_ = nullptr;

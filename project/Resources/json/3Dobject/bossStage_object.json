@@ -9775,7 +9775,7 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "materialType": 10,
+            "materialType": 11,
             "metallic": 0.0,
             "modelName": "block",
             "myEventID": -1,
@@ -9785,7 +9785,7 @@
             "parentName": "",
             "position": [
                 0.0,
-                -48.5,
+                -49.5,
                 0.0
             ],
             "quaternion": [
@@ -9815,10 +9815,10 @@
             "texturePath": "",
             "type": "Model",
             "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedX": 0.20000000298023224,
                 "flowSpeedY": 0.10000000149011612,
                 "waveFrequency": 1.5,
-                "waveHeight": 0.5,
+                "waveHeight": 0.0,
                 "waveSpeed": 2.0
             }
         },

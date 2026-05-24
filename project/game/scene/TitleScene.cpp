@@ -33,6 +33,36 @@
 #include <CinematicFade.h>
 #include <PostEffect.h>
 
+void TitleScene::SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName) {
+  if (!sprite || sprite->GetTextureName() == textureName) {
+    return;
+  }
+
+  Vector2 currentSize = sprite->GetSize();
+  sprite->SetTextureHandle(Sprite::LoadTexture(textureName));
+  sprite->SetTextureName(textureName);
+  sprite->SetSize(currentSize);
+}
+
+void TitleScene::ApplyInputUiIfNeeded() {
+  const bool useGamepadUi = inputManager_ && inputManager_->IsGamepadMode();
+  if (hasAppliedTitleInputUi_ && titleUiUsesGamepad_ == useGamepadUi) {
+    return;
+  }
+
+  SetSpriteTexturePreserveSize(
+      enterTextSprite_,
+      useGamepadUi ? "white.png" : "enter_text.png");
+
+  titleUiUsesGamepad_ = useGamepadUi;
+  hasAppliedTitleInputUi_ = true;
+
+  DebugConsole::GetInstance()->AddLog(
+      useGamepadUi
+          ? "[TitleUI] Input display switched to Controller"
+          : "[TitleUI] Input display switched to Keyboard");
+}
+
 void TitleScene::Initialize() {
   // --- 1. システム基盤の取得 ---
   dxCommon_ = DirectXCommon::GetInstance();
@@ -113,12 +143,16 @@ void TitleScene::Initialize() {
   spriteBaseYs_.clear();
   for (int i = 0; i < (int)sprites_.size(); ++i) {
     const std::string &name = sprites_[i]->GetName();
+    if (name == "enter_text.png") {
+      enterTextSprite_ = sprites_[i].get();
+    }
     if (name == "gameStartText.png" || name == "title_optionText.png" ||
         name == "exit.png") {
       menuSpriteIndices_.push_back(i);
     }
     spriteBaseYs_.push_back(sprites_[i]->GetPosition().y);
   }
+  ApplyInputUiIfNeeded();
   spritesAppear_ = false;
   spritesAppearTimer_ = 0.0f;
 
@@ -223,6 +257,7 @@ void TitleScene::Finalize() {
 
 void TitleScene::Update(float deltaTime) {
   InputManager *input = InputManager::GetInstance();
+  ApplyInputUiIfNeeded();
 
   // ---------------------------------------------------------
   // 0. ESCキーでの強制終了（オプション画面以外）

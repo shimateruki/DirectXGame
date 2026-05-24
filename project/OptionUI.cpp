@@ -11,6 +11,37 @@
 #include <cmath>
 
 
+void OptionUI::SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName) {
+  if (!sprite || sprite->GetTextureName() == textureName) {
+    return;
+  }
+
+  Vector2 currentSize = sprite->GetSize();
+  sprite->SetTextureHandle(Sprite::LoadTexture(textureName));
+  sprite->SetTextureName(textureName);
+  sprite->SetSize(currentSize);
+}
+
+void OptionUI::ApplyInputUiIfNeeded() {
+  InputManager* input = InputManager::GetInstance();
+  const bool useGamepadUi = input && input->IsGamepadMode();
+  if (hasAppliedOptionInputUi_ && optionUiUsesGamepad_ == useGamepadUi) {
+    return;
+  }
+
+  SetSpriteTexturePreserveSize(
+      optionControlSprite_,
+      useGamepadUi ? "white.png" : "option/operationUI.png");
+
+  optionUiUsesGamepad_ = useGamepadUi;
+  hasAppliedOptionInputUi_ = true;
+
+  DebugConsole::GetInstance()->AddLog(
+      useGamepadUi
+          ? "[OptionUI] Operation display switched to Controller"
+          : "[OptionUI] Operation display switched to Keyboard");
+}
+
 void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   if (!scene || !spriteCommon)
     return;
@@ -35,6 +66,7 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   cameraSoundUISprite_ = scene->GetSpriteByName("option/cameraSaundUI.png");
   selectLeftSprite_ = scene->GetSpriteByName("option/UI_selectLeft.png");
   selectRightSprite_ = scene->GetSpriteByName("option/UI_selectRight.png");
+  optionControlSprite_ = scene->GetSpriteByName("option/operationUI.png");
   optionAIconSprite_ = scene->GetSpriteByName("option/optionUI_A.png");
   optionDIconSprite_ = scene->GetSpriteByName("option/optionUI_D.png");
   if (optionAIconSprite_) {
@@ -79,6 +111,7 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   UpdateSensitivityBar();
   UpdateBGMBar();
   UpdateSEBar();
+  ApplyInputUiIfNeeded();
   // ========================================================
   // ★ エディタ配置スプライトは「目印」なので、透明にして隠す！
   // ========================================================
@@ -102,9 +135,12 @@ void OptionUI::Reset() {
   currentConfigIndex_ = 0;
   tabConfirmBlinkTime_ = 0.0f;
   confirmedTopTab_ = currentTopTab_;
+  hasAppliedOptionInputUi_ = false;
+  ApplyInputUiIfNeeded();
 }
 
 bool OptionUI::Update(float deltaTime) {
+  ApplyInputUiIfNeeded();
   InputManager *input = InputManager::GetInstance();
   Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
   Vector4 selectColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -189,10 +225,14 @@ bool OptionUI::Update(float deltaTime) {
 
   switch (currentState_) {
   case MenuState::TabSelect: {
-      if (input->IsKeyTriggered(DIK_A)) {
+      if (input->IsKeyTriggered(DIK_A) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_LEFT_SHOULDER)) {
           currentTopTab_ = (int)TopTab::AudioCamera;
       }
-      if (input->IsKeyTriggered(DIK_D)) {
+      if (input->IsKeyTriggered(DIK_D) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_RIGHT_SHOULDER)) {
           currentTopTab_ = (int)TopTab::Credit;
       }
 
@@ -212,16 +252,20 @@ bool OptionUI::Update(float deltaTime) {
       break;
   }
   case MenuState::ItemSelect: {
-      if (input->IsKeyTriggered(DIK_W)) {
+      if (input->IsKeyTriggered(DIK_W) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
           if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
       }
-      if (input->IsKeyTriggered(DIK_S)) {
+      if (input->IsKeyTriggered(DIK_S) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
           if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM) currentSoundOptionIndex_ = (int)SoundOptionIndex::SE;
       }
-      if (input->IsKeyTriggered(DIK_A)) {
+      if (input->IsKeyTriggered(DIK_A) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
           if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera) currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
       }
-      if (input->IsKeyTriggered(DIK_D)) {
+      if (input->IsKeyTriggered(DIK_D) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
           if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM || currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) {
               currentSoundOptionIndex_ = (int)SoundOptionIndex::Camera;
           }

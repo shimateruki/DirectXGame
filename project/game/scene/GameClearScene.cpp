@@ -26,6 +26,37 @@
 #include <SaveDataManager.h>
 #include "PlayerState.h"
 #include "PostEffect.h"
+
+void GameClearScene::SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName) {
+    if (!sprite || sprite->GetTextureName() == textureName) {
+        return;
+    }
+
+    Vector2 currentSize = sprite->GetSize();
+    sprite->SetTextureHandle(Sprite::LoadTexture(textureName));
+    sprite->SetTextureName(textureName);
+    sprite->SetSize(currentSize);
+}
+
+void GameClearScene::ApplyInputUiIfNeeded() {
+    const bool useGamepadUi = inputManager_ && inputManager_->IsGamepadMode();
+    if (hasAppliedClearInputUi_ && clearUiUsesGamepad_ == useGamepadUi) {
+        return;
+    }
+
+    SetSpriteTexturePreserveSize(
+        enterTextSprite_,
+        useGamepadUi ? "white.png" : "enter_text.png");
+
+    clearUiUsesGamepad_ = useGamepadUi;
+    hasAppliedClearInputUi_ = true;
+
+    DebugConsole::GetInstance()->AddLog(
+        useGamepadUi
+        ? "[GameClearUI] Input display switched to Controller"
+        : "[GameClearUI] Input display switched to Keyboard");
+}
+
 void GameClearScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
@@ -81,7 +112,9 @@ void GameClearScene::Initialize() {
         if (sprite->GetName() == "title.png")     titleTextSprite_ = sprite.get();
         if (sprite->GetName() == "playerTime.png") playerTimeSprite_ = sprite.get();
         if (sprite->GetName() == "bestTime.png") bestTimeSprite_ = sprite.get();
+        if (sprite->GetName() == "enter_text.png") enterTextSprite_ = sprite.get();
     }
+    ApplyInputUiIfNeeded();
 
     auto HideSprite = [](Sprite* s) {
         if (s) { Vector4 c = s->GetColor(); c.w = 0.0f; s->SetColor(c); }
@@ -136,6 +169,8 @@ void GameClearScene::Finalize() {
 }
 
 void GameClearScene::Update(float deltaTime) {
+    ApplyInputUiIfNeeded();
+
     // ----------------------------------------------------------------
     // 1. 基本的なシステム更新 (常に動かすもの)
     // ----------------------------------------------------------------

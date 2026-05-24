@@ -59,6 +59,70 @@ bool GamePlayScene::s_isRebooting_ = false;
 GamePlayScene::GamePlayScene() {}
 GamePlayScene::~GamePlayScene() {}
 
+void GamePlayScene::SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName) {
+    if (!sprite || sprite->GetTextureName() == textureName) {
+        return;
+    }
+
+    Vector2 currentSize = sprite->GetSize();
+    sprite->SetTextureHandle(Sprite::LoadTexture(textureName));
+    sprite->SetTextureName(textureName);
+    sprite->SetSize(currentSize);
+}
+
+void GamePlayScene::ApplyPauseInputUiIfNeeded() {
+    const bool useGamepadUi = inputManager_ && inputManager_->IsGamepadMode();
+    if (hasAppliedPauseInputUi_ && pauseUiUsesGamepad_ == useGamepadUi) {
+        return;
+    }
+
+    SetSpriteTexturePreserveSize(
+        tabPauseTextSprite_,
+        useGamepadUi ? "white.png" : "tab_text.png");
+
+    pauseUiUsesGamepad_ = useGamepadUi;
+    hasAppliedPauseInputUi_ = true;
+
+    DebugConsole::GetInstance()->AddLog(
+        useGamepadUi
+        ? "[PauseUI] Input display switched to Controller"
+        : "[PauseUI] Input display switched to Keyboard");
+}
+
+void GamePlayScene::ApplyTutorialInputUiIfNeeded() {
+    const bool useGamepadUi = inputManager_ && inputManager_->IsGamepadMode();
+    if (hasAppliedTutorialInputUi_ && tutorialUiUsesGamepad_ == useGamepadUi) {
+        return;
+    }
+
+    struct TutorialTextureSet {
+        Sprite* sprite;
+        const char* keyboardTexture;
+    };
+
+    const TutorialTextureSet textureSets[] = {
+        { tutorialMoveSprite_, "turrialTex/tutrialText_move.png" },
+        { tutorialCameraSprite_, "turrialTex/tutrialText_cameraControl.png" },
+        { tutorialLockOnSprite_, "turrialTex/tutrialText_lockOn.png" },
+        { tutorialAttackSprite_, "turrialTex/tutrialText_attak.png" },
+        { tutorialDodgeSprite_, "turrialTex/tutrialText_donge.png" },
+    };
+
+    for (const auto& textureSet : textureSets) {
+        SetSpriteTexturePreserveSize(
+            textureSet.sprite,
+            useGamepadUi ? "white.png" : textureSet.keyboardTexture);
+    }
+
+    tutorialUiUsesGamepad_ = useGamepadUi;
+    hasAppliedTutorialInputUi_ = true;
+
+    DebugConsole::GetInstance()->AddLog(
+        useGamepadUi
+        ? "[TutorialUI] Input display switched to Controller"
+        : "[TutorialUI] Input display switched to Keyboard");
+}
+
 void GamePlayScene::Initialize() {
     using json = nlohmann::json;
 
@@ -234,6 +298,7 @@ void GamePlayScene::Initialize() {
     restartPoseTextSprite_ = GetSpriteByName("restartPoseText.png");
     titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
     optionPoseTextSprite_ = GetSpriteByName("optionText.png");
+    tabPauseTextSprite_ = GetSpriteByName("tab_text.png");
 
     auto SetAlpha = [](Sprite* sprite, float alpha) {
         if (sprite) {
@@ -249,6 +314,7 @@ void GamePlayScene::Initialize() {
     SetAlpha(titleTextPoseSprite_, 0.0f);
     SetAlpha(optionPoseTextSprite_, 0.0f);
     isPaused_ = false;
+    ApplyPauseInputUiIfNeeded();
 
     // ★ 1. まず objectManager からオブジェクトのリストを取得する！
     auto& objects = objectManager_->GetObjects();
@@ -320,6 +386,7 @@ void GamePlayScene::Initialize() {
     tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
     tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
     tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
+    ApplyTutorialInputUiIfNeeded();
 
     SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
     SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
@@ -362,17 +429,34 @@ void GamePlayScene::Initialize() {
 
     // ミッション演出用の初期値を保存
     if (missionText_Mark_) missionMarkBaseSize_ = missionText_Mark_->GetSize();
+    Vector2 missionTaskBaseSize = { 400.0f, 96.0f };
+    if (missionText_line_ && missionText_line_->GetSize().y > 0.0f) {
+        missionTaskBaseSize = missionText_line_->GetSize();
+    }
+
     if (missionText_lever_) {
         missionLeverBasePos_ = missionText_lever_->GetPosition();
         missionLeverBaseSize_ = missionText_lever_->GetSize();
+        if (missionLeverBaseSize_.y <= 0.0f) {
+            missionLeverBaseSize_ = missionTaskBaseSize;
+            missionText_lever_->SetSize(missionLeverBaseSize_);
+        }
     }
     if (missionText_go_) {
         missionGoBasePos_ = missionText_go_->GetPosition();
         missionGoBaseSize_ = missionText_go_->GetSize();
+        if (missionGoBaseSize_.y <= 0.0f) {
+            missionGoBaseSize_ = missionTaskBaseSize;
+            missionText_go_->SetSize(missionGoBaseSize_);
+        }
     }
     if (missionText_boss_) {
         missionBossBasePos_ = missionText_boss_->GetPosition();
         missionBossBaseSize_ = missionText_boss_->GetSize();
+        if (missionBossBaseSize_.y <= 0.0f) {
+            missionBossBaseSize_ = missionTaskBaseSize;
+            missionText_boss_->SetSize(missionBossBaseSize_);
+        }
     }
 
     // =======================================================
@@ -562,6 +646,8 @@ void GamePlayScene::Finalize() {
 
 void GamePlayScene::Update(float deltaTime) {
     float originalDeltaTime = deltaTime;
+    ApplyPauseInputUiIfNeeded();
+    ApplyTutorialInputUiIfNeeded();
     // プレイヤーが死亡して演出時間が経過したら、世界の時間を止める（ただし遷移中は止めない）
     if (player_ && player_->GetHp() <= 0.0f && player_->GetDeathTimer() > 3.5f && !isRestartTransition_ && !isTitleTransition_) {
         deltaTime = 0.0f;
@@ -1986,6 +2072,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             if (missionText_lever_) {
                 float offsetY = (1.0f - missionLeverAnimProgress_) * 20.0f;
                 missionText_lever_->SetPosition({ missionLeverBasePos_.x, missionLeverBasePos_.y + offsetY });
+                missionText_lever_->SetSize(missionLeverBaseSize_);
                 SetAlpha(missionText_lever_, missionLeverAnimProgress_);
             }
         }
@@ -2012,6 +2099,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             if (missionText_go_) {
                 float offsetY = (1.0f - missionGoAnimProgress_) * 20.0f;
                 missionText_go_->SetPosition({ missionGoBasePos_.x, missionGoBasePos_.y + offsetY });
+                missionText_go_->SetSize(missionGoBaseSize_);
                 SetAlpha(missionText_go_, missionGoAnimProgress_);
             }
         }
@@ -2036,6 +2124,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         if (missionText_boss_) {
             float offsetY = (1.0f - missionBossAnimProgress_) * 20.0f;
             missionText_boss_->SetPosition({ missionBossBasePos_.x, missionBossBasePos_.y + offsetY });
+            missionText_boss_->SetSize(missionBossBaseSize_);
             SetAlpha(missionText_boss_, missionBossAnimProgress_);
         }
     }

@@ -55,6 +55,7 @@ private:
 	/// 最も適したターゲットを検索する内部関数
 	/// </summary>
 	Object3d* FindBestTarget(const std::vector<std::unique_ptr<Object3d>>& objects, Camera* camera, Player* player);
+	bool IsTargetOnScreen(Object3d* target, Camera* camera) const;
 
 private:
 	InputManager* inputManager_ = nullptr;
@@ -62,7 +63,7 @@ private:
 	bool isLockingOn_ = false;		   // ロックオン中フラグ
 
 	// 定数パラメータ
-	const float kMaxLockOnDistance_ = 500.0f; // 届く距離
+	const float kMaxLockOnDistance_ = 80.0f; // ロックオン開始・解除の最大距離
 	const float kMinLockOnDot_ = 0.0f;
 	float lostSightTimer_ = 0.0f;
 	bool isForced_ = false; // 強制ロックオン中か
