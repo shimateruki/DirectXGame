@@ -17,6 +17,30 @@ const float kCameraPitchLimitMin = -1.20f;
 const float kCameraPitchLimitMax = 1.20f;
 static Math math;
 
+namespace {
+bool IsIgnoredForCameraCollision(Object3d* object) {
+    for (Object3d* current = object; current; current = current->GetParent()) {
+        const std::string className = current->GetClassName();
+        const std::string enemyType = current->GetEnemyType();
+        const std::string name = current->GetName();
+
+        if (className == "Enemy" || className == "BossCore") {
+            return true;
+        }
+        if (!enemyType.empty()) {
+            return true;
+        }
+        if (name.find("Armor") != std::string::npos ||
+            name.find("armor") != std::string::npos ||
+            name.find("Boss") != std::string::npos) {
+            return true;
+        }
+    }
+
+    return false;
+}
+}
+
 void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
     fixedPointPos_ = position;
     fixedPointAngle_ = angle; 
@@ -227,8 +251,8 @@ void Camera::Update() {
                 Vector3 direction = (dist > 0.001f) ? math.Normalize(toSmoothEye) : Vector3{ 0,0,1 };
 
                 if (dist > 0.1f) {
-                    RaycastHit hit = CollisionManager::GetInstance()->Raycast(
-                        rayStartPos, direction, dist, kGround
+                    RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(
+                        rayStartPos, direction, dist, kGround | kMapBlock, IsIgnoredForCameraCollision
                     );
 
                     if (hit.isHit) {
@@ -449,6 +473,9 @@ void Camera::SyncRotationToCurrentView() {
     rotation_.x = std::asin(-forward.y);
 
     rotation_.x = std::max(kCameraPitchLimitMin, std::min(kCameraPitchLimitMax, rotation_.x));
+
+    smoothTarget_ = target_;
+    smoothEye_ = eye_;
 }
 
 void Camera::StartOverride(const CameraOverrideParams& params) {

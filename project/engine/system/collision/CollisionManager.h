@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cstdint>  
 #include <unordered_set>
+#include <functional>
 
 struct Vector3i {
     int x, y, z;
@@ -75,6 +76,8 @@ public:
     /// <returns>衝突情報 (衝突しなかった場合は hit.isHit = false)</returns>
     RaycastHit Raycast(const Vector3& start, const Vector3& direction,
         float maxDistance, uint32_t mask = 0xFFFFFFFF);
+    RaycastHit RaycastFiltered(const Vector3& start, const Vector3& direction,
+        float maxDistance, uint32_t mask, const std::function<bool(Object3d*)>& shouldIgnore);
 	/// <summary>
 	/// 登録されている全オブジェクトの取得 (デバッグ用)
     /// 

@@ -182,6 +182,7 @@ private:
 
     // 子パーツの色を保存しておくマップ（無敵解除時に復元）
     std::unordered_map<Object3d*, Vector4> childSavedColors_;
+    bool hasSavedInvincibleColors_ = false;
     float damageCooldownTimer_ = 0.0f;
     bool isDamageInvincible_ = false;
     bool isDashInvincible_ = false;
