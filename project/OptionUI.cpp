@@ -31,7 +31,7 @@ void OptionUI::ApplyInputUiIfNeeded() {
 
   SetSpriteTexturePreserveSize(
       optionControlSprite_,
-      useGamepadUi ? "white.png" : "option/operationUI.png");
+      useGamepadUi ? "option/operationUI_pad.png" : "option/operationUI.png");
 
   optionUiUsesGamepad_ = useGamepadUi;
   hasAppliedOptionInputUi_ = true;
@@ -50,7 +50,7 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   // エディタで配置したベースUIの取得
   optionBackSprite_ = scene->GetSpriteByName("option/poseBack.png");
   if (optionBackSprite_) {
-      optionBackSprite_->SetColor({ 0.0f, 0.0f, 0.0f, 0.8f }); // 半透明グレー
+      optionBackSprite_->SetColor({ 0.0f, 0.0f, 0.0f, 170.0f / 255.0f }); // 半透明グレー
   }
   bgSprite_ = scene->GetSpriteByName("UI/back_ground.png");
   titleSprite_ = scene->GetSpriteByName("UI/option_UI.png");

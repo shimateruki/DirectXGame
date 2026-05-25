@@ -118,7 +118,7 @@ void InputManager::Update()
 
     // --- XInput (Xboxコントローラー) の更新 ---
     ZeroMemory(&gamepadState, sizeof(XINPUT_STATE));
-    XInputGetState(0, &gamepadState);
+    DWORD xinputResult = XInputGetState(0, &gamepadState);
 
 
     // --- SDL2 (Joy-Con / Proコン) の更新 ---
@@ -145,7 +145,9 @@ void InputManager::Update()
             }
         }
 
-        // --- SDLのスティック入力を取得して XInput形式 に統合 ---
+        // Xboxコントローラーが接続されていない場合のみ、SDLからの入力をXInput形式に統合する
+        if (xinputResult != ERROR_SUCCESS) {
+            // --- SDLのスティック入力を取得して XInput形式 に統合 ---
         int16_t leftX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTX);
         int16_t leftY = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_LEFTY);
         int16_t rightX = SDL_GameControllerGetAxis(sdlController_, SDL_CONTROLLER_AXIS_RIGHTX);
@@ -203,8 +205,9 @@ void InputManager::Update()
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
         }
-        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
-            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
+            if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
+                gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
+            }
         }
     }
 

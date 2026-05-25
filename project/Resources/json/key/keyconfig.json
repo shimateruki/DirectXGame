@@ -3,7 +3,7 @@
         "key": 0,
         "keySub": 0,
         "mouse": 0,
-        "pad": 32768
+        "pad": 34816
     },
     "Backward": {
         "key": 31,
@@ -27,7 +27,7 @@
         "key": 57,
         "keySub": 0,
         "mouse": -1,
-        "pad": 8192
+        "pad": 4096
     },
     "Left": {
         "key": 30,
@@ -39,7 +39,7 @@
         "key": 19,
         "keySub": 0,
         "mouse": -1,
-        "pad": 2048
+        "pad": 512
     },
     "Right": {
         "key": 32,

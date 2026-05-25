@@ -52,7 +52,7 @@ void TitleScene::ApplyInputUiIfNeeded() {
 
   SetSpriteTexturePreserveSize(
       enterTextSprite_,
-      useGamepadUi ? "white.png" : "enter_text.png");
+      useGamepadUi ? "enter_text_pad.png" : "enter_text.png");
 
   titleUiUsesGamepad_ = useGamepadUi;
   hasAppliedTitleInputUi_ = true;
@@ -357,21 +357,31 @@ void TitleScene::Update(float deltaTime) {
 
   // --- 状態ごとの更新 ---
   if (currentState_ == TitleState::MainMenu) {
-    // --- メニュー選択（W/Sキー）---
+    // --- スティックの入力判定（トリガー処理） ---
+    Vector2 lStick = input->GetLeftStick();
+    bool stickUp = lStick.y > 0.5f;
+    bool stickDown = lStick.y < -0.5f;
+    bool stickUpTrig = stickUp && !prevStickUp_;
+    bool stickDownTrig = stickDown && !prevStickDown_;
+    prevStickUp_ = stickUp;
+    prevStickDown_ = stickDown;
+
+    // --- メニュー選択（W/Sキー、D-Pad、左スティック）---
     if (spritesAppear_ && appearT >= 1.0f) {
-      if (input->IsKeyTriggered(DIK_W)) {
+      if (input->IsKeyTriggered(DIK_W) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP) || stickUpTrig) {
         currentMenuIndex_--;
         if (currentMenuIndex_ < 0)
           currentMenuIndex_ = (int)menuSpriteIndices_.size() - 1;
       }
-      if (input->IsKeyTriggered(DIK_S)) {
+      if (input->IsKeyTriggered(DIK_S) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || stickDownTrig) {
         currentMenuIndex_++;
         if (currentMenuIndex_ >= (int)menuSpriteIndices_.size())
           currentMenuIndex_ = 0;
       }
-      // --- メニュー決定（Enter/Spaceキー）---
+      // --- メニュー決定（Enter/Spaceキー、Aボタン(下側)）---
       if (input->IsKeyTriggered(DIK_RETURN) ||
-          input->IsKeyTriggered(DIK_SPACE)) {
+          input->IsKeyTriggered(DIK_SPACE) ||
+          input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
         // メニューインデックス順: 0=ゲームスタート, 1=設定, 2=終了
         switch (currentMenuIndex_) {
         case 0: // ゲームスタート

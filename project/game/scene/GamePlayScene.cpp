@@ -78,7 +78,7 @@ void GamePlayScene::ApplyPauseInputUiIfNeeded() {
 
     SetSpriteTexturePreserveSize(
         tabPauseTextSprite_,
-        useGamepadUi ? "white.png" : "tab_text.png");
+        useGamepadUi ? "tab_text_pad.png" : "tab_text.png");
 
     pauseUiUsesGamepad_ = useGamepadUi;
     hasAppliedPauseInputUi_ = true;
@@ -98,20 +98,23 @@ void GamePlayScene::ApplyTutorialInputUiIfNeeded() {
     struct TutorialTextureSet {
         Sprite* sprite;
         const char* keyboardTexture;
+        const char* gamepadTexture;
     };
 
     const TutorialTextureSet textureSets[] = {
-        { tutorialMoveSprite_, "turrialTex/tutrialText_move.png" },
-        { tutorialCameraSprite_, "turrialTex/tutrialText_cameraControl.png" },
-        { tutorialLockOnSprite_, "turrialTex/tutrialText_lockOn.png" },
-        { tutorialAttackSprite_, "turrialTex/tutrialText_attak.png" },
-        { tutorialDodgeSprite_, "turrialTex/tutrialText_donge.png" },
+        { tutorialMoveSprite_, "turrialTex/tutrialText_move.png", "turrialTex/tutrialText_move_pad.png" },
+        { tutorialCameraSprite_, "turrialTex/tutrialText_cameraControl.png", "turrialTex/tutrialText_cameraControl_pad.png" },
+        { tutorialJumpSprite_, "turrialTex/tutrialText_jump.png", "turrialTex/tutrialText_jump_pad.png" },
+        { tutorialLockOnSprite_, "turrialTex/tutrialText_lockOn.png", "turrialTex/tutrialText_lockOn_pad.png" },
+        { tutorialAttackSprite_, "turrialTex/tutrialText_attak.png", "turrialTex/tutrialText_attak_pad.png" },
+        { tutorialFallAttackSprite_, "turrialTex/tutrialText_wallAttak.png", "turrialTex/tutrialText_wallAttak_pad.png" },
+        { tutorialDodgeSprite_, "turrialTex/tutrialText_donge.png", "turrialTex/tutrialText_donge_pad.png" },
     };
 
     for (const auto& textureSet : textureSets) {
         SetSpriteTexturePreserveSize(
             textureSet.sprite,
-            useGamepadUi ? "white.png" : textureSet.keyboardTexture);
+            useGamepadUi ? textureSet.gamepadTexture : textureSet.keyboardTexture);
     }
 
     tutorialUiUsesGamepad_ = useGamepadUi;
@@ -383,15 +386,19 @@ void GamePlayScene::Initialize() {
     // --- チュートリアル用スプライトの取得（最初は非表示） ---
     tutorialMoveSprite_ = GetSpriteByName("tutrialText_move.png");
     tutorialCameraSprite_ = GetSpriteByName("tutrialText_cameraControl.png");
+    tutorialJumpSprite_ = GetSpriteByName("tutrialText_jump.png");
     tutorialLockOnSprite_ = GetSpriteByName("tutrialText_lockOn.png");
     tutorialAttackSprite_ = GetSpriteByName("tutrialText_attak.png");
+    tutorialFallAttackSprite_ = GetSpriteByName("tutrialText_wallAttak.png");
     tutorialDodgeSprite_ = GetSpriteByName("tutrialText_donge.png");
     ApplyTutorialInputUiIfNeeded();
 
     SetAlphaIfExists(tutorialMoveSprite_, 0.0f);
     SetAlphaIfExists(tutorialCameraSprite_, 0.0f);
+    SetAlphaIfExists(tutorialJumpSprite_, 0.0f);
     SetAlphaIfExists(tutorialLockOnSprite_, 0.0f);
     SetAlphaIfExists(tutorialAttackSprite_, 0.0f);
+    SetAlphaIfExists(tutorialFallAttackSprite_, 0.0f);
     SetAlphaIfExists(tutorialDodgeSprite_, 0.0f);
 
     for (auto& sprite : sprites_) {
@@ -769,7 +776,7 @@ void GamePlayScene::Update(float deltaTime) {
         }
 
         // 決定ボタンで遷移
-        if (inputManager_->IsActionTriggered("Jump")) {
+        if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
             PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
             postParams->dangerVignette = 0.0f;
             postParams->blackout = 0.0f;
@@ -1124,6 +1131,23 @@ void GamePlayScene::Update(float deltaTime) {
                     c.w = 0.0f;
                     tutorialCameraSprite_->SetColor(c);
                 }
+                if (tutorialJumpSprite_) {
+                    Vector4 c = tutorialJumpSprite_->GetColor();
+                    c.w = 1.0f;
+                    tutorialJumpSprite_->SetColor(c);
+                }
+                tutorialStep_ = TutorialStep::kWaitForJump;
+                tutorialTimer_ = 0.0f;
+            }
+        } break;
+
+        case TutorialStep::kWaitForJump:
+            if (inputManager_ && inputManager_->IsActionTriggered("Jump")) {
+                if (tutorialJumpSprite_) {
+                    Vector4 c = tutorialJumpSprite_->GetColor();
+                    c.w = 0.0f;
+                    tutorialJumpSprite_->SetColor(c);
+                }
                 if (tutorialLockOnSprite_) {
                     Vector4 c = tutorialLockOnSprite_->GetColor();
                     c.w = 1.0f;
@@ -1132,7 +1156,7 @@ void GamePlayScene::Update(float deltaTime) {
                 tutorialStep_ = TutorialStep::kWaitForLockOn;
                 tutorialTimer_ = 0.0f;
             }
-        } break;
+            break;
 
         case TutorialStep::kWaitForLockOn:
             if (lockOnSystem_ && lockOnSystem_->IsLockingOn()) {
@@ -1159,6 +1183,25 @@ void GamePlayScene::Update(float deltaTime) {
                         Vector4 c = tutorialAttackSprite_->GetColor();
                         c.w = 0.0f;
                         tutorialAttackSprite_->SetColor(c);
+                    }
+                    if (tutorialFallAttackSprite_) {
+                        Vector4 c = tutorialFallAttackSprite_->GetColor();
+                        c.w = 1.0f;
+                        tutorialFallAttackSprite_->SetColor(c);
+                    }
+                    tutorialStep_ = TutorialStep::kWaitForFallAttack;
+                    tutorialTimer_ = 0.0f;
+                }
+            }
+            break;
+
+        case TutorialStep::kWaitForFallAttack:
+            if (inputManager_) {
+                if (inputManager_->IsActionTriggered("Attack")) {
+                    if (tutorialFallAttackSprite_) {
+                        Vector4 c = tutorialFallAttackSprite_->GetColor();
+                        c.w = 0.0f;
+                        tutorialFallAttackSprite_->SetColor(c);
                     }
                     if (tutorialDodgeSprite_) {
                         Vector4 c = tutorialDodgeSprite_->GetColor();

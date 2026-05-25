@@ -46,7 +46,7 @@ void GameClearScene::ApplyInputUiIfNeeded() {
 
     SetSpriteTexturePreserveSize(
         enterTextSprite_,
-        useGamepadUi ? "white.png" : "enter_text.png");
+        useGamepadUi ? "enter_text_pad.png" : "enter_text.png");
 
     clearUiUsesGamepad_ = useGamepadUi;
     hasAppliedClearInputUi_ = true;

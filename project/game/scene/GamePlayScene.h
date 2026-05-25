@@ -230,10 +230,14 @@ private:
         kWaitForMove,       // 移動入力待ち
         kShowCamera,        // カメラ説明表示
         kWaitForCamera,     // カメラ操作待ち
+        kShowJump,          // ジャンプ表示
+        kWaitForJump,       // ジャンプ待ち
         kShowLockOn,        // ロックオン表示
         kWaitForLockOn,     // ロックオン待ち
         kShowAttack,        // 攻撃表示
         kWaitForAttack,     // 攻撃待ち
+        kShowFallAttack,    // 落下攻撃表示
+        kWaitForFallAttack, // 落下攻撃待ち
         kShowDodge,         // 回避表示
         kWaitForDodge,      // 回避待ち
         kCompleted
@@ -243,8 +247,10 @@ private:
     // チュートリアル用スプライトポインタ
     Sprite* tutorialMoveSprite_ = nullptr;
     Sprite* tutorialCameraSprite_ = nullptr;
+    Sprite* tutorialJumpSprite_ = nullptr;
     Sprite* tutorialLockOnSprite_ = nullptr;
     Sprite* tutorialAttackSprite_ = nullptr;
+    Sprite* tutorialFallAttackSprite_ = nullptr;
     Sprite* tutorialDodgeSprite_ = nullptr;
     bool tutorialUiUsesGamepad_ = false;
     bool hasAppliedTutorialInputUi_ = false;

@@ -144,4 +144,7 @@ private:
 
     // ボスコンテナのパーティクル（複数コア対応・追従用）
     std::vector<std::unique_ptr<GPUParticleEmitter>> bossContainerEmitters_;
+
+    bool prevStickUp_ = false;
+    bool prevStickDown_ = false;
 };
