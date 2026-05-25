@@ -255,6 +255,14 @@ private:
     bool tutorialUiUsesGamepad_ = false;
     bool hasAppliedTutorialInputUi_ = false;
 
+    float tutorialMoveTimer_ = 0.0f;
+    float tutorialCameraTimer_ = 0.0f;
+    int tutorialAttackCount_ = 0;
+    int tutorialFallAttackCount_ = 0;
+    int tutorialJumpCount_ = 0;
+    float doorOpenedTimer_ = 0.0f;
+    class IAnimationState* tutorialPrevState_ = nullptr;
+
     // ミッションタスクスプライト（6枚）
     Sprite* missionText_mission_ = nullptr;
     Sprite* missionText_line_ = nullptr;
