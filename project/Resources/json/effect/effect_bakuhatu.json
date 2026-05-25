@@ -43,7 +43,7 @@
     ],
     "InnerRadius": 0.6000000238418579,
     "Intensity": 1.0,
-    "Lifetime": 1.2000000476837158,
+    "Lifetime": 0.800000011920929,
     "MeshSegments": 128,
     "ModelName": "sphere.gltf",
     "NoiseTexturePath": "Resources/sprite/image3.png",

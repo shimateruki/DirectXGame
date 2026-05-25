@@ -43,7 +43,7 @@
     ],
     "InnerRadius": 2.0,
     "Intensity": 1.0,
-    "Lifetime": 1.5,
+    "Lifetime": 1.0,
     "MeshSegments": 128,
     "ModelName": "Semicircle.gltf",
     "NoiseTexturePath": "",

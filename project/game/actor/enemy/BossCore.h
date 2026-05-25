@@ -209,6 +209,15 @@ public:
     // ==========================================
     void SetWaitingForDeath(bool waiting) { isWaitingForDeath_ = waiting; }
 
+    void SetWaitingForFinisher(bool waiting) { isWaitingForFinisher_ = waiting; }
+    bool IsWaitingForFinisher() const { return isWaitingForFinisher_; }
+    void StartFinisherFall() {
+        isFinisherFalling_ = true;
+        finisherFallVelocity_ = 0.0f;
+        finisherBounceCount_ = 0;
+    }
+    bool IsFinisherFalling() const { return isFinisherFalling_; }
+
 
     // --- public: に追加 ---
     void TriggerCrashStun();   // 自爆スタンの誘発
@@ -308,6 +317,9 @@ private:
     bool isFinalPhase_ = false;       // HP1になって発狂中か？
     bool isWaitingForDeath_ = false;  // 必殺技が終わってトドメ待ちか？
     bool isWaitingForFinisher_ = false; // 大技終了後のトドメ待ちモード
+    bool isFinisherFalling_ = false;
+    float finisherFallVelocity_ = 0.0f;
+    int finisherBounceCount_ = 0;
 
     // ▼ 先ほどのアクセス違反（クラッシュ）を完全に防ぐための安全装置
     bool isShardSpawnRequested_ = false;
