@@ -18,6 +18,9 @@ bool IsIgnoredForLockOnOcclusion(Object3d* object) {
         const std::string enemyType = current->GetEnemyType();
         const std::string name = current->GetName();
 
+        if (name.find("Tutorial_Doll_Button") != std::string::npos) {
+            return true;
+        }
         if (className == "Enemy" || className == "BossCore") {
             return true;
         }
