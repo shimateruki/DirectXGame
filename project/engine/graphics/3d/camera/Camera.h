@@ -83,6 +83,7 @@ public:
     void SetTarget(const Vector3& target) { target_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
     void SetFreezeEye(bool freeze) { isEyeFrozen_ = freeze; }
+    void SetAimCameraSuppressed(bool suppressed) { isAimCameraSuppressed_ = suppressed; }
 
     // FOV（視野角）の動的変更
     void SetFovY(float fov) { fovY_ = fov; }
@@ -98,6 +99,7 @@ public:
     void ConfigAimable(float distance, float height, const Vector3& angle);
     void ConfigFirstPerson(const Vector3& eyeOffset);
     void ConfigFixedPoint(const Vector3& position, const Vector3& angle);
+    void SnapToThirdPerson(float distance, float height, float pitch);
 
     void SetOrbitParams(float radius, float height, float speed) {
         orbitRadius_ = radius;
@@ -179,6 +181,7 @@ private:
     float aimHeight_ = 5.0f;
     Vector3 aimAngle_ = { 0.0f, 0.0f, 0.0f };
     bool isEyeFrozen_ = false;
+    bool isAimCameraSuppressed_ = false;
 
     float orbitRadius_ = 15.0f;
     float orbitHeight_ = 5.0f;

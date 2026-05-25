@@ -188,7 +188,7 @@ void Camera::Update() {
         // -----------------------------------------------------------------
         // 右クリック（エイム・フック構え）時の1人称オーバーライド
         // -----------------------------------------------------------------
-        bool isAiming = (inputManager_ && inputManager_->IsMouseButtonPressed(1));
+        bool isAiming = (inputManager_ && inputManager_->IsMouseButtonPressed(1) && !isAimCameraSuppressed_);
         if (isAiming) {
             // カメラの目標位置をプレイヤーの頭の位置に設定
             desiredEye = playerPos + Vector3{ 0.0f, aimHeight_, 0.0f };
@@ -417,6 +417,29 @@ void Camera::ConfigAimable(float distance, float height, const Vector3& angle) {
 
 void Camera::ConfigFirstPerson(const Vector3& eyeOffset) {
     firstPersonOffset_ = eyeOffset;
+}
+
+void Camera::SnapToThirdPerson(float distance, float height, float pitch) {
+    if (!followObject_) return;
+
+    followMode_ = FollowMode::kAimable;
+    aimDistance_ = distance;
+    aimHeight_ = height;
+    rotation_.x = pitch;
+
+    Vector3 playerPos = followObject_->GetWorldPosition();
+    Vector3 targetPos = playerPos;
+    targetPos.y += aimHeight_;
+
+    Matrix4x4 rotateMat = math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
+    Vector3 offset = { 0.0f, 0.0f, -aimDistance_ };
+    offset = math.TransformNormal(offset, rotateMat);
+
+    smoothTarget_ = targetPos;
+    smoothEye_ = targetPos + offset;
+    target_ = smoothTarget_;
+    eye_ = smoothEye_;
+    isEyeFrozen_ = false;
 }
 
 void Camera::AddRotation(const Vector2& mouseDelta) {

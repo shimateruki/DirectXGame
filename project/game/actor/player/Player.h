@@ -39,6 +39,8 @@ public:
     // 移動制御 (Strategy Pattern)
     // ==================================================
     void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy);
+    void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
+    void ApplyIceSurface(float duration, float friction, float steering);
 
     // ==================================================
     // アクセッサ

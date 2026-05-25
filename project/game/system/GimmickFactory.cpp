@@ -6,6 +6,11 @@
 #include "GimmickBlinkBlock.h"
 #include "GimmickBreakableBlock.h"
 #include "GimmickCoin.h"
+#include "GimmickHookAnchor.h"
+#include "GimmickSinkingFloor.h"
+#include "GimmickSeesawFloor.h"
+#include "GimmickDashPanel.h"
+#include "GimmickIceFloor.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -55,6 +60,31 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto coin = std::make_unique<GimmickCoin>();
         coin->Initialize(common, "Primitives/sphere"); // sphereモデルをデフォルトに設定
         newGimmick = std::move(coin);
+    }
+    else if (gimmickName == "HookAnchor") {
+        auto anchor = std::make_unique<GimmickHookAnchor>();
+        anchor->Initialize(common, "Primitives/sphere");
+        newGimmick = std::move(anchor);
+    }
+    else if (gimmickName == "SinkingFloor") {
+        auto floor = std::make_unique<GimmickSinkingFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "SeesawFloor") {
+        auto floor = std::make_unique<GimmickSeesawFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "DashPanel") {
+        auto panel = std::make_unique<GimmickDashPanel>();
+        panel->Initialize(common, "Stages/block");
+        newGimmick = std::move(panel);
+    }
+    else if (gimmickName == "IceFloor") {
+        auto floor = std::make_unique<GimmickIceFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
     }
 
     // 該当するギミックがない場合、またはベースを直接生成する場合

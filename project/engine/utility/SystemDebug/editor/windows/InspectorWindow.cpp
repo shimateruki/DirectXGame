@@ -806,7 +806,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor" };
     std::string currentType = selectedObject->GetGimmickType();
 
     int currentIndex = 0;
@@ -855,6 +855,82 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
             selectedObject->SetCollisionRadius(1.0f);
+        }
+        else if (selectedGimmickType == "HookAnchor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_HookAnchor");
+            selectedObject->SetModel("Primitives/sphere");
+            selectedObject->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 1.2f, 1.2f, 1.2f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kHookAnchor);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kSphere;
+            colConfig.size = { 2.5f, 2.5f, 2.5f };
+            selectedObject->SetColliderConfig(colConfig);
+            selectedObject->SetCollisionRadius(2.5f);
+        }
+        else if (selectedGimmickType == "SinkingFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_SinkingFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.55f, 0.75f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "SeesawFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_SeesawFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.9f, 0.75f, 0.35f, 1.0f });
+            selectedObject->SetScale({ 4.0f, 0.35f, 1.4f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "DashPanel") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_DashPanel");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 1.0f, 0.55f, 0.1f, 1.0f });
+            selectedObject->SetScale({ 2.0f, 0.25f, 1.2f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "IceFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_IceFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.65f, 0.9f, 1.0f, 0.9f });
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
         }
         else if (selectedGimmickType == "Default") {
             selectedObject->SetClassName("Default");

@@ -399,6 +399,21 @@
     <ClCompile Include="game\actor\gimmick\GimmickCoin.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickHookAnchor.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickSinkingFloor.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickSeesawFloor.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickDashPanel.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickIceFloor.cpp">
+      <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
     <ClCompile Include="game\scene\GameSelectScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -1376,6 +1391,21 @@
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\GimmickCoin.h">
       <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickHookAnchor.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickSinkingFloor.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickSeesawFloor.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickDashPanel.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickIceFloor.h">
+      <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\GameSelectScene.h">
       <Filter>ヘッダー ファイル</Filter>

@@ -126,6 +126,35 @@ private:
 // --------------------------------------------------------
 // 敵引き寄せ状態 (Pull Enemy)
 // --------------------------------------------------------
+class PlayerStateSwingHook : public IAnimationState
+{
+public:
+    PlayerStateSwingHook(const Vector3& anchorPos) : anchorPos_(anchorPos) {}
+    void Enter(Player* player) override;
+    void Update(Player* player) override;
+    void Exit(Player* player) override;
+
+private:
+    void UpdateRopeMarker(Player* player, const Vector3& endPos, float thickness);
+    void Release(Player* player);
+
+    enum class Phase {
+        kShootHook,
+        kSwing
+    };
+
+    Vector3 anchorPos_;
+    Vector3 hookTipPos_;
+    Vector3 swingVelocity_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 releaseVelocity_ = { 0.0f, 0.0f, 0.0f };
+    Phase phase_ = Phase::kShootHook;
+    float oldGravity_ = 0.0f;
+    float oldFovY_ = 0.45f;
+    float ropeLength_ = 0.0f;
+    float timer_ = 0.0f;
+    bool released_ = false;
+};
+
 class PlayerStatePullEnemy : public IAnimationState
 {
 public:

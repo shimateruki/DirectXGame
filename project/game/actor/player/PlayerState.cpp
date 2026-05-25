@@ -8,6 +8,8 @@
 #include "engine/graphics/postprocess/PostEffect.h"
 #include "engine/graphics/3d/camera/CameraManager.h"
 #include"BaseEnemy.h"
+#include "CollisionConfig.h"
+#include "CollisionManager.h"
 #include <memory>
 
 // ========================================================
@@ -473,6 +475,270 @@ void PlayerStateHook::Exit(Player* player) {
 // ========================================================
 // 敵引き寄せ状態 (Pull Enemy)
 // ========================================================
+void PlayerStateSwingHook::Enter(Player* player) {
+    DebugConsole::GetInstance()->AddLog("Enter: SwingHook");
+    if (!player) return;
+
+    player->SetIsControlActive(false);
+    if (player->param_.has_value()) {
+        oldGravity_ = player->param_->gravity;
+        player->param_->gravity = 0.0f;
+    }
+
+    auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+    if (cam) {
+        oldFovY_ = cam->GetFovY();
+        cam->SetAimCameraSuppressed(true);
+        cam->SnapToThirdPerson(15.0f, 3.2f, 0.28f);
+        cam->SetFovY(oldFovY_);
+        cam->Update();
+    }
+
+    released_ = false;
+    timer_ = 0.0f;
+    phase_ = Phase::kShootHook;
+    hookTipPos_ = player->GetWorldPosition();
+    releaseVelocity_ = player->GetVelocity();
+    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+
+    Object3d* marker = player->GetHookMarker();
+    if (marker) {
+        marker->SetIsVisible(true);
+        marker->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
+        marker->GetTransform()->translate = hookTipPos_;
+        marker->GetTransform()->scale = { 0.35f, 0.35f, 1.0f };
+        marker->GetTransform()->isQuaternionMaster = false;
+    }
+}
+
+void PlayerStateSwingHook::Update(Player* player) {
+    if (!player) return;
+
+    const float deltaTime = 1.0f / 60.0f;
+    timer_ += deltaTime;
+
+    if (phase_ == Phase::kShootHook) {
+        Vector3 toAnchor = anchorPos_ - hookTipPos_;
+        float dist = Math::Length(toAnchor);
+        if (dist < 4.0f) {
+            hookTipPos_ = anchorPos_;
+            phase_ = Phase::kSwing;
+
+            Vector3 playerPos = player->GetWorldPosition();
+            Vector3 radial = playerPos - anchorPos_;
+            ropeLength_ = Math::Length(radial);
+            if (ropeLength_ < 5.0f) {
+                ropeLength_ = 5.0f;
+                radial = { 0.0f, -1.0f, 0.0f };
+                player->SetTranslate(anchorPos_ + radial * ropeLength_);
+            } else {
+                radial = Math::Normalize(radial);
+            }
+
+            Vector3 tangent = { 1.0f, 0.0f, 0.0f };
+            auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+            if (cam) {
+                Vector3 camRot = cam->GetRotation();
+                Vector3 camForward = {
+                    std::sin(camRot.y) * std::cos(camRot.x),
+                    -std::sin(camRot.x),
+                    std::cos(camRot.y) * std::cos(camRot.x)
+                };
+                tangent = camForward - radial * Math::Dot(camForward, radial);
+            }
+            if (Math::Length(tangent) < 0.01f) {
+                tangent = Math::Cross({ 0.0f, 1.0f, 0.0f }, radial);
+            }
+            if (Math::Length(tangent) < 0.01f) {
+                tangent = { 1.0f, 0.0f, 0.0f };
+            }
+            swingVelocity_ = Math::Normalize(tangent) * 34.0f;
+            if (swingVelocity_.y < 6.0f) {
+                swingVelocity_.y = 6.0f;
+            }
+            releaseVelocity_ = swingVelocity_;
+            if (cam) {
+                cam->SnapToThirdPerson(15.0f, 3.2f, 0.28f);
+                cam->SetFovY(oldFovY_);
+                cam->Update();
+            }
+            DebugConsole::GetInstance()->AddLog("SwingHook attached");
+        } else {
+            Vector3 dir = Math::Normalize(toAnchor);
+            hookTipPos_ = hookTipPos_ + dir * (190.0f * deltaTime);
+        }
+
+        UpdateRopeMarker(player, hookTipPos_, 0.22f);
+        return;
+    }
+
+    Vector3 pos = player->GetWorldPosition();
+    Vector3 radial = pos - anchorPos_;
+    if (Math::Length(radial) < 0.01f) {
+        radial = { 0.0f, -1.0f, 0.0f };
+    } else {
+        radial = Math::Normalize(radial);
+    }
+
+    swingVelocity_.y -= 14.0f * deltaTime;
+
+    InputManager* input = player->GetInputManager();
+    if (input) {
+        Vector3 pump = { 0.0f, 0.0f, 0.0f };
+        auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+        if (cam) {
+            Vector3 camRot = cam->GetRotation();
+            Vector3 forward = { std::sin(camRot.y), 0.0f, std::cos(camRot.y) };
+            Vector3 right = { std::cos(camRot.y), 0.0f, -std::sin(camRot.y) };
+            if (input->IsActionPressed("Forward")) pump += forward;
+            if (input->IsActionPressed("Backward")) pump = pump - forward;
+            if (input->IsActionPressed("Right")) pump += right;
+            if (input->IsActionPressed("Left")) pump = pump - right;
+        }
+
+        if (Math::Length(pump) > 0.01f) {
+            pump = Math::Normalize(pump);
+            pump = pump - radial * Math::Dot(pump, radial);
+            if (Math::Length(pump) > 0.01f) {
+                swingVelocity_ += Math::Normalize(pump) * (26.0f * deltaTime);
+            }
+        }
+
+        if (timer_ > 0.18f && (input->IsActionTriggered("Jump") || input->IsMouseButtonTriggered(1))) {
+            Release(player);
+            return;
+        }
+    }
+
+    swingVelocity_ = swingVelocity_ - radial * Math::Dot(swingVelocity_, radial);
+    float speed = Math::Length(swingVelocity_);
+    if (speed > 56.0f) {
+        swingVelocity_ = Math::Normalize(swingVelocity_) * 56.0f;
+    }
+
+    Vector3 nextPos = pos + swingVelocity_ * deltaTime;
+    Vector3 nextRadial = nextPos - anchorPos_;
+    if (Math::Length(nextRadial) < 0.01f) {
+        nextRadial = radial;
+    } else {
+        nextRadial = Math::Normalize(nextRadial);
+    }
+    nextPos = anchorPos_ + nextRadial * ropeLength_;
+    swingVelocity_ = swingVelocity_ - nextRadial * Math::Dot(swingVelocity_, nextRadial);
+
+    RaycastHit groundHit = CollisionManager::GetInstance()->Raycast(
+        nextPos + Vector3{ 0.0f, 5.0f, 0.0f },
+        { 0.0f, -1.0f, 0.0f },
+        12.0f,
+        kGround
+    );
+    if (groundHit.isHit) {
+        const float minPlayerY = groundHit.hitPoint.y + 1.15f;
+        if (nextPos.y < minPlayerY) {
+            nextPos.y = minPlayerY;
+            if (swingVelocity_.y < 0.0f) {
+                swingVelocity_.y = 0.0f;
+            }
+            releaseVelocity_.y = std::max(releaseVelocity_.y, 4.0f);
+        }
+    }
+
+    Vector3 frameVelocity = (nextPos - pos) / deltaTime;
+    player->SetVelocity(frameVelocity);
+    releaseVelocity_ = frameVelocity;
+
+    Vector3 flatVel = { swingVelocity_.x, 0.0f, swingVelocity_.z };
+    if (Math::Length(flatVel) > 0.1f) {
+        player->SetRotationY(std::atan2(flatVel.x, flatVel.z));
+    }
+
+    float stretch = std::min(Math::Length(swingVelocity_) / 56.0f, 1.0f);
+    float flutter = std::sin(timer_ * 14.0f) * stretch;
+    player->SetScale({
+        3.0f + 0.10f * stretch + 0.07f * flutter,
+        1.0f + 0.08f * stretch - 0.04f * flutter,
+        3.0f - 0.06f * stretch + 0.05f * flutter
+    });
+
+    Vector3 rot = player->GetRotation();
+    rot.x = -swingVelocity_.z * 0.006f;
+    rot.z = swingVelocity_.x * 0.006f;
+    player->SetRotation(rot);
+
+    UpdateRopeMarker(player, anchorPos_, 0.18f);
+
+    if (timer_ > 3.0f) {
+        Release(player);
+    }
+}
+
+void PlayerStateSwingHook::Exit(Player* player) {
+    if (player) {
+        player->SetIsControlActive(true);
+        if (player->param_.has_value()) {
+            player->param_->gravity = oldGravity_;
+        }
+
+        if (released_) {
+            if (releaseVelocity_.y < 8.0f) releaseVelocity_.y = 8.0f;
+            player->SetVelocity(releaseVelocity_);
+        }
+        player->SetScale({ 3.0f, 1.0f, 3.0f });
+        Vector3 rot = player->GetRotation();
+        rot.x = 0.0f;
+        rot.z = 0.0f;
+        player->SetRotation(rot);
+
+        Object3d* marker = player->GetHookMarker();
+        if (marker) {
+            marker->SetIsVisible(false);
+            marker->GetTransform()->scale = { 1.0f, 1.0f, 1.0f };
+            marker->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
+            marker->GetTransform()->isQuaternionMaster = true;
+            marker->UpdateLocalMatrix();
+            marker->UpdateWorldMatrix();
+        }
+    }
+
+    auto* cam = CameraManager::GetInstance()->GetActiveCamera();
+    if (cam) {
+        cam->SetAimCameraSuppressed(false);
+        cam->SetFovY(oldFovY_);
+    }
+}
+
+void PlayerStateSwingHook::UpdateRopeMarker(Player* player, const Vector3& endPos, float thickness) {
+    if (!player) return;
+
+    Object3d* marker = player->GetHookMarker();
+    if (!marker) return;
+
+    Vector3 startPos = player->GetWorldPosition();
+    Vector3 diff = endPos - startPos;
+    float len = Math::Length(diff);
+    if (len < 0.01f) len = 0.01f;
+
+    marker->SetIsVisible(true);
+    marker->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
+    marker->GetTransform()->translate = startPos + diff * 0.5f;
+    marker->GetTransform()->rotate = {
+        std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
+        std::atan2(diff.x, diff.z),
+        0.0f
+    };
+    marker->GetTransform()->isQuaternionMaster = false;
+    marker->GetTransform()->scale = { thickness, thickness, len };
+    marker->UpdateLocalMatrix();
+    marker->UpdateWorldMatrix();
+}
+
+void PlayerStateSwingHook::Release(Player* player) {
+    if (!player) return;
+    released_ = true;
+    DebugConsole::GetInstance()->AddLog("SwingHook released");
+    player->ChangeState(std::make_unique<PlayerStateIdle>());
+}
+
 void PlayerStatePullEnemy::Enter(Player* player) {
     if (!player || !targetEnemy_) return;
 

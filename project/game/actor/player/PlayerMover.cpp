@@ -5,6 +5,7 @@
 #include "IMoveStrategy.h"
 #include "MoveStrategy3D.h"
 #include "Object3d.h"
+#include <algorithm>
 #include <cmath>
 #include <PlayerState.h>
 #include "EventManager.h"
@@ -60,6 +61,18 @@ void PlayerMover::Update(float deltaTime)
     // --- 4. 移動入力の有無を確認 ---
     bool hasMoveInput = (std::abs(inputMove.x) > 0.001f) || (std::abs(inputMove.z) > 0.001f);
 
+    if (dashPanelTimer_ > 0.0f) {
+        dashPanelTimer_ = (std::max)(0.0f, dashPanelTimer_ - deltaTime);
+    }
+    if (iceTimer_ > 0.0f) {
+        iceTimer_ = (std::max)(0.0f, iceTimer_ - deltaTime);
+    }
+
+    const bool isDashPanelActive = dashPanelTimer_ > 0.0f;
+    const bool isIceActive = iceTimer_ > 0.0f;
+    const float moveSpeedMultiplier = isDashPanelActive ? dashPanelSpeedMultiplier_ : 1.0f;
+    const float turnMultiplier = isDashPanelActive ? dashPanelTurnMultiplier_ : 1.0f;
+
     // --- 5. 速度の決定 (ダッシュ中 or 通常) ---
     if (isDashing_)
     {
@@ -92,8 +105,23 @@ void PlayerMover::Update(float deltaTime)
     else
     {
         // 通常時はキー入力による移動をそのまま適用
-        velocity.x = inputMove.x;
-        velocity.z = inputMove.z;
+        Vector3 targetMove = inputMove * moveSpeedMultiplier;
+
+        if (isIceActive) {
+            float steerAlpha = 1.0f - std::expf(-4.0f * iceSteering_ * deltaTime);
+            velocity.x = Math::Lerp(velocity.x, targetMove.x, steerAlpha);
+            velocity.z = Math::Lerp(velocity.z, targetMove.z, steerAlpha);
+
+            if (!hasMoveInput) {
+                float frictionDecay = std::expf(-iceFriction_ * deltaTime);
+                velocity.x *= frictionDecay;
+                velocity.z *= frictionDecay;
+            }
+        }
+        else {
+            velocity.x = targetMove.x;
+            velocity.z = targetMove.z;
+        }
     }
 
     // --- 6. 回転処理 (移動方向へ滑らかに向ける) ---
@@ -110,7 +138,8 @@ void PlayerMover::Update(float deltaTime)
 
         float diff = NormalizeAngle(targetAngle - currentY);
 
-        const float turnSpeed = 12.0f;
+        const float iceTurnMultiplier = isIceActive ? (std::max)(0.25f, iceSteering_) : 1.0f;
+        const float turnSpeed = 12.0f * turnMultiplier * iceTurnMultiplier;
         float alpha = 1.0f - std::expf(-turnSpeed * deltaTime);
         float newY = currentY + diff * alpha;
 
@@ -236,7 +265,7 @@ void PlayerMover::Update(float deltaTime)
     }
 
     // --- 8. スライム特有のホッピング移動 ---
-    if (player_->IsGrounded() && hasMoveInput && !isDashing_) {
+    if (player_->IsGrounded() && hasMoveInput && !isDashing_ && !isIceActive) {
         hopTimer_ += deltaTime;
         if (hopTimer_ > 0.4f) { // 0.4秒おきに跳ねる
             velocity.y = 5.0f;  // 小ジャンプ
@@ -310,4 +339,40 @@ void PlayerMover::Update(float deltaTime)
 void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy)
 {
     strategy_ = std::move(strategy);
+}
+
+void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier)
+{
+    dashPanelTimer_ = (std::max)(dashPanelTimer_, duration);
+    dashPanelSpeedMultiplier_ = (std::max)(1.0f, speedMultiplier);
+    dashPanelTurnMultiplier_ = std::clamp(turnMultiplier, 0.05f, 1.0f);
+
+    if (!player_) return;
+
+    Vector3 velocity = player_->GetVelocity();
+    float horizontalSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+    float targetSpeed = player_->GetMoveSpeed() * dashPanelSpeedMultiplier_;
+    if (horizontalSpeed >= targetSpeed) return;
+
+    Vector3 dir{};
+    if (horizontalSpeed > 0.05f) {
+        dir.x = velocity.x / horizontalSpeed;
+        dir.z = velocity.z / horizontalSpeed;
+    }
+    else {
+        float yaw = player_->GetRotation().y;
+        dir.x = std::sin(yaw);
+        dir.z = std::cos(yaw);
+    }
+
+    velocity.x = dir.x * targetSpeed;
+    velocity.z = dir.z * targetSpeed;
+    player_->SetVelocity(velocity);
+}
+
+void PlayerMover::ApplyIceSurface(float duration, float friction, float steering)
+{
+    iceTimer_ = (std::max)(iceTimer_, duration);
+    iceFriction_ = std::clamp(friction, 0.02f, 8.0f);
+    iceSteering_ = std::clamp(steering, 0.05f, 1.0f);
 }

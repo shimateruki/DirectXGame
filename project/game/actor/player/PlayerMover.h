@@ -35,6 +35,8 @@ public:
 	void SetStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
 	bool IsDashing() const { return isDashing_; }
+	void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
+	void ApplyIceSurface(float duration, float friction, float steering);
 
 private:
 	// 参照用ポインタ
@@ -72,4 +74,12 @@ private:
 	// --- 動的ダッシュパラメータ ---
 	float currentDashSpeed_ = 120.0f;
 	float currentDashDuration_ = 0.20f;
+
+	// --- Surface gimmick effects ---
+	float dashPanelTimer_ = 0.0f;
+	float dashPanelSpeedMultiplier_ = 1.0f;
+	float dashPanelTurnMultiplier_ = 1.0f;
+	float iceTimer_ = 0.0f;
+	float iceFriction_ = 1.0f;
+	float iceSteering_ = 1.0f;
 };

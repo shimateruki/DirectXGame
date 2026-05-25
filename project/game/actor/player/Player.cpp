@@ -103,17 +103,25 @@ void Player::Update(float deltaTime)
                         }
 
                         float maxDistance = 150.0f;
-                        uint32_t mask = kAllSolid | kEnemy;
+                        uint32_t mask = kAllSolid | kEnemy | kHookAnchor;
 
                         RaycastHit hit = CollisionManager::GetInstance()->Raycast(start, dir, maxDistance, mask);
 
                         if (hit.isHit) {
                             hookMarker_->SetIsVisible(true);
                             hookMarker_->GetTransform()->translate = hit.hitPoint;
+                            aimTargetObject_ = hit.hitObject;
 
                             // 【案A：エイムフィードバック】
                             // 敵をロックオンしている時はマーカーを強調する（赤色に変える）
-                            if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
+                            if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
+                                hookMarker_->SetColor({ 0.2f, 0.85f, 1.0f, 1.0f });
+                                static float pulseTimer = 0.0f;
+                                pulseTimer += deltaTime;
+                                float pulse = 1.25f + std::sin(pulseTimer * 10.0f) * 0.25f;
+                                hookMarker_->GetTransform()->scale = { pulse, pulse, pulse };
+                            }
+                            else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
                                 hookMarker_->SetColor({ 1.0f, 0.2f, 0.2f, 1.0f }); // 赤色に変更
                                 static float pulseTimer = 0.0f;
                                 pulseTimer += deltaTime;
@@ -126,9 +134,6 @@ void Player::Update(float deltaTime)
                             }
 
                             hookMarker_->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
-
-                            // 対象を記憶する
-                            aimTargetObject_ = hit.hitObject;
                         }
                         else {
                             hookMarker_->SetIsVisible(false);
@@ -148,7 +153,10 @@ void Player::Update(float deltaTime)
                         Vector3 targetPos = hookMarker_->GetTransform()->translate;
 
                         // 当たった対象が「敵」なら引き寄せ、それ以外なら自分が飛ぶ
-                        if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
+                        if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
+                            ChangeState(std::make_unique<PlayerStateSwingHook>(targetPos));
+                        }
+                        else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
                             ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
                         }
                         else {
@@ -467,6 +475,22 @@ void Player::SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy)
     if (mover_)
     {
         mover_->SetStrategy(std::move(strategy));
+    }
+}
+
+void Player::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier)
+{
+    if (mover_)
+    {
+        mover_->ApplyDashPanelBoost(duration, speedMultiplier, turnMultiplier);
+    }
+}
+
+void Player::ApplyIceSurface(float duration, float friction, float steering)
+{
+    if (mover_)
+    {
+        mover_->ApplyIceSurface(duration, friction, steering);
     }
 }
 

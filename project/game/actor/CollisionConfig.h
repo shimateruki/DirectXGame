@@ -8,6 +8,7 @@ enum CollisionAttribute : uint32_t {
     kEnemy = 1 << 1,  // 敵
     kGround = 1 << 2,  // 通常の地形
     kAttributePlayerBullet = 1 << 3,
+    kHookAnchor = 1 << 8,
 	kTrigger = 1 << 4, // トリガー 
 	kMapBlock = 1 << 5, // ボスが吸収可能なブロック
     kPlayerAttack = 1 << 6, // プレイヤーの近接攻撃（剣など）
@@ -108,4 +109,4 @@ CollisionInfo CheckRingOBBCollision(const Ring& ring, const OBB& obb);
 
 // --- 円柱関連の衝突判定 ---
 CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const Vector3& spherePos, float sphereRadius);
-CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb);
+CollisionInfo CheckCylinderOBBCollision(const Cylinder& cyl, const OBB& obb);

@@ -541,9 +541,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8331392407417297,
-                1.250291109085083,
-                0.8331392407417297
+                0.8454585075378418,
+                1.2318122386932373,
+                0.8454585075378418
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1058,9 +1058,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8331392407417297,
-                1.250291109085083,
-                0.8331392407417297
+                0.8454585075378418,
+                1.2318122386932373,
+                0.8454585075378418
             ],
             "targetID": -1,
             "texturePath": "",
@@ -2233,6 +2233,571 @@
             "targetID": 1,
             "texturePath": "",
             "type": "InvisibleBox"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 256,
+            "collisionMask": 1,
+            "color": [
+                0.20000000298023224,
+                0.8500000238418579,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "HookAnchor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Primitives/sphere",
+            "myEventID": -1,
+            "name": "Gimmick_HookAnchor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "HookAnchor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                111.05614471435547,
+                22.300823211669922,
+                -46.1646728515625
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.2000000476837158,
+                1.2000000476837158,
+                1.2000000476837158
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.550000011920929,
+                0.75,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "SinkingFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_SinkingFloor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "SinkingFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                100.56111145019531,
+                -1.8095526695251465,
+                -76.9245834350586
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.444614887237549,
+                1.0,
+                4.566580295562744
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.8999999761581421,
+                0.75,
+                0.3499999940395355,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0679999589920044,
+            "eventID": 0,
+            "gimmickType": "SeesawFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_SeesawFloor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "SeesawFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                102.3072509765625,
+                -3.066107988357544,
+                -65.90655517578125
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                4.0,
+                1.4778364896774292,
+                3.581399440765381
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                1.0,
+                0.550000011920929,
+                0.10000000149011612,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "DashPanel",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_DashPanel",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "DashPanel",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                86.448486328125,
+                -2.0699715614318848,
+                -70.976806640625
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                1.2000000476837158
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.6499999761581421,
+                0.8999999761581421,
+                1.0,
+                0.8999999761581421
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0679999589920044,
+            "eventID": 0,
+            "gimmickType": "IceFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_IceFloor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "IceFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "shakeDuration": 1.0,
+                "speed": 1.0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                87.56609344482422,
+                -2.2915725708007813,
+                -60.89142990112305
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                7.437717914581299,
+                1.0,
+                7.326960563659668
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
         }
     ]
 }
