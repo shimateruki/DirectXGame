@@ -27,6 +27,12 @@
     <ClCompile Include="engine\graphics\3d\object\EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
+    <ClCompile Include="game\actor\enemy\boss_core\BossCoreArmor.cpp" />
+    <ClCompile Include="game\actor\enemy\boss_core\BossCoreState.cpp" />
+    <ClCompile Include="game\actor\enemy\boss_core\BossCoreCombat.cpp" />
+    <ClCompile Include="game\actor\enemy\boss_core\BossCoreDeath.cpp" />
+    <ClCompile Include="game\actor\enemy\boss_core\BossCoreAppearance.cpp" />
+    <ClCompile Include="game\actor\enemy\boss_core\BossCoreParams.cpp" />
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\EditorManager.cpp" />
@@ -161,6 +167,7 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.h" />
     <ClInclude Include="externals\imgui\IconsFontAwesome5.h" />
     <ClInclude Include="game\actor\enemy\BossCore.h" />
+    <ClInclude Include="game\actor\enemy\boss_core\BossCoreShared.h" />
     <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorManager.h" />
