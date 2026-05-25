@@ -1,7 +1,7 @@
 #include "BossCoreShared.h"
 
 // ==========================================
-// ★ マップブロックを自分の装甲として取り込む（同化する）
+// マップブロックを自分の装甲として取り込む（同化する）
 // ==========================================
 bool BossCore::AssimilateBlock(Object3d* newBlock) {
     for (Object3d* block : armorBlocks_) {
@@ -9,7 +9,7 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
     }
 
     // ==========================================
-    // ★ 修正：吸収した瞬間にファンネル仕様へアップグレード
+    // 吸収した瞬間にファンネル仕様へアップグレード
     // ==========================================
     UpgradeToFunnel(newBlock);
 
@@ -36,7 +36,7 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
     }
 
     // ==========================================
-    // ★ 修正：10個満タンの時は吸収しないので、親子関係を解除して元に戻す！
+    // 10個満タンの時は吸収しないので、親子関係を解除して元に戻す！
     // ==========================================
     newBlock->SetParent(nullptr);
     return false;
@@ -56,7 +56,7 @@ bool BossCore::IsArmorFull() const {
 }
 
 // ==========================================
-// ★ 10個満タンになるまで、あと何個ブロックが必要か計算する
+// 10個満タンになるまで、あと何個ブロックが必要か計算する
 // ==========================================
 int BossCore::GetNeededBlockCount() const {
     int validCount = 0;
@@ -94,7 +94,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
         if (currentAttack_) {
             currentAttack_->Finalize();
             currentAttack_.reset();
-        } // ★ ダウン時の攻撃を強制終了！
+        } // ダウン時の攻撃を強制終了！
         animTimer_ = 0.0f;
         flyingBlocks_.clear();
 
@@ -153,15 +153,15 @@ void BossCore::TriggerCrashStun() {
     
     // バリアHP（barrierHp_）は変更せず、現在の値を維持する！
 
-    // ★ currentAttack_.reset() でダウン時の攻撃を強制終了！
-    //    呼び出し元（BossAttack1_Rush::Update 等）は TriggerCrashStun() の直後に
-    //    即座に return するため、this (攻撃オブジェクト) が破棄されても安全。
+    // currentAttack_.reset() でダウン時の攻撃を強制終了！
+    //   呼び出し元（BossAttack1_Rush::Update 等）は TriggerCrashStun() の直後に
+    //   即座に return するため、this (攻撃オブジェクト) が破棄されても安全。
     if (currentAttack_) {
         currentAttack_->Finalize();
         currentAttack_.reset();
     }
     animTimer_ = 0.0f;
-    // ★ 予測線を完全に消す（突進終了時と同じ方法）
+    // 予測線を完全に消す（突進終了時と同じ方法）
     if (auto* warning = GetWarningArea()) {
         warning->SetScale({ 0.0f, 0.0f, 0.0f });
         warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -267,7 +267,7 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
     for (int i = 0; i < 8; ++i) {
         auto shard = std::make_unique<Object3d>();
         shard->Initialize(common_);
-        shard->SetModel(modelName); // ★ 元のマップブロックと同じモデルを使用！
+        shard->SetModel(modelName); // 元のマップブロックと同じモデルを使用！
         shard->SetName(block->GetName() + "_Shard" + std::to_string(i + 1));
         shard->SetParent(block);
         shard->SetTranslate(offsets[i]);

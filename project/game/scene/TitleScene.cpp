@@ -29,7 +29,7 @@
 #include <cmath>     // std::sin
 
 
-#include "Easing.h" // 追加: イージング関数利用
+#include "Easing.h" // イージング関数利用
 #include <CinematicFade.h>
 #include <PostEffect.h>
 
@@ -93,7 +93,7 @@ void TitleScene::Initialize() {
   particleSystem_->Initialize(particleCommon_.get(),
                               "Resources/sprite/white.png");
 
-  // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+  // シングルトンのParticleManagerに今のシーンのシステムを紐づける！
   ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
   LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
@@ -110,7 +110,7 @@ void TitleScene::Initialize() {
   BulletManager::GetInstance()->Initialize(object3dCommon_.get(),
                                            CollisionManager::GetInstance());
 
-  //  GPUパーティクルの初期化
+  // GPUパーティクルの初期化
   gpuParticleTexHandle_ =
       TextureManager::GetInstance()->Load("Resources/sprite/white.png");
 
@@ -119,7 +119,7 @@ void TitleScene::Initialize() {
                                  "Resources/json/3Dobject/titleScene.json");
   levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/titleScene.json");
   levelLoader_->LoadSpriteLayout(
-      this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
+      this, "Resources/json/sprite/option_ui.json"); // オプションUI用
 
   // option/poseBack.png スプライトを最背面（sprites_ の先頭）に移動する
   {
@@ -227,7 +227,7 @@ void TitleScene::Initialize() {
   optionUI_.Initialize(this, spriteCommon_.get());
 
   // =======================================================
-  // ★ リスタート演出（電脳リブート）と完全初期化
+  // リスタート演出（電脳リブート）と完全初期化
   // =======================================================
   SceneManager *scm = SceneManager::GetInstance();
 
@@ -471,7 +471,7 @@ void TitleScene::DrawUI() {
     sprites_[i]->Draw();
   }
 
-  // オプションメニュー時は追加のアイコン（動的生成分）を描画
+  // オプションメニュー時は動的生成分のアイコンを描画
   if (currentState_ == TitleState::OptionMenu) {
     optionUI_.DrawKeyIcons();
   }
@@ -501,7 +501,7 @@ void TitleScene::Draw() {
     if (isFirstPerson && obj.get() == player_)
       continue;
     if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7)
-      continue; // ★修正: フォグ(7)も不透明パスから除外
+      continue; // フォグ(7)も不透明パスから除外
     obj->Draw(pointLightRes, spotLightRes);
   }
 

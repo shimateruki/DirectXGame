@@ -5,8 +5,8 @@ void BossCore::StartDeathSequence() {
 
     isWaitingForFinisher_ = false; // トドメ待ちモーションを解除し、座標の固定を防ぐ
 
-    deathPhase_ = 1;         // ★ フェーズ1（無音で静止）
-    sequenceTimer_ = 1.0f;   // ★ 1秒間待機！
+    deathPhase_ = 1;         // フェーズ1（無音で静止）
+    sequenceTimer_ = 1.0f;   // 1秒間待機！
 
     DebugConsole::GetInstance()->AddLog("[撃破] ボス沈黙…！！");
 
@@ -59,12 +59,12 @@ void BossCore::StartDeathSequence() {
 }
 
 // ==========================================
-// ★ 段階2：亀裂状態（少し隙間をあけた破片）を出現させる
+// 段階2：亀裂状態（少し隙間をあけた破片）を出現させる
 // ==========================================
 void BossCore::ShowCrackedCore() {
     DebugConsole::GetInstance()->AddLog("[撃破] コアに亀裂が…！生成予約");
 
-    // ★ 生成はここではやらず、フラグだけ立てる！
+    // 生成はここではやらず、フラグだけ立てる！
     isShardSpawnRequested_ = true;
 }
 
@@ -112,7 +112,7 @@ void BossCore::ActuallySpawnShards() {
 }
 
 // ==========================================
-// ★ 段階3：一気に吹き飛ばす！（爆散）
+// 段階3：一気に吹き飛ばす！（爆散）
 // ==========================================
 void BossCore::BreakCore() {
     isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動！
@@ -154,7 +154,7 @@ void BossCore::UpdateCorePieces(float deltaTime) {
         isDead = true;
         isCompletelyDead_ = true;
         // ==========================================
-        // ★ 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す！
+        // 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す！
         // 一瞬で戻すなら 0.0f に変更します。
         // ==========================================
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {

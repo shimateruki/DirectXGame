@@ -230,7 +230,7 @@ public:
     void StartAppearance(); // 登場演出をスタートする関数
     bool IsAppearing() const { return isAppearing_; }
 
-    State GetState() const { return state_; } // 追加
+    State GetState() const { return state_; }
 
     void ActuallySpawnShards();
     void UpgradeToFunnel(Object3d* block); // 吸収したブロックをファンネル仕様（8分割）にアップグレードする
@@ -276,7 +276,7 @@ private:
     std::vector<Object3d*> armorBlocks_;
 
     // ==========================================
-    // ★ ダウン(Weak)演出用のアニメーション変数（これだけ残す！）
+    // ダウン(Weak)演出用のアニメーション変数（これだけ残す！）
     // ==========================================
     float animTimer_ = 0.0f;
     std::vector<Vector3> blockStartPos_;
@@ -334,10 +334,10 @@ private:
     std::vector<Vector3> prevBlockPositions_;
 
     // ==========================================
-    // ★ 破片演出用の構造体と変数
+    // 破片演出用の構造体と変数
     // ==========================================
     struct CorePiece {
-        Object3d* obj; // ★ 生ポインタでOK！（実体はシーンが管理する）
+        Object3d* obj; // 生ポインタでOK！（実体はシーンが管理する）
         Vector3 velocity;
         Vector3 rotSpeed;
     };
@@ -372,7 +372,7 @@ private:
     // --- HP半分時の演出用 ---
     enum class HpHalfEventPhase {
         None,
-        WaitIdle,     // 追加: 1フレーム待機モーションに戻す
+        WaitIdle,     // 1フレーム待機モーションに戻す
         Falling,      // 落下
         Lying,        // ダウン
         Recovery,     // 起き上がり・首振り

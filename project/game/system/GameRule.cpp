@@ -53,7 +53,7 @@ void GameRule::Initialize(BaseScene* scene) {
                     gps->StartBossAppearanceMovie(); // シーンに合図を送る！
 
                     // ====================================================
-                    // ★ 修正：踏んだスイッチの当たり判定を「0（無し）」にする！
+                    // 踏んだスイッチの当たり判定を「0（無し）」にする！
                     // これにより、このスイッチは二度とイベントを発生させなくなります。
                     // ====================================================
                     if (objectHit) {
@@ -75,7 +75,7 @@ void GameRule::Initialize(BaseScene* scene) {
         });
 
     // ========================================================
-    // ★戦闘のダメージイベントを受信！
+    // 戦闘のダメージイベントを受信！
     // ========================================================
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target) return;
@@ -85,7 +85,7 @@ void GameRule::Initialize(BaseScene* scene) {
         });
 }
 
-// ▼ 汎用ダメージ関数 
+// ▼ 汎用ダメージ関数
 void GameRule::ApplyDamage(Object3d* target, float damage) {
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);

@@ -11,7 +11,7 @@ private:
     std::vector<Vector3> blockTargetPos_;
 
     int shotCount_ = 0; // 撃った数も自分が管理する！
-    float descendTimer_ = 0.0f; // ★ 新規：徐々に下に下がるためのタイマー！
+    float descendTimer_ = 0.0f; // 徐々に下に下がるためのタイマー！
 
 public:
     void Initialize(BossCore* boss) override;

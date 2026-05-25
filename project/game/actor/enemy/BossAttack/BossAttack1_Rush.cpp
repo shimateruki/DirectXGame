@@ -40,7 +40,7 @@ void BossAttack1_Rush::Initialize(BossCore* boss) {
     for (size_t i = 0; i < armorBlocks.size(); ++i) {
         blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
 
-        // 💥 突進攻撃力を各装甲ブロックに適用！
+        // 突進攻撃力を各装甲ブロックに適用！
         if (armorBlocks[i]) {
             armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageRush);
         }
@@ -81,7 +81,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         if (t >= 1.0f) {
             animPhase_ = 2;
             animTimer_ = 0.0f;
-            animStartPos_ = boss->GetTranslate(); // ★ ボス本体の座標を取得
+            animStartPos_ = boss->GetTranslate(); // ボス本体の座標を取得
         }
     }
     // --- フェーズ2: 移動 (x = -50) ---
@@ -93,7 +93,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         Vector3 pos = boss->GetTranslate();
         pos.x = Math::Lerp(animStartPos_.x, -50.0f, Easing::OutExpo(t));
         pos.y = Math::Lerp(animStartPos_.y, 2.0f, Easing::OutExpo(t));
-        boss->SetTranslate(pos); // ★ ボス本体を動かす
+        boss->SetTranslate(pos); // ボス本体を動かす
 
         if (t >= 1.0f) {
             animPhase_ = 3;
@@ -107,7 +107,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         float duration = 3.0f;
         float t = std::min(animTimer_ / duration, 1.0f);
 
-        // ★ 修正: プレイヤーへの「正確な方向ベクトル(dir)」を計算する
+        // プレイヤーへの「正確な方向ベクトル(dir)」を計算する
         Vector3 dir = { 0.0f, 0.0f, 1.0f }; // デフォルト
         if (target) {
             Vector3 targetPos = target->GetWorldPosition();
@@ -132,7 +132,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         boss->SetTranslate(pos);
 
     // ==================================================
-        // ★ 予測線（予兆エリア）の表示と更新
+        // 予測線（予兆エリア）の表示と更新
         // ==================================================
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
@@ -143,7 +143,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             warning->SetEmissive(3.0f);
             warning->SetTexture("Resources/sprite/yazirusi1.png"); // 上向き
             // ==================================================
-            // ★ 画像のタイリングと縦スクロール
+            // 画像のタイリングと縦スクロール
             // ==================================================
             static Math math;
             Vector3 uvScale = { 3.0f, 20.0f, 1.0f }; 
@@ -175,7 +175,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
             animStartPos_ = boss->GetTranslate();
 
-            // ★ バスターズ風に突き抜ける設定！プレイヤーの位置ではなく、方向ベクトルの先へ！
+            // バスターズ風に突き抜ける設定！プレイヤーの位置ではなく、方向ベクトルの先へ！
             float dashDistance = 110.0f;
             animTargetPos_ = {
                 animStartPos_.x + dir.x * dashDistance,
@@ -195,9 +195,9 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         float easedT = std::pow(t, 4.0f);
 
         boss->SetTranslate(Math::Lerp(animStartPos_, animTargetPos_, easedT));
-        boss->UpdateWorldMatrix(); // ★ 衝突判定のためにワールド行列を即座に更新
+        boss->UpdateWorldMatrix(); // 衝突判定のためにワールド行列を即座に更新
 
-        // 💥 ステージ上のアクティブなブロック（MapBlock）との衝突判定
+        // ステージ上のアクティブなブロック（MapBlock）との衝突判定
         for (MapBlock* block : MapBlock::s_activeBlocks) {
             if (block && (block->GetCollisionAttribute() & kMapBlock)) {
                 CollisionInfo info = boss->CheckCollision(block);
@@ -220,7 +220,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         boss->SetRotation({ easedT * totalRotation, boss->GetRotation().y, boss->GetRotation().z });
         boss->GetTransform()->isQuaternionMaster = false;
 
-        // ★ 突進中は予測線を最高に濃く保つ
+        // 突進中は予測線を最高に濃く保つ
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
             warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
@@ -239,7 +239,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
                 blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
             }
 
-            // ★ 突進終了時に予測線を完全に消す
+            // 突進終了時に予測線を完全に消す
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetScale({ 0.0f, 0.0f, 0.0f });

@@ -54,12 +54,12 @@ void BossCore::ChangeState(State nextState) {
             if (state_ == State::Attack) {
                 SetBlockColor(block, { 1.0f, 1.0f, 1.0f, 1.0f });
             }
-            // ★ 追加：スタン(Weak)時のスケールを元に戻す
+            // スタン(Weak)時のスケールを元に戻す
             if (state_ == State::Weak) {
                 block->SetScale({ 1.0f, 1.0f, 1.0f });
                 SetBlockColor(block, { 1.0f, 1.0f, 1.0f, 1.0f });
 
-                // ★スタン時に子ブロック（Shard）の展開を強制収束（元のコンパクトな位置に戻す）
+                // スタン時に子ブロック（Shard）の展開を強制収束（元のコンパクトな位置に戻す）
                 for (auto* child : block->GetChildren()) {
                     if (child && child->GetName().find("Shard") != std::string::npos) {
                         Vector3 basePos = child->GetTranslate();
@@ -307,7 +307,7 @@ void BossCore::UpdateIdle(float deltaTime) {
     }
 
     // ====================================================
-    // ★ ここが圧倒的カッコよさの秘密！
+    // ここが圧倒的カッコよさの秘密！
     // 1.8秒（咆哮が終わって元のサイズに戻る時間）までは 0% で完全待機。
     // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッ！と集める！
     // ====================================================
@@ -353,7 +353,7 @@ void BossCore::UpdateIdle(float deltaTime) {
     if (isBattleStarted_) {
 
         // ====================================================
-        // ★ 修正：4, 5, 6, 7, 8秒のどれかをピタリ選ぶ
+        // 4, 5, 6, 7, 8秒のどれかをピタリ選ぶ
         // ====================================================
         static float targetIdleTime = 5.0f;
         if (animTimer_ == 0.0f) {

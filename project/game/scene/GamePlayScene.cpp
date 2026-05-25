@@ -164,7 +164,7 @@ void GamePlayScene::Initialize() {
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets(
         "Resources/json/gpu_particles/");
-    //
+
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
     // --- 3. サブシステム初期化 ---
@@ -193,7 +193,7 @@ void GamePlayScene::Initialize() {
     levelLoader_->LoadSpriteLayout(this,
         "Resources/json/sprite/sprite_layout.json");
     levelLoader_->LoadSpriteLayout(
-        this, "Resources/json/sprite/option_ui.json"); // オプションUI用に追加
+        this, "Resources/json/sprite/option_ui.json"); // オプションUI用
 
     // option/poseBack.png スプライトを最背面（sprites_ の先頭）に移動する
     {
@@ -320,7 +320,7 @@ void GamePlayScene::Initialize() {
     isPaused_ = false;
     ApplyPauseInputUiIfNeeded();
 
-    // ★ 1. まず objectManager からオブジェクトのリストを取得する！
+    // 1. まず objectManager からオブジェクトのリストを取得する！
     auto& objects = objectManager_->GetObjects();
 
     for (auto it = objects.begin(); it != objects.end(); ++it) {
@@ -335,12 +335,12 @@ void GamePlayScene::Initialize() {
             newBoss->Initialize(object3dCommon_.get(),
                 oldAddress->GetModelName()); // 新しいモデルで初期化
             newBoss->CopyFrom(oldAddress);                   // 座標などをコピー
-            newBoss->SetClassName("BossCore");               // ★ jsonからのコピー後に確実にクラス名を設定
+            newBoss->SetClassName("BossCore");               // jsonからのコピー後に確実にクラス名を設定
             newBoss->SetTarget(player_); // プレイヤーをターゲットに設定
             this->boss_ = newBoss.get(); // コントロール用ポインタを保存
             BossCore* newAddress = newBoss.get();
 
-            // ★★★ ここが重要：古いボスが消える「前」に全てを繋ぎ直す ★★★
+            // ここが重要：古いボスが消える「前」に全てを繋ぎ直す
 
             // (A) 当たり判定マネージャから古いボスを抹消し、新しいボスを登録する
             // ※ もし Remove/Add 関数がない場合は、後述の「強硬手段」を使ってください
@@ -352,7 +352,7 @@ void GamePlayScene::Initialize() {
                 if (obj->GetParent() == oldAddress) {
                     obj->SetParent(newAddress);
 
-                    // ★ ここを追加！新しいボスにパーツを登録する
+                    // 新しいボスにパーツを登録する
                     newAddress->AddArmorBlock(obj.get());
                 }
             }
@@ -408,7 +408,7 @@ void GamePlayScene::Initialize() {
             playerHpBarSprite_ = sprite.get();
             playerHpBarMaxWidth_ = sprite->GetSize().x;
         }
-        // ★ ミッション用スプライトを名前で一致させて変数に保存する
+        // ミッション用スプライトを名前で一致させて変数に保存する
         else if (sprite->GetName() == "missionText_mission.png")
             missionText_mission_ = sprite.get();
         else if (sprite->GetName() == "missionText_line.png")
@@ -433,7 +433,7 @@ void GamePlayScene::Initialize() {
     missionInitialShown_ = false;
     missionGoShown_ = false;
     missionBossShown_ = false;
-    hasTutorialMovieFinished_ = false; // ★ 追加
+    hasTutorialMovieFinished_ = false;
 
     // ミッション演出用の初期値を保存
     if (missionText_Mark_) missionMarkBaseSize_ = missionText_Mark_->GetSize();
@@ -468,7 +468,7 @@ void GamePlayScene::Initialize() {
     }
 
     // =======================================================
-    // ★ 進行状況の復元：橋がすでに落ちている場合の処理
+    // 進行状況の復元：橋がすでに落ちている場合の処理
     // =======================================================
     if (GameProgress::GetInstance()->hasBridgeDropped) {
         // 1. シーン内の全ての「橋のブロック」を検索して消去・無効化
@@ -520,7 +520,7 @@ void GamePlayScene::Initialize() {
             // チュートリアル完了扱いにする（進行度クラスとシーン内フラグの両方を更新）
             GameProgress::GetInstance()->hasFinishedTutorial = true;
             this->hasFinishedTutorial_ = true;
-            this->hasTutorialMovieFinished_ = true; // ★ スキップ時は完了扱い
+            this->hasTutorialMovieFinished_ = true; // スキップ時は完了扱い
             this->doorOpenProgress_ =
                 1.0f; // チュートリアル部屋のドアも全開にしておく
         }
@@ -585,7 +585,7 @@ void GamePlayScene::Initialize() {
         this->doorOpenProgress_ = 0.0f; // ドアを閉める
 
         // =======================================================
-        // ★ チュートリアルプラットフォーム降下演出の初期化
+        // チュートリアルプラットフォーム降下演出の初期化
         // =======================================================
         for (auto& obj : objects_ref) {
             if (obj->GetName() == "Tutorial_Platform_01") {
@@ -625,7 +625,7 @@ void GamePlayScene::Initialize() {
     optionUI_.Initialize(this, spriteCommon_.get());
 
     // =======================================================
-    // ★ リスタート演出（電脳リブート）と完全初期化
+    // リスタート演出（電脳リブート）と完全初期化
     // =======================================================
     SceneManager* scm = SceneManager::GetInstance();
     PostEffect::GetInstance()->ResetToBaseParams();
@@ -777,7 +777,7 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
                     sprite->SetColor(c);
                 }
                 };
-            // ★背景だけ backAlpha を使うように変更
+            // 背景だけ backAlpha を使うように変更
             SetAlpha(poseBackSprite_, backAlpha);
             SetAlpha(poseTextSprite_, textAlpha);
             SetAlpha(restartPoseTextSprite_, textAlpha);
@@ -892,7 +892,7 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
 
 bool GamePlayScene::UpdateSceneTransition(float originalDeltaTime) {
     // =======================================================
-    // ★ ゲームオーバー・リトライ遷移処理 (復旧)
+    // ゲームオーバー・リトライ遷移処理 (復旧)
     // =======================================================
     if (isRestartTransition_ || isTitleTransition_) {
         restartTimer_ += originalDeltaTime;
@@ -930,7 +930,7 @@ void GamePlayScene::UpdateTutorialDoor(float deltaTime) {
                 if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
                     hasFinishedTutorial_ = true;
 
-                    // ★ ムービー開始
+                    // ムービー開始
                     movieState_ = MovieState::kTutorialDoorOpen;
                     movieTimer_ = 0.0f;
                     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -1112,8 +1112,8 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
         // 1.5秒後にムービー終了
         if (movieTimer_ > 2.5f) {
             movieState_ = MovieState::kNone;
-            hasTutorialMovieFinished_ = true; // ★ ムービー終了
-            missionSwitchDelayTimer_ = 0.5f;  // ★ 0.5秒待機
+            hasTutorialMovieFinished_ = true; // ムービー終了
+            missionSwitchDelayTimer_ = 0.5f;  // 0.5秒待機
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
@@ -1133,10 +1133,10 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                 tutorialPlatform_->UpdateWorldMatrix();
             }
             else {
-                // ★到着！ movieState_ が kNone
+                // 到着！ movieState_ が kNone
                 // になるので、下のシャッター制御が「下げ」に転じます
                 movieState_ = MovieState::kNone;
-                missionSwitchDelayTimer_ = 0.5f; // ★ 0.5秒待機
+                missionSwitchDelayTimer_ = 0.5f; // 0.5秒待機
                 player_->SetIsControlActive(true);
                 player_->SetIsPhysicsActive(true); // 物理復帰
 
@@ -1488,13 +1488,13 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
                 currentMode == Camera::FollowMode::kFirstPerson)) {
 
             // =======================================================
-            // ★ 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
+            // 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
             // =======================================================
             Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
             Vector2 rightStick = inputManager_->GetRightStick();
 
             // =======================================================
-            // ★ 2. 入力値から「最終的な移動量」を出す（感度はCamera側で処理）
+            // 2. 入力値から「最終的な移動量」を出す（感度はCamera側で処理）
             // =======================================================
             // 感度曲線（3乗）を適用し、細かいエイム調整と素早い旋回を両立
             float stickX = rightStick.x * rightStick.x * rightStick.x;
@@ -1507,7 +1507,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
             totalDelta.y = mouseDelta.y - (stickY * 900.0f * deltaTime); // スティックの上下は反転
 
 #ifdef USE_IMGUI
-            // ★ デバッグ(Develop)環境:
+            // デバッグ(Develop)環境:
             // UI操作の誤爆を防ぐため「右クリック中」または「スティック入力中」のみ回転
             if (inputManager_->IsMouseButtonPressed(1) || rightStick.x != 0.0f ||
                 rightStick.y != 0.0f) {
@@ -1516,7 +1516,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
                 }
             }
 #else
-            // ★ Release環境限定: 右クリック不要！操作した分だけ回転する
+            // Release環境限定: 右クリック不要！操作した分だけ回転する
             if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
                 camera->AddRotation(totalDelta);
             }
@@ -1559,7 +1559,7 @@ void GamePlayScene::UpdateSceneObjects(float deltaTime) {
 
 void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
     // =========================================================
-    // 💀 ゲームオーバー画面のフェードインとメニュー選択
+    // ゲームオーバー画面のフェードインとメニュー選択
     // =========================================================
     if (player_ && player_->GetHp() <= 0.0f) {
 
@@ -1670,11 +1670,11 @@ void GamePlayScene::UpdateGameplaySystems(float deltaTime) {
 
 void GamePlayScene::UpdateBossMovie(float deltaTime) {
     // ========================================================
-    // ★ ボス登場ムービー中の監視処理（時間で強制終了！）
+    // ボス登場ムービー中の監視処理（時間で強制終了！）
     // ========================================================
     if (isBossMoviePlaying_ && boss_) {
 
-        // ★ タイマーを進める！
+        // タイマーを進める！
         movieTimer_ += deltaTime;
 
         // プレイヤーがズレないように固定し続ける
@@ -1684,11 +1684,11 @@ void GamePlayScene::UpdateBossMovie(float deltaTime) {
         }
 
         // ====================================================
-        // ★ 修正：全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
+        // 全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
         // ====================================================
         if (movieTimer_ >= 4.0f) {
             isBossMoviePlaying_ = false;
-            missionSwitchDelayTimer_ = 0.5f; // ★ 0.5秒待機
+            missionSwitchDelayTimer_ = 0.5f; // 0.5秒待機
 
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 camera->EndOverride(1.0f);
@@ -1757,7 +1757,7 @@ void GamePlayScene::Draw() {
 #endif
 
     // =========================================================
-    // ★ 追加:
+
     // カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
     // =========================================================
     if (!isFirstPerson && player_ && camera) {
@@ -1783,7 +1783,7 @@ void GamePlayScene::Draw() {
     auto& objects = objectManager_->GetObjects();
 
     // =========================================================
-    // ★ ここに「完全自動カリング」のロジックを挿入！
+    // ここに「完全自動カリング」のロジックを挿入！
     // =========================================================
     Frustum frustum = camera->GetFrustum();
     Math math;
@@ -1795,7 +1795,7 @@ void GamePlayScene::Draw() {
             return false;
 
         // 1. オブジェクトから Model を取得
-        // ※もし Object3d に GetModel() が無ければ追加してください！ ( return
+        // Object3d に GetModel() が必要 (return
         // model_; など )
         Model* model = obj->GetModel();
         if (!model)
@@ -1855,7 +1855,7 @@ void GamePlayScene::Draw() {
             continue;
 
         totalCount++;
-        // ★ カリング判定！
+        // カリング判定！
         if (IsVisible(obj.get())) {
             obj->Draw(pointLightRes, spotLightRes);
             drawCount++;
@@ -1889,7 +1889,7 @@ void GamePlayScene::Draw() {
 
         if (obj->GetMaterialType() == 1) { // 透明のみ描画
             totalCount++;
-            // ★ カリング判定！
+            // カリング判定！
             if (IsVisible(obj.get())) {
                 obj->Draw(pointLightRes, spotLightRes);
                 drawCount++;
@@ -1911,7 +1911,7 @@ void GamePlayScene::Draw() {
         dxCommon_->PreDrawLocalFog();
         for (auto& obj : objects) {
             if (obj->GetMaterialType() == 7) {
-                // ★ フォグの箱自体も画面外なら描画しないように最適化！
+                // フォグの箱自体も画面外なら描画しないように最適化！
                 if (IsVisible(obj.get())) {
                     obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
                 }
@@ -1952,7 +1952,7 @@ void GamePlayScene::Draw() {
         camera->GetProjectionMatrix(), gpuParticleTexHandle_,
         dxCommon_->GetDepthSrvHandle());
 
-    // ★ カリングがどれくらい効いているか確認用のログ
+    // カリングがどれくらい効いているか確認用のログ
     // DebugConsole::GetInstance()->AddLog("DrawCount: " +
     // std::to_string(drawCount) + " / Total: " + std::to_string(totalCount));
 }
@@ -2089,11 +2089,11 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         SetAlpha(bossHpBarSprite_, alpha);
         SetAlpha(bossDamageBarSprite_, alpha); // ダメージバーも同期
         SetAlpha(barrierHpBarSprite_, alpha);
-        SetAlpha(barrierDamageBarSprite_, alpha); // 追加
+        SetAlpha(barrierDamageBarSprite_, alpha);
         SetAlpha(bossHpBackSprite_, alpha);
         SetAlpha(bossNameSprite_, alpha);
-        SetAlpha(bossIconSprite_, alpha); // 追加
-        SetAlpha(shieldIconSprite_, alpha); // 追加
+        SetAlpha(bossIconSprite_, alpha);
+        SetAlpha(shieldIconSprite_, alpha);
         SetAlpha(bossHpFrameSprite_, alpha);
         SetAlpha(bariaFrameSprite_, alpha);
         SetAlpha(hpFrameSprite_, alpha);
@@ -2249,7 +2249,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
 
     // 2. missionText_Mark (回転しながら出現)
     if (missionInitialShown_ && missionText_Mark_) {
-        if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 待機中
+        if (missionSwitchDelayTimer_ > 0.0f) return; // 待機中
         missionMarkAnimProgress_ = std::min(1.0f, missionMarkAnimProgress_ + deltaTime * 2.0f);
         float scale = missionMarkAnimProgress_;
         float rot = (1.0f - missionMarkAnimProgress_) * 3.14159265f * 2.0f;
@@ -2262,7 +2262,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
     // A. Lever (初期ミッション)
     if (missionInitialShown_ && !isLeverOut_) {
         if (!hasTutorialMovieFinished_) {
-            if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 待機中
+            if (missionSwitchDelayTimer_ > 0.0f) return; // 待機中
 
             // 出現アニメーション（または表示維持）
             missionLeverAnimProgress_ = std::min(1.0f, missionLeverAnimProgress_ + deltaTime * 2.0f);
@@ -2274,7 +2274,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             }
         }
         else {
-            if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 0.2秒待機
+            if (missionSwitchDelayTimer_ > 0.0f) return; // 0.2秒待機
 
             // 完了アニメーション (Yスケール -> 0)
             leverOutProgress_ = std::min(1.0f, leverOutProgress_ + deltaTime * 4.0f);
@@ -2290,7 +2290,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
 
     // B. Go (レバー完了後)
     if (isLeverOut_ && !isGoOut_) {
-        if (!hasBossAppeared_ || isBossMoviePlaying_) { // ★ ムービー中も維持するように変更
+        if (!hasBossAppeared_ || isBossMoviePlaying_) { // ムービー中も維持するように変更
             // 出現アニメーション
             missionGoAnimProgress_ = std::min(1.0f, missionGoAnimProgress_ + deltaTime * 2.0f);
             if (missionText_go_) {
@@ -2301,7 +2301,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             }
         }
         else {
-            if (missionSwitchDelayTimer_ > 0.0f) return; // ★ 0.2秒待機
+            if (missionSwitchDelayTimer_ > 0.0f) return; // 0.2秒待機
 
             // 完了アニメーション (Yスケール -> 0)
             goOutProgress_ = std::min(1.0f, goOutProgress_ + deltaTime * 4.0f);
@@ -2348,7 +2348,7 @@ void GamePlayScene::StartBridgeDropMovie() {
 }
 
 // ========================================================
-// ★ ボス登場ムービーの開始処理
+// ボス登場ムービーの開始処理
 // ========================================================
 void GamePlayScene::StartBossAppearanceMovie() {
     if (isBossMoviePlaying_ || !boss_ || hasBossAppeared_)
@@ -2375,7 +2375,7 @@ void GamePlayScene::StartBossAppearanceMovie() {
     }
 
     // ====================================================
-    // ★ 追加：a.json（カメラのアニメーション）を再生する！
+    // a.json（カメラのアニメーション）を再生する！
     // ====================================================
     for (auto& obj : objectManager_->GetObjects()) {
         if (obj->GetName() ==
@@ -2394,7 +2394,7 @@ void GamePlayScene::StartBossAppearanceMovie() {
 
 void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
-    // ★ Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
+    // Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
     if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
 
         if (ImGui::TreeNode("プレイヤー・ボス状態 (Player/Enemy Status)")) {
@@ -2531,7 +2531,7 @@ void GamePlayScene::DrawImGui() {
                         }
 
                         if (ImGui::Button("➕ 攻撃パターンを追加 (ADD)")) {
-                            attackList.push_back({ 1, 30 }); // 突進・重み30をデフォルトで追加
+                            attackList.push_back({ 1, 30 }); // 突進・重み30をデフォルト設定
                         }
 
                         ImGui::TreePop();
@@ -2581,7 +2581,7 @@ void GamePlayScene::DrawImGui() {
 
                 // 3. 各種フラグを「完了」にセット
                 hasFinishedTutorial_ = true;
-                hasTutorialMovieFinished_ = true; // ★ 追加
+                hasTutorialMovieFinished_ = true;
                 hasBridgeDropped_ = true; // 橋の状態も同期
                 GameProgress::GetInstance()->hasFinishedTutorial = true;
                 doorOpenProgress_ = 1.0f;

@@ -344,7 +344,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 block->GetTransform()->isQuaternionMaster = false;
             };
 
-            // ★ レーザーのレイキャスト処理 (フェーズ11〜13で使う)
+            // レーザーのレイキャスト処理 (フェーズ11〜13で使う)
             float maxDist = 160.0f;
             float actualDist = maxDist;
             float parentScaleZ = 1.0f;
@@ -364,7 +364,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 }
             }
 
-            // ★ 追加: ヒット距離を使った遅延付きの長さ復元処理
+            // ヒット距離を使った遅延付きの長さ復元処理
             if (i < laserLengths_.size()) {
                 if (actualDist < laserLengths_[i]) {
                     // より近い障害物に当たった場合は即座に縮める＆タイマーリセット

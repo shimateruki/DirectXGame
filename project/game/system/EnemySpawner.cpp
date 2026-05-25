@@ -8,7 +8,7 @@ void EnemySpawner::Initialize(Object3dCommon* common, const std::string& enemyTy
     enemyType_ = enemyType;
     spawnInterval_ = interval;
 
-    // 最大数を保存 
+    // 最大数を保存
     maxCount_ = maxCount;
     spawnCount_ = 0;      // カウンタリセット
     timer_ = 0.0f;

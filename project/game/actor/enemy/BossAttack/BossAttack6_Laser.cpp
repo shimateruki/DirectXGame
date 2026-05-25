@@ -322,7 +322,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         // ==========================================
-        // ★ レーザーの太さと振動（脈動）の計算
+        // レーザーの太さと振動（脈動）の計算
         // ==========================================
         float expandTime = 0.01f;
         float t = std::min(animTimer_ / expandTime, 1.0f);
@@ -342,7 +342,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             Object3d* beam = activeBeams_[i];
             Object3d* coreBeam = (i < activeCoreBeams_.size()) ? activeCoreBeams_[i] : nullptr;
 
-            // ★ レイキャストで障害物までの距離を測る
+            // レイキャストで障害物までの距離を測る
             float maxDistance = 160.0f;
             float actualDistance = maxDistance;
             float parentScaleZ = 1.0f;
@@ -362,7 +362,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 }
             }
 
-            // ★ 追加: ヒット距離を使った遅延付きの長さ復元処理
+            // ヒット距離を使った遅延付きの長さ復元処理
             if (i < laserLengths_.size()) {
                 if (actualDistance < laserLengths_[i]) {
                     // より近い障害物に当たった場合は即座に縮める＆タイマーリセット
@@ -426,7 +426,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         }
 
         // ==========================================
-        // ★ GPUパーティクルの発生（ビームの回転に追従させる）
+        // GPUパーティクルの発生（ビームの回転に追従させる）
         // ==========================================
         // 0.05秒に1回、全ビームの根元からエミットする
         if (particleTimer_ >= 0.05f) {

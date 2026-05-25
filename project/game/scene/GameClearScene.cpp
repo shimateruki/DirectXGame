@@ -103,7 +103,7 @@ void GameClearScene::Initialize() {
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameClearScene.json");
 
     // =========================================================
-    // ★ 修正：エディター配置スプライトの特定と初期非表示化
+    // エディター配置スプライトの特定と初期非表示化
     // =========================================================
     for (auto& sprite : sprites_) {
  
@@ -295,7 +295,7 @@ void GameClearScene::Update(float deltaTime) {
         menuAlpha_ += deltaTime * 2.0f;
         if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
 
-        // ★ アクション名「Left」「Right」で判定！
+        // アクション名「Left」「Right」で判定！
         if (inputManager_->IsActionTriggered("Left")) {
             currentMenuIndex_ = (int)MenuIndex::Retry;
         }
@@ -380,7 +380,7 @@ void GameClearScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // ★修正: フォグ(7)も不透明パスから除外
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 
@@ -447,7 +447,7 @@ void GameClearScene::DrawUI() {
     if (bestTimeUI_) bestTimeUI_->Draw();
 }
 
-// ★追加: シャドウマップ描画の実装
+// シャドウマップ描画の実装
 void GameClearScene::DrawShadow() {
     if (objectManager_) {
         objectManager_->DrawShadow();

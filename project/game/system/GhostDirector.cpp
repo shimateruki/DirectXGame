@@ -271,7 +271,7 @@ void GhostDirector::SaveScenario(const std::string& fileName) {
         t["targetName"] = track.target ? track.target->GetName() : track.targetName;
         t["pathFileName"] = track.pathFileName;
         t["delayTime"] = track.delayTime;
-        // ★修正: isRelativeとisLoopはもう保存しない
+        // isRelativeとisLoopはもう保存しない
         root["tracks"].push_back(t);
     }
 
@@ -365,7 +365,7 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         // ターゲットが存在し、レコーダーがあり、パスデータがセットされていれば描画
         if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
 
-            // ★第4引数に true (isReadOnly) を渡すことで、誤操作を防ぎつつ線だけを描画！
+            // 第4引数に true (isReadOnly) を渡すことで、誤操作を防ぎつつ線だけを描画！
             track.target->recorder_->DrawPreview(viewProjection, offset, size, true);
         }
     }

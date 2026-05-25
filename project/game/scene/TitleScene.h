@@ -42,7 +42,7 @@ public:
     void Draw() override;
     void DrawUI() override;
 
-    //  シャドウマップ描画のオーバーライド
+    // シャドウマップ描画のオーバーライド
     void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
@@ -99,11 +99,11 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
-    //  GPUパーティクル用画像ハンドル
+    // GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
 
     // ==========================================
-    // 状態管理用 (追加部分)
+    // 状態管理用
     // ==========================================
     enum class TitleState {
         MainMenu,   // 最初から表示されている「Game Start / Setting」を選ぶ画面
@@ -122,7 +122,7 @@ private:
     // 設定項目を無効化するフラグ（falseにしておけば設定へは遷移できない）
     bool settingEnabled_ = false;
 
-    // オプションメニューの選択肢 (追加部分)
+    // オプションメニューの選択肢
     enum class OptionIndex {
         Sound,
         KeyConfig,

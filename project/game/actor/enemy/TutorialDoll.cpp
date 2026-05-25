@@ -1,7 +1,7 @@
 #define NOMINMAX
 #include "TutorialDoll.h"
 #include "CollisionConfig.h"
-//#include "engine/graphics/particle/GPUParticleManager.h"
+// #include "engine/graphics/particle/GPUParticleManager.h"
 #include "Player.h"
 #include <algorithm>
 #include <cmath>
@@ -93,7 +93,7 @@ void TutorialDoll::Update(float deltaTime) {
         deathAnimTimer_ = 0.5f;
 
         // 死亡エフェクトの発生
-        //GPUParticleManager::GetInstance()->Emit("FirePreset", GetWorldPosition(), Math::MakeIdentity4x4());
+        // GPUParticleManager::GetInstance()->Emit("FirePreset", GetWorldPosition(), Math::MakeIdentity4x4());
         return;
     }
 

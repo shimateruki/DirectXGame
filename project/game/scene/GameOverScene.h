@@ -53,7 +53,7 @@ public:
     void Draw() override;
     void DrawUI() override;
 
-    //  シャドウマップ描画のオーバーライド
+    // シャドウマップ描画のオーバーライド
     void DrawShadow() override;
 
     // --- BaseScene インターフェース実装 (ObjectManagerへ委譲) ---
@@ -99,6 +99,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
 
-    //  GPUパーティクル用画像ハンドル
+    // GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
 };

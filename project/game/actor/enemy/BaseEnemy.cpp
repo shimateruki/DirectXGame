@@ -1,9 +1,9 @@
 #include "BaseEnemy.h"
 #include "CollisionConfig.h" // kEnemyなどの定義を使うため
 #include "EffectObject3d.h"
-#include "Event.h"           //  DamageEventを使うため
-#include "EventManager.h"    //  イベントを発行(Dispatch)するため
-#include "Player.h"          //  プレイヤーの状態を見るため
+#include "Event.h"           // DamageEventを使うため
+#include "EventManager.h"    // イベントを発行(Dispatch)するため
+#include "Player.h"          // プレイヤーの状態を見るため
 
 void BaseEnemy::Initialize(Object3dCommon* common, const std::string& modelName) {
     // 1. 親クラス(Character)の初期化
@@ -52,12 +52,12 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     // ========================================================
     if (attribute & kPlayerAttack) {
 
-        // ★ クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
+        // クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
         if (damageCooldownTimer_ > 0.0f) {
             return true;
         }
 
-        // ★ エフェクトからの被弾を確定させてヒットリストに記録
+        // エフェクトからの被弾を確定させてヒットリストに記録
         if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
             effect->AddHitObject(this);
         }

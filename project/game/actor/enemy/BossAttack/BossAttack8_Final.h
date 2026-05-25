@@ -42,5 +42,5 @@ public:
 
     void Initialize(BossCore* boss) override;
     void Update(BossCore* boss, float deltaTime) override;
-    void Finalize() override; // 追加: クリーンアップ用
+    void Finalize() override; // クリーンアップ用
 };

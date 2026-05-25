@@ -22,13 +22,13 @@ private:
     // 発射の瞬間に生み出したレーザーを管理するリスト
     // ==========================================
     std::vector<Object3d*> activeBeams_;
-    std::vector<Object3d*> activeCoreBeams_; // ★ 追加: 2層構造用の白いコア
+    std::vector<Object3d*> activeCoreBeams_; // 2層構造用の白いコア
 
-    // ★ 追加: レイキャスト用の長さ保持と遅延タイマー
+    // レイキャスト用の長さ保持と遅延タイマー
     std::vector<float> laserLengths_;
     std::vector<float> laserDelayTimers_;
 
-    float particleTimer_ = 0.0f; // ★ パーティクル発生間隔の管理用
+    float particleTimer_ = 0.0f; // パーティクル発生間隔の管理用
 
 public:
     // ==========================================

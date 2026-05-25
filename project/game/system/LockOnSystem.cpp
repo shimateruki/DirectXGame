@@ -140,7 +140,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
         camera->SetFollowMode(Camera::FollowMode::kAimable);
         camera->SetLockOnTarget(nullptr);
         camera->SyncRotationToCurrentView();
-        CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
+        CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
         DebugConsole::GetInstance()->AddLog("LockOn Cleared by Player Request.");
     }
     // ========================================================
@@ -185,7 +185,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
             camera->SyncRotationToCurrentView(); // 視点のガクつき防止
-            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
+            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
             lostSightTimer_ = 0.0f;
         }
     }
@@ -200,11 +200,11 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
             camera->SyncRotationToCurrentView();
-            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
+            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
             return;
         }
 
-        // --- ★ 追加: ターゲットが既に ObjectManager から削除されていないか(ダングリングポインタか)チェック ---
+        // ターゲットが既に ObjectManager から削除されていないか(ダングリングポインタか)チェック
         bool isTargetValid = false;
         for (const auto& obj : objects) {
             if (obj.get() == lockOnTarget_) {
@@ -242,7 +242,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             camera->SetFollowMode(Camera::FollowMode::kAimable);
             camera->SetLockOnTarget(nullptr);
             camera->SyncRotationToCurrentView();
-            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
+            CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
             lostSightTimer_ = 0.0f;
 
             DebugConsole::GetInstance()->AddLog("LockOn Lost: Target exceeded release distance.");
@@ -276,7 +276,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
                     camera->SetFollowMode(Camera::FollowMode::kAimable);
                     camera->SetLockOnTarget(nullptr);
                     camera->SyncRotationToCurrentView();
-                    CameraEditor::GetInstance()->SyncSettingsFromCamera(); // ★ エディタ設定を同期
+                    CameraEditor::GetInstance()->SyncSettingsFromCamera(); // エディタ設定を同期
                     lostSightTimer_ = 0.0f;
 
                     DebugConsole::GetInstance()->AddLog("LockOn Lost: Target behind wall.");
@@ -307,7 +307,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     Vector3 cameraEye = camera->GetEye();
 
     // ========================================================
-    // ★ 修正1: Y軸を無視せず、カメラの「本当の3Dの向き」を計算！
+    // Y軸を無視せず、カメラの「本当の3Dの向き」を計算！
     // ========================================================
     Vector3 cameraForward = camera->GetTargetPoint() - cameraEye;
     float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.y * cameraForward.y + cameraForward.z * cameraForward.z);
@@ -343,7 +343,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         if (!IsTargetOnScreen(obj.get(), camera)) continue;
 
         // -----------------------------------------------------------------
-        //  (D) 距離と角度のチェック（完全3D化！）
+        // (D) 距離と角度のチェック（完全3D化！）
         // -----------------------------------------------------------------
         Vector3 enemyPos = obj->GetWorldPosition();
 
@@ -354,7 +354,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
 
         // ========================================================
-        // ★ 修正2: 「プレイヤーから」ではなく、「カメラから」敵への方向を計算！
+        // 「プレイヤーから」ではなく、「カメラから」敵への方向を計算！
         // これにより『画面の中に敵が映っているか』を正確に判定できます。
         // ========================================================
         Vector3 toEnemyFromCam = enemyPos - cameraEye;
@@ -369,7 +369,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         float dot = math.Dot(cameraForward, toEnemyFromCam);
 
         // ========================================================
-        // ★ 修正3: カメラの正面かつ画面内にいて、一番近い敵を探す！
+        // カメラの正面かつ画面内にいて、一番近い敵を探す！
         // ========================================================
         if (dot > kMinLockOnDot_ && distance < minDistance) {
 

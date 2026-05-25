@@ -86,7 +86,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     bomb->Initialize(boss->GetCommon(), "sphere");
 
     // ========================================================
-    // ★ ここにステータス設定を実装します！
+    // ここにステータス設定を実装します！
     // ========================================================
     Object3d::EntityParameter param; // Object3d.h で定義されている構造体
     param.gravity = 50.0f;           // 重力の強さ

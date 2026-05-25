@@ -187,7 +187,7 @@ void EnemyBomb::Update(float deltaTime) {
             SetCollisionAttribute(kEnemyAttack);
             SetCollisionMask(kPlayer); // 床との判定が切れる
 
-            // ★床をすり抜けて落下しないように、速度と重力をゼロにする！
+            // 床をすり抜けて落下しないように、速度と重力をゼロにする！
             velocity_ = { 0.0f, 0.0f, 0.0f };
             if (param_.has_value()) {
                 param_->gravity = 0.0f;
@@ -202,7 +202,7 @@ void EnemyBomb::Update(float deltaTime) {
 
         explosionTimer_ += deltaTime;
 
-        // ★ 当たり判定を 0.1f から 4.0f へ徐々に広げる
+        // 当たり判定を 0.1f から 4.0f へ徐々に広げる
         float t = std::min(explosionTimer_ / explosionDuration_, 1.0f);
         float currentRadius = Math::Lerp(0.1f, explosionRadius_, t);
         SetCollisionRadius(currentRadius);

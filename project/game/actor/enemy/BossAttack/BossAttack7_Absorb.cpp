@@ -10,7 +10,7 @@ void BossAttack7_Absorb::Initialize(BossCore* boss) {
 
     animPhase_ = 70;
     animStartPos_ = boss->GetTranslate();
-    targetMapBlocks_.clear(); // ★ 最初は空っぽにしておく
+    targetMapBlocks_.clear(); // 最初は空っぽにしておく
 }
 
 void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
@@ -19,14 +19,14 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
     // --- Phase 70: ボスが上空にフワッと浮かび上がり、タメを作る ---
     if (animPhase_ == 70) {
         // ==========================================
-        // ★ タメ始めた最初の瞬間に、必要な数だけロックオンする！
+        // タメ始めた最初の瞬間に、必要な数だけロックオンする！
         // ==========================================
         if (animTimer_ == 0.0f) {
             targetMapBlocks_.clear();
             int neededCount = boss->GetNeededBlockCount();
 
             // ==========================================
-            // ★ 修正：必要な数が 1 以上の時だけ探すようにする！
+            // 必要な数が 1 以上の時だけ探すようにする！
             // 満タン（0個）の時は、このループ自体をスキップします。
             // ==========================================
             if (neededCount > 0) {
@@ -34,7 +34,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
                     if (block && block->GetIsVisible()) {
                         targetMapBlocks_.push_back(block);
                         
-                        // ★ 吸い込まれるブロックは当たり判定を消す！（ボスを押し出さないようにするため）
+                        // 吸い込まれるブロックは当たり判定を消す！（ボスを押し出さないようにするため）
                         block->SetCollisionAttribute(0);
                         block->SetCollisionMask(0);
 
@@ -53,7 +53,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
         float easeT = Easing::InOutSine(t);
 
         Vector3 pos = boss->GetTranslate();
-        // ★ 横への移動（スライド）を無くし、元のX, Z座標を維持したまま上へ上がるようにします
+        // 横への移動（スライド）を無くし、元のX, Z座標を維持したまま上へ上がるようにします
         pos.x = animStartPos_.x;
         pos.y = Math::Lerp(animStartPos_.y, 10.0f, easeT);
         pos.z = animStartPos_.z;
@@ -65,7 +65,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         if (t >= 1.0f) {
-            // ★ 吸い込むものが無い（最初から満タン）なら、そのまま降りる！
+            // 吸い込むものが無い（最初から満タン）なら、そのまま降りる！
             if (targetMapBlocks_.empty()) {
                 animPhase_ = 72;
             }
@@ -88,7 +88,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
         bool allAbsorbed = true;
 
         // ==========================================
-        // ★ 修正：普通のfor文にして、食べ終わったものをリストから除外(nullptr)する！
+        // 普通のfor文にして、食べ終わったものをリストから除外(nullptr)する！
         // ==========================================
         for (size_t i = 0; i < targetMapBlocks_.size(); ++i) {
             MapBlock* block = targetMapBlocks_[i];
@@ -112,7 +112,7 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
                         MapBlock::s_activeBlocks.erase(it);
                     }
                     // ==========================================
-                    // ★ 魔法の1行：自分のロックオンリストからも消す！
+                    // 魔法の1行：自分のロックオンリストからも消す！
                     // これがないと、同じブロックを何回も食べてしまいます！
                     // ==========================================
                     targetMapBlocks_[i] = nullptr;

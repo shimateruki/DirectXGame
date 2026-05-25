@@ -28,7 +28,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         p.hp = 50.0f;          // 体力
         p.maxHp = 50.0f;       // 最大体力
         p.speed = 0.1f;        // 移動速度
-        p.gravity = 60.0f;     // 重力 
+        p.gravity = 60.0f;     // 重力
 
         newEnemy = std::move(slime);
     }
@@ -91,7 +91,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         newEnemy = std::move(doll);
     }
 
-    //:作った敵に「名札」をつける
+    // :作った敵に「名札」をつける
     if (newEnemy) {
         newEnemy->SetEnemyType(enemyName);
     } else {

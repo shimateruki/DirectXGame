@@ -96,7 +96,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
     BossParticle1->Initialize("Boss1", this);
     BossParticle1->Play();
-    //particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加
+    // particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加
 
     // --- 2. 黄 ---
     auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
@@ -114,19 +114,19 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     auto BossParticle4 = std::make_unique<GPUParticleEmitter>();
     BossParticle4->Initialize("Boss4", this);
     BossParticle4->Play();
-    //particleEmitters_.push_back(std::move(BossParticle4)); // 配列に追加
+    // particleEmitters_.push_back(std::move(BossParticle4)); // 配列に追加
 
     // --- 5. 黄色 ---
     auto BossParticle5 = std::make_unique<GPUParticleEmitter>();
     BossParticle5->Initialize("Boss5", this);
     BossParticle5->Play();
-    //particleEmitters_.push_back(std::move(BossParticle5)); // 配列に追加
+    // particleEmitters_.push_back(std::move(BossParticle5)); // 配列に追加
 
     // --- 6. 緑色 ---
     auto BossParticle6 = std::make_unique<GPUParticleEmitter>();
     BossParticle6->Initialize("Boss6", this);
     BossParticle6->Play();
-    //particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加
+    // particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加
 
     isFinalPhase_ = false;
     isWaitingForDeath_ = false;
@@ -145,7 +145,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void BossCore::Update(float deltaTime) {
-    // 💥 JSON/ImGuiで動的に設定した最大バリアHPを同期
+    // JSON/ImGuiで動的に設定した最大バリアHPを同期
     maxBarrierHp_ = attackParams_.maxBarrierHp;
 
     // アクション速度（移動や回転など）用の補正DeltaTime
@@ -250,7 +250,7 @@ void BossCore::Update(float deltaTime) {
     BaseEnemy::Update(actionDelta);
 
     // ==========================================
-    // ★ HPが1以下の時の最終奥義発動チェック
+    // HPが1以下の時の最終奥義発動チェック
     // ==========================================
     if (param_.has_value() && param_->hp <= 1.0f) {
         if (!isFinalPhase_) {
@@ -272,12 +272,12 @@ void BossCore::Update(float deltaTime) {
     }
 
     // ==========================================
-    // ★ HP半分時の演出更新 (崩壊・復帰・強化シークエンス)
+    // HP半分時の演出更新 (崩壊・復帰・強化シークエンス)
     // ==========================================
     if (isHpHalfEventActive_) {
         hpHalfEffectTimer_ += deltaTime; // 演出タイマーは実時間
 
-        // ★ 追加：カメラ演出の終了を監視し、終わった瞬間に向きをボスに合わせる
+        // カメラ演出の終了を監視し、終わった瞬間に向きをボスに合わせる
         if (!isPlayerRotated_) {
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 // カメラの再生が終わり、補間も含めてプレイヤーに完全に位置が戻った瞬間 (Weightが0)
@@ -310,7 +310,7 @@ void BossCore::Update(float deltaTime) {
                 if (armorBlocks_[i] && i < fallingBlockVelocities_.size()) {
                     Vector3 bPos = armorBlocks_[i]->GetTranslate();
 
-                    // ★ 追加：Pulsing フェーズ（ボスの鼓動）中は、地面にいたブロックを浮かび上がらせる
+                    // Pulsing フェーズ（ボスの鼓動）中は、地面にいたブロックを浮かび上がらせる
                     if (hpHalfPhase_ == HpHalfEventPhase::Pulsing) {
                         float riseSpeed = 3.0f; // 上昇速度
                         bPos.y += riseSpeed * actionDelta;
@@ -347,7 +347,7 @@ void BossCore::Update(float deltaTime) {
 
         switch (hpHalfPhase_) {
         case HpHalfEventPhase::WaitIdle:
-            // ★ 修正：いきなり落ちるのではなく、1.0秒間空中で「おや？」と思わせる溜めを作る
+            // いきなり落ちるのではなく、1.0秒間空中で「おや？」と思わせる溜めを作る
             if (hpHalfEffectTimer_ >= 1.0f) {
                 originalCoreRotation_ = GetRotation();
                 originalCorePosition_ = GetTranslate();
@@ -395,7 +395,7 @@ void BossCore::Update(float deltaTime) {
 
         case HpHalfEventPhase::Falling:
         {
-            // ★ 修正：急落するのではなく、1.5秒かけてゆっくり（かつ加速しながら）地面へ
+            // 急落するのではなく、1.5秒かけてゆっくり（かつ加速しながら）地面へ
             float duration = 1.5f;
             float t = std::min(hpHalfEffectTimer_ / duration, 1.0f);
             float easeT = t * t; // 加速して落ちる感じ
@@ -480,7 +480,7 @@ void BossCore::Update(float deltaTime) {
 
         case HpHalfEventPhase::Reassembling:
         {
-            // ★ アニメーションが終わって元に戻る時も、線形補間で滑らかに戻す
+            // アニメーションが終わって元に戻る時も、線形補間で滑らかに戻す
             Vector3 coreRot = GetRotation();
             coreRot.x = Math::Lerp(coreRot.x, originalCoreRotation_.x, 4.0f * actionDelta);
             coreRot.y = Math::Lerp(coreRot.y, originalCoreRotation_.y, 4.0f * actionDelta);
@@ -513,7 +513,7 @@ void BossCore::Update(float deltaTime) {
 
             // すべての復帰が終わった、またはタイムアウト
             if (allDone || hpHalfEffectTimer_ >= 3.0f) {
-                // ★ 追加：カメラの演出（GhostRecorder等）が完全に終わるまで待機
+                // カメラの演出（GhostRecorder等）が完全に終わるまで待機
                 if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                     // オーバーライドが終了し、かつ補間（戻り）も完全に終わっているかチェック
                     if (!camera->IsOverridden() && camera->GetOverrideWeight() <= 0.01f) {
@@ -570,7 +570,7 @@ void BossCore::Update(float deltaTime) {
         else if (hpHalfPhase_ == HpHalfEventPhase::Pulsing) {
             // --- パルスフェーズ：ボスの大小アニメーションに同期したポストエフェクト ---
             if (hpHalfEffectTimer_ < 0.5f) {
-                // ★ 溜め段階（0〜0.5秒）：じわじわとエフェクトを強くする
+                // 溜め段階（0〜0.5秒）：じわじわとエフェクトを強くする
                 float chargeT = std::min(hpHalfEffectTimer_ / 0.5f, 1.0f);
                 float easeCharge = chargeT * chargeT; // EaseIn で加速感
 
@@ -580,7 +580,7 @@ void BossCore::Update(float deltaTime) {
                 params->threshold = Math::Lerp(basePostEffectParams_.threshold, 0.8f, easeCharge);
                 params->bloomIntensity = Math::Lerp(basePostEffectParams_.bloomIntensity, 1.2f, easeCharge);
             } else {
-                // ★ パルス段階（0.5秒〜）：スケールの脈動に連動してエフェクトが波打つ
+                // パルス段階（0.5秒〜）：スケールの脈動に連動してエフェクトが波打つ
                 float pulseTime = hpHalfEffectTimer_ - 0.5f;
                 float pulseWave = std::sin(pulseTime * 40.0f); // スケールと同じ周波数
                 float pulseNorm = (pulseWave + 1.0f) * 0.5f;   // 0〜1 に正規化
@@ -622,7 +622,7 @@ void BossCore::Update(float deltaTime) {
 
 
 
-        // ★ 演出中はここで return してしまうため、カメラアニメーション(GhostDirector)の更新もここで行う
+        // 演出中はここで return してしまうため、カメラアニメーション(GhostDirector)の更新もここで行う
         if (director_) {
             director_->Update(actionDelta);
         }
@@ -675,14 +675,14 @@ void BossCore::Update(float deltaTime) {
     }
 
     // ==========================================
-    // ★ 登場演出中なら、それを更新する
+    // 登場演出中なら、それを更新する
     // ==========================================
     if (isAppearing_) {
         UpdateAppearance(deltaTime); // 内部で使い分け
     }
 
     // ==========================================
-    // ★ パーティクルの自動追従の更新
+    // パーティクルの自動追従の更新
     // ==========================================
     for (auto& emitter : particleEmitters_) {
         if (emitter) {
@@ -730,7 +730,7 @@ void BossCore::Update(float deltaTime) {
                     if (effect->CanHit(block) && block->CheckCollision(effect.get()).isColliding) {
                         float dmg = effect->GetAttackDamage();
                         TakeBarrierDamage(dmg, block);
-                        effect->AddHitObject(block); // 💥 ヒットリストに追加
+                        effect->AddHitObject(block); // ヒットリストに追加
                         GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
 
                         blockHps_[i] -= dmg;
@@ -811,7 +811,7 @@ void BossCore::Update(float deltaTime) {
                     warningArea_->GetTransform()->isQuaternionMaster = false;
 
                     // ==========================================
-                    // ★ 修正：ArmorBlocks_ だけでなく、HPやフラグのリストからも確実に消す！
+                    // ArmorBlocks_ だけでなく、HPやフラグのリストからも確実に消す！
                     // ==========================================
                     for (size_t i = 0; i < armorBlocks_.size(); ) {
                         if (armorBlocks_[i] == warningArea_) {
@@ -831,9 +831,9 @@ void BossCore::Update(float deltaTime) {
             isFirstFrame_ = false;
 
             // ====================================================
-            // ★ 追加：最初のフレームで、装甲ブロックをランダムに散らかす！
+            // 最初のフレームで、装甲ブロックをランダムに散らかす！
             // ====================================================
-            blockStartPos_.clear(); // ★ armorManager_ ではなく、BossCoreが直接持っている変数を使います
+            blockStartPos_.clear(); // armorManager_ ではなく、BossCoreが直接持っている変数を使います
             Vector3 bossPos = GetTranslate();
 
 
@@ -843,7 +843,7 @@ void BossCore::Update(float deltaTime) {
                 float distance = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 15.0f;
 
                 // ====================================================
-                // ★ 修正：ブロックは「ボスの子供（ローカル座標）」なので計算を変えます！
+                // ブロックは「ボスの子供（ローカル座標）」なので計算を変えます！
                 // ボスがどんな高さにいても、(0.5f - ボスの高さ) にすることで
                 // ワールド空間での高さを強制的に 0.5f (地面) に揃えることができます！
                 // ====================================================
@@ -877,8 +877,8 @@ void BossCore::Update(float deltaTime) {
             if (currentAttack_) {
                 currentAttack_->Update(this, actionDelta); // 攻撃モーションは倍速
 
-                // ★ TriggerCrashStun() 等でステートが Weak に変わった場合、
-                //    currentAttack_ がリセット済みの可能性があるため再チェック
+                // TriggerCrashStun() 等でステートが Weak に変わった場合、
+                //   currentAttack_ がリセット済みの可能性があるため再チェック
                 if (currentAttack_ && currentAttack_->IsFinished()) {
                     currentAttack_->Finalize();
                     currentAttack_.reset();
@@ -898,7 +898,7 @@ void BossCore::Update(float deltaTime) {
         }
     }
     // ==========================================
-    // ★ 魔法の処理：破壊されたブロックの強制消去
+    // 魔法の処理：破壊されたブロックの強制消去
     // ==========================================
     for (size_t i = 0; i < armorBlocks_.size(); ++i) {
         if (blockBroken_[i] && armorBlocks_[i]) {
@@ -908,13 +908,13 @@ void BossCore::Update(float deltaTime) {
     }
 
     // ==========================================
-    // ★ 追加：破片の物理計算と退場タイマーを進める
+    // 破片の物理計算と退場タイマーを進める
     // ==========================================
     UpdateCorePieces(deltaTime);
 
-    // ★ 追加：コアとブロックを繋ぐエネルギー結線の更新
+    // コアとブロックを繋ぐエネルギー結線の更新
     // ====================================================
-    // ★ 追加：ブロックの移動トレース（残像）エフェクト
+    // ブロックの移動トレース（残像）エフェクト
     // ====================================================
     if (prevBlockPositions_.size() != armorBlocks_.size()) {
         prevBlockPositions_.resize(armorBlocks_.size());

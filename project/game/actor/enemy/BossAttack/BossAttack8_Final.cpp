@@ -182,7 +182,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         float duration = 2.0f; // 突進するまでのタメ時間（予測線表示）を2倍に延長
         
         // -----------------------------------------------------------------
-        // ★ 修正: タメ時間中、常にプレイヤーを注視（方向・位置・回転を毎フレーム追従更新）
+        // タメ時間中、常にプレイヤーを注視（方向・位置・回転を毎フレーム追従更新）
         // -----------------------------------------------------------------
         Vector3 currentBossPos = boss->GetTranslate();
         Vector3 targetPos = target ? target->GetWorldPosition() : Vector3{0,0,0};
@@ -446,7 +446,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 block->GetTransform()->isQuaternionMaster = false;
             };
 
-            // ★ レーザーのレイキャスト処理 (フェーズ11〜13で使う)
+            // レーザーのレイキャスト処理 (フェーズ11〜13で使う)
             float maxDist = 160.0f;
             float actualDist = maxDist;
             float parentScaleZ = 1.0f;
@@ -466,7 +466,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 }
             }
 
-            // ★ ヒット距離を使った遅延付きの長さ復元処理
+            // ヒット距離を使った遅延付きの長さ復元処理
             if (i < laserLengths_.size()) {
                 if (actualDist < laserLengths_[i]) {
                     laserLengths_[i] = actualDist;
@@ -917,7 +917,7 @@ void BossAttack8_Final::Finalize() {
         if (laser) {
             laser->SetScale({ 0.0f, 0.0f, 0.0f });
             laser->SetCollisionAttribute(0);
-            laser->SetParent(nullptr); // 追加: 行列更新時の親アクセス違反防止
+            laser->SetParent(nullptr); // 行列更新時の親アクセス違反防止
             // laser->isDead = true; // 例外エラー対策: 削除せずに非表示化
         }
     }
@@ -936,7 +936,7 @@ void BossAttack8_Final::Finalize() {
         if (beam) {
             beam->SetScale({ 0.0f, 0.0f, 0.0f });
             beam->SetCollisionAttribute(0);
-            beam->SetParent(nullptr); // 追加: 行列更新時の親アクセス違反防止
+            beam->SetParent(nullptr); // 行列更新時の親アクセス違反防止
             // beam->isDead = true;
         }
     }
@@ -945,7 +945,7 @@ void BossAttack8_Final::Finalize() {
         if (warn) {
             warn->SetScale({ 0.0f, 0.0f, 0.0f });
             warn->SetCollisionAttribute(0);
-            warn->SetParent(nullptr); // 追加
+            warn->SetParent(nullptr);
             // warn->isDead = true;
         }
     }
@@ -954,7 +954,7 @@ void BossAttack8_Final::Finalize() {
         if (meteor) {
             meteor->SetScale({ 0.0f, 0.0f, 0.0f });
             meteor->SetCollisionAttribute(0);
-            meteor->SetParent(nullptr); // 追加
+            meteor->SetParent(nullptr);
             // meteor->isDead = true;
         }
     }

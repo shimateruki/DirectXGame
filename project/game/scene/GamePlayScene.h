@@ -54,7 +54,7 @@ public:
     void DrawImGui() override;
     // --- ムービーイベント ---
     void StartBridgeDropMovie();
-    void StartBossAppearanceMovie(); // ★ 追加：ボス登場の合図を受け取る関数
+    void StartBossAppearanceMovie(); // ボス登場の合図を受け取る関数
 
     // --- BaseScene インターフェース実装 ---
 
@@ -87,7 +87,7 @@ private:
         kBridgeDrop,
         kBossAppearance,
         kTutorialPlatformDescent,
-        kTutorialDoorOpen        // ★ 追加：ドアが開く演出
+        kTutorialDoorOpen        // ドアが開く演出
     };
     MovieState movieState_ = MovieState::kNone;
     float movieTimer_ = 0.0f;
@@ -101,7 +101,7 @@ private:
     float doorOpenProgress_ = 0.0f;
     bool tutorialMovieStarted_ = false;
     float tutorialMovieTimer_ = 0.0f;
-    bool hasTutorialMovieFinished_ = false; // ★ 追加
+    bool hasTutorialMovieFinished_ = false;
 
     bool IsCinematicMode() const;
     bool HandleEscapeKey();
@@ -129,7 +129,7 @@ private:
     // --- サブシステム (機能を委譲するクラスたち) ---
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;   // 配置読み込み
     std::unique_ptr<LockOnSystem> lockOnSystem_ = nullptr; // ロックオン管理
-    std::unique_ptr<ObjectManager> objectManager_ = nullptr; //  オブジェクト管理 
+    std::unique_ptr<ObjectManager> objectManager_ = nullptr; // オブジェクト管理
 
     // --- ゲームオブジェクト共通基盤 ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
@@ -157,37 +157,37 @@ private:
     uint32_t gpuParticleTexHandle_ = 0;
     std::unique_ptr<Sprite> lockOnSprite_;
     bool isDrawLockOn_ = false; // 描画するかどうかのスイッチ
-	//sprite変数
+	// sprite変数
     Sprite* playerHpBarSprite_ = nullptr;
-    Sprite* playerDamageBarSprite_ = nullptr; // 追加：ダメージ残像用
+    Sprite* playerDamageBarSprite_ = nullptr; // ダメージ残像用
     float playerHpBarMaxWidth_ = 0.0f; // 100%の時の長さ
-    float playerVisualHp_ = 0.0f;      // 追加：表示上のHP (演出用)
-    float playerDamageDelayTimer_ = 0.0f; // 追加：減少開始までの待機時間
-    float playerPrevHpRatio_ = 0.0f;   // 追加：前フレームのHP率
+    float playerVisualHp_ = 0.0f;      // 表示上のHP (演出用)
+    float playerDamageDelayTimer_ = 0.0f; // 減少開始までの待機時間
+    float playerPrevHpRatio_ = 0.0f;   // 前フレームのHP率
 
-    Object3d* tutorialPlatform_ = nullptr; // ★ 降下させるプラットフォーム
-    float tutorialPlatformOffset_ = 0.0f; // ★ プレイヤーとのY軸オフセット
+    Object3d* tutorialPlatform_ = nullptr; // 降下させるプラットフォーム
+    float tutorialPlatformOffset_ = 0.0f; // プレイヤーとのY軸オフセット
 
     // =================================================
-    //  ボスUI同期用のポインタと変数を保持
+    // ボスUI同期用のポインタと変数を保持
     // =================================================
     BossCore* boss_ = nullptr;
 
     Sprite* bossHpBarSprite_ = nullptr;    // メインHPバー
-    Sprite* bossDamageBarSprite_ = nullptr; // 追加：ダメージ残像用
+    Sprite* bossDamageBarSprite_ = nullptr; // ダメージ残像用
     float bossHpBarMaxWidth_ = 0.0f;
-    float bossVisualHp_ = 0.0f;             // 追加：ボスの表示上のHP (演出用)
-    float bossDamageDelayTimer_ = 0.0f;    // 追加：減少開始までの待機時間
-    float bossPrevHpRatio_ = 0.0f;         // 追加：前フレームのHP率
+    float bossVisualHp_ = 0.0f;             // ボスの表示上のHP (演出用)
+    float bossDamageDelayTimer_ = 0.0f;    // 減少開始までの待機時間
+    float bossPrevHpRatio_ = 0.0f;         // 前フレームのHP率
 
     Sprite* bossHpBackSprite_ = nullptr;
     Sprite* barrierHpBarSprite_ = nullptr; // バリアHPバー
-    Sprite* barrierDamageBarSprite_ = nullptr; // 追加：バリア用ダメージ残像
+    Sprite* barrierDamageBarSprite_ = nullptr; // バリア用ダメージ残像
     float barrierHpBarMaxWidth_ = 0.0f;
-    float barrierVisualMain_ = 0.0f;       // 追加：バリアメインバーの表示用HP
-    float barrierVisualDamage_ = 0.0f;     // 追加：バリアダメージバーの表示用HP
-    float barrierDamageDelayTimer_ = 0.0f; // 追加：バリアの減少待機時間
-    float barrierPrevHpRatio_ = 0.0f;      // 追加：前フレームのバリアHP率
+    float barrierVisualMain_ = 0.0f;       // バリアメインバーの表示用HP
+    float barrierVisualDamage_ = 0.0f;     // バリアダメージバーの表示用HP
+    float barrierDamageDelayTimer_ = 0.0f; // バリアの減少待機時間
+    float barrierPrevHpRatio_ = 0.0f;      // 前フレームのバリアHP率
     Sprite* bossNameSprite_ = nullptr;
     enum class GameOverMenuIndex {
         Restart,
@@ -222,7 +222,7 @@ private:
     Sprite* poseBackSprite_ = nullptr;
     Sprite* poseTextSprite_ = nullptr;
     Sprite* restartPoseTextSprite_ = nullptr;
-    Sprite* optionPoseTextSprite_ = nullptr; // 追加: optionText.png
+    Sprite* optionPoseTextSprite_ = nullptr; // optionText.png
     Sprite* titleTextPoseSprite_ = nullptr;
     Sprite* tabPauseTextSprite_ = nullptr;
     bool pauseUiUsesGamepad_ = false;
@@ -301,7 +301,7 @@ private:
     float leverOutProgress_ = 0.0f;
     bool isGoOut_ = false;
     float goOutProgress_ = 0.0f;
-    float missionSwitchDelayTimer_ = 0.0f; // ★ 追加
+    float missionSwitchDelayTimer_ = 0.0f;
 
     Vector2 missionMarkBaseSize_;
     Vector2 missionLeverBasePos_;

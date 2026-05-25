@@ -22,13 +22,13 @@ void BossCore::TakeBodyDamage(float damage) {
     float nextHp = param_->hp - damage;
 
     // ====================================================
-    // ★ 追加：HPが50%を下回る瞬間に演出を開始し、HPを50%で止める
+    // HPが50%を下回る瞬間に演出を開始し、HPを50%で止める
     // ====================================================
     if (!isHpHalfTriggered_ && nextHp <= halfHp) {
         param_->hp = halfHp;
         isHpHalfTriggered_ = true;
 
-        // ★追加：ムービーに入るため、プレイヤーのロックオンを強制解除する
+        // ムービーに入るため、プレイヤーのロックオンを強制解除する
         if (target_) {
             if (auto player = dynamic_cast<Player*>(target_)) {
                 player->RequestClearLockOn();
@@ -185,13 +185,13 @@ void BossCore::TakeBodyDamage(float damage) {
             }
         }
 
-        // ★ 追加：作成いただいたカメラアニメーション（JSON）を再生する
+        // 作成いただいたカメラアニメーション（JSON）を再生する
         // ゴーストレーダー（GhostRecorder）で作成されたアニメーションを直接再生（橋が落ちる処理と同じ方式）
         bool isCameraFound = false;
         if (sceneManager_ && sceneManager_->GetCurrentScene()) {
             auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
             for (auto& obj : objects) {
-                // ★ 修正：ユーザーが配置した専用のカメラオブジェクト「EnemyHP50_Animation」を探す！
+                // ユーザーが配置した専用のカメラオブジェクト「EnemyHP50_Animation」を探す！
                 if (obj->GetName() == "EnemyHP50_Animation") {
                     isCameraFound = true;
                     if (obj->recorder_) {
@@ -216,7 +216,7 @@ void BossCore::TakeBodyDamage(float damage) {
     }
 
     // ====================================================
-    // ★ 追加：最終奥義発動前、または大技中でトドメ待ちでないならHP1で踏みとどまる！
+    // 最終奥義発動前、または大技中でトドメ待ちでないならHP1で踏みとどまる！
     // ====================================================
     if (!isFinalPhase_ && nextHp <= 1.0f) {
         nextHp = 1.0f;
@@ -276,11 +276,11 @@ bool BossCore::OnCollision(Object3d* other) {
         }
 
         TakeBodyDamage(10.0f);
-        // ★ エフェクトからの被弾を確定させてヒットリストに記録
+        // エフェクトからの被弾を確定させてヒットリストに記録
         if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
             effect->AddHitObject(this);
         }
-        damageCooldownTimer_ = 0.5f; // 💥 追加：連続ヒット防止クールダウンを設定！
+        damageCooldownTimer_ = 0.5f; // 連続ヒット防止クールダウンを設定！
         return true;
     }
 
@@ -288,5 +288,5 @@ bool BossCore::OnCollision(Object3d* other) {
 }
 
 // ==========================================
-// ★ 追加：戦闘開始の合図を受け取る！
+// 戦闘開始の合図を受け取る！
 
