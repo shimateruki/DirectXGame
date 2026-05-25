@@ -452,6 +452,21 @@ void GamePlayScene::Initialize() {
                 }
                 obj->UpdateWorldMatrix();
             }
+            if (name.find("Tutorial_Doll_Button_") != std::string::npos) {
+                obj->SetIsVisible(true);
+				obj->SetCollisionAttribute(kGround);
+                if (name.find("Tutorial_Doll_Button_01") != std::string::npos) {
+                    obj->SetCollisionAttribute(kGround | kEnemy);
+                }
+                if (name.find("Tutorial_Doll_Button_03") != std::string::npos) {
+                    Transform* trans = obj->GetTransform();
+                    trans->translate.y = 0.0f;
+                }
+                if (name.find("Tutorial_Doll_Button_Collision_Box") != std::string::npos) {
+                    Transform* trans = obj->GetTransform();
+                    trans->translate.y = 23.63f;
+                }
+            }
             if (name.find("Bridge_") != std::string::npos) {
                 if (name.find("Bridge_Collision") == std::string::npos) {
                     obj->SetIsVisible(true);
@@ -805,6 +820,22 @@ void GamePlayScene::Update(float deltaTime) {
                     std::string name = obj->GetName();
 					if (name.find("Tutorial_Door") != std::string::npos) {
                         obj->SetCollisionAttribute(0); // 当たり判定も消す
+                    }
+                    if (name.find("Tutorial_Doll_Button_01") != std::string::npos) {
+                        obj->SetCollisionAttribute(0); // ボタンの被攻撃用当たり判定も消す
+                    }
+                    if (name.find("Tutorial_Doll_Button_02") != std::string::npos) {
+						obj->SetIsVisible(false); // ボタンカバーも消す
+                    }
+                    if (name.find("Tutorial_Doll_Button_03") != std::string::npos) {
+						// ボタンを押下状態にする
+                        Transform* trans = obj->GetTransform();
+						trans->translate.y = -0.5f; // 少し沈み込む
+                    }
+                    if (name.find("Tutorial_Doll_Button_Collision_Box") != std::string::npos) {
+                        // ボタンの壁判定を下げる
+                        Transform* trans = obj->GetTransform();
+                        trans->translate.y = 21.13f; // 少し沈み込む
                     }
                 }
 
