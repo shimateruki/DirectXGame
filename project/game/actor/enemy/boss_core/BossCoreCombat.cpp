@@ -37,6 +37,7 @@ void BossCore::TakeBodyDamage(float damage) {
 
         // 強制的に待機状態へリセット
         if (currentAttack_) {
+            currentAttack_->Finalize();
             currentAttack_.reset();
         }
         ChangeState(State::Idle);

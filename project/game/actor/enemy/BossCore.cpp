@@ -880,6 +880,7 @@ void BossCore::Update(float deltaTime) {
                 // ★ TriggerCrashStun() 等でステートが Weak に変わった場合、
                 //    currentAttack_ がリセット済みの可能性があるため再チェック
                 if (currentAttack_ && currentAttack_->IsFinished()) {
+                    currentAttack_->Finalize();
                     currentAttack_.reset();
 
                     if (isFinalPhase_) {

@@ -31,24 +31,40 @@ void BossAttack9_Funnels::Initialize(BossCore* boss) {
 void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
     auto& armorBlocks = boss->GetArmorBlocks();
     Object3d* target = boss->GetTarget();
+    auto restoreFunnelCoreColor = [](Object3d* block) {
+        if (!block) return;
+        for (auto* child : block->GetChildren()) {
+            if (!child) continue;
+            const std::string& name = child->GetName();
+            if (name.find("_Core") != std::string::npos && name.find("BossAttack") == std::string::npos) {
+                child->SetColor({ 0.0f, 0.7f, 1.0f, 1.0f });
+                child->SetMaterialType(2);
+                child->SetEmissive(4.0f);
+            }
+        }
+    };
 
     // --- Phase 90: ファンネル射出（空中に展開） ---
     if (animPhase_ == 90) {
         if (animTimer_ == 0.0f) {
-            blockStartPos_.clear();
-            blockTargetPos_.clear();
-            blockStartScale_.clear();
+            blockStartPos_.assign(armorBlocks.size(), {});
+            blockTargetPos_.assign(armorBlocks.size(), {});
+            blockStartScale_.assign(armorBlocks.size(), {});
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 if (!armorBlocks[i]) continue;
+
+                boss->UpgradeToFunnel(armorBlocks[i]);
+                armorBlocks[i]->SetIsVisible(false);
+                restoreFunnelCoreColor(armorBlocks[i]);
                 
                 // ワールド座標で独立して動かすために親を外す
                 Vector3 worldPos = armorBlocks[i]->GetWorldPosition();
                 armorBlocks[i]->SetParent(nullptr);
                 armorBlocks[i]->SetTranslate(worldPos);
 
-                blockStartPos_.push_back(worldPos);
-                blockStartScale_.push_back(armorBlocks[i]->GetScale());
+                blockStartPos_[i] = worldPos;
+                blockStartScale_[i] = armorBlocks[i]->GetScale();
 
                 // プレイヤー周辺の空中にまばらに散らす
                 float randomX = -25.0f + ((rand() % 100) / 100.0f) * 50.0f; // -25〜25mの範囲
@@ -60,7 +76,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                     targetPos.x += target->GetWorldPosition().x;
                     targetPos.z += target->GetWorldPosition().z;
                 }
-                blockTargetPos_.push_back(targetPos);
+                blockTargetPos_[i] = targetPos;
             }
         }
 
@@ -71,6 +87,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             if (!armorBlocks[i] || i >= blockStartPos_.size()) continue;
+            restoreFunnelCoreColor(armorBlocks[i]);
 
             Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
             armorBlocks[i]->SetTranslate(pos);
@@ -98,13 +115,15 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             std::vector<Object3d*> coreBeamPool;
             if (currentScene) {
                 for (auto& obj : currentScene->GetObjects()) {
-                    if (obj->GetName() == "Beam_Cylinder") beamPool.push_back(obj.get());
-                    else if (obj->GetName() == "Beam_Core_Cylinder") coreBeamPool.push_back(obj.get());
+                    if (obj->GetName() == "BossAttack9_Beam_Cylinder") beamPool.push_back(obj.get());
+                    else if (obj->GetName() == "BossAttack9_Beam_Core_Cylinder") coreBeamPool.push_back(obj.get());
                 }
             }
 
-            activeLasers_.clear();
-            activeCoreLasers_.clear();
+            activeLasers_.assign(armorBlocks.size(), nullptr);
+            activeCoreLasers_.assign(armorBlocks.size(), nullptr);
+            laserLengths_.assign(armorBlocks.size(), 160.0f);
+            laserDelayTimers_.assign(armorBlocks.size(), 0.0f);
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 if (!armorBlocks[i]) continue;
 
@@ -119,9 +138,15 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                     laser = newLaser.get();
                     laser->Initialize(boss->GetCommon());
                     laser->SetModel("Cylinder");
-                    laser->SetName("Beam_Cylinder");
+                    laser->SetName("BossAttack9_Beam_Cylinder");
                     if (currentScene) currentScene->AddObject(std::move(newLaser));
                 }
+
+                laser->SetIsVisible(false);
+                laser->SetParent(nullptr);
+                laser->SetScale({ 0.0f, 0.0f, 0.0f });
+                laser->SetCollisionAttribute(0);
+                laser->UpdateWorldMatrix();
 
                 laser->SetBlendMode(BlendMode::kAdd);
                 laser->SetEmissive(5.0f);
@@ -151,10 +176,9 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 // ビームのYスケールが80の場合、モデルが中心基準だと長さが160になるため、80だけ前方にずらす
                 laser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 laser->GetTransform()->isQuaternionMaster = false;
+                laser->UpdateWorldMatrix();
 
-                activeLasers_.push_back(laser);
-                laserLengths_.push_back(160.0f);
-                laserDelayTimers_.push_back(0.0f);
+                activeLasers_[i] = laser;
 
                 // ==========================================
                 // 2. 白いコア（内側のビーム）の生成
@@ -167,9 +191,15 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                     coreLaser = newCore.get();
                     coreLaser->Initialize(boss->GetCommon());
                     coreLaser->SetModel("Cylinder");
-                    coreLaser->SetName("Beam_Core_Cylinder");
+                    coreLaser->SetName("BossAttack9_Beam_Core_Cylinder");
                     if (currentScene) currentScene->AddObject(std::move(newCore));
                 }
+
+                coreLaser->SetIsVisible(false);
+                coreLaser->SetParent(nullptr);
+                coreLaser->SetScale({ 0.0f, 0.0f, 0.0f });
+                coreLaser->SetCollisionAttribute(0);
+                coreLaser->UpdateWorldMatrix();
 
                 coreLaser->SetBlendMode(BlendMode::kAdd);
                 coreLaser->SetEmissive(8.0f);
@@ -189,8 +219,9 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetRotation({ rotX90, 0.0f, 0.0f });
                 coreLaser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 coreLaser->GetTransform()->isQuaternionMaster = false;
+                coreLaser->UpdateWorldMatrix();
 
-                activeCoreLasers_.push_back(coreLaser);
+                activeCoreLasers_[i] = coreLaser;
             }
         }
 
@@ -219,9 +250,16 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
         if ((animTimer_ == 0.0f || currentWave > previousWave) && currentWave < 3) {
             int numShooters = 1 + (rand() % 3); // 1〜3個のランダム
             std::vector<int> shooters;
+            std::vector<int> validIndices;
+            validIndices.reserve(armorBlocks.size());
+            for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                if (armorBlocks[i]) {
+                    validIndices.push_back(static_cast<int>(i));
+                }
+            }
             int maxRetries = 20;
-            while (shooters.size() < numShooters && armorBlocks.size() > 0 && maxRetries > 0) {
-                int s = rand() % armorBlocks.size();
+            while (shooters.size() < numShooters && !validIndices.empty() && maxRetries > 0) {
+                int s = validIndices[rand() % validIndices.size()];
                 bool exists = false;
                 for (int existing : shooters) {
                     if (existing == s) { exists = true; break; }
@@ -231,6 +269,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             }
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                if (!armorBlocks[i]) continue;
                 bool isShooter = false;
                 for (int s : shooters) {
                     if (i == s) isShooter = true;
@@ -276,6 +315,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
         // 個別のファンネル処理
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             if (!armorBlocks[i]) continue;
+            restoreFunnelCoreColor(armorBlocks[i]);
             
             Object3d* laser = (i < activeLasers_.size()) ? activeLasers_[i] : nullptr;
             Object3d* coreLaser = (i < activeCoreLasers_.size()) ? activeCoreLasers_[i] : nullptr;
@@ -347,6 +387,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
 
             float scaleY = (actualDist / 2.0f) / parentScaleZ;
             float offsetZ = scaleY;
+            static Math math;
 
             // 状態に応じた処理
             if (funnelStates_[i] == 0) {
@@ -402,14 +443,22 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 
                 // 予兆はずっと非常に細い赤い線（スナイパーレーザー）のまま
                 if (laser) { 
+                    laser->SetIsVisible(true);
                     laser->SetScale({ 0.02f, scaleY, 0.02f }); 
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
                     laser->SetCollisionAttribute(0); 
+                    Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
+                    Vector3 uvTranslate = { 0.0f, funnelTimers_[i] * -30.0f, 0.0f };
+                    laser->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) { 
+                    coreLaser->SetIsVisible(false);
                     coreLaser->SetScale({ 0.0f, scaleY, 0.0f }); 
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0); 
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の展開演出 ---
@@ -449,15 +498,27 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 funnelTimers_[i] += deltaTime;
                 
                 if (laser) {
+                    laser->SetIsVisible(true);
                     laser->SetScale({ 1.0f, scaleY, 1.0f });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                     laser->SetCollisionAttribute(kEnemyAttack);
                     laser->SetAttackDamage(boss->GetAttackParams().damageFunnels);
+                    Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
+                    Vector3 uvTranslate = { 0.0f, funnelTimers_[i] * -30.0f, 0.0f };
+                    laser->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) { 
+                    coreLaser->SetIsVisible(true);
                     coreLaser->SetScale({ 0.4f, scaleY, 0.4f }); 
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    coreLaser->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
                     coreLaser->SetCollisionAttribute(0); 
+                    Vector3 coreUvScale = { 1.0f, 20.0f, 1.0f };
+                    Vector3 coreUvTranslate = { 0.0f, funnelTimers_[i] * -50.0f, 0.0f };
+                    coreLaser->SetUVTransform(math.MakeAffineMatrix(coreUvScale, { 0.0f, 0.0f, 0.0f }, coreUvTranslate));
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の展開を維持（少し震わせる） ---
@@ -485,14 +546,26 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 float shrinkT = 1.0f - t;
                 
                 if (laser) { 
+                    laser->SetIsVisible(true);
                     laser->SetScale({ 1.0f * shrinkT, scaleY, 1.0f * shrinkT }); 
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                     laser->SetCollisionAttribute(0); 
+                    Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
+                    Vector3 uvTranslate = { 0.0f, funnelTimers_[i] * -30.0f, 0.0f };
+                    laser->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) { 
+                    coreLaser->SetIsVisible(true);
                     coreLaser->SetScale({ 0.4f * shrinkT, scaleY, 0.4f * shrinkT }); 
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    coreLaser->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
                     coreLaser->SetCollisionAttribute(0); 
+                    Vector3 coreUvScale = { 1.0f, 20.0f, 1.0f };
+                    Vector3 coreUvTranslate = { 0.0f, funnelTimers_[i] * -50.0f, 0.0f };
+                    coreLaser->SetUVTransform(math.MakeAffineMatrix(coreUvScale, { 0.0f, 0.0f, 0.0f }, coreUvTranslate));
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の収束演出 ---
@@ -510,8 +583,8 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 if (t >= 1.0f) {
                     // 発射シーケンス終了、デコイ待機状態へ戻る
                     funnelStates_[i] = 0;
-                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
-                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                    if (laser) { laser->SetIsVisible(false); laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                    if (coreLaser) { coreLaser->SetIsVisible(false); coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
 
                     // ビーム終了：地形属性判定を元に戻す
                     if (armorBlocks[i]) {
@@ -527,28 +600,32 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
             for (auto* laser : activeLasers_) {
                 if (laser) {
+                    laser->SetIsVisible(false);
                     laser->SetScale({ 0.0f, 0.0f, 0.0f }); // 見えなくする
                     laser->SetParent(nullptr); // 親子関係解除
                     CollisionManager::GetInstance()->RemoveObject(laser);
+                    laser->UpdateWorldMatrix();
                 }
             }
             for (auto* core : activeCoreLasers_) {
                 if (core) {
+                    core->SetIsVisible(false);
                     core->SetScale({ 0.0f, 0.0f, 0.0f });
                     core->SetParent(nullptr);
                     CollisionManager::GetInstance()->RemoveObject(core);
+                    core->UpdateWorldMatrix();
                 }
             }
             activeLasers_.clear();
             activeCoreLasers_.clear();
             
             // 帰還のための初期位置を保存
-            blockStartPos_.clear();
-            blockStartScale_.clear();
+            blockStartPos_.assign(armorBlocks.size(), {});
+            blockStartScale_.assign(armorBlocks.size(), {});
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 if (!armorBlocks[i]) continue;
-                blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
-                blockStartScale_.push_back(armorBlocks[i]->GetScale());
+                blockStartPos_[i] = armorBlocks[i]->GetTranslate();
+                blockStartScale_[i] = armorBlocks[i]->GetScale();
             }
         }
     }
@@ -614,18 +691,22 @@ void BossAttack9_Funnels::Finalize() {
 
     for (auto* laser : activeLasers_) {
         if (laser) {
+            laser->SetIsVisible(false);
             laser->SetScale({ 0.0f, 0.0f, 0.0f });
             laser->SetCollisionAttribute(0);
             laser->SetParent(nullptr);
             CollisionManager::GetInstance()->RemoveObject(laser);
+            laser->UpdateWorldMatrix();
         }
     }
     for (auto* core : activeCoreLasers_) {
         if (core) {
+            core->SetIsVisible(false);
             core->SetScale({ 0.0f, 0.0f, 0.0f });
             core->SetCollisionAttribute(0);
             core->SetParent(nullptr);
             CollisionManager::GetInstance()->RemoveObject(core);
+            core->UpdateWorldMatrix();
         }
     }
     activeLasers_.clear();

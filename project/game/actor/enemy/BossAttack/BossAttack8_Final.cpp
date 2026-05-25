@@ -500,8 +500,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 Vector3 pos = Math::Lerp(armorBlocks[i]->GetTranslate(), tgtPos, 5.0f * deltaTime);
                 armorBlocks[i]->SetTranslate(pos);
 
-                if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
-                if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
                 
                 if (animTimer_ < 11.5f && animTimer_ > 2.0f + i * 0.8f) {
                     funnelStates_[i] = 11; 
@@ -520,11 +520,13 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     laser->SetScale({ 0.02f, scaleY, 0.02f });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     laser->SetCollisionAttribute(0);
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
                     coreLaser->SetScale({ 0.0f, scaleY, 0.0f });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0);
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の展開演出 ---
@@ -562,6 +564,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
                     Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, funnelTimers_[i]*5.0f, 0.0f });
                     laser->SetUVTransform(uvMat);
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
                     coreLaser->SetScale({ 0.4f, scaleY, 0.4f });
@@ -572,6 +575,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
                     Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, funnelTimers_[i]*5.0f, 0.0f });
                     coreLaser->SetUVTransform(uvMat);
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の展開を維持（少し震わせる） ---
@@ -597,11 +601,13 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     laser->SetScale({ 1.0f * shrinkT, scaleY, 1.0f * shrinkT });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     laser->SetCollisionAttribute(0);
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
                     coreLaser->SetScale({ 0.4f * shrinkT, scaleY, 0.4f * shrinkT });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0);
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の収束演出 ---
@@ -614,8 +620,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
                 if (t >= 1.0f) {
                     funnelStates_[i] = 0; 
-                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
-                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
 
                     // ビーム終了：地形属性判定を元に戻す
                     if (armorBlocks[i]) {
@@ -781,7 +787,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                         warn->SetColor(warnColor);
                         warn->UpdateWorldMatrix();
                     }
-                    if (laser) laser->SetScale({0, 0, 0});
+                    if (laser) { laser->SetScale({0, 0, 0}); laser->UpdateWorldMatrix(); }
                 } else if (localTime >= 1.5f && localTime < 3.1f) {
                     // 射出フェーズ (1.6秒間)：極太縦ビームを射出
                     if (warn) warn->SetScale({ 0, 0, 0 });
@@ -804,11 +810,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     if (laser) {
                         laser->SetScale({0, 0, 0});
                         laser->SetCollisionAttribute(0);
+                        laser->UpdateWorldMatrix();
                     }
                 }
             } else {
-                if (i < coreBeams_.size() && coreBeams_[i]) coreBeams_[i]->SetScale({0, 0, 0});
-                if (i < areaWarnings_.size() && areaWarnings_[i]) areaWarnings_[i]->SetScale({0, 0, 0});
+                if (i < coreBeams_.size() && coreBeams_[i]) { coreBeams_[i]->SetScale({0, 0, 0}); coreBeams_[i]->UpdateWorldMatrix(); }
+                if (i < areaWarnings_.size() && areaWarnings_[i]) { areaWarnings_[i]->SetScale({0, 0, 0}); areaWarnings_[i]->UpdateWorldMatrix(); }
             }
         }
 

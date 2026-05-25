@@ -91,7 +91,10 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
         DebugConsole::GetInstance()->AddLog("★★★ Barrier BROKEN! ★★★");
         barrierHp_ = 0.0f; // スタン開始時はゲージを0にする（ここから全回復に向けて増加）
 
-        if (currentAttack_) currentAttack_.reset(); // ★ ダウン時の攻撃を強制終了！
+        if (currentAttack_) {
+            currentAttack_->Finalize();
+            currentAttack_.reset();
+        } // ★ ダウン時の攻撃を強制終了！
         animTimer_ = 0.0f;
         flyingBlocks_.clear();
 
@@ -153,7 +156,10 @@ void BossCore::TriggerCrashStun() {
     // ★ currentAttack_.reset() でダウン時の攻撃を強制終了！
     //    呼び出し元（BossAttack1_Rush::Update 等）は TriggerCrashStun() の直後に
     //    即座に return するため、this (攻撃オブジェクト) が破棄されても安全。
-    if (currentAttack_) currentAttack_.reset();
+    if (currentAttack_) {
+        currentAttack_->Finalize();
+        currentAttack_.reset();
+    }
     animTimer_ = 0.0f;
     // ★ 予測線を完全に消す（突進終了時と同じ方法）
     if (auto* warning = GetWarningArea()) {

@@ -20,7 +20,10 @@ void BossCore::StartDeathSequence() {
         }
     }
 
-    if (currentAttack_) currentAttack_.reset();
+    if (currentAttack_) {
+        currentAttack_->Finalize();
+        currentAttack_.reset();
+    }
     isWaitingForDeath_ = true;
     ChangeState(State::Idle);
 
