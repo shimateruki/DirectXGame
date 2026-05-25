@@ -28,6 +28,7 @@
 #include "TutorialDoll.h"
 #include "WinApp.h"
 #include "imgui.h"
+#include "PlayerState.h"
 #include <EventManager.h>
 #include <cassert>
 
@@ -1123,6 +1124,31 @@ void GamePlayScene::Update(float deltaTime) {
             player_->UpdateWorldMatrix();
         }
     }
+
+    // ドアが開いて一定時間経過したらチュートリアルUIを強制非表示
+    if (doorOpenProgress_ >= 1.0f && !tutorialUiCompleted_) {
+        doorOpenedTimer_ += deltaTime;
+        if (doorOpenedTimer_ > 3.0f) {
+            auto HideSprite = [](Sprite* s) {
+                if (s) {
+                    Vector4 c = s->GetColor();
+                    c.w = 0.0f;
+                    s->SetColor(c);
+                }
+            };
+            HideSprite(tutorialMoveSprite_);
+            HideSprite(tutorialCameraSprite_);
+            HideSprite(tutorialJumpSprite_);
+            HideSprite(tutorialLockOnSprite_);
+            HideSprite(tutorialAttackSprite_);
+            HideSprite(tutorialFallAttackSprite_);
+            HideSprite(tutorialDodgeSprite_);
+
+            tutorialStep_ = TutorialStep::kCompleted;
+            tutorialUiCompleted_ = true;
+        }
+    }
+
     // チュートリアル状態機（順序：移動 → カメラ → ロックオン → 攻撃 → 回避）
     if (!tutorialUiCompleted_) {
         switch (tutorialStep_) {
@@ -1152,6 +1178,9 @@ void GamePlayScene::Update(float deltaTime) {
                     moved = true;
             }
             if (moved) {
+                tutorialMoveTimer_ += deltaTime;
+            }
+            if (tutorialMoveTimer_ >= 1.5f) {
                 // 次のカメラ説明表示へ切り替え
                 if (tutorialMoveSprite_) {
                     Vector4 c = tutorialMoveSprite_->GetColor();
@@ -1179,6 +1208,9 @@ void GamePlayScene::Update(float deltaTime) {
                     cameraUsed = true;
             }
             if (cameraUsed) {
+                tutorialCameraTimer_ += deltaTime;
+            }
+            if (tutorialCameraTimer_ >= 1.0f) {
                 if (tutorialCameraSprite_) {
                     Vector4 c = tutorialCameraSprite_->GetColor();
                     c.w = 0.0f;
@@ -1196,18 +1228,21 @@ void GamePlayScene::Update(float deltaTime) {
 
         case TutorialStep::kWaitForJump:
             if (inputManager_ && inputManager_->IsActionTriggered("Jump")) {
-                if (tutorialJumpSprite_) {
-                    Vector4 c = tutorialJumpSprite_->GetColor();
-                    c.w = 0.0f;
-                    tutorialJumpSprite_->SetColor(c);
+                tutorialJumpCount_++;
+                if (tutorialJumpCount_ >= 2) {
+                    if (tutorialJumpSprite_) {
+                        Vector4 c = tutorialJumpSprite_->GetColor();
+                        c.w = 0.0f;
+                        tutorialJumpSprite_->SetColor(c);
+                    }
+                    if (tutorialLockOnSprite_) {
+                        Vector4 c = tutorialLockOnSprite_->GetColor();
+                        c.w = 1.0f;
+                        tutorialLockOnSprite_->SetColor(c);
+                    }
+                    tutorialStep_ = TutorialStep::kWaitForLockOn;
+                    tutorialTimer_ = 0.0f;
                 }
-                if (tutorialLockOnSprite_) {
-                    Vector4 c = tutorialLockOnSprite_->GetColor();
-                    c.w = 1.0f;
-                    tutorialLockOnSprite_->SetColor(c);
-                }
-                tutorialStep_ = TutorialStep::kWaitForLockOn;
-                tutorialTimer_ = 0.0f;
             }
             break;
 
@@ -1228,44 +1263,57 @@ void GamePlayScene::Update(float deltaTime) {
             }
             break;
 
-        case TutorialStep::kWaitForAttack:
+        case TutorialStep::kWaitForAttack: {
+            static float attackCooldown = 0.0f;
+            if (attackCooldown > 0.0f) attackCooldown -= deltaTime;
             if (inputManager_) {
                 // 攻撃ボタン検出（KeyConfig の "Attack" に対応）
-                if (inputManager_->IsActionTriggered("Attack")) {
-                    if (tutorialAttackSprite_) {
-                        Vector4 c = tutorialAttackSprite_->GetColor();
-                        c.w = 0.0f;
-                        tutorialAttackSprite_->SetColor(c);
+                if (inputManager_->IsActionTriggered("Attack") && attackCooldown <= 0.0f) {
+                    tutorialAttackCount_++;
+                    attackCooldown = 0.5f;
+                    if (tutorialAttackCount_ >= 2) {
+                        if (tutorialAttackSprite_) {
+                            Vector4 c = tutorialAttackSprite_->GetColor();
+                            c.w = 0.0f;
+                            tutorialAttackSprite_->SetColor(c);
+                        }
+                        if (tutorialFallAttackSprite_) {
+                            Vector4 c = tutorialFallAttackSprite_->GetColor();
+                            c.w = 1.0f;
+                            tutorialFallAttackSprite_->SetColor(c);
+                        }
+                        tutorialStep_ = TutorialStep::kWaitForFallAttack;
+                        tutorialTimer_ = 0.0f;
                     }
-                    if (tutorialFallAttackSprite_) {
-                        Vector4 c = tutorialFallAttackSprite_->GetColor();
-                        c.w = 1.0f;
-                        tutorialFallAttackSprite_->SetColor(c);
-                    }
-                    tutorialStep_ = TutorialStep::kWaitForFallAttack;
-                    tutorialTimer_ = 0.0f;
                 }
             }
-            break;
+        } break;
 
-        case TutorialStep::kWaitForFallAttack:
-            if (inputManager_) {
-                if (inputManager_->IsActionTriggered("Attack")) {
-                    if (tutorialFallAttackSprite_) {
-                        Vector4 c = tutorialFallAttackSprite_->GetColor();
-                        c.w = 0.0f;
-                        tutorialFallAttackSprite_->SetColor(c);
+        case TutorialStep::kWaitForFallAttack: {
+            static float fallAttackCooldown = 0.0f;
+            if (fallAttackCooldown > 0.0f) fallAttackCooldown -= deltaTime;
+            if (inputManager_ && player_) {
+                bool isFalling = (player_->GetVelocity().y < -0.1f);
+                if (inputManager_->IsActionTriggered("Attack") && isFalling && fallAttackCooldown <= 0.0f) {
+                    tutorialFallAttackCount_++;
+                    fallAttackCooldown = 0.5f;
+                    if (tutorialFallAttackCount_ >= 2) {
+                        if (tutorialFallAttackSprite_) {
+                            Vector4 c = tutorialFallAttackSprite_->GetColor();
+                            c.w = 0.0f;
+                            tutorialFallAttackSprite_->SetColor(c);
+                        }
+                        if (tutorialDodgeSprite_) {
+                            Vector4 c = tutorialDodgeSprite_->GetColor();
+                            c.w = 1.0f;
+                            tutorialDodgeSprite_->SetColor(c);
+                        }
+                        tutorialStep_ = TutorialStep::kWaitForDodge;
+                        tutorialTimer_ = 0.0f;
                     }
-                    if (tutorialDodgeSprite_) {
-                        Vector4 c = tutorialDodgeSprite_->GetColor();
-                        c.w = 1.0f;
-                        tutorialDodgeSprite_->SetColor(c);
-                    }
-                    tutorialStep_ = TutorialStep::kWaitForDodge;
-                    tutorialTimer_ = 0.0f;
                 }
             }
-            break;
+        } break;
 
         case TutorialStep::kWaitForDodge:
             if (inputManager_) {
