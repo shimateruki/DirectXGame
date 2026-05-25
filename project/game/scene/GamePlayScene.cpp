@@ -682,10 +682,49 @@ void GamePlayScene::Update(float deltaTime) {
     float originalDeltaTime = deltaTime;
     ApplyPauseInputUiIfNeeded();
     ApplyTutorialInputUiIfNeeded();
+
     // プレイヤーが死亡して演出時間が経過したら、世界の時間を止める（ただし遷移中は止めない）
     if (player_ && player_->GetHp() <= 0.0f && player_->GetDeathTimer() > 3.5f && !isRestartTransition_ && !isTitleTransition_) {
         deltaTime = 0.0f;
     }
+
+    if (HandleEscapeKey()) {
+        return;
+    }
+
+    bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
+    bool isCinematicMode = IsCinematicMode();
+
+    if (lockOnSystem_) {
+        lockOnSystem_->SetEnabled(!isCinematicMode);
+    }
+
+    if (UpdatePauseAndOptionMenus(deltaTime, originalDeltaTime, isGameOver, isCinematicMode)) {
+        return;
+    }
+
+    if (UpdateSceneTransition(originalDeltaTime)) {
+        return;
+    }
+
+    UpdateTutorialDoor(deltaTime);
+
+    static Math math;
+    LightEditor::GetInstance()->Update();
+
+    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+
+    UpdateMovieState(deltaTime);
+    UpdateTutorialGuide(deltaTime);
+    UpdateLockOnAndCamera(deltaTime, isCinematicMode, camera, math);
+    UpdateSceneObjects(deltaTime);
+    UpdateGameOver(originalDeltaTime);
+    UpdateGameplaySystems(deltaTime);
+    UpdateBossMovie(deltaTime);
+    UpdateClearSequence(deltaTime);
+}
+
+bool GamePlayScene::HandleEscapeKey() {
     // ---------------------------------------------------------
     // 0. ESCキーでの強制終了（オプション画面以外）
     // ---------------------------------------------------------
@@ -710,20 +749,12 @@ void GamePlayScene::Update(float deltaTime) {
             // ゲームプレイ中なら今まで通り終了
             PostQuitMessage(0);
         }
-        return;
+        return true;
     }
+    return false;
+}
 
-    // ---------------------------------------------------------
-    // 1. 状態判定 (ゲームオーバー・ムービー中などのフラグ)
-    // ---------------------------------------------------------
-    bool isGameOver = (player_ && player_->GetHp() <= 0.0f);
-    bool isCinematicMode = IsCinematicMode();
-
-    // ムービー中などはロックオンを無効化（強制解除）する
-    if (lockOnSystem_) {
-        lockOnSystem_->SetEnabled(!isCinematicMode);
-    }
-
+bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDeltaTime, bool isGameOver, bool isCinematicMode) {
     // 【Pキー】 か パッドの【STARTボタン】でポーズ切り替え (ムービー中は不可)
     if (!isGameOver && !isCinematicMode &&
         inputManager_->IsActionTriggered("pose")) {
@@ -854,9 +885,12 @@ void GamePlayScene::Update(float deltaTime) {
             sprite->Update();
         }
         UpdateUI(originalDeltaTime); // ポーズ中もUIアニメーションは動かす
-        return;
+        return true;
     }
+    return false;
+}
 
+bool GamePlayScene::UpdateSceneTransition(float originalDeltaTime) {
     // =======================================================
     // ★ ゲームオーバー・リトライ遷移処理 (復旧)
     // =======================================================
@@ -880,8 +914,12 @@ void GamePlayScene::Update(float deltaTime) {
                 SceneManager::GetInstance()->ChangeScene("TITLE");
             }
         }
-        return; // 遷移中はこれ以降の更新をスキップ
+        return true; // 遷移中はこれ以降の更新をスキップ
     }
+    return false;
+}
+
+void GamePlayScene::UpdateTutorialDoor(float deltaTime) {
     // =======================================================
     // チュートリアルドアの処理
     // =======================================================
@@ -954,12 +992,9 @@ void GamePlayScene::Update(float deltaTime) {
             }
         }
     }
+}
 
-    static Math math;
-    LightEditor::GetInstance()->Update();
-
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-
+void GamePlayScene::UpdateMovieState(float deltaTime) {
     // =================================================================
     // ムービーの制御
     // =================================================================
@@ -1124,7 +1159,9 @@ void GamePlayScene::Update(float deltaTime) {
             player_->UpdateWorldMatrix();
         }
     }
+}
 
+void GamePlayScene::UpdateTutorialGuide(float deltaTime) {
     // ドアが開いて一定時間経過したらチュートリアルUIを強制非表示
     if (doorOpenProgress_ >= 1.0f && !tutorialUiCompleted_) {
         doorOpenedTimer_ += deltaTime;
@@ -1356,7 +1393,9 @@ void GamePlayScene::Update(float deltaTime) {
             break;
         }
     }
+}
 
+void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode, Camera* camera, Math& math) {
     // --- ロックオン & カメラ制御 ---
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
     CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
@@ -1496,7 +1535,9 @@ void GamePlayScene::Update(float deltaTime) {
     if (postParams) {
         postParams->cinemaBarHeight = currentCinemaBarHeight_;
     }
+}
 
+void GamePlayScene::UpdateSceneObjects(float deltaTime) {
     // --- 全体更新 ---
     CameraManager::GetInstance()->Update();
     particleSystem_->Update(deltaTime);
@@ -1514,6 +1555,9 @@ void GamePlayScene::Update(float deltaTime) {
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
+}
+
+void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
     // =========================================================
     // 💀 ゲームオーバー画面のフェードインとメニュー選択
     // =========================================================
@@ -1615,11 +1659,16 @@ void GamePlayScene::Update(float deltaTime) {
             }
         }
     }
+}
+
+void GamePlayScene::UpdateGameplaySystems(float deltaTime) {
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
     MeshEffectManager::GetInstance()->Update(deltaTime);
     UpdateUI(deltaTime);
+}
 
+void GamePlayScene::UpdateBossMovie(float deltaTime) {
     // ========================================================
     // ★ ボス登場ムービー中の監視処理（時間で強制終了！）
     // ========================================================
@@ -1662,6 +1711,9 @@ void GamePlayScene::Update(float deltaTime) {
             }
         }
     }
+}
+
+void GamePlayScene::UpdateClearSequence(float deltaTime) {
     if (boss_) {
         // ボスが完全に消滅し、かつまだクリアシーケンスに入っていなければ開始
         if (boss_->IsCompletelyDead() && !isGameClearSequence_) {
@@ -1691,6 +1743,7 @@ void GamePlayScene::Update(float deltaTime) {
         }
     }
 }
+
 
 void GamePlayScene::Draw() {
     // --- 一人称視点判定 ---

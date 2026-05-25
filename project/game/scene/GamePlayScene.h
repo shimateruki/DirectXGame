@@ -104,6 +104,18 @@ private:
     bool hasTutorialMovieFinished_ = false; // ★ 追加
 
     bool IsCinematicMode() const;
+    bool HandleEscapeKey();
+    bool UpdatePauseAndOptionMenus(float deltaTime, float originalDeltaTime, bool isGameOver, bool isCinematicMode);
+    bool UpdateSceneTransition(float originalDeltaTime);
+    void UpdateTutorialDoor(float deltaTime);
+    void UpdateMovieState(float deltaTime);
+    void UpdateTutorialGuide(float deltaTime);
+    void UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode, Camera* camera, Math& math);
+    void UpdateSceneObjects(float deltaTime);
+    void UpdateGameOver(float originalDeltaTime);
+    void UpdateGameplaySystems(float deltaTime);
+    void UpdateBossMovie(float deltaTime);
+    void UpdateClearSequence(float deltaTime);
     void ApplyPauseInputUiIfNeeded();
     void ApplyTutorialInputUiIfNeeded();
     void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
