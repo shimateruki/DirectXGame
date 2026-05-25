@@ -91,9 +91,6 @@ void TutorialDoll::Update(float deltaTime) {
         }
         
         deathAnimTimer_ = 0.5f;
-
-        // 死亡エフェクトの発生
-        //GPUParticleManager::GetInstance()->Emit("FirePreset", GetWorldPosition(), Math::MakeIdentity4x4());
         return;
     }
 
