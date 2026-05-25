@@ -489,6 +489,17 @@ void GamePlayScene::Initialize() {
                 obj->SetCollisionAttribute(kGround);
             }
             else if (name.find("Tutorial_") != std::string::npos) {
+                if (name.find("Tutorial_Platform_02") != std::string::npos) {
+                    continue;
+                }
+                else if (name.find("Tutorial_Platform_01") != std::string::npos) { // プラットフォーム装飾を確実に消す
+                    auto& children = obj->GetChildren();
+                    for (auto& child : children) {
+                        child->SetCollisionAttribute(0); // 当たり判定を消す
+                        child->SetIsVisible(false); // 見えなくする
+                        child->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
+                    }
+                }
 				obj->SetCollisionAttribute(0); // 当たり判定を消す
                 obj->SetIsVisible(false); // 見えなくする
                 obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
@@ -533,6 +544,21 @@ void GamePlayScene::Initialize() {
                 }
                 obj->UpdateWorldMatrix();
             }
+            if (name.find("Tutorial_Doll_Button_") != std::string::npos) {
+                obj->SetIsVisible(true);
+				obj->SetCollisionAttribute(kGround);
+                if (name.find("Tutorial_Doll_Button_01") != std::string::npos) {
+                    obj->SetCollisionAttribute(kGround | kEnemy);
+                }
+                if (name.find("Tutorial_Doll_Button_03") != std::string::npos) {
+                    Transform* trans = obj->GetTransform();
+                    trans->translate.y = 0.0f;
+                }
+                if (name.find("Tutorial_Doll_Button_Collision_Box") != std::string::npos) {
+                    Transform* trans = obj->GetTransform();
+                    trans->translate.y = 23.63f;
+                }
+            }
             if (name.find("Bridge_") != std::string::npos) {
                 if (name.find("Bridge_Collision") == std::string::npos) {
                     obj->SetIsVisible(true);
@@ -562,7 +588,7 @@ void GamePlayScene::Initialize() {
         // ★ チュートリアルプラットフォーム降下演出の初期化
         // =======================================================
         for (auto& obj : objects_ref) {
-            if (obj->GetName() == "Tutorial_Platform") {
+            if (obj->GetName() == "Tutorial_Platform_01") {
                 this->tutorialPlatform_ = obj.get();
                 // 初期位置を y:100 に (念のため)
                 obj->GetTransform()->translate.y = 100.0f;
@@ -889,6 +915,22 @@ void GamePlayScene::Update(float deltaTime) {
 					if (name.find("Tutorial_Door") != std::string::npos) {
                         obj->SetCollisionAttribute(0); // 当たり判定も消す
                     }
+                    if (name.find("Tutorial_Doll_Button_01") != std::string::npos) {
+                        obj->SetCollisionAttribute(0); // ボタンの被攻撃用当たり判定も消す
+                    }
+                    if (name.find("Tutorial_Doll_Button_02") != std::string::npos) {
+						obj->SetIsVisible(false); // ボタンカバーも消す
+                    }
+                    if (name.find("Tutorial_Doll_Button_03") != std::string::npos) {
+						// ボタンを押下状態にする
+                        Transform* trans = obj->GetTransform();
+						trans->translate.y = -0.5f; // 少し沈み込む
+                    }
+                    if (name.find("Tutorial_Doll_Button_Collision_Box") != std::string::npos) {
+                        // ボタンの壁判定を下げる
+                        Transform* trans = obj->GetTransform();
+                        trans->translate.y = 21.13f; // 少し沈み込む
+                    }
                 }
 
                 // ここで missionText_go を表示（1回だけ）
@@ -998,6 +1040,17 @@ void GamePlayScene::Update(float deltaTime) {
                     obj->SetCollisionAttribute(kGround);
                 }
                 else if (name.find("Tutorial_") != std::string::npos) {
+                    if (name.find("Tutorial_Platform_02") != std::string::npos) {
+                        continue;
+                    }
+                    else if (name.find("Tutorial_Platform_01") != std::string::npos) { // プラットフォーム装飾を確実に消す
+                        auto& children = obj->GetChildren();
+                        for (auto& child : children) {
+                            child->SetCollisionAttribute(0); // 当たり判定を消す
+                            child->SetIsVisible(false); // 見えなくする
+                            child->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
+                        }
+                    }
                     obj->SetCollisionAttribute(0); // 当たり判定を消す
                     obj->SetIsVisible(false); // 見えなくする
                     obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
