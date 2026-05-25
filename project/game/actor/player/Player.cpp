@@ -368,17 +368,41 @@ void Player::SetDashInvincible(bool inv) {
 }
 
 void Player::UpdateColor() {
-    Vector4 targetColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 基本は白(通常色)
+    const bool isInvincible = isDamageInvincible_ || isDashInvincible_;
 
-    if (isDamageInvincible_) {
-        targetColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // ★ ダメージ中は最優先で「赤」！
+    if (isInvincible && !hasSavedInvincibleColors_) {
+        savedColor_ = GetColor();
+        childSavedColors_.clear();
+        for (Object3d* child : GetChildren()) {
+            if (child) {
+                childSavedColors_[child] = child->GetColor();
+            }
+        }
+        hasSavedInvincibleColors_ = true;
     }
 
-    // 本体と子パーツの色を一括変更
-    SetColor(targetColor);
+    if (!isInvincible) {
+        if (hasSavedInvincibleColors_) {
+            SetColor(savedColor_);
+            for (auto& entry : childSavedColors_) {
+                if (entry.first) {
+                    entry.first->SetColor(entry.second);
+                }
+            }
+            childSavedColors_.clear();
+            hasSavedInvincibleColors_ = false;
+        }
+        return;
+    }
+
+    Vector4 invincibleColor = isDamageInvincible_
+        ? Vector4{ 1.0f, 0.0f, 0.0f, 1.0f }
+        : Vector4{ 0.0f, 0.45f, 1.0f, 1.0f };
+    SetColor(invincibleColor);
     for (Object3d* child : GetChildren()) {
-        if (child) child->SetColor(targetColor);
+        if (child) child->SetColor(invincibleColor);
     }
+    return;
 }
 
 // =======================================================

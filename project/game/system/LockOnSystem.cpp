@@ -11,6 +11,30 @@
 #include <DebugConsole.h>
 #include "CameraEditor.h"
 
+namespace {
+bool IsIgnoredForLockOnOcclusion(Object3d* object) {
+    for (Object3d* current = object; current; current = current->GetParent()) {
+        const std::string className = current->GetClassName();
+        const std::string enemyType = current->GetEnemyType();
+        const std::string name = current->GetName();
+
+        if (className == "Enemy" || className == "BossCore") {
+            return true;
+        }
+        if (!enemyType.empty()) {
+            return true;
+        }
+        if (name.find("Armor") != std::string::npos ||
+            name.find("armor") != std::string::npos ||
+            name.find("Boss") != std::string::npos) {
+            return true;
+        }
+    }
+
+    return false;
+}
+}
+
 LockOnSystem::LockOnSystem() {
     inputManager_ = nullptr;
     lockOnTarget_ = nullptr;
@@ -235,7 +259,8 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
             Vector3 dir = { toEnemy.x / dist, toEnemy.y / dist, toEnemy.z / dist };
 
             // 障害物チェック (属性1: kGround などの壁)
-            RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, dir, dist, 1);
+            RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(
+                rayStart, dir, dist, kGround | kMapBlock, IsIgnoredForLockOnOcclusion);
 
             if (hit.isHit) {
                 // 壁に遮られたらタイマーを進める
@@ -362,11 +387,12 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
             if (trueDist > 0.0f) {
                 Vector3 toEnemyNormalized = { toEnemy3D.x / trueDist, toEnemy3D.y / trueDist, toEnemy3D.z / trueDist };
 
-                RaycastHit hit = CollisionManager::GetInstance()->Raycast(
+                RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(
                     rayStart,
                     toEnemyNormalized,
                     trueDist,
-                    1
+                    kGround | kMapBlock,
+                    IsIgnoredForLockOnOcclusion
                 );
 
                 // 間に壁がなければ、最も良いターゲットとして更新

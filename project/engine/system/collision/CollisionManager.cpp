@@ -369,6 +369,11 @@ float IntersectRaySphere(const Vector3& start, const Vector3& direction, const V
 /// </summary>
 RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direction,
     float maxDistance, uint32_t mask) {
+    return RaycastFiltered(start, direction, maxDistance, mask, nullptr);
+}
+
+RaycastHit CollisionManager::RaycastFiltered(const Vector3& start, const Vector3& direction,
+    float maxDistance, uint32_t mask, const std::function<bool(Object3d*)>& shouldIgnore) {
     RaycastHit closestHit;
     closestHit.isHit = false;
     closestHit.distance = maxDistance;
@@ -376,6 +381,10 @@ RaycastHit CollisionManager::Raycast(const Vector3& start, const Vector3& direct
     // 【簡易版】登録されている全てのオブジェクトをチェック
     for (Object3d* object : objects_) {
         if (!IsCollisionActive(object)) {
+            continue;
+        }
+
+        if (shouldIgnore && shouldIgnore(object)) {
             continue;
         }
 
