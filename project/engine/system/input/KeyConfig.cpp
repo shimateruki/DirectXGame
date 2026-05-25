@@ -173,6 +173,7 @@ std::string KeyConfig::GetPadName(WORD padCode) const {
     if (padCode == XINPUT_GAMEPAD_Y) return "Y Button";
     if (padCode == 0x0400) return "LT / L2"; // 未使用ビットをLTに
     if (padCode == 0x0800) return "RT / R2"; // 未使用ビットをRTに
+    if (padCode == (XINPUT_GAMEPAD_Y | 0x0800)) return "Y + RT";
 
     return "Unknown Pad";
 }
@@ -326,6 +327,7 @@ void KeyConfig::DrawImGui() {
                 0,
                 XINPUT_GAMEPAD_A, XINPUT_GAMEPAD_B, XINPUT_GAMEPAD_X, XINPUT_GAMEPAD_Y,
                 XINPUT_GAMEPAD_RIGHT_SHOULDER, XINPUT_GAMEPAD_LEFT_SHOULDER,
+                (WORD)(XINPUT_GAMEPAD_Y | 0x0800),
                 0x0400, 0x0800, // LTとRTの仮想コード
                 XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT, XINPUT_GAMEPAD_DPAD_RIGHT,
                 XINPUT_GAMEPAD_START, XINPUT_GAMEPAD_BACK,
@@ -336,6 +338,7 @@ void KeyConfig::DrawImGui() {
                 "None",
                 "A", "B", "X", "Y",
                 "RB", "LB",
+                "Y + RT",
                 "LT (L2)", "RT (R2)",
                 "D-Up", "D-Down", "D-Left", "D-Right",
                 "Start", "Back",
