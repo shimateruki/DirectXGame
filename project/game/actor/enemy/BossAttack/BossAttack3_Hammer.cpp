@@ -1,6 +1,6 @@
 #include "BossAttack3_Hammer.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパスを調整してください
+#include "./easing.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -59,7 +59,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
                 { {  0.000f,  5.100f,  0.000f }, { 0.500f, 0.250f, 0.500f }, { 0.0f, 0.0f, 0.0f } }, // 頭の上のポッチ
 
                 // ==========================================
-                // 7〜10個目の強化パーツ（超巨大ハンマー化！）
+                // 7〜10個目の強化パーツ（超巨大ハンマー化）
                 // ==========================================
                 { {  3.000f,  4.000f,  0.000f }, { 0.500f, 2.000f, 1.200f }, { 0.0f, 0.0f, 0.0f } }, // さらに右側の巨大な打撃面
                 { { -3.000f,  4.000f,  0.000f }, { 0.500f, 2.000f, 1.200f }, { 0.0f, 0.0f, 0.0f } }, // さらに左側の巨大な打撃面
@@ -191,7 +191,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             }
         }
     }
-    // --- Phase 22: 一気に振り下ろして叩き潰す！ ---
+    // --- Phase 22: 一気に振り下ろして叩き潰す ---
     else if (animPhase_ == 22) {
         animTimer_ += deltaTime;
         
@@ -338,7 +338,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
-            isFinished_ = true; // 完了！
+            isFinished_ = true; // 完了
         }
     }
 }

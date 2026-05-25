@@ -16,7 +16,7 @@ void PlayerStatePlungeAttack::Enter(Player *player) {
   TryFindArms(player, leftArmObj_, rightArmObj_);
   TryFindFeet(player, leftFootObj_, rightFootObj_);
 
-  //  剣を探してデフォルト角度と位置を保存
+  // 剣を探してデフォルト角度と位置を保存
   TryFindSword(player, swordObj_);
   if (swordObj_) {
     swordDefaultRot_ = swordObj_->GetRotation();
@@ -76,7 +76,7 @@ void PlayerStatePlungeAttack::Update(Player *player) {
         isPlunging_ = true;
       }
     } else {
-      // ★着地判定：猛スピード(-40)だったのが、床にぶつかって速度が0に近づいたら着地！
+      // 着地判定：猛スピード(-40)だったのが、床にぶつかって速度が0に近づいたら着地
       if (vel.y > -5.0f) {
         isLanded_ = true;
         DebugConsole::GetInstance()->AddLog("Plunge Attack: LANDED! (DOOOM!)");
@@ -415,7 +415,7 @@ void PlayerStatePlungeAttack::ApplyPose(Player *player) {
       rightFootObj_->SetCollisionAttribute(kPlayer);
   }
 
-  // --- 追加補正: 着地時、足のワールドAABBを基準に body の Y
+  // 補正: 着地時、足のワールドAABBを基準に body の Y
   // を微調整して足が地面に埋まらないようにする ---
   if (isLanded_ && bodyObj_) {
     const float groundLevel = 0.55f;

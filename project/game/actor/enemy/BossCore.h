@@ -148,7 +148,7 @@ public:
         block->SetCollisionMask(kPlayer);
         block->SetEnemyType("BossArmor"); // 属性を明確にする
 
-        blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録！
+        blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録
         blockBroken_.push_back(false);
     }
 
@@ -164,7 +164,7 @@ public:
     void TakeBodyDamage(float damage);
 
     // ==========================================
-    // 攻撃クラスがボスの部品をいじるためのゲッター！
+    // 攻撃クラスがボスの部品をいじるためのゲッター
     // ==========================================
     std::vector<Object3d*>& GetArmorBlocks() { return armorBlocks_; }
     Object3d* GetTarget() const { return target_; }
@@ -187,7 +187,7 @@ public:
     std::vector<FlyingBlock>& GetFlyingBlocks() { return flyingBlocks_; }
 
     // ==========================================
-    // マップブロックを登録・取得するゲッター！
+    // マップブロックを登録・取得するゲッター
     // ==========================================
     void AddMapBlock(MapBlock* block) { mapBlocks_.push_back(block); }
     std::vector<MapBlock*>& GetMapBlocks() { return mapBlocks_; }
@@ -205,7 +205,7 @@ public:
     Object3dCommon* GetCommon() const { return common_; }
 
     // ==========================================
-    // 最終奥義が終わったことを伝えるためのセッター！
+    // 最終奥義が終わったことを伝えるためのセッター
     // ==========================================
     void SetWaitingForDeath(bool waiting) { isWaitingForDeath_ = waiting; }
 
@@ -219,12 +219,11 @@ public:
     bool IsFinisherFalling() const { return isFinisherFalling_; }
 
 
-    // --- public: に追加 ---
     void TriggerCrashStun();   // 自爆スタンの誘発
     void StartDeathSequence(); // 死亡演出の開始
     void ShowCrackedCore();    // 段階2：亀裂モデルへの差し替え
 
-    void StartBattle(); // シーン側から「戦闘開始！」の合図を送る関数
+    void StartBattle(); // シーン側から「戦闘開始」の合図を送る関数
     bool IsBattleStarted() const { return isBattleStarted_; }
 
     void StartAppearance(); // 登場演出をスタートする関数
@@ -276,7 +275,7 @@ private:
     std::vector<Object3d*> armorBlocks_;
 
     // ==========================================
-    // ダウン(Weak)演出用のアニメーション変数（これだけ残す！）
+    // ダウン(Weak)演出用のアニメーション変数（これだけ残す）
     // ==========================================
     float animTimer_ = 0.0f;
     std::vector<Vector3> blockStartPos_;
@@ -337,7 +336,7 @@ private:
     // 破片演出用の構造体と変数
     // ==========================================
     struct CorePiece {
-        Object3d* obj; // 生ポインタでOK！（実体はシーンが管理する）
+        Object3d* obj; // 生ポインタでOK（実体はシーンが管理する）
         Vector3 velocity;
         Vector3 rotSpeed;
     };
@@ -353,7 +352,6 @@ private:
     void SaveOriginalColors();
 
 
-    // --- private: に追加 ---
     int deathPhase_ = 0;       // 0: 生存, 1: 静止, 2: 亀裂, 3: 爆散
     float sequenceTimer_ = 0.0f; // 各フェーズの1秒を測るタイマー
 

@@ -1,6 +1,6 @@
 #include "BossAttack5_Humanoid.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパスを調整してください
+#include "./easing.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -65,7 +65,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
             animStartRot_ = boss->GetRotation();
 
             // ==========================================
-            // 翼用の新しい角度を追加！
+            // 翼用の新しい角度を追加
             // ==========================================
             float rotZ90 = std::numbers::pi_v<float> / 2.0f; // 90度のラジアン値
             float rotZ30 = std::numbers::pi_v<float> / 6.0f; // 30度のラジアン値
@@ -82,7 +82,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
                 { {  5.0f, -22.5f,  6.0f }, {  2.0f,  4.0f,  5.0f }, { 0.0f, 0.0f, 0.0f } },   // Block5(右足)
 
                 // ==========================================
-                // 7〜10個目の強化パーツ（悪魔のような巨大な4枚羽！）
+                // 7〜10個目の強化パーツ（悪魔のような巨大な4枚羽）
                 // ==========================================
                 { { 16.0f,  12.0f,  4.0f }, { 12.0f,  3.0f,  3.0f }, { 0.0f, 0.0f, rotZ30 } },  // Block6(右上の翼)
                 { {-16.0f,  12.0f,  4.0f }, { 12.0f,  3.0f,  3.0f }, { 0.0f, 0.0f, rotZ_30 } }, // Block7(左上の翼)
@@ -145,7 +145,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 52: 倒れる前のタメ（巨大化！） ---
+    // --- Phase 52: 倒れる前のタメ（巨大化） ---
     else if (animPhase_ == 52) {
         animTimer_ += deltaTime;
         float duration = 2.5f;
@@ -245,7 +245,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
             }
         }
     }
-    // --- Phase 53: 前にぶっ倒れて叩き潰す！ ---
+    // --- Phase 53: 前にぶっ倒れて叩き潰す ---
     else if (animPhase_ == 53) {
         animTimer_ += deltaTime;
         float duration = 2.0f;
@@ -280,7 +280,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         newPos.z = pivotWorldPos.z - dirZ * rotLocalZ;
 
         // ==========================================
-        // 足がもつれて前に滑りながらこける挙動！
+        // 足がもつれて前に滑りながらこける挙動
         // ==========================================
         float slideDistance = 15.0f; // 前に滑り込む距離
         newPos.x += dirX * slideDistance * easeT;
@@ -347,7 +347,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
                 blockStartScale_.push_back(armorBlocks[i]->GetScale());
             }
             animStartRot_ = boss->GetRotation();
-            animStartPos_ = boss->GetTranslate(); // 倒れた位置を記録してワープを防ぐ！
+            animStartPos_ = boss->GetTranslate(); // 倒れた位置を記録してワープを防ぐ
             // 地面判定を復活させる
             for (auto* block : armorBlocks) {
                 if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
@@ -416,7 +416,7 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
-            isFinished_ = true; // これで完了！
+            isFinished_ = true; // これで完了
         }
     }
 }

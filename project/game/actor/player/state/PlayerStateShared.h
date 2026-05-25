@@ -283,7 +283,7 @@ inline void TryFindSword(Player *player, Object3d *&swordOut) {
 
 inline void SetSwordActive(Player *player, bool isActive, float damage = 10.0f) {
   Object3d *swordObj = nullptr;
-  // ★最強の探索関数を使って、確実に剣を見つけ出す！
+  // 最強の探索関数を使って、確実に剣を見つけ出す
   TryFindSword(player, swordObj);
 
   if (swordObj) {
@@ -410,7 +410,7 @@ struct PendingIdleBlend {
   Vector3 leftArmStart{}, leftArmTarget{};
   Vector3 rightArmStart{}, rightArmTarget{};
   Vector3 headStart{}, headTarget{};
-  // 変更点: body は Y のみではなくフル回転を保持
+  // body は Y のみではなくフル回転を保持
   Vector3 bodyStart{}, bodyTarget{};
 };
 inline PendingIdleBlend s_pendingIdleBlend;

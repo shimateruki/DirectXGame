@@ -34,7 +34,7 @@ void TimeAttackUI::Initialize(SpriteCommon* spriteCommon) {
         if (i == 2) sprite->SetTextureHandle(colonTexHandle_);
         else if (i == 5) sprite->SetTextureHandle(dotTexHandle_);
 
-        // ★ 配列からズレの数値をそのまま足すだけ！
+        // 配列からズレの数値をそのまま足すだけ
         sprite->SetPosition({ basePos.x + xOffsets[i], basePos.y });
         sprite->SetSize({ 64.0f, 64.0f });
 
@@ -67,12 +67,12 @@ void TimeAttackUI::Update(float deltaTime) {
     if (isRolling_) {
         rollTimer_ += deltaTime;
 
-        // ★ 0.12秒ごとに左から1桁ずつ「ピタッ！」と止まる（速さはお好みで調整）
+        // 0.12秒ごとに左から1桁ずつ「ピタッ」と止まる（速さはお好みで調整）
         if (rollTimer_ > 0.12f) {
             rollTimer_ -= 0.12f;
             fixedDigitCount_++;
             if (fixedDigitCount_ >= 6) {
-                isRolling_ = false; // 6桁すべて止まったら演出終了！
+                isRolling_ = false; // 6桁すべて止まったら演出終了
                 fixedDigitCount_ = 6;
             }
         }
@@ -115,7 +115,7 @@ void TimeAttackUI::Draw() {
 }
 
 void TimeAttackUI::SetPosition(const Vector2& basePos, float spacingScale) {
-    // 隊長が調整した「完璧な数値」の配列
+    // 表示位置の微調整値
     float xOffsets[8] = {
         0.0f,    // [0]
         42.0f,   // [1]
@@ -129,7 +129,7 @@ void TimeAttackUI::SetPosition(const Vector2& basePos, float spacingScale) {
 
     for (int i = 0; i < 8; ++i) {
         if (i < digitSprites_.size() && digitSprites_[i]) {
-            // ★ 配列の数値に倍率を掛けてから、basePos.x に足す！
+            // 配列の数値に倍率を掛けてから、basePos.x に足す
             float posX = basePos.x + (xOffsets[i] * spacingScale);
             digitSprites_[i]->SetPosition({ posX, basePos.y });
         }

@@ -177,7 +177,7 @@ void GamePlayScene::Initialize() {
     lockOnSprite_ = std::make_unique<Sprite>();
     lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
     lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
-    lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整！）
+    lockOnSprite_->SetSize({ 64.0f, 64.0f });      // アイコンのサイズ（適宜調整）
     BulletManager::GetInstance()->Initialize(object3dCommon_.get(),
         CollisionManager::GetInstance());
 
@@ -320,7 +320,7 @@ void GamePlayScene::Initialize() {
     isPaused_ = false;
     ApplyPauseInputUiIfNeeded();
 
-    // 1. まず objectManager からオブジェクトのリストを取得する！
+    // 1. まず objectManager からオブジェクトのリストを取得する
     auto& objects = objectManager_->GetObjects();
 
     for (auto it = objects.begin(); it != objects.end(); ++it) {
@@ -512,7 +512,7 @@ void GamePlayScene::Initialize() {
         this->missionGoShown_ = true;      // 次の「GO」を表示する状態にする
         // 3. プレイヤーの開始位置をボス前に飛ばし、チュートリアルをスキップ
         if (player_) {
-            // 隊長が設定したボス前の座標を適用！
+            // 隊長が設定したボス前の座標を適用
             player_->GetTransform()->translate = { 0.0f, 1.3f, -68.0f };
             player_->UpdateLocalMatrix();
             player_->UpdateWorldMatrix();
@@ -768,7 +768,7 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
             // 文字用のアルファ値 (1.0 = 完全不透明, 0.0 = 完全透明)
             float textAlpha = isPaused_ ? 1.0f : 0.0f;
 
-            // 背景用のアルファ値 (0.6 = 半透明。もっと薄くしたければ 0.4 や 0.5 に！)
+            // 背景用のアルファ値 (0.6 = 半透明。もっと薄くしたければ 0.4 や 0.5 に)
             float backAlpha = isPaused_ ? 0.8f : 0.0f;
             auto SetAlpha = [](Sprite* sprite, float a) {
                 if (sprite) {
@@ -1133,7 +1133,7 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                 tutorialPlatform_->UpdateWorldMatrix();
             }
             else {
-                // 到着！ movieState_ が kNone
+                // 到着 movieState_ が kNone
                 // になるので、下のシャッター制御が「下げ」に転じます
                 movieState_ = MovieState::kNone;
                 missionSwitchDelayTimer_ = 0.5f; // 0.5秒待機
@@ -1408,7 +1408,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
         isDrawLockOn_ = true;
 
         // =======================================================
-        // ：AABB(当たり判定)から「真の中心」と「大きさ」を取得！
+        // ：AABB(当たり判定)から「真の中心」と「大きさ」を取得
         // =======================================================
         AABB aabb = target->GetAABB();
 
@@ -1447,7 +1447,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
             lockOnSprite_->SetPosition({ screenX, screenY });
 
             // =======================================================
-            // ：オブジェクトの大きさに応じたアイコンサイズの自動調整！
+            // ：オブジェクトの大きさに応じたアイコンサイズの自動調整
             // =======================================================
             float objSizeX = aabb.max.x - aabb.min.x;
             float objSizeY = aabb.max.y - aabb.min.y;
@@ -1474,7 +1474,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
     }
     else {
         // =======================================================
-        // ロックオンしていない時は確実に表示をオフにする！
+        // ロックオンしていない時は確実に表示をオフにする
         // =======================================================
         isDrawLockOn_ = false;
     }
@@ -1488,7 +1488,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
                 currentMode == Camera::FollowMode::kFirstPerson)) {
 
             // =======================================================
-            // 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得！
+            // 1. マウスの移動量と、ゲームパッドの右スティック入力を両方取得
             // =======================================================
             Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
             Vector2 rightStick = inputManager_->GetRightStick();
@@ -1516,7 +1516,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
                 }
             }
 #else
-            // Release環境限定: 右クリック不要！操作した分だけ回転する
+            // Release環境限定: 右クリック不要操作した分だけ回転する
             if (totalDelta.x != 0.0f || totalDelta.y != 0.0f) {
                 camera->AddRotation(totalDelta);
             }
@@ -1587,7 +1587,7 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
                 FadeInSprite(restartTextSprite_);
                 FadeInSprite(titleTextSprite_);
 
-                // 全部の文字が完全に出現したら準備完了！
+                // 全部の文字が完全に出現したら準備完了
                 if (allFadedIn) {
                     isGameOverUiReady_ = true;
                 }
@@ -1625,7 +1625,7 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
                         ? selectColor
                         : normalColor);
                 }
-                // 決定ボタンで遷移！
+                // 決定ボタンで遷移
                 if (input->IsActionTriggered("Jump")) {
 
                     // 共通のUI透明化ラムダ式
@@ -1670,11 +1670,11 @@ void GamePlayScene::UpdateGameplaySystems(float deltaTime) {
 
 void GamePlayScene::UpdateBossMovie(float deltaTime) {
     // ========================================================
-    // ボス登場ムービー中の監視処理（時間で強制終了！）
+    // ボス登場ムービー中の監視処理（時間で強制終了）
     // ========================================================
     if (isBossMoviePlaying_ && boss_) {
 
-        // タイマーを進める！
+        // タイマーを進める
         movieTimer_ += deltaTime;
 
         // プレイヤーがズレないように固定し続ける
@@ -1684,7 +1684,7 @@ void GamePlayScene::UpdateBossMovie(float deltaTime) {
         }
 
         // ====================================================
-        // 全体時間を 3.0f から 4.0f に伸ばす！（1秒の待機が増えたため）
+        // 全体時間を 3.0f から 4.0f に伸ばす（1秒の待機が増えたため）
         // ====================================================
         if (movieTimer_ >= 4.0f) {
             isBossMoviePlaying_ = false;
@@ -1737,7 +1737,7 @@ void GamePlayScene::UpdateClearSequence(float deltaTime) {
     if (isGameClearSequence_) {
         gameClearTimer_ += deltaTime;
 
-        // ボス消滅から 2.0 秒後に「CLEAR」シーンへ遷移！
+        // ボス消滅から 2.0 秒後に「CLEAR」シーンへ遷移
         if (gameClearTimer_ > 2.0f) {
             SceneManager::GetInstance()->ChangeScene("GAMECLEAR");
         }
@@ -1758,7 +1758,7 @@ void GamePlayScene::Draw() {
 
     // =========================================================
 
-    // カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする！
+    // カメラがプレイヤーに近すぎたら、強制的に「非表示(一人称扱い)」にする
     // =========================================================
     if (!isFirstPerson && player_ && camera) {
         Vector3 pPos = player_->GetWorldPosition();
@@ -1768,7 +1768,7 @@ void GamePlayScene::Draw() {
         float dist =
             std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
-        // 距離が 3.0m 未満なら、プレイヤーを完全に消す！
+        // 距離が 3.0m 未満なら、プレイヤーを完全に消す
         if (dist < 3.0f) {
             isFirstPerson = true;
         }
@@ -1783,7 +1783,7 @@ void GamePlayScene::Draw() {
     auto& objects = objectManager_->GetObjects();
 
     // =========================================================
-    // ここに「完全自動カリング」のロジックを挿入！
+    // ここに「完全自動カリング」のロジックを挿入
     // =========================================================
     Frustum frustum = camera->GetFrustum();
     Math math;
@@ -1829,7 +1829,7 @@ void GamePlayScene::Draw() {
             wMax.z = (std::max)(wMax.z, wPos.z);
         }
 
-        // 回転したことで箱が大きくなっても問題なし！確実にオブジェクトを包み込むAABBが完成。
+        // 回転したことで箱が大きくなっても問題なし確実にオブジェクトを包み込むAABBが完成。
         return math.IntersectFrustumAABB(frustum, wMin, wMax);
         };
 
@@ -1848,14 +1848,14 @@ void GamePlayScene::Draw() {
             }
         }
         if (isPlayerPart)
-            continue; // プレイヤーの一部なら描画をスキップ！
+            continue; // プレイヤーの一部なら描画をスキップ
 
         if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 ||
             obj->GetMaterialType() == 10 || obj->GetMaterialType() == 11)
             continue;
 
         totalCount++;
-        // カリング判定！
+        // カリング判定
         if (IsVisible(obj.get())) {
             obj->Draw(pointLightRes, spotLightRes);
             drawCount++;
@@ -1889,7 +1889,7 @@ void GamePlayScene::Draw() {
 
         if (obj->GetMaterialType() == 1) { // 透明のみ描画
             totalCount++;
-            // カリング判定！
+            // カリング判定
             if (IsVisible(obj.get())) {
                 obj->Draw(pointLightRes, spotLightRes);
                 drawCount++;
@@ -1899,7 +1899,7 @@ void GamePlayScene::Draw() {
     particleSystem_->Draw();
 
     // =======================================================
-    // 4. ローカルフォグ (霧の箱) の描画！
+    // 4. ローカルフォグ (霧の箱) の描画
     // =======================================================
     bool hasFog = false;
     for (auto& obj : objects) {
@@ -1911,7 +1911,7 @@ void GamePlayScene::Draw() {
         dxCommon_->PreDrawLocalFog();
         for (auto& obj : objects) {
             if (obj->GetMaterialType() == 7) {
-                // フォグの箱自体も画面外なら描画しないように最適化！
+                // フォグの箱自体も画面外なら描画しないように最適化
                 if (IsVisible(obj.get())) {
                     obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
                 }
@@ -1921,7 +1921,7 @@ void GamePlayScene::Draw() {
     }
 
     // =======================================================
-    // 5. GPUパーティクルの描画！
+    // 5. GPUパーティクルの描画
     // =======================================================
     dxCommon_->UpdateGrabTexture();
 
@@ -2375,13 +2375,13 @@ void GamePlayScene::StartBossAppearanceMovie() {
     }
 
     // ====================================================
-    // a.json（カメラのアニメーション）を再生する！
+    // a.json（カメラのアニメーション）を再生する
     // ====================================================
     for (auto& obj : objectManager_->GetObjects()) {
         if (obj->GetName() ==
             "Cinematic_Camera_Boss") { // ボス用のシネマティックカメラオブジェクトを用意しておく
             if (obj->recorder_) {
-                // "a" という名前のJSONを再生！
+                // "a" という名前のJSONを再生
                 obj->recorder_->Play("a", false, false, true);
             }
             break;

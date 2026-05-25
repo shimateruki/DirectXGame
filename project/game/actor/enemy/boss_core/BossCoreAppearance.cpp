@@ -6,7 +6,7 @@ void BossCore::StartAppearance() {
     isAppearing_ = true;
 
     // ====================================================
-    // 変更：まずは「フェーズ0（1秒間の完全静止）」からスタート！
+    // 変更：まずは「フェーズ0（1秒間の完全静止）」からスタート
     // ====================================================
     appearancePhase_ = 0;
     appearanceTimer_ = 1.0f; // 1秒待つ
@@ -19,13 +19,13 @@ void BossCore::StartBattle() {
 
     isBattleStarted_ = true;
     startBattlePos_ = GetTranslate(); // 登場ムービー終了時の初期座標を記憶
-    animTimer_ = 0.0f; // ここから2秒後に最初の攻撃をさせるため、タイマーをリセット！
+    animTimer_ = 0.0f; // ここから2秒後に最初の攻撃をさせるため、タイマーをリセット
 
     DebugConsole::GetInstance()->AddLog("[BATTLE START] ボスが行動を開始した！！！");
 
     // ====================================================
     // 戦闘開始フラグがONになったので、
-    // 現在の状態(Idle)を再セットして、即座に属性を「kEnemy」に更新する！
+    // 現在の状態(Idle)を再セットして、即座に属性を「kEnemy」に更新する
     // ====================================================
     ChangeState(state_);
 }
@@ -40,7 +40,7 @@ void BossCore::UpdateAppearance(float deltaTime) {
     // ====================================================
     if (appearancePhase_ == 0) {
         if (appearanceTimer_ <= 0.0f) {
-            // 1秒の沈黙が終わった！フェーズ1（咆哮）へ移行し、カメラを動かす！
+            // 1秒の沈黙が終わったフェーズ1（咆哮）へ移行し、カメラを動かす
             appearancePhase_ = 1;
             appearanceTimer_ = 2.0f; // 咆哮の2秒間
             DebugConsole::GetInstance()->AddLog("[EVENT] ボス起動！！");
@@ -94,7 +94,7 @@ void BossCore::UpdateAppearance(float deltaTime) {
         // ゴーストディレクターのアニメーション（EntranceAnimation.json）を再生
         if (director_) {
             director_->PlayScenario(false, false);
-            isWaitingForDirector_ = true; // アニメーション終了を待つフラグをオンにする！
+            isWaitingForDirector_ = true; // アニメーション終了を待つフラグをオンにする
         }
     }
 }

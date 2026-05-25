@@ -45,7 +45,7 @@ void EnemySpawner::Spawn() {
  
         }
 
-        // 「この場所でお願い！」と通知
+        // 「この場所でお願い」と通知
         onSpawnCallback_(spawnPos);
     }
 }

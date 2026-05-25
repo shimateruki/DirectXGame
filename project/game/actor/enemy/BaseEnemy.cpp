@@ -30,7 +30,7 @@ void BaseEnemy::Update(float deltaTime) {
     // ② 赤色演出タイマーを減らす
     if (colorResetTimer_ > 0.0f) {
         colorResetTimer_ -= deltaTime;
-        // タイマーが0以下になった瞬間に元の色に戻す！
+        // タイマーが0以下になった瞬間に元の色に戻す
         if (colorResetTimer_ <= 0.0f) {
             SetColor(defaultColor_);
 
@@ -52,7 +52,7 @@ bool BaseEnemy::OnCollision(Object3d* other) {
     // ========================================================
     if (attribute & kPlayerAttack) {
 
-        // クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
+        // クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける
         if (damageCooldownTimer_ > 0.0f) {
             return true;
         }

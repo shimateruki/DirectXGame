@@ -75,7 +75,7 @@ void PlayerStateDead::ApplyPose(float t) {
     return;
 
   // --- 1. ヘルパー関数群（ラムダ式） ---
-  // ★修正：計算式のコロンをスラッシュに直しました
+  // 計算式のコロンをスラッシュに直しました
   auto DegToRad = [](float d) { return d * 3.14159265358979323846f / 180.0f; };
   auto LerpVec3 = [](const Vector3 &a, const Vector3 &b, float t) {
     return Vector3{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
@@ -184,7 +184,7 @@ void PlayerStateDead::ApplyPose(float t) {
     tf->translate.x = bodyDefaultPos_.x + worldOffset.x;
     tf->translate.z = bodyDefaultPos_.z + worldOffset.z;
 
-    // ★ 修正：場所に関わらず「死んだ瞬間の足元の高さ」を地面として計算する！
+    // 場所に関わらず「死んだ瞬間の足元の高さ」を地面として計算する
     // bodyDefaultPos_.y は立ち状態の中心座標。そこから -0.45f
     // した位置を「現在の地面」とする
     const float groundLevel = bodyDefaultPos_.y - 0.45f;
@@ -279,7 +279,7 @@ void PlayerStateDead::ApplyPose(float t) {
                      (0.5f * gravity * elapsed * elapsed);
       currentPos.z = swordDropPos_.z + swordVelocity_.z * elapsed;
 
-      // ★ 修正：剣が刺さる高さも、プレイヤーの足元(groundLevel)に合わせる！
+      // 剣が刺さる高さも、プレイヤーの足元(groundLevel)に合わせる
       float swordGroundY = bodyDefaultPos_.y - 0.45f;
       if (currentPos.y <= swordGroundY) {
         currentPos.y = swordGroundY;
@@ -291,7 +291,7 @@ void PlayerStateDead::ApplyPose(float t) {
         stf->rotate.x = swordDropRot_.x + swordSpinSpeed_ * elapsed * 2.5f;
         stf->rotate.z = swordDropRot_.z + swordSpinSpeed_ * elapsed;
       } else {
-        // スピンの捻りが残らないようにY軸も必ず0にリセット！
+        // スピンの捻りが残らないようにY軸も必ず0にリセット
         stf->rotate.y = DegToRad(0.0f);
         stf->rotate.x = DegToRad(0.0f);
         stf->rotate.z = DegToRad(-90.0f); // または -90.0f

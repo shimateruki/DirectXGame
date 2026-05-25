@@ -93,7 +93,7 @@ void TitleScene::Initialize() {
   particleSystem_->Initialize(particleCommon_.get(),
                               "Resources/sprite/white.png");
 
-  // シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+  // シングルトンのParticleManagerに今のシーンのシステムを紐づける
   ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
   LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
@@ -296,7 +296,7 @@ void TitleScene::Update(float deltaTime) {
           }
       } else {
           if (isOpt) {
-              // 特例：ポーズ背景はメインメニューでも表示する！
+              // 特例：ポーズ背景はメインメニューでも表示する
               if (isPoseBack) {
                   sprite->SetVisible(spritesAppear_);
               } else {
@@ -520,7 +520,7 @@ void TitleScene::Draw() {
   particleSystem_->Draw();
 
   // =======================================================
-  // 4. ローカルフォグ (霧の箱) の描画！
+  // 4. ローカルフォグ (霧の箱) の描画
   // =======================================================
   bool hasFog = false;
   for (auto &obj : objects) {
@@ -539,7 +539,7 @@ void TitleScene::Draw() {
   }
 
   // =======================================================
-  // 5. GPUパーティクルの描画！
+  // 5. GPUパーティクルの描画
   // =======================================================
   dxCommon_->UpdateGrabTexture();
   dxCommon_->PreDrawLocalFog();

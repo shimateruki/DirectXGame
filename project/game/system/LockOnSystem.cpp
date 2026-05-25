@@ -6,8 +6,7 @@
 #include "CollisionManager.h" 
 #include "Math.h"
 
-// 定義 (kEnemy) のために必要ならインクルード
-#include "BaseEnemy.h" // もし属性チェックで必要なら
+#include "BaseEnemy.h"
 #include <DebugConsole.h>
 #include "CameraEditor.h"
 
@@ -18,6 +17,7 @@ bool IsIgnoredForLockOnOcclusion(Object3d* object) {
         const std::string enemyType = current->GetEnemyType();
         const std::string name = current->GetName();
 
+        // チュートリアルボタンは地形属性を持つが、ロックオンの視線遮断には使わない。
         if (name.find("Tutorial_Doll_Button") != std::string::npos) {
             return true;
         }
@@ -269,7 +269,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<Object3d>>& objects,
                 // 壁に遮られたらタイマーを進める
                 lostSightTimer_ += 0.016f;
 
-                // 0.1秒(約6フレーム) 遮られたら即座に解除！
+                // 0.1秒(約6フレーム) 遮られたら即座に解除
                 if (lostSightTimer_ >= 0.1f) {
                     isLockingOn_ = false;
                     lockOnTarget_ = nullptr;
@@ -307,7 +307,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
     Vector3 cameraEye = camera->GetEye();
 
     // ========================================================
-    // Y軸を無視せず、カメラの「本当の3Dの向き」を計算！
+    // Y軸を無視せず、カメラの「本当の3Dの向き」を計算
     // ========================================================
     Vector3 cameraForward = camera->GetTargetPoint() - cameraEye;
     float cfLen = std::sqrt(cameraForward.x * cameraForward.x + cameraForward.y * cameraForward.y + cameraForward.z * cameraForward.z);
@@ -320,7 +320,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         cameraForward = { 0.0f, 0.0f, 1.0f };
     }
 
-    const uint32_t kTargetAttribute = 2; // kEnemy (例)
+    const uint32_t kTargetAttribute = kEnemy;
 
     for (const auto& obj : objects) {
         if (!(obj->GetCollisionAttribute() & kTargetAttribute)) {
@@ -343,7 +343,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         if (!IsTargetOnScreen(obj.get(), camera)) continue;
 
         // -----------------------------------------------------------------
-        // (D) 距離と角度のチェック（完全3D化！）
+        // (D) 距離と角度のチェック（完全3D化）
         // -----------------------------------------------------------------
         Vector3 enemyPos = obj->GetWorldPosition();
 
@@ -354,7 +354,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         if (distance > kMaxLockOnDistance_ || distance < 0.1f) continue;
 
         // ========================================================
-        // 「プレイヤーから」ではなく、「カメラから」敵への方向を計算！
+        // 「プレイヤーから」ではなく、「カメラから」敵への方向を計算
         // これにより『画面の中に敵が映っているか』を正確に判定できます。
         // ========================================================
         Vector3 toEnemyFromCam = enemyPos - cameraEye;
@@ -369,7 +369,7 @@ Object3d* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<Object3
         float dot = math.Dot(cameraForward, toEnemyFromCam);
 
         // ========================================================
-        // カメラの正面かつ画面内にいて、一番近い敵を探す！
+        // カメラの正面かつ画面内にいて、一番近い敵を探す
         // ========================================================
         if (dot > kMinLockOnDot_ && distance < minDistance) {
 

@@ -166,7 +166,7 @@ private:
 	Vector3 headExitStartRot_{ 0.0f, 0.0f, 0.0f };
 	Vector3 bodyExitStartRot_{ 0.0f, 0.0f, 0.0f };
 
-	// 追加: 頭回転の開始クォータニオン（Slerp 用）
+	// 頭回転の開始クォータニオン（Slerp 用）
 	Quaternion headExitStartQuat_{ 0.0f, 0.0f, 0.0f, 1.0f };
 };
 
@@ -175,11 +175,11 @@ private:
 // --------------------------------------------------------
 class PlayerStateAttack1 : public IAnimationState {
 public:
-	// 　アニメーションの開始の関数。
+	// アニメーションの開始の関数。
 	void Enter(Player* player) override;
 	// アニメーションの更新の関数
 	void Update(Player* player) override;
-	// 　Exit 時に Idle の開始ポーズに戻すようにする関数
+	// Exit 時に Idle の開始ポーズに戻すようにする関数
 	void Exit(Player* player) override;
 
 private:
@@ -373,7 +373,7 @@ public:
 
 private:
 	float animTimer_ = 0.0f;
-	float animDuration_ = 3.5f; // ★ポストエフェクトの暗転時間に完全同期！
+	float animDuration_ = 3.5f; // ポストエフェクトの暗転時間に完全同期
 
 	Object3d* bodyObj_ = nullptr;
 	Object3d* headObj_ = nullptr;
@@ -581,7 +581,7 @@ private:
 	Vector3 leftFootStartRot_{};
 
 	// =========================================================
-	// ★ 追加：空中停止とカメラ振り向き用の変数
+	// 空中停止とカメラ振り向き用の変数
 	// =========================================================
 	bool isFrozen_ = false;
 	float freezePosY_ = 0.0f;

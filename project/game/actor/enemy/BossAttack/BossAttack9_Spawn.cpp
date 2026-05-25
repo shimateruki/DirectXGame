@@ -85,9 +85,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     auto bomb = std::make_unique<EnemyBomb>();
     bomb->Initialize(boss->GetCommon(), "sphere");
 
-    // ========================================================
-    // ここにステータス設定を実装します！
-    // ========================================================
+    // 召喚直後から通常の敵と同じ物理更新に乗せる。
     Object3d::EntityParameter param; // Object3d.h で定義されている構造体
     param.gravity = 50.0f;           // 重力の強さ
     param.maxFallSpeed = 60.0f;      // 落下速度の限界
@@ -113,7 +111,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
         }
     }
 
-    // 1体目はプレイヤーに向けて真っ直ぐ！残りの11体は30度ずつずらしつつ、有機的なランダムな偏りを加える
+    // 1体目はプレイヤー方向へ、残りは角度をずらしてばらつきを加える。
     float randomAngleOffset = 0.0f;
     float speedMultiplier = 1.0f;
     float heightMultiplier = 1.0f;
@@ -132,7 +130,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     Vector3 spawnPos = bossPos;
     spawnPos.x += launchDir.x * 1.5f;
     spawnPos.z += launchDir.z * 1.5f;
-    spawnPos.y = bossPos.y; // Y=7.0f からスタート！
+    spawnPos.y = bossPos.y; // Y=7.0f からスタート
     bomb->SetTranslate(spawnPos);
 
     // プレイヤーの距離に応じて、ちょうど足元に届く基本の初速にランダム倍率を乗算
@@ -146,9 +144,7 @@ void BossAttack9_Spawn::SpawnEnemy(BossCore* boss) {
     };
     bomb->SetVelocity(initialVel);
 
-    // 4. マネージャーとシーンへの登録
-    // ⭕ 正解: BaseScene の AddObject を使う
-    // これにより内部で ObjectManager::AddObject が呼ばれ、pendingObjects_ に入り、次のフレームの冒頭で安全に追加されます
+    // ObjectManagerの保留追加に乗せるため、シーン経由で登録する。
     currentScene->AddObject(std::move(bomb));
 
     DebugConsole::GetInstance()->AddLog("【召喚】 ボムが現れた！");

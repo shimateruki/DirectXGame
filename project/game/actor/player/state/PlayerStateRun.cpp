@@ -250,7 +250,7 @@ void PlayerStateRun::Exit(Player *player) {
 
 void PlayerStateRun::ApplyPostUpdate(Player *player, float deltaTime) {
   if (!player)
-    return; // ★追加
+    return;
   if (deltaTime <= 0.0f)
     return;
 

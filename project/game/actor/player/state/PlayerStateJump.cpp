@@ -131,7 +131,7 @@ void PlayerStateJump::Update(Player *player) {
       blendTimer_ = 0.0f;
 
       // 変更: 開始角度は Transform 側ではなく Player が管理する現在の向きを使う
-      //      これにより入力で回転が変わっていた場合でも瞬時に反映される
+      //     これにより入力で回転が変わっていた場合でも瞬時に反映される
       bodyJumpRot_.y = NormalizeAngle(player->GetRotation().y);
     } else {
       // 上昇中はジャンプポーズを維持しつつ、Yだけはプレイヤーの現在向きに追従させる。

@@ -57,7 +57,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
 
      
     boss->SetSceneManager(SceneManager::GetInstance());
-        // 2. 引数を気にせずオーバーライドした Initialize を呼べる！
+        // 2. 引数を気にせずオーバーライドした Initialize を呼べる
         boss->Initialize(common, "block");
 
         if (!boss->param_.has_value()) {

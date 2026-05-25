@@ -111,7 +111,7 @@ void BossCore::ChangeState(State nextState) {
         bool isForcedAbsorb = false;
 
         if (isLowArmorTriggered) {
-            // 0〜99の乱数を取得し、設定された確率（％）未満なら「吸収攻撃 (ID: 7)」を確定させる！
+            // 0〜99の乱数を取得し、設定された確率（％）未満なら「吸収攻撃 (ID: 7)」を確定させる
             int roll = std::rand() % 100;
             if (roll < attackParams_.lowArmorAbsorbRate) {
                 nextAttack = 7;
@@ -307,16 +307,16 @@ void BossCore::UpdateIdle(float deltaTime) {
     }
 
     // ====================================================
-    // ここが圧倒的カッコよさの秘密！
+    // ここが圧倒的カッコよさの秘密
     // 1.8秒（咆哮が終わって元のサイズに戻る時間）までは 0% で完全待機。
-    // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッ！と集める！
+    // 1.8秒を過ぎたら、0.7秒間かけて一気にシュバッと集める
     // ====================================================
     float t = 0.0f;
     if (assemblyTimer_ > 1.8f) {
         t = std::min((assemblyTimer_ - 1.8f) / 0.7f, 1.0f);
     }
 
-    // カッコいいイージング計算（3乗アウト）：最初は早く、ボスに近づくにつれてゆっくり！
+    // カッコいいイージング計算（3乗アウト）：最初は早く、ボスに近づくにつれてゆっくり
     float easeT = 1.0f - std::pow(1.0f - t, 3.0f);
     Vector3 coreScale = GetScale();
 
@@ -357,7 +357,7 @@ void BossCore::UpdateIdle(float deltaTime) {
         // ====================================================
         static float targetIdleTime = 5.0f;
         if (animTimer_ == 0.0f) {
-            // rand() % 5 は「0, 1, 2, 3, 4」のどれかになるので、それに4を足すと「4, 5, 6, 7, 8」になります！
+            // rand() % 5 は「0, 1, 2, 3, 4」のどれかになるので、それに4を足すと「4, 5, 6, 7, 8」になります
             int randomSeconds = 4 + (std::rand() % 5);
             targetIdleTime = static_cast<float>(randomSeconds);
 
@@ -366,14 +366,14 @@ void BossCore::UpdateIdle(float deltaTime) {
 
         animTimer_ += deltaTime;
 
-        // 攻撃の1秒前に色を水色（青っぽい色）に戻す！
+        // 攻撃の1秒前に色を水色（青っぽい色）に戻す
         if (animTimer_ >= targetIdleTime - 1.5f && !hasResetColorPreAttack_) {
             SetColor(originalColor_);
             defaultColor_ = originalColor_;
             hasResetColorPreAttack_ = true;
         }
 
-        // タイマーが「今回決めた目標時間」を超えたら攻撃へ！
+        // タイマーが「今回決めた目標時間」を超えたら攻撃へ
         if (animTimer_ >= targetIdleTime) {
             ChangeState(State::Attack);
         }
@@ -463,7 +463,7 @@ void BossCore::UpdateWeak(float deltaTime) {
             // 現在の補間位置（ワールド空間）
             Vector3 currentPos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
 
-            // 落下中のバウンドエフェクト（ワールド空間のY座標に加算するため、完全に真上に跳ねる！）
+            // 落下中のバウンドエフェクト（ワールド空間のY座標に加算するため、完全に真上に跳ねる）
             if (scatterT < 1.0f) {
                 float bounce = std::abs(std::sin(scatterT * std::numbers::pi_v<float> * 2.0f)) * (1.0f - scatterT) * 4.0f;
                 currentPos.y += bounce;

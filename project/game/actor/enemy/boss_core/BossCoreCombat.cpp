@@ -191,7 +191,7 @@ void BossCore::TakeBodyDamage(float damage) {
         if (sceneManager_ && sceneManager_->GetCurrentScene()) {
             auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
             for (auto& obj : objects) {
-                // ユーザーが配置した専用のカメラオブジェクト「EnemyHP50_Animation」を探す！
+                // ユーザーが配置した専用のカメラオブジェクト「EnemyHP50_Animation」を探す
                 if (obj->GetName() == "EnemyHP50_Animation") {
                     isCameraFound = true;
                     if (obj->recorder_) {
@@ -216,7 +216,7 @@ void BossCore::TakeBodyDamage(float damage) {
     }
 
     // ====================================================
-    // 最終奥義発動前、または大技中でトドメ待ちでないならHP1で踏みとどまる！
+    // 最終奥義発動前、または大技中でトドメ待ちでないならHP1で踏みとどまる
     // ====================================================
     if (!isFinalPhase_ && nextHp <= 1.0f) {
         nextHp = 1.0f;
@@ -280,7 +280,7 @@ bool BossCore::OnCollision(Object3d* other) {
         if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
             effect->AddHitObject(this);
         }
-        damageCooldownTimer_ = 0.5f; // 連続ヒット防止クールダウンを設定！
+        damageCooldownTimer_ = 0.5f; // 連続ヒット防止クールダウンを設定
         return true;
     }
 
@@ -288,5 +288,5 @@ bool BossCore::OnCollision(Object3d* other) {
 }
 
 // ==========================================
-// 戦闘開始の合図を受け取る！
+// 戦闘開始の合図を受け取る
 

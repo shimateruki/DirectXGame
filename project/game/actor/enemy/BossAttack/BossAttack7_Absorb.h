@@ -8,7 +8,7 @@ class BossAttack7_Absorb : public BaseBossAttack {
 private:
     Vector3 animStartPos_ = { 0,0,0 };
 
-    // ロックオンしたブロックだけを入れる専用リスト！
+    // ロックオンしたブロックだけを入れる専用リスト
     std::vector<MapBlock*> targetMapBlocks_;
 
 public:

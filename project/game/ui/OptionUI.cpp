@@ -6,7 +6,7 @@
 #include "SpriteCommon.h"
 #include "TextureManager.h"
 #include "AudioPlayer.h"
-#include "CameraManager.h" // 追加
+#include "CameraManager.h"
 #include <CameraEditor.h>
 #include <cmath>
 
@@ -113,13 +113,13 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   UpdateSEBar();
   ApplyInputUiIfNeeded();
   // ========================================================
-  // ★ エディタ配置スプライトは「目印」なので、透明にして隠す！
+  // エディタ配置スプライトは「目印」なので、透明にして隠す
   // ========================================================
   actionSprites_.clear();
   for (const auto &name : actionSpriteNames_) {
     Sprite *sp = scene->GetSpriteByName(name);
     if (sp) {
-      sp->SetColor({1.0f, 1.0f, 1.0f, 0.0f}); // 透明マジック！
+      sp->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
     actionSprites_.push_back(sp);
   }
@@ -216,8 +216,7 @@ bool OptionUI::Update(float deltaTime) {
           }
       };
 
-      // 各項目の座標（仮：エディタの配置に合わせて微調整してください）
-      // カーソルの位置を項目の左側にセットします
+      // カーソルは各項目の左側に置く。
       ApplyHighlight(bgmSelectSprite_, (int)SoundOptionIndex::BGM, { 250.0f, 310.0f });
       ApplyHighlight(seSelectSprite_, (int)SoundOptionIndex::SE, { 250.0f, 560.0f });
       ApplyHighlight(cameraSelectSprite_, (int)SoundOptionIndex::Camera, { 1080.0f, 310.0f });
@@ -347,14 +346,14 @@ bool OptionUI::IsOptionSprite(Sprite *sp) const {
   if (!sp)
     return false;
 
-  // 新しいJSON (option_ui.json) で配置されたスプライトへの対応
+  // option_ui.json で配置されたスプライトをオプションUIとして扱う。
   std::string name = sp->GetName();
   if (name.find("option/") != std::string::npos ||
       name.find("Option/") != std::string::npos) {
     return true;
   }
 
-  // 以前のハードコーディング分への対応
+  // 既存レイアウト側のスプライトも対象に含める。
   if (sp == bgSprite_ || sp == titleSprite_ || sp == soundSprite_ ||
       sp == keyboardSprite_ || sp == spaceIconSprite_ || sp == cursorSprite_ ||
       sp == sensitivityBarSprite_ || sp == volumeBarSprite_ ||
@@ -403,17 +402,11 @@ void OptionUI::RefreshKeyIcons() {
     uint32_t texHandle =
         TextureManager::GetInstance()->Load("Resources/sprite/" + spriteName);
 
-    // ========================================================
-    // ★ エディタで配置されたダミー（目印）の座標を取得
-    // ========================================================
+    // エディタ配置の目印スプライトから表示位置を取る。
     Vector2 markerPos = {0, 0};
     if (i < actionSprites_.size() && actionSprites_[i]) {
       markerPos = actionSprites_[i]->GetPosition();
     }
-
-    // ==========================================
-    // ★ ここから可変サイズ対応！
-    // ==========================================
 
     // 通常キーの基準サイズ（正方形の1辺）
     const float normalKeySize = 42.0f;
@@ -438,7 +431,7 @@ void OptionUI::RefreshKeyIcons() {
     // 通常の正方形から幅が広がった分の「半分」だけ左にずらす
     horizontalShift = (dynamicWidth - normalKeySize) / 2.0f;
 
-    // ★ 新しくスプライトを生成し、完璧なサイズと座標に設定する！
+    // キー種別に応じたサイズで実表示用スプライトを生成する。
     auto sp = std::make_unique<Sprite>();
     sp->Initialize(spriteCommon_, texHandle);
 
@@ -457,13 +450,12 @@ void OptionUI::RefreshKeyIcons() {
 
 void OptionUI::DrawKeyIcons() {
 
-  // ★ プログラムで新しく生成した完璧なスプライトだけを描画！
+  // 実表示用に生成したキーアイコンだけを描画する。
   for (auto &sp : keyIconSprites_) {
     sp->Draw();
   }
 }
 
-// --- IsValidKey と GetKeySpriteName はそのまま ---
 bool OptionUI::IsValidKey(int keyCode) const {
   if (keyCode >= DIK_1 && keyCode <= DIK_0)
     return true;

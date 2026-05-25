@@ -10,12 +10,12 @@ void GameRule::Initialize(BaseScene* scene) {
     scene_ = scene;
 
     // --------------------------------------------------------
-    // ① プレイヤーがギミック等に触れたときのイベント (既存のまま)
+    // プレイヤーがギミックへ接触したときのイベントを処理する。
     // --------------------------------------------------------
     EventManager::GetInstance()->Subscribe([this](const PlayerHitEvent& event) {
 
-        Object3d* whoHit = event.me;           // プレイヤー
-        Object3d* objectHit = event.hitObject; // 当たった物
+        Object3d* whoHit = event.me;
+        Object3d* objectHit = event.hitObject;
 
         if (!whoHit || !objectHit) return;
 
@@ -50,11 +50,10 @@ void GameRule::Initialize(BaseScene* scene) {
         case EventType::Movie_Boss:
             if (scene_) {
                 if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
-                    gps->StartBossAppearanceMovie(); // シーンに合図を送る！
+                    gps->StartBossAppearanceMovie();
 
                     // ====================================================
-                    // 踏んだスイッチの当たり判定を「0（無し）」にする！
-                    // これにより、このスイッチは二度とイベントを発生させなくなります。
+                    // ボス登場スイッチは一度だけ発火させる。
                     // ====================================================
                     if (objectHit) {
                         objectHit->SetCollisionAttribute(0);
@@ -75,21 +74,19 @@ void GameRule::Initialize(BaseScene* scene) {
         });
 
     // ========================================================
-    // 戦闘のダメージイベントを受信！
+    // 戦闘のダメージイベントを共通のHP処理へ流す。
     // ========================================================
     EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
         if (!event.target) return;
 
-        // 汎用関数 ApplyDamage を呼ぶだけ！
         ApplyDamage(event.target, event.damageAmount);
         });
 }
 
-// ▼ 汎用ダメージ関数
 void GameRule::ApplyDamage(Object3d* target, float damage) {
     if (target->GetClassName() == "Player") {
         Player* player = static_cast<Player*>(target);
-        // 被弾無敵（赤色）または回避ダッシュ（青色）中ならダメージを無効化！
+        // 被弾無敵（赤色）または回避ダッシュ（青色）中ならダメージを無効化
         if (player->IsInvincible()) {
             return;
         }

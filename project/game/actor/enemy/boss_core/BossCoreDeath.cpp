@@ -6,12 +6,12 @@ void BossCore::StartDeathSequence() {
     isWaitingForFinisher_ = false; // トドメ待ちモーションを解除し、座標の固定を防ぐ
 
     deathPhase_ = 1;         // フェーズ1（無音で静止）
-    sequenceTimer_ = 1.0f;   // 1秒間待機！
+    sequenceTimer_ = 1.0f;   // 1秒間待機
 
     DebugConsole::GetInstance()->AddLog("[撃破] ボス沈黙…！！");
 
     // ====================================================
-    // ボスに付いているすべてのパーティクルを止める！
+    // ボスに付いているすべてのパーティクルを止める
     // これにより、新しいパーティクルが発生しなくなります。
     // ====================================================
     for (auto& emitter : particleEmitters_) {
@@ -64,7 +64,7 @@ void BossCore::StartDeathSequence() {
 void BossCore::ShowCrackedCore() {
     DebugConsole::GetInstance()->AddLog("[撃破] コアに亀裂が…！生成予約");
 
-    // 生成はここではやらず、フラグだけ立てる！
+    // 生成はここではやらず、フラグだけ立てる
     isShardSpawnRequested_ = true;
 }
 
@@ -108,14 +108,14 @@ void BossCore::ActuallySpawnShards() {
             currentScene->AddObject(std::move(pieceObj));
         }
     }
-    isShardSpawnRequested_ = false; // 生成完了！
+    isShardSpawnRequested_ = false; // 生成完了
 }
 
 // ==========================================
-// 段階3：一気に吹き飛ばす！（爆散）
+// 段階3：一気に吹き飛ばす（爆散）
 // ==========================================
 void BossCore::BreakCore() {
-    isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動！
+    isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動
     deathTimer_ = 0.0f;
 
     DebugConsole::GetInstance()->AddLog("[撃破] コア完全粉砕！！！");
@@ -154,7 +154,7 @@ void BossCore::UpdateCorePieces(float deltaTime) {
         isDead = true;
         isCompletelyDead_ = true;
         // ==========================================
-        // 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す！
+        // 変更：ボスが完全に消滅したら、カメラを元のプレイヤー視点に戻す
         // 一瞬で戻すなら 0.0f に変更します。
         // ==========================================
         if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {

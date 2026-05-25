@@ -9,7 +9,7 @@ void PlayerStateAttack2::Enter(Player* player)
 	if (player) {
 		player->SetIsControlActive(false);
 		
-		// タイクラーさんの変更: 攻撃方向の設定
+		// 攻撃開始時の正面方向を保存する。
 		const Matrix4x4& mat = player->GetWorldMatrix();
 		Vector3 dir = { mat.m[2][0], 0.0f, mat.m[2][2] };
 		if (Math::Length(dir) > 0.001f) dir = Math::Normalize(dir);
@@ -19,10 +19,10 @@ void PlayerStateAttack2::Enter(Player* player)
 	SetSwordActive(player, true, player->GetAttackParams().damageCombo2);
 	animTimer_ = 0.0f;
 	
-	// チームメンバーの変更: エフェクトパスの変更
+	// コンボ2用の斬撃エフェクトを発生させる。
 	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak2.json", player->GetAttackParams().damageCombo2);
 
-	// チームメンバーの変更: パーティクルエミッターの追加
+	// 剣に追従するパーティクルを再生する。
 	Object3d* swordObj = nullptr;
 	TryFindSword(player, swordObj);
 	if (swordObj) {
@@ -330,7 +330,7 @@ void PlayerStateAttack2::ApplyPose(float t)
 	// Body start: bodyDefaultRot_.y + (-100deg), z = -36deg (Enterで設定)
 	Vector3 bodyStartPos{ 0.0f, 0.0f, 0.0f };
 	Vector3 bodyStartRot = bodyDefaultRot_;
-	// 変更点: Y 回転をプレイヤーの向き（bodyDefaultRot_.y）に対する相対値で指定して、向いている方向で攻撃が出るようにする
+	// Y 回転をプレイヤーの向き（bodyDefaultRot_.y）に対する相対値で指定して、向いている方向で攻撃が出るようにする
 	float baseY = bodyDefaultRot_.y;
 	bodyStartRot.y = baseY + DegToRad(60.0f);
 

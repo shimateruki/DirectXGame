@@ -8,7 +8,7 @@ void PlayerStateAttack3::Enter(Player* player)
 	if (player) {
 		player->SetIsControlActive(false);
 
-		// タイクラーさんの変更: 攻撃方向の設定
+		// 攻撃開始時の正面方向を保存する。
 		const Matrix4x4& mat = player->GetWorldMatrix();
 		Vector3 dir = { mat.m[2][0], 0.0f, mat.m[2][2] };
 		if (Math::Length(dir) > 0.001f) dir = Math::Normalize(dir);
@@ -18,10 +18,10 @@ void PlayerStateAttack3::Enter(Player* player)
 	SetSwordActive(player, true, player->GetAttackParams().damageCombo3);
 	animTimer_ = 0.0f;
 
-	// チームメンバーの変更: エフェクトパスの変更
+	// コンボ3用の突きエフェクトを発生させる。
 	MeshEffectManager::GetInstance()->SpawnEffect("Resources/json/effect/effect_attak3.json", player->GetAttackParams().damageCombo3);
 
-	// チームメンバーの変更: パーティクルエミッターの追加
+	// 剣に追従するパーティクルを再生する。
 	Object3d* swordObj = nullptr;
 	TryFindSword(player, swordObj);
 	if (swordObj) {
@@ -65,7 +65,7 @@ void PlayerStateAttack3::Enter(Player* player)
 		if (leftFootObj_) leftFootDefaultRot_ = leftFootObj_->GetRotation();
 	}
 
-	// 2. ★超重要：Attack2をいじらずに瞬間移動を直すため、Attack2の「最後のポーズ」を手動で開始ポーズにする！
+	// 2. 超重要：Attack2をいじらずに瞬間移動を直すため、Attack2の「最後のポーズ」を手動で開始ポーズにする
 	auto DegToRad = [](float d) { return d * 3.1415926535f / 180.0f; };
 	bodyStartRot_ = { 0.0f, frontY, DegToRad(40.0f) };
 	headStartRot_ = { DegToRad(-20.0f), DegToRad(-57.0f), DegToRad(-11.0f) };
@@ -95,7 +95,7 @@ void PlayerStateAttack3::Update(Player* player)
 
 	if (animTimer_ >= animDuration_)
 	{
-		//  Idleに戻る際の滑らかな補間（ブレンド）を設定する
+		// Idleに戻る際の滑らかな補間（ブレンド）を設定する
 		if (initializedParts_)
 		{
 			if (!s_pendingIdleBlend.active)
@@ -182,11 +182,11 @@ void PlayerStateAttack3::ApplyPose(float t) {
                        DegToRad(60.0f)}; // タメ
   Vector3 rtArmRot2 = {DegToRad(-10.0f), DegToRad(-10.0f),
                        DegToRad(30.0f)};   // 突き
-  Vector3 rtArmRot3 = rightArmDefaultRot_; // ★完全に待機ポーズに戻す！
+  Vector3 rtArmRot3 = rightArmDefaultRot_; // 完全に待機ポーズに戻す
 
   Vector3 ltArmRot1 = ltArmStartRot_;     // 左腕はそのまま維持
   Vector3 ltArmRot2 = ltArmStartRot_;     // 維持
-  Vector3 ltArmRot3 = leftArmDefaultRot_; // ★左腕も一緒に待機ポーズに戻す！
+  Vector3 ltArmRot3 = leftArmDefaultRot_; // 左腕も一緒に待機ポーズに戻す
 
   // =========================================================
   // 体の動き
@@ -198,7 +198,7 @@ void PlayerStateAttack3::ApplyPose(float t) {
   Vector3 bodyRot2 = {DegToRad(25.0f), baseYRad, 0.0f};
 
   Vector3 bodyPos3 = {0.0f, 0.0f, 0.0f}; // 戻り：元の位置へ
-  Vector3 bodyRot3 = bodyDefaultRot_;    // ★完全に待機ポーズに戻す！
+  Vector3 bodyRot3 = bodyDefaultRot_;    // 完全に待機ポーズに戻す
 
   // =========================================================
   // 足の動き
@@ -209,15 +209,15 @@ void PlayerStateAttack3::ApplyPose(float t) {
   Vector3 rtFootRot2 = {DegToRad(-35.0f), 0.0f, 0.0f}; // 踏ん張る
   Vector3 ltFootRot2 = {DegToRad(35.0f), 0.0f, 0.0f};
 
-  Vector3 rtFootRot3 = rightFootDefaultRot_; // ★完全に待機ポーズに戻す！
-  Vector3 ltFootRot3 = leftFootDefaultRot_;  // ★完全に待機ポーズに戻す！
+  Vector3 rtFootRot3 = rightFootDefaultRot_; // 完全に待機ポーズに戻す
+  Vector3 ltFootRot3 = leftFootDefaultRot_;  // 完全に待機ポーズに戻す
 
   // =========================================================
   // 頭の動き
   // =========================================================
   Vector3 headRot1 = {DegToRad(0.0f), 0.0f, 0.0f};
   Vector3 headRot2 = {DegToRad(-10.0f), 0.0f, 0.0f};
-  Vector3 headRot3 = headDefaultRot_; // ★完全に待機ポーズに戻す！
+  Vector3 headRot3 = headDefaultRot_; // 完全に待機ポーズに戻す
 
   // =========================================================
   // 補間計算（3段階）
@@ -287,7 +287,7 @@ void PlayerStateAttack3::ApplyPose(float t) {
     rightArmObj_->UpdateWorldMatrix();
   }
 
-  // ★左腕の反映を追加しました！
+  // 左腕の回転を反映する。
   if (leftArmObj_) {
     Transform *tf = leftArmObj_->GetTransform();
     tf->rotate = curLtArmRot;

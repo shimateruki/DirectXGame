@@ -128,17 +128,17 @@ void GameClearScene::Initialize() {
     if (player_) {
         player_->SetIsControlActive(false);
 
-        // 1. JSONで配置した位置（＝ガッツポーズを見せたい最高の場所）を記憶！
+        // 1. JSONで配置した位置（＝ガッツポーズを見せたい最高の場所）を記憶
         targetPlayerPos_ = player_->GetTransform()->translate;
         targetPlayerRot_ = player_->GetRotation();
-        // 2. プレイヤーを画面の奥（または手前）にワープさせる！
+        // 2. プレイヤーを画面の奥（または手前）にワープさせる
         Vector3 startPos = targetPlayerPos_;
         startPos.z += 15.0f;
 
         player_->GetTransform()->translate = startPos;
         player_->UpdateWorldMatrix();
 
-        // 3. 最初は「走りステート」にする！
+        // 3. 最初は「走りステート」にする
         player_->ChangeState(std::make_unique<PlayerStateRun>());
     }
     LightManager::GetInstance()->LoadState("Resources/json/light/gameClearScene.json");
@@ -295,7 +295,7 @@ void GameClearScene::Update(float deltaTime) {
         menuAlpha_ += deltaTime * 2.0f;
         if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
 
-        // アクション名「Left」「Right」で判定！
+        // アクション名「Left」「Right」で判定
         if (inputManager_->IsActionTriggered("Left")) {
             currentMenuIndex_ = (int)MenuIndex::Retry;
         }
@@ -398,7 +398,7 @@ void GameClearScene::Draw() {
     particleSystem_->Draw();
 
     // =======================================================
-    // 4. ローカルフォグ (霧の箱) の描画！
+    // 4. ローカルフォグ (霧の箱) の描画
     // =======================================================
     bool hasFog = false;
     for (auto& obj : objects) {
@@ -416,7 +416,7 @@ void GameClearScene::Draw() {
     }
 
     // =======================================================
-    // 5. GPUパーティクルの描画！
+    // 5. GPUパーティクルの描画
     // =======================================================
     dxCommon_->UpdateGrabTexture();
     dxCommon_->PreDrawLocalFog();

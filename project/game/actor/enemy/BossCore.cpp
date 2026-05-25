@@ -64,7 +64,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     barrierHp_ = attackParams_.maxBarrierHp;
     maxBarrierHp_ = attackParams_.maxBarrierHp;
 
-    // 現在登録されているブロックのHPを読み込んだパラメータに初期化！
+    // 現在登録されているブロックのHPを読み込んだパラメータに初期化
     for (size_t i = 0; i < blockHps_.size(); ++i) {
         blockHps_[i] = attackParams_.maxArmorBlockHp;
     }
@@ -96,37 +96,33 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     auto BossParticle1 = std::make_unique<GPUParticleEmitter>();
     BossParticle1->Initialize("Boss1", this);
     BossParticle1->Play();
-    // particleEmitters_.push_back(std::move(BossParticle1)); // 配列に追加
 
     // --- 2. 黄 ---
     auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
     BossParticle2->Initialize("Boss2", this);
     BossParticle2->Play();
-    particleEmitters_.push_back(std::move(BossParticle2)); // 配列に追加
+    particleEmitters_.push_back(std::move(BossParticle2));
 
     // --- 3. 水色 ---
     auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
-    particleEmitters_.push_back(std::move(BossParticle3)); // 配列に追加
+    particleEmitters_.push_back(std::move(BossParticle3));
 
     // --- 4. 赤 ---
     auto BossParticle4 = std::make_unique<GPUParticleEmitter>();
     BossParticle4->Initialize("Boss4", this);
     BossParticle4->Play();
-    // particleEmitters_.push_back(std::move(BossParticle4)); // 配列に追加
 
     // --- 5. 黄色 ---
     auto BossParticle5 = std::make_unique<GPUParticleEmitter>();
     BossParticle5->Initialize("Boss5", this);
     BossParticle5->Play();
-    // particleEmitters_.push_back(std::move(BossParticle5)); // 配列に追加
 
     // --- 6. 緑色 ---
     auto BossParticle6 = std::make_unique<GPUParticleEmitter>();
     BossParticle6->Initialize("Boss6", this);
     BossParticle6->Play();
-    // particleEmitters_.push_back(std::move(BossParticle6)); // 配列に追加
 
     isFinalPhase_ = false;
     isWaitingForDeath_ = false;
@@ -179,9 +175,9 @@ void BossCore::Update(float deltaTime) {
                 param_->hp = 1.0f; // 8キーを押したらHPを1にする
             }
         }
-        if (input->IsKeyTriggered(DIK_Y)) triggerAttack = 9; // Yキーでファンネル攻撃！
+        if (input->IsKeyTriggered(DIK_Y)) triggerAttack = 9; // Yキーでファンネル攻撃
 
-        // 9キーで即座にボスを爆散させるデバッグ機能！
+        // 9キーで即座にボスを爆散させるデバッグ機能
         if (input->IsKeyTriggered(DIK_9)) {
             if (!isCoreBroken_) {
                 DebugConsole::GetInstance()->AddLog("【DEBUG】 9キー入力：ボスを強制爆散させます！！！💥");
@@ -190,7 +186,7 @@ void BossCore::Update(float deltaTime) {
             }
         }
 
-        // HキーでHP半分時の演出を強制発動させるデバッグ機能！
+        // HキーでHP半分時の演出を強制発動させるデバッグ機能
         if (input->IsKeyTriggered(DIK_H)) {
             DebugConsole::GetInstance()->AddLog("【DEBUG】 Hキー入力：HP半減演出を強制発動します！");
             
@@ -266,7 +262,7 @@ void BossCore::Update(float deltaTime) {
             ChangeState(State::Attack); // 自動で最終奥義(ID: 8)が選ばれる
         }
         else if (!isWaitingForFinisher_ && deathPhase_ == 0) {
-            // 大技の最中などは絶対に死なない！HP1を維持！
+            // 大技の最中などは絶対に死なないHP1を維持
             param_->hp = 1.0f;
         }
     }
@@ -784,7 +780,7 @@ void BossCore::Update(float deltaTime) {
     }
 
     // ====================================================
-     // 登場演出中か、戦闘開始後のみアニメーションタイマーを進める！
+     // 登場演出中か、戦闘開始後のみアニメーションタイマーを進める
      // ====================================================
     if (SceneManager::GetInstance()->IsPlaying()) {
         if (isAppearing_ || isBattleStarted_) {
@@ -811,7 +807,7 @@ void BossCore::Update(float deltaTime) {
                     warningArea_->GetTransform()->isQuaternionMaster = false;
 
                     // ==========================================
-                    // ArmorBlocks_ だけでなく、HPやフラグのリストからも確実に消す！
+                    // ArmorBlocks_ だけでなく、HPやフラグのリストからも確実に消す
                     // ==========================================
                     for (size_t i = 0; i < armorBlocks_.size(); ) {
                         if (armorBlocks_[i] == warningArea_) {
@@ -831,7 +827,7 @@ void BossCore::Update(float deltaTime) {
             isFirstFrame_ = false;
 
             // ====================================================
-            // 最初のフレームで、装甲ブロックをランダムに散らかす！
+            // 最初のフレームで、装甲ブロックをランダムに散らかす
             // ====================================================
             blockStartPos_.clear(); // armorManager_ ではなく、BossCoreが直接持っている変数を使います
             Vector3 bossPos = GetTranslate();
@@ -843,14 +839,14 @@ void BossCore::Update(float deltaTime) {
                 float distance = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 15.0f;
 
                 // ====================================================
-                // ブロックは「ボスの子供（ローカル座標）」なので計算を変えます！
+                // ブロックは「ボスの子供（ローカル座標）」なので計算を変えます
                 // ボスがどんな高さにいても、(0.5f - ボスの高さ) にすることで
-                // ワールド空間での高さを強制的に 0.5f (地面) に揃えることができます！
+                // ワールド空間での高さを強制的に 0.5f (地面) に揃えることができます
                 // ====================================================
                 Vector3 scatterPos = {
-                    std::cos(angle) * distance, // X: 子オブジェクトなので bossPos.x を足さなくてOK！
+                    std::cos(angle) * distance, // X: 子オブジェクトなので bossPos.x を足さなくてOK
                     0.5f - bossPos.y,           // Y: 地面の高さ(0.5f) - ボスの高さ
-                    std::sin(angle) * distance  // Z: 子オブジェクトなので bossPos.z を足さなくてOK！
+                    std::sin(angle) * distance  // Z: 子オブジェクトなので bossPos.z を足さなくてOK
                 };
                 blockStartPos_.push_back(scatterPos);
 
@@ -878,7 +874,7 @@ void BossCore::Update(float deltaTime) {
                 currentAttack_->Update(this, actionDelta); // 攻撃モーションは倍速
 
                 // TriggerCrashStun() 等でステートが Weak に変わった場合、
-                //   currentAttack_ がリセット済みの可能性があるため再チェック
+                //  currentAttack_ がリセット済みの可能性があるため再チェック
                 if (currentAttack_ && currentAttack_->IsFinished()) {
                     currentAttack_->Finalize();
                     currentAttack_.reset();

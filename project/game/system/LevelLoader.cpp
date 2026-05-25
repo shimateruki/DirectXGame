@@ -400,7 +400,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->InitializeRecorder(nullptr);
                 bool isCinematic = (targetObject->GetClassName() == "CinematicCamera");
 
-                // レコーダーのパスデータ名が入っている時だけ再生をスタートする！
+                // レコーダーのパスデータ名が入っている時だけ再生をスタートする
                 if (!targetObject->recordPathName_.empty() && targetObject->recorder_) {
                     targetObject->recorder_->Play(
                         targetObject->recordPathName_,

@@ -1,6 +1,6 @@
 #include "BossAttack1_Rush.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパス(../など)を調整してください
+#include "./easing.h"
 #include "../../CollisionConfig.h"
 #include "../../MapBlock.h"
 #include <algorithm>
@@ -40,7 +40,7 @@ void BossAttack1_Rush::Initialize(BossCore* boss) {
     for (size_t i = 0; i < armorBlocks.size(); ++i) {
         blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
 
-        // 突進攻撃力を各装甲ブロックに適用！
+        // 突進攻撃力を各装甲ブロックに適用
         if (armorBlocks[i]) {
             armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageRush);
         }
@@ -56,7 +56,7 @@ void BossAttack1_Rush::Initialize(BossCore* boss) {
         }
     }
 
-    animPhase_ = 1; // 準備完了、Phase 1へ！
+    animPhase_ = 1; // 準備完了、Phase 1へ
 }
 
 void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
@@ -175,7 +175,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
             animStartPos_ = boss->GetTranslate();
 
-            // バスターズ風に突き抜ける設定！プレイヤーの位置ではなく、方向ベクトルの先へ！
+            // バスターズ風に突き抜ける設定プレイヤーの位置ではなく、方向ベクトルの先へ
             float dashDistance = 110.0f;
             animTargetPos_ = {
                 animStartPos_.x + dir.x * dashDistance,
@@ -208,7 +208,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
                     boss->UpdateWorldMatrix(); // 座標変更後のワールド行列を反映
                     
                     // 自爆スタンを誘発する（currentAttack_.reset() により this が破棄されるため、
-                    // この呼び出しの後は即座に return して、メンバ変数に一切アクセスしない！）
+                    // この呼び出しの後は即座に return して、メンバ変数に一切アクセスしない）
                     boss->TriggerCrashStun();
                     return;
                 }

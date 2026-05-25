@@ -36,14 +36,14 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
     }
 
     // ==========================================
-    // 10個満タンの時は吸収しないので、親子関係を解除して元に戻す！
+    // 10個満タンの時は吸収しないので、親子関係を解除して元に戻す
     // ==========================================
     newBlock->SetParent(nullptr);
     return false;
 }
 
 // ==========================================
-// 装甲が10個満タン（壊れてもいない）かどうかを判定！
+// 装甲が10個満タン（壊れてもいない）かどうかを判定
 // ==========================================
 bool BossCore::IsArmorFull() const {
     if (armorBlocks_.size() < 10) return false; // 10個未満ならまだ吸える
@@ -52,7 +52,7 @@ bool BossCore::IsArmorFull() const {
         if (broken) return false; // 壊れている箇所があればまだ吸える
     }
 
-    return true; // 10個あって、1つも壊れていないなら完全体！
+    return true; // 10個あって、1つも壊れていないなら完全体
 }
 
 // ==========================================
@@ -81,7 +81,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     colorResetTimer_ = 0.15f;
 
     // ==========================================
-    // 全部ではなく、当たったブロックだけを赤くする！
+    // 全部ではなく、当たったブロックだけを赤くする
     // ==========================================
     if (hitBlock) {
         SetBlockColor(hitBlock, { 1.0f, 0.0f, 0.0f, 1.0f });
@@ -94,7 +94,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
         if (currentAttack_) {
             currentAttack_->Finalize();
             currentAttack_.reset();
-        } // ダウン時の攻撃を強制終了！
+        } // ダウン時の攻撃を強制終了
         animTimer_ = 0.0f;
         flyingBlocks_.clear();
 
@@ -151,11 +151,11 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
 void BossCore::TriggerCrashStun() {
     DebugConsole::GetInstance()->AddLog("★★★ Boss CRASH STUN! ★★★");
     
-    // バリアHP（barrierHp_）は変更せず、現在の値を維持する！
+    // バリアHP（barrierHp_）は変更せず、現在の値を維持する
 
-    // currentAttack_.reset() でダウン時の攻撃を強制終了！
-    //   呼び出し元（BossAttack1_Rush::Update 等）は TriggerCrashStun() の直後に
-    //   即座に return するため、this (攻撃オブジェクト) が破棄されても安全。
+    // currentAttack_.reset() でダウン時の攻撃を強制終了
+    //  呼び出し元（BossAttack1_Rush::Update 等）は TriggerCrashStun() の直後に
+    //  即座に return するため、this (攻撃オブジェクト) が破棄されても安全。
     if (currentAttack_) {
         currentAttack_->Finalize();
         currentAttack_.reset();
@@ -267,13 +267,13 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
     for (int i = 0; i < 8; ++i) {
         auto shard = std::make_unique<Object3d>();
         shard->Initialize(common_);
-        shard->SetModel(modelName); // 元のマップブロックと同じモデルを使用！
+        shard->SetModel(modelName); // 元のマップブロックと同じモデルを使用
         shard->SetName(block->GetName() + "_Shard" + std::to_string(i + 1));
         shard->SetParent(block);
         shard->SetTranslate(offsets[i]);
         shard->SetScale({ 0.65f, 0.65f, 0.65f }); // 0.5f から 0.65f に変更（主の当たり判定にピッタリ一致）
         
-        // --- 見た目の情報を完璧にコピー ---
+        // 見た目に必要な情報を元ブロックから引き継ぐ。
         shard->SetColor(color);
         shard->SetMetallic(metallic);
         shard->SetRoughness(roughness);

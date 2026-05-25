@@ -1,6 +1,6 @@
 #include "BossAttack6_Laser.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパスを調整してください
+#include "./easing.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -131,7 +131,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 62: 大回転を維持したまま、砲台陣形へ変形！ ---
+    // --- Phase 62: 大回転を維持したまま、砲台陣形へ変形 ---
     else if (animPhase_ == 62) {
         if (animTimer_ == 0.0f) {
             blockStartPos_.clear();
@@ -310,7 +310,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             particleTimer_ = 0.0f;
         }
         }
-    // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
+    // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ ---
     else if (animPhase_ == 64) {
         animTimer_ += deltaTime;
         particleTimer_ += deltaTime;
@@ -330,7 +330,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         // 基本の太さ（0.1から1.0へ一瞬で太くなる）
         float baseThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
 
-        // 【振動】animTimer_ を使って、1.0を中心にして ±15% ほど激しく震わせる！
+        // 【振動】animTimer_ を使って、1.0を中心にして ±15% ほど激しく震わせる
         // ※ 60.0f を大きくすると震えるスピードが上がり、0.15f を大きくすると震幅（太さの差）が大きくなります。
         float pulse = 1.0f + (std::sin(animTimer_ * 60.0f) * 0.05f);
 

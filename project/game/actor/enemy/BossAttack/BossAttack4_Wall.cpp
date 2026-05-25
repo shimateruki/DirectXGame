@@ -1,6 +1,6 @@
 #include "BossAttack4_Wall.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパスを調整してください
+#include "./easing.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -20,7 +20,7 @@ void BossAttack4_Wall::Initialize(BossCore* boss) {
     wallStep_ = 0; // カウントリセット
     animPhase_ = 39;
 
-    // 攻撃力を適用し、物理的な押し出し（kGround）を防ぐために一時的にkGroundを外す！
+    // 攻撃力を適用し、物理的な押し出し（kGround）を防ぐために一時的にkGroundを外す
     for (auto* block : boss->GetArmorBlocks()) {
         if (block) {
             block->SetAttackDamage(boss->GetAttackParams().damageWall);
@@ -61,7 +61,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             }
 
             // ==========================================
-            // 現在のブロック数に合わせて、常に「真ん中」を自動計算する！
+            // 現在のブロック数に合わせて、常に「真ん中」を自動計算する
             // ==========================================
             float centerIndex = (armorBlocks.size() - 1.0f) / 2.0f;
             float offset = -(static_cast<float>(i) - centerIndex) * blockWidth;
@@ -157,7 +157,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         // ==================================================
-        // UVのマイナス反転による、完璧な方向コントロール！
+        // UVの符号で流れる方向を制御する。
         // ==================================================
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
@@ -171,7 +171,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 
        
             // ==================================================
-                // UVスクロール最終決定版！
+                // UVスクロール最終決定版
                 // ==================================================
             float tilesX = 10.0f;
             float tilesY = 25.0f;
@@ -184,13 +184,13 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             else if (wallStep_ == 1) {
                 // 手前から奥（上へ移動）
                 uvScale = { tilesX, tilesY, 1.0f };
-                // マイナスを外しました！（これで下から上へ流れます）
+                // マイナスを外しました（これで下から上へ流れます）
                 uvTranslate = { 0.0f, animTimer_ * scrollSpeed, 0.0f };
             }
             else if (wallStep_ == 2) {
                 // 右から左（左へ移動）
                 uvScale = { -tilesY, tilesX, 1.0f };
-                // マイナスをつけました！（これで右から左へ流れます）
+                // マイナスをつけました（これで右から左へ流れます）
                 uvTranslate = { -(animTimer_ * scrollSpeed), 0.0f, 0.0f };
             }
             else if (wallStep_ == 3) {
@@ -207,7 +207,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 41: 壁だけがステージを往復横断！ ---
+    // --- Phase 41: 壁だけがステージを往復横断 ---
     else if (animPhase_ == 41) {
         if (animTimer_ == 0.0f) {
             Object3d* warning = boss->GetWarningArea();
@@ -219,7 +219,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 float tilesX = 10.0f;
                 float tilesY = 25.0f;
 
-                // スクロールを止める時も、反転状態は維持する！
+                // スクロールを止める時も、反転状態は維持する
                 if (wallStep_ == 0)      uvScale = { tilesX, -tilesY, 1.0f };
                 else if (wallStep_ == 1) uvScale = { tilesX, tilesY, 1.0f };
                 else if (wallStep_ == 2) uvScale = { -tilesY, tilesX, 1.0f };
@@ -264,7 +264,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
     }
 
-    // --- Phase 42: 攻撃後の猶予 ＆ 往復のループ判定！ ---
+    // --- Phase 42: 攻撃後の猶予 ＆ 往復のループ判定 ---
     else if (animPhase_ == 42) {
         animTimer_ += deltaTime;
 
@@ -374,14 +374,14 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
-            // 攻撃完了！元の地面属性(kGround)を復活させる
+            // 攻撃完了元の地面属性(kGround)を復活させる
             uint32_t blockAttribute = (boss->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
             for (auto* block : armorBlocks) {
                 if (block) {
                     block->SetCollisionAttribute(blockAttribute);
                 }
             }
-            isFinished_ = true; // 攻撃完了！
+            isFinished_ = true; // 攻撃完了
         }
     }
 }

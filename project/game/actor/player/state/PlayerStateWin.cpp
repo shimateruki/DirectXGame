@@ -8,7 +8,7 @@ void PlayerStateWin::Enter(Player *player) {
   player->SetIsControlActive(false);
   SetSwordActive(player, false);
   animTimer_ = 0.0f;
-  isFrozen_ = false; // ★ フリーズ状態リセット
+  isFrozen_ = false; // フリーズ状態リセット
   bodyObj_ = player;
 
   TryFindHead(player, headObj_);
@@ -50,7 +50,7 @@ void PlayerStateWin::Enter(Player *player) {
     leftFootStartRot_ = leftFootObj_->GetRotation();
 
   // =========================================================
-  // ★ 修正：カメラ計算を廃止！単純に「今の向きから180度振り向く」だけ！
+  // カメラ計算を廃止単純に「今の向きから180度振り向く」だけ
   // =========================================================
   targetYAngle_ = bodyStartRot_.y + 3.14159265f; // +180度(π)
 
@@ -66,7 +66,7 @@ void PlayerStateWin::Update(Player *player) {
   Transform *tf = player->GetTransform();
 
   // =========================================================
-  // ★ 修正：前回の落下処理を全削除し、シンプルに空中で止まるだけに！
+  // 前回の落下処理を全削除し、シンプルに空中で止まるだけに
   // =========================================================
   // 1. タメ期間 (0.0s ～ 0.2s)
   if (animTimer_ < 0.2f) {
@@ -128,7 +128,7 @@ void PlayerStateWin::ApplyPose(float t) {
       rightArmDefaultRot_ +
       Vector3{DegToRad(-120.0f), DegToRad(-45.0f), DegToRad(30.0f)};
 
-  // 左腕は完璧なのでそのまま維持！
+  // 左腕は勝利ポーズの形を維持する。
   Vector3 ltArmWin =
       leftArmDefaultRot_ + Vector3{DegToRad(-40.0f), 0.0f, DegToRad(-15.0f)};
 
@@ -155,7 +155,7 @@ void PlayerStateWin::ApplyPose(float t) {
 
     curBodyRot = SafeLerpRot(squatRot, jumpRot, nT);
 
-    // ★ 左右非対称のガッツポーズへ！
+    // 左右非対称のガッツポーズへ
     curRtArmRot = SafeLerpRot(rightArmDefaultRot_, rtArmWin, nT);
     curLtArmRot = SafeLerpRot(leftArmDefaultRot_, ltArmWin, nT);
 

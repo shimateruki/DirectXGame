@@ -11,7 +11,7 @@ void PlayerStateWinReturn::Enter(Player *player) {
       "★ ENTER: Win Return State (着地＆ポーズ戻し)");
 
   player->SetIsControlActive(false); // まだ操作はさせない
-  player->SetIsPhysicsActive(true);  // ★ 重力復活！自然に落下させる
+  player->SetIsPhysicsActive(true);  // 重力復活自然に落下させる
 
   // アニメ的な少し速い落下にするための初速
   player->SetVelocity({0.0f, -15.0f, 0.0f});
@@ -22,7 +22,7 @@ void PlayerStateWinReturn::Enter(Player *player) {
   TryFindArms(player, leftArmObj_, rightArmObj_);
   TryFindFeet(player, leftFootObj_, rightFootObj_);
 
-  // 1. 現在の「ガッツポーズ」の角度を Start として記憶！
+  // 1. 現在の「ガッツポーズ」の角度を Start として記憶
   if (bodyObj_)
     bodyStartRot_ = bodyObj_->GetRotation();
   if (headObj_)
@@ -39,7 +39,7 @@ void PlayerStateWinReturn::Enter(Player *player) {
   // 2. 戻るべき「基本ポーズ」の角度を Default として設定
   if (bodyObj_)
     bodyDefaultRot_ = {0.0f, bodyStartRot_.y,
-                       0.0f}; // 向き(Y)だけはそのまま維持！
+                       0.0f}; // 向き(Y)だけはそのまま維持
   headDefaultRot_ = {0.0f, 0.0f, 0.0f};
   rightArmDefaultRot_ = {0.0f, 0.0f, 0.0f};
   leftArmDefaultRot_ = {0.0f, 0.0f, 0.0f};
@@ -131,10 +131,10 @@ void PlayerStateWinReturn::Update(Player *player) {
   // --- 着地判定と Idle への完全移行 ---
   Transform *tf = player->GetTransform();
   if (tf->translate.y <= groundY_) {
-    tf->translate.y = groundY_; // 正しい高さでピタッと止める！
+    tf->translate.y = groundY_; // 正しい高さでピタッと止める
     player->SetVelocity({0.0f, 0.0f, 0.0f});
 
-    // 着地しており、かつポーズ戻し(0.3秒)が終わっていれば、本当の待機状態へ！
+    // 着地しており、かつポーズ戻し(0.3秒)が終わっていれば、本当の待機状態へ
     if (animTimer_ >= blendDuration_) {
       player->ChangeState(std::make_unique<PlayerStateIdle>());
     }

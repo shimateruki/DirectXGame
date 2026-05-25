@@ -342,7 +342,7 @@ bool GhostDirector::IsFinished() const
             }
         }
     }
-    return true; // 全員が出番を迎え、かつ全再生が終わった！
+    return true; // 全員が出番を迎え、かつ全再生が終わった
 }
 int GhostDirector::GetActiveEventID() const
 {
@@ -353,7 +353,7 @@ int GhostDirector::GetActiveEventID() const
         for (const auto& track : tracks_) {
             if (track.target && track.target->recorder_) {
                 int eID = track.target->recorder_->GetCurrentEventID();
-                if (eID != 0) return eID; // イベントを見つけたらボスコアに報告！
+                if (eID != 0) return eID; // イベントを見つけたらボスコアに報告
             }
         }
         return 0;
@@ -365,7 +365,7 @@ void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& 
         // ターゲットが存在し、レコーダーがあり、パスデータがセットされていれば描画
         if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
 
-            // 第4引数に true (isReadOnly) を渡すことで、誤操作を防ぎつつ線だけを描画！
+            // 第4引数に true (isReadOnly) を渡すことで、誤操作を防ぎつつ線だけを描画
             track.target->recorder_->DrawPreview(viewProjection, offset, size, true);
         }
     }
@@ -382,7 +382,7 @@ ActiveEvent GhostDirector::GetActiveEvent() const {
             int eID = track.target->recorder_->GetCurrentEventID();
 
             if (eID != 0) {
-                // イベントを見つけたら、「誰が」「何の」イベントを起こしたか詰めて返す！
+                // イベントを見つけたら、「誰が」「何の」イベントを起こしたか詰めて返す
                 result.id = eID;
                 result.targetObject = track.target;
                 return result;
