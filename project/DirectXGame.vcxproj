@@ -174,6 +174,12 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\actor\gimmick\GimmickSeesawFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\GimmickDashPanel.cpp" />
     <ClCompile Include="game\actor\gimmick\GimmickIceFloor.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickTimedSwitch.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickAppearingFloor.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickSwitch.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickEventReceiver.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickHookPullBlock.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickOneWayFloor.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
     <ClCompile Include="game\actor\enemy\EnemyBomb.cpp" />
@@ -473,6 +479,12 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\gimmick\GimmickSeesawFloor.h" />
     <ClInclude Include="game\actor\gimmick\GimmickDashPanel.h" />
     <ClInclude Include="game\actor\gimmick\GimmickIceFloor.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickTimedSwitch.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickAppearingFloor.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickSwitch.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickEventReceiver.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickHookPullBlock.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickOneWayFloor.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\EnemyBomb.h" />

@@ -44,6 +44,12 @@ public:
         float shakeDuration = 1.0f;
         float fallDuration = 2.0f;
         int colorType = 0; // 0: Blue, 1: Red
+        int switchMode = 0; // 0: Momentary, 1: Toggle, 2: Timed
+        int actionMode = 0; // 0: Appear, 1: MoveY, 2: MoveX, 3: MoveZ, 4: Enable, 5: Disable
+        float moveAmount = 10.0f;
+        float moveSpeed = 6.0f;
+        bool startActive = false;
+        bool returnOnOff = true;
         EntityParameter() = default;
     };
 
@@ -187,6 +193,7 @@ public:
     void ImportFromJson(const json& j);
 
     virtual void OnTrigger() { isVisible_ = false; }
+    virtual void OnSwitchEvent(bool active) { if (active) OnTrigger(); }
     void InitializeRecorder(SceneManager* sceneManager);
     void CopyFrom(const Object3d* other);
     void SetEnemyType(const std::string& type) { enemyType_ = type; }

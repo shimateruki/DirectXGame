@@ -18,6 +18,17 @@ void BaseScene::TriggerEvent(int targetID) {
     }
 }
 
+void BaseScene::SetEventActive(int targetID, bool active) {
+    if (targetID == -1) return;
+
+    auto& objects = GetObjects();
+    for (auto& obj : objects) {
+        if (obj->GetEventID() == targetID) {
+            obj->OnSwitchEvent(active);
+        }
+    }
+}
+
 Object3d* BaseScene::FindObjectByEventID(int eventID) {
     // IDなしなら無視
     if (eventID == -1) return nullptr;

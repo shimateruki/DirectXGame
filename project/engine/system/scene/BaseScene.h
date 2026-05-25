@@ -76,6 +76,7 @@ public:
     // --- イベント関連 ---
     // 実装はBaseScene.cppで行う想定（GetObjects()を使って検索するため）
     void TriggerEvent(int targetID);
+    void SetEventActive(int targetID, bool active);
     virtual Object3d* FindObjectByEventID(int eventID);
     virtual void DrawUI() {}
 

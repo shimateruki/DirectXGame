@@ -1,4 +1,4 @@
-#include "InspectorWindow.h"
+﻿#include "InspectorWindow.h"
 #include "DebugEditor.h"
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -697,6 +697,35 @@ void InspectorWindow::Draw() {
                     ImGui::SameLine();
                     ImGui::RadioButton("赤 (Red: Jump Odd)", &p.colorType, 1);
                 }
+                else if (gType == "Switch") {
+                    const char* switchModes[] = { "Momentary", "Toggle", "Timed" };
+                    ImGui::Combo("Switch Mode", &p.switchMode, switchModes, IM_ARRAYSIZE(switchModes));
+                    if (p.switchMode == 2) {
+                        ImGui::DragFloat(ICON_FA_CLOCK " Active Duration", &p.interval, 0.1f, 0.1f, 60.0f, "%.1f s");
+                    }
+                    ImGui::TextDisabled("Target ID -> receiver My Event ID");
+                }
+                else if (gType == "EventReceiver") {
+                    const char* actionModes[] = { "Appear", "MoveY", "MoveX", "MoveZ", "Enable", "Disable" };
+                    ImGui::Combo("Action Mode", &p.actionMode, actionModes, IM_ARRAYSIZE(actionModes));
+
+                    if (p.actionMode >= 1 && p.actionMode <= 3) {
+                        ImGui::DragFloat(ICON_FA_ARROWS_ALT " Move Amount", &p.moveAmount, 0.1f, -500.0f, 500.0f);
+                        ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " Move Speed", &p.moveSpeed, 0.1f, 0.1f, 60.0f);
+                    }
+
+                    ImGui::Checkbox("Start Active", &p.startActive);
+                    ImGui::Checkbox("Return On Off", &p.returnOnOff);
+                    ImGui::TextDisabled("My Event ID <- switch Target ID");
+                }
+                else if (gType == "HookPullBlock") {
+                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " Pull Speed", &p.speed, 0.5f, 1.0f, 120.0f);
+                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " Gravity", &p.gravity, 1.0f, 0.0f, 200.0f);
+                    ImGui::TextDisabled("Aim hook at this block to pull it toward the player.");
+                }
+                else if (gType == "OneWayFloor") {
+                    ImGui::TextDisabled("Solid only when the player lands from above.");
+                }
                 else {
                     ImGui::TextDisabled("(この種類には個別設定がありません)");
                 }
@@ -806,7 +835,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor" };
     std::string currentType = selectedObject->GetGimmickType();
 
     int currentIndex = 0;
@@ -923,6 +952,113 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetModel("Stages/block");
             selectedObject->SetColor({ 0.65f, 0.9f, 1.0f, 0.9f });
             selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "TimedSwitch") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_TimedSwitch");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 1.5f, 0.25f, 1.5f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "AppearingFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_AppearingFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.55f, 1.0f, 0.7f, 1.0f });
+            selectedObject->SetScale({ 2.0f, 0.35f, 2.0f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "Switch") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_Switch");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.25f, 0.75f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 1.5f, 0.25f, 1.5f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->switchMode = 0;
+            selectedObject->param_->interval = 3.0f;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "EventReceiver") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_EventReceiver");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.65f, 1.0f, 0.65f, 1.0f });
+            selectedObject->SetScale({ 2.0f, 0.35f, 2.0f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->actionMode = 0;
+            selectedObject->param_->moveAmount = 10.0f;
+            selectedObject->param_->moveSpeed = 6.0f;
+            selectedObject->param_->startActive = false;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "HookPullBlock") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_HookPullBlock");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.55f, 0.85f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 1.0f, 1.0f, 1.0f });
+
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 42.0f;
+            selectedObject->param_->gravity = 50.0f;
+            selectedObject->param_->maxFallSpeed = 60.0f;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "OneWayFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_OneWayFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.85f, 0.9f, 0.65f, 0.9f });
+            selectedObject->SetScale({ 2.5f, 0.22f, 2.5f });
 
             selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
             selectedObject->SetCollisionMask(0b11111111);

@@ -688,6 +688,12 @@ json Object3d::ExportToJson() {
         jp["colorType"] = p.colorType;
         jp["shakeDuration"] = p.shakeDuration;
         jp["fallDuration"] = p.fallDuration;
+        jp["switchMode"] = p.switchMode;
+        jp["actionMode"] = p.actionMode;
+        jp["moveAmount"] = p.moveAmount;
+        jp["moveSpeed"] = p.moveSpeed;
+        jp["startActive"] = p.startActive;
+        jp["returnOnOff"] = p.returnOnOff;
         d["param"] = jp;
     }
 
@@ -795,6 +801,12 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("colorType")) p.colorType = jp["colorType"];
         if (jp.contains("shakeDuration")) p.shakeDuration = jp["shakeDuration"];
         if (jp.contains("fallDuration")) p.fallDuration = jp["fallDuration"];
+        if (jp.contains("switchMode")) p.switchMode = jp["switchMode"];
+        if (jp.contains("actionMode")) p.actionMode = jp["actionMode"];
+        if (jp.contains("moveAmount")) p.moveAmount = jp["moveAmount"];
+        if (jp.contains("moveSpeed")) p.moveSpeed = jp["moveSpeed"];
+        if (jp.contains("startActive")) p.startActive = jp["startActive"];
+        if (jp.contains("returnOnOff")) p.returnOnOff = jp["returnOnOff"];
         param_ = p;
     }
 

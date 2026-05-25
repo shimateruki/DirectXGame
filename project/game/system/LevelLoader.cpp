@@ -443,6 +443,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("fallDuration")) param.fallDuration = p["fallDuration"];
                     if (p.contains("colorType")) param.colorType = p["colorType"];
                     if (p.contains("detectionRange")) param.detectionRange = p["detectionRange"];
+                    if (p.contains("switchMode")) param.switchMode = p["switchMode"];
+                    if (p.contains("actionMode")) param.actionMode = p["actionMode"];
+                    if (p.contains("moveAmount")) param.moveAmount = p["moveAmount"];
+                    if (p.contains("moveSpeed")) param.moveSpeed = p["moveSpeed"];
+                    if (p.contains("startActive")) param.startActive = p["startActive"];
+                    if (p.contains("returnOnOff")) param.returnOnOff = p["returnOnOff"];
                 }
 
                 // ==========================================

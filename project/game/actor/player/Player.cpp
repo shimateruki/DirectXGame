@@ -16,6 +16,7 @@
 #include <CollisionManager.h>
 #include "DirectXCommon.h"
 #include"BaseEnemy.h"
+#include "GimmickHookPullBlock.h"
 // =================================================================
 // 初期化・更新・描画
 // =================================================================
@@ -155,6 +156,9 @@ void Player::Update(float deltaTime)
                         // 当たった対象が「敵」なら引き寄せ、それ以外なら自分が飛ぶ
                         if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
                             ChangeState(std::make_unique<PlayerStateSwingHook>(targetPos));
+                        }
+                        else if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
+                            ChangeState(std::make_unique<PlayerStatePullObject>(aimTargetObject_, targetPos));
                         }
                         else if (aimTargetObject_ && (aimTargetObject_->GetCollisionAttribute() & kEnemy)) {
                             ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
@@ -383,6 +387,13 @@ bool Player::OnCollision(Object3d* other)
     // 1. 物理挙動の適用 (ソリッドな壁や床からの押し戻し)
     // 無敵中でも壁抜けは厳禁なので、一番最初に処理します。
     // =======================================================
+    if (other->GetGimmickType() == "OneWayFloor") {
+        bool canStand = info.normal.y > 0.55f && velocity_.y <= 1.0f;
+        if (!canStand) {
+            return false;
+        }
+    }
+
     if (attribute & kAllSolid)
     {
         ApplyPhysicsCollision(info, attribute);

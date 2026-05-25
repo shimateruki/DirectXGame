@@ -11,6 +11,12 @@
 #include "GimmickSeesawFloor.h"
 #include "GimmickDashPanel.h"
 #include "GimmickIceFloor.h"
+#include "GimmickTimedSwitch.h"
+#include "GimmickAppearingFloor.h"
+#include "GimmickSwitch.h"
+#include "GimmickEventReceiver.h"
+#include "GimmickHookPullBlock.h"
+#include "GimmickOneWayFloor.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -83,6 +89,36 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
     }
     else if (gimmickName == "IceFloor") {
         auto floor = std::make_unique<GimmickIceFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "TimedSwitch") {
+        auto switchFloor = std::make_unique<GimmickTimedSwitch>();
+        switchFloor->Initialize(common, "Stages/block");
+        newGimmick = std::move(switchFloor);
+    }
+    else if (gimmickName == "AppearingFloor") {
+        auto floor = std::make_unique<GimmickAppearingFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "Switch") {
+        auto switchObj = std::make_unique<GimmickSwitch>();
+        switchObj->Initialize(common, "Stages/block");
+        newGimmick = std::move(switchObj);
+    }
+    else if (gimmickName == "EventReceiver") {
+        auto receiver = std::make_unique<GimmickEventReceiver>();
+        receiver->Initialize(common, "Stages/block");
+        newGimmick = std::move(receiver);
+    }
+    else if (gimmickName == "HookPullBlock") {
+        auto block = std::make_unique<GimmickHookPullBlock>();
+        block->Initialize(common, "Stages/block");
+        newGimmick = std::move(block);
+    }
+    else if (gimmickName == "OneWayFloor") {
+        auto floor = std::make_unique<GimmickOneWayFloor>();
         floor->Initialize(common, "Stages/block");
         newGimmick = std::move(floor);
     }

@@ -133,6 +133,12 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["param"]["fallDuration"] = p.fallDuration;
         d["param"]["colorType"] = p.colorType;
         d["param"]["detectionRange"] = p.detectionRange;
+        d["param"]["switchMode"] = p.switchMode;
+        d["param"]["actionMode"] = p.actionMode;
+        d["param"]["moveAmount"] = p.moveAmount;
+        d["param"]["moveSpeed"] = p.moveSpeed;
+        d["param"]["startActive"] = p.startActive;
+        d["param"]["returnOnOff"] = p.returnOnOff;
     }
 
     // 8. グラフィックス
