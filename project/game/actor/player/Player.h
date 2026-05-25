@@ -53,6 +53,7 @@ public:
     // アニメーション・状態管理 (State Pattern)
     // ==================================================
     void ChangeState(std::unique_ptr<IAnimationState> newState);
+    IAnimationState* GetState() const { return state_.get(); }
     void PlayAnimation(const std::string& animName, bool loop = true);
 
     // ==================================================
