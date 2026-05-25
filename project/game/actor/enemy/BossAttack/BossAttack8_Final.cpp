@@ -10,7 +10,7 @@
 #include "BaseScene.h"
 #include "CollisionManager.h"
 #include "../../MapBlock.h"
-#include "../EnemyBomb.h"
+#include "EnemyBomb.h"
 #include "CollisionConfig.h"
 
 BossAttack8_Final::~BossAttack8_Final() {
