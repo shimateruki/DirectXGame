@@ -1514,6 +1514,15 @@ void BossCore::TakeBodyDamage(float damage) {
         return;
     }
 
+    // ====================================================
+    // ★ 追加：最終奥義発動前、または大技中でトドメ待ちでないならHP1で踏みとどまる！
+    // ====================================================
+    if (!isFinalPhase_ && nextHp <= 1.0f) {
+        nextHp = 1.0f;
+    } else if (isFinalPhase_ && !isWaitingForFinisher_ && nextHp <= 1.0f) {
+        nextHp = 1.0f;
+    }
+
     param_->hp = nextHp;
 
     // HPが0以下になったら死亡演出を開始
