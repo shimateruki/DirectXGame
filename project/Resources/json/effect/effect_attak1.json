@@ -43,7 +43,7 @@
     ],
     "InnerRadius": 0.9980000257492065,
     "Intensity": 1.0,
-    "Lifetime": 1.5,
+    "Lifetime": 1.0,
     "MeshSegments": 45,
     "ModelName": "sword_effect1",
     "NoiseTexturePath": "",
