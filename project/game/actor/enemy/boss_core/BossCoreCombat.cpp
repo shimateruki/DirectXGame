@@ -132,6 +132,7 @@ void BossCore::TakeBodyDamage(float damage) {
 
                     // グラフィックス/マテリアル
                     mapBlock->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    mapBlock->SetEnableOutline(true);
                     mapBlock->SetEmissive(1.0f);
                     mapBlock->SetEnableEnvMap(true);
                     mapBlock->SetEnvIntensity(0.1f);

@@ -297,6 +297,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->UpdateWorldMatrix();
                 if (objData.contains("blendMode")) targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
                 if (objData.contains("materialType")) targetObject->SetMaterialType(objData["materialType"].get<int>());
+                if (objData.contains("enableOutline")) targetObject->SetEnableOutline(objData["enableOutline"].get<bool>());
 
                 if (objData.contains("color")) {
                     targetObject->SetColor({
