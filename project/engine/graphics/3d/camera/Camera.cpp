@@ -30,6 +30,9 @@ bool IsIgnoredForCameraCollision(Object3d* object) {
         if (!enemyType.empty()) {
             return true;
         }
+        if (name.find("Battle_Field_Collision_Box_") != std::string::npos) {
+            return true;
+        }
         if (name.find("Armor") != std::string::npos ||
             name.find("armor") != std::string::npos ||
             name.find("Boss") != std::string::npos) {

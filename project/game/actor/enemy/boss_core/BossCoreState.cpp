@@ -382,7 +382,9 @@ void BossCore::UpdateIdle(float deltaTime) {
 
 void BossCore::UpdateWeak(float deltaTime) {
     float actionDelta = deltaTime * kBaseSpeedMultiplier;
-    float duration = std::max(0.0f, attackParams_.stunDuration - 2.0f); // Reduce stun time by 2 seconds
+    float duration = isCrashStun_
+        ? std::max(0.1f, attackParams_.crashStunDuration)
+        : std::max(0.0f, attackParams_.stunDuration - 2.0f);
     float wakeUpStart = duration > 2.0f ? duration - 2.0f : duration * 0.666f;
     float wakeUpDuration = duration - wakeUpStart;
 

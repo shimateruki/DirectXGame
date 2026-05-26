@@ -15,6 +15,9 @@
 
 void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseEnemy::Initialize(common, modelName);
+    SetModel(static_cast<Model*>(nullptr));
+    SetupVisualParts();
+
     state_ = State::Chase;
     igniteTimer_ = 0.0f;
     hitCount_ = 0;
@@ -29,7 +32,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     if (GetTransform()) {
         defaultScale_ = GetTransform()->scale;
     }
-    SetColor(defaultColor_);
+    SetVisualPartsColor(defaultColor_);
     SetEnemyType("Bomb");
 
     // コライダーを球体（Sphere）に設定
@@ -61,6 +64,52 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     }
     SetAttackDamage(bombDamage);
     deflectedBossDamage_ = bossDamage;
+}
+
+void EnemyBomb::SetupVisualParts() {
+    bodyPart_ = std::make_unique<Object3d>();
+    bodyPart_->Initialize(common_);
+    bodyPart_->SetName(GetName() + "_Body");
+    bodyPart_->SetClassName("BombVisual");
+    bodyPart_->SetModel("boom_1");
+    bodyPart_->SetParent(this);
+    bodyPart_->SetTranslate({ 0.0f, 0.0f, 0.0f });
+    bodyPart_->SetRotation({ 0.0f, 0.0f, 0.0f });
+    bodyPart_->SetScale({ 0.50f, 0.70f, 0.70f });
+    bodyPart_->SetCollisionAttribute(0);
+    bodyPart_->SetCollisionMask(0);
+
+    ringPart_ = std::make_unique<Object3d>();
+    ringPart_->Initialize(common_);
+    ringPart_->SetName(GetName() + "_Ring");
+    ringPart_->SetClassName("BombVisual");
+    ringPart_->SetModel("boom_2");
+    ringPart_->SetParent(this);
+    ringPart_->SetTranslate({ -0.026f, -0.006f, -0.140f });
+    ringPart_->SetRotation({ 0.0f, 0.0f, 0.0f });
+    ringPart_->SetScale({ 1.08f, 0.70f, 0.70f });
+    ringPart_->SetCollisionAttribute(0);
+    ringPart_->SetCollisionMask(0);
+}
+
+void EnemyBomb::SetVisualPartsColor(const Vector4& color) {
+    SetColor(color);
+    if (bodyPart_) {
+        bodyPart_->SetColor(color);
+    }
+    if (ringPart_) {
+        ringPart_->SetColor(color);
+    }
+}
+
+void EnemyBomb::SetVisualPartsVisible(bool visible) {
+    SetIsVisible(visible);
+    if (bodyPart_) {
+        bodyPart_->SetIsVisible(visible);
+    }
+    if (ringPart_) {
+        ringPart_->SetIsVisible(visible);
+    }
 }
 
 void EnemyBomb::Update(float deltaTime) {
@@ -145,10 +194,10 @@ void EnemyBomb::Update(float deltaTime) {
             {
                 float blinkInterval = (igniteTimer_ > igniteDuration_ * 0.7f) ? 0.08f : 0.2f;
                 if (std::fmod(igniteTimer_, blinkInterval) < blinkInterval / 2.0f) {
-                    SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+                    SetVisualPartsColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
                 }
                 else {
-                    SetColor(defaultColor_);              // 元の色
+                    SetVisualPartsColor(defaultColor_);              // 元の色
                 }
             }
 
@@ -172,7 +221,7 @@ void EnemyBomb::Update(float deltaTime) {
                 state_ = State::Exploded;
 
                 // 爆発の瞬間に見た目をリセットしておく
-                SetColor(defaultColor_);
+                SetVisualPartsColor(defaultColor_);
                 SetScale(defaultScale_);
             }
         }
@@ -193,7 +242,7 @@ void EnemyBomb::Update(float deltaTime) {
                 param_->gravity = 0.0f;
             }
 
-            SetIsVisible(false);
+            SetVisualPartsVisible(false);
 
             // エフェクト発生 (ボム自身の位置で正確に爆発させるために SpawnEffectAt を使用。スケールを2倍にして迫力を出し、当たり判定と一致させます)
             UpdateWorldMatrix();
@@ -245,12 +294,26 @@ void EnemyBomb::Update(float deltaTime) {
 
     // 落下死判定（Y座標が-5.0f以下になったら消滅し、実体も即座に消す）
     if (GetTransform()->translate.y <= -5.0f) {
-        SetIsVisible(false);
+        SetVisualPartsVisible(false);
         SetCollisionAttribute(0);
         isDead = true;
     }
 
 }
+
+void EnemyBomb::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+    if (!GetIsVisible()) {
+        return;
+    }
+
+    if (bodyPart_) {
+        bodyPart_->Draw(pointLightResource, spotLightResource);
+    }
+    if (ringPart_) {
+        ringPart_->Draw(pointLightResource, spotLightResource);
+    }
+}
+
 std::unique_ptr<Object3d> EnemyBomb::Clone() const {
     auto clone = std::make_unique<EnemyBomb>();
     clone->Initialize(common_, this->GetModelName());
@@ -407,5 +470,5 @@ void EnemyBomb::UpdateColorByHitCount() {
         defaultColor_ = { 1.0f, 0.0f, 0.0f, 1.0f }; // 赤色
         break;
     }
-    SetColor(defaultColor_);
+    SetVisualPartsColor(defaultColor_);
 }

@@ -6,10 +6,14 @@ class EnemyBomb : public BaseEnemy {
 public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     bool OnCollision(Object3d* other) override;
     std::unique_ptr<Object3d> Clone() const override;
 
 private:
+    void SetupVisualParts();
+    void SetVisualPartsColor(const Vector4& color);
+    void SetVisualPartsVisible(bool visible);
     void UpdateColorByHitCount();
 
     // ボム兵の状態
@@ -41,4 +45,7 @@ private:
     // コロコロ転がり挙動用
     bool isRolling_ = true;
     float rollTimer_ = 0.0f;
+
+    std::unique_ptr<Object3d> bodyPart_;
+    std::unique_ptr<Object3d> ringPart_;
 };
