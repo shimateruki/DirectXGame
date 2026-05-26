@@ -35,6 +35,7 @@ struct BossAttackParams {
     float maxBarrierHp = 100.0f;   // ボス最大バリアHP
     float maxArmorBlockHp = 100.0f; // ボス最大装甲ブロックHP
     float stunDuration = 6.0f;     // スタン時間（秒）
+    float crashStunDuration = 3.0f; // 突進がマップブロックに衝突した時のスタン時間（秒）
     int lowArmorThreshold = 3;     // 残り装甲ブロック数がこの個数以下の場合に発動
     int lowArmorAbsorbRate = 90;   // 低装甲時の吸収攻撃(ID: 7)の発動確率（0〜100%）
 
@@ -58,6 +59,7 @@ struct BossAttackParams {
         j["maxBarrierHp"] = maxBarrierHp;
         j["maxArmorBlockHp"] = maxArmorBlockHp;
         j["stunDuration"] = stunDuration;
+        j["crashStunDuration"] = crashStunDuration;
         j["lowArmorThreshold"] = lowArmorThreshold;
         j["lowArmorAbsorbRate"] = lowArmorAbsorbRate;
 
@@ -89,6 +91,7 @@ struct BossAttackParams {
         if (j.contains("maxBarrierHp")) maxBarrierHp = j["maxBarrierHp"];
         if (j.contains("maxArmorBlockHp")) maxArmorBlockHp = j["maxArmorBlockHp"];
         if (j.contains("stunDuration")) stunDuration = j["stunDuration"];
+        if (j.contains("crashStunDuration")) crashStunDuration = j["crashStunDuration"];
         if (j.contains("lowArmorThreshold")) lowArmorThreshold = j["lowArmorThreshold"];
         if (j.contains("lowArmorAbsorbRate")) lowArmorAbsorbRate = j["lowArmorAbsorbRate"];
 

@@ -2545,6 +2545,7 @@ void GamePlayScene::DrawImGui() {
                 ImGui::DragFloat("ボス 最大バリアHP", &params.maxBarrierHp, 1.0f, 10.0f, 1000.0f);
                 ImGui::DragFloat("装甲ブロック単体のHP", &params.maxArmorBlockHp, 1.0f, 10.0f, 1000.0f);
                 ImGui::DragFloat("ボス スタン時間 (秒)", &params.stunDuration, 0.1f, 1.0f, 60.0f);
+                ImGui::DragFloat("突進クラッシュスタン時間 (秒)", &params.crashStunDuration, 0.1f, 0.1f, 30.0f);
                 ImGui::DragInt("低装甲時 吸収トリガー数", &params.lowArmorThreshold, 0.1f, 0, 10);
                 ImGui::SliderInt("低装甲時 吸収発動確率 (％)", &params.lowArmorAbsorbRate, 0, 100);
 
