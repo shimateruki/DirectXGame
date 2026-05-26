@@ -4,6 +4,7 @@
 #include "IconsFontAwesome5.h"
 #include "json.hpp"
 #include <fstream>
+#include <cstdlib>
 #include <DebugConsole.h>
 #include "SceneManager.h"
 #include "BaseScene.h"
@@ -451,6 +452,69 @@ void MeshEffectManager::SpawnEffectAt(const std::string& jsonFilePath, const Vec
     }
 }
 
+void MeshEffectManager::SpawnLightningArc(const Vector3& position, float radius, float length, float width) {
+    if (!common_) {
+        auto sm = SceneManager::GetInstance();
+        if (sm && sm->GetCurrentScene()) {
+            common_ = sm->GetCurrentScene()->GetObject3dCommon();
+        }
+    }
+    if (!common_) {
+        return;
+    }
+
+    auto effect = std::make_unique<EffectObject3d>();
+    effect->Initialize(common_);
+    effect->SetColliderType(ColliderType::kNone);
+    effect->SetCollisionAttribute(0);
+    effect->SetCollisionMask(0);
+    effect->editHasCollision_ = false;
+
+    effect->SetProceduralType(12);
+    effect->editLightningLength_ = length;
+    effect->editLightningWidth_ = width * 1.35f;
+    effect->editLightningJitter_ = radius * 0.48f;
+    effect->editMeshSegments_ = 9 + (std::rand() % 5);
+    effect->editUvTiling_ = { 1.0f, 1.0f };
+    effect->UpdateProceduralMesh();
+
+    effect->SetEnableNoiseTexture(false);
+    effect->SetEnableColorRamp(false);
+    effect->SetEnableDistortion(false);
+    effect->SetEnableReveal(false);
+    effect->SetBlendMode(BlendMode::kAdd);
+    effect->SetIntensity(13.0f);
+    effect->SetAlphaReference(0.0f);
+    effect->SetStartColor({ 0.85f, 0.95f, 1.0f, 1.0f });
+    effect->SetEndColor({ 0.0f, 0.45f, 1.0f, 0.0f });
+    effect->SetStartScale({ 1.0f, 1.0f, 1.0f });
+    effect->SetEndScale({ 1.12f, 1.12f, 1.12f });
+
+    if (effect->GetMeshRenderer()) {
+        effect->GetMeshRenderer()->SetTexture("Resources/sprite/white.png");
+    }
+
+    Vector3 offset = {
+        (static_cast<float>(std::rand() % 200) / 100.0f - 1.0f) * radius,
+        (static_cast<float>(std::rand() % 200) / 100.0f - 1.0f) * radius,
+        (static_cast<float>(std::rand() % 200) / 100.0f - 1.0f) * radius
+    };
+    Vector3 rot = {
+        (static_cast<float>(std::rand() % 628) / 100.0f),
+        (static_cast<float>(std::rand() % 628) / 100.0f),
+        (static_cast<float>(std::rand() % 628) / 100.0f)
+    };
+
+    effect->SetTranslate(position + offset);
+    effect->SetRotation(rot);
+    effect->Play(0.16f);
+    effect->Update(0.0f);
+    effect->UpdateLocalMatrix();
+    effect->UpdateWorldMatrix();
+
+    activeEffects_.push_back(std::move(effect));
+}
+
 void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
     if (!common_) {
         auto sm = SceneManager::GetInstance();
@@ -592,4 +656,4 @@ void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetim
     effect->UpdateWorldMatrix();
 
     activeEffects_.push_back(std::move(effect));
-}
+}

@@ -705,6 +705,7 @@ void BossCore::Update(float deltaTime) {
                     blockHps_[i] -= dmg;
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
+                        StartArmorBlockBreak(i);
                         GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
                         DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                     }
@@ -732,6 +733,7 @@ void BossCore::Update(float deltaTime) {
                         blockHps_[i] -= dmg;
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
+                            StartArmorBlockBreak(i);
                             GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                         }
@@ -759,6 +761,7 @@ void BossCore::Update(float deltaTime) {
                         blockHps_[i] -= dmg;
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
+                            StartArmorBlockBreak(i);
                             GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                         }
@@ -814,6 +817,7 @@ void BossCore::Update(float deltaTime) {
                             armorBlocks_.erase(armorBlocks_.begin() + i);
                             if (i < blockHps_.size()) blockHps_.erase(blockHps_.begin() + i);
                             if (i < blockBroken_.size()) blockBroken_.erase(blockBroken_.begin() + i);
+                            if (i < armorBreakMotions_.size()) armorBreakMotions_.erase(armorBreakMotions_.begin() + i);
                         }
                         else {
                             ++i;
@@ -896,12 +900,7 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     // 魔法の処理：破壊されたブロックの強制消去
     // ==========================================
-    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-        if (blockBroken_[i] && armorBlocks_[i]) {
-            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
-            armorBlocks_[i]->SetCollisionAttribute(0);
-        }
-    }
+    UpdateBrokenArmorBlocks(deltaTime);
 
     // ==========================================
     // 破片の物理計算と退場タイマーを進める

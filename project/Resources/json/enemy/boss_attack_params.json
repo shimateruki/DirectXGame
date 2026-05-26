@@ -14,7 +14,7 @@
     "damageWall": 30.0,
     "lowArmorAbsorbRate": 90,
     "lowArmorThreshold": 3,
-    "maxArmorBlockHp": 200.0,
+    "maxArmorBlockHp": 20.0,
     "maxBarrierHp": 300.0,
     "phase1Attacks": [
         {

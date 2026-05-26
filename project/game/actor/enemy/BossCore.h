@@ -153,6 +153,7 @@ public:
 
         blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録
         blockBroken_.push_back(false);
+        armorBreakMotions_.push_back({});
     }
 
     void SetArmorAttackCollisionActive(bool active, bool includeGround = false) {
@@ -326,6 +327,43 @@ private:
     std::vector<float> blockHps_;
     std::vector<bool> blockBroken_;
 
+    struct ArmorBreakMotion {
+        struct ChildPiece {
+            Object3d* object = nullptr;
+            bool landed = false;
+            bool rolling = false;
+            int bounceCount = 0;
+            float rollTimer = 0.0f;
+            float landedTimer = 0.0f;
+            float groundY = 0.5f;
+            Vector3 velocity = { 0.0f, 0.0f, 0.0f };
+            Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+            Vector3 position = { 0.0f, 0.0f, 0.0f };
+            Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+            Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
+            Vector3 landedScale = { 1.0f, 1.0f, 1.0f };
+            Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        };
+
+        bool active = false;
+        bool landed = false;
+        bool rolling = false;
+        float timer = 0.0f;
+        float rollTimer = 0.0f;
+        float landedTimer = 0.0f;
+        float sparkTimer = 0.0f;
+        float groundY = 0.5f;
+        Vector3 velocity = { 0.0f, 0.0f, 0.0f };
+        Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+        Vector3 position = { 0.0f, 0.0f, 0.0f };
+        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
+        Vector3 landedScale = { 1.0f, 1.0f, 1.0f };
+        Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        std::vector<ChildPiece> childPieces;
+    };
+    std::vector<ArmorBreakMotion> armorBreakMotions_;
+
     // マップブロックのリスト
     std::vector<MapBlock*> mapBlocks_;
 
@@ -367,6 +405,8 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
+    void StartArmorBlockBreak(size_t index);
+    void UpdateBrokenArmorBlocks(float deltaTime);
     void SetBlockColor(Object3d* block, const Vector4& color);
     void SaveOriginalColors();
 
