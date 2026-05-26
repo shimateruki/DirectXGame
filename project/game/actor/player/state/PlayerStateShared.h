@@ -233,24 +233,33 @@ inline void TryFindArms(Player *player, Object3d *&leftArmOut,
 // ========================================================
 // 剣・頭探索ヘルパー
 // ========================================================
-inline void FindSwordRecursive(Object3d *node, Object3d *&swordOut) {
-  if (!node)
-    return;
-  const auto &children = node->GetChildren();
-  for (Object3d *child : children) {
-    if (!child)
-      continue;
-    std::string name = ToLower(child->GetName());
-    if (name.find("sword") != std::string::npos ||
-        name.find("katana") != std::string::npos ||
-        name.find("blade") != std::string::npos) {
-      swordOut = child;
-      return;
+inline void FindSwordRecursive(Object3d* node, Object3d*& swordOut)
+{
+    if (!node)
+        return;
+    const auto& children = node->GetChildren();
+    for (Object3d* child : children)
+    {
+        if (!child)
+            continue;
+        std::string name = ToLower(child->GetName());
+        bool isSwordPart = (name.find("sword") != std::string::npos ||
+            name.find("katana") != std::string::npos ||
+            name.find("blade") != std::string::npos);
+        bool isExcluded = (name.find("string") != std::string::npos ||
+            name.find("scabbard") != std::string::npos ||
+            name.find("bag") != std::string::npos ||
+            name.find("fastener") != std::string::npos);
+
+        if (isSwordPart && !isExcluded)
+        {
+            swordOut = child;
+            return;
+        }
+        FindSwordRecursive(child, swordOut);
+        if (swordOut)
+            return;
     }
-    FindSwordRecursive(child, swordOut);
-    if (swordOut)
-      return;
-  }
 }
 
 inline void FindSwordInSceneByName(Player *player, Object3d *&swordOut) {
@@ -263,7 +272,7 @@ inline void FindSwordInSceneByName(Player *player, Object3d *&swordOut) {
     if (!obj)
       continue;
     std::string n = ToLower(obj->GetName());
-    if (n.find("sword") != std::string::npos ||
+    if ((n.find("sword") != std::string::npos && n.find("sword_string") == std::string::npos) ||
         n.find("katana") != std::string::npos ||
         n.find("blade") != std::string::npos) {
       swordOut = obj.get();

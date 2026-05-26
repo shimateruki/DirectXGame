@@ -225,6 +225,3 @@ void PlayerStateDash::ApplyPose(float t) {
     rightFootObj_->UpdateWorldMatrix();
   }
 }
-
-// ========================================================
-// 死亡状態 (Dead - バタリ倒れバイオ4風) 実装

@@ -224,6 +224,7 @@ void PlayerStateDead::ApplyPose(float t) {
   }
   if (leftFootObj_) {
     Transform *tf = leftFootObj_->GetTransform();
+    curLtFootRot.x = curRtFootRot.x; // 左足のX軸回転を右足と同じ値にする
     tf->rotate = curLtFootRot;
     tf->quaternion = Math::EulerToQuaternion(tf->rotate);
     tf->isQuaternionMaster = true;
@@ -303,6 +304,3 @@ void PlayerStateDead::ApplyPose(float t) {
     }
   }
 }
-
-// ========================================================
-// 落下攻撃状態 (Plunge Attack) 実装

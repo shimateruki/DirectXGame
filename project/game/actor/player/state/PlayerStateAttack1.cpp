@@ -393,6 +393,3 @@ void PlayerStateAttack1::ApplyPose(float t)
 		leftFootObj_->UpdateWorldMatrix();
 	}
 }
-
-// ========================================================
-// 攻撃2段目状態 (Attack2) 実装
