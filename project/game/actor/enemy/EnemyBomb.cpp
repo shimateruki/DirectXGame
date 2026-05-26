@@ -129,7 +129,7 @@ void EnemyBomb::Update(float deltaTime) {
     switch (state_) {
     case State::Chase:
         if (!isBlownAway_ && stunTimer_ <= 0.0f && !isRolling_) {
-            // 追従移動は完全に排除！転がり終わったら即座にその場で点火カウントダウンを開始する
+            // 追従移動は完全に排除転がり終わったら即座にその場で点火カウントダウンを開始する
             state_ = State::Ignited;
             igniteTimer_ = 0.0f;
         }
@@ -187,7 +187,7 @@ void EnemyBomb::Update(float deltaTime) {
             SetCollisionAttribute(kEnemyAttack);
             SetCollisionMask(kPlayer); // 床との判定が切れる
 
-            // ★床をすり抜けて落下しないように、速度と重力をゼロにする！
+            // 床をすり抜けて落下しないように、速度と重力をゼロにする
             velocity_ = { 0.0f, 0.0f, 0.0f };
             if (param_.has_value()) {
                 param_->gravity = 0.0f;
@@ -202,7 +202,7 @@ void EnemyBomb::Update(float deltaTime) {
 
         explosionTimer_ += deltaTime;
 
-        // ★ 当たり判定を 0.1f から 4.0f へ徐々に広げる
+        // 当たり判定を 0.1f から 4.0f へ徐々に広げる
         float t = std::min(explosionTimer_ / explosionDuration_, 1.0f);
         float currentRadius = Math::Lerp(0.1f, explosionRadius_, t);
         SetCollisionRadius(currentRadius);
@@ -265,7 +265,7 @@ bool EnemyBomb::OnCollision(Object3d* other) {
         return true;
     }
 
-    // 吹き飛ばし中にボス本体に当たったら、ダメージを与えて爆発する！
+    // 吹き飛ばし中にボス本体に当たったら、ダメージを与えて爆発する
     if (isBlownAway_) {
         BossCore* boss = dynamic_cast<BossCore*>(other);
         if (boss) {
@@ -379,7 +379,7 @@ bool EnemyBomb::OnCollision(Object3d* other) {
         else {
             ApplyPhysicsCollision(info, attribute);
 
-            // 吹き飛び中に地面に激突したらその場で起爆！
+            // 吹き飛び中に地面に激突したらその場で起爆
             if (isBlownAway_ && isGrounded_ && velocity_.y <= 0.0f) {
                 state_ = State::Exploded;
             }

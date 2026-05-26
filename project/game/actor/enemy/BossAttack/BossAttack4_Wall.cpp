@@ -1,6 +1,6 @@
 #include "BossAttack4_Wall.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパスを調整してください
+#include "./easing.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -20,11 +20,11 @@ void BossAttack4_Wall::Initialize(BossCore* boss) {
     wallStep_ = 0; // カウントリセット
     animPhase_ = 39;
 
-    // 💥 攻撃力を適用し、物理的な押し出し（kGround）を防ぐために一時的にkGroundを外す！
+    // 攻撃力だけ先に設定し、予備動作中は攻撃判定を持たせない。
     for (auto* block : boss->GetArmorBlocks()) {
         if (block) {
             block->SetAttackDamage(boss->GetAttackParams().damageWall);
-            block->SetCollisionAttribute(kEnemyAttack); // kGroundを外してkEnemyAttackのみにする
+            block->SetCollisionAttribute(0);
         }
     }
 }
@@ -61,7 +61,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             }
 
             // ==========================================
-            // 現在のブロック数に合わせて、常に「真ん中」を自動計算する！
+            // 現在のブロック数に合わせて、常に「真ん中」を自動計算する
             // ==========================================
             float centerIndex = (armorBlocks.size() - 1.0f) / 2.0f;
             float offset = -(static_cast<float>(i) - centerIndex) * blockWidth;
@@ -150,14 +150,14 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         // ==================================================
-        // ★ 操っている感：予備動作中にコアが震えながら力を溜める
+        // 操っている感：予備動作中にコアが震えながら力を溜める
         // ==================================================
         float vibration = std::sin(animTimer_ * 50.0f) * 0.1f * t;
         boss->SetRotation({ vibration, vibration, vibration });
         boss->GetTransform()->isQuaternionMaster = false;
 
         // ==================================================
-        // ★ 修正2：UVのマイナス反転による、完璧な方向コントロール！
+        // UVの符号で流れる方向を制御する。
         // ==================================================
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
@@ -171,7 +171,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 
        
             // ==================================================
-                // ★ UVスクロール最終決定版！
+                // UVスクロール最終決定版
                 // ==================================================
             float tilesX = 10.0f;
             float tilesY = 25.0f;
@@ -184,13 +184,13 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             else if (wallStep_ == 1) {
                 // 手前から奥（上へ移動）
                 uvScale = { tilesX, tilesY, 1.0f };
-                // ★ 修正：マイナスを外しました！（これで下から上へ流れます）
+                // マイナスを外しました（これで下から上へ流れます）
                 uvTranslate = { 0.0f, animTimer_ * scrollSpeed, 0.0f };
             }
             else if (wallStep_ == 2) {
                 // 右から左（左へ移動）
                 uvScale = { -tilesY, tilesX, 1.0f };
-                // マイナスをつけました！（これで右から左へ流れます）
+                // マイナスをつけました（これで右から左へ流れます）
                 uvTranslate = { -(animTimer_ * scrollSpeed), 0.0f, 0.0f };
             }
             else if (wallStep_ == 3) {
@@ -207,9 +207,11 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 41: 壁だけがステージを往復横断！ ---
+    // --- Phase 41: 壁だけがステージを往復横断 ---
     else if (animPhase_ == 41) {
         if (animTimer_ == 0.0f) {
+            boss->SetArmorAttackCollisionActive(true);
+
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f }); // 真っ赤
@@ -219,7 +221,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 float tilesX = 10.0f;
                 float tilesY = 25.0f;
 
-                // ★ スクロールを止める時も、反転状態は維持する！
+                // スクロールを止める時も、反転状態は維持する
                 if (wallStep_ == 0)      uvScale = { tilesX, -tilesY, 1.0f };
                 else if (wallStep_ == 1) uvScale = { tilesX, tilesY, 1.0f };
                 else if (wallStep_ == 2) uvScale = { -tilesY, tilesX, 1.0f };
@@ -247,13 +249,15 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         // ==================================================
-        // ★ 操っている感：壁が移動している間、コアが激しく回転する
+        // 操っている感：壁が移動している間、コアが激しく回転する
         // ==================================================
         float rotSpeed = 20.0f;
         boss->SetRotation({ 0.0f, animTimer_ * rotSpeed, 0.0f });
         boss->GetTransform()->isQuaternionMaster = false;
 
         if (t >= 1.0f) {
+            boss->SetArmorAttackCollisionActive(false);
+
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetScale({ 0.0f, 0.0f, 0.0f });
@@ -264,12 +268,12 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
     }
 
-    // --- Phase 42: 攻撃後の猶予 ＆ 往復のループ判定！ ---
+    // --- Phase 42: 攻撃後の猶予 ＆ 往復のループ判定 ---
     else if (animPhase_ == 42) {
         animTimer_ += deltaTime;
 
         // ==================================================
-        // ★ 攻撃チャンス演出：地上にゆっくり降りてくる
+        // 攻撃チャンス演出：地上にゆっくり降りてくる
         // ==================================================
         float waitTime = 4.0f; // 2.5s から 4.0s にさらに大幅延長
         float t = std::min(animTimer_ / waitTime, 1.0f);
@@ -285,7 +289,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         boss->SetTranslate(pos);
 
         // ==================================================
-        // ★ プレイヤーの方を向く（攻撃を受けた方向に正対する）
+        // プレイヤーの方を向く（攻撃を受けた方向に正対する）
         // ==================================================
         Object3d* target = boss->GetTarget();
         if (target) {
@@ -306,7 +310,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         if (animTimer_ >= waitTime) {
-            wallStep_++; // ★ ループ回数を進める
+            wallStep_++; // ループ回数を進める
 
             // 次の往復のために状態を戻す
             boss->SetScale({ 1.0f, 1.0f, 1.0f });
@@ -341,7 +345,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 localPos.y = offset.y;
                 localPos.z = -offset.x * std::sin(-bossRotY) + offset.z * std::cos(-bossRotY);
 
-                armorBlocks[i]->SetParent(boss); // ★ 親を boss に戻す
+                armorBlocks[i]->SetParent(boss); // 親を boss に戻す
                 armorBlocks[i]->SetTranslate(localPos);
                 blockStartPos_.push_back(localPos);
             }
@@ -374,14 +378,8 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
-            // 💥 攻撃完了！元の地面属性(kGround)を復活させる
-            uint32_t blockAttribute = (boss->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
-            for (auto* block : armorBlocks) {
-                if (block) {
-                    block->SetCollisionAttribute(blockAttribute);
-                }
-            }
-            isFinished_ = true; // 攻撃完了！
+            boss->SetArmorAttackCollisionActive(false);
+            isFinished_ = true; // 攻撃完了
         }
     }
 }
@@ -389,12 +387,6 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 void BossAttack4_Wall::Finalize() {
     if (boss_) {
         boss_->SetScale({ 1.0f, 1.0f, 1.0f });
-        // 💥 中断された場合も想定し、元の地面属性(kGround)を復活させる
-        uint32_t blockAttribute = (boss_->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
-        for (auto* block : boss_->GetArmorBlocks()) {
-            if (block) {
-                block->SetCollisionAttribute(blockAttribute);
-            }
-        }
+        boss_->SetArmorAttackCollisionActive(false);
     }
 }

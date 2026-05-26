@@ -1,7 +1,7 @@
 #include "MapBlock.h"
 #include "CollisionConfig.h"
 #include "DebugConsole.h"
-#include <algorithm> // ★ std::find を使うために追加
+#include <algorithm>
 #include "SceneManager.h"
 #include "BaseScene.h"
 #include "CollisionManager.h"
@@ -39,21 +39,14 @@ void MapBlock::Initialize(Object3dCommon* common) {
 
     CollisionManager::GetInstance()->AddObject(laserBeam.get());
 
-    // ==========================================
-    // ★ ここがポイント！SceneManagerから現在のシーンを取得して叩き込む！
-    // ==========================================
-    // 🚨 注意： GetCurrentScene() の部分は、タイクラーさんの
-    // SceneManagerクラスにある「現在のシーンを取得する関数名」に書き換えてください！
+    // レーザーはシーン管理下に置き、MapBlock側では参照だけを保持する。
     if (BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene()) {
         currentScene->AddObject(std::move(laserBeam));
     }
 }
 
 void MapBlock::Update(float deltaTime) {
-    // ==========================================
-    // レーザーの更新は、吸収されていても常にやる！
-    // これをやらないと座標や大きさが計算されません！
-    // ==========================================
+    // 吸収中もレーザーの座標とスケールを更新する。
     if (laserBeam_) {
         laserBeam_->Update(deltaTime);
     }

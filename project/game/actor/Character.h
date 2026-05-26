@@ -24,7 +24,7 @@ public:
      /// このキャラクターに適用される重力を設定する
      /// </summary>
     void SetGravity(float gravity) {
-        //  安全策：もしパラメータがまだ無ければ作る
+        // 安全策：もしパラメータがまだ無ければ作る
         if (!this->param_.has_value()) {
             this->param_.emplace();
         }

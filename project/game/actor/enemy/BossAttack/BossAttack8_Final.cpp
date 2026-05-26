@@ -10,7 +10,7 @@
 #include "BaseScene.h"
 #include "CollisionManager.h"
 #include "../../MapBlock.h"
-#include "../EnemyBomb.h"
+#include "EnemyBomb.h"
 #include "CollisionConfig.h"
 
 BossAttack8_Final::~BossAttack8_Final() {
@@ -63,7 +63,7 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
             block->Initialize(boss->GetCommon());
             block->SetModel("enemy_block");
             block->SetColliderType(ColliderType::kOBB);
-            block->SetCollisionAttribute(kEnemyAttack | kGround);
+            block->SetCollisionAttribute(kGround);
             block->SetCollisionMask(kPlayer);
             block->SetName("ArmorBlock_Spawned");
             
@@ -111,7 +111,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             meteor->SetScale({ 15.0f, 15.0f, 15.0f });
             meteor->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
             meteor->SetColliderType(ColliderType::kOBB);
-            meteor->SetCollisionAttribute(kEnemyAttack);
+            meteor->SetCollisionAttribute(0);
             meteor->SetCollisionMask(kPlayer | kGround);
             meteor->SetAttackDamage(boss->GetAttackParams().damageFinal);
             
@@ -182,7 +182,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         float duration = 2.0f; // 突進するまでのタメ時間（予測線表示）を2倍に延長
         
         // -----------------------------------------------------------------
-        // ★ 修正: タメ時間中、常にプレイヤーを注視（方向・位置・回転を毎フレーム追従更新）
+        // タメ時間中、常にプレイヤーを注視（方向・位置・回転を毎フレーム追従更新）
         // -----------------------------------------------------------------
         Vector3 currentBossPos = boss->GetTranslate();
         Vector3 targetPos = target ? target->GetWorldPosition() : Vector3{0,0,0};
@@ -446,7 +446,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 block->GetTransform()->isQuaternionMaster = false;
             };
 
-            // ★ レーザーのレイキャスト処理 (フェーズ11〜13で使う)
+            // レーザーのレイキャスト処理 (フェーズ11〜13で使う)
             float maxDist = 160.0f;
             float actualDist = maxDist;
             float parentScaleZ = 1.0f;
@@ -466,7 +466,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 }
             }
 
-            // ★ ヒット距離を使った遅延付きの長さ復元処理
+            // ヒット距離を使った遅延付きの長さ復元処理
             if (i < laserLengths_.size()) {
                 if (actualDist < laserLengths_[i]) {
                     laserLengths_[i] = actualDist;
@@ -500,8 +500,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 Vector3 pos = Math::Lerp(armorBlocks[i]->GetTranslate(), tgtPos, 5.0f * deltaTime);
                 armorBlocks[i]->SetTranslate(pos);
 
-                if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
-                if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
                 
                 if (animTimer_ < 11.5f && animTimer_ > 2.0f + i * 0.8f) {
                     funnelStates_[i] = 11; 
@@ -520,11 +520,13 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     laser->SetScale({ 0.02f, scaleY, 0.02f });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     laser->SetCollisionAttribute(0);
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
                     coreLaser->SetScale({ 0.0f, scaleY, 0.0f });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0);
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の展開演出 ---
@@ -562,6 +564,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
                     Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, funnelTimers_[i]*5.0f, 0.0f });
                     laser->SetUVTransform(uvMat);
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
                     coreLaser->SetScale({ 0.4f, scaleY, 0.4f });
@@ -572,6 +575,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
                     Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, funnelTimers_[i]*5.0f, 0.0f });
                     coreLaser->SetUVTransform(uvMat);
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の展開を維持（少し震わせる） ---
@@ -597,11 +601,13 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     laser->SetScale({ 1.0f * shrinkT, scaleY, 1.0f * shrinkT });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     laser->SetCollisionAttribute(0);
+                    laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
                     coreLaser->SetScale({ 0.4f * shrinkT, scaleY, 0.4f * shrinkT });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0);
+                    coreLaser->UpdateWorldMatrix();
                 }
 
                 // --- 子ブロック（Shard）の収束演出 ---
@@ -614,8 +620,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
                 if (t >= 1.0f) {
                     funnelStates_[i] = 0; 
-                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); }
-                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); }
+                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
 
                     // ビーム終了：地形属性判定を元に戻す
                     if (armorBlocks[i]) {
@@ -669,7 +675,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             };
             for (size_t i = 0; i < useCount; ++i) {
                 if (!armorBlocks[i]) continue;
-                armorBlocks[i]->SetCollisionAttribute(kEnemyAttack | kGround);
+                armorBlocks[i]->SetCollisionAttribute(kGround);
                 int shardIdx = 0;
                 for (auto* child : armorBlocks[i]->GetChildren()) {
                     if (child && child->GetName().find("Shard") != std::string::npos && shardIdx < 8) {
@@ -781,7 +787,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                         warn->SetColor(warnColor);
                         warn->UpdateWorldMatrix();
                     }
-                    if (laser) laser->SetScale({0, 0, 0});
+                    if (laser) { laser->SetScale({0, 0, 0}); laser->UpdateWorldMatrix(); }
                 } else if (localTime >= 1.5f && localTime < 3.1f) {
                     // 射出フェーズ (1.6秒間)：極太縦ビームを射出
                     if (warn) warn->SetScale({ 0, 0, 0 });
@@ -804,11 +810,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     if (laser) {
                         laser->SetScale({0, 0, 0});
                         laser->SetCollisionAttribute(0);
+                        laser->UpdateWorldMatrix();
                     }
                 }
             } else {
-                if (i < coreBeams_.size() && coreBeams_[i]) coreBeams_[i]->SetScale({0, 0, 0});
-                if (i < areaWarnings_.size() && areaWarnings_[i]) areaWarnings_[i]->SetScale({0, 0, 0});
+                if (i < coreBeams_.size() && coreBeams_[i]) { coreBeams_[i]->SetScale({0, 0, 0}); coreBeams_[i]->UpdateWorldMatrix(); }
+                if (i < areaWarnings_.size() && areaWarnings_[i]) { areaWarnings_[i]->SetScale({0, 0, 0}); areaWarnings_[i]->UpdateWorldMatrix(); }
             }
         }
 
@@ -853,7 +860,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             if (!meteors_.empty() && meteors_[0]) {
                 meteors_[0]->SetTranslate({ 0.0f, 150.0f, 0.0f }); 
                 meteors_[0]->SetScale({ 15.0f, 15.0f, 15.0f });
-                meteors_[0]->SetCollisionAttribute(kEnemyAttack);
+                meteors_[0]->SetCollisionAttribute(0);
             }
         }
         
@@ -862,6 +869,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         if (!meteors_.empty() && meteors_[0]) {
             Vector3 mPos = meteors_[0]->GetTranslate();
             if (animTimer_ > 1.0f && mPos.y > 0.0f) {
+                meteors_[0]->SetCollisionAttribute(kEnemyAttack);
                 mPos.y -= 150.0f * deltaTime; 
                 if (mPos.y <= 0.0f) {
                     mPos.y = 0.0f; // 着地
@@ -910,7 +918,7 @@ void BossAttack8_Final::Finalize() {
         if (laser) {
             laser->SetScale({ 0.0f, 0.0f, 0.0f });
             laser->SetCollisionAttribute(0);
-            laser->SetParent(nullptr); // 追加: 行列更新時の親アクセス違反防止
+            laser->SetParent(nullptr); // 行列更新時の親アクセス違反防止
             // laser->isDead = true; // 例外エラー対策: 削除せずに非表示化
         }
     }
@@ -929,7 +937,7 @@ void BossAttack8_Final::Finalize() {
         if (beam) {
             beam->SetScale({ 0.0f, 0.0f, 0.0f });
             beam->SetCollisionAttribute(0);
-            beam->SetParent(nullptr); // 追加: 行列更新時の親アクセス違反防止
+            beam->SetParent(nullptr); // 行列更新時の親アクセス違反防止
             // beam->isDead = true;
         }
     }
@@ -938,7 +946,7 @@ void BossAttack8_Final::Finalize() {
         if (warn) {
             warn->SetScale({ 0.0f, 0.0f, 0.0f });
             warn->SetCollisionAttribute(0);
-            warn->SetParent(nullptr); // 追加
+            warn->SetParent(nullptr);
             // warn->isDead = true;
         }
     }
@@ -947,7 +955,7 @@ void BossAttack8_Final::Finalize() {
         if (meteor) {
             meteor->SetScale({ 0.0f, 0.0f, 0.0f });
             meteor->SetCollisionAttribute(0);
-            meteor->SetParent(nullptr); // 追加
+            meteor->SetParent(nullptr);
             // meteor->isDead = true;
         }
     }

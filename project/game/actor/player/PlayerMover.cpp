@@ -211,7 +211,7 @@ void PlayerMover::Update(float deltaTime)
                 velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
             }
 
-            // 追加: ジャンプ専用アニメーション状態へ遷移
+            // ジャンプ専用アニメーション状態へ遷移
             if (player_) {
                 player_->ChangeState(std::make_unique<PlayerStateJump>());
             }

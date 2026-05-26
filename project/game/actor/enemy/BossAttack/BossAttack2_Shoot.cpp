@@ -46,15 +46,15 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
             blockTargetPos_.clear();
 
             // ==========================================
-            // ★ 修正：手書きの配置データをやめて、自動で綺麗な多角形（円陣）を作る！
+            // 手書きの配置データをやめて、自動で綺麗な多角形（円陣）を作る
             // ==========================================
             float turnY = std::numbers::pi_v<float> / 2.0f;
-            float radius = 4.0f; // ★ 10角形の半径（迫力を出すために少し広めに設定！）
+            float radius = 4.0f; // 10角形の半径（迫力を出すために少し広めに設定）
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
 
-                // 360度（2π）を現在のブロック数で割って、均等な角度を計算する！
+                // 360度（2π）を現在のブロック数で割って、均等な角度を計算する
                 // （10個なら36度ずつ、6個なら60度ずつズレる）
                 float angle = (2.0f * std::numbers::pi_v<float> *i) / armorBlocks.size();
 
@@ -130,11 +130,12 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
                 block->SetParent(nullptr);
                 block->SetTranslate(worldPos);
+                block->SetCollisionAttribute(0);
 
                 Vector3 currentRot = block->GetRotation();
                 block->GetTransform()->isQuaternionMaster = false;
 
-                // ★ 修正：ゲッター経由で FlyingBlocks に追加！
+                // ゲッター経由で FlyingBlocks に追加
                 boss->GetFlyingBlocks().push_back({ block, {0.0f, 0.0f, 0.0f}, currentRot, 4, idx });
             }
 
@@ -172,11 +173,11 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
             }
         }
 
-        // 弾が全部戻ってきたら攻撃終了！
+        // 弾が全部戻ってきたら攻撃終了
         if (boss->GetFlyingBlocks().empty()) {
             animTimer_ += deltaTime;
             if (animTimer_ >= 1.0f) {
-                isFinished_ = true; // ★ これで完了！
+                isFinished_ = true; // これで完了
             }
         }
     }

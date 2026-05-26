@@ -22,13 +22,13 @@ private:
     void Spawn();
 
 private:
-    //  工場に渡すために保持しておく
+    // 工場に渡すために保持しておく
     Object3dCommon* common_ = nullptr;
 
     std::string enemyType_;
     float spawnInterval_ = 1.0f;
     float timer_ = 0.0f;
     SpawnCallback onSpawnCallback_ = nullptr;
-    int maxCount_ = 0;    // 最大生成数 
+    int maxCount_ = 0;    // 最大生成数
     int spawnCount_ = 0;  // 生成済みカウント
 };

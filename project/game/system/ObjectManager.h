@@ -47,6 +47,6 @@ private:
 
 private:
 	std::vector<std::unique_ptr<Object3d>> objects_;
-	std::vector<std::unique_ptr<Object3d>> pendingObjects_; // 追加待ち
+	std::vector<std::unique_ptr<Object3d>> pendingObjects_; // 待ち
 	std::vector<Object3d*> removalList_;                    // 削除待ち
 };

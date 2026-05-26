@@ -50,7 +50,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     std::string enemyFile = baseFilename + "_enemy.json";
     std::string objectFile = baseFilename + "_object.json";
 
-    // ★ 3つの分割ファイルがどれか一つでも存在するかチェックする
+    // 3つの分割ファイルがどれか一つでも存在するかチェックする
     bool useSplitFiles = false;
     std::ifstream pFile(playerFile);
     std::ifstream eFile(enemyFile);
@@ -66,7 +66,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
     if (oFile.is_open()) oFile.close();
 
     // ========================================================
-    // ★ 分岐処理：分割ファイルがあればそれを、無ければ元のファイルを読む
+    // 分岐処理：分割ファイルがあればそれを、無ければ元のファイルを読む
     // ========================================================
     if (useSplitFiles) {
         // 新仕様：分割ファイルを読み込む
@@ -78,7 +78,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
         LoadSingleJson(scene, filename);
     }
 
-    // ★すべてのファイルを読み終わった後に、一括で親子関係を解決する
+    // すべてのファイルを読み終わった後に、一括で親子関係を解決する
     auto& objects = scene->GetObjects();
     for (auto const& [childObj, parentName] : parentPendingList_) {
         Object3d* parentObj = nullptr;
@@ -125,7 +125,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     }
                 }
 
-                // 2. 新規生成 
+                // 2. 新規生成
                 if (!targetObject && object3dCommon) {
                     std::unique_ptr<Object3d> newObj = nullptr;
 
@@ -220,7 +220,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         }
 
                         // ==========================================
-                        // ★追加: 保存カテゴリの復元処理
+                        // 保存カテゴリの復元処理
                         // ==========================================
                         if (objData.contains("saveCategory") && objData["saveCategory"].is_string()) {
                             newObj->SetSaveCategory(objData["saveCategory"].get<std::string>());
@@ -297,6 +297,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->UpdateWorldMatrix();
                 if (objData.contains("blendMode")) targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
                 if (objData.contains("materialType")) targetObject->SetMaterialType(objData["materialType"].get<int>());
+                if (objData.contains("enableOutline")) targetObject->SetEnableOutline(objData["enableOutline"].get<bool>());
 
                 if (objData.contains("color")) {
                     targetObject->SetColor({
@@ -399,7 +400,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->InitializeRecorder(nullptr);
                 bool isCinematic = (targetObject->GetClassName() == "CinematicCamera");
 
-                // ★ レコーダーのパスデータ名が入っている時だけ再生をスタートする！
+                // レコーダーのパスデータ名が入っている時だけ再生をスタートする
                 if (!targetObject->recordPathName_.empty() && targetObject->recorder_) {
                     targetObject->recorder_->Play(
                         targetObject->recordPathName_,

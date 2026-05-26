@@ -206,7 +206,7 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
-        if (overrideTextureHandle > 0 && overrideTextureHandle <= 1000) {
+        if (overrideTextureHandle > 0 && overrideTextureHandle < SRVManager::kMaxSRVCount) {
             // エディタで画像が選ばれていたら、そっちを優先して貼る！
             SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, overrideTextureHandle);
         } else if (mesh.materialIndex < modelData_.materials.size()) {

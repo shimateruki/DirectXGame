@@ -50,5 +50,5 @@ void SaveDataManager::RecordClearTime(float time) {
     if (time < bestTime_ || bestTime_ == 0.0f) {
         bestTime_ = time;
     }
-    Save(); // JSONに書き込む！
+    Save(); // JSONに書き込む
 }

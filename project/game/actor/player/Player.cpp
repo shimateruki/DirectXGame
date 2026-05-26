@@ -36,7 +36,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     mover_ = std::make_unique<PlayerMover>();
     mover_->Initialize(this, inputManager, particleSystem);
 
-    // 静的変数をリセット（前世のゴミデータ影響を防ぐ）
+    // 前回シーンの静的な姿勢キャッシュが残らないように初期化する。
     ResetPlayerStateStatics();
 
     // ステートマシン初期化 (待機状態からスタート)
@@ -74,7 +74,7 @@ void Player::Update(float deltaTime)
             if (damageCooldownTimer_ <= 0.0f)
             {
                 damageCooldownTimer_ = 0.0f;
-                // ★重要: 被弾無敵フラグのみを解除 (赤色が消える)
+                // 被弾無敵だけを解除し、ダッシュ無敵には触れない。
                 SetDamageInvincible(false);
             }
         }
@@ -136,7 +136,7 @@ void Player::Update(float deltaTime)
         }
     }
     // =======================================================
-        // 6. ★ 瀕死・死亡エフェクト (Danger Vignette & Blackout) ★
+        // 6. 瀕死・死亡エフェクト (Danger Vignette & Blackout)
         // =======================================================
     float hp = GetHp();
     float maxHp = GetMaxHp();
@@ -160,10 +160,10 @@ void Player::Update(float deltaTime)
                 // 赤枠の濃さは固定し、視界の邪魔をしない
                 postParams->dangerVignette = 0.8f;
 
-                // ★ 追加: 最初の3.5秒だけ点滅させる
+                // 最初の3.5秒だけ点滅させる
                 if (deathTimer_ <= 3.5f) {
                     // ===================================================
-                    // 🖤 最初の3.5秒：鋭く不規則な黒の点滅 (Blackout Pulse)
+                    // 最初の3.5秒：鋭く不規則な黒の点滅 (Blackout Pulse)
                     // ===================================================
                     float t = deathTimer_;
                     float pulse1 = std::pow(std::max(0.0f, std::sin(t * 2.5f)), 16.0f);
@@ -174,7 +174,7 @@ void Player::Update(float deltaTime)
                 }
                 else {
                     // ===================================================
-                    // 🖤 3.5秒後：意識が完全に途絶え、薄暗いまま固定
+                    // 3.5秒後：意識が完全に途絶え、薄暗いまま固定
                     // ===================================================
                     // GameOverテキストが見えるように 0.6f 程度の暗さに滑らかに落ち着かせる
                     postParams->blackout = std::min(postParams->blackout + (deltaTime * 0.5f), 0.6f);
@@ -186,7 +186,7 @@ void Player::Update(float deltaTime)
             }
             else if (hpRatio <= 0.2f) {
                 // ---------------------------------------------------
-                // ⚠️ 瀕死時 (20%以下)
+                // 瀕死時 (20%以下)
                 // ---------------------------------------------------
                 isDead = false;
                 deathTimer_ = 0.0f;
@@ -203,7 +203,7 @@ void Player::Update(float deltaTime)
             }
             else {
                 // ---------------------------------------------------
-                // 🟢 安全圏内
+                // 安全圏内
                 // ---------------------------------------------------
                 isDead = false;
                 deathTimer_ = 0.0f;
@@ -248,7 +248,7 @@ bool Player::OnCollision(Object3d* other)
         if (childInfo.isColliding)
         {
             // パーツがぶつかっていた場合、本体よりめり込みが深ければ
-            // そのパーツの押し出し情報（法線とめり込み量）を採用して親を動かす！
+            // そのパーツの押し出し情報（法線とめり込み量）を採用して親を動かす
             if (!info.isColliding || childInfo.penetration > info.penetration)
             {
                 info = childInfo;
@@ -287,10 +287,10 @@ bool Player::OnCollision(Object3d* other)
             // 無敵時間をセット
             damageCooldownTimer_ = 1.5f;
 
-            // ★重要: ダメージ用の無敵フラグのみを立てる (赤色になる)
+            // 被弾無敵だけを立て、回避ダッシュ側の無敵とは分けて扱う。
             SetDamageInvincible(true);
 
-            // ★追加: ここで新しい「被弾ステート」に強制遷移させる！
+            // ノックバックと被弾モーションを再生する。
             ChangeState(std::make_unique<PlayerStateDamage>());
         }
     }

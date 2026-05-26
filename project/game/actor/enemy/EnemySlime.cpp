@@ -230,7 +230,7 @@ bool EnemySlime::OnCollision(Object3d* other) {
     if (attribute & kPlayerAttack) {
         // クールダウン中でなければヒット
         if (damageCooldownTimer_ <= 0.0f) {
-            // ★ エフェクトからの被弾を確定させてヒットリストに記録
+            // エフェクトからの被弾を確定させてヒットリストに記録
             if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
                 effect->AddHitObject(this);
             }

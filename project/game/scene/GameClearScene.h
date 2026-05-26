@@ -23,19 +23,23 @@
 class DirectXCommon;
 class InputManager;
 
+// クリア演出、リザルト表示、リトライ/タイトル選択を管理するシーン。
 class GameClearScene : public BaseScene {
 public:
     GameClearScene() = default;
     ~GameClearScene() override = default;
 
+    // --- 基本サイクル ---
     void Initialize() override;
     void Finalize() override;
     void Update(float deltaTime) override;
+
+    // --- 描画 ---
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
 
-    // BaseScene インターフェース実装
+    // --- BaseScene インターフェース実装 ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
     void AddObject(std::unique_ptr<Object3d> object) override { objectManager_->AddObject(std::move(object)); }
     void RequestRemoveObject(Object3d* object) override { objectManager_->RequestRemove(object); }
@@ -47,37 +51,43 @@ public:
     void SetPlayer(Player* player) override { player_ = player; }
 
 private:
+    // --- 内部ヘルパー ---
     void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
     void ApplyInputUiIfNeeded();
 
-    // --- システム ---
+    // --- 外部システム参照 ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
     AudioPlayer* audioPlayer_ = nullptr;
 
+    // --- シーン内サブシステム ---
     std::unique_ptr<ObjectManager> objectManager_ = nullptr;
     std::unique_ptr<LevelLoader> levelLoader_ = nullptr;
     std::unique_ptr<GameRule> gameRule_ = nullptr;
 
+    // --- 描画・生成の共通基盤 ---
     std::unique_ptr<Object3dCommon> object3dCommon_ = nullptr;
     std::unique_ptr<SpriteCommon> spriteCommon_ = nullptr;
     std::unique_ptr<ParticleCommon> particleCommon_ = nullptr;
 
+    // --- シーン所有リソース ---
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
     Player* player_ = nullptr;
+
+    // --- BGM ---
     uint32_t bgmHandle_ = 0;
 
-    // --- ライト ---
+    // --- ライト・描画補助リソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
     uint32_t gpuParticleTexHandle_ = 0;
 
-    // --- クリア演出・UI管理 ---
+    // --- リザルト表示 ---
     std::unique_ptr<TimeAttackUI> clearTimeUI_;
     std::unique_ptr<TimeAttackUI> bestTimeUI_;
 
-    // エディター配置のスプライト（名前で検索して保持）
+    // エディター配置のリザルトUIを名前で検索して保持する。
     Sprite* gameClearSprite_ = nullptr;
     Sprite* retryTextSprite_ = nullptr;
     Sprite* titleTextSprite_ = nullptr;
@@ -86,12 +96,14 @@ private:
     Sprite* enterTextSprite_ = nullptr;
     bool clearUiUsesGamepad_ = false;
     bool hasAppliedClearInputUi_ = false;
+
+    // --- クリア演出フロー ---
     enum class ClearState {
         kRunIn,
         kVictoryMotion,
         kShowClearTime, // 今回のタイム表示＆ドラムロール
         kShowBestTime,  // ベストタイム表示＆ドラムロール
-        kWaitInput,     // ：リザルト完了、入力待ち
+        kWaitInput,     // リザルト完了、入力待ち
         kShowMenu,
         kRunOut
     };
@@ -104,6 +116,8 @@ private:
     float resultAlpha_ = 0.0f; // ロゴ・タイム用アルファ
     float menuAlpha_ = 0.0f;   // メニュー用アルファ
     float bestTimeAlpha_ = 0.0f;
+
+    // --- プレイヤーのクリア演出位置 ---
     Vector3 targetPlayerPos_;
     Vector3 targetPlayerRot_;
 };

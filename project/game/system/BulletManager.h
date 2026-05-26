@@ -21,7 +21,7 @@ public:
     void Initialize(Object3dCommon* common, CollisionManager* colManager);
 
     /// <summary>
-    /// 終了処理 
+    /// 終了処理
     /// </summary>
     void Finalize();
 

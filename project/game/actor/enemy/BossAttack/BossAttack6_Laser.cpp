@@ -1,6 +1,6 @@
 #include "BossAttack6_Laser.h"
 #include "../BossCore.h"
-#include "./easing.h" // ※環境に合わせてパスを調整してください
+#include "./easing.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -131,7 +131,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             animTimer_ = 0.0f;
         }
     }
-    // --- Phase 62: 大回転を維持したまま、砲台陣形へ変形！ ---
+    // --- Phase 62: 大回転を維持したまま、砲台陣形へ変形 ---
     else if (animPhase_ == 62) {
         if (animTimer_ == 0.0f) {
             blockStartPos_.clear();
@@ -203,8 +203,8 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             std::vector<Object3d*> coreBeamPool;
             if (currentScene) {
                 for (auto& obj : currentScene->GetObjects()) {
-                    if (obj->GetName() == "Beam_Cylinder") beamPool.push_back(obj.get());
-                    else if (obj->GetName() == "Beam_Core_Cylinder") coreBeamPool.push_back(obj.get());
+                    if (obj->GetName() == "BossAttack6_Beam_Cylinder") beamPool.push_back(obj.get());
+                    else if (obj->GetName() == "BossAttack6_Beam_Core_Cylinder") coreBeamPool.push_back(obj.get());
                 }
             }
 
@@ -222,7 +222,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                     laser = newLaser.get();
                     laser->Initialize(boss->GetCommon());
                     laser->SetModel("Cylinder");
-                    laser->SetName("Beam_Cylinder");
+                    laser->SetName("BossAttack6_Beam_Cylinder");
                     if (currentScene) currentScene->AddObject(std::move(newLaser));
                 }
 
@@ -253,6 +253,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 laser->SetRotation({ rotX90, 0.0f, 0.0f });
                 laser->SetTranslate({ 0.0f, 0.0f, 80.0f }); // 前方に出す
                 laser->GetTransform()->isQuaternionMaster = false;
+                laser->UpdateWorldMatrix();
 
                 // 自傷（レイキャスト自己衝突）防止のために一時的に装甲ブロックの地形判定を消す
                 armorBlocks[i]->SetCollisionAttribute(0);
@@ -272,7 +273,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                     coreLaser = newCore.get();
                     coreLaser->Initialize(boss->GetCommon());
                     coreLaser->SetModel("Cylinder");
-                    coreLaser->SetName("Beam_Core_Cylinder");
+                    coreLaser->SetName("BossAttack6_Beam_Core_Cylinder");
                     if (currentScene) currentScene->AddObject(std::move(newCore));
                 }
 
@@ -294,6 +295,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetRotation({ rotX90, 0.0f, 0.0f });
                 coreLaser->SetTranslate({ 0.0f, 0.0f, 80.0f }); // 前方に出す
                 coreLaser->GetTransform()->isQuaternionMaster = false;
+                coreLaser->UpdateWorldMatrix();
 
                 activeCoreBeams_.push_back(coreLaser);
             }
@@ -308,7 +310,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             particleTimer_ = 0.0f;
         }
         }
-    // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ！ ---
+    // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ ---
     else if (animPhase_ == 64) {
         animTimer_ += deltaTime;
         particleTimer_ += deltaTime;
@@ -320,7 +322,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         // ==========================================
-        // ★ レーザーの太さと振動（脈動）の計算
+        // レーザーの太さと振動（脈動）の計算
         // ==========================================
         float expandTime = 0.01f;
         float t = std::min(animTimer_ / expandTime, 1.0f);
@@ -328,7 +330,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         // 基本の太さ（0.1から1.0へ一瞬で太くなる）
         float baseThickness = Math::Lerp(0.1f, 1.0f, Easing::OutExpo(t));
 
-        // 【振動】animTimer_ を使って、1.0を中心にして ±15% ほど激しく震わせる！
+        // 【振動】animTimer_ を使って、1.0を中心にして ±15% ほど激しく震わせる
         // ※ 60.0f を大きくすると震えるスピードが上がり、0.15f を大きくすると震幅（太さの差）が大きくなります。
         float pulse = 1.0f + (std::sin(animTimer_ * 60.0f) * 0.05f);
 
@@ -340,7 +342,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             Object3d* beam = activeBeams_[i];
             Object3d* coreBeam = (i < activeCoreBeams_.size()) ? activeCoreBeams_[i] : nullptr;
 
-            // ★ レイキャストで障害物までの距離を測る
+            // レイキャストで障害物までの距離を測る
             float maxDistance = 160.0f;
             float actualDistance = maxDistance;
             float parentScaleZ = 1.0f;
@@ -360,7 +362,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 }
             }
 
-            // ★ 追加: ヒット距離を使った遅延付きの長さ復元処理
+            // ヒット距離を使った遅延付きの長さ復元処理
             if (i < laserLengths_.size()) {
                 if (actualDistance < laserLengths_[i]) {
                     // より近い障害物に当たった場合は即座に縮める＆タイマーリセット
@@ -399,6 +401,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 float scrollSpeed = -30.0f; 
                 Vector3 uvTranslate = { 0.0f, animTimer_ * scrollSpeed, 0.0f };
                 beam->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
+                beam->UpdateWorldMatrix();
             }
 
             // --- 2. 内側の白いコア ---
@@ -418,11 +421,12 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 float coreScrollSpeed = -50.0f; 
                 Vector3 coreUvTranslate = { 0.0f, animTimer_ * coreScrollSpeed, 0.0f };
                 coreBeam->SetUVTransform(math.MakeAffineMatrix(coreUvScale, { 0.0f, 0.0f, 0.0f }, coreUvTranslate));
+                coreBeam->UpdateWorldMatrix();
             }
         }
 
         // ==========================================
-        // ★ GPUパーティクルの発生（ビームの回転に追従させる）
+        // GPUパーティクルの発生（ビームの回転に追従させる）
         // ==========================================
         // 0.05秒に1回、全ビームの根元からエミットする
         if (particleTimer_ >= 0.05f) {

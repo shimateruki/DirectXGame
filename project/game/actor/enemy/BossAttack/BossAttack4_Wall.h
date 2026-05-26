@@ -9,7 +9,7 @@ private:
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
 
-    // ★ 追加：今まで shotCount_ にやらせていた往復回数のカウントを自前で持つ！
+    // 今まで shotCount_ にやらせていた往復回数のカウントを自前で持つ
     int wallStep_ = 0;
     BossCore* boss_ = nullptr;
 

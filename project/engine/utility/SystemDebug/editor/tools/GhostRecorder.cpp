@@ -821,7 +821,7 @@ void GhostRecorder::DrawImGui() {
 				target_->UpdateWorldMatrix();
 			}
 			ImGui::DragFloat3("Pos##Start", &genParams_.startPos.x, 0.1f);
-			ImGui::DragFloat3("Rot##Start", &genParams_.startRot.x, 1.0f);
+			ImGui::DragFloat3("Rot##Start", &genParams_.startRot.x, 0.01f, 0.0f, 0.0f, "%.3f");
 			ImGui::DragFloat("移動時間(sec)##Start", &genParams_.startDurationToNext, 0.1f, 0.1f, 10.0f);
 			ImGui::DragFloat("待機(sec)##Start", &genParams_.startWaitTime, 0.1f, 0.0f, 10.0f);
 			ImGui::Combo("次へのEasing##Start", &genParams_.startEasingToNext, easingNames, IM_ARRAYSIZE(easingNames));
@@ -849,6 +849,7 @@ void GhostRecorder::DrawImGui() {
 						waypointToDelete = i;
 					}
 					ImGui::DragFloat3("Pos", &genParams_.waypoints[i].pos.x, 0.1f);
+					ImGui::DragFloat3("Rot", &genParams_.waypoints[i].rot.x, 0.01f, 0.0f, 0.0f, "%.3f");
 					ImGui::DragFloat("移動時間(sec)", &genParams_.waypoints[i].durationToNext, 0.1f, 0.1f, 10.0f);
 					ImGui::DragFloat("待機(sec)", &genParams_.waypoints[i].waitTime, 0.1f, 0.0f, 10.0f);
 					ImGui::Combo("Easing", &genParams_.waypoints[i].easingToNext, easingNames, IM_ARRAYSIZE(easingNames));
@@ -879,6 +880,7 @@ void GhostRecorder::DrawImGui() {
 				genParams_.endPos = genParams_.startPos; genParams_.endRot = genParams_.startRot;
 			}
 			ImGui::DragFloat3("Pos##End", &genParams_.endPos.x, 0.1f);
+			ImGui::DragFloat3("Rot##End", &genParams_.endRot.x, 0.01f, 0.0f, 0.0f, "%.3f");
 			ImGui::DragFloat("待機(sec)##End", &genParams_.endWaitTime, 0.1f, 0.0f, 10.0f);
 
 			ImGui::Separator();

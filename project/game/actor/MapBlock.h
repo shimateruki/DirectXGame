@@ -9,7 +9,7 @@
 class MapBlock : public Object3d {
 public:
     // ==========================================
-    // 全MapBlockを管理する共有名簿！
+    // 全MapBlockを管理する共有名簿
     // ==========================================
     static std::vector<MapBlock*> s_activeBlocks;
 
@@ -26,7 +26,7 @@ private:
     bool isAbsorbed_ = false;
 
     // ==========================================
-    // 自分が密かに持っておくレーザー！
+    // 自分が密かに持っておくレーザー
     // ==========================================
     std::unique_ptr<Object3d> laserBeam_;
 };

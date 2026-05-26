@@ -1,5 +1,4 @@
 #include "TrailEmitter.h"
-#include "TrailEmitter.h"
 #include "Object3d.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"

@@ -26,7 +26,7 @@ private:
     std::vector<float> funnelTimers_;
     std::vector<int> funnelFireCounts_;
 
-    // ★ 追加: レイキャスト用の長さ保持と遅延タイマー
+    // レイキャスト用の長さ保持と遅延タイマー
     std::vector<float> laserLengths_;
     std::vector<float> laserDelayTimers_;
 };

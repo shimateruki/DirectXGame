@@ -18,7 +18,7 @@ void ObjectManager::Update(float deltaTime) {
 	for (auto& obj : objects_) {
 		obj->Update(deltaTime);
 
-		// ★追加: Characterクラスなどで isDead = true になったら削除予約を入れる
+		// Characterクラスなどで isDead = true になったら削除予約を入れる
 		if (obj->isDead) {
 			RequestRemove(obj.get());
 		}
@@ -50,7 +50,7 @@ void ObjectManager::AddObject(std::unique_ptr<Object3d> object) {
 	if (!object) return;
 	// 衝突判定に登録
 	CollisionManager::GetInstance()->AddObject(object.get());
-	// 追加待ちリストへ
+	// 待ちリストへ
 	pendingObjects_.push_back(std::move(object));
 }
 

@@ -52,7 +52,7 @@ void GameOverScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
 
-    // ★追加: シングルトンのParticleManagerに今のシーンのシステムを紐づける！
+    // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
@@ -147,7 +147,7 @@ void GameOverScene::Draw() {
     particleSystem_->Draw();
 
     // =======================================================
-    // 4. ローカルフォグ (霧の箱) の描画！
+    // 4. ローカルフォグ (霧の箱) の描画
     // =======================================================
     bool hasFog = false;
     for (auto& obj : objects) {
@@ -165,7 +165,7 @@ void GameOverScene::Draw() {
     }
 
     // =======================================================
-    // 5. GPUパーティクルの描画！
+    // 5. GPUパーティクルの描画
     // =======================================================
     dxCommon_->UpdateGrabTexture();
     dxCommon_->PreDrawLocalFog();
@@ -192,7 +192,7 @@ void GameOverScene::DrawUI() {
     }
 }
 
-// ★追加: シャドウマップ描画の実装
+// シャドウマップ描画の実装
 void GameOverScene::DrawShadow() {
     if (objectManager_) {
         objectManager_->DrawShadow();
