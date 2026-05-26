@@ -20,11 +20,11 @@ void BossAttack4_Wall::Initialize(BossCore* boss) {
     wallStep_ = 0; // カウントリセット
     animPhase_ = 39;
 
-    // 攻撃力を適用し、物理的な押し出し（kGround）を防ぐために一時的にkGroundを外す
+    // 攻撃力だけ先に設定し、予備動作中は攻撃判定を持たせない。
     for (auto* block : boss->GetArmorBlocks()) {
         if (block) {
             block->SetAttackDamage(boss->GetAttackParams().damageWall);
-            block->SetCollisionAttribute(kEnemyAttack); // kGroundを外してkEnemyAttackのみにする
+            block->SetCollisionAttribute(0);
         }
     }
 }
@@ -210,6 +210,8 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
     // --- Phase 41: 壁だけがステージを往復横断 ---
     else if (animPhase_ == 41) {
         if (animTimer_ == 0.0f) {
+            boss->SetArmorAttackCollisionActive(true);
+
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f }); // 真っ赤
@@ -254,6 +256,8 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         if (t >= 1.0f) {
+            boss->SetArmorAttackCollisionActive(false);
+
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetScale({ 0.0f, 0.0f, 0.0f });
@@ -374,13 +378,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
-            // 攻撃完了元の地面属性(kGround)を復活させる
-            uint32_t blockAttribute = (boss->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
-            for (auto* block : armorBlocks) {
-                if (block) {
-                    block->SetCollisionAttribute(blockAttribute);
-                }
-            }
+            boss->SetArmorAttackCollisionActive(false);
             isFinished_ = true; // 攻撃完了
         }
     }
@@ -389,12 +387,6 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 void BossAttack4_Wall::Finalize() {
     if (boss_) {
         boss_->SetScale({ 1.0f, 1.0f, 1.0f });
-        // 中断された場合も想定し、元の地面属性(kGround)を復活させる
-        uint32_t blockAttribute = (boss_->GetState() == BossCore::State::Attack) ? (kEnemyAttack | kGround) : kGround;
-        for (auto* block : boss_->GetArmorBlocks()) {
-            if (block) {
-                block->SetCollisionAttribute(blockAttribute);
-            }
-        }
+        boss_->SetArmorAttackCollisionActive(false);
     }
 }

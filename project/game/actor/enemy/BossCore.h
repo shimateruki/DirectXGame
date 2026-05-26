@@ -144,12 +144,28 @@ public:
     // パーツ(ブロック)を登録する関数
     void AddArmorBlock(Object3d* block) {
         armorBlocks_.push_back(block);
-        block->SetCollisionAttribute(kEnemyAttack);
+        block->SetCollisionAttribute(kGround);
         block->SetCollisionMask(kPlayer);
         block->SetEnemyType("BossArmor"); // 属性を明確にする
 
         blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録
         blockBroken_.push_back(false);
+    }
+
+    void SetArmorAttackCollisionActive(bool active, bool includeGround = false) {
+        uint32_t attribute = active ? kEnemyAttack : kGround;
+        if (active && includeGround) {
+            attribute |= kGround;
+        }
+        for (size_t i = 0; i < armorBlocks_.size(); ++i) {
+            Object3d* block = armorBlocks_[i];
+            if (i < blockBroken_.size() && blockBroken_[i]) {
+                continue;
+            }
+            if (block) {
+                block->SetCollisionAttribute(attribute);
+            }
+        }
     }
 
     float GetHp() const { return param_.has_value() ? param_->hp : 1000.0f; }

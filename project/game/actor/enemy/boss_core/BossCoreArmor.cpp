@@ -23,7 +23,7 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
             blockHps_[i] = attackParams_.maxArmorBlockHp;
             blockBroken_[i] = false;
 
-            newBlock->SetCollisionAttribute(kEnemyAttack);
+            newBlock->SetCollisionAttribute(kGround);
             newBlock->SetCollisionMask(kPlayer);
             newBlock->SetEnemyType("BossArmor");
             return true;

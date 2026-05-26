@@ -63,7 +63,7 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
             block->Initialize(boss->GetCommon());
             block->SetModel("enemy_block");
             block->SetColliderType(ColliderType::kOBB);
-            block->SetCollisionAttribute(kEnemyAttack | kGround);
+            block->SetCollisionAttribute(kGround);
             block->SetCollisionMask(kPlayer);
             block->SetName("ArmorBlock_Spawned");
             
@@ -111,7 +111,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             meteor->SetScale({ 15.0f, 15.0f, 15.0f });
             meteor->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
             meteor->SetColliderType(ColliderType::kOBB);
-            meteor->SetCollisionAttribute(kEnemyAttack);
+            meteor->SetCollisionAttribute(0);
             meteor->SetCollisionMask(kPlayer | kGround);
             meteor->SetAttackDamage(boss->GetAttackParams().damageFinal);
             
@@ -675,7 +675,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             };
             for (size_t i = 0; i < useCount; ++i) {
                 if (!armorBlocks[i]) continue;
-                armorBlocks[i]->SetCollisionAttribute(kEnemyAttack | kGround);
+                armorBlocks[i]->SetCollisionAttribute(kGround);
                 int shardIdx = 0;
                 for (auto* child : armorBlocks[i]->GetChildren()) {
                     if (child && child->GetName().find("Shard") != std::string::npos && shardIdx < 8) {
@@ -860,7 +860,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             if (!meteors_.empty() && meteors_[0]) {
                 meteors_[0]->SetTranslate({ 0.0f, 150.0f, 0.0f }); 
                 meteors_[0]->SetScale({ 15.0f, 15.0f, 15.0f });
-                meteors_[0]->SetCollisionAttribute(kEnemyAttack);
+                meteors_[0]->SetCollisionAttribute(0);
             }
         }
         
@@ -869,6 +869,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         if (!meteors_.empty() && meteors_[0]) {
             Vector3 mPos = meteors_[0]->GetTranslate();
             if (animTimer_ > 1.0f && mPos.y > 0.0f) {
+                meteors_[0]->SetCollisionAttribute(kEnemyAttack);
                 mPos.y -= 150.0f * deltaTime; 
                 if (mPos.y <= 0.0f) {
                     mPos.y = 0.0f; // 着地

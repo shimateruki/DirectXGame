@@ -26,7 +26,7 @@ void BossCore::ChangeState(State nextState) {
                 coreAttribute = kGround;
             }
         }
-        blockAttribute = (state_ == State::Attack) ? (kEnemyAttack | kGround) : kGround;
+        blockAttribute = kGround;
     }
 
     SetCollisionAttribute(coreAttribute);
@@ -584,6 +584,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
                     float angleY = std::atan2(toPlayer.x, toPlayer.z) + (std::numbers::pi_v<float> / 2.0f);
                     fb.currentRot = { 0.0f, angleY, 0.0f };
                 }
+                fb.block->SetCollisionAttribute(kEnemyAttack);
                 fb.mode = 0;
             }
             else {
@@ -609,6 +610,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
             if (pos.y <= 0.0f) {
                 pos.y = 0.0f;
                 fb.velocity = { 0.0f, 0.0f, 0.0f };
+                fb.block->SetCollisionAttribute(kGround);
                 fb.mode = 1;
             }
             fb.block->SetTranslate(pos);

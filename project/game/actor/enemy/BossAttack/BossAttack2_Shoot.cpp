@@ -130,6 +130,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
                 block->SetParent(nullptr);
                 block->SetTranslate(worldPos);
+                block->SetCollisionAttribute(0);
 
                 Vector3 currentRot = block->GetRotation();
                 block->GetTransform()->isQuaternionMaster = false;

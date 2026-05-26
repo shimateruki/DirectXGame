@@ -182,6 +182,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
                 animStartPos_.y, // 高さは維持
                 animStartPos_.z + dir.z * dashDistance
             };
+            boss->SetArmorAttackCollisionActive(true);
         }
     }
     // --- フェーズ4: 加速突進 ---
@@ -227,6 +228,7 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f && animPhase_ == 4) {
+            boss->SetArmorAttackCollisionActive(false);
             animPhase_ = 5;
             animTimer_ = 0.0f;
         }

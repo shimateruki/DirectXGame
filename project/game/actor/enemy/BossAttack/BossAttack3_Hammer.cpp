@@ -185,10 +185,10 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             animStartRot_ = boss->GetRotation(); 
             for (auto* block : armorBlocks) {
                 if (block) {
-                    block->SetCollisionAttribute(kEnemyAttack);
                     block->SetAttackDamage(boss->GetAttackParams().damageHammer);
                 }
             }
+            boss->SetArmorAttackCollisionActive(true);
         }
     }
     // --- Phase 22: 一気に振り下ろして叩き潰す ---
@@ -245,9 +245,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             animStartRot_ = boss->GetRotation(); 
             animStartPos_ = boss->GetTranslate();
             
-            for (auto* block : armorBlocks) {
-                if (block) block->SetCollisionAttribute(kEnemyAttack | kGround);
-            }
+            boss->SetArmorAttackCollisionActive(false);
         }
     }
     // --- Phase 25: 次の攻撃に向けてハンマーを引き抜く ---
