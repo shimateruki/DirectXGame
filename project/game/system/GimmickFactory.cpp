@@ -17,6 +17,12 @@
 #include "GimmickEventReceiver.h"
 #include "GimmickHookPullBlock.h"
 #include "GimmickOneWayFloor.h"
+#include "GimmickLiquidLevel.h"
+#include "GimmickChainCollapseFloor.h"
+#include "GimmickRotatingObject.h"
+#include "GimmickPhaseFlipFloor.h"
+#include "GimmickLaserEmitter.h"
+#include "GimmickLaserNode.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -121,6 +127,55 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto floor = std::make_unique<GimmickOneWayFloor>();
         floor->Initialize(common, "Stages/block");
         newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "LiquidLevel") {
+        auto liquid = std::make_unique<GimmickLiquidLevel>();
+        liquid->Initialize(common, "Stages/block");
+        newGimmick = std::move(liquid);
+    }
+    else if (gimmickName == "ChainCollapseFloor") {
+        auto floor = std::make_unique<GimmickChainCollapseFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "RotatingFloor") {
+        auto floor = std::make_unique<GimmickRotatingObject>();
+        floor->Initialize(common, "Stages/block");
+        floor->SetGimmickType("RotatingFloor");
+        floor->SetName("Gimmick_RotatingFloor");
+        floor->SetScale({ 3.0f, 0.3f, 1.2f });
+        if (!floor->param_.has_value()) floor->param_.emplace();
+        floor->param_->actionMode = 1;
+        floor->param_->speed = 45.0f;
+        floor->param_->startActive = true;
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "RotatingPillar") {
+        auto pillar = std::make_unique<GimmickRotatingObject>();
+        pillar->Initialize(common, "Stages/block");
+        pillar->SetGimmickType("RotatingPillar");
+        pillar->SetName("Gimmick_RotatingPillar");
+        pillar->SetScale({ 0.75f, 3.0f, 0.75f });
+        if (!pillar->param_.has_value()) pillar->param_.emplace();
+        pillar->param_->actionMode = 1;
+        pillar->param_->speed = 60.0f;
+        pillar->param_->startActive = true;
+        newGimmick = std::move(pillar);
+    }
+    else if (gimmickName == "PhaseFlipFloor") {
+        auto floor = std::make_unique<GimmickPhaseFlipFloor>();
+        floor->Initialize(common, "Stages/block");
+        newGimmick = std::move(floor);
+    }
+    else if (gimmickName == "LaserEmitter") {
+        auto emitter = std::make_unique<GimmickLaserEmitter>();
+        emitter->Initialize(common, "Primitives/cube");
+        newGimmick = std::move(emitter);
+    }
+    else if (gimmickName == "LaserNode") {
+        auto node = std::make_unique<GimmickLaserNode>();
+        node->Initialize(common, "Primitives/sphere");
+        newGimmick = std::move(node);
     }
 
     // 該当するギミックがない場合、またはベースを直接生成する場合

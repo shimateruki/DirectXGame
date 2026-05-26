@@ -55,6 +55,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Primitives/sphere",
             "myEventID": -1,
@@ -62,6 +64,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -74,8 +77,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -175,6 +183,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -187,8 +196,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -279,6 +293,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -286,6 +302,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -298,8 +315,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",

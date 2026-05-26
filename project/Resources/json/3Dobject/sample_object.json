@@ -64,6 +64,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "Goblin",
@@ -76,8 +77,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 6.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 27.700000762939453
+                "speed": 27.700000762939453,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -274,6 +280,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "Goblin",
@@ -286,8 +293,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -387,6 +399,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "Goblin",
@@ -399,8 +412,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -500,6 +518,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -512,8 +531,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -541,9 +565,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8128388524055481,
-                1.2807416915893555,
-                0.8128388524055481
+                0.8158504366874695,
+                1.2762243747711182,
+                0.8158504366874695
             ],
             "targetID": -1,
             "texturePath": "",
@@ -904,6 +928,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -916,8 +941,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1017,6 +1047,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -1029,8 +1060,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1058,9 +1094,9 @@
             "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
-                0.8128388524055481,
-                1.2807416915893555,
-                0.8128388524055481
+                0.8158504366874695,
+                1.2762243747711182,
+                0.8158504366874695
             ],
             "targetID": -1,
             "texturePath": "",
@@ -1130,6 +1166,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -1142,8 +1179,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1243,6 +1285,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -1255,8 +1298,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1356,6 +1404,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 1,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -1368,8 +1417,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1469,6 +1523,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -1481,8 +1536,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1880,6 +1940,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -1892,8 +1953,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -1993,6 +2059,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2005,8 +2072,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2298,6 +2370,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2310,8 +2383,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2411,6 +2489,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2423,8 +2502,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2524,6 +2608,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2536,8 +2621,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2637,6 +2727,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2649,8 +2740,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2750,6 +2846,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2762,8 +2859,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2863,6 +2965,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2875,8 +2978,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -2976,6 +3084,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -2988,8 +3097,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -3089,6 +3203,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -3101,8 +3216,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -3202,6 +3322,7 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
@@ -3214,8 +3335,13 @@
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -3246,6 +3372,1196 @@
                 2.0,
                 0.3499999940395355,
                 2.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.8500000238418579,
+                0.8999999761581421,
+                0.6499999761581421,
+                0.8999999761581421
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "OneWayFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_OneWayFloor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "OneWayFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                14.872689247131348,
+                1.6379811763763428,
+                -81.32038116455078
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.5,
+                0.2199999988079071,
+                2.5
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.75,
+                0.9200000166893005,
+                1.0,
+                0.8199999928474426
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "ChainCollapseFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": 2,
+            "name": "Gimmick_ChainCollapseFloor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 1,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 1.399999976158142,
+                "gimmickType": "ChainCollapseFloor",
+                "gravity": 48.0,
+                "hp": 100.0,
+                "interval": 0.18000000715255737,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 5.900000095367432,
+                "moveSpeed": 13.699999809265137,
+                "returnOnOff": true,
+                "shakeDuration": 0.44999998807907104,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                26.394603729248047,
+                -0.9880719780921936,
+                -115.49352264404297
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": 3,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.75,
+                0.9200000166893005,
+                1.0,
+                0.8199999928474426
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "ChainCollapseFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_ChainCollapseFloor_Copy1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 1,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 1.399999976158142,
+                "gimmickType": "ChainCollapseFloor",
+                "gravity": 48.0,
+                "hp": 100.0,
+                "interval": 0.18000000715255737,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 5.900000095367432,
+                "moveSpeed": 13.699999809265137,
+                "returnOnOff": true,
+                "shakeDuration": 0.44999998807907104,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.75,
+                0.9200000166893005,
+                1.0,
+                0.8199999928474426
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "ChainCollapseFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": 3,
+            "name": "Gimmick_ChainCollapseFloor_Copy2",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 1,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 1.399999976158142,
+                "gimmickType": "ChainCollapseFloor",
+                "gravity": 48.0,
+                "hp": 100.0,
+                "interval": 0.18000000715255737,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 5.900000095367432,
+                "moveSpeed": 13.699999809265137,
+                "returnOnOff": true,
+                "shakeDuration": 0.44999998807907104,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                26.38684844970703,
+                2.8850653171539307,
+                -122.23481750488281
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": 4,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.75,
+                0.9200000166893005,
+                1.0,
+                0.8199999928474426
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "ChainCollapseFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": 4,
+            "name": "Gimmick_ChainCollapseFloor_Copy2_Copy3",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 1,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 1.399999976158142,
+                "gimmickType": "ChainCollapseFloor",
+                "gravity": 48.0,
+                "hp": 100.0,
+                "interval": 0.18000000715255737,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 5.900000095367432,
+                "moveSpeed": 13.699999809265137,
+                "returnOnOff": true,
+                "shakeDuration": 0.44999998807907104,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                27.83705711364746,
+                1.2828998565673828,
+                -120.16475677490234
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": 5,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.3499999940395355,
+                0.75,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "PhaseFlipFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_PhaseFlipFloor",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "PhaseFlipFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 1.0,
+                "jumpPower": 10.0,
+                "maxCount": 3,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                36.319969177246094,
+                -0.11473202705383301,
+                -118.0960693359375
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                1.0,
+                0.6499999761581421,
+                0.25,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "PhaseFlipFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_PhaseFlipFloor_Copy0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 1,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "PhaseFlipFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 1.0,
+                "jumpPower": 10.0,
+                "maxCount": 3,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                36.36780548095703,
+                -0.2655980587005615,
+                -123.34793090820313
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 255,
+            "color": [
+                0.44999998807907104,
+                1.0,
+                0.44999998807907104,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "PhaseFlipFloor",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/block",
+            "myEventID": -1,
+            "name": "Gimmick_PhaseFlipFloor_Copy0_Copy1",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 2,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "PhaseFlipFloor",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 1.0,
+                "jumpPower": 10.0,
+                "maxCount": 3,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                38.794410705566406,
+                -2.2755022048950195,
+                -119.43644714355469
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.0,
+                0.25,
+                2.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.25,
+                0.11999999731779099,
+                1.0
+            ],
+            "emissive": 2.5,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "LaserNode",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Primitives/sphere",
+            "myEventID": -1,
+            "name": "Gimmick_LaserNode",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "LaserNode",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 0.699999988079071,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 0.25,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 10.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                63.332698822021484,
+                2.4355249404907227,
+                -106.89751434326172
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.3499999940395355,
+                0.3499999940395355,
+                0.3499999940395355
+            ],
+            "targetID": 7,
+            "texturePath": "",
+            "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 2,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "color": [
+                1.0,
+                0.25,
+                0.11999999731779099,
+                1.0
+            ],
+            "emissive": 2.5,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "LaserNode",
+            "gpuParticleName": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Primitives/sphere",
+            "myEventID": 7,
+            "name": "Gimmick_LaserNode_Copy0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 0,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "LaserNode",
+                "gravity": 50.0,
+                "hp": 100.0,
+                "interval": 0.699999988079071,
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 0.25,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 10.0,
+                "startActive": true,
+                "switchMode": 0
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                74.26535034179688,
+                0.8781757354736328,
+                -108.41716766357422
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.3499999940395355,
+                0.3499999940395355,
+                0.3499999940395355
             ],
             "targetID": -1,
             "texturePath": "",

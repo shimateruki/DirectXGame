@@ -393,6 +393,21 @@ PixelShaderOutput main(VertexShaderOutput input)
                     output.color.a = gMaterial.color.a * textureColor.a;
                 }
             // ===========================================================
+            // Laser beam
+            // ===========================================================
+                else if (gMaterial.materialType == 12)
+                {
+                    float2 uv = input.texcoord;
+                    float radial = abs(uv.x - 0.5f) * 2.0f;
+                    float core = 1.0f - smoothstep(0.0f, 0.28f, radial);
+                    float glow = 1.0f - smoothstep(0.08f, 1.0f, radial);
+                    float stripe = 0.72f + 0.28f * sin(uv.y * 48.0f);
+                    float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+
+                    output.color.rgb = baseColor * (core * 5.0f + glow * 1.8f) * gMaterial.emissive * stripe;
+                    output.color.a = saturate(gMaterial.color.a * (core + glow * 0.5f));
+                }
+            // ===========================================================
             // 通常のPBRマテリアル
             // ===========================================================
                 else

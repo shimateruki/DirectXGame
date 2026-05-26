@@ -698,33 +698,86 @@ void InspectorWindow::Draw() {
                     ImGui::RadioButton("赤 (Red: Jump Odd)", &p.colorType, 1);
                 }
                 else if (gType == "Switch") {
-                    const char* switchModes[] = { "Momentary", "Toggle", "Timed" };
-                    ImGui::Combo("Switch Mode", &p.switchMode, switchModes, IM_ARRAYSIZE(switchModes));
+                    const char* switchModes[] = { "押している間だけ", "押すたび切替", "一定時間だけ" };
+                    ImGui::Combo("スイッチ方式", &p.switchMode, switchModes, IM_ARRAYSIZE(switchModes));
                     if (p.switchMode == 2) {
-                        ImGui::DragFloat(ICON_FA_CLOCK " Active Duration", &p.interval, 0.1f, 0.1f, 60.0f, "%.1f s");
+                        ImGui::DragFloat(ICON_FA_CLOCK " 有効時間", &p.interval, 0.1f, 0.1f, 60.0f, "%.1f s");
                     }
-                    ImGui::TextDisabled("Target ID -> receiver My Event ID");
+                    ImGui::TextDisabled("Target ID と受信側の My Event ID を合わせてください");
                 }
                 else if (gType == "EventReceiver") {
-                    const char* actionModes[] = { "Appear", "MoveY", "MoveX", "MoveZ", "Enable", "Disable" };
-                    ImGui::Combo("Action Mode", &p.actionMode, actionModes, IM_ARRAYSIZE(actionModes));
+                    const char* actionModes[] = { "出現", "Y方向に移動", "X方向に移動", "Z方向に移動", "有効化", "無効化" };
+                    ImGui::Combo("動作モード", &p.actionMode, actionModes, IM_ARRAYSIZE(actionModes));
 
                     if (p.actionMode >= 1 && p.actionMode <= 3) {
-                        ImGui::DragFloat(ICON_FA_ARROWS_ALT " Move Amount", &p.moveAmount, 0.1f, -500.0f, 500.0f);
-                        ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " Move Speed", &p.moveSpeed, 0.1f, 0.1f, 60.0f);
+                        ImGui::DragFloat(ICON_FA_ARROWS_ALT " 移動量", &p.moveAmount, 0.1f, -500.0f, 500.0f);
+                        ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 移動速度", &p.moveSpeed, 0.1f, 0.1f, 60.0f);
                     }
 
-                    ImGui::Checkbox("Start Active", &p.startActive);
-                    ImGui::Checkbox("Return On Off", &p.returnOnOff);
-                    ImGui::TextDisabled("My Event ID <- switch Target ID");
+                    ImGui::Checkbox("開始時に有効", &p.startActive);
+                    ImGui::Checkbox("OFFで元に戻す", &p.returnOnOff);
+                    ImGui::TextDisabled("My Event ID とスイッチの Target ID を合わせてください");
                 }
                 else if (gType == "HookPullBlock") {
-                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " Pull Speed", &p.speed, 0.5f, 1.0f, 120.0f);
-                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " Gravity", &p.gravity, 1.0f, 0.0f, 200.0f);
-                    ImGui::TextDisabled("Aim hook at this block to pull it toward the player.");
+                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 引っ張り速度", &p.speed, 0.5f, 1.0f, 120.0f);
+                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 重力", &p.gravity, 1.0f, 0.0f, 200.0f);
+                    ImGui::TextDisabled("フックを当てるとプレイヤー側へ引き寄せます");
                 }
                 else if (gType == "OneWayFloor") {
-                    ImGui::TextDisabled("Solid only when the player lands from above.");
+                    ImGui::TextDisabled("上から着地した時だけ足場になります");
+                }
+                else if (gType == "LiquidLevel") {
+                    const char* liquidTypes[] = { "水", "マグマ" };
+                    ImGui::Combo("液体の種類", &p.colorType, liquidTypes, IM_ARRAYSIZE(liquidTypes));
+                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_V " 上下量", &p.moveAmount, 0.1f, -500.0f, 500.0f);
+                    ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 上下速度", &p.moveSpeed, 0.1f, 0.1f, 60.0f);
+                    ImGui::Checkbox("開始時に上昇", &p.startActive);
+                    ImGui::Checkbox("OFFで元に戻す", &p.returnOnOff);
+                    ImGui::TextDisabled("スイッチの Target ID とこの My Event ID を合わせてください");
+                }
+                else if (gType == "ChainCollapseFloor") {
+                    ImGui::DragFloat(ICON_FA_HOURGLASS_HALF " 揺れ時間", &p.shakeDuration, 0.05f, 0.0f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_LINK " 連鎖までの時間", &p.interval, 0.01f, 0.0f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_ARROW_DOWN " 落下時間", &p.fallDuration, 0.05f, 0.1f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_WEIGHT_HANGING " 重力", &p.gravity, 1.0f, 0.0f, 200.0f);
+                    ImGui::TextDisabled("Target ID に次の床の My Event ID を入れると連鎖します");
+                }
+                else if (gType == "RotatingFloor" || gType == "RotatingPillar") {
+                    const char* axes[] = { "X", "Y", "Z" };
+                    ImGui::Combo("回転軸", &p.actionMode, axes, IM_ARRAYSIZE(axes));
+                    ImGui::DragFloat(ICON_FA_SYNC_ALT " 回転速度 (度/秒)", &p.speed, 1.0f, -720.0f, 720.0f);
+                    ImGui::Checkbox("開始時に回転", &p.startActive);
+                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+                    ImGui::TextDisabled("スイッチ連動で回転の開始/停止ができます");
+                }
+                else if (gType == "PhaseFlipFloor") {
+                    int floorNumber = p.colorType + 1;
+                    int phaseCount = (std::max)(1, p.maxCount);
+                    ImGui::DragInt("床番号", &floorNumber, 1, 1, phaseCount);
+                    p.colorType = (std::clamp)(floorNumber, 1, phaseCount) - 1;
+
+                    ImGui::DragInt("全体の床数", &p.maxCount, 1, 1, 16);
+                    if (p.colorType >= p.maxCount) p.colorType = p.maxCount - 1;
+
+                    ImGui::DragFloat(ICON_FA_CLOCK " 1フェーズの時間", &p.interval, 0.05f, 0.1f, 30.0f, "%.2f s");
+                    ImGui::Checkbox("正方向に回転", &p.startActive);
+                    ImGui::TextDisabled("床番号 1 -> 2 -> 3 ... の順に、当たり判定を残したまま180度回転します");
+                }
+                else if (gType == "LaserEmitter") {
+                    ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f, 100.0f);
+                    ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.05f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " レーザーの太さ", &p.moveAmount, 0.01f, 0.03f, 5.0f);
+                    ImGui::Checkbox("開始時に有効", &p.startActive);
+                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+                    ImGui::TextDisabled("Target ID に終点ノードの My Event ID を入れると接続します");
+                }
+                else if (gType == "LaserNode") {
+                    ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f, 100.0f);
+                    ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.05f, 10.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_ARROWS_ALT_H " レーザーの太さ", &p.moveAmount, 0.01f, 0.03f, 5.0f);
+                    ImGui::Checkbox("開始時に有効", &p.startActive);
+                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+                    ImGui::TextDisabled("Target ID に次の LaserNode の My Event ID を入れると、その間にレーザーが出ます");
                 }
                 else {
                     ImGui::TextDisabled("(この種類には個別設定がありません)");
@@ -835,7 +888,34 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypeLabels[] = {
+        "通常",
+        "移動床",
+        "トランポリン",
+        "ちくわブロック",
+        "点滅ブロック",
+        "破壊ブロック",
+        "コイン",
+        "フックアンカー",
+        "沈む床",
+        "シーソー床",
+        "ダッシュパネル",
+        "氷の床",
+        "時限スイッチ床",
+        "出現床",
+        "汎用スイッチ",
+        "イベント受信ギミック",
+        "フックで引っ張るブロック",
+        "一方通行床",
+        "水位・マグマ上下",
+        "連鎖崩れ床",
+        "回転床",
+        "回転柱",
+        "順番反転床",
+        "レーザー発生器",
+        "レーザー接続ノード"
+    };
     std::string currentType = selectedObject->GetGimmickType();
 
     int currentIndex = 0;
@@ -846,7 +926,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         }
     }
 
-    if (ImGui::Combo("ギミックの種類 (Gimmick Type)", &currentIndex, gimmickTypes, IM_ARRAYSIZE(gimmickTypes))) {
+    if (ImGui::Combo("ギミックの種類", &currentIndex, gimmickTypeLabels, IM_ARRAYSIZE(gimmickTypeLabels))) {
         std::string selectedGimmickType = gimmickTypes[currentIndex];
         selectedObject->SetGimmickType(selectedGimmickType);
         
@@ -1067,6 +1147,166 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "LiquidLevel") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_LiquidLevel");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.45f, 0.85f, 1.0f, 0.65f });
+            selectedObject->SetScale({ 4.0f, 0.08f, 4.0f });
+            selectedObject->SetMaterialType(8);
+            selectedObject->SetCollisionAttribute(0);
+            selectedObject->SetCollisionMask(0);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->colorType = 0;
+            selectedObject->param_->moveAmount = 6.0f;
+            selectedObject->param_->moveSpeed = 3.0f;
+            selectedObject->param_->startActive = false;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "ChainCollapseFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_ChainCollapseFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.75f, 0.92f, 1.0f, 0.82f });
+            selectedObject->SetScale({ 2.0f, 0.25f, 2.0f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->shakeDuration = 0.45f;
+            selectedObject->param_->fallDuration = 1.4f;
+            selectedObject->param_->interval = 0.18f;
+            selectedObject->param_->gravity = 48.0f;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "RotatingFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_RotatingFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.95f, 0.65f, 0.35f, 1.0f });
+            selectedObject->SetScale({ 3.0f, 0.3f, 1.2f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 45.0f;
+            selectedObject->param_->actionMode = 1;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "RotatingPillar") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_RotatingPillar");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.95f, 0.65f, 0.35f, 1.0f });
+            selectedObject->SetScale({ 0.75f, 3.0f, 0.75f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 60.0f;
+            selectedObject->param_->actionMode = 1;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "PhaseFlipFloor") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_PhaseFlipFloor");
+            selectedObject->SetModel("Stages/block");
+            selectedObject->SetColor({ 0.35f, 0.75f, 1.0f, 1.0f });
+            selectedObject->SetScale({ 2.0f, 0.25f, 2.0f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->colorType = 0;
+            selectedObject->param_->maxCount = 3;
+            selectedObject->param_->interval = 1.0f;
+            selectedObject->param_->startActive = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "LaserEmitter") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_LaserEmitter");
+            selectedObject->SetModel("Primitives/cube");
+            selectedObject->SetColor({ 1.0f, 0.08f, 0.05f, 0.9f });
+            selectedObject->SetBlendMode(BlendMode::kAdd);
+            selectedObject->SetMaterialType(3);
+            selectedObject->SetTexture("Resources/sprite/white.png");
+            selectedObject->SetEmissive(6.0f);
+            selectedObject->SetScale({ 0.25f, 0.25f, 1.0f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 10.0f;
+            selectedObject->param_->interval = 0.7f;
+            selectedObject->param_->moveAmount = 0.14f;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "LaserNode") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_LaserNode");
+            selectedObject->SetModel("Primitives/sphere");
+            selectedObject->SetColor({ 1.0f, 0.18f, 0.08f, 1.0f });
+            selectedObject->SetBlendMode(BlendMode::kAdd);
+            selectedObject->SetMaterialType(3);
+            selectedObject->SetTexture("Resources/sprite/white.png");
+            selectedObject->SetEmissive(3.5f);
+            selectedObject->SetScale({ 0.35f, 0.35f, 0.35f });
+            selectedObject->SetCollisionAttribute(0);
+            selectedObject->SetCollisionMask(0);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 10.0f;
+            selectedObject->param_->interval = 0.7f;
+            selectedObject->param_->moveAmount = 0.14f;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kSphere;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+            selectedObject->SetCollisionRadius(1.0f);
         }
         else if (selectedGimmickType == "Default") {
             selectedObject->SetClassName("Default");

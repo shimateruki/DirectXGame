@@ -3,9 +3,9 @@
     "clearedStages": [
         0
     ],
-    "coins": 3,
+    "coins": 4,
     "latestClearTime": 138.88327026367188,
-    "lives": 2,
+    "lives": 0,
     "starCoins": {
         "0": [
             true,
