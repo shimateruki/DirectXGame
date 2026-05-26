@@ -1,8 +1,12 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStateJump::Enter(Player *player) {
   if (!player)
     return;
+
+  // ジャンプSEの再生
+  AudioPlayer::GetInstance()->PlaySE(player->GetSEJumpHandle(), false, 1.0f);
 
   // 剣は不要（地上攻撃状態ではないため）
   SetSwordActive(player, false);

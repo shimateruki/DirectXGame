@@ -1,8 +1,12 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStateAttack2::Enter(Player* player)
 {
 	if (!player) return;
+
+	// 攻撃2段目SEの再生
+	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss2Handle(), false, 1.0f);
 
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack2 State");
 

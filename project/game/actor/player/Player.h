@@ -150,6 +150,14 @@ public:
         return r;
     }
 
+    // --- SE用オーディオハンドルアクセッサ ---
+    uint32_t GetSEAvoidHandle() const { return seAvoidHandle_; }
+    uint32_t GetSEJumpHandle() const { return seJumpHandle_; }
+    uint32_t GetSEMoveHandle() const { return seMoveHandle_; }
+    uint32_t GetSESwingMiss1Handle() const { return seSwingMiss1Handle_; }
+    uint32_t GetSESwingMiss2Handle() const { return seSwingMiss2Handle_; }
+    uint32_t GetSESwordHandle() const { return seSwordHandle_; }
+
 
 private:
     // --- 内部コンポーネント ---
@@ -191,5 +199,14 @@ private:
     bool requestClearLockOn_ = false;       // ロックオン解除要求フラグ
     Vector3 attackDirection_ = { 0,0,1 };   // 攻撃開始時の向き
     PlayerAttackParams attackParams_;       // 攻撃力などのパラメータ
+    
+    // --- SE用オーディオハンドル ---
+    uint32_t seAvoidHandle_ = 0;
+    uint32_t seJumpHandle_ = 0;
+    uint32_t seMoveHandle_ = 0;
+    uint32_t seSwingMiss1Handle_ = 0;
+    uint32_t seSwingMiss2Handle_ = 0;
+    uint32_t seSwordHandle_ = 0;
+
     void UpdateColor();
 };

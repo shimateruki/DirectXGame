@@ -1,9 +1,13 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStateDash::Enter(Player *player) {
   if (!player)
     return;
   DebugConsole::GetInstance()->AddLog("★ ENTER: Dash State (Slide Step)");
+
+  // 回避SEの再生
+  AudioPlayer::GetInstance()->PlaySE(player->GetSEAvoidHandle(), false, 1.0f);
 
   // PlayerMover を動かし続ける（入力制御は Mover 側）
   SetSwordActive(player, false);

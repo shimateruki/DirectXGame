@@ -8,6 +8,7 @@
 #include "IMoveStrategy.h"
 #include "PlayerState.h"
 #include "PostEffect.h"
+#include "AudioPlayer.h"
 #include <DebugConsole.h>
 #include <algorithm>
 #include <fstream>
@@ -38,6 +39,14 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
 
     // 前回シーンの静的な姿勢キャッシュが残らないように初期化する。
     ResetPlayerStateStatics();
+
+    // SEのロード
+    seAvoidHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerAvoid.mp3");
+    seJumpHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerJump.mp3");
+    seMoveHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerMove.mp3");
+    seSwingMiss1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSwingMiss1.mp3");
+    seSwingMiss2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSwingMiss2.mp3");
+    seSwordHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSword.mp3");
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());

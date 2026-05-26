@@ -168,6 +168,9 @@ private:
 
 	// 頭回転の開始クォータニオン（Slerp 用）
 	Quaternion headExitStartQuat_{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+	// 足音の間隔を制御するためのタイマー
+	float footstepTimer_ = 0.0f;
 };
 
 // --------------------------------------------------------
