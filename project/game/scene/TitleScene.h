@@ -85,6 +85,12 @@ private:
     // --- BGM ---
     uint32_t bgmHandle_ = 0;
 
+    // --- SE ---
+    uint32_t seCursorMove_ = 0;
+    uint32_t seDecide_ = 0;
+    uint32_t seCancel_ = 0;
+    uint32_t seStartGame_ = 0;
+
     // --- タイトルUI演出 ---
     bool spritesAppear_ = false;
     float spritesAppearTimer_ = 0.0f;

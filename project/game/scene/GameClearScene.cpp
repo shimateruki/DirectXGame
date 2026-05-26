@@ -62,7 +62,9 @@ void GameClearScene::Initialize() {
     inputManager_ = InputManager::GetInstance();
     audioPlayer_ = AudioPlayer::GetInstance();
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+    SaveDataManager::GetInstance()->Load();
+    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/clear/clear.mp3");
+    audioPlayer_->StopBGM();
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
@@ -235,6 +237,9 @@ void GameClearScene::Update(float deltaTime) {
             }
 
             if (clearTimeUI_) clearTimeUI_->StartRollEffect();
+
+            // クリアタイム表示開始時にクリアBGMを再生
+            audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
         }
         break;
 

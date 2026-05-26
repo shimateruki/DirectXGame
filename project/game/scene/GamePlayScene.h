@@ -142,6 +142,10 @@ private:
 
     // --- BGM・SE ---
     uint32_t bgmHandle_ = 0;
+    uint32_t bgmTutorialHandle_ = 0;
+    uint32_t bgmBattle01Handle_ = 0;
+    uint32_t bgmBattle02Handle_ = 0;
+    uint32_t bgmDefeatHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
 

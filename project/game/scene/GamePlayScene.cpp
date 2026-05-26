@@ -137,7 +137,11 @@ void GamePlayScene::Initialize() {
 
     LOG("Game Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+    SaveDataManager::GetInstance()->Load();
+    bgmTutorialHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/tutorial.mp3");
+    bgmBattle01Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/battle_01.mp3");
+    bgmBattle02Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/battle_02.mp3");
+    bgmDefeatHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/defeat/defeat.mp3");
 
     // --- 2. 各種マネージャ初期化 ---
     EventManager::GetInstance()->ClearAllListeners();
@@ -621,6 +625,9 @@ void GamePlayScene::Initialize() {
         }
     }
 
+    bgmHandle_ = bgmTutorialHandle_;
+    audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+
     // OptionUIの初期化
     optionUI_.Initialize(this, spriteCommon_.get());
 
@@ -721,6 +728,25 @@ void GamePlayScene::Update(float deltaTime) {
     UpdateGameOver(originalDeltaTime);
     UpdateGameplaySystems(deltaTime);
     UpdateBossMovie(deltaTime);
+    
+    // ボスHP半減イベントの監視とBGM切り替え
+    if (boss_ && hasBossAppeared_) {
+        float hpRatio = boss_->GetHp() / boss_->GetMaxHp();
+        if (hpRatio <= 0.5f && bgmHandle_ != bgmBattle02Handle_ && bgmHandle_ != bgmDefeatHandle_) {
+            if (boss_->IsHpHalfEventActive()) {
+                // 演出中は一度BGMを停止
+                if (audioPlayer_->IsPlaying(bgmHandle_)) {
+                    audioPlayer_->StopBGM();
+                }
+            }
+            else {
+                // 演出終了後にBGMをbattle_02.mp3に切り替えて再生
+                bgmHandle_ = bgmBattle02Handle_;
+                audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+            }
+        }
+    }
+
     UpdateClearSequence(deltaTime);
 }
 
@@ -1566,6 +1592,12 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
         // プレイヤーの点滅演出(3.5秒)が終わったら処理開始
         if (player_->GetDeathTimer() > 3.5f) {
 
+            // BGMを敗北曲（defeat.mp3）に切り替える
+            if (bgmHandle_ != bgmDefeatHandle_) {
+                bgmHandle_ = bgmDefeatHandle_;
+                audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+            }
+
             // --- 1. テキストのフェードイン ---
             if (!isGameOverUiReady_) {
                 bool allFadedIn = true;
@@ -1698,6 +1730,10 @@ void GamePlayScene::UpdateBossMovie(float deltaTime) {
                 player_->SetIsControlActive(true);
                 player_->SetIsPhysicsActive(true);
             }
+
+            // BGMを戦闘曲(battle_01.mp3)に切り替えて再生
+            bgmHandle_ = bgmBattle01Handle_;
+            audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
 
             boss_->StartBattle();
 
