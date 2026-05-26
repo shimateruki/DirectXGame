@@ -273,6 +273,12 @@ private:
     float doorOpenedTimer_ = 0.0f;
     class IAnimationState* tutorialPrevState_ = nullptr;
 
+    // --- チュートリアル矢印用 ---
+    Object3d* tutorialArrow_ = nullptr;
+    float tutorialArrowAnimTimer_ = 0.0f;
+    Vector3 tutorialArrowDefaultPos_;
+    size_t tutorialArrowWaypointIndex_ = 0;
+
     // --- ミッション表示スプライト ---
     Sprite* missionText_mission_ = nullptr;
     Sprite* missionText_line_ = nullptr;

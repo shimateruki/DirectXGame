@@ -3126,9 +3126,9 @@
             "collisionAttribute": 6,
             "collisionMask": 4294967137,
             "color": [
-                0.5882353186607361,
-                0.4313725531101227,
-                0.4313725531101227,
+                0.07722008228302002,
+                0.07422249764204025,
+                0.0736423134803772,
                 1.0
             ],
             "emissive": 1.0,
@@ -3162,7 +3162,7 @@
             "param": {
                 "enemyType": "Tutorial_Doll",
                 "gravity": 0.0,
-                "hp": 100.0,
+                "hp": 80.0,
                 "interval": 3.0,
                 "jumpPower": 0.0,
                 "maxCount": 0,
@@ -9549,9 +9549,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
-                1.0,
-                0.5,
-                0.5,
+                0.14671814441680908,
+                0.14671814441680908,
+                0.14671814441680908,
                 1.0
             ],
             "emissive": 10.0,
@@ -9649,9 +9649,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
-                0.7843137383460999,
-                0.47058823704719543,
-                0.47058823704719543,
+                0.8880308866500854,
+                1.0,
+                0.0,
                 1.0
             ],
             "emissive": 1.0,
@@ -10213,6 +10213,106 @@
             "targetID": -1,
             "texturePath": "",
             "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -8.797645568847656e-05,
+                    -0.01695150136947632,
+                    5.997717380523682e-06
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.4989714622497559,
+                    0.19999998807907104
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "emissive": 2.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "arrow",
+            "myEventID": -1,
+            "name": "arrow",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -10.472339630126953,
+                30.391494750976563,
+                -218.31199645996094
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
                 "flowSpeedY": 0.10000000149011612,
@@ -12009,106 +12109,6 @@
                 0.0,
                 0.0,
                 0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model",
-            "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.5,
-                "waveSpeed": 2.0
-            }
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    -8.797645568847656e-05,
-                    -0.01695150136947632,
-                    5.997717380523682e-06
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.4989714622497559,
-                    0.19999998807907104
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enableOutline": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "arrow",
-            "myEventID": -1,
-            "name": "arrow",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                -10.472339630126953,
-                30.7559814453125,
-                -218.31199645996094
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
             ],
             "targetID": -1,
             "texturePath": "",

@@ -319,4 +319,3 @@ void PlayerStateAttack3::ApplyPose(float t) {
     leftFootObj_->UpdateWorldMatrix();
   }
 }
-// 回避ダッシュ状態 (Dash) 実装

@@ -377,6 +377,3 @@ void PlayerStateIdle::ApplyPostUpdate(Player *player, float deltaTime) {
       s_bodyBlendActive = false;
   }
 }
-
-// ========================================================
-// 走り状態 (Run)

@@ -468,6 +468,18 @@ void GamePlayScene::Initialize() {
     }
 
     // =======================================================
+    // チュートリアル矢印モデルの取得と初期化
+    // =======================================================
+    for (auto& obj : objectManager_->GetObjects()) {
+        if (obj->GetName() == "arrow") {
+            tutorialArrow_ = obj.get();
+            tutorialArrowDefaultPos_ = obj->GetTransform()->translate;
+            tutorialArrowWaypointIndex_ = 0;
+            break;
+        }
+    }
+
+    // =======================================================
     // 進行状況の復元：橋がすでに落ちている場合の処理
     // =======================================================
     if (GameProgress::GetInstance()->hasBridgeDropped) {
@@ -1392,6 +1404,135 @@ void GamePlayScene::UpdateTutorialGuide(float deltaTime) {
         default:
             break;
         }
+    }
+
+    // =======================================================
+    // チュートリアル矢印の演出処理
+    // =======================================================
+    if (tutorialArrow_) {
+        Transform* trans = tutorialArrow_->GetTransform();
+        
+        if (doorOpenProgress_ < 1.0f) {
+            tutorialArrowAnimTimer_ += deltaTime;
+            
+            // 1. 上下運動 (サイン波でふわふわ)
+            float hover = std::sin(tutorialArrowAnimTimer_ * 3.0f) * 0.3f;
+            
+            // 2. 定期的なY軸回転 (イージング)
+            float cycle = std::fmod(tutorialArrowAnimTimer_, 4.0f); // 4秒周期
+            float rotY = 0.0f;
+            if (cycle < 1.0f) {
+                // 0~1秒の間に360度回転させる (EaseInOutCubic)
+                float t = cycle;
+                float easeT = t < 0.5f ? 4.0f * t * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) / 2.0f;
+                rotY = easeT * 3.14159265f * 2.0f;
+            } else {
+                rotY = 0.0f; // 回転完了後待機
+            }
+            
+            trans->translate = tutorialArrowDefaultPos_ + Vector3{0.0f, hover, 0.0f};
+            trans->rotate = {0.0f, rotY, 0.0f};
+        } else {
+            // 3. ドアが開いた後の道案内ロジック
+            
+            // ウェイポイントの定義
+            std::vector<Vector3> waypoints = {
+                {0.0f, 24.0f, -200.0f},
+                {0.3f, 24.0f, -153.0f}
+            };
+            
+            if (tutorialArrowWaypointIndex_ <= waypoints.size()) {
+                Vector3 targetPos;
+                bool isFinalTarget = false;
+                
+                if (tutorialArrowWaypointIndex_ < waypoints.size()) {
+                    targetPos = waypoints[tutorialArrowWaypointIndex_];
+                } else if (boss_) {
+                    targetPos = boss_->GetWorldPosition();
+                    targetPos.y += 2.0f; // ボスコアの少し上を狙う
+                    isFinalTarget = true;
+                } else {
+                    tutorialArrow_->SetIsVisible(false);
+                    tutorialArrowWaypointIndex_ = 999;
+                    targetPos = tutorialArrowDefaultPos_;
+                }
+                
+                Vector3 dir = {
+                    targetPos.x - tutorialArrowDefaultPos_.x,
+                    targetPos.y - tutorialArrowDefaultPos_.y,
+                    targetPos.z - tutorialArrowDefaultPos_.z
+                };
+                
+                float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+                
+                if (dist < 2.0f) {
+                    if (isFinalTarget) {
+                        // ボスコアに着いたら消す
+                        tutorialArrow_->SetIsVisible(false);
+                        tutorialArrowWaypointIndex_ = 999;
+                    } else {
+                        // 中継ポイントでプレイヤーが近づくのを待つ
+                        // 待機時はX軸の回転を-90度に固定し、次の目的地の方角(Y軸)を向くようにする
+                        trans->rotate.x = -90.0f * (3.14159265f / 180.0f);
+                        
+                        Vector3 nextTargetPos;
+                        bool hasNextTarget = false;
+                        if (tutorialArrowWaypointIndex_ + 1 < waypoints.size()) {
+                            nextTargetPos = waypoints[tutorialArrowWaypointIndex_ + 1];
+                            hasNextTarget = true;
+                        } else if (boss_) {
+                            nextTargetPos = boss_->GetWorldPosition();
+                            nextTargetPos.y += 2.0f;
+                            hasNextTarget = true;
+                        }
+                        
+                        if (hasNextTarget) {
+                            float nx = nextTargetPos.x - tutorialArrowDefaultPos_.x;
+                            float nz = nextTargetPos.z - tutorialArrowDefaultPos_.z;
+                            trans->rotate.y = std::atan2(nx, nz);
+                        }
+                        
+                        if (player_) {
+                            Vector3 playerPos = player_->GetWorldPosition();
+                            float pDistX = playerPos.x - tutorialArrowDefaultPos_.x;
+                            float pDistY = playerPos.y - tutorialArrowDefaultPos_.y;
+                            float pDistZ = playerPos.z - tutorialArrowDefaultPos_.z;
+                            float distToPlayer = std::sqrt(pDistX * pDistX + pDistY * pDistY + pDistZ * pDistZ);
+                            
+                            // プレイヤーがある程度近づいたら次のポイントへ進む
+                            if (distToPlayer < 10.0f) {
+                                tutorialArrowWaypointIndex_++;
+                            }
+                        }
+                    }
+                } else {
+                    // ターゲットに向かって速く移動する
+                    float speed = 80.0f; // 移動速度アップ
+                    dir.x /= dist;
+                    dir.y /= dist;
+                    dir.z /= dist;
+                    
+                    float moveDist = speed * deltaTime;
+                    if (moveDist > dist) moveDist = dist; // 行き過ぎ防止
+                    
+                    tutorialArrowDefaultPos_.x += dir.x * moveDist;
+                    tutorialArrowDefaultPos_.y += dir.y * moveDist;
+                    tutorialArrowDefaultPos_.z += dir.z * moveDist;
+                    
+                    // 矢印の向きを進行方向に合わせる
+                    float distXZ = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+                    float targetRotY = std::atan2(dir.x, dir.z);
+                    float targetRotX = -std::atan2(dir.y, distXZ);
+                    
+                    // モデルの元々の向き(上向きを想定)を考慮し、X軸に-90度(-PI/2)のオフセットを加える
+                    trans->rotate = { targetRotX - (3.14159265f / 2.0f), targetRotY, 0.0f };
+                }
+            }
+            trans->translate = tutorialArrowDefaultPos_;
+        }
+
+        trans->isQuaternionMaster = false;
+        tutorialArrow_->UpdateWorldMatrix();
     }
 }
 
