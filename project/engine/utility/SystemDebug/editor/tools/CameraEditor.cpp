@@ -127,6 +127,15 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
     }
     else {
         camera->SetFollowTarget(nullptr);
+        
+        // エディタモードで操作しようとしたら、オーバーライドを強制終了する
+        if (camera->IsOverridden()) {
+            InputManager* input = InputManager::GetInstance();
+            if (input->IsMouseButtonPressed(1)) {
+                camera->EndOverride(0.0f);
+            }
+        }
+
         if (!camera->IsOverridden()) {
             UpdateFreeCamera(camera);
         }

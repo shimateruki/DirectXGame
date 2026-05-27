@@ -623,9 +623,13 @@ void GamePlayScene::Initialize() {
             player_->UpdateLocalMatrix();
             player_->UpdateWorldMatrix();
 
-            // 演出開始
+            // ムービー開始
             movieState_ = MovieState::kTutorialPlatformDescent;
             movieTimer_ = 0.0f;
+
+            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                CameraEditor::GetInstance()->PlayOverrideCamera(camera, "elevator_movie");
+            }
 
             // 重力に任せると跳ねるため、物理を無効化して手動更新にする
             player_->SetIsControlActive(false);
@@ -1151,6 +1155,10 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                 missionSwitchDelayTimer_ = 0.5f; // 0.5秒待機
                 player_->SetIsControlActive(true);
                 player_->SetIsPhysicsActive(true); // 物理復帰
+
+                if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                    camera->EndOverride(1.5f);
+                }
 
                 if (!hasFinishedTutorial_) {
                     tutorialStep_ = TutorialStep::kShowMove;
