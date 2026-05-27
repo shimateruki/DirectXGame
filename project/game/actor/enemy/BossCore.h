@@ -187,6 +187,7 @@ public:
     // 攻撃クラスがボスの部品をいじるためのゲッター
     // ==========================================
     std::vector<Object3d*>& GetArmorBlocks() { return armorBlocks_; }
+    bool IsArmorBlockBroken(size_t index) const { return index >= blockBroken_.size() || blockBroken_[index]; }
     Object3d* GetTarget() const { return target_; }
     Object3d* GetWarningArea() const { return warningArea_; }
 

@@ -2,8 +2,9 @@
 
 namespace {
 constexpr float kArmorShardOffset = 0.35f;
-constexpr float kArmorBreakMinGroundY = 0.5f;
-constexpr float kArmorBreakBossFloorOffsetY = 3.5f;
+constexpr float kArmorBreakGroundY = 0.5f;
+constexpr float kArmorBreakGroundProbeHeight = 80.0f;
+constexpr float kArmorBreakGroundProbeDistance = 180.0f;
 constexpr float kArmorBreakShardScale = 0.9f;
 constexpr float kArmorBreakHoldDuration = 0.06f;
 constexpr float kArmorBreakRestBeforeDissolve = 0.36f;
@@ -59,12 +60,49 @@ void ResetArmorShardForFunnel(Object3d* shard, size_t fallbackIndex, int32_t mat
     shard->GetTransform()->isQuaternionMaster = false;
 }
 
-float ResolveArmorBreakGroundY(const BossCore* boss) {
-    if (!boss) {
-        return kArmorBreakMinGroundY;
+bool ContainsNameToken(const std::string& name, const char* token) {
+    return name.find(token) != std::string::npos;
+}
+
+bool ShouldIgnoreArmorBreakGround(Object3d* object, const BossCore* boss, Object3d* ignoredObject) {
+    if (!object) {
+        return true;
     }
 
-    return (std::max)(kArmorBreakMinGroundY, boss->GetWorldPosition().y - kArmorBreakBossFloorOffsetY);
+    for (Object3d* current = object; current; current = current->GetParent()) {
+        if (current == ignoredObject || current == boss) {
+            return true;
+        }
+    }
+
+    const std::string& name = object->GetName();
+    return ContainsNameToken(name, "[Trigger]") ||
+        ContainsNameToken(name, "Collision_Box_") ||
+        ContainsNameToken(name, "CollisionBox");
+}
+
+float ResolveArmorBreakGroundY(const Vector3& position, const BossCore* boss, Object3d* ignoredObject) {
+    Vector3 start = {
+        position.x,
+        position.y + kArmorBreakGroundProbeHeight,
+        position.z
+    };
+    Vector3 direction = { 0.0f, -1.0f, 0.0f };
+
+    RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(
+        start,
+        direction,
+        kArmorBreakGroundProbeDistance,
+        kGround | kMapBlock,
+        [boss, ignoredObject](Object3d* object) {
+            return ShouldIgnoreArmorBreakGround(object, boss, ignoredObject);
+        });
+
+    if (!hit.isHit) {
+        return kArmorBreakGroundY;
+    }
+
+    return (std::max)(kArmorBreakGroundY, hit.hitPoint.y);
 }
 
 float LengthXZ(const Vector3& v) {
@@ -275,8 +313,9 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
     block->UpdateWorldMatrix();
 
     Vector3 worldPos = block->GetWorldPosition();
+    float groundY = ResolveArmorBreakGroundY(worldPos, this, block);
     float blockHalfHeight = (std::max)(0.65f, std::abs(block->GetScale().y) * 0.75f);
-    float breakLiftY = (std::max)(0.0f, 0.5f + blockHalfHeight - worldPos.y);
+    float breakLiftY = (std::max)(0.0f, groundY + blockHalfHeight - worldPos.y);
     Vector3 breakOriginPos = worldPos;
     breakOriginPos.y += breakLiftY;
     Vector3 worldRot = block->GetRotation();
@@ -306,7 +345,7 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
     motion.rollTimer = 0.0f;
     motion.landedTimer = 0.0f;
     motion.sparkTimer = 0.0f;
-    motion.groundY = ResolveArmorBreakGroundY(this);
+    motion.groundY = groundY;
     motion.position = breakOriginPos;
     motion.rotation = worldRot;
     motion.baseColor = breakBaseColor;
@@ -394,7 +433,7 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
         piece.baseScale = childWorldScale;
         piece.landedScale = piece.baseScale;
         piece.baseColor = breakBaseColor;
-        piece.groundY = motion.groundY + static_cast<float>(childIndex % 3) * 0.03f;
+        piece.groundY = ResolveArmorBreakGroundY(childWorldPos, this, child) + static_cast<float>(childIndex % 3) * 0.03f;
         float scatterSpeed = 1.55f + static_cast<float>(childIndex % 3) * 0.16f;
         piece.velocity = {
             mixedDir.x * scatterSpeed + tangentDir.x * tangentSign * 0.18f,
@@ -457,6 +496,14 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                 if (!piece.landed) {
                     allFinished = false;
                     if (!isBreakHolding) {
+                        float groundOffset = static_cast<float>(pieceIndex % 3) * 0.03f;
+                        float nextGroundY = ResolveArmorBreakGroundY(piece.position, this, child) + groundOffset;
+                        if (piece.rolling && nextGroundY + 0.25f < piece.groundY) {
+                            piece.rolling = false;
+                            piece.velocity.y = 0.0f;
+                        }
+                        piece.groundY = nextGroundY;
+
                         if (!piece.rolling) {
                             piece.velocity.y -= 24.0f * deltaTime;
                         }
@@ -594,6 +641,13 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                 block->UpdateWorldMatrix();
                 continue;
             }
+
+            float nextGroundY = ResolveArmorBreakGroundY(motion.position, this, block);
+            if (motion.rolling && nextGroundY + 0.25f < motion.groundY) {
+                motion.rolling = false;
+                motion.velocity.y = 0.0f;
+            }
+            motion.groundY = nextGroundY;
 
             if (!motion.rolling) {
                 motion.velocity.y -= 24.0f * deltaTime;
