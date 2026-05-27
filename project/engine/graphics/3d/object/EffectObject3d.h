@@ -111,6 +111,9 @@ public:
     float editRingOuterRadius_ = 1.0f;
     float editRingInnerRadius_ = 0.5f;
     float editTriangleSize_ = 1.0f;
+    float editLightningLength_ = 2.0f;
+    float editLightningWidth_ = 0.08f;
+    float editLightningJitter_ = 0.35f;
     Vector2 editUvTiling_ = { 1.0f, 1.0f };
 
     bool editHasCollision_ = false;
@@ -153,5 +156,6 @@ private:
     void GenerateConeVertices(float radius, float height, int segments);
     void GenerateRingVertices(float outerRad, float innerRad, int segments);
     void GenerateTriangleVertices(float size);
+    void GenerateLightningVertices(float length, float width, float jitter, int segments);
 
 };

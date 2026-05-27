@@ -5,11 +5,20 @@
 #include <cmath>
 #include <numbers>
 
+namespace {
+
+bool IsShootBlockAvailable(BossCore* boss, const std::vector<Object3d*>& armorBlocks, size_t index) {
+    return boss && index < armorBlocks.size() && armorBlocks[index] && !boss->IsArmorBlockBroken(index);
+}
+
+} // namespace
+
 void BossAttack2_Shoot::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
 
     blockStartPos_.clear();
     blockTargetPos_.clear();
+    activeBlockIndices_.clear();
     shotCount_ = 0;
     descendTimer_ = 0.0f;
 
@@ -21,14 +30,13 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
     auto& armorBlocks = boss->GetArmorBlocks();
     Object3d* target = boss->GetTarget();
 
-    // --- Phase 10: X = 50.0f へ移動 ---
     if (animPhase_ == 10) {
         animTimer_ += deltaTime;
         float t = std::min(animTimer_ / 2.5f, 1.0f);
 
         Vector3 pos = boss->GetTranslate();
         pos.x = Math::Lerp(animStartPos_.x, 50.0f, Easing::OutExpo(t));
-        pos.y = Math::Lerp(animStartPos_.y, animStartPos_.y + 8.0f, Easing::OutExpo(t)); // Y座標も滑らかに持ち上げる
+        pos.y = Math::Lerp(animStartPos_.y, animStartPos_.y + 8.0f, Easing::OutExpo(t));
         boss->SetTranslate(pos);
 
         if (target) {
@@ -44,47 +52,64 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
             blockStartPos_.clear();
             blockTargetPos_.clear();
-
-            // ==========================================
-            // 手書きの配置データをやめて、自動で綺麗な多角形（円陣）を作る
-            // ==========================================
-            float turnY = std::numbers::pi_v<float> / 2.0f;
-            float radius = 4.0f; // 10角形の半径（迫力を出すために少し広めに設定）
+            activeBlockIndices_.clear();
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
+                if (IsShootBlockAvailable(boss, armorBlocks, i)) {
+                    activeBlockIndices_.push_back(i);
+                }
+            }
 
-                // 360度（2π）を現在のブロック数で割って、均等な角度を計算する
-                // （10個なら36度ずつ、6個なら60度ずつズレる）
-                float angle = (2.0f * std::numbers::pi_v<float> *i) / armorBlocks.size();
+            if (activeBlockIndices_.empty()) {
+                animPhase_ = 13;
+                animTimer_ = 0.0f;
+                descendTimer_ = 0.0f;
+                return;
+            }
 
-                // YZ平面（ボスの正面）に円を描くように座標をセット
+            float turnY = std::numbers::pi_v<float> / 2.0f;
+            float radius = 4.0f;
+
+            for (size_t order = 0; order < activeBlockIndices_.size(); ++order) {
+                size_t blockIndex = activeBlockIndices_[order];
+                Object3d* block = armorBlocks[blockIndex];
+
+                blockStartPos_.push_back(block->GetTranslate());
+
+                float angle = (2.0f * std::numbers::pi_v<float> * static_cast<float>(order)) /
+                    static_cast<float>(activeBlockIndices_.size());
+
                 Vector3 targetPos = {
-                    -2.0f,                    // X: ボスの少し手前
-                    std::sin(angle) * radius, // Y: 上下位置
-                    std::cos(angle) * radius  // Z: 左右位置
+                    -2.0f,
+                    std::sin(angle) * radius,
+                    std::cos(angle) * radius
                 };
 
                 blockTargetPos_.push_back(targetPos);
 
-                // スケールと向きも一緒にセット
-                armorBlocks[i]->SetScale({ 1.5f, 1.5f, 1.5f });
-                armorBlocks[i]->SetRotation({ 0.0f, turnY, 0.0f });
-                armorBlocks[i]->GetTransform()->isQuaternionMaster = false;
+                block->SetScale({ 1.5f, 1.5f, 1.5f });
+                block->SetRotation({ 0.0f, turnY, 0.0f });
+                block->GetTransform()->isQuaternionMaster = false;
             }
         }
     }
-    // --- Phase 11: 射撃陣形へスライド移動 ---
     else if (animPhase_ == 11) {
         animTimer_ += deltaTime;
         float t = std::min(animTimer_ / 1.0f, 1.0f);
         float easeT = Easing::OutExpo(t);
 
-        for (size_t i = 0; i < armorBlocks.size(); ++i) {
-            if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
-                Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
-                armorBlocks[i]->SetTranslate(pos);
+        for (size_t order = 0; order < activeBlockIndices_.size(); ++order) {
+            if (order >= blockStartPos_.size() || order >= blockTargetPos_.size()) {
+                continue;
             }
+
+            size_t blockIndex = activeBlockIndices_[order];
+            if (!IsShootBlockAvailable(boss, armorBlocks, blockIndex)) {
+                continue;
+            }
+
+            Vector3 pos = Math::Lerp(blockStartPos_[order], blockTargetPos_[order], easeT);
+            armorBlocks[blockIndex]->SetTranslate(pos);
         }
 
         if (target) {
@@ -100,8 +125,13 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
             shotCount_ = 0;
         }
     }
-    // --- Phase 12: プレイヤーを向いて、1つずつ飛ばす ---
     else if (animPhase_ == 12) {
+        if (activeBlockIndices_.empty()) {
+            animPhase_ = 13;
+            animTimer_ = 0.0f;
+            return;
+        }
+
         animTimer_ += deltaTime;
 
         if (target) {
@@ -114,44 +144,46 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
         float nextShotTime = shotCount_ * 0.5f;
 
         if (animTimer_ >= nextShotTime) {
-            int idx = (int)armorBlocks.size() - 1 - shotCount_;
-            if (idx >= 0 && idx < armorBlocks.size()) {
-                Object3d* block = armorBlocks[idx];
-                block->SetAttackDamage(boss->GetAttackParams().damageShoot);
+            int fireOrder = static_cast<int>(activeBlockIndices_.size()) - 1 - shotCount_;
+            if (fireOrder >= 0 && fireOrder < static_cast<int>(activeBlockIndices_.size())) {
+                size_t blockIndex = activeBlockIndices_[fireOrder];
 
-                Vector3 bossPos = boss->GetTranslate();
-                float bossRotY = boss->GetRotation().y;
-                Vector3 localPos = block->GetTranslate();
+                if (IsShootBlockAvailable(boss, armorBlocks, blockIndex)) {
+                    Object3d* block = armorBlocks[blockIndex];
+                    block->SetAttackDamage(boss->GetAttackParams().damageShoot);
 
-                Vector3 worldPos;
-                worldPos.x = bossPos.x + (localPos.x * std::cos(bossRotY) + localPos.z * std::sin(bossRotY));
-                worldPos.y = bossPos.y + localPos.y;
-                worldPos.z = bossPos.z + (-localPos.x * std::sin(bossRotY) + localPos.z * std::cos(bossRotY));
+                    Vector3 bossPos = boss->GetTranslate();
+                    float bossRotY = boss->GetRotation().y;
+                    Vector3 localPos = block->GetTranslate();
 
-                block->SetParent(nullptr);
-                block->SetTranslate(worldPos);
-                block->SetCollisionAttribute(0);
+                    Vector3 worldPos;
+                    worldPos.x = bossPos.x + (localPos.x * std::cos(bossRotY) + localPos.z * std::sin(bossRotY));
+                    worldPos.y = bossPos.y + localPos.y;
+                    worldPos.z = bossPos.z + (-localPos.x * std::sin(bossRotY) + localPos.z * std::cos(bossRotY));
 
-                Vector3 currentRot = block->GetRotation();
-                block->GetTransform()->isQuaternionMaster = false;
+                    block->SetParent(nullptr);
+                    block->SetTranslate(worldPos);
+                    block->SetCollisionAttribute(0);
 
-                // ゲッター経由で FlyingBlocks に追加
-                boss->GetFlyingBlocks().push_back({ block, {0.0f, 0.0f, 0.0f}, currentRot, 4, idx });
+                    Vector3 currentRot = block->GetRotation();
+                    block->GetTransform()->isQuaternionMaster = false;
+
+                    boss->GetFlyingBlocks().push_back(
+                        { block, { 0.0f, 0.0f, 0.0f }, currentRot, 4, static_cast<int>(blockIndex) });
+                }
             }
 
             shotCount_++;
 
-            if (shotCount_ >= armorBlocks.size()) {
+            if (shotCount_ >= static_cast<int>(activeBlockIndices_.size())) {
                 animPhase_ = 13;
                 animTimer_ = 0.0f;
             }
         }
     }
-    // --- Phase 13: 待機 ---
     else if (animPhase_ == 13) {
-        // 徐々に下に下がる処理
         descendTimer_ += deltaTime;
-        float descendDuration = 4.0f; // 4秒かけて元の高さへ下降
+        float descendDuration = 4.0f;
         float t = std::min(descendTimer_ / descendDuration, 1.0f);
         float easeT = Easing::InOutQuad(t);
 
@@ -162,9 +194,13 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             bool isFlying = false;
             for (auto& fb : boss->GetFlyingBlocks()) {
-                if (fb.originalIndex == i) { isFlying = true; break; }
+                if (fb.originalIndex == static_cast<int>(i)) {
+                    isFlying = true;
+                    break;
+                }
             }
-            if (!isFlying) {
+
+            if (!isFlying && IsShootBlockAvailable(boss, armorBlocks, i)) {
                 BossCore::OrbitData orbit = boss->GetIdleOrbit(i);
                 armorBlocks[i]->SetTranslate(orbit.pos);
                 armorBlocks[i]->SetScale(orbit.scale);
@@ -173,11 +209,10 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
             }
         }
 
-        // 弾が全部戻ってきたら攻撃終了
-        if (boss->GetFlyingBlocks().empty()) {
+        if (t >= 1.0f && boss->GetFlyingBlocks().empty()) {
             animTimer_ += deltaTime;
             if (animTimer_ >= 1.0f) {
-                isFinished_ = true; // これで完了
+                isFinished_ = true;
             }
         }
     }

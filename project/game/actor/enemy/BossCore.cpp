@@ -69,6 +69,19 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
         blockHps_[i] = attackParams_.maxArmorBlockHp;
     }
 
+    while (armorBlockBaseMaterialTypes_.size() < armorBlocks_.size()) {
+        size_t index = armorBlockBaseMaterialTypes_.size();
+        int32_t baseMaterialType = armorBlocks_[index] ? armorBlocks_[index]->GetMaterialType() : 0;
+        if (baseMaterialType == 4 || baseMaterialType >= 13) {
+            baseMaterialType = 0;
+        }
+        armorBlockBaseMaterialTypes_.push_back(baseMaterialType);
+    }
+    while (armorBlockBaseEmissives_.size() < armorBlocks_.size()) {
+        size_t index = armorBlockBaseEmissives_.size();
+        armorBlockBaseEmissives_.push_back(armorBlocks_[index] ? armorBlocks_[index]->GetEmissive() : 1.0f);
+    }
+
     // パラメータが未初期化ならデフォルト値で初期化（アクセス違反防止）
     if (!param_.has_value()) {
         param_ = EntityParameter();
@@ -705,8 +718,10 @@ void BossCore::Update(float deltaTime) {
                     blockHps_[i] -= dmg;
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
-                        GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                        StartArmorBlockBreak(i, weapon->GetWorldPosition(), true);
                         DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
+                    } else {
+                        UpdateArmorCrackVisual(i);
                     }
                     hitFound = true;
                     break;
@@ -732,8 +747,10 @@ void BossCore::Update(float deltaTime) {
                         blockHps_[i] -= dmg;
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
-                            GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                            StartArmorBlockBreak(i, effect->GetWorldPosition(), true);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
+                        } else {
+                            UpdateArmorCrackVisual(i);
                         }
                         hitFound = true;
                         break;
@@ -759,8 +776,10 @@ void BossCore::Update(float deltaTime) {
                         blockHps_[i] -= dmg;
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
-                            GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                            StartArmorBlockBreak(i, bullet->GetWorldPosition(), true);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
+                        } else {
+                            UpdateArmorCrackVisual(i);
                         }
                         hitFound = true;
                         break;
@@ -814,6 +833,9 @@ void BossCore::Update(float deltaTime) {
                             armorBlocks_.erase(armorBlocks_.begin() + i);
                             if (i < blockHps_.size()) blockHps_.erase(blockHps_.begin() + i);
                             if (i < blockBroken_.size()) blockBroken_.erase(blockBroken_.begin() + i);
+                            if (i < armorBreakMotions_.size()) armorBreakMotions_.erase(armorBreakMotions_.begin() + i);
+                            if (i < armorBlockBaseMaterialTypes_.size()) armorBlockBaseMaterialTypes_.erase(armorBlockBaseMaterialTypes_.begin() + i);
+                            if (i < armorBlockBaseEmissives_.size()) armorBlockBaseEmissives_.erase(armorBlockBaseEmissives_.begin() + i);
                         }
                         else {
                             ++i;
@@ -896,12 +918,7 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     // 魔法の処理：破壊されたブロックの強制消去
     // ==========================================
-    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-        if (blockBroken_[i] && armorBlocks_[i]) {
-            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
-            armorBlocks_[i]->SetCollisionAttribute(0);
-        }
-    }
+    UpdateBrokenArmorBlocks(deltaTime);
 
     // ==========================================
     // 破片の物理計算と退場タイマーを進める

@@ -17,6 +17,7 @@ public:
     void Draw(ID3D12GraphicsCommandList* commandList, const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix, uint32_t dummyTexture = 0, uint32_t depthSrvHandle = 0);
 
     void LoadAllPresets(const std::string& directoryPath);
+    void PrewarmPreset(const std::string& presetName);
 
     void Emit(const std::string& presetName, const Vector3& position, const Matrix4x4& emitterWorldMatrix = Math::MakeIdentity4x4());
     void EmitFromConfig(const GPUParticleConfig& config);

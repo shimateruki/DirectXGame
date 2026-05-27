@@ -164,6 +164,7 @@ void GamePlayScene::Initialize() {
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets(
         "Resources/json/gpu_particles/");
+    GPUParticleManager::GetInstance()->PrewarmPreset("playerattak");
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
@@ -1033,6 +1034,15 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
 
         // カメラ制御は GhostRecorder に任せるため、ブロックの崩落演出のみ実行する
         if (movieTimer_ > 1.5f) {
+            float magmaSurfaceY = -49.5f;
+            for (const auto& obj : objectManager_->GetObjects()) {
+                if (obj && obj->GetName() == "maguma") {
+                    magmaSurfaceY = obj->GetWorldPosition().y;
+                    break;
+                }
+            }
+            const float bridgeMagmaEnterY = magmaSurfaceY + 1.0f;
+
             // まず親の当たり判定を無効化する（プレイヤーが落ちるように）
             for (auto& obj : objectManager_->GetObjects()) {
                 if (obj->GetName() == "Bridge_Block_Front") {
@@ -1043,28 +1053,46 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
             for (auto& obj : objectManager_->GetObjects()) {
                 if (obj->GetName() == "Bridge_Block_Center") {
                     Transform* trans = obj->GetTransform();
-                    trans->translate.y -= 26.0f * deltaTime;
-                    trans->rotate.x -= 1.0f * deltaTime; // 自然な傾き（下へ折れ曲がる）
+                    const bool isSinking = bridgeCenterMagmaImpactPlayed_;
+                    trans->translate.y -= (isSinking ? 4.0f : 26.0f) * deltaTime;
+                    trans->rotate.x -= (isSinking ? 0.35f : 1.0f) * deltaTime; // 自然な傾き（下へ折れ曲がる）
                     trans->isQuaternionMaster = false;
                     obj->UpdateWorldMatrix();
+                    if (!bridgeCenterMagmaImpactPlayed_ && obj->GetWorldPosition().y <= bridgeMagmaEnterY) {
+                        trans->translate.y = bridgeMagmaEnterY;
+                        obj->UpdateWorldMatrix();
+                        bridgeCenterMagmaImpactPlayed_ = true;
+                    }
                 }
                 else if (movieTimer_ > 2.0f &&
                     obj->GetName() == "Bridge_Block_Back") {
                     // 少し遅れて奥のブロックもさらに崩れる
                     Transform* trans = obj->GetTransform();
-                    trans->translate.y -= 32.0f * deltaTime;
-                    trans->rotate.x += 1.8f * deltaTime; // 折れ曲がる
+                    const bool isSinking = bridgeBackMagmaImpactPlayed_;
+                    trans->translate.y -= (isSinking ? 4.0f : 32.0f) * deltaTime;
+                    trans->rotate.x += (isSinking ? 0.45f : 1.8f) * deltaTime; // 折れ曲がる
                     trans->isQuaternionMaster = false;
                     obj->UpdateWorldMatrix();
+                    if (!bridgeBackMagmaImpactPlayed_ && obj->GetWorldPosition().y <= bridgeMagmaEnterY) {
+                        trans->translate.y = bridgeMagmaEnterY;
+                        obj->UpdateWorldMatrix();
+                        bridgeBackMagmaImpactPlayed_ = true;
+                    }
                 }
                 else if (movieTimer_ > 2.5f &&
                     obj->GetName() == "Bridge_Block_Front") {
                     // 最後に手前の親ブロックごと崩落する
                     Transform* trans = obj->GetTransform();
-                    trans->translate.y -= 48.0f * deltaTime;
-                    trans->rotate.x += 0.6f * deltaTime;
+                    const bool isSinking = bridgeFrontMagmaImpactPlayed_;
+                    trans->translate.y -= (isSinking ? 5.0f : 48.0f) * deltaTime;
+                    trans->rotate.x += (isSinking ? 0.25f : 0.6f) * deltaTime;
                     trans->isQuaternionMaster = false;
                     obj->UpdateWorldMatrix();
+                    if (!bridgeFrontMagmaImpactPlayed_ && obj->GetWorldPosition().y <= bridgeMagmaEnterY) {
+                        trans->translate.y = bridgeMagmaEnterY;
+                        obj->UpdateWorldMatrix();
+                        bridgeFrontMagmaImpactPlayed_ = true;
+                    }
                 }
             }
         }
@@ -1072,6 +1100,11 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
         // ムービー終了判定
         // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
         if (movieTimer_ >= 5.5f) {
+#ifdef USE_IMGUI
+            const bool isDebugBridgePreview = isBridgeDropPreviewForDebug_;
+#else
+            const bool isDebugBridgePreview = false;
+#endif
             auto& objects_ref = objectManager_->GetObjects();
             for (auto& obj : objects_ref) {
                 std::string name = obj->GetName();
@@ -1081,16 +1114,16 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                     if (name.find("Bridge_Block") !=
                         std::string::npos) {    // ブリッジブロックは完全に消す
                         obj->SetIsVisible(false); // 見えなくする
-                        obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+                        obj->isDead = !isDebugBridgePreview; // プレビュー時は再生し直せるように保持する
                     }
                 }
                 else if (
                     name.find("Battle_Field_Collision_Box_South") !=
                     std::string::
                     npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
-                    obj->SetCollisionAttribute(kGround);
+                    obj->SetCollisionAttribute(isDebugBridgePreview ? 0 : kGround);
                 }
-                else if (name.find("Tutorial_") != std::string::npos) {
+                else if (!isDebugBridgePreview && name.find("Tutorial_") != std::string::npos) {
                     if (name.find("Tutorial_Platform_02") != std::string::npos) {
                         continue;
                     }
@@ -1110,7 +1143,15 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
             movieState_ = MovieState::kNone;
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
-            GameProgress::GetInstance()->hasBridgeDropped = true;
+            if (isDebugBridgePreview) {
+                hasBridgeDropped_ = false;
+                GameProgress::GetInstance()->hasBridgeDropped = false;
+#ifdef USE_IMGUI
+                isBridgeDropPreviewForDebug_ = false;
+#endif
+            } else {
+                GameProgress::GetInstance()->hasBridgeDropped = true;
+            }
         }
 
         // ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
@@ -2483,6 +2524,9 @@ void GamePlayScene::StartBridgeDropMovie() {
     movieState_ = MovieState::kBridgeDrop;
     movieTimer_ = 0.0f;
     hasBridgeDropped_ = true;
+    bridgeCenterMagmaImpactPlayed_ = false;
+    bridgeBackMagmaImpactPlayed_ = false;
+    bridgeFrontMagmaImpactPlayed_ = false;
 
     // CinematicCamera を探してムービーを再生する
     for (auto& obj : objectManager_->GetObjects()) {
@@ -2541,10 +2585,82 @@ void GamePlayScene::StartBossAppearanceMovie() {
     boss_->StartAppearance();
 }
 
+#ifdef USE_IMGUI
+bool GamePlayScene::PrepareBridgeDropPreviewForDebug() {
+    movieState_ = MovieState::kNone;
+    movieTimer_ = 0.0f;
+    hasBridgeDropped_ = false;
+    bridgeCenterMagmaImpactPlayed_ = false;
+    bridgeBackMagmaImpactPlayed_ = false;
+    bridgeFrontMagmaImpactPlayed_ = false;
+    GameProgress::GetInstance()->hasBridgeDropped = false;
+
+    bool hasBridgeBlock = false;
+    for (auto& obj : objectManager_->GetObjects()) {
+        if (!obj) {
+            continue;
+        }
+
+        const std::string& name = obj->GetName();
+        if (name == "Bridge_Block_Front" || name == "Bridge_Block_Center" || name == "Bridge_Block_Back") {
+            Transform* trans = obj->GetTransform();
+            if (name == "Bridge_Block_Front") {
+                trans->translate = { 0.0f, 3.0f, -88.0f };
+            } else if (name == "Bridge_Block_Center") {
+                trans->translate = { 0.0f, 9.7749996f, -115.1679993f };
+            } else {
+                trans->translate = { 0.0f, 16.5489998f, -142.3359985f };
+            }
+
+            trans->rotate = { 0.2443461f, 0.0f, 0.0f };
+            trans->quaternion = Math::EulerToQuaternion(trans->rotate);
+            trans->isQuaternionMaster = true;
+            obj->isDead = false;
+            obj->SetIsVisible(true);
+            obj->SetCollisionAttribute(kGround);
+            obj->UpdateLocalMatrix();
+            obj->UpdateWorldMatrix();
+            hasBridgeBlock = true;
+            continue;
+        }
+
+        if (name.find("Bridge_Collision") != std::string::npos) {
+            obj->isDead = false;
+            obj->SetCollisionAttribute(kGround);
+        } else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+            obj->SetCollisionAttribute(0);
+        }
+    }
+
+    if (player_) {
+        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetIsControlActive(true);
+        player_->SetIsPhysicsActive(true);
+    }
+
+    return hasBridgeBlock;
+}
+#endif
+
 void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
     // Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
     if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        if (ImGui::TreeNode("演出確認 (Cinematic Preview)")) {
+            if (movieState_ == MovieState::kBridgeDrop) {
+                ImGui::Text("橋落下演出を再生中");
+            } else if (ImGui::Button("橋落下演出を再生", ImVec2(-1, 30))) {
+                if (PrepareBridgeDropPreviewForDebug()) {
+                    StartBridgeDropMovie();
+                    isBridgeDropPreviewForDebug_ = (movieState_ == MovieState::kBridgeDrop);
+                    DebugConsole::GetInstance()->AddLog("【DEBUG】 橋落下演出を手動再生しました");
+                } else {
+                    DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "【DEBUG】 橋ブロックが見つからないため、橋落下演出を再生できませんでした");
+                }
+            }
+            ImGui::TreePop();
+        }
 
         if (ImGui::TreeNode("プレイヤー・ボス状態 (Player/Enemy Status)")) {
             if (ImGui::Button("プレイヤー HP -> 0")) {

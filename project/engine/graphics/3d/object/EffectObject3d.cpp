@@ -3,6 +3,7 @@
 #include"Winapp.h"
 #include "Easing.h"
 #include <cassert>
+#include <cstdlib>
 #include <DebugConsole.h>
 #include <ModelManager.h>
 float ApplyEasing1(int type, float t) {
@@ -596,6 +597,68 @@ void EffectObject3d::GenerateTriangleVertices(float size) {
     proceduralIndices_.push_back(0); proceduralIndices_.push_back(1); proceduralIndices_.push_back(2);
 }
 
+void EffectObject3d::GenerateLightningVertices(float length, float width, float jitter, int segments) {
+    proceduralVertices_.clear();
+    proceduralIndices_.clear();
+
+    if (segments < 2) {
+        segments = 2;
+    }
+
+    std::vector<Vector3> points;
+    points.reserve(static_cast<size_t>(segments) + 1);
+
+    for (int i = 0; i <= segments; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(segments);
+        float edgeDamp = sinf(t * 3.14159265f);
+        float x = (t - 0.5f) * length;
+        float y = (static_cast<float>(std::rand() % 200) / 100.0f - 1.0f) * jitter * edgeDamp;
+        float z = (static_cast<float>(std::rand() % 200) / 100.0f - 1.0f) * jitter * edgeDamp;
+        points.push_back({ x, y, z });
+    }
+
+    for (int i = 0; i <= segments; ++i) {
+        Vector3 tangent;
+        if (i == 0) {
+            tangent = points[1] - points[0];
+        } else if (i == segments) {
+            tangent = points[i] - points[i - 1];
+        } else {
+            tangent = points[i + 1] - points[i - 1];
+        }
+
+        Vector3 side = Math::Normalize(Vector3{ -tangent.y, tangent.x, 0.0f });
+        if (Math::Length(side) < 0.001f) {
+            side = { 0.0f, 1.0f, 0.0f };
+        }
+
+        float u = static_cast<float>(i) / static_cast<float>(segments);
+        Model::VertexData v0;
+        v0.position = { points[i].x + side.x * width, points[i].y + side.y * width, points[i].z + side.z * width, 1.0f };
+        v0.texcoord = { u, 0.0f };
+        v0.normal = { 0.0f, 0.0f, -1.0f };
+
+        Model::VertexData v1;
+        v1.position = { points[i].x - side.x * width, points[i].y - side.y * width, points[i].z - side.z * width, 1.0f };
+        v1.texcoord = { u, 1.0f };
+        v1.normal = { 0.0f, 0.0f, -1.0f };
+
+        proceduralVertices_.push_back(v0);
+        proceduralVertices_.push_back(v1);
+    }
+
+    for (int i = 0; i < segments; ++i) {
+        uint32_t curr = static_cast<uint32_t>(i * 2);
+        uint32_t next = static_cast<uint32_t>((i + 1) * 2);
+        proceduralIndices_.push_back(curr);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(curr + 1);
+        proceduralIndices_.push_back(curr + 1);
+        proceduralIndices_.push_back(next);
+        proceduralIndices_.push_back(next + 1);
+    }
+}
+
 void EffectObject3d::UpdateProceduralMesh() {
     if (!dynamicModel_) { dynamicModel_ = std::make_unique<Model>(); }
     if (meshRenderer_) { meshRenderer_->SetModel(dynamicModel_.get()); }
@@ -636,6 +699,9 @@ void EffectObject3d::UpdateProceduralMesh() {
     }
     else if (type == 11) { // 三角形
         GenerateTriangleVertices(editTriangleSize_);
+    }
+    else if (type == 12) {
+        GenerateLightningVertices(editLightningLength_, editLightningWidth_, editLightningJitter_, editMeshSegments_);
     }
     else { return; }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "BaseEnemy.h"
 #include "GhostDirector.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include "BossAttack/BaseBossAttack.h"
@@ -153,6 +154,13 @@ public:
 
         blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録
         blockBroken_.push_back(false);
+        armorBreakMotions_.push_back({});
+        int32_t baseMaterialType = block->GetMaterialType();
+        if (baseMaterialType == 4 || baseMaterialType >= 13) {
+            baseMaterialType = 0;
+        }
+        armorBlockBaseMaterialTypes_.push_back(baseMaterialType);
+        armorBlockBaseEmissives_.push_back(block->GetEmissive());
     }
 
     void SetArmorAttackCollisionActive(bool active, bool includeGround = false) {
@@ -186,6 +194,7 @@ public:
     // 攻撃クラスがボスの部品をいじるためのゲッター
     // ==========================================
     std::vector<Object3d*>& GetArmorBlocks() { return armorBlocks_; }
+    bool IsArmorBlockBroken(size_t index) const { return index >= blockBroken_.size() || blockBroken_[index]; }
     Object3d* GetTarget() const { return target_; }
     Object3d* GetWarningArea() const { return warningArea_; }
 
@@ -325,6 +334,48 @@ private:
     // ==========================================
     std::vector<float> blockHps_;
     std::vector<bool> blockBroken_;
+    std::vector<int32_t> armorBlockBaseMaterialTypes_;
+    std::vector<float> armorBlockBaseEmissives_;
+
+    struct ArmorBreakMotion {
+        struct ChildPiece {
+            Object3d* object = nullptr;
+            bool landed = false;
+            bool rolling = false;
+            int bounceCount = 0;
+            float rollTimer = 0.0f;
+            float landedTimer = 0.0f;
+            float groundY = 0.5f;
+            Vector3 velocity = { 0.0f, 0.0f, 0.0f };
+            Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+            Vector3 position = { 0.0f, 0.0f, 0.0f };
+            Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+            Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
+            Vector3 landedScale = { 1.0f, 1.0f, 1.0f };
+            Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            float baseEmissive = 1.0f;
+        };
+
+        bool active = false;
+        bool landed = false;
+        bool rolling = false;
+        float holdTimer = 0.0f;
+        float timer = 0.0f;
+        float rollTimer = 0.0f;
+        float landedTimer = 0.0f;
+        float sparkTimer = 0.0f;
+        float groundY = 0.5f;
+        Vector3 velocity = { 0.0f, 0.0f, 0.0f };
+        Vector3 angularVelocity = { 0.0f, 0.0f, 0.0f };
+        Vector3 position = { 0.0f, 0.0f, 0.0f };
+        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
+        Vector3 landedScale = { 1.0f, 1.0f, 1.0f };
+        Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float baseEmissive = 1.0f;
+        std::vector<ChildPiece> childPieces;
+    };
+    std::vector<ArmorBreakMotion> armorBreakMotions_;
 
     // マップブロックのリスト
     std::vector<MapBlock*> mapBlocks_;
@@ -367,6 +418,9 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
+    void StartArmorBlockBreak(size_t index, const Vector3& impactSource = { 0.0f, 0.0f, 0.0f }, bool hasImpactSource = false);
+    void UpdateBrokenArmorBlocks(float deltaTime);
+    void UpdateArmorCrackVisual(size_t index);
     void SetBlockColor(Object3d* block, const Vector4& color);
     void SaveOriginalColors();
 
