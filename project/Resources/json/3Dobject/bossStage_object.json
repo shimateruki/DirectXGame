@@ -3162,12 +3162,12 @@
             "param": {
                 "enemyType": "Tutorial_Doll",
                 "gravity": 0.0,
-                "hp": 80.0,
+                "hp": 180.0,
                 "interval": 3.0,
                 "jumpPower": 0.0,
                 "maxCount": 0,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
+                "maxHp": 180.0,
                 "speed": 1.0
             },
             "parentName": "",
