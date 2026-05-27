@@ -1,5 +1,24 @@
 {
     "Overrides": {
+        "elevator_movie": {
+            "duration": 0.0,
+            "fixedEyePos": [
+                0.0,
+                40.0,
+                -264.0  
+            ],
+            "fixedTargetPos": [
+                0.0,
+                34.0,
+                -244.0
+            ],
+            "trackEyeX": false,
+            "trackEyeY": true,
+            "trackEyeZ": false,
+            "trackTargetX": false,
+            "trackTargetY": true,
+            "trackTargetZ": false
+        },
         "a": {
             "duration": 1.0,
             "fixedEyePos": [
