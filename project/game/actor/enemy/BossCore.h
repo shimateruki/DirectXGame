@@ -1,6 +1,7 @@
 #pragma once
 #include "BaseEnemy.h"
 #include "GhostDirector.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include "BossAttack/BaseBossAttack.h"
@@ -154,6 +155,12 @@ public:
         blockHps_.push_back(attackParams_.maxArmorBlockHp); // 設定されたHPを登録
         blockBroken_.push_back(false);
         armorBreakMotions_.push_back({});
+        int32_t baseMaterialType = block->GetMaterialType();
+        if (baseMaterialType == 4 || baseMaterialType >= 13) {
+            baseMaterialType = 0;
+        }
+        armorBlockBaseMaterialTypes_.push_back(baseMaterialType);
+        armorBlockBaseEmissives_.push_back(block->GetEmissive());
     }
 
     void SetArmorAttackCollisionActive(bool active, bool includeGround = false) {
@@ -327,6 +334,8 @@ private:
     // ==========================================
     std::vector<float> blockHps_;
     std::vector<bool> blockBroken_;
+    std::vector<int32_t> armorBlockBaseMaterialTypes_;
+    std::vector<float> armorBlockBaseEmissives_;
 
     struct ArmorBreakMotion {
         struct ChildPiece {
@@ -344,6 +353,7 @@ private:
             Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
             Vector3 landedScale = { 1.0f, 1.0f, 1.0f };
             Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+            float baseEmissive = 1.0f;
         };
 
         bool active = false;
@@ -362,6 +372,7 @@ private:
         Vector3 baseScale = { 1.0f, 1.0f, 1.0f };
         Vector3 landedScale = { 1.0f, 1.0f, 1.0f };
         Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float baseEmissive = 1.0f;
         std::vector<ChildPiece> childPieces;
     };
     std::vector<ArmorBreakMotion> armorBreakMotions_;
@@ -409,6 +420,7 @@ private:
     void UpdateCorePieces(float deltaTime);
     void StartArmorBlockBreak(size_t index, const Vector3& impactSource = { 0.0f, 0.0f, 0.0f }, bool hasImpactSource = false);
     void UpdateBrokenArmorBlocks(float deltaTime);
+    void UpdateArmorCrackVisual(size_t index);
     void SetBlockColor(Object3d* block, const Vector4& color);
     void SaveOriginalColors();
 

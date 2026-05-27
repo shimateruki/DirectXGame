@@ -10,6 +10,7 @@ constexpr float kArmorBreakHoldDuration = 0.06f;
 constexpr float kArmorBreakRestBeforeDissolve = 0.36f;
 constexpr float kArmorBreakDissolveDuration = 0.95f;
 constexpr float kArmorBreakRollingFriction = 0.58f;
+constexpr int32_t kArmorCrackMaterialType = 13;
 
 Vector3 GetArmorShardLocalOffset(size_t index) {
     const Vector3 offsets[8] = {
@@ -44,7 +45,7 @@ size_t GetArmorShardIndex(const std::string& name, size_t fallbackIndex) {
     return fallbackIndex % 8;
 }
 
-void ResetArmorShardForFunnel(Object3d* shard, size_t fallbackIndex, int32_t materialType, const Vector4& color) {
+void ResetArmorShardForFunnel(Object3d* shard, size_t fallbackIndex, int32_t materialType, const Vector4& color, float emissive) {
     if (!shard) {
         return;
     }
@@ -55,6 +56,7 @@ void ResetArmorShardForFunnel(Object3d* shard, size_t fallbackIndex, int32_t mat
     shard->SetIsVisible(true);
     shard->SetMaterialType(materialType);
     shard->SetColor(color);
+    shard->SetEmissive(emissive);
     shard->SetCollisionAttribute(0);
     shard->SetCollisionMask(0);
     shard->GetTransform()->isQuaternionMaster = false;
@@ -148,13 +150,25 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
                         continue;
                     }
                     piece.object->SetParent(armorBlocks_[i]);
-                    ResetArmorShardForFunnel(piece.object, resetIndex++, armorBlocks_[i]->GetMaterialType(), armorBlocks_[i]->GetColor());
+                    ResetArmorShardForFunnel(piece.object, resetIndex++, armorBlocks_[i]->GetMaterialType(), armorBlocks_[i]->GetColor(), armorBlocks_[i]->GetEmissive());
                     piece.object->SetIsVisible(false);
                 }
             }
             armorBlocks_[i] = newBlock;
             blockHps_[i] = attackParams_.maxArmorBlockHp;
             blockBroken_[i] = false;
+            if (armorBlockBaseMaterialTypes_.size() <= i) {
+                armorBlockBaseMaterialTypes_.resize(i + 1, 0);
+            }
+            int32_t baseMaterialType = newBlock->GetMaterialType();
+            if (baseMaterialType == 4 || baseMaterialType == kArmorCrackMaterialType) {
+                baseMaterialType = 0;
+            }
+            armorBlockBaseMaterialTypes_[i] = baseMaterialType;
+            if (armorBlockBaseEmissives_.size() <= i) {
+                armorBlockBaseEmissives_.resize(i + 1, 1.0f);
+            }
+            armorBlockBaseEmissives_[i] = newBlock->GetEmissive();
             if (i < armorBreakMotions_.size()) {
                 armorBreakMotions_[i] = {};
             }
@@ -162,6 +176,7 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
             newBlock->SetCollisionAttribute(kGround);
             newBlock->SetCollisionMask(kPlayer);
             newBlock->SetEnemyType("BossArmor");
+            UpdateArmorCrackVisual(i);
             return true;
         }
     }
@@ -203,6 +218,59 @@ int BossCore::GetNeededBlockCount() const {
     }
     int needed = 10 - validCount;
     return (needed > 0) ? needed : 0; // 必要な数を返す（満タンなら0）
+}
+
+void BossCore::UpdateArmorCrackVisual(size_t index) {
+    if (index >= armorBlocks_.size() || !armorBlocks_[index]) {
+        return;
+    }
+
+    while (armorBlockBaseMaterialTypes_.size() < armorBlocks_.size()) {
+        size_t baseIndex = armorBlockBaseMaterialTypes_.size();
+        Object3d* baseBlock = armorBlocks_[baseIndex];
+        int32_t baseType = baseBlock ? baseBlock->GetMaterialType() : 0;
+        if (baseType == kArmorCrackMaterialType || baseType == 4) {
+            baseType = 0;
+        }
+        armorBlockBaseMaterialTypes_.push_back(baseType);
+    }
+    while (armorBlockBaseEmissives_.size() < armorBlocks_.size()) {
+        size_t baseIndex = armorBlockBaseEmissives_.size();
+        Object3d* baseBlock = armorBlocks_[baseIndex];
+        float baseEmissive = baseBlock ? baseBlock->GetEmissive() : 1.0f;
+        if (baseBlock && (baseBlock->GetMaterialType() == kArmorCrackMaterialType || baseBlock->GetMaterialType() == 4)) {
+            baseEmissive = 1.0f;
+        }
+        armorBlockBaseEmissives_.push_back(baseEmissive);
+    }
+
+    Object3d* block = armorBlocks_[index];
+    int32_t baseMaterialType = armorBlockBaseMaterialTypes_[index];
+    float baseEmissive = armorBlockBaseEmissives_[index];
+    if (baseMaterialType == 4 || baseMaterialType == kArmorCrackMaterialType) {
+        baseMaterialType = 0;
+        baseEmissive = 1.0f;
+        armorBlockBaseMaterialTypes_[index] = baseMaterialType;
+        armorBlockBaseEmissives_[index] = baseEmissive;
+    }
+    float maxHp = attackParams_.maxArmorBlockHp;
+    float hp = (index < blockHps_.size()) ? blockHps_[index] : maxHp;
+    float damageRatio = (maxHp > 0.0f) ? std::clamp((maxHp - hp) / maxHp, 0.0f, 1.0f) : 0.0f;
+    float crackAmount = std::clamp(0.18f + damageRatio * 2.8f, 0.0f, 1.0f);
+
+    bool canCrack = damageRatio > 0.01f;
+    int32_t materialType = canCrack ? kArmorCrackMaterialType : baseMaterialType;
+    float materialEmissive = canCrack ? (1.0f + crackAmount) : baseEmissive;
+
+    block->SetMaterialType(materialType);
+    block->SetEmissive(materialEmissive);
+    for (Object3d* child : block->GetChildren()) {
+        if (!child || child->GetName().find("Shard") == std::string::npos) {
+            continue;
+        }
+        child->SetMaterialType(materialType);
+        child->SetEmissive(materialEmissive);
+    }
 }
 
 void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
@@ -304,10 +372,14 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
     if (index < savedBlockColors_.size()) {
         breakBaseColor = savedBlockColors_[index];
     }
+    float breakBaseEmissive = (index < armorBlockBaseEmissives_.size()) ? armorBlockBaseEmissives_[index] : 1.0f;
+    block->SetMaterialType(4);
+    block->SetEmissive(breakBaseEmissive);
+    block->SetColor({ breakBaseColor.x, breakBaseColor.y, breakBaseColor.z, 1.0f });
     size_t resetShardIndex = 0;
     for (Object3d* child : block->GetChildren()) {
         if (child && child->GetName().find("Shard") != std::string::npos) {
-            ResetArmorShardForFunnel(child, resetShardIndex++, block->GetMaterialType(), breakBaseColor);
+            ResetArmorShardForFunnel(child, resetShardIndex++, 4, breakBaseColor, breakBaseEmissive);
         }
     }
     block->UpdateWorldMatrix();
@@ -349,6 +421,7 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
     motion.position = breakOriginPos;
     motion.rotation = worldRot;
     motion.baseColor = breakBaseColor;
+    motion.baseEmissive = breakBaseEmissive;
     motion.velocity = {
         dir.x * 1.45f,
         0.9f,
@@ -433,6 +506,7 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
         piece.baseScale = childWorldScale;
         piece.landedScale = piece.baseScale;
         piece.baseColor = breakBaseColor;
+        piece.baseEmissive = breakBaseEmissive;
         piece.groundY = ResolveArmorBreakGroundY(childWorldPos, this, child) + static_cast<float>(childIndex % 3) * 0.03f;
         float scatterSpeed = 1.55f + static_cast<float>(childIndex % 3) * 0.16f;
         piece.velocity = {
@@ -544,6 +618,7 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                                 piece.landedScale = piece.baseScale;
                                 child->SetMaterialType(4);
                                 child->SetColor({ piece.baseColor.x, piece.baseColor.y, piece.baseColor.z, 1.0f });
+                                child->SetEmissive(piece.baseEmissive);
                             }
                         }
                         else if (piece.position.y - halfHeight <= piece.groundY) {
@@ -624,7 +699,7 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                         continue;
                     }
                     piece.object->SetParent(block);
-                    ResetArmorShardForFunnel(piece.object, resetIndex++, block->GetMaterialType(), block->GetColor());
+                    ResetArmorShardForFunnel(piece.object, resetIndex++, block->GetMaterialType(), block->GetColor(), block->GetEmissive());
                     piece.object->SetIsVisible(false);
                 }
                 motion.childPieces.clear();
@@ -691,10 +766,12 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                     block->SetScale(motion.landedScale);
                     block->SetMaterialType(4);
                     block->SetColor({ motion.baseColor.x, motion.baseColor.y, motion.baseColor.z, 1.0f });
+                    block->SetEmissive(motion.baseEmissive);
                     for (Object3d* child : block->GetChildren()) {
                         if (child) {
                             child->SetMaterialType(4);
                             child->SetColor({ motion.baseColor.x, motion.baseColor.y, motion.baseColor.z, 1.0f });
+                            child->SetEmissive(motion.baseEmissive);
                         }
                     }
                 }
@@ -829,7 +906,7 @@ void BossCore::UpgradeToFunnel(Object3d* block) {
         }
 
         if (child->GetName().find("Shard") != std::string::npos) {
-            ResetArmorShardForFunnel(child, shardIndex++, block->GetMaterialType(), block->GetColor());
+            ResetArmorShardForFunnel(child, shardIndex++, block->GetMaterialType(), block->GetColor(), block->GetEmissive());
             hasShard = true;
         } else if (child->GetName().find("Core") != std::string::npos) {
             child->SetTranslate({ 0.0f, 0.0f, 0.0f });
@@ -932,7 +1009,7 @@ void BossCore::FullyRecoverBarrierAndArmor() {
                         continue;
                     }
                     piece.object->SetParent(armorBlocks_[i]);
-                    ResetArmorShardForFunnel(piece.object, resetIndex++, armorBlocks_[i]->GetMaterialType(), armorBlocks_[i]->GetColor());
+                    ResetArmorShardForFunnel(piece.object, resetIndex++, armorBlocks_[i]->GetMaterialType(), armorBlocks_[i]->GetColor(), armorBlocks_[i]->GetEmissive());
                     piece.object->SetIsVisible(false);
                 }
             }
@@ -943,6 +1020,7 @@ void BossCore::FullyRecoverBarrierAndArmor() {
             UpgradeToFunnel(armorBlocks_[i]);
             armorBlocks_[i]->SetCollisionAttribute(kGround);
             armorBlocks_[i]->SetCollisionMask(kPlayer);
+            UpdateArmorCrackVisual(i);
         }
     }
 }
