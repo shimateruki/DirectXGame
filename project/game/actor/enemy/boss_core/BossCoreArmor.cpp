@@ -278,6 +278,7 @@ void BossCore::StartArmorBlockBreak(size_t index) {
     block->SetCollisionAttribute(0);
     block->SetCollisionMask(0);
     block->GetTransform()->isQuaternionMaster = false;
+    block->UpdateWorldMatrix();
 
     motion.active = true;
     motion.landed = false;
@@ -322,7 +323,6 @@ void BossCore::StartArmorBlockBreak(size_t index) {
 
         Vector3 childLocalOffset = child->GetTranslate();
         Vector3 childWorldPos = child->GetWorldPosition();
-        childWorldPos.y += breakLiftY;
         Vector3 childWorldRot = {
             block->GetRotation().x + child->GetRotation().x,
             block->GetRotation().y + child->GetRotation().y,
