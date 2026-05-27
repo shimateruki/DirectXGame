@@ -1,4 +1,5 @@
 #include "BossCoreShared.h"
+#include "AudioPlayer.h"
 
 void BossCore::StartDeathSequence() {
     if (deathPhase_ != 0) return; // 既に死亡処理中なら何もしない
@@ -7,6 +8,9 @@ void BossCore::StartDeathSequence() {
 
     deathPhase_ = 1;         // フェーズ1（無音で静止）
     sequenceTimer_ = 1.0f;   // 1秒間待機
+
+    // ボス撃破SE再生
+    AudioPlayer::GetInstance()->PlaySE(seBossDieHandle_, false, 1.0f);
 
     DebugConsole::GetInstance()->AddLog("[撃破] ボス沈黙…！！");
 

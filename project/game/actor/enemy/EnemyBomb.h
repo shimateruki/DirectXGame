@@ -38,6 +38,9 @@ private:
     Vector3 lastShakeOffset_ = { 0,0,0 };
     float deflectedBossDamage_ = 20.0f; // ボスに与える跳ね返しダメージ
 
+    // --- 爆発SE ---
+    uint32_t seExplosionHandle_ = 0;
+
     // コロコロ転がり挙動用
     bool isRolling_ = true;
     float rollTimer_ = 0.0f;

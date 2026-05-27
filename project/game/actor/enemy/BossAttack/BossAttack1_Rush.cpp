@@ -1,5 +1,6 @@
 #include "BossAttack1_Rush.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include "../../CollisionConfig.h"
 #include "../../MapBlock.h"
@@ -99,6 +100,8 @@ void BossAttack1_Rush::Update(BossCore* boss, float deltaTime) {
             animPhase_ = 3;
             animTimer_ = 0.0f;
             animStartPos_ = boss->GetTranslate();
+            // 予測線がSE再生
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEPredictionLineHandle(), false, 1.0f);
         }
     }
     // --- フェーズ3: シェイク & プレイヤー注視 ---

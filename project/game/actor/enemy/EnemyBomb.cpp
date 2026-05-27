@@ -1,4 +1,5 @@
 #include "EnemyBomb.h"
+#include "AudioPlayer.h"
 #include "game/actor/player/Player.h"
 #include "Event.h"          
 #include "EventManager.h" 
@@ -61,6 +62,9 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     }
     SetAttackDamage(bombDamage);
     deflectedBossDamage_ = bossDamage;
+
+    // 爆発SEのロード
+    seExplosionHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Boss/Explosion.mp3");
 }
 
 void EnemyBomb::Update(float deltaTime) {
@@ -181,6 +185,9 @@ void EnemyBomb::Update(float deltaTime) {
     case State::Exploded:
         if (!hasExploded_) {
             hasExploded_ = true;
+
+            // 爆発SE再生
+            AudioPlayer::GetInstance()->PlaySE(seExplosionHandle_, false, 1.0f);
 
             // 1. 最初はごく小さな当たり判定(0.1f)からスタート
             SetCollisionRadius(0.1f);

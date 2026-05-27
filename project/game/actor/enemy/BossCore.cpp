@@ -1,4 +1,5 @@
 #include "boss_core/BossCoreShared.h"
+#include "AudioPlayer.h"
 
 BossCore::OrbitData BossCore::GetIdleOrbit(size_t index) {
     BossCore::OrbitData data;
@@ -138,6 +139,16 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     isHpHalfEventActive_ = false;
     hpHalfPhase_ = HpHalfEventPhase::None;
     hpHalfEffectTimer_ = 0.0f;
+
+    // --- ボスSEのロード ---
+    auto* audio = AudioPlayer::GetInstance();
+    seBleakBlockHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BleakBlock.mp3");
+    seBossDamageHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossDamage.mp3");
+    seBossDieHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossDie.mp3");
+    seBossHalfe1Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfe1.mp3");
+    seBossHalfe2Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfe2.mp3");
+    seBleakArmorHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfeDamage.mp3");
+    sePredictionLineHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/Predictionline.mp3");
 }
 
 void BossCore::Update(float deltaTime) {
@@ -470,6 +481,7 @@ void BossCore::Update(float deltaTime) {
             if (hpHalfEffectTimer_ >= 2.0f) {
                 hpHalfPhase_ = HpHalfEventPhase::Reassembling;
                 hpHalfEffectTimer_ = 0.0f;
+                AudioPlayer::GetInstance()->PlaySE(seBossHalfe2Handle_, false, 1.0f);
             }
         }
         break;
@@ -706,6 +718,7 @@ void BossCore::Update(float deltaTime) {
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
                         GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                        AudioPlayer::GetInstance()->PlaySE(seBleakBlockHandle_, false, 1.0f);
                         DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                     }
                     hitFound = true;
@@ -733,6 +746,7 @@ void BossCore::Update(float deltaTime) {
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
                             GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                            AudioPlayer::GetInstance()->PlaySE(seBleakBlockHandle_, false, 1.0f);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                         }
                         hitFound = true;
@@ -760,6 +774,7 @@ void BossCore::Update(float deltaTime) {
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
                             GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                            AudioPlayer::GetInstance()->PlaySE(seBleakBlockHandle_, false, 1.0f);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                         }
                         hitFound = true;

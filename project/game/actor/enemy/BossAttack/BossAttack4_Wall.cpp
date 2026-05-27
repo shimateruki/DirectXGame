@@ -1,5 +1,6 @@
 #include "BossAttack4_Wall.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include <algorithm>
 #include <cmath>
@@ -95,6 +96,8 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
     }
     else if (animPhase_ == 40) {
         if (animTimer_ == 0.0f) {
+            // 予測線 SE再生
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEPredictionLineHandle(), false, 1.0f);
             Object3d* warning = boss->GetWarningArea();
             if (warning) {
                 warning->SetParent(nullptr);

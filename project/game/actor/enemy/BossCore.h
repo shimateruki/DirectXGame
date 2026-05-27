@@ -262,6 +262,15 @@ public:
     float GetAttackDamage() const override { return attackParams_.damageRush; }
 
     void FullyRecoverBarrierAndArmor();
+
+    // --- SE用オーディオハンドルアクセッサ ---
+    uint32_t GetSEBleakBlockHandle() const { return seBleakBlockHandle_; }
+    uint32_t GetSEBossDamageHandle() const { return seBossDamageHandle_; }
+    uint32_t GetSEBossDieHandle() const { return seBossDieHandle_; }
+    uint32_t GetSEBossHalfe1Handle() const { return seBossHalfe1Handle_; }
+    uint32_t GetSEBossHalfe2Handle() const { return seBossHalfe2Handle_; }
+    uint32_t GetSEBleakArmorHandle() const { return seBleakArmorHandle_; }
+    uint32_t GetSEPredictionLineHandle() const { return sePredictionLineHandle_; }
 private:
 
     // 射出されたブロックのリスト
@@ -413,4 +422,13 @@ private:
     // 自爆スタン用のフラグとタイマー
     bool isCrashStun_ = false;
     float crashStunTimer_ = 0.0f;
+
+    // --- SE用オーディオハンドル ---
+    uint32_t seBleakBlockHandle_ = 0;
+    uint32_t seBossDamageHandle_ = 0;
+    uint32_t seBossDieHandle_ = 0;
+    uint32_t seBossHalfe1Handle_ = 0;
+    uint32_t seBossHalfe2Handle_ = 0;
+    uint32_t seBleakArmorHandle_ = 0; // BossHalfeDamage.mp3
+    uint32_t sePredictionLineHandle_ = 0;
 };
