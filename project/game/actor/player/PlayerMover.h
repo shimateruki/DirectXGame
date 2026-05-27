@@ -55,6 +55,8 @@ private:
 	float dashCooldownTimer_ = 0.0f;// クールダウン残り時間
 	bool dashAvailable_ = true;     // ダッシュが使えるかどうか
 	Vector3 dashDirection_{};       // 値初期化（{0,0,0}）
+	// --- ダッシュ演出補助 ---
+	uint32_t dashParticleId_ = 0;
 
 	// 子オブジェクトの元の衝突属性を保存して復元するためのマップ
 	std::unordered_map<Object3d*, uint32_t> childOriginalAttributes_;

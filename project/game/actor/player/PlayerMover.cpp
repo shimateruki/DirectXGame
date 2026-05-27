@@ -5,6 +5,7 @@
 #include "IMoveStrategy.h"
 #include "MoveStrategy3D.h"
 #include "Object3d.h"
+#include <GPUParticleManager.h>
 #include <cmath>
 #include <PlayerState.h>
 
@@ -22,6 +23,8 @@ PlayerMover::~PlayerMover()
             if (child) child->SetCollisionAttribute(attr);
         }
         childOriginalAttributes_.clear();
+        // パーティクルの停止
+        GPUParticleManager::GetInstance()->StopAutoEmitter(dashParticleId_);
     }
 }
 
@@ -100,19 +103,19 @@ void PlayerMover::Update(float deltaTime)
                 childOriginalAttributes_.emplace(child, orig);
                 child->SetCollisionAttribute(0);
             }
-
-            // パーティクル（エフェクト）
-            if (particleSystem_)
-            {
-                Vector3 pos = player_->GetWorldPosition();
-                pos.y -= 1.0f;
-                particleSystem_->SpawnParticles(
-                    pos, 6, 1.0f, &dashDirection_, 20.0f,
-                    { 1.0f, 0.8f, 0.2f, 1.0f }, { 1.0f, 0.8f, 0.2f, 0.0f },
-                    0.1f, 0.4f, 0.6f, 0.05f
-                );
-            }
         }
+    }
+	if (isDashing_) { // ダッシュ中は常にパーティクルを出す(軌跡)
+        // ダッシュのパーティクル発生
+        Vector3 pos = player_->GetWorldPosition();
+        dashParticleId_ =
+            GPUParticleManager::GetInstance()->PlayAutoEmitter(
+                "player_dash", pos);
+    }
+	// ダッシュ中に出たパーティクルをすぐに消す(※最後まで待つと残ってしまうため)
+    if (dashParticleId_ != 0) {
+        GPUParticleManager::GetInstance()->StopAutoEmitter(dashParticleId_);
+        dashParticleId_ = 0;
     }
 
     // --- 5. 速度の決定 (ダッシュ中 or 通常) ---
