@@ -96,6 +96,22 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(PresetEditor::GetInstance());
         }
+        if (editor_->GetSceneValidator() && ImGui::Selectable("  " ICON_FA_CHECK_CIRCLE " シーン検証 (Scene Validator)", currentObj == editor_->GetSceneValidator())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetSceneValidator());
+        }
+        if (editor_->GetMaterialPreviewBoard() && ImGui::Selectable("  " ICON_FA_TH_LARGE " マテリアル確認 (Material Preview)", currentObj == editor_->GetMaterialPreviewBoard())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetMaterialPreviewBoard());
+        }
+        if (editor_->GetEffectPreviewStage() && ImGui::Selectable("  " ICON_FA_MAGIC " エフェクト確認ステージ (Effect Preview)", currentObj == editor_->GetEffectPreviewStage())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEffectPreviewStage());
+        }
+        if (editor_->GetAnimationWorkbench() && ImGui::Selectable("  " ICON_FA_RUNNING " アニメーション制作 (Animation Workbench)", currentObj == editor_->GetAnimationWorkbench())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimationWorkbench());
+        }
         ImGui::Separator();
         if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {
             editor_->SetSelectedObject(nullptr);

@@ -23,6 +23,10 @@
 #include "SceneSerializer.h"
 #include "PrimitiveDrawer.h"
 #include "GhostDirector.h"
+#include "SceneValidator.h"
+#include "MaterialPreviewBoard.h"
+#include "EffectPreviewStage.h"
+#include "AnimationWorkbench.h"
 
 
 // ========================================================================
@@ -99,9 +103,10 @@ public:
     void SetGameViewRegion(const Vector2& offset, const Vector2& size) {
         gameViewOffset_ = offset;
         gameViewSize_ = size;
+        animationWorkbench_.SetGameViewRegion(offset, size);
     }
-    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
-    void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; }
+    void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; animationWorkbench_.SetGameViewHovered(hovered); }
+    void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; animationWorkbench_.SetGameViewMousePos(pos); }
     void SetSceneFilename(const std::string& filepath) {
         std::string name = filepath;
         size_t pos = name.find_last_of("/\\");
@@ -161,6 +166,10 @@ public:
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
+    SceneValidator* GetSceneValidator() { return &sceneValidator_; }
+    MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
+    EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
+    AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
@@ -246,6 +255,9 @@ private:
     InspectorWindow inspectorWindow_;
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_; // デバッグ描画管理 (DX12の処理を隔離)
+    SceneValidator sceneValidator_;
+    MaterialPreviewBoard materialPreviewBoard_;
+    AnimationWorkbench animationWorkbench_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;
 

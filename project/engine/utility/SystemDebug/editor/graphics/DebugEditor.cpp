@@ -62,6 +62,10 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     inspectorWindow_.Initialize(this);
     serializer_.Initialize(this);
     primitiveDrawer_.Initialize(dxCommon);
+    sceneValidator_.Initialize(sceneManager);
+    materialPreviewBoard_.Initialize(sceneManager, this);
+    EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
+    animationWorkbench_.Initialize(sceneManager, dxCommon);
 }
 
 // ========================================================================
@@ -73,6 +77,9 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 void DebugEditor::Update() {
 #ifdef USE_IMGUI
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+
+    EffectPreviewStage::GetInstance()->Update();
+    animationWorkbench_.Update(1.0f / 60.0f);
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     InputManager* input = InputManager::GetInstance();
@@ -324,6 +331,7 @@ void DebugEditor::Update() {
 // 終了処理
 // ========================================================================
 void DebugEditor::Finalize() {
+    animationWorkbench_.Finalize();
     primitiveDrawer_.Finalize();
 }
 

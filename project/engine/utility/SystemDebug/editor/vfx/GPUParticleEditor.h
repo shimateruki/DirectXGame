@@ -25,5 +25,6 @@ private:
 
     bool isPreviewMode_ = true;
     float previewDistance_ = 5.0f;
+    int lastStagePlayRequestSerial_ = 0;
     void EmitWithPreview();
 };

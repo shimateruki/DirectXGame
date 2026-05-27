@@ -173,6 +173,13 @@ public: // メンバ関数
     Vector3 GetCenter() const { return center_; }
     void ApplyAnimation(const Animation& animation, float time);
     const Animation* GetAnimation(const std::string& name) const;
+    bool HasSkeleton() const;
+    const std::vector<Joint>& GetJoints() const;
+    int FindJointIndex(const std::string& name) const;
+    QuaternionTransform GetJointTransform(int jointIndex) const;
+    bool SetJointTransform(int jointIndex, const QuaternionTransform& transform);
+    void ResetSkeletonPose();
+    void RebuildSkeletonForEditor();
     uint32_t GetBoneSrvIndex() const { return boneSrvIndex_; }
     Vector3 GetLocalAabbMin() const { return localAabbMin_; }
     Vector3 GetLocalAabbMax() const { return localAabbMax_; }

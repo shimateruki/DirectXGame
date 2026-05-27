@@ -10,6 +10,7 @@
 #include "IconsFontAwesome5.h"
 #include <filesystem>
 #include <MeshEffectManager.h>
+#include "EffectPreviewStage.h"
 
 using json = nlohmann::json;
 static const char* kEasingNames[] = {
@@ -121,7 +122,19 @@ void MeshEffectEditor::Update(float deltaTime) {
     activePreviews.push_back(previewEffect_.get());
     for (auto& ex : extraPreviewEffects_) activePreviews.push_back(ex.get());
 
-    Vector3 basePos = editPosition_;
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    bool usePreviewStage = previewStage && previewStage->IsEnabled();
+    if (usePreviewStage && previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+        lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+        forcePlayRequest_ = true;
+    }
+
+    Vector3 basePos = usePreviewStage ? previewStage->GetPreviewPosition() : editPosition_;
+    if (usePreviewStage) {
+        basePos.x += editPosition_.x;
+        basePos.y += editPosition_.y;
+        basePos.z += editPosition_.z;
+    }
     Vector3 baseRot = editRotation_;
     float targetWorldY = 0.0f;
     if (targetObject_) {
@@ -153,7 +166,8 @@ void MeshEffectEditor::Update(float deltaTime) {
         baseRot.y += targetWorldY;
     }
     // 再生リクエストまたは自動ループの同期
-    if (forcePlayRequest_ || (isAutoLoop_ && !activePreviews.empty() && !activePreviews[0]->IsPlaying())) {
+    bool loopPreview = isAutoLoop_ || (usePreviewStage && previewStage->IsLoopEnabled());
+    if (forcePlayRequest_ || (loopPreview && !activePreviews.empty() && !activePreviews[0]->IsPlaying())) {
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
         }
@@ -166,6 +180,9 @@ void MeshEffectEditor::Update(float deltaTime) {
     localZ.z = cosf(baseRot.y) * cosf(baseRot.x);
 
     float timeStep = (deltaTime <= 0.0001f) ? (1.0f / 60.0f) : deltaTime;
+    if (usePreviewStage) {
+        timeStep *= previewStage->GetPlaybackSpeed();
+    }
 
     for (size_t i = 0; i < activePreviews.size(); ++i) {
         auto* fx = activePreviews[i];

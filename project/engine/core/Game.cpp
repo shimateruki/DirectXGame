@@ -558,6 +558,14 @@ void Game::Update() {
     if (sceneManager_) {
         sceneManager_->SetIsPlaying(isPlaying_);
     }
+#ifdef USE_IMGUI
+    if (debugEditor_ && debugEditor_->GetEffectPreviewStage()) {
+        debugEditor_->GetEffectPreviewStage()->ApplyCameraOverride();
+    }
+    if (debugEditor_ && debugEditor_->GetAnimationWorkbench()) {
+        debugEditor_->GetAnimationWorkbench()->ApplyCameraOverride();
+    }
+#endif
 
     // ↓ 計測終了
     auto endUpdate = std::chrono::high_resolution_clock::now();

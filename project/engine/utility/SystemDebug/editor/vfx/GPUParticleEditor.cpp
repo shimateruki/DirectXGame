@@ -7,6 +7,7 @@
 #include "IconsFontAwesome5.h"
 #include "GPUParticleSystem.h"
 #include "CameraManager.h"
+#include "EffectPreviewStage.h"
 
 using json = nlohmann::json;
 
@@ -15,10 +16,21 @@ void GPUParticleEditor::Initialize() {
 }
 
 void GPUParticleEditor::Update(float deltaTime) {
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    bool usePreviewStage = previewStage && previewStage->IsEnabled();
+    if (usePreviewStage) {
+        GPUParticleManager::GetInstance()->SetTimeScale(previewStage->GetPlaybackSpeed());
+        if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
+            lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
+            EmitWithPreview();
+        }
+    }
+
     // エディタのプレビュー間隔もスローモーションに対応させる
     float scaledDelta = deltaTime * GPUParticleManager::GetInstance()->GetTimeScale();
 
-    if (config_.isLooping) {
+    bool loopPreview = config_.isLooping || (usePreviewStage && previewStage->IsLoopEnabled());
+    if (loopPreview) {
         emitTimer_ += scaledDelta;
         if (emitTimer_ >= config_.emitInterval) {
             EmitWithPreview();
@@ -40,6 +52,9 @@ void GPUParticleEditor::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader(ICON_FA_EYE " プレビュー環境 (Preview Environment)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (EffectPreviewStage::GetInstance()->IsEnabled()) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.7f, 1.0f), "Effect Preview Stage の原点を使用中");
+        }
         ImGui::Checkbox("カメラの前に発生させる (Spawn in front of Camera)", &isPreviewMode_);
         if (isPreviewMode_) {
             ImGui::Indent();
@@ -379,7 +394,11 @@ void GPUParticleEditor::DrawImGui() {
 
 void GPUParticleEditor::EmitWithPreview() {
     GPUParticleConfig tempConfig = config_;
-    if (isPreviewMode_) {
+    EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
+    if (previewStage && previewStage->IsEnabled()) {
+        tempConfig.emitPos = previewStage->GetPreviewPosition();
+    }
+    else if (isPreviewMode_) {
         const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
         if (camera) {
             Vector3 camEye = camera->GetEye();

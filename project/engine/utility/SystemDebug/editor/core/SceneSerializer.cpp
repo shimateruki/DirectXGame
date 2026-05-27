@@ -35,6 +35,7 @@ std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveM
 
     for (auto& obj : allObjects) {
         if (obj->GetName().empty()) continue;
+        if (obj->GetClassName() == "EditorOnly" || obj->GetName().rfind("__Editor_", 0) == 0) continue;
 
         json d = SerializeObject(obj.get());
 

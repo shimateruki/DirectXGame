@@ -336,6 +336,12 @@
     <ClCompile Include="engine\graphics\core\GraphicsPipelineBuilder.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -345,10 +351,16 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneSerializer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp">
@@ -1359,6 +1371,12 @@
     <ClInclude Include="engine\graphics\core\GraphicsPipelineBuilder.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AnimationWorkbench.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\EffectPreviewStage.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1368,10 +1386,16 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\core\SceneSerializer.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneValidator.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\core\EditorCommon.h">

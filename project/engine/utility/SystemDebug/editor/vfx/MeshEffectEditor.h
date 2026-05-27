@@ -79,5 +79,6 @@ private:
     int editVolumeMode_ = 0; // 0: なし, 1: 十字クロス, 2: 3枚重ね
     std::vector<std::unique_ptr<EffectObject3d>> extraPreviewEffects_; // 立体化プレビュー用
     bool forcePlayRequest_ = false;
+    int lastStagePlayRequestSerial_ = 0;
 
 };

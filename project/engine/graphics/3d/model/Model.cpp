@@ -20,6 +20,12 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 
     // 1. ファイル読み込み (Mesh分けされたデータが返ってくる)
     modelData_ = LoadFile(directoryPath, filename);
+    modelData_.meshes.erase(
+        std::remove_if(modelData_.meshes.begin(), modelData_.meshes.end(),
+            [](const Mesh& mesh) {
+                return mesh.vertices.empty() || mesh.indices.empty();
+            }),
+        modelData_.meshes.end());
 
     // --- AABB（モデルのサイズ）計算 ---
     Vector3 min = { FLT_MAX, FLT_MAX, FLT_MAX };
@@ -61,6 +67,9 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 
     // 3. メッシュごとに頂点バッファ・インデックスバッファを作成
     for (auto& mesh : modelData_.meshes) {
+        if (mesh.vertices.empty() || mesh.indices.empty()) {
+            continue;
+        }
         // 頂点バッファ
         mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
@@ -216,6 +225,9 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, ormHandleToBind);
     // 3. メッシュごとの描画ループ
     for (const auto& mesh : modelData_.meshes) {
+        if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
+            continue;
+        }
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
 
@@ -602,6 +614,54 @@ const Model::Animation* Model::GetAnimation(const std::string& name) const {
     return nullptr;
 }
 
+bool Model::HasSkeleton() const {
+    return !modelData_.skeleton.joints.empty();
+}
+
+const std::vector<Model::Joint>& Model::GetJoints() const {
+    return modelData_.skeleton.joints;
+}
+
+int Model::FindJointIndex(const std::string& name) const {
+    auto it = modelData_.skeleton.jointMap.find(name);
+    if (it == modelData_.skeleton.jointMap.end()) {
+        return -1;
+    }
+    return it->second;
+}
+
+Model::QuaternionTransform Model::GetJointTransform(int jointIndex) const {
+    if (jointIndex < 0 || jointIndex >= static_cast<int>(modelData_.skeleton.joints.size())) {
+        return {};
+    }
+    return modelData_.skeleton.joints[jointIndex].transform;
+}
+
+bool Model::SetJointTransform(int jointIndex, const QuaternionTransform& transform) {
+    if (jointIndex < 0 || jointIndex >= static_cast<int>(modelData_.skeleton.joints.size())) {
+        return false;
+    }
+
+    Joint& joint = modelData_.skeleton.joints[jointIndex];
+    joint.transform = transform;
+    Matrix4x4 mS = math_.MakeScaleMatrix(joint.transform.scale);
+    Matrix4x4 mR = math_.MakeRotateQuaternionMatrix(joint.transform.rotate);
+    Matrix4x4 mT = math_.MakeTranslateMatrix(joint.transform.translate);
+    joint.localMatrix = math_.Multiply(mS, math_.Multiply(mR, mT));
+    RebuildSkeletonForEditor();
+    return true;
+}
+
+void Model::ResetSkeletonPose() {
+    modelData_.skeleton = CreateSkeleton(modelData_.rootNode);
+    RebuildSkeletonForEditor();
+}
+
+void Model::RebuildSkeletonForEditor() {
+    UpdateSkeleton(modelData_.skeleton);
+    UpdateBoneBuffer();
+}
+
 void Model::DrawShadow(ID3D12Resource* wvpResource) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
@@ -615,6 +675,9 @@ void Model::DrawShadow(ID3D12Resource* wvpResource) {
 
     // 各メッシュの頂点を描画
     for (auto& mesh : modelData_.meshes) {
+        if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
+            continue;
+        }
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
         commandList->DrawIndexedInstanced(UINT(mesh.indices.size()), 1, 0, 0, 0);
@@ -626,6 +689,9 @@ void Model::DrawMeshOnly() {
 
     // メッシュごとに頂点バッファだけをセットして描画
     for (const auto& mesh : modelData_.meshes) {
+        if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
+            continue;
+        }
         // 頂点バッファをセット
         commandList->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
         commandList->IASetIndexBuffer(&mesh.indexBufferView);
