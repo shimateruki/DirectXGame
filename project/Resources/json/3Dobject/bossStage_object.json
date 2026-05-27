@@ -10378,7 +10378,7 @@
             "metallic": 0.0,
             "modelName": "map_tutorial_10",
             "myEventID": -1,
-            "name": "map_tutorial_10_199",
+            "name": "Tutorial_Room_10",
             "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Ceiling",
