@@ -348,6 +348,7 @@ private:
         bool active = false;
         bool landed = false;
         bool rolling = false;
+        float holdTimer = 0.0f;
         float timer = 0.0f;
         float rollTimer = 0.0f;
         float landedTimer = 0.0f;
@@ -405,7 +406,7 @@ private:
     // 演出用の関数
     void BreakCore();
     void UpdateCorePieces(float deltaTime);
-    void StartArmorBlockBreak(size_t index);
+    void StartArmorBlockBreak(size_t index, const Vector3& impactSource = { 0.0f, 0.0f, 0.0f }, bool hasImpactSource = false);
     void UpdateBrokenArmorBlocks(float deltaTime);
     void SetBlockColor(Object3d* block, const Vector4& color);
     void SaveOriginalColors();

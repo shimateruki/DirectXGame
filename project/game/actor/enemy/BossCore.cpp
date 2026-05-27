@@ -705,8 +705,7 @@ void BossCore::Update(float deltaTime) {
                     blockHps_[i] -= dmg;
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
-                        StartArmorBlockBreak(i);
-                        GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                        StartArmorBlockBreak(i, weapon->GetWorldPosition(), true);
                         DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                     }
                     hitFound = true;
@@ -733,8 +732,7 @@ void BossCore::Update(float deltaTime) {
                         blockHps_[i] -= dmg;
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
-                            StartArmorBlockBreak(i);
-                            GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                            StartArmorBlockBreak(i, effect->GetWorldPosition(), true);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                         }
                         hitFound = true;
@@ -761,8 +759,7 @@ void BossCore::Update(float deltaTime) {
                         blockHps_[i] -= dmg;
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
-                            StartArmorBlockBreak(i);
-                            GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
+                            StartArmorBlockBreak(i, bullet->GetWorldPosition(), true);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
                         }
                         hitFound = true;

@@ -5,6 +5,10 @@ constexpr float kArmorShardOffset = 0.35f;
 constexpr float kArmorBreakMinGroundY = 0.5f;
 constexpr float kArmorBreakBossFloorOffsetY = 3.5f;
 constexpr float kArmorBreakShardScale = 0.9f;
+constexpr float kArmorBreakHoldDuration = 0.06f;
+constexpr float kArmorBreakRestBeforeDissolve = 0.36f;
+constexpr float kArmorBreakDissolveDuration = 0.95f;
+constexpr float kArmorBreakRollingFriction = 0.58f;
 
 Vector3 GetArmorShardLocalOffset(size_t index) {
     const Vector3 offsets[8] = {
@@ -61,6 +65,22 @@ float ResolveArmorBreakGroundY(const BossCore* boss) {
     }
 
     return (std::max)(kArmorBreakMinGroundY, boss->GetWorldPosition().y - kArmorBreakBossFloorOffsetY);
+}
+
+float LengthXZ(const Vector3& v) {
+    return std::sqrt(v.x * v.x + v.z * v.z);
+}
+
+Vector3 NormalizeXZ(Vector3 v, float fallbackAngle) {
+    v.y = 0.0f;
+    float len = LengthXZ(v);
+    if (len > 0.001f) {
+        v.x /= len;
+        v.z /= len;
+        return v;
+    }
+
+    return { std::cos(fallbackAngle), 0.0f, std::sin(fallbackAngle) };
 }
 }
 
@@ -226,7 +246,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
     }
 }
 
-void BossCore::StartArmorBlockBreak(size_t index) {
+void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, bool hasImpactSource) {
     if (index >= armorBlocks_.size() || !armorBlocks_[index]) {
         return;
     }
@@ -260,17 +280,15 @@ void BossCore::StartArmorBlockBreak(size_t index) {
     Vector3 breakOriginPos = worldPos;
     breakOriginPos.y += breakLiftY;
     Vector3 worldRot = block->GetRotation();
-    Vector3 bossPos = GetWorldPosition();
-    Vector3 dir = { worldPos.x - bossPos.x, 0.0f, worldPos.z - bossPos.z };
-    float len = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-    if (len > 0.001f) {
-        dir.x /= len;
-        dir.z /= len;
-    } else {
-        float angle = static_cast<float>(index) * 1.7f;
-        dir.x = std::cos(angle);
-        dir.z = std::sin(angle);
+    Vector3 sourcePos = impactSource;
+    if (!hasImpactSource && target_) {
+        sourcePos = target_->GetWorldPosition();
+        hasImpactSource = true;
     }
+    if (!hasImpactSource) {
+        sourcePos = GetWorldPosition();
+    }
+    Vector3 dir = NormalizeXZ({ worldPos.x - sourcePos.x, 0.0f, worldPos.z - sourcePos.z }, static_cast<float>(index) * 1.7f);
 
     block->SetParent(nullptr);
     block->SetTranslate(breakOriginPos);
@@ -283,6 +301,7 @@ void BossCore::StartArmorBlockBreak(size_t index) {
     motion.active = true;
     motion.landed = false;
     motion.rolling = false;
+    motion.holdTimer = kArmorBreakHoldDuration;
     motion.timer = 0.0f;
     motion.rollTimer = 0.0f;
     motion.landedTimer = 0.0f;
@@ -292,9 +311,9 @@ void BossCore::StartArmorBlockBreak(size_t index) {
     motion.rotation = worldRot;
     motion.baseColor = breakBaseColor;
     motion.velocity = {
-        dir.x * 1.2f,
-        1.0f,
-        dir.z * 1.2f
+        dir.x * 1.45f,
+        0.9f,
+        dir.z * 1.45f
     };
     motion.angularVelocity = {
         4.6f + static_cast<float>(index % 2) * 0.5f,
@@ -304,6 +323,8 @@ void BossCore::StartArmorBlockBreak(size_t index) {
     motion.baseScale = block->GetScale();
     motion.landedScale = motion.baseScale;
     motion.childPieces.clear();
+
+    GPUParticleManager::GetInstance()->Emit("ArmorBreakSpark", breakOriginPos, Math::MakeIdentity4x4());
 
     std::vector<Object3d*> children = block->GetChildren();
     motion.childPieces.reserve(children.size());
@@ -347,7 +368,12 @@ void BossCore::StartArmorBlockBreak(size_t index) {
             scatterDir.x = std::cos(angle);
             scatterDir.z = std::sin(angle);
         }
-        Vector3 tangentDir = { -scatterDir.z, 0.0f, scatterDir.x };
+        Vector3 mixedDir = NormalizeXZ({
+            scatterDir.x * 0.55f + dir.x * 0.95f,
+            0.0f,
+            scatterDir.z * 0.55f + dir.z * 0.95f
+        }, static_cast<float>(childIndex) * 0.785398f);
+        Vector3 tangentDir = { -mixedDir.z, 0.0f, mixedDir.x };
         float tangentSign = (childIndex % 2 == 0) ? 1.0f : -1.0f;
 
         child->SetParent(nullptr);
@@ -369,11 +395,11 @@ void BossCore::StartArmorBlockBreak(size_t index) {
         piece.landedScale = piece.baseScale;
         piece.baseColor = breakBaseColor;
         piece.groundY = motion.groundY + static_cast<float>(childIndex % 3) * 0.03f;
-        float scatterSpeed = 1.35f + static_cast<float>(childIndex % 3) * 0.18f;
+        float scatterSpeed = 1.55f + static_cast<float>(childIndex % 3) * 0.16f;
         piece.velocity = {
-            scatterDir.x * scatterSpeed + tangentDir.x * tangentSign * 0.32f,
-            1.1f + (std::max)(0.0f, childLocalOffset.y) * 0.9f + static_cast<float>(childIndex % 4) * 0.08f,
-            scatterDir.z * scatterSpeed + tangentDir.z * tangentSign * 0.32f
+            mixedDir.x * scatterSpeed + tangentDir.x * tangentSign * 0.18f,
+            0.95f + (std::max)(0.0f, childLocalOffset.y) * 0.75f + static_cast<float>(childIndex % 4) * 0.07f,
+            mixedDir.z * scatterSpeed + tangentDir.z * tangentSign * 0.18f
         };
         piece.angularVelocity = {
             5.0f + static_cast<float>(childIndex % 3) * 0.8f,
@@ -412,6 +438,10 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
 
         motion.timer += deltaTime;
         motion.sparkTimer += deltaTime;
+        bool isBreakHolding = motion.holdTimer > 0.0f;
+        if (isBreakHolding) {
+            motion.holdTimer = (std::max)(0.0f, motion.holdTimer - deltaTime);
+        }
 
         if (!motion.childPieces.empty()) {
             bool allFinished = true;
@@ -426,66 +456,76 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
 
                 if (!piece.landed) {
                     allFinished = false;
-                    if (!piece.rolling) {
-                        piece.velocity.y -= 24.0f * deltaTime;
-                    }
-
-                    piece.position.x += piece.velocity.x * deltaTime;
-                    piece.position.y += piece.velocity.y * deltaTime;
-                    piece.position.z += piece.velocity.z * deltaTime;
-
-                    piece.rotation.x += piece.angularVelocity.x * deltaTime;
-                    piece.rotation.y += piece.angularVelocity.y * deltaTime;
-                    piece.rotation.z += piece.angularVelocity.z * deltaTime;
-
-                    float halfHeight = (std::max)(0.05f, piece.baseScale.y * 0.5f);
-                    if (piece.rolling) {
-                        piece.position.y = piece.groundY + halfHeight;
-                        float friction = std::pow(0.38f, deltaTime);
-                        piece.velocity.x *= friction;
-                        piece.velocity.z *= friction;
-                        piece.angularVelocity.x *= friction;
-                        piece.angularVelocity.y *= friction;
-                        piece.angularVelocity.z *= friction;
-                        piece.rollTimer += deltaTime;
-
-                        float rollDuration = 0.85f + static_cast<float>(pieceIndex % 4) * 0.07f;
-                        if (piece.rollTimer >= rollDuration) {
-                            piece.velocity = { 0.0f, 0.0f, 0.0f };
-                            piece.angularVelocity = { 0.0f, 0.0f, 0.0f };
-                            piece.landed = true;
-                            piece.landedTimer = 0.0f;
-                            piece.landedScale = piece.baseScale;
-                            child->SetMaterialType(4);
-                            child->SetColor({ piece.baseColor.x, piece.baseColor.y, piece.baseColor.z, 1.0f });
+                    if (!isBreakHolding) {
+                        if (!piece.rolling) {
+                            piece.velocity.y -= 24.0f * deltaTime;
                         }
-                    }
-                    else if (piece.position.y - halfHeight <= piece.groundY) {
-                        piece.position.y = piece.groundY + halfHeight;
-                        if (std::abs(piece.velocity.y) > 2.5f && piece.bounceCount < 1) {
-                            piece.velocity.y = -piece.velocity.y * 0.18f;
-                            piece.velocity.x *= 0.7f;
-                            piece.velocity.z *= 0.7f;
-                            piece.angularVelocity.x *= 0.75f;
-                            piece.angularVelocity.y *= 0.75f;
-                            piece.angularVelocity.z *= 0.75f;
-                            ++piece.bounceCount;
-                        } else {
-                            float horizontalSpeed = std::sqrt(piece.velocity.x * piece.velocity.x + piece.velocity.z * piece.velocity.z);
-                            if (horizontalSpeed < 0.65f) {
-                                float angle = static_cast<float>(pieceIndex) * 1.37f;
-                                piece.velocity.x = std::cos(angle) * 1.15f;
-                                piece.velocity.z = std::sin(angle) * 1.15f;
-                            } else {
-                                piece.velocity.x *= 0.95f;
-                                piece.velocity.z *= 0.95f;
+
+                        piece.position.x += piece.velocity.x * deltaTime;
+                        piece.position.y += piece.velocity.y * deltaTime;
+                        piece.position.z += piece.velocity.z * deltaTime;
+
+                        piece.rotation.x += piece.angularVelocity.x * deltaTime;
+                        piece.rotation.y += piece.angularVelocity.y * deltaTime;
+                        piece.rotation.z += piece.angularVelocity.z * deltaTime;
+
+                        float halfHeight = (std::max)(0.05f, piece.baseScale.y * 0.5f);
+                        if (piece.rolling) {
+                            piece.position.y = piece.groundY + halfHeight;
+                            float horizontalSpeed = LengthXZ(piece.velocity);
+                            if (horizontalSpeed > 0.02f) {
+                                float radius = (std::max)(0.08f, (std::abs(piece.baseScale.x) + std::abs(piece.baseScale.z)) * 0.25f);
+                                float rollAmount = (horizontalSpeed / radius) * deltaTime;
+                                piece.rotation.x += (piece.velocity.z / horizontalSpeed) * rollAmount;
+                                piece.rotation.z -= (piece.velocity.x / horizontalSpeed) * rollAmount;
                             }
-                            piece.velocity.y = 0.0f;
-                            piece.angularVelocity.x *= 1.15f;
-                            piece.angularVelocity.y *= 1.15f;
-                            piece.angularVelocity.z *= 1.15f;
-                            piece.rolling = true;
-                            piece.rollTimer = 0.0f;
+
+                            float friction = std::pow(kArmorBreakRollingFriction, deltaTime);
+                            piece.velocity.x *= friction;
+                            piece.velocity.z *= friction;
+                            piece.angularVelocity.x *= friction;
+                            piece.angularVelocity.y *= friction;
+                            piece.angularVelocity.z *= friction;
+                            piece.rollTimer += deltaTime;
+
+                            float rollDuration = 1.05f + static_cast<float>(pieceIndex % 4) * 0.08f;
+                            if (piece.rollTimer >= rollDuration || (piece.rollTimer > 0.35f && horizontalSpeed < 0.04f)) {
+                                piece.velocity = { 0.0f, 0.0f, 0.0f };
+                                piece.angularVelocity = { 0.0f, 0.0f, 0.0f };
+                                piece.landed = true;
+                                piece.landedTimer = 0.0f;
+                                piece.landedScale = piece.baseScale;
+                                child->SetMaterialType(4);
+                                child->SetColor({ piece.baseColor.x, piece.baseColor.y, piece.baseColor.z, 1.0f });
+                            }
+                        }
+                        else if (piece.position.y - halfHeight <= piece.groundY) {
+                            piece.position.y = piece.groundY + halfHeight;
+                            if (std::abs(piece.velocity.y) > 2.7f && piece.bounceCount < 1) {
+                                piece.velocity.y = -piece.velocity.y * 0.22f;
+                                piece.velocity.x *= 0.82f;
+                                piece.velocity.z *= 0.82f;
+                                piece.angularVelocity.x *= 0.85f;
+                                piece.angularVelocity.y *= 0.85f;
+                                piece.angularVelocity.z *= 0.85f;
+                                ++piece.bounceCount;
+                            } else {
+                                float horizontalSpeed = LengthXZ(piece.velocity);
+                                if (horizontalSpeed < 0.25f) {
+                                    float angle = static_cast<float>(pieceIndex) * 1.37f;
+                                    piece.velocity.x = std::cos(angle) * 0.45f;
+                                    piece.velocity.z = std::sin(angle) * 0.45f;
+                                } else {
+                                    piece.velocity.x *= 0.94f;
+                                    piece.velocity.z *= 0.94f;
+                                }
+                                piece.velocity.y = 0.0f;
+                                piece.angularVelocity.x *= 1.05f;
+                                piece.angularVelocity.y *= 1.05f;
+                                piece.angularVelocity.z *= 1.05f;
+                                piece.rolling = true;
+                                piece.rollTimer = 0.0f;
+                            }
                         }
                     }
 
@@ -494,7 +534,7 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                     child->GetTransform()->isQuaternionMaster = false;
                 } else {
                     piece.landedTimer += deltaTime;
-                    float t = std::clamp((piece.landedTimer - static_cast<float>(pieceIndex) * 0.03f) / 0.95f, 0.0f, 1.0f);
+                    float t = std::clamp((piece.landedTimer - kArmorBreakRestBeforeDissolve - static_cast<float>(pieceIndex) * 0.03f) / kArmorBreakDissolveDuration, 0.0f, 1.0f);
                     float shrink = 1.0f - (t * 0.9f);
                     child->SetTranslate(piece.position);
                     child->SetRotation(piece.rotation);
@@ -547,6 +587,14 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
             }
         }
         else if (!motion.landed) {
+            if (isBreakHolding) {
+                block->SetTranslate(motion.position);
+                block->SetRotation(motion.rotation);
+                block->GetTransform()->isQuaternionMaster = false;
+                block->UpdateWorldMatrix();
+                continue;
+            }
+
             if (!motion.rolling) {
                 motion.velocity.y -= 24.0f * deltaTime;
             }
@@ -563,7 +611,15 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
 
             if (motion.rolling) {
                 pos.y = motion.groundY;
-                float friction = std::pow(0.38f, deltaTime);
+                float horizontalSpeed = LengthXZ(motion.velocity);
+                if (horizontalSpeed > 0.02f) {
+                    float radius = (std::max)(0.1f, (std::abs(motion.baseScale.x) + std::abs(motion.baseScale.z)) * 0.25f);
+                    float rollAmount = (horizontalSpeed / radius) * deltaTime;
+                    rot.x += (motion.velocity.z / horizontalSpeed) * rollAmount;
+                    rot.z -= (motion.velocity.x / horizontalSpeed) * rollAmount;
+                }
+
+                float friction = std::pow(kArmorBreakRollingFriction, deltaTime);
                 motion.velocity.x *= friction;
                 motion.velocity.z *= friction;
                 motion.angularVelocity.x *= friction;
@@ -571,7 +627,7 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                 motion.angularVelocity.z *= friction;
                 motion.rollTimer += deltaTime;
 
-                if (motion.rollTimer >= 0.9f) {
+                if (motion.rollTimer >= 1.05f || (motion.rollTimer > 0.35f && horizontalSpeed < 0.04f)) {
                     motion.velocity = { 0.0f, 0.0f, 0.0f };
                     motion.angularVelocity = { 0.0f, 0.0f, 0.0f };
                     motion.landed = true;
@@ -617,7 +673,7 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
             block->SetRotation(motion.rotation);
 
             motion.landedTimer += deltaTime;
-            float t = std::clamp(motion.landedTimer / 1.0f, 0.0f, 1.0f);
+            float t = std::clamp((motion.landedTimer - kArmorBreakRestBeforeDissolve) / kArmorBreakDissolveDuration, 0.0f, 1.0f);
             float shrink = 1.0f - (t * 0.9f);
             block->SetScale({
                 motion.landedScale.x * shrink,
