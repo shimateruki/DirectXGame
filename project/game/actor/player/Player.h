@@ -126,7 +126,8 @@ public:
     void SetDashInvincible(bool inv);   // 回避ダッシュ時のフラグ
 
     // どっちか一つでもtrueなら無敵として扱う
-    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
+    bool IsDeathSequenceActive() const { return param_.has_value() && param_->hp <= 0.0f; }
+    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_ || IsDeathSequenceActive(); }
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }

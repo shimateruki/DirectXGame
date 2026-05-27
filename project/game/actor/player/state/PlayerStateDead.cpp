@@ -3,6 +3,8 @@
 void PlayerStateDead::Enter(Player *player) {
   if (!player)
     return;
+  player->SetDamageInvincible(false);
+  player->SetDashInvincible(false);
   DebugConsole::GetInstance()->AddLog("★ ENTER: Dead State (Biohazard4 Style)");
 
   player->SetIsControlActive(false); // 入力を完全封印
