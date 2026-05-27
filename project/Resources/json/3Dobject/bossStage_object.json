@@ -10345,7 +10345,7 @@
                 ],
                 "type": 2
             },
-            "collisionAttribute": 4,
+            "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
                 1.0,
@@ -10679,7 +10679,7 @@
             "modelName": "map_tutorial_13",
             "myEventID": -1,
             "name": "Tutorial_Room_13",
-            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -10711,7 +10711,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -10779,7 +10779,7 @@
             "modelName": "map_tutorial_14",
             "myEventID": -1,
             "name": "Tutorial_Room_14",
-            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -10811,7 +10811,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
