@@ -284,6 +284,11 @@ bool Player::OnCollision(Object3d* other)
             dmgEvent.damageAmount = other->GetAttackDamage();
             EventManager::GetInstance()->Dispatch(dmgEvent);
 
+            if (IsDeathSequenceActive())
+            {
+                return true;
+            }
+
             // 無敵時間をセット
             damageCooldownTimer_ = 1.5f;
 
@@ -368,9 +373,9 @@ void Player::SetDashInvincible(bool inv) {
 }
 
 void Player::UpdateColor() {
-    const bool isInvincible = isDamageInvincible_ || isDashInvincible_;
+    const bool shouldUseDamageTint = isDamageInvincible_;
 
-    if (isInvincible && !hasSavedInvincibleColors_) {
+    if (shouldUseDamageTint && !hasSavedInvincibleColors_) {
         savedColor_ = GetColor();
         childSavedColors_.clear();
         for (Object3d* child : GetChildren()) {
@@ -381,7 +386,7 @@ void Player::UpdateColor() {
         hasSavedInvincibleColors_ = true;
     }
 
-    if (!isInvincible) {
+    if (!shouldUseDamageTint) {
         if (hasSavedInvincibleColors_) {
             SetColor(savedColor_);
             for (auto& entry : childSavedColors_) {
@@ -395,9 +400,7 @@ void Player::UpdateColor() {
         return;
     }
 
-    Vector4 invincibleColor = isDamageInvincible_
-        ? Vector4{ 1.0f, 0.0f, 0.0f, 1.0f }
-        : Vector4{ 0.0f, 0.45f, 1.0f, 1.0f };
+    Vector4 invincibleColor = { 1.0f, 0.0f, 0.0f, 1.0f };
     SetColor(invincibleColor);
     for (Object3d* child : GetChildren()) {
         if (child) child->SetColor(invincibleColor);
