@@ -87,6 +87,12 @@ private:
     Vector3 movieStartCameraEye_;
     Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
+    bool bridgeCenterMagmaImpactPlayed_ = false;
+    bool bridgeBackMagmaImpactPlayed_ = false;
+    bool bridgeFrontMagmaImpactPlayed_ = false;
+#ifdef USE_IMGUI
+    bool isBridgeDropPreviewForDebug_ = false;
+#endif
     Vector3 movieStoredPlayerPos_;
 
     // --- チュートリアル進行とドア制御 ---
@@ -110,6 +116,9 @@ private:
     void UpdateGameplaySystems(float deltaTime);
     void UpdateBossMovie(float deltaTime);
     void UpdateClearSequence(float deltaTime);
+#ifdef USE_IMGUI
+    bool PrepareBridgeDropPreviewForDebug();
+#endif
 
     // --- UI入力表示 ---
     void ApplyPauseInputUiIfNeeded();
