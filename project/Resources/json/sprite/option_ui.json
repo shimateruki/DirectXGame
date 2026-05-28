@@ -11,28 +11,6 @@
                 1.0
             ],
             "emissive": 1.0,
-            "name": "optionText.png",
-            "position": [
-                745.0,
-                500.0
-            ],
-            "size": [
-                120.0,
-                60.0
-            ],
-            "texture": "optionText.png"
-        },
-        {
-            "anchor": [
-                0.5,
-                0.5
-            ],
-            "color": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
             "name": "option/cameraSaundUI.png",
             "position": [
                 770.0,

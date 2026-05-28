@@ -228,6 +228,43 @@ void GamePlayScene::Initialize() {
     }
 
     // =======================================================
+    // プレイヤーの回避クールタイム用ゲージを動的生成
+    // =======================================================
+    if (playerHpBarSprite_) {
+        uint32_t whiteTex = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+        
+        Vector2 hpPos = playerHpBarSprite_->GetPosition();
+        // HPバーのアンカーが中央であることを考慮し、左端の座標を計算
+        float hpLeftX = hpPos.x - (playerHpBarMaxWidth_ * 0.5f);
+        Vector2 backSize = { playerHpBarMaxWidth_, 6.0f }; // ゲージの長さをHPバーと同じに
+        
+        // 背景 (暗いグレー)
+        auto dashBack = std::make_unique<Sprite>();
+        dashBack->Initialize(spriteCommon_.get(), whiteTex);
+        dashBack->SetSize(backSize);
+        dashBack->SetAnchorPoint({ 0.0f, 0.5f }); // 左端を基準にする
+        dashBack->SetPosition({ hpLeftX + 140.0f, hpPos.y - 60.0f }); // ちょい左に戻す
+        dashBack->SetColor({ 0.1f, 0.1f, 0.1f, 0.8f });
+        dashBack->SetName("playerDashBackBar");
+        
+        // ゲージ本体 (水色)
+        auto dashBar = std::make_unique<Sprite>();
+        dashBar->Initialize(spriteCommon_.get(), whiteTex);
+        dashBar->SetSize(backSize);
+        dashBar->SetAnchorPoint({ 0.0f, 0.5f }); // 左端を基準にする
+        dashBar->SetPosition({ hpLeftX + 140.0f, hpPos.y - 60.0f }); // 背景と同じ位置
+        dashBar->SetColor({ 0.0f, 1.0f, 1.0f, 1.0f });
+        dashBar->SetName("playerDashBar");
+        
+        playerDashBackSprite_ = dashBack.get();
+        playerDashBarSprite_ = dashBar.get();
+        playerDashBarMaxWidth_ = backSize.x;
+        
+        sprites_.push_back(std::move(dashBack));
+        sprites_.push_back(std::move(dashBar));
+    }
+
+    // =======================================================
     // ゲームオーバー用UIの取得と初期化 (最初は透明にして隠す)
     // =======================================================
     gameOverTextSprite_ = GetSpriteByName("GameOverText.png");
@@ -305,6 +342,7 @@ void GamePlayScene::Initialize() {
     titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
     optionPoseTextSprite_ = GetSpriteByName("optionText.png");
     tabPauseTextSprite_ = GetSpriteByName("tab_text.png");
+    optionControlsSprite_ = GetSpriteByName("option_controls.png");
 
     auto SetAlpha = [](Sprite* sprite, float alpha) {
         if (sprite) {
@@ -319,6 +357,7 @@ void GamePlayScene::Initialize() {
     SetAlpha(restartPoseTextSprite_, 0.0f);
     SetAlpha(titleTextPoseSprite_, 0.0f);
     SetAlpha(optionPoseTextSprite_, 0.0f);
+    SetAlpha(optionControlsSprite_, 0.0f);
     isPaused_ = false;
     ApplyPauseInputUiIfNeeded();
 
@@ -762,6 +801,8 @@ bool GamePlayScene::HandleEscapeKey() {
             SetAlpha(poseTextSprite_, 0.0f);
             SetAlpha(restartPoseTextSprite_, 0.0f);
             SetAlpha(titleTextPoseSprite_, 0.0f);
+            SetAlpha(optionPoseTextSprite_, 0.0f);
+            SetAlpha(optionControlsSprite_, 0.0f);
             currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
         }
         else {
@@ -802,6 +843,8 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
             SetAlpha(poseTextSprite_, textAlpha);
             SetAlpha(restartPoseTextSprite_, textAlpha);
             SetAlpha(titleTextPoseSprite_, textAlpha);
+            SetAlpha(optionPoseTextSprite_, textAlpha);
+            SetAlpha(optionControlsSprite_, textAlpha);
 
             // 選択位置をリセット
             currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
@@ -2163,7 +2206,7 @@ void GamePlayScene::DrawUI() {
     auto IsPauseUI = [&](Sprite* sp) {
         return sp == poseBackSprite_ || sp == poseTextSprite_ ||
                sp == restartPoseTextSprite_ || sp == titleTextPoseSprite_ ||
-               sp == optionPoseTextSprite_;
+               sp == optionPoseTextSprite_ || sp == optionControlsSprite_;
     };
     auto IsGameOverUI = [&](Sprite* sp) {
         return sp == gameOverTextSprite_ || sp == restartTextSprite_ ||
@@ -2264,6 +2307,24 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             playerDamageBarSprite_->SetSize({ playerHpBarMaxWidth_ * playerVisualHp_, playerDamageBarSprite_->GetSize().y });
         }
     }
+
+    // 1.5 プレイヤーの回避クールタイム同期
+    if (player_ && playerDashBarSprite_ && playerDashBackSprite_) {
+        float dashRatio = player_->GetDashCooldownRatio();
+        
+        // ゲージの長さを反映
+        playerDashBarSprite_->SetSize({ playerDashBarMaxWidth_ * dashRatio, playerDashBarSprite_->GetSize().y });
+        
+        // 状態によって色を変える
+        if (dashRatio >= 1.0f) {
+            // 準備完了：明るいシアン
+            playerDashBarSprite_->SetColor({ 0.0f, 1.0f, 1.0f, 1.0f });
+        } else {
+            // クールダウン中：オレンジ
+            playerDashBarSprite_->SetColor({ 1.0f, 0.6f, 0.0f, 1.0f });
+        }
+    }
+
     if (boss_) {
         // =======================================================
         // ボスUIの表示・非表示制御
