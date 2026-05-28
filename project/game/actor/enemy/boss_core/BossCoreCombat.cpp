@@ -40,6 +40,7 @@ void BossCore::TakeBodyDamage(float damage) {
             currentAttack_->Finalize();
             currentAttack_.reset();
         }
+        HideWarningArea();
         ChangeState(State::Idle);
         animTimer_ = 0.0f;
 

@@ -743,6 +743,7 @@ void GamePlayScene::Update(float deltaTime) {
 }
 
 bool GamePlayScene::HandleEscapeKey() {
+#ifdef USE_IMGUI
     // ---------------------------------------------------------
     // 0. ESCキーでの強制終了（オプション画面以外）
     // ---------------------------------------------------------
@@ -769,6 +770,7 @@ bool GamePlayScene::HandleEscapeKey() {
         }
         return true;
     }
+#endif
     return false;
 }
 

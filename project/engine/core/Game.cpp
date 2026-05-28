@@ -159,10 +159,12 @@ void Game::Finalize() {
 
 void Game::Update() {
     InputManager::GetInstance()->Update();
+#ifdef USE_IMGUI
     if (InputManager::GetInstance()->IsKeyTriggered(DIK_ESCAPE)) {
         PostQuitMessage(0); // Windowsに「アプリを終了して！」とメッセージを送る
         return;             // 今回のフレームの更新はここで打ち切る
     }
+#endif
 #ifdef USE_IMGUI
     ImGuiManager::GetInstance()->BeginFrame();
     ImGuizmo::BeginFrame();
