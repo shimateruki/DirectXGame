@@ -7,7 +7,7 @@ void PlayerStateAttack1::Enter(Player* player)
 
 	if (player) {
 		// 攻撃1段目SEの再生
-		AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 1.0f);
+		AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 2.0f);
 
 		player->SetIsControlActive(false);
 		

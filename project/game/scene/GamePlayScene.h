@@ -143,6 +143,7 @@ private:
     // --- BGM・SE ---
     uint32_t bgmHandle_ = 0;
     uint32_t bgmTutorialHandle_ = 0;
+    uint32_t bgmWindHandle_ = 0;
     uint32_t bgmBattle01Handle_ = 0;
     uint32_t bgmBattle02Handle_ = 0;
     uint32_t bgmDefeatHandle_ = 0;

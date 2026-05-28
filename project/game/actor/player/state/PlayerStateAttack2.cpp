@@ -5,8 +5,9 @@ void PlayerStateAttack2::Enter(Player* player)
 {
 	if (!player) return;
 
-	// 攻撃2段目SEの再生
-	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss2Handle(), false, 1.0f);
+	// 攻撃2段目SEの再生 (1回目)
+	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 2.0f);
+	hasPlayedSecondSE_ = false;
 
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack2 State");
 
@@ -164,6 +165,12 @@ void PlayerStateAttack2::Update(Player* player)
 
 	// 固定フレームでタイマー更新（既存スタイル）
 	animTimer_ += 1.0f / 60.0f;
+
+	// 2回目のSE再生（回転しているように聞こえるよう時間差で）
+	if (animTimer_ > 0.15f && !hasPlayedSecondSE_) {
+		AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 2.0f);
+		hasPlayedSecondSE_ = true;
+	}
 
 	// チームメンバーの変更: パーティクルの更新
 	if (particleEmitter_) {

@@ -78,6 +78,10 @@ private:
     // --- BGM ---
     uint32_t bgmHandle_ = 0;
 
+    // --- SE ---
+    uint32_t seCursorMove_ = 0;
+    uint32_t seDecide_ = 0;
+
     // --- ライト・描画補助リソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;

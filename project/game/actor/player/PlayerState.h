@@ -235,6 +235,7 @@ public:
 private:
 	float animTimer_ = 0.0f;
 	float animDuration_ = 0.5f;
+	bool hasPlayedSecondSE_ = false;
 
 	// 各パーツ
 	Object3d* bodyObj_ = nullptr;

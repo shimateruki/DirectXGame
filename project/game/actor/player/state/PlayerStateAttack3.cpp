@@ -6,7 +6,7 @@ void PlayerStateAttack3::Enter(Player* player)
 	if (!player) return;
 
 	// 攻撃3段目SEの再生
-	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 1.0f);
+	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 2.0f);
 
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack3 State (Thrust!)");
 

@@ -139,6 +139,7 @@ void GamePlayScene::Initialize() {
 
     SaveDataManager::GetInstance()->Load();
     bgmTutorialHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/tutorial.mp3");
+    bgmWindHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/Wind.mp3");
     bgmBattle01Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/battle_01.mp3");
     bgmBattle02Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/battle_02.mp3");
     bgmDefeatHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/defeat/defeat.mp3");
@@ -993,6 +994,7 @@ void GamePlayScene::UpdateTutorialDoor(float deltaTime) {
                     // ムービー開始
                     movieState_ = MovieState::kTutorialDoorOpen;
                     movieTimer_ = 0.0f;
+                    audioPlayer_->StopBGM();
                     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                     CameraEditor::GetInstance()->PlayOverrideCamera(camera, "tutorial movie");
 
@@ -1180,6 +1182,11 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
         if (movieTimer_ > 2.5f) {
             movieState_ = MovieState::kNone;
             hasTutorialMovieFinished_ = true; // ムービー終了
+
+            // 扉が開いた後、WindのBGMを再生
+            bgmHandle_ = bgmWindHandle_;
+            audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume() / 2);
+
             missionSwitchDelayTimer_ = 0.5f;  // 0.5秒待機
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
@@ -2456,6 +2463,7 @@ void GamePlayScene::StartBossAppearanceMovie() {
 
     isBossMoviePlaying_ = true;
     hasBossAppeared_ = true;
+    audioPlayer_->StopBGM(); // ボス登場演出中はBGMを止める
     audioPlayer_->PlaySE(seMissionClear3Handle_, false, SaveDataManager::GetInstance()->GetSEVolume());
     movieTimer_ = 0.0f;
 
