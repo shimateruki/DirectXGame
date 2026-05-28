@@ -15,6 +15,8 @@ private:
     void SetVisualPartsColor(const Vector4& color);
     void SetVisualPartsVisible(bool visible);
     void UpdateColorByHitCount();
+    void EnableReflectAfterLanding();
+    bool CanReflectByPlayer() const;
 
     // ボム兵の状態
     enum class State {
@@ -37,6 +39,7 @@ private:
     // 吹き飛ばし・跳ね返し用
     int hitCount_ = 0;
     bool isBlownAway_ = false;
+    bool hasLandedOnce_ = false;
     float shakeTimer_ = 0.0f;
     float stunTimer_ = 0.0f;
     Vector3 lastShakeOffset_ = { 0,0,0 };

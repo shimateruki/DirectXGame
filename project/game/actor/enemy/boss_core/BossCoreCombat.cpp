@@ -178,7 +178,9 @@ void BossCore::TakeBodyDamage(float damage) {
 
         if (target_) {
             if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetControlLock(true);
                 player->SetIsControlActive(false);
+                player->SetIsPhysicsActive(false);
                 player->SetVelocity({ 0.0f, 0.0f, 0.0f });
                 player->SetTranslate({ 0.0f, 1.231f, -60.0f });
                 player->UpdateWorldMatrix();
