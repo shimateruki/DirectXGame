@@ -174,6 +174,11 @@ private:
     float playerDamageDelayTimer_ = 0.0f;
     float playerPrevHpRatio_ = 0.0f;
 
+    // --- 回避クールタイム UI ---
+    Sprite* playerDashBarSprite_ = nullptr;
+    Sprite* playerDashBackSprite_ = nullptr;
+    float playerDashBarMaxWidth_ = 0.0f;
+
     // --- チュートリアル足場 ---
     Object3d* tutorialPlatform_ = nullptr;
     float tutorialPlatformOffset_ = 0.0f;
@@ -234,6 +239,7 @@ private:
     Sprite* optionPoseTextSprite_ = nullptr;
     Sprite* titleTextPoseSprite_ = nullptr;
     Sprite* tabPauseTextSprite_ = nullptr;
+    Sprite* optionControlsSprite_ = nullptr;
     bool pauseUiUsesGamepad_ = false;
     bool hasAppliedPauseInputUi_ = false;
     bool isGameClearSequence_ = false;
