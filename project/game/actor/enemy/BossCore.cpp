@@ -50,6 +50,18 @@ BossCore::OrbitData BossCore::GetIdleOrbit(size_t index) {
     return data;
 }
 
+void BossCore::HideWarningArea() {
+    if (!warningArea_) {
+        return;
+    }
+
+    warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
+    warningArea_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    warningArea_->SetCollisionAttribute(0);
+    warningArea_->SetCollisionMask(0);
+    warningArea_->UpdateWorldMatrix();
+}
+
 // =================================================================
 // 初期化・更新
 // =================================================================
@@ -222,6 +234,7 @@ void BossCore::Update(float deltaTime) {
                 currentAttack_->Finalize();
                 currentAttack_.reset();
             }
+            HideWarningArea();
             ChangeState(State::Idle);
             animTimer_ = 0.0f;
 

@@ -42,6 +42,19 @@ bool IsIgnoredForCameraCollision(Object3d* object) {
 
     return false;
 }
+
+void ApplyAlphaToHierarchy(Object3d* object, float alpha) {
+    if (!object) {
+        return;
+    }
+
+    Vector4 color = object->GetColor();
+    object->SetColor({ color.x, color.y, color.z, alpha });
+
+    for (Object3d* child : object->GetChildren()) {
+        ApplyAlphaToHierarchy(child, alpha);
+    }
+}
 }
 
 void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
@@ -291,19 +304,12 @@ void Camera::Update() {
         float camToPlayerDist = math.Length(toPlayer);
 
         float alpha = 1.0f;
-        if (camToPlayerDist < 3.5f) {
+        const bool isCinematicCameraActive = isOverridden_ || overrideWeight_ > 0.0f;
+        if (!isCinematicCameraActive && camToPlayerDist < 3.5f) {
             alpha = std::max(0.0f, (camToPlayerDist - 1.0f) / 2.5f);
         }
 
-        Vector4 pColor = followObject_->GetColor();
-        followObject_->SetColor({ pColor.x, pColor.y, pColor.z, alpha });
-
-        for (Object3d* child : followObject_->GetChildren()) {
-            if (child) {
-                Vector4 cColor = child->GetColor();
-                child->SetColor({ cColor.x, cColor.y, cColor.z, alpha });
-            }
-        }
+        ApplyAlphaToHierarchy(followObject_, alpha);
     }
 
     // =================================================================

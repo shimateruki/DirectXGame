@@ -197,6 +197,7 @@ public:
     bool IsArmorBlockBroken(size_t index) const { return index >= blockBroken_.size() || blockBroken_[index]; }
     Object3d* GetTarget() const { return target_; }
     Object3d* GetWarningArea() const { return warningArea_; }
+    void HideWarningArea();
 
     struct OrbitData {
         Vector3 pos;

@@ -299,6 +299,7 @@ void BossCore::TakeBarrierDamage(float damage, Object3d* hitBlock) {
             currentAttack_->Finalize();
             currentAttack_.reset();
         } // ダウン時の攻撃を強制終了
+        HideWarningArea();
         animTimer_ = 0.0f;
         flyingBlocks_.clear();
 
@@ -841,6 +842,7 @@ void BossCore::TriggerCrashStun() {
         warning->SetScale({ 0.0f, 0.0f, 0.0f });
         warning->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     }
+    HideWarningArea();
     isCrashStun_ = true;
     crashStunTimer_ = 0.0f;
     flyingBlocks_.clear();

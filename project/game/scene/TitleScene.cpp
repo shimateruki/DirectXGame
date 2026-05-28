@@ -262,11 +262,13 @@ void TitleScene::Update(float deltaTime) {
   // ---------------------------------------------------------
   // 0. ESCキーでの強制終了（オプション画面以外）
   // ---------------------------------------------------------
+#ifdef USE_IMGUI
   if (currentState_ != TitleState::OptionMenu &&
       input->IsKeyTriggered(DIK_ESCAPE)) {
     PostQuitMessage(0);
     return;
   }
+#endif
 
   // --- フェード終了後にスプライト演出を開始 ---
   if (!spritesAppear_) {

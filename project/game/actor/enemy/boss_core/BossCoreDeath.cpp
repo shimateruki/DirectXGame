@@ -47,6 +47,7 @@ void BossCore::StartDeathSequence() {
         currentAttack_->Finalize();
         currentAttack_.reset();
     }
+    HideWarningArea();
     isWaitingForDeath_ = true;
     ChangeState(State::Idle);
 

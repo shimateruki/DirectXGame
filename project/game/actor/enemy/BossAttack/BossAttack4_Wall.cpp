@@ -386,6 +386,7 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
 
 void BossAttack4_Wall::Finalize() {
     if (boss_) {
+        boss_->HideWarningArea();
         boss_->SetScale({ 1.0f, 1.0f, 1.0f });
         boss_->SetArmorAttackCollisionActive(false);
     }
