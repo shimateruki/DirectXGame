@@ -11,6 +11,60 @@ constexpr float kArmorBreakRestBeforeDissolve = 0.36f;
 constexpr float kArmorBreakDissolveDuration = 0.95f;
 constexpr float kArmorBreakRollingFriction = 0.58f;
 constexpr int32_t kArmorCrackMaterialType = 13;
+constexpr int32_t kArmorBreakMinDivisions = 2;
+constexpr int32_t kArmorBreakMaxDivisions = 4;
+
+int32_t GetArmorBreakDivisionCount(float scale) {
+    float normalizedScale = (std::max)(1.0f, std::abs(scale));
+    return std::clamp(static_cast<int32_t>(std::ceil(normalizedScale * 1.25f)), kArmorBreakMinDivisions, kArmorBreakMaxDivisions);
+}
+
+std::vector<Vector3> BuildArmorBreakLocalOffsets(const Vector3& blockScale) {
+    int32_t divX = GetArmorBreakDivisionCount(blockScale.x);
+    int32_t divY = GetArmorBreakDivisionCount(blockScale.y);
+    int32_t divZ = GetArmorBreakDivisionCount(blockScale.z);
+
+    auto axisOffset = [](int32_t index, int32_t count) {
+        if (count <= 1) {
+            return 0.0f;
+        }
+        float t = static_cast<float>(index) / static_cast<float>(count - 1);
+        return (t - 0.5f) * (kArmorShardOffset * 2.0f);
+    };
+
+    std::vector<Vector3> offsets;
+    offsets.reserve(static_cast<size_t>(divX * divY * divZ));
+    for (int32_t z = 0; z < divZ; ++z) {
+        for (int32_t y = 0; y < divY; ++y) {
+            for (int32_t x = 0; x < divX; ++x) {
+                offsets.push_back({
+                    axisOffset(x, divX),
+                    axisOffset(y, divY),
+                    axisOffset(z, divZ)
+                    });
+            }
+        }
+    }
+
+    std::sort(offsets.begin(), offsets.end(), [](const Vector3& a, const Vector3& b) {
+        float lenA = a.x * a.x + a.y * a.y + a.z * a.z;
+        float lenB = b.x * b.x + b.y * b.y + b.z * b.z;
+        return lenA > lenB;
+    });
+    return offsets;
+}
+
+float GetCappedBreakScale(float scale) {
+    return (std::min)(std::abs(scale), 1.0f);
+}
+
+Vector3 MakeArmorBreakShardWorldScale(const Vector3& blockScale, const Vector3& shardScale) {
+    return {
+        shardScale.x * kArmorBreakShardScale * GetCappedBreakScale(blockScale.x),
+        shardScale.y * kArmorBreakShardScale * GetCappedBreakScale(blockScale.y),
+        shardScale.z * kArmorBreakShardScale * GetCappedBreakScale(blockScale.z)
+    };
+}
 
 Vector3 GetArmorShardLocalOffset(size_t index) {
     const Vector3 offsets[8] = {
@@ -147,6 +201,14 @@ bool BossCore::AssimilateBlock(Object3d* newBlock) {
                 size_t resetIndex = 0;
                 for (ArmorBreakMotion::ChildPiece& piece : armorBreakMotions_[i].childPieces) {
                     if (!piece.object) {
+                        continue;
+                    }
+                    if (piece.temporary) {
+                        piece.object->SetParent(nullptr);
+                        piece.object->SetIsVisible(false);
+                        piece.object->SetCollisionAttribute(0);
+                        piece.object->SetCollisionMask(0);
+                        piece.object->isDead = true;
                         continue;
                     }
                     piece.object->SetParent(armorBlocks_[i]);
@@ -440,9 +502,77 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
     GPUParticleManager::GetInstance()->Emit("ArmorBreakSpark", breakOriginPos, Math::MakeIdentity4x4());
 
     std::vector<Object3d*> children = block->GetChildren();
-    motion.childPieces.reserve(children.size());
-    for (size_t childIndex = 0; childIndex < children.size(); ++childIndex) {
-        Object3d* child = children[childIndex];
+    std::vector<Vector3> breakLocalOffsets = BuildArmorBreakLocalOffsets(block->GetScale());
+    motion.childPieces.reserve((std::max)(children.size(), breakLocalOffsets.size()));
+
+    Object3d* shardTemplate = nullptr;
+    for (Object3d* child : children) {
+        if (child && child->GetName().find("Shard") != std::string::npos) {
+            shardTemplate = child;
+            break;
+        }
+    }
+
+    auto registerBreakPiece = [&](Object3d* child, const Vector3& childLocalOffset, const Vector3& childWorldPos, const Vector3& childWorldRot, const Vector3& childWorldScale, size_t pieceIndex, bool temporary) {
+        Vector3 scatterDir = {
+            childLocalOffset.x,
+            0.0f,
+            childLocalOffset.z
+        };
+        float scatterLen = std::sqrt(scatterDir.x * scatterDir.x + scatterDir.z * scatterDir.z);
+        if (scatterLen > 0.001f) {
+            scatterDir.x /= scatterLen;
+            scatterDir.z /= scatterLen;
+        } else {
+            float angle = static_cast<float>(pieceIndex) * 0.785398f;
+            scatterDir.x = std::cos(angle);
+            scatterDir.z = std::sin(angle);
+        }
+        Vector3 mixedDir = NormalizeXZ({
+            scatterDir.x * 0.55f + dir.x * 0.95f,
+            0.0f,
+            scatterDir.z * 0.55f + dir.z * 0.95f
+        }, static_cast<float>(pieceIndex) * 0.785398f);
+        Vector3 tangentDir = { -mixedDir.z, 0.0f, mixedDir.x };
+        float tangentSign = (pieceIndex % 2 == 0) ? 1.0f : -1.0f;
+
+        child->SetParent(nullptr);
+        child->SetTranslate(childWorldPos);
+        child->SetRotation(childWorldRot);
+        child->SetScale(childWorldScale);
+        child->SetCollisionAttribute(0);
+        child->SetCollisionMask(0);
+        child->SetIsVisible(true);
+        child->GetTransform()->isQuaternionMaster = false;
+
+        ArmorBreakMotion::ChildPiece piece;
+        piece.object = child;
+        piece.temporary = temporary;
+        piece.rolling = false;
+        piece.rollTimer = 0.0f;
+        piece.position = childWorldPos;
+        piece.rotation = childWorldRot;
+        piece.baseScale = childWorldScale;
+        piece.landedScale = piece.baseScale;
+        piece.baseColor = breakBaseColor;
+        piece.baseEmissive = breakBaseEmissive;
+        piece.groundY = ResolveArmorBreakGroundY(childWorldPos, this, child) + static_cast<float>(pieceIndex % 3) * 0.03f;
+        float scatterSpeed = 1.55f + static_cast<float>(pieceIndex % 3) * 0.16f;
+        piece.velocity = {
+            mixedDir.x * scatterSpeed + tangentDir.x * tangentSign * 0.18f,
+            0.95f + (std::max)(0.0f, childLocalOffset.y) * 0.75f + static_cast<float>(pieceIndex % 4) * 0.07f,
+            mixedDir.z * scatterSpeed + tangentDir.z * tangentSign * 0.18f
+        };
+        piece.angularVelocity = {
+            5.0f + static_cast<float>(pieceIndex % 3) * 0.8f,
+            6.4f + static_cast<float>(pieceIndex % 5) * 0.65f,
+            4.8f + static_cast<float>(pieceIndex % 4) * 0.75f
+        };
+        motion.childPieces.push_back(piece);
+    };
+
+    size_t shardPieceIndex = 0;
+    for (Object3d* child : children) {
         if (!child) {
             continue;
         }
@@ -456,71 +586,69 @@ void BossCore::StartArmorBlockBreak(size_t index, const Vector3& impactSource, b
         }
 
         Vector3 childLocalOffset = child->GetTranslate();
+        if (shardPieceIndex < breakLocalOffsets.size()) {
+            childLocalOffset = breakLocalOffsets[shardPieceIndex];
+            child->SetTranslate(childLocalOffset);
+            child->UpdateLocalMatrix();
+        }
+        child->UpdateWorldMatrix();
         Vector3 childWorldPos = child->GetWorldPosition();
         Vector3 childWorldRot = {
             block->GetRotation().x + child->GetRotation().x,
             block->GetRotation().y + child->GetRotation().y,
             block->GetRotation().z + child->GetRotation().z
         };
-        Vector3 childWorldScale = {
-            block->GetScale().x * child->GetScale().x * kArmorBreakShardScale,
-            block->GetScale().y * child->GetScale().y * kArmorBreakShardScale,
-            block->GetScale().z * child->GetScale().z * kArmorBreakShardScale
-        };
-        Vector3 scatterDir = {
-            childLocalOffset.x,
-            0.0f,
-            childLocalOffset.z
-        };
-        float scatterLen = std::sqrt(scatterDir.x * scatterDir.x + scatterDir.z * scatterDir.z);
-        if (scatterLen > 0.001f) {
-            scatterDir.x /= scatterLen;
-            scatterDir.z /= scatterLen;
-        } else {
-            float angle = static_cast<float>(childIndex) * 0.785398f;
-            scatterDir.x = std::cos(angle);
-            scatterDir.z = std::sin(angle);
+        Vector3 childWorldScale = MakeArmorBreakShardWorldScale(block->GetScale(), child->GetScale());
+        registerBreakPiece(child, childLocalOffset, childWorldPos, childWorldRot, childWorldScale, shardPieceIndex, false);
+        ++shardPieceIndex;
+    }
+
+    BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
+    if (currentScene && shardTemplate) {
+        Object3d* source = shardTemplate;
+        for (; shardPieceIndex < breakLocalOffsets.size(); ++shardPieceIndex) {
+            auto extraShard = std::make_unique<Object3d>();
+            extraShard->Initialize(common_);
+            std::string modelName = source->GetModelName();
+            if (modelName.empty()) {
+                modelName = block->GetModelName();
+            }
+            if (!modelName.empty()) {
+                extraShard->SetModel(modelName);
+            }
+            extraShard->SetName(block->GetName() + "_BreakShard" + std::to_string(shardPieceIndex + 1));
+            extraShard->SetClassName(source->GetClassName());
+            extraShard->SetEnableOutline(source->GetEnableOutline());
+            extraShard->SetColor({ breakBaseColor.x, breakBaseColor.y, breakBaseColor.z, 1.0f });
+            extraShard->SetMetallic(source->GetMetallic());
+            extraShard->SetRoughness(source->GetRoughness());
+            extraShard->SetEmissive(breakBaseEmissive);
+            extraShard->SetEnvIntensity(source->GetEnvIntensity());
+            extraShard->SetEnableNormalMap(source->GetEnableNormalMap());
+            extraShard->SetEnableEnvMap(source->GetEnableEnvMap());
+            extraShard->SetMaterialType(4);
+            if (!source->GetTexturePath().empty()) {
+                extraShard->SetTexture(source->GetTexturePath());
+            }
+            if (!source->GetNormalMapPath().empty()) {
+                extraShard->SetNormalMap(source->GetNormalMapPath());
+            }
+            if (!source->GetOrmMapPath().empty()) {
+                extraShard->SetOrmMap(source->GetOrmMapPath());
+            }
+
+            Vector3 childLocalOffset = breakLocalOffsets[shardPieceIndex];
+            Vector3 childWorldPos = Math::Transform(childLocalOffset, block->GetWorldMatrix());
+            Vector3 childWorldRot = {
+                block->GetRotation().x + static_cast<float>(shardPieceIndex % 3) * 0.12f,
+                block->GetRotation().y + static_cast<float>(shardPieceIndex) * 0.37f,
+                block->GetRotation().z + static_cast<float>(shardPieceIndex % 5) * 0.09f
+            };
+            Vector3 childWorldScale = MakeArmorBreakShardWorldScale(block->GetScale(), source->GetScale());
+            Object3d* extraShardPtr = extraShard.get();
+            registerBreakPiece(extraShardPtr, childLocalOffset, childWorldPos, childWorldRot, childWorldScale, shardPieceIndex, true);
+            currentScene->AddObject(std::move(extraShard));
         }
-        Vector3 mixedDir = NormalizeXZ({
-            scatterDir.x * 0.55f + dir.x * 0.95f,
-            0.0f,
-            scatterDir.z * 0.55f + dir.z * 0.95f
-        }, static_cast<float>(childIndex) * 0.785398f);
-        Vector3 tangentDir = { -mixedDir.z, 0.0f, mixedDir.x };
-        float tangentSign = (childIndex % 2 == 0) ? 1.0f : -1.0f;
-
-        child->SetParent(nullptr);
-        child->SetTranslate(childWorldPos);
-        child->SetRotation(childWorldRot);
-        child->SetScale(childWorldScale);
-        child->SetCollisionAttribute(0);
-        child->SetCollisionMask(0);
-        child->SetIsVisible(true);
-        child->GetTransform()->isQuaternionMaster = false;
-
-        ArmorBreakMotion::ChildPiece piece;
-        piece.object = child;
-        piece.rolling = false;
-        piece.rollTimer = 0.0f;
-        piece.position = childWorldPos;
-        piece.rotation = childWorldRot;
-        piece.baseScale = childWorldScale;
-        piece.landedScale = piece.baseScale;
-        piece.baseColor = breakBaseColor;
-        piece.baseEmissive = breakBaseEmissive;
-        piece.groundY = ResolveArmorBreakGroundY(childWorldPos, this, child) + static_cast<float>(childIndex % 3) * 0.03f;
-        float scatterSpeed = 1.55f + static_cast<float>(childIndex % 3) * 0.16f;
-        piece.velocity = {
-            mixedDir.x * scatterSpeed + tangentDir.x * tangentSign * 0.18f,
-            0.95f + (std::max)(0.0f, childLocalOffset.y) * 0.75f + static_cast<float>(childIndex % 4) * 0.07f,
-            mixedDir.z * scatterSpeed + tangentDir.z * tangentSign * 0.18f
-        };
-        piece.angularVelocity = {
-            5.0f + static_cast<float>(childIndex % 3) * 0.8f,
-            6.4f + static_cast<float>(childIndex % 5) * 0.65f,
-            4.8f + static_cast<float>(childIndex % 4) * 0.75f
-        };
-        motion.childPieces.push_back(piece);
     }
 
     if (!motion.childPieces.empty()) {
@@ -697,6 +825,14 @@ void BossCore::UpdateBrokenArmorBlocks(float deltaTime) {
                 size_t resetIndex = 0;
                 for (ArmorBreakMotion::ChildPiece& piece : motion.childPieces) {
                     if (!piece.object) {
+                        continue;
+                    }
+                    if (piece.temporary) {
+                        piece.object->SetParent(nullptr);
+                        piece.object->SetIsVisible(false);
+                        piece.object->SetCollisionAttribute(0);
+                        piece.object->SetCollisionMask(0);
+                        piece.object->isDead = true;
                         continue;
                     }
                     piece.object->SetParent(block);
@@ -1008,6 +1144,14 @@ void BossCore::FullyRecoverBarrierAndArmor() {
                 size_t resetIndex = 0;
                 for (ArmorBreakMotion::ChildPiece& piece : armorBreakMotions_[i].childPieces) {
                     if (!piece.object) {
+                        continue;
+                    }
+                    if (piece.temporary) {
+                        piece.object->SetParent(nullptr);
+                        piece.object->SetIsVisible(false);
+                        piece.object->SetCollisionAttribute(0);
+                        piece.object->SetCollisionMask(0);
+                        piece.object->isDead = true;
                         continue;
                     }
                     piece.object->SetParent(armorBlocks_[i]);
