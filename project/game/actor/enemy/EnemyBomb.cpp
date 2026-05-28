@@ -22,6 +22,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     igniteTimer_ = 0.0f;
     hitCount_ = 0;
     isBlownAway_ = false;
+    hasLandedOnce_ = false;
     shakeTimer_ = 0.0f;
     stunTimer_ = 0.0f;
     lastShakeOffset_ = { 0,0,0 };
@@ -42,7 +43,7 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     SetColliderConfig(colConfig);
 
     // kGroundは追加しない（壁や柱をすり抜けてスムーズに転がり、接地はY座標で制御する）
-    SetCollisionMask(kPlayer | kAttributePlayerBullet | kPlayerAttack | kEnemy);
+    SetCollisionMask(kPlayer | kAttributePlayerBullet | kEnemy);
 
 
     // JSONファイルから攻撃パラメータを読み込んで攻撃力を設定
@@ -112,6 +113,21 @@ void EnemyBomb::SetVisualPartsVisible(bool visible) {
     }
 }
 
+void EnemyBomb::EnableReflectAfterLanding() {
+    if (hasLandedOnce_) {
+        return;
+    }
+
+    hasLandedOnce_ = true;
+    if (!isBlownAway_ && state_ != State::Exploded) {
+        SetCollisionMask(GetCollisionMask() | kPlayerAttack);
+    }
+}
+
+bool EnemyBomb::CanReflectByPlayer() const {
+    return hasLandedOnce_ && !isBlownAway_ && state_ != State::Exploded;
+}
+
 void EnemyBomb::Update(float deltaTime) {
     if (!GetTransform()) {
         BaseEnemy::Update(deltaTime);
@@ -140,6 +156,8 @@ void EnemyBomb::Update(float deltaTime) {
         bool onGround = (GetTransform()->translate.y <= 1.01f);
 
         if (onGround) {
+            EnableReflectAfterLanding();
+
             // 接地：Y座標を 1.0f (球体の半径) に強制吸着し、落下速度をゼロにする
             GetTransform()->translate.y = 1.0f;
             if (velocity_.y < 0.0f) {
@@ -268,6 +286,10 @@ void EnemyBomb::Update(float deltaTime) {
 
     BaseEnemy::Update(deltaTime);
 
+    if (!hasLandedOnce_ && GetTransform()->translate.y <= 1.01f) {
+        EnableReflectAfterLanding();
+    }
+
     // 点火待機中（吹き飛ばされていない）ならば、重力による毎フレームの沈み込みをシャットアウトし、
     // 拡大したスケールに応じて球体の底面が地面（Y=0.0f）に完全に接地し続けるように補正
     if (!isBlownAway_ && state_ == State::Ignited) {
@@ -366,6 +388,10 @@ bool EnemyBomb::OnCollision(Object3d* other) {
 
     // 2. プレイヤーの攻撃を受けた場合（スライム同様に跳ね返せる）
     if (attribute & kPlayerAttack) {
+        if (!CanReflectByPlayer()) {
+            return true;
+        }
+
         if (damageCooldownTimer_ <= 0.0f) {
             if (EffectObject3d* effect = dynamic_cast<EffectObject3d*>(other)) {
                 effect->AddHitObject(this);

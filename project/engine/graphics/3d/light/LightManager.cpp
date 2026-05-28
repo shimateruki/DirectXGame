@@ -87,7 +87,7 @@ void LightManager::Update() {
 
                 // 太陽目線のビュー行列と正投影行列を計算（Math::を付けて静的関数として呼び出し）
                 Matrix4x4 lightView = Math::MakeLookAtMatrix(lightPos, target, up);
-                Matrix4x4 lightProj = Math::MakeOrthographicMatrix(80.0f, 80.0f, 1.0f, 400.0f);
+                Matrix4x4 lightProj = Math::MakeOrthographicMatrix(120.0f, 120.0f, 1.0f, 400.0f);
 
                 // 計算結果を構造体に保存（この後すぐ下の行でGPUへ送られます）
                 directionalLightData_.lightViewProj = Math::Multiply(lightView, lightProj);

@@ -89,7 +89,14 @@ public:
     // --- 状態フラグ ---
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
-    void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
+    void SetIsControlActive(bool isActive) { isControlActive_ = isControlLocked_ ? false : isActive; }
+    void SetControlLock(bool isLocked)
+    {
+        isControlLocked_ = isLocked;
+        if (isLocked) {
+            isControlActive_ = false;
+        }
+    }
     void SetIsPhysicsActive(bool active) { isPhysicsActive_ = active; }
     bool GetIsControlActive() const { return isControlActive_; }
     bool IsPhysicsActive() const { return isPhysicsActive_; }
@@ -165,6 +172,7 @@ private:
     bool isLockingOn_ = false;       // 敵をロックオンしているか
     bool isControlActive_ = true;    // 入力を受け付ける状態か（デモシーン等で制限用）
     bool isPhysicsActive_ = true;    // 物理演算・移動計算を行うか（座標固定用）
+    bool isControlLocked_ = false;
 
     // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
     bool pendingAttack2_ = false;

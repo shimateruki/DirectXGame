@@ -286,6 +286,14 @@ void BossCore::Update(float deltaTime) {
     if (isHpHalfEventActive_) {
         hpHalfEffectTimer_ += deltaTime; // 演出タイマーは実時間
 
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetControlLock(true);
+                player->SetIsPhysicsActive(false);
+                player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+            }
+        }
+
         // カメラ演出の終了を監視し、終わった瞬間に向きをボスに合わせる
         if (!isPlayerRotated_) {
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
@@ -544,7 +552,12 @@ void BossCore::Update(float deltaTime) {
 
             if (target_) {
                 if (auto player = dynamic_cast<Player*>(target_)) {
-                    player->SetIsControlActive(true);
+                    player->SetControlLock(false);
+                    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                    player->SetIsPhysicsActive(true);
+                    if (!player->IsDeathSequenceActive()) {
+                        player->SetIsControlActive(true);
+                    }
                 }
             }
             SetColor(greenColor_);
