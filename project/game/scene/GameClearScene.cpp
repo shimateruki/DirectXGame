@@ -26,6 +26,39 @@
 #include <SaveDataManager.h>
 #include "PlayerState.h"
 #include "PostEffect.h"
+#include <algorithm>
+#include <cmath>
+
+namespace {
+constexpr const char* kClearVictoryStarBurstPreset = "ClearVictoryStarBurst";
+constexpr const char* kClearVictorySparklePreset = "ClearVictorySparkle";
+constexpr const char* kClearVictoryFloorTwinklePreset = "ClearVictoryFloorTwinkle";
+constexpr float kResultMainTimeScale = 1.08f;
+constexpr float kResultMainTimeSpacing = 1.16f;
+constexpr float kResultDiffTimeScale = 0.42f;
+
+float Clamp01(float value) {
+    return std::clamp(value, 0.0f, 1.0f);
+}
+
+float EaseOutBack(float t) {
+    t = Clamp01(t);
+    constexpr float c1 = 1.70158f;
+    constexpr float c3 = c1 + 1.0f;
+    return 1.0f + c3 * std::pow(t - 1.0f, 3.0f) + c1 * std::pow(t - 1.0f, 2.0f);
+}
+
+float EaseOutCubic(float t) {
+    t = Clamp01(t);
+    const float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv;
+}
+
+Vector4 WithAlpha(Vector4 color, float alpha) {
+    color.w = Clamp01(alpha);
+    return color;
+}
+}
 
 void GameClearScene::SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName) {
     if (!sprite || sprite->GetTextureName() == textureName) {
@@ -57,6 +90,296 @@ void GameClearScene::ApplyInputUiIfNeeded() {
         : "[GameClearUI] Input display switched to Keyboard");
 }
 
+void GameClearScene::ResetVictoryPoseParticles() {
+    victoryParticleBurstEmitted_ = false;
+    victoryParticleTimer_ = 0.0f;
+}
+
+void GameClearScene::EmitVictoryParticle(const std::string& presetName, const Vector3& offset) {
+    if (!player_) {
+        return;
+    }
+
+    Vector3 position = player_->GetWorldPosition();
+    position.x += offset.x;
+    position.y += offset.y;
+    position.z += offset.z;
+    GPUParticleManager::GetInstance()->Emit(presetName, position);
+}
+
+void GameClearScene::UpdateVictoryPoseParticles(float deltaTime) {
+    bool isVictoryPoseActive =
+        clearState_ == ClearState::kVictoryMotion ||
+        clearState_ == ClearState::kShowClearTime ||
+        clearState_ == ClearState::kShowBestTime ||
+        clearState_ == ClearState::kWaitInput;
+
+    if (!isVictoryPoseActive || !player_) {
+        return;
+    }
+
+    victoryParticleTimer_ += deltaTime;
+
+    if (!victoryParticleBurstEmitted_ && victoryParticleTimer_ >= 0.28f) {
+        EmitVictoryParticle(kClearVictoryStarBurstPreset, { 0.0f, 2.0f, 0.0f });
+        EmitVictoryParticle(kClearVictorySparklePreset, { 0.0f, 2.4f, 0.0f });
+        EmitVictoryParticle(kClearVictorySparklePreset, { 0.9f, 1.45f, 0.35f });
+        EmitVictoryParticle(kClearVictorySparklePreset, { -0.9f, 1.45f, -0.35f });
+        EmitVictoryParticle(kClearVictorySparklePreset, { 0.0f, 1.45f, 0.9f });
+        EmitVictoryParticle(kClearVictoryFloorTwinklePreset, { 0.0f, 0.35f, 0.0f });
+        victoryParticleBurstEmitted_ = true;
+    }
+}
+
+std::unique_ptr<Sprite> GameClearScene::CreateUiSprite(const Vector2& position, const Vector2& size, const Vector4& color) {
+    auto sprite = std::make_unique<Sprite>();
+    sprite->Initialize(spriteCommon_.get(), Sprite::LoadTexture("white.png"));
+    sprite->SetPosition(position);
+    sprite->SetSize(size);
+    sprite->SetColor(color);
+    sprite->Update();
+    return sprite;
+}
+
+void GameClearScene::InitializeTextStrip(ResultTextStrip& strip, Sprite* sourceSprite, int pieceCount) {
+    if (!sourceSprite || !spriteCommon_ || pieceCount <= 0) {
+        return;
+    }
+
+    strip.pieces.clear();
+    strip.basePosition = sourceSprite->GetPosition();
+    strip.baseSize = sourceSprite->GetSize();
+    strip.pieceCount = pieceCount;
+    strip.animationTimer = 0.0f;
+    strip.initialized = true;
+
+    const uint32_t textureHandle = sourceSprite->GetTextureHandle();
+    const auto& metadata = TextureManager::GetInstance()->GetMetadata(textureHandle);
+    strip.sourceTextureSize = {
+        static_cast<float>(metadata.width),
+        static_cast<float>(metadata.height)
+    };
+
+    const float sourcePieceWidth = strip.sourceTextureSize.x / static_cast<float>(pieceCount);
+    const float displayPieceWidth = strip.baseSize.x / static_cast<float>(pieceCount);
+    strip.pieces.reserve(pieceCount);
+
+    for (int i = 0; i < pieceCount; ++i) {
+        auto piece = std::make_unique<Sprite>();
+        piece->Initialize(spriteCommon_.get(), textureHandle);
+        piece->SetTextureName(sourceSprite->GetTextureName());
+        piece->SetTextureRect(
+            { sourcePieceWidth * static_cast<float>(i), 0.0f },
+            { sourcePieceWidth, strip.sourceTextureSize.y });
+        piece->SetSize({ displayPieceWidth, strip.baseSize.y });
+        piece->SetPosition(strip.basePosition);
+        piece->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        piece->Update();
+        strip.pieces.push_back(std::move(piece));
+    }
+
+    sourceSprite->SetVisible(false);
+}
+
+void GameClearScene::ResetTextStrip(ResultTextStrip& strip) {
+    strip.animationTimer = 0.0f;
+    for (auto& piece : strip.pieces) {
+        if (!piece) {
+            continue;
+        }
+        piece->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        piece->Update();
+    }
+}
+
+void GameClearScene::UpdateTextStrip(ResultTextStrip& strip, float deltaTime, const Vector4& color, float scale, float idleAmount) {
+    if (!strip.initialized || strip.pieceCount <= 0) {
+        return;
+    }
+
+    const float alpha = Clamp01(color.w);
+    if (alpha <= 0.001f) {
+        for (auto& piece : strip.pieces) {
+            if (piece) {
+                Vector4 hiddenColor = color;
+                hiddenColor.w = 0.0f;
+                piece->SetColor(hiddenColor);
+                piece->Update();
+            }
+        }
+        return;
+    }
+
+    strip.animationTimer += deltaTime;
+
+    const float scaledWidth = strip.baseSize.x * scale;
+    const float pieceWidth = scaledWidth / static_cast<float>(strip.pieceCount);
+    const float middleIndex = (static_cast<float>(strip.pieceCount) - 1.0f) * 0.5f;
+
+    for (int i = 0; i < strip.pieceCount; ++i) {
+        if (i >= static_cast<int>(strip.pieces.size()) || !strip.pieces[i]) {
+            continue;
+        }
+
+        const float localTime = strip.animationTimer - strip.stepDelay * static_cast<float>(i);
+        const float appearRate = Clamp01(localTime / strip.popDuration);
+        const float easedAppear = EaseOutBack(appearRate);
+        const float fadeRate = Clamp01(localTime / 0.16f);
+        const float settle = std::sin(appearRate * 3.14159265f) * (1.0f - 0.25f * appearRate);
+        const float entrySway = std::sin(strip.animationTimer * 9.0f + static_cast<float>(i) * 0.72f) * idleAmount * fadeRate * (1.0f - appearRate);
+        const float pieceScale = scale * (0.76f + 0.24f * easedAppear + 0.08f * settle);
+        const float centerOffsetX = (-scaledWidth * 0.5f) + pieceWidth * (static_cast<float>(i) + 0.5f);
+        const float gatherOffsetX = (middleIndex - static_cast<float>(i)) * 12.0f * (1.0f - appearRate);
+
+        strip.pieces[i]->SetPosition({
+            strip.basePosition.x + centerOffsetX + gatherOffsetX,
+            strip.basePosition.y - 24.0f * (1.0f - EaseOutCubic(appearRate)) - 7.0f * settle + entrySway
+        });
+        strip.pieces[i]->SetSize({
+            (strip.baseSize.x / static_cast<float>(strip.pieceCount)) * pieceScale,
+            strip.baseSize.y * pieceScale
+        });
+
+        Vector4 pieceColor = color;
+        pieceColor.w = alpha * fadeRate;
+        strip.pieces[i]->SetColor(pieceColor);
+        strip.pieces[i]->Update();
+    }
+}
+
+void GameClearScene::DrawTextStrip(const ResultTextStrip& strip) {
+    for (const auto& piece : strip.pieces) {
+        if (piece) {
+            piece->Draw();
+        }
+    }
+}
+
+void GameClearScene::InitializeResultUiSprites() {
+    resultPanelSprite_ = CreateUiSprite({ 1185.0f, 420.0f }, { 710.0f, 650.0f }, { 0.02f, 0.025f, 0.035f, 0.0f });
+    resultPanelTopLineSprite_ = CreateUiSprite({ 1130.0f, 158.0f }, { 620.0f, 4.0f }, { 0.65f, 0.95f, 1.0f, 0.0f });
+    resultPanelBottomLineSprite_ = CreateUiSprite({ 1185.0f, 745.0f }, { 500.0f, 3.0f }, { 0.65f, 0.95f, 1.0f, 0.0f });
+    bestHighlightSprite_ = CreateUiSprite({ 1195.0f, 610.0f }, { 650.0f, 146.0f }, { 1.0f, 0.72f, 0.12f, 0.0f });
+    bestHighlightTopLineSprite_ = CreateUiSprite({ 1195.0f, 538.0f }, { 590.0f, 5.0f }, { 1.0f, 0.86f, 0.28f, 0.0f });
+    bestHighlightBottomLineSprite_ = CreateUiSprite({ 1195.0f, 682.0f }, { 590.0f, 5.0f }, { 1.0f, 0.86f, 0.28f, 0.0f });
+    diffSignHorizontalSprite_ = CreateUiSprite({ 1310.0f, 610.0f }, { 20.0f, 4.0f }, { 1.0f, 0.86f, 0.55f, 0.0f });
+    diffSignVerticalSprite_ = CreateUiSprite({ 1310.0f, 610.0f }, { 4.0f, 20.0f }, { 1.0f, 0.86f, 0.55f, 0.0f });
+}
+
+void GameClearScene::UpdateResultUiVisuals(float deltaTime) {
+    const float titlePop = (clearState_ == ClearState::kVictoryMotion)
+        ? 0.12f * (1.0f - Clamp01(stateTimer_ / 0.55f)) * EaseOutBack(Clamp01(stateTimer_ / 0.28f))
+        : 0.0f;
+
+    if (gameClearSprite_) {
+        gameClearSprite_->SetColor({ 1.0f, 1.0f, 1.0f, resultAlpha_ });
+        gameClearSprite_->SetSize({
+            gameClearBaseSize_.x * (1.0f + titlePop),
+            gameClearBaseSize_.y * (1.0f + titlePop)
+        });
+    }
+    UpdateTextStrip(
+        gameClearTextStrip_,
+        deltaTime,
+        { 1.0f, 1.0f, 1.0f, resultAlpha_ },
+        1.0f + titlePop,
+        2.0f);
+
+    if (playerTimeSprite_) {
+        playerTimeSprite_->SetColor({ 1.0f, 1.0f, 1.0f, clearTimeAlpha_ });
+    }
+    UpdateTextStrip(
+        playerTimeTextStrip_,
+        deltaTime,
+        { 1.0f, 1.0f, 0.96f, clearTimeAlpha_ },
+        1.0f,
+        1.2f);
+
+    const float newBestPulse = isNewBest_
+        ? 0.5f + 0.5f * std::sin(stateTimer_ * 7.5f)
+        : 0.0f;
+    const Vector4 bestColor = isNewBest_ && newBestAlpha_ > 0.0f
+        ? Vector4{ 1.0f, 0.82f + 0.12f * newBestPulse, 0.22f, bestTimeAlpha_ }
+        : Vector4{ 1.0f, 1.0f, 1.0f, bestTimeAlpha_ };
+
+    if (bestTimeSprite_) {
+        bestTimeSprite_->SetColor(bestColor);
+    }
+    UpdateTextStrip(
+        bestTimeTextStrip_,
+        deltaTime,
+        bestColor,
+        1.0f + (isNewBest_ ? 0.02f * newBestAlpha_ * newBestPulse : 0.0f),
+        1.2f);
+
+    if (clearTimeUI_) {
+        const float pop = clearTimePopTimer_ > 0.0f
+            ? 0.08f * (1.0f - Clamp01(clearTimePopTimer_ / 0.24f))
+            : 0.0f;
+        clearTimeUI_->SetScale(kResultMainTimeScale + pop);
+        clearTimeUI_->SetColor({ 1.0f, 1.0f, 0.96f, clearTimeAlpha_ });
+    }
+
+    if (bestTimeUI_) {
+        const float pop = bestTimePopTimer_ > 0.0f
+            ? 0.08f * (1.0f - Clamp01(bestTimePopTimer_ / 0.24f))
+            : 0.0f;
+        const float newBestScale = isNewBest_ ? 0.03f * newBestAlpha_ * newBestPulse : 0.0f;
+        bestTimeUI_->SetScale(kResultMainTimeScale + pop + newBestScale);
+        bestTimeUI_->SetColor(bestColor);
+    }
+
+    if (diffTimeUI_) {
+        const Vector4 diffColor = diffIsPositive_
+            ? Vector4{ 1.0f, 0.88f, 0.62f, diffAlpha_ * 0.82f }
+            : Vector4{ 0.56f, 1.0f, 0.84f, diffAlpha_ * 0.9f };
+        diffTimeUI_->SetScale(kResultDiffTimeScale);
+        diffTimeUI_->SetColor(diffColor);
+    }
+
+    const float panelAlpha = resultPanelAlpha_;
+    if (resultPanelSprite_) resultPanelSprite_->SetColor({ 0.015f, 0.018f, 0.026f, 0.28f * panelAlpha });
+    if (resultPanelTopLineSprite_) resultPanelTopLineSprite_->SetColor({ 0.65f, 0.95f, 1.0f, 0.32f * panelAlpha });
+    if (resultPanelBottomLineSprite_) resultPanelBottomLineSprite_->SetColor({ 0.65f, 0.95f, 1.0f, 0.12f * panelAlpha });
+
+    const float highlightAlpha = newBestAlpha_ * bestTimeAlpha_;
+    if (bestHighlightSprite_) bestHighlightSprite_->SetColor({ 1.0f, 0.72f, 0.12f, 0.12f * highlightAlpha });
+    if (bestHighlightTopLineSprite_) bestHighlightTopLineSprite_->SetColor({ 1.0f, 0.86f, 0.28f, 0.62f * highlightAlpha });
+    if (bestHighlightBottomLineSprite_) bestHighlightBottomLineSprite_->SetColor({ 1.0f, 0.86f, 0.28f, 0.42f * highlightAlpha });
+
+    const Vector4 signColor = diffIsPositive_
+        ? Vector4{ 1.0f, 0.86f, 0.55f, diffAlpha_ * 0.82f }
+        : Vector4{ 0.56f, 1.0f, 0.84f, diffAlpha_ * 0.9f };
+    if (diffSignHorizontalSprite_) diffSignHorizontalSprite_->SetColor(signColor);
+    if (diffSignVerticalSprite_) diffSignVerticalSprite_->SetColor(WithAlpha(signColor, diffIsPositive_ ? diffAlpha_ : 0.0f));
+
+    if (enterTextSprite_) {
+        const float blink = 0.5f + 0.5f * std::sin(stateTimer_ * 5.5f);
+        const float alphaPulse = 0.45f + 0.55f * blink;
+        const float sizePulse = 1.0f + 0.035f * blink;
+        enterTextSprite_->SetPosition(enterTextBasePosition_);
+        enterTextSprite_->SetSize({
+            enterTextBaseSize_.x * sizePulse,
+            enterTextBaseSize_.y * sizePulse
+        });
+        enterTextSprite_->SetColor({ 1.0f, 1.0f, 1.0f, inputGuideAlpha_ * alphaPulse });
+    }
+
+    const auto updateSprite = [](const std::unique_ptr<Sprite>& sprite) {
+        if (sprite) {
+            sprite->Update();
+        }
+    };
+    updateSprite(resultPanelSprite_);
+    updateSprite(resultPanelTopLineSprite_);
+    updateSprite(resultPanelBottomLineSprite_);
+    updateSprite(bestHighlightSprite_);
+    updateSprite(bestHighlightTopLineSprite_);
+    updateSprite(bestHighlightBottomLineSprite_);
+    updateSprite(diffSignHorizontalSprite_);
+    updateSprite(diffSignVerticalSprite_);
+}
+
 void GameClearScene::Initialize() {
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();
@@ -83,20 +406,36 @@ void GameClearScene::Initialize() {
 
     // --- セーブデータ読み込み ---
     SaveDataManager::GetInstance()->Load();
-    float clearTime = SaveDataManager::GetInstance()->GetLatestClearTime();
-    float bestTime = SaveDataManager::GetInstance()->GetBestTime();
+    clearTimeValue_ = SaveDataManager::GetInstance()->GetLatestClearTime();
+    bestTimeValue_ = SaveDataManager::GetInstance()->GetBestTime();
+    float comparisonBestTime = SaveDataManager::GetInstance()->GetPreviousBestTime();
+    isNewBest_ = SaveDataManager::GetInstance()->WasLatestClearBest();
+    if (comparisonBestTime <= 0.0f || comparisonBestTime >= 9999.0f || !isNewBest_) {
+        comparisonBestTime = bestTimeValue_;
+    }
+    diffTimeValue_ = clearTimeValue_ - comparisonBestTime;
+    diffIsPositive_ = diffTimeValue_ > 0.005f;
 
     // --- タイムUI初期化（右寄せ配置） ---
     clearTimeUI_ = std::make_unique<TimeAttackUI>();
     clearTimeUI_->Initialize(spriteCommon_.get());
-    clearTimeUI_->SetPosition({ 950.0f, 350.0f }, 1.15f);
-    clearTimeUI_->SetTime(clearTime);
+    clearTimeUI_->SetPosition({ 950.0f, 350.0f }, kResultMainTimeSpacing);
+    clearTimeUI_->SetScale(kResultMainTimeScale);
+    clearTimeUI_->SetTime(clearTimeValue_);
     clearTimeUI_->SetAlpha(0.0f);
     bestTimeUI_ = std::make_unique<TimeAttackUI>();
     bestTimeUI_->Initialize(spriteCommon_.get());
-    bestTimeUI_->SetPosition({ 950.0f, 600.0f }, 1.15f);
-    bestTimeUI_->SetTime(bestTime);
+    bestTimeUI_->SetPosition({ 950.0f, 610.0f }, kResultMainTimeSpacing);
+    bestTimeUI_->SetScale(kResultMainTimeScale);
+    bestTimeUI_->SetTime(bestTimeValue_);
     bestTimeUI_->SetAlpha(0.0f);
+    diffTimeUI_ = std::make_unique<TimeAttackUI>();
+    diffTimeUI_->Initialize(spriteCommon_.get());
+    diffTimeUI_->SetPosition({ 1332.0f, 610.0f }, 0.48f);
+    diffTimeUI_->SetScale(kResultDiffTimeScale);
+    diffTimeUI_->SetTime(std::fabs(diffTimeValue_));
+    diffTimeUI_->SetAlpha(0.0f);
+    InitializeResultUiSprites();
     // --- レベルデータ読み込み ---
     levelLoader_ = std::make_unique<LevelLoader>();
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameClearScene.json");
@@ -114,6 +453,34 @@ void GameClearScene::Initialize() {
         if (sprite->GetName() == "bestTime.png") bestTimeSprite_ = sprite.get();
         if (sprite->GetName() == "enter_text.png") enterTextSprite_ = sprite.get();
     }
+    if (gameClearSprite_) {
+        gameClearSprite_->SetPosition({ 1120.0f, 104.0f });
+        gameClearSprite_->SetSize({ 620.0f, 104.0f });
+    }
+    if (playerTimeSprite_) {
+        playerTimeSprite_->SetPosition({ 1110.0f, 238.0f });
+        playerTimeSprite_->SetSize({ 450.0f, 90.0f });
+    }
+    if (bestTimeSprite_) {
+        bestTimeSprite_->SetPosition({ 1110.0f, 498.0f });
+        bestTimeSprite_->SetSize({ 450.0f, 90.0f });
+    }
+    if (gameClearSprite_) {
+        gameClearBaseSize_ = gameClearSprite_->GetSize();
+        InitializeTextStrip(gameClearTextStrip_, gameClearSprite_, 6);
+    }
+    if (playerTimeSprite_) {
+        InitializeTextStrip(playerTimeTextStrip_, playerTimeSprite_, 5);
+    }
+    if (bestTimeSprite_) {
+        InitializeTextStrip(bestTimeTextStrip_, bestTimeSprite_, 5);
+    }
+    if (enterTextSprite_) {
+        enterTextBaseSize_ = { 275.0f, 46.0f };
+        enterTextBasePosition_ = { 1378.0f, 805.0f };
+        enterTextSprite_->SetPosition(enterTextBasePosition_);
+        enterTextSprite_->SetSize(enterTextBaseSize_);
+    }
     ApplyInputUiIfNeeded();
 
     auto HideSprite = [](Sprite* s) {
@@ -124,6 +491,7 @@ void GameClearScene::Initialize() {
     HideSprite(titleTextSprite_);
     HideSprite(playerTimeSprite_);
     HideSprite(bestTimeSprite_);
+    HideSprite(enterTextSprite_);
 
     if (player_) {
         player_->SetIsControlActive(false);
@@ -147,12 +515,26 @@ void GameClearScene::Initialize() {
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
+    GPUParticleManager::GetInstance()->PrewarmPreset(kClearVictoryStarBurstPreset);
+    GPUParticleManager::GetInstance()->PrewarmPreset(kClearVictorySparklePreset);
+    GPUParticleManager::GetInstance()->PrewarmPreset(kClearVictoryFloorTwinklePreset);
     PostEffect::GetInstance()->ResetToBaseParams();
     clearState_ = ClearState::kRunIn;
     stateTimer_ = 0.0f;
     resultAlpha_ = 0.0f;
+    clearTimeAlpha_ = 0.0f;
     bestTimeAlpha_ = 0.0f; 
     menuAlpha_ = 0.0f;
+    resultPanelAlpha_ = 0.0f;
+    diffAlpha_ = 0.0f;
+    inputGuideAlpha_ = 0.0f;
+    newBestAlpha_ = 0.0f;
+    clearTimePopTimer_ = -1.0f;
+    bestTimePopTimer_ = -1.0f;
+    ResetTextStrip(gameClearTextStrip_);
+    ResetTextStrip(playerTimeTextStrip_);
+    ResetTextStrip(bestTimeTextStrip_);
+    ResetVictoryPoseParticles();
 }
 
 void GameClearScene::Finalize() {
@@ -194,6 +576,7 @@ void GameClearScene::Update(float deltaTime) {
     // 2. クリア演出シーケンス制御 (ステートマシン)
     // ----------------------------------------------------------------
     stateTimer_ += deltaTime;
+    UpdateVictoryPoseParticles(deltaTime);
 
     switch (clearState_) {
     case ClearState::kRunIn:
@@ -215,6 +598,8 @@ void GameClearScene::Update(float deltaTime) {
                 player_->GetTransform()->translate = targetPlayerPos_;
                 player_->SetRotation(targetPlayerRot_);
                 player_->ChangeState(std::make_unique<PlayerStateWin>());
+                ResetVictoryPoseParticles();
+                ResetTextStrip(gameClearTextStrip_);
 
                 clearState_ = ClearState::kVictoryMotion;
                 stateTimer_ = 0.0f;
@@ -224,6 +609,8 @@ void GameClearScene::Update(float deltaTime) {
 
     case ClearState::kVictoryMotion:
         // --- 【フェーズ2】 勝利：ジャンプの頂点でフリーズまで待機 ---
+        resultPanelAlpha_ = Clamp01(resultPanelAlpha_ + deltaTime * 1.8f);
+        resultAlpha_ = Clamp01(resultAlpha_ + deltaTime * 2.4f);
         if (stateTimer_ > 0.6f) {
             clearState_ = ClearState::kShowClearTime;
             stateTimer_ = 0.0f;
@@ -234,33 +621,54 @@ void GameClearScene::Update(float deltaTime) {
                 CameraEditor::GetInstance()->PlayOverrideCamera(mainCamera, "a");
             }
 
-            if (clearTimeUI_) clearTimeUI_->StartRollEffect();
+            clearTimeAlpha_ = 0.0f;
+            clearTimePopTimer_ = -1.0f;
+            ResetTextStrip(playerTimeTextStrip_);
+            if (clearTimeUI_) clearTimeUI_->StartCountUp(clearTimeValue_, 1.15f);
         }
         break;
 
     case ClearState::kShowClearTime:
         // --- 【フェーズ3-A】 自己タイム表示（ドラムロール） ---
-        resultAlpha_ += deltaTime * 2.0f;
-        if (resultAlpha_ > 1.0f) resultAlpha_ = 1.0f;
-        if (playerTimeSprite_) playerTimeSprite_->SetColor({ 1,1,1,resultAlpha_ });
-        if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
-        if (clearTimeUI_) clearTimeUI_->SetAlpha(resultAlpha_);
+        resultPanelAlpha_ = Clamp01(resultPanelAlpha_ + deltaTime * 1.8f);
+        resultAlpha_ = Clamp01(resultAlpha_ + deltaTime * 2.0f);
+        clearTimeAlpha_ = Clamp01(clearTimeAlpha_ + deltaTime * 2.4f);
 
-        if (clearTimeUI_ && !clearTimeUI_->IsRolling()) {
+        if (clearTimeUI_ && !clearTimeUI_->IsAnimating()) {
+            if (clearTimePopTimer_ < 0.0f) {
+                clearTimePopTimer_ = 0.0f;
+            } else {
+                clearTimePopTimer_ += deltaTime;
+            }
+        }
+
+        if (clearTimeUI_ && !clearTimeUI_->IsAnimating() && clearTimePopTimer_ > 0.32f) {
             clearState_ = ClearState::kShowBestTime;
             stateTimer_ = 0.0f;
-            if (bestTimeUI_) bestTimeUI_->StartRollEffect();
+            bestTimeAlpha_ = 0.0f;
+            bestTimePopTimer_ = -1.0f;
+            ResetTextStrip(bestTimeTextStrip_);
+            if (bestTimeUI_) bestTimeUI_->StartCountUp(bestTimeValue_, 0.85f);
         }
         break;
 
     case ClearState::kShowBestTime:
         // --- 【フェーズ3-B】 ベストタイム表示（ドラムロール） ---
-        bestTimeAlpha_ += deltaTime * 2.0f;
-        if (bestTimeAlpha_ > 1.0f) bestTimeAlpha_ = 1.0f;
-        if (bestTimeSprite_) bestTimeSprite_->SetColor({ 1,1,1,bestTimeAlpha_ });
-        if (bestTimeUI_) bestTimeUI_->SetAlpha(bestTimeAlpha_);
+        bestTimeAlpha_ = Clamp01(bestTimeAlpha_ + deltaTime * 2.4f);
 
-        if (bestTimeUI_ && !bestTimeUI_->IsRolling()) {
+        if (bestTimeUI_ && !bestTimeUI_->IsAnimating()) {
+            if (bestTimePopTimer_ < 0.0f) {
+                bestTimePopTimer_ = 0.0f;
+            } else {
+                bestTimePopTimer_ += deltaTime;
+            }
+            diffAlpha_ = Clamp01(diffAlpha_ + deltaTime * 2.8f);
+            if (isNewBest_) {
+                newBestAlpha_ = Clamp01(newBestAlpha_ + deltaTime * 2.4f);
+            }
+        }
+
+        if (bestTimeUI_ && !bestTimeUI_->IsAnimating() && bestTimePopTimer_ > 0.75f) {
             clearState_ = ClearState::kWaitInput;
             stateTimer_ = 0.0f;
         }
@@ -268,12 +676,23 @@ void GameClearScene::Update(float deltaTime) {
 
     case ClearState::kWaitInput:
         // --- 【フェーズ3-C】 入力待ち：アクション「Jump」(Space/A)で次へ ---
+        inputGuideAlpha_ = Clamp01(inputGuideAlpha_ + deltaTime * 1.8f);
         if (inputManager_->IsActionTriggered("Jump")) {
             if (clearTimeUI_) clearTimeUI_->SetAlpha(0.0f);
             if (bestTimeUI_) bestTimeUI_->SetAlpha(0.0f);
+            if (diffTimeUI_) diffTimeUI_->SetAlpha(0.0f);
+            if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,0.0f });
             if (playerTimeSprite_) playerTimeSprite_->SetColor({ 1,1,1,0.0f });
      
             if (bestTimeSprite_) bestTimeSprite_->SetColor({ 1,1,1,0.0f });
+            resultAlpha_ = 0.0f;
+            clearTimeAlpha_ = 0.0f;
+            bestTimeAlpha_ = 0.0f;
+            resultPanelAlpha_ = 0.0f;
+            diffAlpha_ = 0.0f;
+            inputGuideAlpha_ = 0.0f;
+            newBestAlpha_ = 0.0f;
+            ResetTextStrip(gameClearTextStrip_);
 
             // カメラ演出終了
             Camera* mainCamera = CameraManager::GetInstance()->GetMainCamera();
@@ -294,6 +713,7 @@ void GameClearScene::Update(float deltaTime) {
         // --- 【フェーズ4】 メニュー：左右キー(A/D、左/右、スティック)で選択 ---
         menuAlpha_ += deltaTime * 2.0f;
         if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
+        inputGuideAlpha_ = Clamp01(inputGuideAlpha_ + deltaTime * 1.8f);
 
         // アクション名「Left」「Right」で判定
         if (inputManager_->IsActionTriggered("Left")) {
@@ -305,16 +725,18 @@ void GameClearScene::Update(float deltaTime) {
 
         // 強調演出の更新
         {
-            auto ApplyEffect = [&](Sprite* s, bool isSelected) {
+            const float blink = 0.5f + 0.5f * std::sin(stateTimer_ * 6.0f);
+            auto ApplyEffect = [&](Sprite* s, bool isSelected, const Vector2& baseSize) {
                 if (!s) return;
-                float alpha = (isSelected ? 1.0f : 0.3f) * menuAlpha_;
+                const float selectedAlpha = 0.62f + 0.38f * blink;
+                float alpha = (isSelected ? selectedAlpha : 0.3f) * menuAlpha_;
                 Vector4 color = isSelected ? Vector4{ 1, 1, 1, alpha } : Vector4{ 0.5f, 0.5f, 0.5f, alpha };
                 s->SetColor(color);
-                Vector2 baseSize = { 320.0f, 80.0f };
-                s->SetSize(isSelected ? Vector2{ baseSize.x * 1.1f, baseSize.y * 1.1f } : baseSize);
+                const float selectedScale = 1.07f + 0.05f * blink;
+                s->SetSize(isSelected ? Vector2{ baseSize.x * selectedScale, baseSize.y * selectedScale } : baseSize);
                 };
-            ApplyEffect(retryTextSprite_, currentMenuIndex_ == (int)MenuIndex::Retry);
-            ApplyEffect(titleTextSprite_, currentMenuIndex_ == (int)MenuIndex::Title);
+            ApplyEffect(retryTextSprite_, currentMenuIndex_ == (int)MenuIndex::Retry, { 320.0f, 80.0f });
+            ApplyEffect(titleTextSprite_, currentMenuIndex_ == (int)MenuIndex::Title, { 352.0f, 88.0f });
         }
 
         // 決定：アクション「Jump」(Space/A)で選んだ方へ走り出す
@@ -339,10 +761,14 @@ void GameClearScene::Update(float deltaTime) {
 
     case ClearState::kRunOut:
         // --- 【フェーズ5】 退場：画面外へダッシュ ---
-        resultAlpha_ -= deltaTime * 3.0f;
-        menuAlpha_ -= deltaTime * 3.0f;
-        if (resultAlpha_ < 0.0f) resultAlpha_ = 0.0f;
-        if (menuAlpha_ < 0.0f) menuAlpha_ = 0.0f;
+        resultAlpha_ = Clamp01(resultAlpha_ - deltaTime * 3.0f);
+        clearTimeAlpha_ = Clamp01(clearTimeAlpha_ - deltaTime * 3.0f);
+        bestTimeAlpha_ = Clamp01(bestTimeAlpha_ - deltaTime * 3.0f);
+        resultPanelAlpha_ = Clamp01(resultPanelAlpha_ - deltaTime * 3.0f);
+        diffAlpha_ = Clamp01(diffAlpha_ - deltaTime * 3.0f);
+        inputGuideAlpha_ = Clamp01(inputGuideAlpha_ - deltaTime * 3.0f);
+        newBestAlpha_ = Clamp01(newBestAlpha_ - deltaTime * 3.0f);
+        menuAlpha_ = Clamp01(menuAlpha_ - deltaTime * 3.0f);
 
         if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
         if (retryTextSprite_) retryTextSprite_->SetColor({ 1,1,1, (currentMenuIndex_ == 0 ? 1.0f : 0.3f) * menuAlpha_ });
@@ -353,12 +779,14 @@ void GameClearScene::Update(float deltaTime) {
         }
         break;
     }
+    UpdateResultUiVisuals(deltaTime);
 
     // ----------------------------------------------------------------
     // 3. 行列更新
     // ----------------------------------------------------------------
     if (clearTimeUI_) clearTimeUI_->Update(deltaTime);
     if (bestTimeUI_) bestTimeUI_->Update(deltaTime);
+    if (diffTimeUI_) diffTimeUI_->Update(deltaTime);
     for (auto& sprite : sprites_) sprite->Update();
 }
 void GameClearScene::Draw() {
@@ -440,11 +868,29 @@ void GameClearScene::Draw() {
 void GameClearScene::DrawUI() {
     // --- 4. 2D描画 (UIスプライト) ---
     spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    auto DrawSprite = [](const std::unique_ptr<Sprite>& sprite) {
+        if (sprite) {
+            sprite->Draw();
+        }
+    };
+    DrawSprite(resultPanelSprite_);
+    DrawSprite(resultPanelTopLineSprite_);
+    DrawSprite(resultPanelBottomLineSprite_);
+    DrawSprite(bestHighlightSprite_);
+    DrawSprite(bestHighlightTopLineSprite_);
+    DrawSprite(bestHighlightBottomLineSprite_);
+
     for (auto& sprite : sprites_) {
         sprite->Draw();
     }
+    DrawTextStrip(gameClearTextStrip_);
+    DrawTextStrip(playerTimeTextStrip_);
+    DrawTextStrip(bestTimeTextStrip_);
+    DrawSprite(diffSignHorizontalSprite_);
+    DrawSprite(diffSignVerticalSprite_);
     if (clearTimeUI_) clearTimeUI_->Draw();
     if (bestTimeUI_) bestTimeUI_->Draw();
+    if (diffTimeUI_) diffTimeUI_->Draw();
 }
 
 // シャドウマップ描画の実装

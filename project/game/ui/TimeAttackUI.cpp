@@ -1,45 +1,95 @@
 #include "TimeAttackUI.h"
 #include "TextureManager.h"
-#include <string>
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdlib>
+#include <string>
+
+namespace {
+constexpr float kBaseDigitSize = 64.0f;
+constexpr float kDigitPopDuration = 0.16f;
+constexpr std::array<float, 8> kDigitOffsets = {
+    0.0f,
+    42.0f,
+    90.0f,
+    106.0f,
+    148.0f,
+    200.0f,
+    216.0f,
+    258.0f
+};
+
+float EaseOutCubic(float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    const float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv;
+}
+}
 
 void TimeAttackUI::Initialize(SpriteCommon* spriteCommon) {
     spriteCommon_ = spriteCommon;
+    ResetDigitMotion();
 
-    // 1. テクスチャの読み込み
     for (int i = 0; i < 10; ++i) {
-        std::string path = "Resources/sprite/number/" + std::to_string(i) + ".png";
+        const std::string path = "Resources/sprite/number/" + std::to_string(i) + ".png";
         numberTexHandles_[i] = TextureManager::GetInstance()->Load(path);
     }
     colonTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/number/colon.png");
-    dotTexHandle_   = TextureManager::GetInstance()->Load("Resources/sprite/number/dot.png");
+    dotTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/number/dot.png");
 
-    // 2. スプライトの生成と初期配置 (8文字分: "00:00.00")
-    Vector2 basePos = { 1200.0f, 50.0f };
-    float xOffsets[8] = {
-        0.0f,    // [0] 0文字目
-        42.0f,   // [1] 1文字目
-        90.0f,   // [2] コロン (幅を狭く見せたいので詰め気味に)
-        106.0f,  // [3] 3文字目
-        148.0f,  // [4] 4文字目
-        200.0f,  // [5] ドット (ここも詰め気味に)
-        212.0f,  // [6] 6文字目
-        254.0f   // [7] 7文字目
-    };
-
+    digitSprites_.clear();
+    digitSprites_.reserve(8);
     for (int i = 0; i < 8; ++i) {
         auto sprite = std::make_unique<Sprite>();
         sprite->Initialize(spriteCommon_, numberTexHandles_[0]);
 
-        if (i == 2) sprite->SetTextureHandle(colonTexHandle_);
-        else if (i == 5) sprite->SetTextureHandle(dotTexHandle_);
-
-        // 配列からズレの数値をそのまま足すだけ
-        sprite->SetPosition({ basePos.x + xOffsets[i], basePos.y });
-        sprite->SetSize({ 64.0f, 64.0f });
+        if (i == 2) {
+            sprite->SetTextureHandle(colonTexHandle_);
+        } else if (i == 5) {
+            sprite->SetTextureHandle(dotTexHandle_);
+        }
 
         digitSprites_.push_back(std::move(sprite));
     }
+
+    ApplyLayout();
+    ApplyColor();
+}
+
+void TimeAttackUI::Reset() {
+    currentTime_ = 0.0f;
+    isRunning_ = false;
+    isRolling_ = false;
+    isCountingUp_ = false;
+    ResetDigitMotion();
+}
+
+void TimeAttackUI::SetTime(float time) {
+    currentTime_ = (std::max)(0.0f, time);
+    isRunning_ = false;
+    isRolling_ = false;
+    isCountingUp_ = false;
+    ResetDigitMotion();
+}
+
+void TimeAttackUI::StartRollEffect() {
+    isRolling_ = true;
+    isCountingUp_ = false;
+    rollTimer_ = 0.0f;
+    fixedDigitCount_ = 0;
+}
+
+void TimeAttackUI::StartCountUp(float targetTime, float duration) {
+    countUpStartTime_ = 0.0f;
+    countUpTargetTime_ = (std::max)(0.0f, targetTime);
+    countUpDuration_ = (std::max)(0.01f, duration);
+    countUpTimer_ = 0.0f;
+    currentTime_ = countUpStartTime_;
+    isRunning_ = false;
+    isRolling_ = false;
+    isCountingUp_ = true;
+    ResetDigitMotion();
 }
 
 void TimeAttackUI::Update(float deltaTime) {
@@ -47,13 +97,35 @@ void TimeAttackUI::Update(float deltaTime) {
         currentTime_ += deltaTime;
     }
 
-    // --- 1. 目標となる本当の時間を計算 ---
-    float t = currentTime_;
-    int minutes = static_cast<int>(t / 60.0f);
-    int seconds = static_cast<int>(fmodf(t, 60.0f));
-    int ms = static_cast<int>(fmodf(t, 1.0f) * 100.0f);
+    if (isCountingUp_) {
+        countUpTimer_ += deltaTime;
+        const float rate = std::clamp(countUpTimer_ / countUpDuration_, 0.0f, 1.0f);
+        const float eased = EaseOutCubic(rate);
+        currentTime_ = countUpStartTime_ + (countUpTargetTime_ - countUpStartTime_) * eased;
+        if (rate >= 1.0f) {
+            currentTime_ = countUpTargetTime_;
+            isCountingUp_ = false;
+        }
+    }
 
-    int targetDigits[6];
+    UpdateDigitTextures(deltaTime);
+    ApplyLayout();
+    ApplyColor();
+
+    for (auto& sprite : digitSprites_) {
+        if (sprite) {
+            sprite->Update();
+        }
+    }
+}
+
+void TimeAttackUI::UpdateDigitTextures(float deltaTime) {
+    const float displayTime = (std::max)(0.0f, currentTime_);
+    const int minutes = static_cast<int>(displayTime / 60.0f);
+    const int seconds = static_cast<int>(std::fmod(displayTime, 60.0f));
+    const int ms = static_cast<int>(std::fmod(displayTime, 1.0f) * 100.0f);
+
+    std::array<int, 6> targetDigits{};
     targetDigits[0] = (minutes / 10) % 10;
     targetDigits[1] = minutes % 10;
     targetDigits[2] = (seconds / 10) % 10;
@@ -61,86 +133,109 @@ void TimeAttackUI::Update(float deltaTime) {
     targetDigits[4] = (ms / 10) % 10;
     targetDigits[5] = ms % 10;
 
-    // --- 2. ドラムロール演出の処理 ---
-    int displayDigits[6];
-
+    std::array<int, 6> displayDigits = targetDigits;
     if (isRolling_) {
         rollTimer_ += deltaTime;
-
-        // 0.12秒ごとに左から1桁ずつ「ピタッ」と止まる（速さはお好みで調整）
         if (rollTimer_ > 0.12f) {
             rollTimer_ -= 0.12f;
             fixedDigitCount_++;
             if (fixedDigitCount_ >= 6) {
-                isRolling_ = false; // 6桁すべて止まったら演出終了
+                isRolling_ = false;
                 fixedDigitCount_ = 6;
             }
         }
 
         for (int i = 0; i < 6; ++i) {
-            if (i < fixedDigitCount_) {
-                // すでに止まった桁は本当の数字を表示
-                displayDigits[i] = targetDigits[i];
-            }
-            else {
-                // まだ止まっていない桁はランダムに回す（ドラムロール）
+            if (i >= fixedDigitCount_) {
                 displayDigits[i] = std::rand() % 10;
             }
         }
     }
-    else {
-        // 演出中でなければ、すべて本当の数字を表示
-        for (int i = 0; i < 6; ++i) displayDigits[i] = targetDigits[i];
+
+    if (digitSprites_.size() < 8) {
+        return;
     }
 
-    // --- 3. テクスチャの差し替え ---
+    constexpr std::array<int, 6> spriteIndices = { 0, 1, 3, 4, 6, 7 };
+    for (int i = 0; i < 6; ++i) {
+        const int spriteIndex = spriteIndices[i];
+        if (previousDisplayDigits_[i] != displayDigits[i]) {
+            digitPopTimers_[spriteIndex] = kDigitPopDuration;
+            previousDisplayDigits_[i] = displayDigits[i];
+        }
+    }
+
     digitSprites_[0]->SetTextureHandle(numberTexHandles_[displayDigits[0]]);
     digitSprites_[1]->SetTextureHandle(numberTexHandles_[displayDigits[1]]);
-    // [2] はコロンなのでそのまま
     digitSprites_[3]->SetTextureHandle(numberTexHandles_[displayDigits[2]]);
     digitSprites_[4]->SetTextureHandle(numberTexHandles_[displayDigits[3]]);
-    // [5] はドットなのでそのまま
     digitSprites_[6]->SetTextureHandle(numberTexHandles_[displayDigits[4]]);
     digitSprites_[7]->SetTextureHandle(numberTexHandles_[displayDigits[5]]);
 
-    for (auto& sprite : digitSprites_) {
-        if (sprite) sprite->Update();
+    for (float& timer : digitPopTimers_) {
+        timer = (std::max)(0.0f, timer - deltaTime);
     }
 }
 
 void TimeAttackUI::Draw() {
     for (auto& sprite : digitSprites_) {
-        sprite->Draw();
+        if (sprite) {
+            sprite->Draw();
+        }
     }
+}
+
+void TimeAttackUI::SetPosition(const Vector2& basePos) {
+    SetPosition(basePos, spacingScale_);
 }
 
 void TimeAttackUI::SetPosition(const Vector2& basePos, float spacingScale) {
-    // 表示位置の微調整値
-    float xOffsets[8] = {
-        0.0f,    // [0]
-        42.0f,   // [1]
-        90.0f,   // [2] コロン
-        106.0f,  // [3]
-        148.0f,  // [4]
-        200.0f,  // [5] ドット
-        216.0f,  // [6]
-        258.0f   // [7]
-    };
+    basePosition_ = basePos;
+    spacingScale_ = spacingScale;
+    ApplyLayout();
+}
 
+void TimeAttackUI::SetScale(float scale) {
+    digitScale_ = (std::max)(0.01f, scale);
+    ApplyLayout();
+}
+
+void TimeAttackUI::SetAlpha(float alpha) {
+    color_.w = std::clamp(alpha, 0.0f, 1.0f);
+    ApplyColor();
+}
+
+void TimeAttackUI::SetColor(const Vector4& color) {
+    color_ = color;
+    ApplyColor();
+}
+
+void TimeAttackUI::ApplyLayout() {
     for (int i = 0; i < 8; ++i) {
-        if (i < digitSprites_.size() && digitSprites_[i]) {
-            // 配列の数値に倍率を掛けてから、basePos.x に足す
-            float posX = basePos.x + (xOffsets[i] * spacingScale);
-            digitSprites_[i]->SetPosition({ posX, basePos.y });
+        if (i < static_cast<int>(digitSprites_.size()) && digitSprites_[i]) {
+            float digitMotion = 0.0f;
+            if (digitPopTimers_[i] > 0.0f) {
+                const float progress = 1.0f - std::clamp(digitPopTimers_[i] / kDigitPopDuration, 0.0f, 1.0f);
+                digitMotion = std::sin(progress * 3.14159265f);
+            }
+
+            const float posX = basePosition_.x + (kDigitOffsets[i] * spacingScale_);
+            const float animatedScale = digitScale_ * (1.0f + 0.06f * digitMotion);
+            digitSprites_[i]->SetPosition({ posX, basePosition_.y - 8.0f * digitMotion });
+            digitSprites_[i]->SetSize({ kBaseDigitSize * animatedScale, kBaseDigitSize * animatedScale });
         }
     }
 }
-void TimeAttackUI::SetAlpha(float alpha) {
+
+void TimeAttackUI::ApplyColor() {
     for (auto& sprite : digitSprites_) {
         if (sprite) {
-            Vector4 color = sprite->GetColor();
-            color.w = alpha; // 透明度(w)をセット
-            sprite->SetColor(color);
+            sprite->SetColor(color_);
         }
     }
+}
+
+void TimeAttackUI::ResetDigitMotion() {
+    digitPopTimers_.fill(0.0f);
+    previousDisplayDigits_.fill(-1);
 }
