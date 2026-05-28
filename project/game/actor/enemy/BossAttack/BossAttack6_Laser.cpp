@@ -111,6 +111,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
     // --- Phase 61: 待機軌道のまま、コアがギュイィィンと回転し始める ---
     else if (animPhase_ == 61) {
         if (animTimer_ == 0.0f) {
+            deformationSeTimer_ = 0.0f; // 回転音のタイマー初期化
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
                 BossCore::OrbitData orbit = boss->GetIdleOrbit(i);
                 armorBlocks[i]->SetParent(boss);
@@ -131,6 +132,15 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         rot.y += currentSpinSpeed * deltaTime;
         boss->SetRotation(rot);
         boss->GetTransform()->isQuaternionMaster = false;
+
+        // 回転音（実際の回転速度に比例させる）
+        deformationSeTimer_ -= deltaTime;
+        if (deformationSeTimer_ <= 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEDeformationHandle(), false, 1.0f);
+            // 回転速度(0.0～maxSpinSpeed)に応じて周波数を決める。最低1.0Hz、最高4.0Hzに設定
+            float freq = 1.0f + (currentSpinSpeed / maxSpinSpeed) * 3.0f;
+            deformationSeTimer_ = 1.0f / freq;
+        }
 
         if (t >= 1.0f) {
             animPhase_ = 62;
@@ -173,6 +183,13 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         rot.y += maxSpinSpeed * deltaTime;
         boss->SetRotation(rot);
         boss->GetTransform()->isQuaternionMaster = false;
+
+        // 回転音（最高速で鳴らし続ける）
+        deformationSeTimer_ -= deltaTime;
+        if (deformationSeTimer_ <= 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEDeformationHandle(), false, 1.0f);
+            deformationSeTimer_ = 1.0f / 4.0f; // Phase 61の最高速(4.0Hz)に合わせる
+        }
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
