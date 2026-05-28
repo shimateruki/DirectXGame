@@ -341,6 +341,7 @@ private:
     struct ArmorBreakMotion {
         struct ChildPiece {
             Object3d* object = nullptr;
+            bool temporary = false;
             bool landed = false;
             bool rolling = false;
             int bounceCount = 0;
