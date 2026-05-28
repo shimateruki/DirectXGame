@@ -12,7 +12,9 @@
 #include "CameraManager.h"
 #include "CollisionManager.h"
 #include "ParticleSystem.h"
+#ifdef USE_IMGUI
 #include "imgui.h"
+#endif
 #include "LightManager.h"
 #include "SceneManager.h"
 #include "DebugConsole.h"
@@ -27,6 +29,7 @@
 #include "PlayerState.h"
 #include "PostEffect.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace {
@@ -36,6 +39,44 @@ constexpr const char* kClearVictoryFloorTwinklePreset = "ClearVictoryFloorTwinkl
 constexpr float kResultMainTimeScale = 1.08f;
 constexpr float kResultMainTimeSpacing = 1.16f;
 constexpr float kResultDiffTimeScale = 0.42f;
+constexpr float kResultTitleGlyphScale = 1.55f;
+constexpr float kResultLabelGlyphScale = 2.0f;
+constexpr float kResultTitleExclamationHeight = 64.0f;
+constexpr float kResultLabelGlyphHeight = 52.0f;
+
+struct ClearTitleGlyphSource {
+    const char* textureName;
+    Vector2 sourceLeftTop;
+    Vector2 sourceSize;
+    float targetHeight = 0.0f;
+};
+
+constexpr std::array<ClearTitleGlyphSource, 7> kClearTitleGlyphSources = {
+    ClearTitleGlyphSource{ "UI/TextGe.png", { 41.0f, 36.0f }, { 57.0f, 54.0f } },
+    ClearTitleGlyphSource{ "UI/Text-.png",  { 44.0f, 62.0f }, { 50.0f, 7.0f } },
+    ClearTitleGlyphSource{ "UI/TextMu.png", { 43.0f, 41.0f }, { 53.0f, 48.0f } },
+    ClearTitleGlyphSource{ "UI/TextKu.png", { 45.0f, 39.0f }, { 45.0f, 51.0f } },
+    ClearTitleGlyphSource{ "UI/TextRi.png", { 50.0f, 42.0f }, { 38.0f, 49.0f } },
+    ClearTitleGlyphSource{ "UI/TextA.png",  { 46.0f, 43.0f }, { 49.0f, 47.0f } },
+    ClearTitleGlyphSource{ "UI/Text!.png",  { 46.0f, 43.0f }, { 9.0f, 44.0f }, kResultTitleExclamationHeight },
+};
+
+constexpr std::array<ClearTitleGlyphSource, 5> kPlayerTimeGlyphSources = {
+    ClearTitleGlyphSource{ "UI/Textzi.png", { 43.0f, 32.0f }, { 32.0f, 38.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Textko.png", { 44.0f, 35.0f }, { 33.0f, 34.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Textta.png", { 43.0f, 34.0f }, { 31.0f, 34.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Texti.png",  { 42.0f, 36.0f }, { 34.0f, 32.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/TextMu.png", { 43.0f, 41.0f }, { 53.0f, 48.0f }, kResultLabelGlyphHeight },
+};
+
+constexpr std::array<ClearTitleGlyphSource, 6> kBestTimeGlyphSources = {
+    ClearTitleGlyphSource{ "UI/Textbe.png", { 40.0f, 34.0f }, { 38.0f, 31.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Textsu.png", { 43.0f, 37.0f }, { 32.0f, 31.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Textto.png", { 48.0f, 35.0f }, { 27.0f, 33.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Textta.png", { 43.0f, 34.0f }, { 31.0f, 34.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/Texti.png",  { 42.0f, 36.0f }, { 34.0f, 32.0f }, kResultLabelGlyphHeight },
+    ClearTitleGlyphSource{ "UI/TextMu.png", { 43.0f, 41.0f }, { 53.0f, 48.0f }, kResultLabelGlyphHeight },
+};
 
 float Clamp01(float value) {
     return std::clamp(value, 0.0f, 1.0f);
@@ -52,6 +93,25 @@ float EaseOutCubic(float t) {
     t = Clamp01(t);
     const float inv = 1.0f - t;
     return 1.0f - inv * inv * inv;
+}
+
+float ComputeResultPop(float timer, float duration, float amount) {
+    if (timer < 0.0f || timer > duration) {
+        return 0.0f;
+    }
+
+    const float t = Clamp01(timer / duration);
+    return amount * std::sin(t * 3.14159265f) * (1.0f - 0.18f * t);
+}
+
+Vector2 ResolveGlyphSize(const ClearTitleGlyphSource& source, float defaultScale) {
+    const float scale = source.targetHeight > 0.0f
+        ? source.targetHeight / source.sourceSize.y
+        : defaultScale;
+    return {
+        source.sourceSize.x * scale,
+        source.sourceSize.y * scale
+    };
 }
 
 Vector4 WithAlpha(Vector4 color, float alpha) {
@@ -255,6 +315,247 @@ void GameClearScene::DrawTextStrip(const ResultTextStrip& strip) {
     }
 }
 
+void GameClearScene::InitializeClearTitleGlyphStrip() {
+    clearTitleGlyphStrip_.glyphs.clear();
+    clearTitleGlyphStrip_.baseOffsets.clear();
+    clearTitleGlyphStrip_.baseSizes.clear();
+    clearTitleGlyphStrip_.basePosition = { 1120.0f, 104.0f };
+    clearTitleGlyphStrip_.animationTimer = 0.0f;
+    clearTitleGlyphStrip_.idleWaveEnabled = true;
+    clearTitleGlyphStrip_.idleWaveStartDelay = 1.2f;
+    clearTitleGlyphStrip_.idleWaveInterval = 2.35f;
+    clearTitleGlyphStrip_.idleWaveStepDelay = 0.08f;
+    clearTitleGlyphStrip_.idleWaveDuration = 0.34f;
+    clearTitleGlyphStrip_.initialized = false;
+
+    if (!spriteCommon_) {
+        return;
+    }
+
+    constexpr float spacing = 16.0f;
+    float totalWidth = spacing * static_cast<float>(kClearTitleGlyphSources.size() - 1);
+    for (const auto& source : kClearTitleGlyphSources) {
+        totalWidth += ResolveGlyphSize(source, kResultTitleGlyphScale).x;
+    }
+
+    float currentX = -totalWidth * 0.5f;
+    for (const auto& source : kClearTitleGlyphSources) {
+        const Vector2 glyphSize = ResolveGlyphSize(source, kResultTitleGlyphScale);
+
+        auto glyph = std::make_unique<Sprite>();
+        glyph->Initialize(spriteCommon_.get(), Sprite::LoadTexture(source.textureName));
+        glyph->SetTextureName(source.textureName);
+        glyph->SetTextureRect(source.sourceLeftTop, source.sourceSize);
+        glyph->SetSize(glyphSize);
+        glyph->SetPosition(clearTitleGlyphStrip_.basePosition);
+        glyph->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        glyph->Update();
+
+        clearTitleGlyphStrip_.baseOffsets.push_back({
+            currentX + glyphSize.x * 0.5f,
+            0.0f
+        });
+        clearTitleGlyphStrip_.baseSizes.push_back(glyphSize);
+        clearTitleGlyphStrip_.glyphs.push_back(std::move(glyph));
+
+        currentX += glyphSize.x + spacing;
+    }
+
+    clearTitleGlyphStrip_.initialized = true;
+}
+
+void GameClearScene::InitializePlayerTimeGlyphStrip() {
+    playerTimeGlyphStrip_.glyphs.clear();
+    playerTimeGlyphStrip_.baseOffsets.clear();
+    playerTimeGlyphStrip_.baseSizes.clear();
+    playerTimeGlyphStrip_.basePosition = { 1110.0f, 238.0f };
+    playerTimeGlyphStrip_.animationTimer = 0.0f;
+    playerTimeGlyphStrip_.stepDelay = 0.075f;
+    playerTimeGlyphStrip_.popDuration = 0.38f;
+    playerTimeGlyphStrip_.initialized = false;
+
+    if (!spriteCommon_) {
+        return;
+    }
+
+    constexpr float spacing = 12.0f;
+    float totalWidth = spacing * static_cast<float>(kPlayerTimeGlyphSources.size() - 1);
+    for (const auto& source : kPlayerTimeGlyphSources) {
+        totalWidth += ResolveGlyphSize(source, kResultLabelGlyphScale).x;
+    }
+
+    float currentX = -totalWidth * 0.5f;
+    for (const auto& source : kPlayerTimeGlyphSources) {
+        const Vector2 glyphSize = ResolveGlyphSize(source, kResultLabelGlyphScale);
+
+        auto glyph = std::make_unique<Sprite>();
+        glyph->Initialize(spriteCommon_.get(), Sprite::LoadTexture(source.textureName));
+        glyph->SetTextureName(source.textureName);
+        glyph->SetTextureRect(source.sourceLeftTop, source.sourceSize);
+        glyph->SetSize(glyphSize);
+        glyph->SetPosition(playerTimeGlyphStrip_.basePosition);
+        glyph->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        glyph->Update();
+
+        playerTimeGlyphStrip_.baseOffsets.push_back({
+            currentX + glyphSize.x * 0.5f,
+            0.0f
+        });
+        playerTimeGlyphStrip_.baseSizes.push_back(glyphSize);
+        playerTimeGlyphStrip_.glyphs.push_back(std::move(glyph));
+
+        currentX += glyphSize.x + spacing;
+    }
+
+    playerTimeGlyphStrip_.initialized = true;
+}
+
+void GameClearScene::InitializeBestTimeGlyphStrip() {
+    bestTimeGlyphStrip_.glyphs.clear();
+    bestTimeGlyphStrip_.baseOffsets.clear();
+    bestTimeGlyphStrip_.baseSizes.clear();
+    bestTimeGlyphStrip_.basePosition = { 1110.0f, 498.0f };
+    bestTimeGlyphStrip_.animationTimer = 0.0f;
+    bestTimeGlyphStrip_.stepDelay = 0.075f;
+    bestTimeGlyphStrip_.popDuration = 0.38f;
+    bestTimeGlyphStrip_.initialized = false;
+
+    if (!spriteCommon_) {
+        return;
+    }
+
+    constexpr float spacing = 10.0f;
+    float totalWidth = spacing * static_cast<float>(kBestTimeGlyphSources.size() - 1);
+    for (const auto& source : kBestTimeGlyphSources) {
+        totalWidth += ResolveGlyphSize(source, kResultLabelGlyphScale).x;
+    }
+
+    float currentX = -totalWidth * 0.5f;
+    for (const auto& source : kBestTimeGlyphSources) {
+        const Vector2 glyphSize = ResolveGlyphSize(source, kResultLabelGlyphScale);
+
+        auto glyph = std::make_unique<Sprite>();
+        glyph->Initialize(spriteCommon_.get(), Sprite::LoadTexture(source.textureName));
+        glyph->SetTextureName(source.textureName);
+        glyph->SetTextureRect(source.sourceLeftTop, source.sourceSize);
+        glyph->SetSize(glyphSize);
+        glyph->SetPosition(bestTimeGlyphStrip_.basePosition);
+        glyph->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        glyph->Update();
+
+        bestTimeGlyphStrip_.baseOffsets.push_back({
+            currentX + glyphSize.x * 0.5f,
+            0.0f
+        });
+        bestTimeGlyphStrip_.baseSizes.push_back(glyphSize);
+        bestTimeGlyphStrip_.glyphs.push_back(std::move(glyph));
+
+        currentX += glyphSize.x + spacing;
+    }
+
+    bestTimeGlyphStrip_.initialized = true;
+}
+
+void GameClearScene::ResetGlyphStrip(ResultGlyphStrip& strip) {
+    strip.animationTimer = 0.0f;
+    for (auto& glyph : strip.glyphs) {
+        if (!glyph) {
+            continue;
+        }
+        glyph->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        glyph->Update();
+    }
+}
+
+void GameClearScene::UpdateGlyphStrip(ResultGlyphStrip& strip, float deltaTime, const Vector4& color, float scale) {
+    if (!strip.initialized) {
+        return;
+    }
+
+    const float alpha = Clamp01(color.w);
+    if (alpha <= 0.001f) {
+        for (auto& glyph : strip.glyphs) {
+            if (glyph) {
+                Vector4 hiddenColor = color;
+                hiddenColor.w = 0.0f;
+                glyph->SetColor(hiddenColor);
+                glyph->Update();
+            }
+        }
+        return;
+    }
+
+    strip.animationTimer += deltaTime;
+
+    for (int i = 0; i < static_cast<int>(strip.glyphs.size()); ++i) {
+        if (!strip.glyphs[i] ||
+            i >= static_cast<int>(strip.baseOffsets.size()) ||
+            i >= static_cast<int>(strip.baseSizes.size())) {
+            continue;
+        }
+
+        const float localTime = strip.animationTimer - strip.stepDelay * static_cast<float>(i);
+        const float appearRate = Clamp01(localTime / strip.popDuration);
+        const float fadeRate = Clamp01(localTime / 0.16f);
+        const float easedAppear = EaseOutBack(appearRate);
+        const float settle = std::sin(appearRate * 3.14159265f) * (1.0f - 0.28f * appearRate);
+        const float direction = (i % 2 == 0) ? -1.0f : 1.0f;
+        const float settleRate = EaseOutCubic(appearRate);
+        const float entryOffsetX = direction * 18.0f * (1.0f - settleRate);
+        const float entryOffsetY = -66.0f * (1.0f - settleRate) - 7.0f * settle;
+        const float entryRotation = direction * 0.12f * (1.0f - settleRate);
+        const float flash = std::sin(appearRate * 3.14159265f) * (1.0f - appearRate);
+        float idleBounce = 0.0f;
+        if (strip.idleWaveEnabled && appearRate >= 1.0f && !strip.glyphs.empty()) {
+            const float waveStartTime =
+                strip.stepDelay * static_cast<float>(strip.glyphs.size() - 1) +
+                strip.popDuration +
+                strip.idleWaveStartDelay;
+            const float waveTimer = strip.animationTimer - waveStartTime;
+            if (waveTimer >= 0.0f && strip.idleWaveInterval > 0.0f) {
+                const float waveCycle = std::fmod(waveTimer, strip.idleWaveInterval);
+                const float waveLocalTime = waveCycle - strip.idleWaveStepDelay * static_cast<float>(i);
+                if (waveLocalTime >= 0.0f && waveLocalTime <= strip.idleWaveDuration) {
+                    const float waveRate = Clamp01(waveLocalTime / strip.idleWaveDuration);
+                    idleBounce = std::sin(waveRate * 3.14159265f);
+                }
+            }
+        }
+        const float glyphScale = scale * (0.58f + 0.42f * easedAppear + 0.12f * settle);
+        const float waveScale = 1.0f + 0.07f * idleBounce;
+        const float waveOffsetY = -12.0f * idleBounce;
+        const float waveRotation = direction * 0.04f * idleBounce;
+        const Vector2& offset = strip.baseOffsets[i];
+        const Vector2& baseSize = strip.baseSizes[i];
+
+        strip.glyphs[i]->SetPosition({
+            strip.basePosition.x + offset.x * scale + entryOffsetX,
+            strip.basePosition.y + offset.y + entryOffsetY + waveOffsetY
+        });
+        strip.glyphs[i]->SetSize({
+            baseSize.x * glyphScale * waveScale,
+            baseSize.y * glyphScale * waveScale
+        });
+        strip.glyphs[i]->SetRotation(entryRotation + waveRotation);
+
+        Vector4 glyphColor = color;
+        glyphColor.x = std::min(1.0f, glyphColor.x + 0.22f * flash);
+        glyphColor.y = std::min(1.0f, glyphColor.y + 0.18f * flash);
+        glyphColor.z = std::min(1.0f, glyphColor.z + 0.08f * flash);
+        glyphColor.w = alpha * fadeRate;
+        strip.glyphs[i]->SetColor(glyphColor);
+        strip.glyphs[i]->Update();
+    }
+}
+
+void GameClearScene::DrawGlyphStrip(const ResultGlyphStrip& strip) {
+    for (const auto& glyph : strip.glyphs) {
+        if (glyph) {
+            glyph->Draw();
+        }
+    }
+}
+
 void GameClearScene::InitializeResultUiSprites() {
     resultPanelSprite_ = CreateUiSprite({ 1185.0f, 420.0f }, { 710.0f, 650.0f }, { 0.02f, 0.025f, 0.035f, 0.0f });
     resultPanelTopLineSprite_ = CreateUiSprite({ 1130.0f, 158.0f }, { 620.0f, 4.0f }, { 0.65f, 0.95f, 1.0f, 0.0f });
@@ -271,29 +572,17 @@ void GameClearScene::UpdateResultUiVisuals(float deltaTime) {
         ? 0.12f * (1.0f - Clamp01(stateTimer_ / 0.55f)) * EaseOutBack(Clamp01(stateTimer_ / 0.28f))
         : 0.0f;
 
-    if (gameClearSprite_) {
-        gameClearSprite_->SetColor({ 1.0f, 1.0f, 1.0f, resultAlpha_ });
-        gameClearSprite_->SetSize({
-            gameClearBaseSize_.x * (1.0f + titlePop),
-            gameClearBaseSize_.y * (1.0f + titlePop)
-        });
-    }
-    UpdateTextStrip(
-        gameClearTextStrip_,
+    UpdateGlyphStrip(
+        clearTitleGlyphStrip_,
         deltaTime,
         { 1.0f, 1.0f, 1.0f, resultAlpha_ },
-        1.0f + titlePop,
-        2.0f);
+        1.0f + titlePop);
 
-    if (playerTimeSprite_) {
-        playerTimeSprite_->SetColor({ 1.0f, 1.0f, 1.0f, clearTimeAlpha_ });
-    }
-    UpdateTextStrip(
-        playerTimeTextStrip_,
+    UpdateGlyphStrip(
+        playerTimeGlyphStrip_,
         deltaTime,
         { 1.0f, 1.0f, 0.96f, clearTimeAlpha_ },
-        1.0f,
-        1.2f);
+        1.0f);
 
     const float newBestPulse = isNewBest_
         ? 0.5f + 0.5f * std::sin(stateTimer_ * 7.5f)
@@ -302,20 +591,14 @@ void GameClearScene::UpdateResultUiVisuals(float deltaTime) {
         ? Vector4{ 1.0f, 0.82f + 0.12f * newBestPulse, 0.22f, bestTimeAlpha_ }
         : Vector4{ 1.0f, 1.0f, 1.0f, bestTimeAlpha_ };
 
-    if (bestTimeSprite_) {
-        bestTimeSprite_->SetColor(bestColor);
-    }
-    UpdateTextStrip(
-        bestTimeTextStrip_,
+    UpdateGlyphStrip(
+        bestTimeGlyphStrip_,
         deltaTime,
         bestColor,
-        1.0f + (isNewBest_ ? 0.02f * newBestAlpha_ * newBestPulse : 0.0f),
-        1.2f);
+        1.0f + (isNewBest_ ? 0.02f * newBestAlpha_ * newBestPulse : 0.0f));
 
     if (clearTimeUI_) {
-        const float pop = clearTimePopTimer_ > 0.0f
-            ? 0.08f * (1.0f - Clamp01(clearTimePopTimer_ / 0.24f))
-            : 0.0f;
+        const float pop = ComputeResultPop(clearTimePopTimer_, 0.42f, 0.16f);
         clearTimeUI_->SetScale(kResultMainTimeScale + pop);
         clearTimeUI_->SetColor({ 1.0f, 1.0f, 0.96f, clearTimeAlpha_ });
     }
@@ -378,6 +661,54 @@ void GameClearScene::UpdateResultUiVisuals(float deltaTime) {
     updateSprite(bestHighlightBottomLineSprite_);
     updateSprite(diffSignHorizontalSprite_);
     updateSprite(diffSignVerticalSprite_);
+}
+
+void GameClearScene::PreviewNewBestEffect() {
+    isNewBest_ = true;
+    diffIsPositive_ = false;
+    clearState_ = ClearState::kShowBestTime;
+    stateTimer_ = 0.0f;
+
+    resultPanelAlpha_ = 1.0f;
+    resultAlpha_ = 1.0f;
+    clearTimeAlpha_ = 1.0f;
+    bestTimeAlpha_ = 0.0f;
+    diffAlpha_ = 0.0f;
+    inputGuideAlpha_ = 0.0f;
+    menuAlpha_ = 0.0f;
+    newBestAlpha_ = 0.0f;
+    clearTimePopTimer_ = 1.0f;
+    bestTimePopTimer_ = -1.0f;
+
+    clearTitleGlyphStrip_.animationTimer = 10.0f;
+    playerTimeGlyphStrip_.animationTimer = 10.0f;
+    ResetGlyphStrip(bestTimeGlyphStrip_);
+
+    if (clearTimeUI_) {
+        clearTimeUI_->SetTime(clearTimeValue_);
+        clearTimeUI_->SetAlpha(1.0f);
+    }
+    if (bestTimeUI_) {
+        bestTimeUI_->StartCountUp(bestTimeValue_, 0.85f);
+    }
+    if (diffTimeUI_) {
+        diffTimeUI_->SetTime(std::fabs(diffTimeValue_));
+        diffTimeUI_->SetAlpha(0.0f);
+    }
+    if (retryTextSprite_) retryTextSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    if (titleTextSprite_) titleTextSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+}
+
+void GameClearScene::DrawImGui() {
+#ifdef USE_IMGUI
+    if (ImGui::CollapsingHeader("Game Clear UI Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button("ベスト更新演出を再生", ImVec2(-1.0f, 28.0f))) {
+            PreviewNewBestEffect();
+        }
+        ImGui::Text("New Best Alpha: %.2f", newBestAlpha_);
+        ImGui::Text("Best Time Alpha: %.2f", bestTimeAlpha_);
+    }
+#endif
 }
 
 void GameClearScene::Initialize() {
@@ -456,25 +787,21 @@ void GameClearScene::Initialize() {
     if (gameClearSprite_) {
         gameClearSprite_->SetPosition({ 1120.0f, 104.0f });
         gameClearSprite_->SetSize({ 620.0f, 104.0f });
+        gameClearSprite_->SetVisible(false);
     }
     if (playerTimeSprite_) {
         playerTimeSprite_->SetPosition({ 1110.0f, 238.0f });
         playerTimeSprite_->SetSize({ 450.0f, 90.0f });
+        playerTimeSprite_->SetVisible(false);
     }
     if (bestTimeSprite_) {
         bestTimeSprite_->SetPosition({ 1110.0f, 498.0f });
         bestTimeSprite_->SetSize({ 450.0f, 90.0f });
+        bestTimeSprite_->SetVisible(false);
     }
-    if (gameClearSprite_) {
-        gameClearBaseSize_ = gameClearSprite_->GetSize();
-        InitializeTextStrip(gameClearTextStrip_, gameClearSprite_, 6);
-    }
-    if (playerTimeSprite_) {
-        InitializeTextStrip(playerTimeTextStrip_, playerTimeSprite_, 5);
-    }
-    if (bestTimeSprite_) {
-        InitializeTextStrip(bestTimeTextStrip_, bestTimeSprite_, 5);
-    }
+    InitializeClearTitleGlyphStrip();
+    InitializePlayerTimeGlyphStrip();
+    InitializeBestTimeGlyphStrip();
     if (enterTextSprite_) {
         enterTextBaseSize_ = { 275.0f, 46.0f };
         enterTextBasePosition_ = { 1378.0f, 805.0f };
@@ -531,9 +858,9 @@ void GameClearScene::Initialize() {
     newBestAlpha_ = 0.0f;
     clearTimePopTimer_ = -1.0f;
     bestTimePopTimer_ = -1.0f;
-    ResetTextStrip(gameClearTextStrip_);
-    ResetTextStrip(playerTimeTextStrip_);
-    ResetTextStrip(bestTimeTextStrip_);
+    ResetGlyphStrip(clearTitleGlyphStrip_);
+    ResetGlyphStrip(playerTimeGlyphStrip_);
+    ResetGlyphStrip(bestTimeGlyphStrip_);
     ResetVictoryPoseParticles();
 }
 
@@ -599,7 +926,7 @@ void GameClearScene::Update(float deltaTime) {
                 player_->SetRotation(targetPlayerRot_);
                 player_->ChangeState(std::make_unique<PlayerStateWin>());
                 ResetVictoryPoseParticles();
-                ResetTextStrip(gameClearTextStrip_);
+                ResetGlyphStrip(clearTitleGlyphStrip_);
 
                 clearState_ = ClearState::kVictoryMotion;
                 stateTimer_ = 0.0f;
@@ -623,7 +950,7 @@ void GameClearScene::Update(float deltaTime) {
 
             clearTimeAlpha_ = 0.0f;
             clearTimePopTimer_ = -1.0f;
-            ResetTextStrip(playerTimeTextStrip_);
+            ResetGlyphStrip(playerTimeGlyphStrip_);
             if (clearTimeUI_) clearTimeUI_->StartCountUp(clearTimeValue_, 1.15f);
         }
         break;
@@ -642,12 +969,12 @@ void GameClearScene::Update(float deltaTime) {
             }
         }
 
-        if (clearTimeUI_ && !clearTimeUI_->IsAnimating() && clearTimePopTimer_ > 0.32f) {
+        if (clearTimeUI_ && !clearTimeUI_->IsAnimating() && clearTimePopTimer_ > 0.48f) {
             clearState_ = ClearState::kShowBestTime;
             stateTimer_ = 0.0f;
             bestTimeAlpha_ = 0.0f;
             bestTimePopTimer_ = -1.0f;
-            ResetTextStrip(bestTimeTextStrip_);
+            ResetGlyphStrip(bestTimeGlyphStrip_);
             if (bestTimeUI_) bestTimeUI_->StartCountUp(bestTimeValue_, 0.85f);
         }
         break;
@@ -692,7 +1019,7 @@ void GameClearScene::Update(float deltaTime) {
             diffAlpha_ = 0.0f;
             inputGuideAlpha_ = 0.0f;
             newBestAlpha_ = 0.0f;
-            ResetTextStrip(gameClearTextStrip_);
+            ResetGlyphStrip(clearTitleGlyphStrip_);
 
             // カメラ演出終了
             Camera* mainCamera = CameraManager::GetInstance()->GetMainCamera();
@@ -770,7 +1097,6 @@ void GameClearScene::Update(float deltaTime) {
         newBestAlpha_ = Clamp01(newBestAlpha_ - deltaTime * 3.0f);
         menuAlpha_ = Clamp01(menuAlpha_ - deltaTime * 3.0f);
 
-        if (gameClearSprite_) gameClearSprite_->SetColor({ 1,1,1,resultAlpha_ });
         if (retryTextSprite_) retryTextSprite_->SetColor({ 1,1,1, (currentMenuIndex_ == 0 ? 1.0f : 0.3f) * menuAlpha_ });
         if (titleTextSprite_) titleTextSprite_->SetColor({ 1,1,1, (currentMenuIndex_ == 1 ? 1.0f : 0.3f) * menuAlpha_ });
 
@@ -883,9 +1209,9 @@ void GameClearScene::DrawUI() {
     for (auto& sprite : sprites_) {
         sprite->Draw();
     }
-    DrawTextStrip(gameClearTextStrip_);
-    DrawTextStrip(playerTimeTextStrip_);
-    DrawTextStrip(bestTimeTextStrip_);
+    DrawGlyphStrip(clearTitleGlyphStrip_);
+    DrawGlyphStrip(playerTimeGlyphStrip_);
+    DrawGlyphStrip(bestTimeGlyphStrip_);
     DrawSprite(diffSignHorizontalSprite_);
     DrawSprite(diffSignVerticalSprite_);
     if (clearTimeUI_) clearTimeUI_->Draw();

@@ -38,6 +38,7 @@ public:
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
+    void DrawImGui() override;
 
     // --- BaseScene インターフェース実装 ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
@@ -60,6 +61,7 @@ private:
     void InitializeResultUiSprites();
     std::unique_ptr<Sprite> CreateUiSprite(const Vector2& position, const Vector2& size, const Vector4& color);
     void UpdateResultUiVisuals(float deltaTime);
+    void PreviewNewBestEffect();
 
     struct ResultTextStrip {
         std::vector<std::unique_ptr<Sprite>> pieces;
@@ -73,10 +75,32 @@ private:
         bool initialized = false;
     };
 
+    struct ResultGlyphStrip {
+        std::vector<std::unique_ptr<Sprite>> glyphs;
+        std::vector<Vector2> baseOffsets;
+        std::vector<Vector2> baseSizes;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        float animationTimer = 0.0f;
+        float stepDelay = 0.10f;
+        float popDuration = 0.48f;
+        bool idleWaveEnabled = false;
+        float idleWaveStartDelay = 1.0f;
+        float idleWaveInterval = 2.35f;
+        float idleWaveStepDelay = 0.08f;
+        float idleWaveDuration = 0.34f;
+        bool initialized = false;
+    };
+
     void InitializeTextStrip(ResultTextStrip& strip, Sprite* sourceSprite, int pieceCount);
     void ResetTextStrip(ResultTextStrip& strip);
     void UpdateTextStrip(ResultTextStrip& strip, float deltaTime, const Vector4& color, float scale, float idleAmount);
     void DrawTextStrip(const ResultTextStrip& strip);
+    void InitializeClearTitleGlyphStrip();
+    void InitializePlayerTimeGlyphStrip();
+    void InitializeBestTimeGlyphStrip();
+    void ResetGlyphStrip(ResultGlyphStrip& strip);
+    void UpdateGlyphStrip(ResultGlyphStrip& strip, float deltaTime, const Vector4& color, float scale);
+    void DrawGlyphStrip(const ResultGlyphStrip& strip);
 
     // --- 外部システム参照 ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -118,9 +142,9 @@ private:
     std::unique_ptr<Sprite> bestHighlightBottomLineSprite_;
     std::unique_ptr<Sprite> diffSignHorizontalSprite_;
     std::unique_ptr<Sprite> diffSignVerticalSprite_;
-    ResultTextStrip gameClearTextStrip_;
-    ResultTextStrip playerTimeTextStrip_;
-    ResultTextStrip bestTimeTextStrip_;
+    ResultGlyphStrip clearTitleGlyphStrip_;
+    ResultGlyphStrip playerTimeGlyphStrip_;
+    ResultGlyphStrip bestTimeGlyphStrip_;
 
     // エディター配置のリザルトUIを名前で検索して保持する。
     Sprite* gameClearSprite_ = nullptr;
@@ -131,7 +155,6 @@ private:
     Sprite* enterTextSprite_ = nullptr;
     bool clearUiUsesGamepad_ = false;
     bool hasAppliedClearInputUi_ = false;
-    Vector2 gameClearBaseSize_ = { 600.0f, 100.0f };
     Vector2 enterTextBaseSize_ = { 220.0f, 36.0f };
     Vector2 enterTextBasePosition_ = { 1375.0f, 825.0f };
 
