@@ -165,6 +165,7 @@ void GamePlayScene::Initialize() {
     GPUParticleManager::GetInstance()->LoadAllPresets(
         "Resources/json/gpu_particles/");
     GPUParticleManager::GetInstance()->PrewarmPreset("playerattak");
+    GPUParticleManager::GetInstance()->PrewarmPreset("player_dash");
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
