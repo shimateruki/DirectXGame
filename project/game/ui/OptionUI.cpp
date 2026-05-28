@@ -355,6 +355,7 @@ bool OptionUI::Update(float deltaTime) {
               if (sens > -5) { sens--; isChanged = true; }
           }
           if (isChanged) {
+              AudioPlayer::GetInstance()->PlaySE(seCursorMove_, false, 1.0f);
               SaveDataManager::GetInstance()->SetCameraSensitivity(sens);
               CameraEditor::GetInstance()->SetCameraSensitivity(sens);
               CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(sens); // 即座に反映

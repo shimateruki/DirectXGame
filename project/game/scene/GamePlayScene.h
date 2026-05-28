@@ -148,6 +148,14 @@ private:
     uint32_t bgmDefeatHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
+    uint32_t seElevatorHandle_ = 0;
+    uint32_t seOpenDoor1Handle_ = 0;
+    uint32_t seOpenDoor2Handle_ = 0;
+    uint32_t seMissionHandle_ = 0;
+    uint32_t seMissionClear3Handle_ = 0;
+    uint32_t seCursorMove_ = 0;
+    uint32_t seDecide_ = 0;
+    uint32_t seCancel_ = 0;
 
     // --- ライト・描画補助リソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
@@ -289,6 +297,9 @@ private:
     bool missionInitialShown_ = false;
     bool missionGoShown_ = false;
     bool missionBossShown_ = false;
+    bool missionLeverSePlayed_ = false;
+    bool missionGoSePlayed_ = false;
+    bool missionBossSePlayed_ = false;
 
     float tutorialTimer_ = 0.0f;
     bool tutorialUiCompleted_ = false;
