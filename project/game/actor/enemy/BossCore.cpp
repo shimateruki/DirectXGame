@@ -151,6 +151,16 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     seBossHalfe2Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfe2.mp3");
     seBleakArmorHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfeDamage.mp3");
     sePredictionLineHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/Predictionline.mp3");
+    seBossAttack2LaunchHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack2Launch.mp3");
+    seBossAttack2OpenHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack2Open.mp3");
+    seBossAttack3SwingHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack3Swing.mp3");
+    seBossAttack4EarthTremorHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack4EarthTremor.mp3");
+    seBossAttack6BeamHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack6Beam.mp3");
+    seBossAttack6PredictionlineHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack6Predictionline.mp3");
+    seEnemyAttack7TurnHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/EnemyAttack7Turn.mp3");
+    seDeformationHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/Deformation.mp3");
+    sePlayerDownAttack2Handle_ = audio->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
+    seBossAttack5MoveHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack5Move.mp3");
 }
 
 void BossCore::Update(float deltaTime) {

@@ -1,5 +1,6 @@
 #include "BossAttack6_Laser.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include <algorithm>
 #include <cmath>
@@ -39,6 +40,11 @@ void BossAttack6_Laser::Finalize() {
         }
     }
     activeCoreBeams_.clear();
+
+    if (boss_) {
+        AudioPlayer::GetInstance()->StopSe(boss_->GetSEBossAttack6PredictionlineHandle());
+        AudioPlayer::GetInstance()->StopSe(boss_->GetSEBossAttack6BeamHandle());
+    }
 }
 
 // ※デストラクタは Finalize() を呼ぶだけでOKです
@@ -196,6 +202,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
     }
     else if (animPhase_ == 63) {
         if (animTimer_ == 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6PredictionlineHandle(), true, 1.0f);
             BaseScene* currentScene = SceneManager::GetInstance()->GetCurrentScene();
 
 
@@ -305,9 +312,11 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         float stopDuration = 0.75f;
 
         if (animTimer_ >= stopDuration) {
+            AudioPlayer::GetInstance()->StopSe(boss->GetSEBossAttack6PredictionlineHandle());
             animPhase_ = 64;
             animTimer_ = 0.0f;
             particleTimer_ = 0.0f;
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6BeamHandle(), true, 2.0f);
         }
         }
     // --- Phase 64: 陣形を維持したまま回転し、ビームを撃つ ---
@@ -439,6 +448,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         }
 
         if (animTimer_ >= spinDuration) {
+            AudioPlayer::GetInstance()->StopSe(boss->GetSEBossAttack6BeamHandle());
             animPhase_ = 65;
             animTimer_ = 0.0f;
             animStartRot_ = boss->GetRotation();

@@ -1,5 +1,6 @@
 #include "BossAttack2_Shoot.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include <algorithm>
 #include <cmath>
@@ -41,6 +42,7 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
         if (t >= 1.0f) {
             animPhase_ = 11;
             animTimer_ = 0.0f;
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack2OpenHandle(), false, 2.0f);
 
             blockStartPos_.clear();
             blockTargetPos_.clear();
@@ -137,6 +139,8 @@ void BossAttack2_Shoot::Update(BossCore* boss, float deltaTime) {
 
                 // ゲッター経由で FlyingBlocks に追加
                 boss->GetFlyingBlocks().push_back({ block, {0.0f, 0.0f, 0.0f}, currentRot, 4, idx });
+                
+                AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack2LaunchHandle(), false, 1.0f);
             }
 
             shotCount_++;

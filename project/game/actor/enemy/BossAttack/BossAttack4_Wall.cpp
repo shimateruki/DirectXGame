@@ -233,6 +233,9 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f });
                 warning->SetUVTransform(uvMat);
             }
+
+            // 地響きSEの再生開始 (ループ)
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack4EarthTremorHandle(), true, 1.0f);
         }
 
         animTimer_ += deltaTime;
@@ -251,6 +254,16 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
             armorBlocks[i]->SetTranslate(blockPos);
         }
 
+        // プレイヤー距離に基づく音量調整
+        Object3d* target = boss->GetTarget();
+        if (target) {
+            Vector3 toPlayer = target->GetWorldPosition() - boss->GetWorldPosition();
+            float dist = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y + toPlayer.z * toPlayer.z);
+            float maxDist = 150.0f;
+            float volume = Math::Lerp(1.0f, 0.0f, std::min(dist / maxDist, 1.0f));
+            AudioPlayer::GetInstance()->SetSEVolume(boss->GetSEBossAttack4EarthTremorHandle(), volume);
+        }
+
         // ==================================================
         // 操っている感：壁が移動している間、コアが激しく回転する
         // ==================================================
@@ -266,6 +279,9 @@ void BossAttack4_Wall::Update(BossCore* boss, float deltaTime) {
                 warning->SetScale({ 0.0f, 0.0f, 0.0f });
             }
      
+            // 地響きSEの停止
+            AudioPlayer::GetInstance()->StopSe(boss->GetSEBossAttack4EarthTremorHandle());
+
             animPhase_ = 42;
             animTimer_ = 0.0f;
         }

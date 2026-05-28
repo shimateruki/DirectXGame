@@ -271,6 +271,18 @@ public:
     uint32_t GetSEBossHalfe2Handle() const { return seBossHalfe2Handle_; }
     uint32_t GetSEBleakArmorHandle() const { return seBleakArmorHandle_; }
     uint32_t GetSEPredictionLineHandle() const { return sePredictionLineHandle_; }
+    uint32_t GetSEBossAttack2LaunchHandle() const { return seBossAttack2LaunchHandle_; }
+    uint32_t GetSEBossAttack2OpenHandle() const { return seBossAttack2OpenHandle_; }
+    uint32_t GetSEBossAttack3SwingHandle() const { return seBossAttack3SwingHandle_; }
+    uint32_t GetSEBossAttack4EarthTremorHandle() const { return seBossAttack4EarthTremorHandle_; }
+    uint32_t GetSEBossAttack6BeamHandle() const { return seBossAttack6BeamHandle_; }
+    uint32_t GetSEBossAttack6PredictionlineHandle() const { return seBossAttack6PredictionlineHandle_; }
+    uint32_t GetSEEnemyAttack7TurnHandle() const { return seEnemyAttack7TurnHandle_; }
+    uint32_t GetSEDeformationHandle() const { return seDeformationHandle_; }
+    uint32_t GetSEPlayerDownAttack2Handle() const { return sePlayerDownAttack2Handle_; }
+    uint32_t GetSEBossAttack5MoveHandle() const { return seBossAttack5MoveHandle_; }
+
+    void SetSEBossStan1Handle(uint32_t handle) { seBossStan1Handle_ = handle; }
 private:
 
     // 射出されたブロックのリスト
@@ -433,4 +445,14 @@ private:
     uint32_t sePredictionLineHandle_ = 0;
     uint32_t seBlockDamageHandle_ = 0;
     uint32_t seBossStan1Handle_ = 0;
+    uint32_t seBossAttack2LaunchHandle_ = 0;
+    uint32_t seBossAttack2OpenHandle_ = 0;
+    uint32_t seBossAttack3SwingHandle_ = 0;
+    uint32_t seBossAttack4EarthTremorHandle_ = 0;
+    uint32_t seBossAttack6BeamHandle_ = 0;
+    uint32_t seBossAttack6PredictionlineHandle_ = 0;
+    uint32_t seEnemyAttack7TurnHandle_ = 0;
+    uint32_t seDeformationHandle_ = 0;
+    uint32_t sePlayerDownAttack2Handle_ = 0;
+    uint32_t seBossAttack5MoveHandle_ = 0;
 };

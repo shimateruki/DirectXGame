@@ -340,8 +340,17 @@ void AudioPlayer::SetBGMVolume(float volume) {
 
 void AudioPlayer::SetSEVolume(float volume) {
 	masterVolumeSE_ = volume;
+	// 再生中の全SEに反映させるなどの処理を足してもOK
 }
 
+void AudioPlayer::SetSEVolume(AudioHandle handle, float volume) {
+	auto it = streamingSoundDatas_.find(handle);
+	if (it != streamingSoundDatas_.end()) {
+		if (it->second->sourceVoice) {
+			it->second->sourceVoice->SetVolume(volume * masterVolumeSE_);
+		}
+	}
+}
 /// <summary>
 /// 現在再生中のBGMを停止します。
 /// </summary>

@@ -238,6 +238,9 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         }
     }
     else if (animPhase_ == 811) { // 突進
+        if (animTimer_ == 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack2LaunchHandle(), false, 1.0f);
+        }
         animTimer_ += deltaTime;
         float duration = 0.6f;
         float t = std::min(animTimer_ / duration, 1.0f);
@@ -514,6 +517,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     if (armorBlocks[i]) {
                         armorBlocks[i]->SetCollisionAttribute(0);
                     }
+                    
+                    static float lastPlayTime11 = -1.0f;
+                    if (lastPlayTime11 != animTimer_) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6PredictionlineHandle(), false, 1.0f);
+                        lastPlayTime11 = animTimer_;
+                    }
                 }
             }
             else if (funnelStates_[i] == 11) { // 予兆（1.0秒）
@@ -552,6 +561,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 if (funnelTimers_[i] >= 1.0f) {
                     funnelStates_[i] = 12; 
                     funnelTimers_[i] = 0.0f;
+                    
+                    static float lastPlayTime12 = -1.0f;
+                    if (lastPlayTime12 != animTimer_) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6BeamHandle(), false, 1.0f);
+                        lastPlayTime12 = animTimer_;
+                    }
                 }
             }
             else if (funnelStates_[i] == 12) { // 発射（1.0秒）
