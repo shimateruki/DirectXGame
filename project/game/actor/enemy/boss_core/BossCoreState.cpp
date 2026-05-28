@@ -1,4 +1,5 @@
 #include "BossCoreShared.h"
+#include "AudioPlayer.h"
 
 void BossCore::ChangeState(State nextState) {
     state_ = nextState;
@@ -189,6 +190,7 @@ void BossCore::ChangeState(State nextState) {
 
     case State::Weak:
         animTimer_ = 0.0f;
+        AudioPlayer::GetInstance()->PlaySE(seBossStan1Handle_, false, 1.0f);
         break;
     }
 }

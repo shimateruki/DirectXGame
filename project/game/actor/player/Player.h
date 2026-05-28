@@ -211,6 +211,7 @@ private:
     uint32_t seSwordHandle_ = 0;
     uint32_t seDownAttack1Handle_ = 0;
     uint32_t seDownAttack2Handle_ = 0;
+    uint32_t seDamageHandle_ = 0;
 
     void UpdateColor();
 };

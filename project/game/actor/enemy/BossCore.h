@@ -431,4 +431,6 @@ private:
     uint32_t seBossHalfe2Handle_ = 0;
     uint32_t seBleakArmorHandle_ = 0; // BossHalfeDamage.mp3
     uint32_t sePredictionLineHandle_ = 0;
+    uint32_t seBlockDamageHandle_ = 0;
+    uint32_t seBossStan1Handle_ = 0;
 };

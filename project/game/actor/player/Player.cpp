@@ -49,6 +49,7 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     seSwordHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSword.mp3");
     seDownAttack1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack1.mp3");
     seDownAttack2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
+    seDamageHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDamage.mp3");
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
@@ -300,6 +301,9 @@ bool Player::OnCollision(Object3d* other)
 
             // 被弾無敵だけを立て、回避ダッシュ側の無敵とは分けて扱う。
             SetDamageInvincible(true);
+
+            // ダメージSE再生
+            AudioPlayer::GetInstance()->PlaySE(seDamageHandle_, false, 1.0f);
 
             // ノックバックと被弾モーションを再生する。
             ChangeState(std::make_unique<PlayerStateDamage>());

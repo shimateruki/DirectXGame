@@ -183,8 +183,8 @@ void BossCore::TakeBodyDamage(float damage) {
         hpHalfPhase_ = HpHalfEventPhase::WaitIdle;
         hpHalfEffectTimer_ = 0.0f;
 
-        // ズームインSE再生
-        AudioPlayer::GetInstance()->PlaySE(seBossHalfe1Handle_, false, 1.0f);
+        // ボスのHPが半分になった演出中のSE
+        AudioPlayer::GetInstance()->PlaySE(seBleakArmorHandle_, false, 1.0f);
 
         if (target_) {
             if (auto player = dynamic_cast<Player*>(target_)) {
