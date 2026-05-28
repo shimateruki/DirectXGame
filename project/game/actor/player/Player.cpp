@@ -47,6 +47,8 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     seSwingMiss1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSwingMiss1.mp3");
     seSwingMiss2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSwingMiss2.mp3");
     seSwordHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSword.mp3");
+    seDownAttack1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack1.mp3");
+    seDownAttack2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());

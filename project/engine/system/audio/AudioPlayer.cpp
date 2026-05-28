@@ -328,6 +328,7 @@ void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
 }
 
 void AudioPlayer::SetBGMVolume(float volume) {
+	volume *= 0.5f; // 全体のBGM音量を半減
 	masterVolumeBGM_ = volume;
 	if (currentBgmHandle_ != kInvalidAudioHandle) {
 		auto it = streamingSoundDatas_.find(currentBgmHandle_);

@@ -6,7 +6,7 @@ void PlayerStateAttack2::Enter(Player* player)
 	if (!player) return;
 
 	// 攻撃2段目SEの再生 (1回目)
-	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 2.0f);
+	AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 1.0f);
 	hasPlayedSecondSE_ = false;
 
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack2 State");
@@ -168,7 +168,7 @@ void PlayerStateAttack2::Update(Player* player)
 
 	// 2回目のSE再生（回転しているように聞こえるよう時間差で）
 	if (animTimer_ > 0.15f && !hasPlayedSecondSE_) {
-		AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 2.0f);
+		AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 1.0f);
 		hasPlayedSecondSE_ = true;
 	}
 

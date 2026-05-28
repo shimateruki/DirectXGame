@@ -157,6 +157,8 @@ public:
     uint32_t GetSESwingMiss1Handle() const { return seSwingMiss1Handle_; }
     uint32_t GetSESwingMiss2Handle() const { return seSwingMiss2Handle_; }
     uint32_t GetSESwordHandle() const { return seSwordHandle_; }
+    uint32_t GetSEDownAttack1Handle() const { return seDownAttack1Handle_; }
+    uint32_t GetSEDownAttack2Handle() const { return seDownAttack2Handle_; }
 
 
 private:
@@ -207,6 +209,8 @@ private:
     uint32_t seSwingMiss1Handle_ = 0;
     uint32_t seSwingMiss2Handle_ = 0;
     uint32_t seSwordHandle_ = 0;
+    uint32_t seDownAttack1Handle_ = 0;
+    uint32_t seDownAttack2Handle_ = 0;
 
     void UpdateColor();
 };
