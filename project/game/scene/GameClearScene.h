@@ -38,6 +38,7 @@ public:
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
+    void DrawImGui() override;
 
     // --- BaseScene インターフェース実装 ---
     std::vector<std::unique_ptr<Object3d>>& GetObjects() override { return objectManager_->GetObjects(); }
@@ -54,6 +55,56 @@ private:
     // --- 内部ヘルパー ---
     void SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName);
     void ApplyInputUiIfNeeded();
+    void ResetVictoryPoseParticles();
+    void UpdateVictoryPoseParticles(float deltaTime);
+    void EmitVictoryParticle(const std::string& presetName, const Vector3& offset);
+    void InitializeResultUiSprites();
+    std::unique_ptr<Sprite> CreateUiSprite(const Vector2& position, const Vector2& size, const Vector4& color);
+    void UpdateResultUiVisuals(float deltaTime);
+    void PreviewNewBestEffect();
+    void ResetNewBestCelebration();
+    void EmitNewBestCelebration();
+    void StartMenuRunOut();
+    void UpdateMenuRunOutVisuals(float deltaTime);
+
+    struct ResultTextStrip {
+        std::vector<std::unique_ptr<Sprite>> pieces;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        Vector2 baseSize = { 0.0f, 0.0f };
+        Vector2 sourceTextureSize = { 0.0f, 0.0f };
+        int pieceCount = 0;
+        float animationTimer = 0.0f;
+        float stepDelay = 0.045f;
+        float popDuration = 0.36f;
+        bool initialized = false;
+    };
+
+    struct ResultGlyphStrip {
+        std::vector<std::unique_ptr<Sprite>> glyphs;
+        std::vector<Vector2> baseOffsets;
+        std::vector<Vector2> baseSizes;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        float animationTimer = 0.0f;
+        float stepDelay = 0.10f;
+        float popDuration = 0.48f;
+        bool idleWaveEnabled = false;
+        float idleWaveStartDelay = 1.0f;
+        float idleWaveInterval = 2.35f;
+        float idleWaveStepDelay = 0.08f;
+        float idleWaveDuration = 0.34f;
+        bool initialized = false;
+    };
+
+    void InitializeTextStrip(ResultTextStrip& strip, Sprite* sourceSprite, int pieceCount);
+    void ResetTextStrip(ResultTextStrip& strip);
+    void UpdateTextStrip(ResultTextStrip& strip, float deltaTime, const Vector4& color, float scale, float idleAmount);
+    void DrawTextStrip(const ResultTextStrip& strip);
+    void InitializeClearTitleGlyphStrip();
+    void InitializePlayerTimeGlyphStrip();
+    void InitializeBestTimeGlyphStrip();
+    void ResetGlyphStrip(ResultGlyphStrip& strip);
+    void UpdateGlyphStrip(ResultGlyphStrip& strip, float deltaTime, const Vector4& color, float scale);
+    void DrawGlyphStrip(const ResultGlyphStrip& strip);
 
     // --- 外部システム参照 ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -90,6 +141,26 @@ private:
     // --- リザルト表示 ---
     std::unique_ptr<TimeAttackUI> clearTimeUI_;
     std::unique_ptr<TimeAttackUI> bestTimeUI_;
+    std::unique_ptr<TimeAttackUI> diffTimeUI_;
+    std::unique_ptr<Sprite> resultPanelSprite_;
+    std::unique_ptr<Sprite> resultPanelTopLineSprite_;
+    std::unique_ptr<Sprite> resultPanelBottomLineSprite_;
+    std::unique_ptr<Sprite> bestHighlightSprite_;
+    std::unique_ptr<Sprite> bestHighlightTopLineSprite_;
+    std::unique_ptr<Sprite> bestHighlightBottomLineSprite_;
+    std::unique_ptr<Sprite> newBestSweepSprite_;
+    std::unique_ptr<Sprite> newBestFlashSprite_;
+    std::unique_ptr<Sprite> diffSignHorizontalSprite_;
+    std::unique_ptr<Sprite> diffSignVerticalSprite_;
+    std::unique_ptr<Sprite> menuSelectionGlowSprite_;
+    std::unique_ptr<Sprite> transitionBeamGlowSprite_;
+    std::unique_ptr<Sprite> transitionBeamSprite_;
+    std::unique_ptr<Sprite> transitionSpeedLineASprite_;
+    std::unique_ptr<Sprite> transitionSpeedLineBSprite_;
+    std::unique_ptr<Sprite> transitionFlashSprite_;
+    ResultGlyphStrip clearTitleGlyphStrip_;
+    ResultGlyphStrip playerTimeGlyphStrip_;
+    ResultGlyphStrip bestTimeGlyphStrip_;
 
     // エディター配置のリザルトUIを名前で検索して保持する。
     Sprite* gameClearSprite_ = nullptr;
@@ -100,6 +171,8 @@ private:
     Sprite* enterTextSprite_ = nullptr;
     bool clearUiUsesGamepad_ = false;
     bool hasAppliedClearInputUi_ = false;
+    Vector2 enterTextBaseSize_ = { 220.0f, 36.0f };
+    Vector2 enterTextBasePosition_ = { 1375.0f, 825.0f };
 
     // --- クリア演出フロー ---
     enum class ClearState {
@@ -116,11 +189,28 @@ private:
 
     enum class MenuIndex { Retry, Title, Max };
     int currentMenuIndex_ = (int)MenuIndex::Retry;
+    int confirmedMenuIndex_ = (int)MenuIndex::Retry;
+    float runOutDirection_ = -1.0f;
 
-    float resultAlpha_ = 0.0f; // ロゴ・タイム用アルファ
-    float menuAlpha_ = 0.0f;   // メニュー用アルファ
+    float resultAlpha_ = 0.0f;
+    float clearTimeAlpha_ = 0.0f;
+    float menuAlpha_ = 0.0f;
     float bestTimeAlpha_ = 0.0f;
-
+    float resultPanelAlpha_ = 0.0f;
+    float diffAlpha_ = 0.0f;
+    float inputGuideAlpha_ = 0.0f;
+    float newBestAlpha_ = 0.0f;
+    float clearTimePopTimer_ = -1.0f;
+    float bestTimePopTimer_ = -1.0f;
+    float clearTimeValue_ = 0.0f;
+    float bestTimeValue_ = 0.0f;
+    float diffTimeValue_ = 0.0f;
+    bool isNewBest_ = false;
+    bool diffIsPositive_ = false;
+    bool victoryParticleBurstEmitted_ = false;
+    float victoryParticleTimer_ = 0.0f;
+    bool newBestParticleEmitted_ = false;
+    float newBestCelebrationTimer_ = 0.0f;
     // --- プレイヤーのクリア演出位置 ---
     Vector3 targetPlayerPos_;
     Vector3 targetPlayerRot_;

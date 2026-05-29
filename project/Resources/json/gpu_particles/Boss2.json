@@ -7,17 +7,17 @@
     ],
     "baseSize": 0.10000000149011612,
     "blendModeIndex": 1,
-    "colorEaseType": 0,
+    "colorEaseType": 8,
     "colorIntensity": 1.0,
-    "colorMidTime": 0.20000000298023224,
+    "colorMidTime": 0.699999988079071,
     "emitArea": [
-        0.0,
+        0.6000000238418579,
         0.0,
         0.0
     ],
-    "emitCount": 5,
+    "emitCount": 45,
     "emitInterval": 0.10000000149011612,
-    "emitLife": 2.0,
+    "emitLife": 1.5,
     "emitPos": [
         0.0,
         1.7000000476837158,
@@ -25,7 +25,7 @@
     ],
     "emitVelocity": [
         0.0,
-        1.0,
+        0.4000000059604645,
         0.0
     ],
     "enableCollision": 0,
@@ -36,34 +36,34 @@
         1.0
     ],
     "endSize": 0.0,
-    "envDrag": 0.0,
+    "envDrag": 0.800000011920929,
     "envGravity": [
         0.0,
-        -9.800000190734863,
+        0.0,
         0.0
     ],
-    "envTurbulence": 0.0,
+    "envTurbulence": 10.0,
     "envWind": [
         0.0,
-        10.899999618530273,
+        2.700000047683716,
         0.0
     ],
     "isLooping": true,
     "midColor": [
-        0.21621620655059814,
-        0.21621620655059814,
-        0.21621620655059814,
+        0.13401709496974945,
+        0.2239382266998291,
+        0.13957205414772034,
         1.0
     ],
-    "midSize": 0.20000000298023224,
+    "midSize": 0.07999999821186066,
     "restitution": 0.5,
-    "rotSpeed": 0.0,
+    "rotSpeed": 1.0,
     "shapeAngle": 30.0,
-    "shapeRadius": 2.0,
+    "shapeRadius": 1.5,
     "shapeType": 4,
-    "sizeEaseType": 0,
-    "sizeMidTime": 0.20000000298023224,
+    "sizeEaseType": 8,
+    "sizeMidTime": 0.3400000035762787,
     "softParticleFade": 5.0,
-    "texturePath": "Resources/sprite/Particle.png",
+    "texturePath": "Resources/sprite/yazirusi.png",
     "velocityVariance": 1.0
 }

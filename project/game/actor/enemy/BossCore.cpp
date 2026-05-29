@@ -123,7 +123,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     BossParticle1->Initialize("Boss1", this);
     BossParticle1->Play();
 
-    // --- 2. 黄 ---
+    // --- 2. 黒 ---
     auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
     BossParticle2->Initialize("Boss2", this);
     BossParticle2->Play();
@@ -133,12 +133,13 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
-    particleEmitters_.push_back(std::move(BossParticle3));
+    //particleEmitters_.push_back(std::move(BossParticle3));
 
     // --- 4. 赤 ---
     auto BossParticle4 = std::make_unique<GPUParticleEmitter>();
     BossParticle4->Initialize("Boss4", this);
     BossParticle4->Play();
+    particleEmitters_.push_back(std::move(BossParticle4));
 
     // --- 5. 黄色 ---
     auto BossParticle5 = std::make_unique<GPUParticleEmitter>();
@@ -1016,7 +1017,7 @@ void BossCore::Update(float deltaTime) {
             for (int c = 0; c < count; ++c) {
                 float t = static_cast<float>(c) / static_cast<float>(count);
                 Vector3 emitPos = Math::Lerp(prevPos, currentPos, t);
-                GPUParticleManager::GetInstance()->Emit("BossBlockTrail", emitPos);
+                GPUParticleManager::GetInstance()->Emit("boss_block_trail_02", emitPos);
             }
         }
 
