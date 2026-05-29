@@ -50,10 +50,48 @@
 #include <ParticleManager.h>
 #include <PostEffect.h>
 #include <SrvManager.h>
+#include <array>
+#include <cmath>
 #include <fstream>
 #include <numbers>
 #include <string>
 
+namespace {
+struct GameOverGlyphSource {
+    const char* textureName;
+    Vector2 sourceLeftTop;
+    Vector2 sourceSize;
+    float targetHeight;
+};
+
+constexpr std::array<GameOverGlyphSource, 7> kGameOverGlyphSources = {
+    GameOverGlyphSource{ "UI/TextGe.png", { 41.0f, 36.0f }, { 57.0f, 54.0f }, 86.0f },
+    GameOverGlyphSource{ "UI/Text-.png",  { 44.0f, 62.0f }, { 50.0f, 7.0f }, 14.0f },
+    GameOverGlyphSource{ "UI/TextMu.png", { 43.0f, 41.0f }, { 53.0f, 48.0f }, 86.0f },
+    GameOverGlyphSource{ "UI/TextO.png",  { 43.0f, 34.0f }, { 33.0f, 33.0f }, 86.0f },
+    GameOverGlyphSource{ "UI/Text-.png",  { 44.0f, 62.0f }, { 50.0f, 7.0f }, 14.0f },
+    GameOverGlyphSource{ "UI/TextBa.png", { 41.0f, 33.0f }, { 35.0f, 35.0f }, 86.0f },
+    GameOverGlyphSource{ "UI/Text-.png",  { 44.0f, 62.0f }, { 50.0f, 7.0f }, 14.0f },
+};
+
+float Clamp01(float value) {
+    return Math::Clamp(value, 0.0f, 1.0f);
+}
+
+float EaseOutCubic(float t) {
+    t = Clamp01(t);
+    const float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv;
+}
+
+Vector2 ResolveGameOverGlyphSize(const GameOverGlyphSource& source) {
+    const float scale = source.targetHeight / source.sourceSize.y;
+    return {
+        source.sourceSize.x * scale,
+        source.sourceSize.y * scale
+    };
+}
+}
 
 bool GamePlayScene::s_isRebooting_ = false;
 
@@ -88,6 +126,225 @@ void GamePlayScene::ApplyPauseInputUiIfNeeded() {
         useGamepadUi
         ? "[PauseUI] Input display switched to Controller"
         : "[PauseUI] Input display switched to Keyboard");
+}
+
+void GamePlayScene::UpdatePauseMenuVisuals(float deltaTime) {
+    pauseMenuBlinkTimer_ += deltaTime;
+
+    const float blink = 0.5f + 0.5f * std::sin(pauseMenuBlinkTimer_ * 6.0f);
+    const float selectedAlpha = 0.62f + 0.38f * blink;
+    const float selectedScale = 1.07f + 0.05f * blink;
+
+    auto ApplyEffect = [&](Sprite* sprite, bool isSelected, const Vector2& baseSize) {
+        if (!sprite) {
+            return;
+        }
+
+        sprite->SetColor(
+            isSelected
+            ? Vector4{ 1.0f, 1.0f, 1.0f, selectedAlpha }
+            : Vector4{ 0.5f, 0.5f, 0.5f, 0.45f });
+        sprite->SetSize(
+            isSelected
+            ? Vector2{ baseSize.x * selectedScale, baseSize.y * selectedScale }
+            : baseSize);
+        };
+
+    ApplyEffect(restartPoseTextSprite_, currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart, pauseRestartTextBaseSize_);
+    ApplyEffect(optionPoseTextSprite_, currentPauseMenuIndex_ == (int)PauseMenuIndex::Option, pauseOptionTextBaseSize_);
+    ApplyEffect(titleTextPoseSprite_, currentPauseMenuIndex_ == (int)PauseMenuIndex::Title, pauseTitleTextBaseSize_);
+}
+
+void GamePlayScene::InitializeGameOverTitleGlyphs() {
+    gameOverTitleGlyphStrip_.glyphs.clear();
+    gameOverTitleGlyphStrip_.baseOffsets.clear();
+    gameOverTitleGlyphStrip_.baseSizes.clear();
+    gameOverTitleGlyphStrip_.basePosition = gameOverTextSprite_
+        ? gameOverTextSprite_->GetPosition()
+        : Vector2{ 790.0f, 260.0f };
+    gameOverTitleGlyphStrip_.animationTimer = 0.0f;
+    gameOverTitleGlyphStrip_.initialized = false;
+
+    if (!spriteCommon_) {
+        return;
+    }
+
+    constexpr float spacing = 14.0f;
+    float totalWidth = spacing * static_cast<float>(kGameOverGlyphSources.size() - 1);
+    for (const auto& source : kGameOverGlyphSources) {
+        totalWidth += ResolveGameOverGlyphSize(source).x;
+    }
+
+    float currentX = -totalWidth * 0.5f;
+    for (const auto& source : kGameOverGlyphSources) {
+        const Vector2 glyphSize = ResolveGameOverGlyphSize(source);
+
+        auto glyph = std::make_unique<Sprite>();
+        glyph->Initialize(spriteCommon_.get(), Sprite::LoadTexture(source.textureName));
+        glyph->SetTextureName(source.textureName);
+        glyph->SetTextureRect(source.sourceLeftTop, source.sourceSize);
+        glyph->SetSize(glyphSize);
+        glyph->SetPosition(gameOverTitleGlyphStrip_.basePosition);
+        glyph->SetColor({ 1.0f, 0.12f, 0.14f, 0.0f });
+        glyph->Update();
+
+        gameOverTitleGlyphStrip_.baseOffsets.push_back({
+            currentX + glyphSize.x * 0.5f,
+            0.0f
+        });
+        gameOverTitleGlyphStrip_.baseSizes.push_back(glyphSize);
+        gameOverTitleGlyphStrip_.glyphs.push_back(std::move(glyph));
+
+        currentX += glyphSize.x + spacing;
+    }
+
+    gameOverTitleGlyphStrip_.initialized = true;
+
+    gameOverEnterTextSprite_ = std::make_unique<Sprite>();
+    gameOverEnterTextSprite_->Initialize(spriteCommon_.get(), Sprite::LoadTexture("enter_text.png"));
+    gameOverEnterTextSprite_->SetTextureName("enter_text.png");
+    gameOverEnterTextSprite_->SetPosition({ 1375.0f, 825.0f });
+    gameOverEnterTextSprite_->SetSize(gameOverEnterTextBaseSize_);
+    gameOverEnterTextSprite_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    gameOverEnterTextSprite_->Update();
+}
+
+void GamePlayScene::ResetGameOverUiVisuals() {
+    gameOverUiTimer_ = 0.0f;
+    gameOverMenuBlinkTimer_ = 0.0f;
+    currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Restart;
+    isGameOverUiReady_ = false;
+
+    HideGameOverUi();
+    gameOverTitleGlyphStrip_.animationTimer = 0.0f;
+}
+
+void GamePlayScene::UpdateGameOverTitleGlyphs(float deltaTime, float alpha) {
+    if (!gameOverTitleGlyphStrip_.initialized) {
+        return;
+    }
+
+    gameOverTitleGlyphStrip_.animationTimer += deltaTime;
+    const float baseAlpha = Clamp01(alpha);
+
+    for (int i = 0; i < static_cast<int>(gameOverTitleGlyphStrip_.glyphs.size()); ++i) {
+        if (!gameOverTitleGlyphStrip_.glyphs[i] ||
+            i >= static_cast<int>(gameOverTitleGlyphStrip_.baseOffsets.size()) ||
+            i >= static_cast<int>(gameOverTitleGlyphStrip_.baseSizes.size())) {
+            continue;
+        }
+
+        const float localTime = gameOverTitleGlyphStrip_.animationTimer - 0.075f * static_cast<float>(i);
+        const float appearRate = Clamp01(localTime / 0.48f);
+        const float fadeRate = Clamp01(localTime / 0.18f);
+        const float eased = EaseOutCubic(appearRate);
+        const float settle = std::sin(appearRate * 3.14159265f) * (1.0f - appearRate);
+        const float direction = (i % 2 == 0) ? -1.0f : 1.0f;
+        const Vector2& offset = gameOverTitleGlyphStrip_.baseOffsets[i];
+        const Vector2& baseSize = gameOverTitleGlyphStrip_.baseSizes[i];
+        const float entryOffsetY = -92.0f * (1.0f - eased) + 12.0f * settle;
+        const float entryOffsetX = direction * 18.0f * (1.0f - eased);
+        const float glyphScale = 0.78f + 0.22f * eased + 0.12f * settle;
+
+        gameOverTitleGlyphStrip_.glyphs[i]->SetPosition({
+            gameOverTitleGlyphStrip_.basePosition.x + offset.x + entryOffsetX,
+            gameOverTitleGlyphStrip_.basePosition.y + offset.y + entryOffsetY
+        });
+        gameOverTitleGlyphStrip_.glyphs[i]->SetSize({
+            baseSize.x * glyphScale,
+            baseSize.y * glyphScale
+        });
+        gameOverTitleGlyphStrip_.glyphs[i]->SetRotation(direction * 0.12f * (1.0f - eased));
+        gameOverTitleGlyphStrip_.glyphs[i]->SetColor({
+            1.0f,
+            0.12f,
+            0.14f,
+            baseAlpha * fadeRate
+        });
+        gameOverTitleGlyphStrip_.glyphs[i]->Update();
+    }
+}
+
+void GamePlayScene::UpdateGameOverMenuVisuals(float deltaTime, float alpha) {
+    const float menuAlpha = Clamp01(alpha);
+    gameOverMenuBlinkTimer_ += deltaTime;
+    const float blink = 0.5f + 0.5f * std::sin(gameOverMenuBlinkTimer_ * 6.0f);
+    const float selectedAlpha = 0.62f + 0.38f * blink;
+    const float selectedScale = 1.07f + 0.05f * blink;
+
+    auto ApplyEffect = [&](Sprite* sprite, bool isSelected, const Vector2& baseSize) {
+        if (!sprite) {
+            return;
+        }
+
+        sprite->SetColor(
+            isSelected
+            ? Vector4{ 1.0f, 1.0f, 1.0f, selectedAlpha * menuAlpha }
+            : Vector4{ 0.5f, 0.5f, 0.5f, 0.35f * menuAlpha });
+        sprite->SetSize(
+            isSelected
+            ? Vector2{ baseSize.x * selectedScale, baseSize.y * selectedScale }
+            : baseSize);
+        };
+
+    ApplyEffect(restartTextSprite_, currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart, gameOverRestartBaseSize_);
+    ApplyEffect(titleTextSprite_, currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title, gameOverTitleBaseSize_);
+
+    if (gameOverEnterTextSprite_) {
+        const bool useGamepadUi = inputManager_ && inputManager_->IsGamepadMode();
+        if (gameOverUiUsesGamepad_ != useGamepadUi) {
+            SetSpriteTexturePreserveSize(
+                gameOverEnterTextSprite_.get(),
+                useGamepadUi ? "enter_text_pad.png" : "enter_text.png");
+            gameOverUiUsesGamepad_ = useGamepadUi;
+        }
+
+        const float inputAlpha = (0.45f + 0.55f * blink) * menuAlpha;
+        const float inputScale = 1.0f + 0.035f * blink;
+        gameOverEnterTextSprite_->SetColor({ 1.0f, 1.0f, 1.0f, inputAlpha });
+        gameOverEnterTextSprite_->SetSize({
+            gameOverEnterTextBaseSize_.x * inputScale,
+            gameOverEnterTextBaseSize_.y * inputScale
+        });
+        gameOverEnterTextSprite_->Update();
+    }
+}
+
+void GamePlayScene::DrawGameOverTitleGlyphs() {
+    for (const auto& glyph : gameOverTitleGlyphStrip_.glyphs) {
+        if (glyph) {
+            glyph->Draw();
+        }
+    }
+}
+
+void GamePlayScene::HideGameOverUi() {
+    auto SetAlphaZero = [](Sprite* sprite) {
+        if (!sprite) {
+            return;
+        }
+
+        Vector4 color = sprite->GetColor();
+        color.w = 0.0f;
+        sprite->SetColor(color);
+    };
+
+    SetAlphaZero(gameOverTextSprite_);
+    SetAlphaZero(restartTextSprite_);
+    SetAlphaZero(titleTextSprite_);
+
+    for (auto& glyph : gameOverTitleGlyphStrip_.glyphs) {
+        SetAlphaZero(glyph.get());
+        if (glyph) {
+            glyph->Update();
+        }
+    }
+
+    if (gameOverEnterTextSprite_) {
+        SetAlphaZero(gameOverEnterTextSprite_.get());
+        gameOverEnterTextSprite_->SetSize(gameOverEnterTextBaseSize_);
+        gameOverEnterTextSprite_->Update();
+    }
 }
 
 void GamePlayScene::ApplyTutorialInputUiIfNeeded() {
@@ -158,6 +415,7 @@ void GamePlayScene::Initialize() {
     seElevatorHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/Elevator.mp3");
     seOpenDoor1Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/OpenDoor1.mp3");
     seOpenDoor2Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/OpenDoor2.mp3");
+    seBridgeMagmaHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/magma.mp3");
 
     // --- 2. 各種マネージャ初期化 ---
     EventManager::GetInstance()->ClearAllListeners();
@@ -237,6 +495,8 @@ void GamePlayScene::Initialize() {
 
     timeAttackUI_ = std::make_unique<TimeAttackUI>();
     timeAttackUI_->Initialize(spriteCommon_.get());
+    timeAttackUI_->SetPosition({ 1260.0f, 52.0f }, 0.75f);
+    timeAttackUI_->SetScale(0.78f);
 
     // --- スプライトの中から探索
     for (auto& sprite : sprites_) {
@@ -292,6 +552,9 @@ void GamePlayScene::Initialize() {
     gameOverTextSprite_ = GetSpriteByName("GameOverText.png");
     restartTextSprite_ = GetSpriteByName("restartText.png");
     titleTextSprite_ = GetSpriteByName("titleText.png");
+    gameOverRestartBaseSize_ = restartTextSprite_ ? restartTextSprite_->GetSize() : Vector2{};
+    gameOverTitleBaseSize_ = titleTextSprite_ ? titleTextSprite_->GetSize() : Vector2{};
+    InitializeGameOverTitleGlyphs();
 
     auto SetAlphaZero = [](Sprite* sprite) {
         if (sprite) {
@@ -303,6 +566,7 @@ void GamePlayScene::Initialize() {
     SetAlphaZero(gameOverTextSprite_);
     SetAlphaZero(restartTextSprite_);
     SetAlphaZero(titleTextSprite_);
+    HideGameOverUi();
     isGameOverUiReady_ = false; // フラグのリセット
     for (auto& sprite : sprites_) {
         if (sprite->GetName() == "bossrHpBar") {
@@ -365,6 +629,14 @@ void GamePlayScene::Initialize() {
     optionPoseTextSprite_ = GetSpriteByName("optionText.png");
     tabPauseTextSprite_ = GetSpriteByName("tab_text.png");
     optionControlsSprite_ = GetSpriteByName("option_controls.png");
+
+    if (poseBackSprite_) {
+        poseBackSprite_->SetPosition({ 960.0f, 540.0f });
+        poseBackSprite_->SetSize({ 1920.0f, 1080.0f });
+    }
+    pauseRestartTextBaseSize_ = restartPoseTextSprite_ ? restartPoseTextSprite_->GetSize() : Vector2{};
+    pauseOptionTextBaseSize_ = optionPoseTextSprite_ ? optionPoseTextSprite_->GetSize() : Vector2{};
+    pauseTitleTextBaseSize_ = titleTextPoseSprite_ ? titleTextPoseSprite_->GetSize() : Vector2{};
 
     auto SetAlpha = [](Sprite* sprite, float alpha) {
         if (sprite) {
@@ -771,6 +1043,7 @@ void GamePlayScene::Finalize() {
     // ループ音の強制停止
     audioPlayer_->StopSe(seElevatorHandle_);
     audioPlayer_->StopSe(seOpenDoor2Handle_);
+    StopBridgeMagmaSe();
 }
 
 void GamePlayScene::Update(float deltaTime) {
@@ -861,6 +1134,7 @@ bool GamePlayScene::HandleEscapeKey() {
             SetAlpha(optionPoseTextSprite_, 0.0f);
             SetAlpha(optionControlsSprite_, 0.0f);
             currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
+            pauseMenuBlinkTimer_ = 0.0f;
         }
         else {
             // ゲームプレイ中なら今まで通り終了
@@ -910,6 +1184,7 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
 
             // 選択位置をリセット
             currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
+            pauseMenuBlinkTimer_ = 0.0f;
         }
     }
 
@@ -940,29 +1215,7 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
             audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
         }
 
-        // 選択中の項目をハイライト
-        Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f };
-        Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-        if (restartPoseTextSprite_)
-            restartPoseTextSprite_->SetColor(
-                currentPauseMenuIndex_ == (int)PauseMenuIndex::Restart ? selectColor
-                : normalColor);
-        if (optionPoseTextSprite_)
-            optionPoseTextSprite_->SetColor(
-                currentPauseMenuIndex_ == (int)PauseMenuIndex::Option ? selectColor
-                : normalColor);
-        if (titleTextPoseSprite_)
-            titleTextPoseSprite_->SetColor(
-                currentPauseMenuIndex_ == (int)PauseMenuIndex::Title ? selectColor
-                : normalColor);
-
-        // optionTextはポーズメニュー時のみ表示
-        if (optionPoseTextSprite_) {
-            Vector4 color = optionPoseTextSprite_->GetColor();
-            color.w = 1.0f;
-            optionPoseTextSprite_->SetColor(color);
-        }
+        UpdatePauseMenuVisuals(originalDeltaTime);
 
         // 決定ボタンで遷移
         if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
@@ -1186,6 +1439,7 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                         trans->translate.y = bridgeMagmaEnterY;
                         obj->UpdateWorldMatrix();
                         bridgeCenterMagmaImpactPlayed_ = true;
+                        PlayBridgeMagmaSeIfNeeded();
                     }
                     if (!bridgeFallSe1Played_) {
                         audioPlayer_->PlaySE(seFallBridgeHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
@@ -1205,6 +1459,7 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                         trans->translate.y = bridgeMagmaEnterY;
                         obj->UpdateWorldMatrix();
                         bridgeBackMagmaImpactPlayed_ = true;
+                        PlayBridgeMagmaSeIfNeeded();
                     }
                     if (!bridgeFallSe2Played_) {
                         audioPlayer_->PlaySE(seFallBridgeHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
@@ -1224,6 +1479,7 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                         trans->translate.y = bridgeMagmaEnterY;
                         obj->UpdateWorldMatrix();
                         bridgeFrontMagmaImpactPlayed_ = true;
+                        PlayBridgeMagmaSeIfNeeded();
                     }
                     if (!bridgeFallSe3Played_) {
                         audioPlayer_->PlaySE(seFallBridgeHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
@@ -1276,6 +1532,7 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                     obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
                 }
             }
+            StopBridgeMagmaSe();
             movieState_ = MovieState::kNone;
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
@@ -1912,6 +2169,60 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
                 audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
             }
 
+            if (!isGameOverUiStarted_) {
+                isGameOverUiStarted_ = true;
+                ResetGameOverUiVisuals();
+            }
+
+            gameOverUiTimer_ += originalDeltaTime;
+            const float titleAlpha = Clamp01(gameOverUiTimer_ / 0.75f);
+            const float menuAlpha = Clamp01((gameOverUiTimer_ - 0.45f) / 0.55f);
+
+            if (gameOverUiTimer_ >= 1.05f) {
+                isGameOverUiReady_ = true;
+            }
+
+            if (isGameOverUiReady_) {
+                InputManager* input = InputManager::GetInstance();
+
+                bool cursorMoved = false;
+                if (input->IsActionTriggered("Forward")) {
+                    currentGameOverMenuIndex_--;
+                    if (currentGameOverMenuIndex_ < 0) {
+                        currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Max - 1;
+                    }
+                    cursorMoved = true;
+                }
+                if (input->IsActionTriggered("Backward")) {
+                    currentGameOverMenuIndex_++;
+                    if (currentGameOverMenuIndex_ >= (int)GameOverMenuIndex::Max) {
+                        currentGameOverMenuIndex_ = 0;
+                    }
+                    cursorMoved = true;
+                }
+                if (cursorMoved) {
+                    audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
+                }
+
+                if (input->IsActionTriggered("Jump")) {
+                    audioPlayer_->PlaySE(seDecide_, false, 1.0f);
+                    if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Restart) {
+                        isRestartTransition_ = true;
+                        restartTimer_ = 0.0f;
+                        HideGameOverUi();
+                    }
+                    else if (currentGameOverMenuIndex_ == (int)GameOverMenuIndex::Title) {
+                        isTitleTransition_ = true;
+                        restartTimer_ = 0.0f;
+                        HideGameOverUi();
+                    }
+                }
+            }
+
+            UpdateGameOverTitleGlyphs(originalDeltaTime, titleAlpha);
+            UpdateGameOverMenuVisuals(originalDeltaTime, menuAlpha);
+            return;
+
             // --- 1. テキストのフェードイン ---
             if (!isGameOverUiReady_) {
                 bool allFadedIn = true;
@@ -2366,6 +2677,13 @@ void GamePlayScene::DrawUI() {
         }
     }
 
+    if (isGameOver && !isPaused_ && !isOptionMenu_) {
+        DrawGameOverTitleGlyphs();
+        if (gameOverEnterTextSprite_) {
+            gameOverEnterTextSprite_->Draw();
+        }
+    }
+
     // ロックオンアイコンとタイムアタックUI
     if (isDrawLockOn_ && lockOnSprite_ && !isPaused_ && !isOptionMenu_ && !isCinematic && !isGameOver) {
         lockOnSprite_->Draw();
@@ -2715,6 +3033,32 @@ void GamePlayScene::UpdateUI(float deltaTime) {
     }
 }
 
+void GamePlayScene::PlayBridgeMagmaSeIfNeeded() {
+    if (!audioPlayer_ || isBridgeMagmaSePlaying_ ||
+        seBridgeMagmaHandle_ == AudioPlayer::kInvalidAudioHandle) {
+        return;
+    }
+
+    audioPlayer_->PlaySE(
+        seBridgeMagmaHandle_,
+        true,
+        SaveDataManager::GetInstance()->GetSEVolume() * 0.85f);
+    isBridgeMagmaSePlaying_ = true;
+}
+
+void GamePlayScene::StopBridgeMagmaSe() {
+    if (!audioPlayer_) {
+        isBridgeMagmaSePlaying_ = false;
+        return;
+    }
+
+    if (isBridgeMagmaSePlaying_ ||
+        audioPlayer_->IsPlaying(seBridgeMagmaHandle_)) {
+        audioPlayer_->StopSe(seBridgeMagmaHandle_);
+    }
+    isBridgeMagmaSePlaying_ = false;
+}
+
 void GamePlayScene::StartBridgeDropMovie() {
     if (movieState_ != MovieState::kNone || hasBridgeDropped_)
         return;
@@ -2725,6 +3069,7 @@ void GamePlayScene::StartBridgeDropMovie() {
     bridgeCenterMagmaImpactPlayed_ = false;
     bridgeBackMagmaImpactPlayed_ = false;
     bridgeFrontMagmaImpactPlayed_ = false;
+    StopBridgeMagmaSe();
     bridgeFallSe1Played_ = false;
     bridgeFallSe2Played_ = false;
     bridgeFallSe3Played_ = false;
@@ -2796,6 +3141,7 @@ bool GamePlayScene::PrepareBridgeDropPreviewForDebug() {
     bridgeCenterMagmaImpactPlayed_ = false;
     bridgeBackMagmaImpactPlayed_ = false;
     bridgeFrontMagmaImpactPlayed_ = false;
+    StopBridgeMagmaSe();
     bridgeFallSe1Played_ = false;
     bridgeFallSe2Played_ = false;
     bridgeFallSe3Played_ = false;

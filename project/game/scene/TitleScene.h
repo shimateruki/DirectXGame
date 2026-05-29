@@ -97,7 +97,10 @@ private:
     const float spritesAppearDuration_ = 0.6f;
     std::vector<int> menuSpriteIndices_;
     std::vector<float> spriteBaseYs_;
+    std::vector<Vector2> spriteBaseSizes_;
     Sprite* enterTextSprite_ = nullptr;
+    Vector2 enterTextBaseSize_ = {};
+    float titleMenuBlinkTimer_ = 0.0f;
     bool titleUiUsesGamepad_ = false;
     bool hasAppliedTitleInputUi_ = false;
 

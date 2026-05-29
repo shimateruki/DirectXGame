@@ -28,6 +28,7 @@
 #include <SaveDataManager.h>
 #include "PlayerState.h"
 #include "PostEffect.h"
+#include "WinApp.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -48,6 +49,8 @@ constexpr float kResultLabelGlyphHeight = 52.0f;
 constexpr float kMenuRunOutDuration = 1.28f;
 constexpr Vector2 kRetryMenuBaseSize = { 320.0f, 80.0f };
 constexpr Vector2 kTitleMenuBaseSize = { 352.0f, 88.0f };
+constexpr float kResultMenuOuterMarginRatio = 0.18f;
+constexpr float kResultMenuYRatio = 0.40f;
 
 struct ClearTitleGlyphSource {
     const char* textureName;
@@ -138,6 +141,26 @@ Vector4 GetMenuAccentColor(int menuIndex) {
     return menuIndex == 0
         ? Vector4{ 0.48f, 0.90f, 1.0f, 1.0f }
         : Vector4{ 1.0f, 0.78f, 0.30f, 1.0f };
+}
+
+Vector2 GetRetryMenuPosition() {
+    const float screenWidth = static_cast<float>(WinApp::kClientWidth);
+    const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+    const float outerMargin = screenWidth * kResultMenuOuterMarginRatio;
+    return {
+        outerMargin + kRetryMenuBaseSize.x * 0.5f,
+        screenHeight * kResultMenuYRatio
+    };
+}
+
+Vector2 GetTitleMenuPosition() {
+    const float screenWidth = static_cast<float>(WinApp::kClientWidth);
+    const float screenHeight = static_cast<float>(WinApp::kClientHeight);
+    const float outerMargin = screenWidth * kResultMenuOuterMarginRatio;
+    return {
+        screenWidth - outerMargin - kTitleMenuBaseSize.x * 0.5f,
+        screenHeight * kResultMenuYRatio
+    };
 }
 }
 
@@ -358,6 +381,7 @@ void GameClearScene::InitializeClearTitleGlyphStrip() {
     clearTitleGlyphStrip_.glyphs.clear();
     clearTitleGlyphStrip_.baseOffsets.clear();
     clearTitleGlyphStrip_.baseSizes.clear();
+    clearTitleGlyphStrip_.baseColors.clear();
     clearTitleGlyphStrip_.basePosition = { 1120.0f, 104.0f };
     clearTitleGlyphStrip_.animationTimer = 0.0f;
     clearTitleGlyphStrip_.idleWaveEnabled = true;
@@ -378,8 +402,10 @@ void GameClearScene::InitializeClearTitleGlyphStrip() {
     }
 
     float currentX = -totalWidth * 0.5f;
+    int glyphIndex = 0;
     for (const auto& source : kClearTitleGlyphSources) {
         const Vector2 glyphSize = ResolveGlyphSize(source, kResultTitleGlyphScale);
+        const Vector4 glyphBaseColor = { 0.58f, 0.95f, 1.0f, 0.0f };
 
         auto glyph = std::make_unique<Sprite>();
         glyph->Initialize(spriteCommon_.get(), Sprite::LoadTexture(source.textureName));
@@ -387,7 +413,7 @@ void GameClearScene::InitializeClearTitleGlyphStrip() {
         glyph->SetTextureRect(source.sourceLeftTop, source.sourceSize);
         glyph->SetSize(glyphSize);
         glyph->SetPosition(clearTitleGlyphStrip_.basePosition);
-        glyph->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        glyph->SetColor(glyphBaseColor);
         glyph->Update();
 
         clearTitleGlyphStrip_.baseOffsets.push_back({
@@ -395,9 +421,11 @@ void GameClearScene::InitializeClearTitleGlyphStrip() {
             0.0f
         });
         clearTitleGlyphStrip_.baseSizes.push_back(glyphSize);
+        clearTitleGlyphStrip_.baseColors.push_back({ glyphBaseColor.x, glyphBaseColor.y, glyphBaseColor.z, 1.0f });
         clearTitleGlyphStrip_.glyphs.push_back(std::move(glyph));
 
         currentX += glyphSize.x + spacing;
+        ++glyphIndex;
     }
 
     clearTitleGlyphStrip_.initialized = true;
@@ -407,6 +435,7 @@ void GameClearScene::InitializePlayerTimeGlyphStrip() {
     playerTimeGlyphStrip_.glyphs.clear();
     playerTimeGlyphStrip_.baseOffsets.clear();
     playerTimeGlyphStrip_.baseSizes.clear();
+    playerTimeGlyphStrip_.baseColors.clear();
     playerTimeGlyphStrip_.basePosition = { 1110.0f, 238.0f };
     playerTimeGlyphStrip_.animationTimer = 0.0f;
     playerTimeGlyphStrip_.stepDelay = 0.075f;
@@ -453,6 +482,7 @@ void GameClearScene::InitializeBestTimeGlyphStrip() {
     bestTimeGlyphStrip_.glyphs.clear();
     bestTimeGlyphStrip_.baseOffsets.clear();
     bestTimeGlyphStrip_.baseSizes.clear();
+    bestTimeGlyphStrip_.baseColors.clear();
     bestTimeGlyphStrip_.basePosition = { 1110.0f, 498.0f };
     bestTimeGlyphStrip_.animationTimer = 0.0f;
     bestTimeGlyphStrip_.stepDelay = 0.075f;
@@ -497,12 +527,17 @@ void GameClearScene::InitializeBestTimeGlyphStrip() {
 
 void GameClearScene::ResetGlyphStrip(ResultGlyphStrip& strip) {
     strip.animationTimer = 0.0f;
-    for (auto& glyph : strip.glyphs) {
-        if (!glyph) {
+    for (int i = 0; i < static_cast<int>(strip.glyphs.size()); ++i) {
+        if (!strip.glyphs[i]) {
             continue;
         }
-        glyph->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
-        glyph->Update();
+        Vector4 color = { 1.0f, 1.0f, 1.0f, 0.0f };
+        if (i < static_cast<int>(strip.baseColors.size())) {
+            color = strip.baseColors[i];
+            color.w = 0.0f;
+        }
+        strip.glyphs[i]->SetColor(color);
+        strip.glyphs[i]->Update();
     }
 }
 
@@ -513,12 +548,17 @@ void GameClearScene::UpdateGlyphStrip(ResultGlyphStrip& strip, float deltaTime, 
 
     const float alpha = Clamp01(color.w);
     if (alpha <= 0.001f) {
-        for (auto& glyph : strip.glyphs) {
-            if (glyph) {
+        for (int i = 0; i < static_cast<int>(strip.glyphs.size()); ++i) {
+            if (strip.glyphs[i]) {
                 Vector4 hiddenColor = color;
+                if (i < static_cast<int>(strip.baseColors.size())) {
+                    hiddenColor.x = strip.baseColors[i].x;
+                    hiddenColor.y = strip.baseColors[i].y;
+                    hiddenColor.z = strip.baseColors[i].z;
+                }
                 hiddenColor.w = 0.0f;
-                glyph->SetColor(hiddenColor);
-                glyph->Update();
+                strip.glyphs[i]->SetColor(hiddenColor);
+                strip.glyphs[i]->Update();
             }
         }
         return;
@@ -578,6 +618,11 @@ void GameClearScene::UpdateGlyphStrip(ResultGlyphStrip& strip, float deltaTime, 
         strip.glyphs[i]->SetRotation(entryRotation + waveRotation);
 
         Vector4 glyphColor = color;
+        if (i < static_cast<int>(strip.baseColors.size())) {
+            glyphColor.x *= strip.baseColors[i].x;
+            glyphColor.y *= strip.baseColors[i].y;
+            glyphColor.z *= strip.baseColors[i].z;
+        }
         glyphColor.x = std::min(1.0f, glyphColor.x + 0.22f * flash);
         glyphColor.y = std::min(1.0f, glyphColor.y + 0.18f * flash);
         glyphColor.z = std::min(1.0f, glyphColor.z + 0.08f * flash);
@@ -992,6 +1037,14 @@ void GameClearScene::Initialize() {
         bestTimeSprite_->SetSize({ 450.0f, 90.0f });
         bestTimeSprite_->SetVisible(false);
     }
+    if (retryTextSprite_) {
+        retryTextSprite_->SetPosition(GetRetryMenuPosition());
+        retryTextSprite_->SetSize(kRetryMenuBaseSize);
+    }
+    if (titleTextSprite_) {
+        titleTextSprite_->SetPosition(GetTitleMenuPosition());
+        titleTextSprite_->SetSize(kTitleMenuBaseSize);
+    }
     InitializeClearTitleGlyphStrip();
     InitializePlayerTimeGlyphStrip();
     InitializeBestTimeGlyphStrip();
@@ -1263,6 +1316,9 @@ void GameClearScene::Update(float deltaTime) {
 
         // 強調演出の更新
         {
+            if (retryTextSprite_) retryTextSprite_->SetPosition(GetRetryMenuPosition());
+            if (titleTextSprite_) titleTextSprite_->SetPosition(GetTitleMenuPosition());
+
             const float blink = 0.5f + 0.5f * std::sin(stateTimer_ * 6.0f);
             auto ApplyEffect = [&](Sprite* s, bool isSelected, const Vector2& baseSize) {
                 if (!s) return;

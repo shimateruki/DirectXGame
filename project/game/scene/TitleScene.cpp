@@ -148,16 +148,19 @@ void TitleScene::Initialize() {
   // --- メニュー項目スプライトのインデックスと初期Y座標を特定 ---
   menuSpriteIndices_.clear();
   spriteBaseYs_.clear();
+  spriteBaseSizes_.clear();
   for (int i = 0; i < (int)sprites_.size(); ++i) {
     const std::string &name = sprites_[i]->GetName();
     if (name == "enter_text.png") {
       enterTextSprite_ = sprites_[i].get();
+      enterTextBaseSize_ = sprites_[i]->GetSize();
     }
     if (name == "gameStartText.png" || name == "title_optionText.png" ||
         name == "exit.png") {
       menuSpriteIndices_.push_back(i);
     }
     spriteBaseYs_.push_back(sprites_[i]->GetPosition().y);
+    spriteBaseSizes_.push_back(sprites_[i]->GetSize());
   }
   ApplyInputUiIfNeeded();
   spritesAppear_ = false;
@@ -265,6 +268,7 @@ void TitleScene::Finalize() {
 void TitleScene::Update(float deltaTime) {
   InputManager *input = InputManager::GetInstance();
   ApplyInputUiIfNeeded();
+  titleMenuBlinkTimer_ += deltaTime;
 
   // ---------------------------------------------------------
   // 0. ESCキーでの強制終了（オプション画面以外）
@@ -418,6 +422,9 @@ void TitleScene::Update(float deltaTime) {
     }
   }
 
+  const float blink = 0.5f + 0.5f * std::sin(titleMenuBlinkTimer_ * 6.0f);
+  const float appearAlpha = spritesAppear_ ? easeT : 0.0f;
+
   // --- メニュー色分け（毎フレーム更新）---
   for (size_t i = 0; i < sprites_.size(); ++i) {
     Sprite *sp = sprites_[i].get();
@@ -425,12 +432,24 @@ void TitleScene::Update(float deltaTime) {
         std::find(menuSpriteIndices_.begin(), menuSpriteIndices_.end(), (int)i);
     if (it != menuSpriteIndices_.end()) {
       int menuIdx = (int)std::distance(menuSpriteIndices_.begin(), it);
+      const Vector2 baseSize = (i < spriteBaseSizes_.size()) ? spriteBaseSizes_[i] : sp->GetSize();
       if (menuIdx == currentMenuIndex_) {
-        sp->SetColor({1.0f, 1.0f, 1.0f, sp->GetColor().w}); // 白
+        const float alpha = (0.62f + 0.38f * blink) * appearAlpha;
+        const float scale = 1.07f + 0.05f * blink;
+        sp->SetColor({1.0f, 1.0f, 1.0f, alpha});
+        sp->SetSize({baseSize.x * scale, baseSize.y * scale});
       } else {
-        sp->SetColor({0.5f, 0.5f, 0.5f, sp->GetColor().w}); // 灰色
+        sp->SetColor({0.5f, 0.5f, 0.5f, 0.55f * appearAlpha});
+        sp->SetSize(baseSize);
       }
     }
+  }
+
+  if (enterTextSprite_ && currentState_ == TitleState::MainMenu) {
+    const float alpha = (0.45f + 0.55f * blink) * appearAlpha;
+    const float scale = 1.0f + 0.035f * blink;
+    enterTextSprite_->SetColor({1.0f, 1.0f, 1.0f, alpha});
+    enterTextSprite_->SetSize({enterTextBaseSize_.x * scale, enterTextBaseSize_.y * scale});
   }
 
   // --- 既存の更新処理 ---

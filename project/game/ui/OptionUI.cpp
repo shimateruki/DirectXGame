@@ -67,8 +67,12 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   selectLeftSprite_ = scene->GetSpriteByName("option/UI_selectLeft.png");
   selectRightSprite_ = scene->GetSpriteByName("option/UI_selectRight.png");
   optionControlSprite_ = scene->GetSpriteByName("option/operationUI.png");
+  creditSprite_ = scene->GetSpriteByName("option/gameCredits.png");
   optionAIconSprite_ = scene->GetSpriteByName("option/optionUI_A.png");
   optionDIconSprite_ = scene->GetSpriteByName("option/optionUI_D.png");
+  if (optionControlSprite_) {
+      optionControlBaseSize_ = optionControlSprite_->GetSize();
+  }
   if (optionAIconSprite_) {
       optionAIconBaseSize_ = optionAIconSprite_->GetSize();
   }
@@ -102,6 +106,7 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   int initialSens = SaveDataManager::GetInstance()->GetCameraSensitivity();
   AudioPlayer::GetInstance()->SetBGMVolume(initialBGM);
   AudioPlayer::GetInstance()->SetSEVolume(initialSE);
+  CameraEditor::GetInstance()->SetCameraSensitivity(initialSens);
   CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(initialSens);
 
   seCursorMove_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Setting/SelectOpen1.mp3");
@@ -137,14 +142,25 @@ void OptionUI::Reset() {
   currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
   currentOptionIndex_ = (int)OptionIndex::Sound;
   currentConfigIndex_ = 0;
+  operationGuideBlinkTime_ = 0.0f;
   tabConfirmBlinkTime_ = 0.0f;
   confirmedTopTab_ = currentTopTab_;
+  SaveDataManager::GetInstance()->Load();
+  AudioPlayer::GetInstance()->SetBGMVolume(SaveDataManager::GetInstance()->GetBGMVolume());
+  AudioPlayer::GetInstance()->SetSEVolume(SaveDataManager::GetInstance()->GetSEVolume());
+  int initialSens = SaveDataManager::GetInstance()->GetCameraSensitivity();
+  CameraEditor::GetInstance()->SetCameraSensitivity(initialSens);
+  CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(initialSens);
+  UpdateSensitivityBar();
+  UpdateBGMBar();
+  UpdateSEBar();
   hasAppliedOptionInputUi_ = false;
   ApplyInputUiIfNeeded();
 }
 
 bool OptionUI::Update(float deltaTime) {
   ApplyInputUiIfNeeded();
+  operationGuideBlinkTime_ += deltaTime;
   InputManager *input = InputManager::GetInstance();
   Vector4 normalColor = {0.5f, 0.5f, 0.5f, 1.0f};
   Vector4 selectColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -152,6 +168,13 @@ bool OptionUI::Update(float deltaTime) {
       tabConfirmBlinkTime_ += deltaTime;
   } else {
       tabConfirmBlinkTime_ = 0.0f;
+  }
+  if (optionControlSprite_ && optionControlBaseSize_.x > 0.0f && optionControlBaseSize_.y > 0.0f) {
+      float pulse = 0.5f + 0.5f * std::sin(operationGuideBlinkTime_ * 5.5f);
+      float alpha = 0.55f + 0.45f * pulse;
+      float scale = 1.0f + 0.035f * pulse;
+      optionControlSprite_->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+      optionControlSprite_->SetSize({ optionControlBaseSize_.x * scale, optionControlBaseSize_.y * scale });
   }
 
   // --- タブなどの表示状態を更新 ---
@@ -388,6 +411,7 @@ bool OptionUI::IsOptionSprite(Sprite *sp) const {
   // 既存レイアウト側のスプライトも対象に含める。
   if (sp == bgSprite_ || sp == titleSprite_ || sp == soundSprite_ ||
       sp == keyboardSprite_ || sp == spaceIconSprite_ || sp == cursorSprite_ ||
+      sp == creditSprite_ ||
       sp == sensitivityBarSprite_ || sp == volumeBarSprite_ ||
       sp == soundConfigCursorSprite_) {
     return true;
@@ -411,6 +435,7 @@ bool OptionUI::IsSpriteVisibleInCurrentTab(Sprite* sp) const {
     if (sp == selectLeftSprite_) return isAudio;
     if (sp == selectRightSprite_) return !isAudio;
     if (sp == cameraSoundUISprite_) return isAudio;
+    if (sp == creditSprite_) return !isAudio;
 
     // オーディオ/カメラタブの場合のみ表示
     if (sp == volumeBarSprite_ || sp == sensitivityBarSprite_ || sp == soundConfigCursorSprite_ ||
@@ -596,7 +621,9 @@ void OptionUI::UpdateSensitivityBar() {
   if (!sensitivityBarSprite_)
     return;
 
-  int sens = CameraEditor::GetInstance()->GetCameraSensitivity();
+  int sens = SaveDataManager::GetInstance()->GetCameraSensitivity();
+  if (sens < -5) sens = -5;
+  if (sens > 5) sens = 5;
 
   // ユーザー指定: -5 = 547.0, 5 = 994.0, 0 = 770.0
   // (994 - 547) / 10 = 44.7px
