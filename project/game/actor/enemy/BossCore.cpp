@@ -331,6 +331,8 @@ void BossCore::Update(float deltaTime) {
                 player->SetControlLock(true);
                 player->SetIsPhysicsActive(false);
                 player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player->SetTranslate({ 0.0f, 2.0f, -68.0f });
+                player->UpdateWorldMatrix();
             }
         }
 
@@ -700,6 +702,18 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     // 死亡演出の進行ロジック
     // ==========================================
+    if (deathPhase_ > 0) {
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetControlLock(true);
+                player->SetIsPhysicsActive(false);
+                player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player->SetTranslate({ 0.0f, 2.0f, -68.0f });
+                player->UpdateWorldMatrix();
+            }
+        }
+    }
+
     if (deathPhase_ == 1 || deathPhase_ == 2) {
         sequenceTimer_ -= deltaTime; // 死亡演出のカウントダウンは実時間
 
