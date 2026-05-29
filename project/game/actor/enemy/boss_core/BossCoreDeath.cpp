@@ -39,6 +39,17 @@ void BossCore::StartDeathSequence() {
 
     DebugConsole::GetInstance()->AddLog("[撃破] ボス沈黙…！！");
 
+    if (target_) {
+        if (auto player = dynamic_cast<Player*>(target_)) {
+            player->SetControlLock(true);
+            player->SetIsControlActive(false);
+            player->SetIsPhysicsActive(false);
+            player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+            player->SetTranslate({ 0.0f, 2.0f, -68.0f });
+            player->UpdateWorldMatrix();
+        }
+    }
+
     // ====================================================
     // ボスに付いているすべてのパーティクルを止める
     // これにより、新しいパーティクルが発生しなくなります。

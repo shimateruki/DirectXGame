@@ -78,9 +78,16 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
         }
     }
 
+    // 先頭6個のブロックを強制的に復活（修復）させて完全な状態で攻撃する
+    for (size_t i = 0; i < std::min(armorBlocks.size(), (size_t)6); ++i) {
+        if (boss->IsArmorBlockBroken(i)) {
+            boss->ReviveArmorBlock(i);
+        }
+    }
+
     // すべての armorBlock（先頭6個）を UpgradeToFunnel にかける (二重生成は UpgradeToFunnel 側で防がれているので安全)
     for (size_t i = 0; i < std::min(armorBlocks.size(), (size_t)6); ++i) {
-        if (armorBlocks[i]) {
+        if (armorBlocks[i] && !boss->IsArmorBlockBroken(i)) {
             boss->UpgradeToFunnel(armorBlocks[i]);
         }
     }
@@ -177,7 +184,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             // ブロックを剣のように配置する基本設定 (最初の1回のみ)
             size_t useCount = std::min(armorBlocks.size(), (size_t)6);
             for (size_t i = 0; i < useCount; ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageRush);
                 armorBlocks[i]->SetParent(nullptr);
                 armorBlocks[i]->SetScale({ 2.0f, 2.0f, 4.0f });
@@ -220,7 +227,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         // 剣ブロックの位置と回転をプレイヤーに向けて更新
         size_t useCount = std::min(armorBlocks.size(), (size_t)6);
         for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             float offset = (float)i * 3.0f;
             Vector3 localPos = { 0.0f, 0.0f, offset };
             Vector3 worldPos = {
@@ -264,7 +271,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
         size_t useCount = std::min(armorBlocks.size(), (size_t)6);
         for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             float offset = (float)i * 3.0f;
             Vector3 localPos = { 0.0f, 0.0f, offset };
             Vector3 worldPos = {
@@ -297,16 +304,16 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ == 0.0f) {
             animStartPos_ = boss->GetTranslate();
             
-            funnelStates_.clear();
-            funnelTimers_.clear();
-            activeLasers_.clear();
-            activeCoreLasers_.clear();
-            laserLengths_.clear();
-            laserDelayTimers_.clear();
+            funnelStates_.assign(armorBlocks.size(), 0);
+            funnelTimers_.assign(armorBlocks.size(), 0.0f);
+            activeLasers_.assign(armorBlocks.size(), nullptr);
+            activeCoreLasers_.assign(armorBlocks.size(), nullptr);
+            laserLengths_.assign(armorBlocks.size(), 160.0f);
+            laserDelayTimers_.assign(armorBlocks.size(), 0.0f);
             
             size_t useCount = std::min(armorBlocks.size(), (size_t)6);
             for (size_t i = 0; i < useCount; ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 
                 // ワールド座標で独立して動かすために親を外す
                 Vector3 worldPos = armorBlocks[i]->GetWorldPosition();
@@ -316,8 +323,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 // ユーザー指定: ブロックサイズを 1x1x1 に縮小する
                 armorBlocks[i]->SetScale({ 1.0f, 1.0f, 1.0f }); 
                 
-                funnelStates_.push_back(0); 
-                funnelTimers_.push_back(0.0f);
+                funnelStates_[i] = 0; 
+                funnelTimers_[i] = 0.0f;
                 
                 // ==========================================
                 // 1. 赤いオーラ（外側のビーム）の生成
@@ -352,9 +359,9 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 laser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 laser->GetTransform()->isQuaternionMaster = false;
                 
-                activeLasers_.push_back(laser.get());
-                laserLengths_.push_back(160.0f);
-                laserDelayTimers_.push_back(0.0f);
+                activeLasers_[i] = laser.get();
+                laserLengths_[i] = 160.0f;
+                laserDelayTimers_[i] = 0.0f;
                 if (currentScene) currentScene->AddObject(std::move(laser));
 
                 // ==========================================
@@ -382,7 +389,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 coreLaser->GetTransform()->isQuaternionMaster = false;
                 
-                activeCoreLasers_.push_back(coreLaser.get());
+                activeCoreLasers_[i] = coreLaser.get();
                 if (currentScene) currentScene->AddObject(std::move(coreLaser));
             }
             
@@ -428,7 +435,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         // ファンネル処理
         size_t useCount = std::min(armorBlocks.size(), (size_t)6);
         for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             
             Object3d* laser = (i < activeLasers_.size()) ? activeLasers_[i] : nullptr;
             Object3d* coreLaser = (i < activeCoreLasers_.size()) ? activeCoreLasers_[i] : nullptr;

@@ -90,6 +90,10 @@ private:
     bool bridgeCenterMagmaImpactPlayed_ = false;
     bool bridgeBackMagmaImpactPlayed_ = false;
     bool bridgeFrontMagmaImpactPlayed_ = false;
+    bool bridgeFallSe1Played_ = false;
+    bool bridgeFallSe2Played_ = false;
+    bool bridgeFallSe3Played_ = false;
+    bool wasLockingOn_ = false;
 #ifdef USE_IMGUI
     bool isBridgeDropPreviewForDebug_ = false;
 #endif
@@ -163,6 +167,8 @@ private:
     uint32_t seOpenDoor2Handle_ = 0;
     uint32_t seMissionHandle_ = 0;
     uint32_t seMissionClear3Handle_ = 0;
+    uint32_t seFallBridgeHandle_ = 0;
+    uint32_t seLockOnHandle_ = 0;
     uint32_t seCursorMove_ = 0;
     uint32_t seDecide_ = 0;
     uint32_t seCancel_ = 0;

@@ -205,6 +205,17 @@ void BossCore::UpdateIdle(float deltaTime) {
             }
         }
 
+        // 最後の演出が始まったらボスコアを割れるときと同じ青色にする
+        SetColor({ 0.0f, 0.59459448f, 1.0f, 1.0f });
+        SetMaterialType(2);
+        SetSelectedLighting(2);
+        SetEmissive(2.0f);
+        SetMetallic(0.0f);
+        SetRoughness(0.5f);
+        SetEnableNormalMap(false);
+        SetEnableEnvMap(false);
+        SetEnvIntensity(0.0f);
+
         if (isFinisherFalling_) {
             // 落下物理
             float gravity = 40.0f;
@@ -252,9 +263,9 @@ void BossCore::UpdateIdle(float deltaTime) {
             // 弱々しい回転
             SetRotation({ 0.3f, std::sin(time * 0.5f) * 0.5f, 0.0f });
 
-            // 赤と黒の弱々しい明滅
+            // 青色の弱々しい明滅（エミッシブで表現）
             float pulse = (std::sin(time * 4.0f) + 1.0f) * 0.5f;
-            SetColor({ 1.0f, pulse * 0.2f, pulse * 0.2f, 1.0f });
+            SetEmissive(1.0f + pulse * 1.5f);
         }
         return;
     }
@@ -355,12 +366,12 @@ void BossCore::UpdateIdle(float deltaTime) {
     if (isBattleStarted_) {
 
         // ====================================================
-        // 4, 5, 6, 7, 8秒のどれかをピタリ選ぶ
+        // 2, 3, 4秒のどれかをピタリ選ぶ
         // ====================================================
-        static float targetIdleTime = 5.0f;
+        static float targetIdleTime = 3.0f;
         if (animTimer_ == 0.0f) {
-            // rand() % 5 は「0, 1, 2, 3, 4」のどれかになるので、それに4を足すと「4, 5, 6, 7, 8」になります
-            int randomSeconds = 4 + (std::rand() % 5);
+            // rand() % 3 は「0, 1, 2」のどれかになるので、それに2を足すと「2, 3, 4」になります
+            int randomSeconds = 2 + (std::rand() % 3);
             targetIdleTime = static_cast<float>(randomSeconds);
 
             DebugConsole::GetInstance()->AddLog("[AI] 次の攻撃まで " + std::to_string(randomSeconds) + " 秒待機します");

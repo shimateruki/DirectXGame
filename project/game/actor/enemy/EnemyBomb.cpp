@@ -27,14 +27,11 @@ void EnemyBomb::Initialize(Object3dCommon* common, const std::string& modelName)
     shakeTimer_ = 0.0f;
     stunTimer_ = 0.0f;
     lastShakeOffset_ = { 0,0,0 };
-    defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     isRolling_ = true;
     rollTimer_ = 0.0f;
-
     if (GetTransform()) {
         defaultScale_ = GetTransform()->scale;
     }
-    SetVisualPartsColor(defaultColor_);
     SetEnemyType("Bomb");
 
     // コライダーを球体（Sphere）に設定
@@ -80,7 +77,9 @@ void EnemyBomb::SetupVisualParts() {
     bodyPart_->SetParent(this);
     bodyPart_->SetTranslate({ 0.0f, 0.0f, 0.0f });
     bodyPart_->SetRotation({ 0.0f, 0.0f, 0.0f });
-    bodyPart_->SetScale({ 0.50f, 0.70f, 0.70f });
+    bodyPart_->SetScale({ 1.0f, 1.0f, 1.0f });
+    //カラーは赤色
+	bodyPart_->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
     bodyPart_->SetCollisionAttribute(0);
     bodyPart_->SetCollisionMask(0);
 
@@ -90,9 +89,11 @@ void EnemyBomb::SetupVisualParts() {
     ringPart_->SetClassName("BombVisual");
     ringPart_->SetModel("boom_2");
     ringPart_->SetParent(this);
-    ringPart_->SetTranslate({ -0.026f, -0.006f, -0.140f });
+    ringPart_->SetTranslate({ -0.0f, -0.0f, -0.0f });
     ringPart_->SetRotation({ 0.0f, 0.0f, 0.0f });
-    ringPart_->SetScale({ 1.08f, 0.70f, 0.70f });
+    ringPart_->SetScale({ 1.0f, 1.0f, 1.0f });
+    //カラーはこげ茶色
+	ringPart_->SetColor({ 0.35f, 0.16f, 0.0f, 1.0f });
     ringPart_->SetCollisionAttribute(0);
     ringPart_->SetCollisionMask(0);
 }
@@ -104,6 +105,16 @@ void EnemyBomb::SetVisualPartsColor(const Vector4& color) {
     }
     if (ringPart_) {
         ringPart_->SetColor(color);
+    }
+}
+
+void EnemyBomb::RestoreVisualPartsColor() {
+    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    if (bodyPart_) {
+        bodyPart_->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+    }
+    if (ringPart_) {
+        ringPart_->SetColor({ 0.35f, 0.16f, 0.0f, 1.0f }); // こげ茶色
     }
 }
 
@@ -216,10 +227,10 @@ void EnemyBomb::Update(float deltaTime) {
             {
                 float blinkInterval = (igniteTimer_ > igniteDuration_ * 0.7f) ? 0.08f : 0.2f;
                 if (std::fmod(igniteTimer_, blinkInterval) < blinkInterval / 2.0f) {
-                    SetVisualPartsColor({ 1.0f, 0.0f, 0.0f, 1.0f }); // 赤色
+                    SetVisualPartsColor({ 1.0f, 1.0f, 0.0f, 1.0f }); // 黄色（爆発の予兆として黄色に点滅）
                 }
                 else {
-                    SetVisualPartsColor(defaultColor_);              // 元の色
+                    RestoreVisualPartsColor();                       // 元の色
                 }
             }
 
@@ -243,7 +254,7 @@ void EnemyBomb::Update(float deltaTime) {
                 state_ = State::Exploded;
 
                 // 爆発の瞬間に見た目をリセットしておく
-                SetVisualPartsColor(defaultColor_);
+                RestoreVisualPartsColor();
                 SetScale(defaultScale_);
             }
         }
@@ -461,8 +472,6 @@ bool EnemyBomb::OnCollision(Object3d* other) {
                 velocity_.z = hitDir.z * kbSpeed;
                 stunTimer_ = 0.2f;
             }
-
-            UpdateColorByHitCount();
         }
         return true;
     }
@@ -485,23 +494,4 @@ bool EnemyBomb::OnCollision(Object3d* other) {
     return true;
 }
 
-void EnemyBomb::UpdateColorByHitCount() {
-    if (hitCount_ < 0) hitCount_ = 0;
 
-    switch (hitCount_) {
-    case 0:
-        defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f }; // 白
-        break;
-    case 1:
-        defaultColor_ = { 1.0f, 1.0f, 0.0f, 1.0f }; // 黄色
-        break;
-    case 2:
-        defaultColor_ = { 1.0f, 0.5f, 0.0f, 1.0f }; // 橙色
-        break;
-    case 3:
-    default:
-        defaultColor_ = { 1.0f, 0.0f, 0.0f, 1.0f }; // 赤色
-        break;
-    }
-    SetVisualPartsColor(defaultColor_);
-}

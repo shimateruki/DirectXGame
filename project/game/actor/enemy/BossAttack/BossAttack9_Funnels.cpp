@@ -53,7 +53,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             blockStartScale_.assign(armorBlocks.size(), {});
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
 
                 boss->UpgradeToFunnel(armorBlocks[i]);
                 armorBlocks[i]->SetIsVisible(false);
@@ -87,7 +87,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
         float easeT = Easing::OutExpo(t);
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
-            if (!armorBlocks[i] || i >= blockStartPos_.size()) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i) || i >= blockStartPos_.size()) continue;
             restoreFunnelCoreColor(armorBlocks[i]);
 
             Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
@@ -126,7 +126,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             laserLengths_.assign(armorBlocks.size(), 160.0f);
             laserDelayTimers_.assign(armorBlocks.size(), 0.0f);
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
 
                 // ==========================================
                 // 1. 赤いオーラ（外側のビーム）の生成
@@ -270,7 +270,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             }
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 bool isShooter = false;
                 for (int s : shooters) {
                     if (i == s) isShooter = true;
@@ -315,7 +315,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
 
         // 個別のファンネル処理
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             restoreFunnelCoreColor(armorBlocks[i]);
             
             Object3d* laser = (i < activeLasers_.size()) ? activeLasers_[i] : nullptr;
@@ -637,7 +637,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
             blockStartPos_.assign(armorBlocks.size(), {});
             blockStartScale_.assign(armorBlocks.size(), {});
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 blockStartPos_[i] = armorBlocks[i]->GetTranslate();
                 blockStartScale_[i] = armorBlocks[i]->GetScale();
             }
@@ -651,7 +651,7 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
         float easeT = Easing::InOutSine(t);
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
-            if (!armorBlocks[i] || i >= blockStartPos_.size()) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i) || i >= blockStartPos_.size()) continue;
 
             // ボスの元の軌道位置を取得
             BossCore::OrbitData orbit = boss->GetIdleOrbit(i);

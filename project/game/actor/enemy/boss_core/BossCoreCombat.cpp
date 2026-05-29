@@ -193,7 +193,7 @@ void BossCore::TakeBodyDamage(float damage) {
                 player->SetIsControlActive(false);
                 player->SetIsPhysicsActive(false);
                 player->SetVelocity({ 0.0f, 0.0f, 0.0f });
-                player->SetTranslate({ 0.0f, 1.231f, -60.0f });
+                player->SetTranslate({ 0.0f, 2.0f, -68.0f });
                 player->UpdateWorldMatrix();
             }
         }
