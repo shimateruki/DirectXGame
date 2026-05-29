@@ -182,6 +182,7 @@ void Player::Update(float deltaTime)
                     deathTimer_ = 0.0f;
                     ChangeState(std::make_unique<PlayerStateDead>());
                     DebugConsole::GetInstance()->AddLog("Player DEAD! 死亡演出開始");
+                    AudioPlayer::GetInstance()->StopBGM(); // やられた瞬間にBGMを停止
                 }
 
                 deathTimer_ += deltaTime;
