@@ -73,14 +73,14 @@ void BossCore::TakeBodyDamage(float damage) {
                 std::vector<BlockSpawnInfo> spawnInfos;
                 spawnInfos.reserve(20);
 
-                // 動的にまばらな配置を生成（最小距離を保証したランダム配置）
+                // 動的にまばらな配置を生成（最小距離を保証したランダム配置、ボスと被らないよう最低半径を拡大）
                 for (int i = 0; i < 20; ++i) {
                     float x = 0.0f, z = 0.0f;
                     bool farEnough = false;
                     int attempts = 0;
                     while (!farEnough && attempts < 100) {
-                        // 半径 15.0f 〜 65.0f の範囲に散布
-                        float radius = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 50.0f;
+                        // 半径 30.0f 〜 70.0f の範囲に散布（ボス本体と重ならないよう内側を空ける）
+                        float radius = 30.0f + (static_cast<float>(rand()) / RAND_MAX) * 40.0f;
                         float angle = (static_cast<float>(rand()) / RAND_MAX) * 3.14159265f * 2.0f;
                         x = std::cos(angle) * radius;
                         z = std::sin(angle) * radius;
