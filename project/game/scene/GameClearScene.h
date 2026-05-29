@@ -83,6 +83,7 @@ private:
         std::vector<std::unique_ptr<Sprite>> glyphs;
         std::vector<Vector2> baseOffsets;
         std::vector<Vector2> baseSizes;
+        std::vector<Vector4> baseColors;
         Vector2 basePosition = { 0.0f, 0.0f };
         float animationTimer = 0.0f;
         float stepDelay = 0.10f;

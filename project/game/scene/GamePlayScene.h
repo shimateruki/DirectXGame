@@ -90,6 +90,7 @@ private:
     bool bridgeCenterMagmaImpactPlayed_ = false;
     bool bridgeBackMagmaImpactPlayed_ = false;
     bool bridgeFrontMagmaImpactPlayed_ = false;
+    bool isBridgeMagmaSePlaying_ = false;
 #ifdef USE_IMGUI
     bool isBridgeDropPreviewForDebug_ = false;
 #endif
@@ -113,9 +114,18 @@ private:
     void UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode, Camera* camera, Math& math);
     void UpdateSceneObjects(float deltaTime);
     void UpdateGameOver(float originalDeltaTime);
+    void InitializeGameOverTitleGlyphs();
+    void ResetGameOverUiVisuals();
+    void UpdateGameOverTitleGlyphs(float deltaTime, float alpha);
+    void UpdateGameOverMenuVisuals(float deltaTime, float alpha);
+    void DrawGameOverTitleGlyphs();
+    void HideGameOverUi();
     void UpdateGameplaySystems(float deltaTime);
     void UpdateBossMovie(float deltaTime);
     void UpdateClearSequence(float deltaTime);
+    void PlayBridgeMagmaSeIfNeeded();
+    void StopBridgeMagmaSe();
+    void UpdatePauseMenuVisuals(float deltaTime);
 #ifdef USE_IMGUI
     bool PrepareBridgeDropPreviewForDebug();
 #endif
@@ -161,6 +171,7 @@ private:
     uint32_t seElevatorHandle_ = 0;
     uint32_t seOpenDoor1Handle_ = 0;
     uint32_t seOpenDoor2Handle_ = 0;
+    uint32_t seBridgeMagmaHandle_ = 0;
     uint32_t seMissionHandle_ = 0;
     uint32_t seMissionClear3Handle_ = 0;
     uint32_t seCursorMove_ = 0;
@@ -225,9 +236,27 @@ private:
     int currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Restart;
     bool isGameOverUiReady_ = false;
 
+    struct GameOverGlyphStrip {
+        std::vector<std::unique_ptr<Sprite>> glyphs;
+        std::vector<Vector2> baseOffsets;
+        std::vector<Vector2> baseSizes;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        float animationTimer = 0.0f;
+        bool initialized = false;
+    };
+
     Sprite* gameOverTextSprite_ = nullptr;
     Sprite* restartTextSprite_ = nullptr;
     Sprite* titleTextSprite_ = nullptr;
+    GameOverGlyphStrip gameOverTitleGlyphStrip_;
+    std::unique_ptr<Sprite> gameOverEnterTextSprite_;
+    Vector2 gameOverRestartBaseSize_ = {};
+    Vector2 gameOverTitleBaseSize_ = {};
+    Vector2 gameOverEnterTextBaseSize_ = { 275.0f, 46.0f };
+    float gameOverUiTimer_ = 0.0f;
+    float gameOverMenuBlinkTimer_ = 0.0f;
+    bool isGameOverUiStarted_ = false;
+    bool gameOverUiUsesGamepad_ = false;
     std::unique_ptr<GPUParticleEmitter> emitterA_;
     std::unique_ptr<GPUParticleEmitter> emitterB_;
     std::unique_ptr<GPUParticleEmitter> emitterC_;
@@ -253,6 +282,10 @@ private:
     Sprite* titleTextPoseSprite_ = nullptr;
     Sprite* tabPauseTextSprite_ = nullptr;
     Sprite* optionControlsSprite_ = nullptr;
+    Vector2 pauseRestartTextBaseSize_ = {};
+    Vector2 pauseOptionTextBaseSize_ = {};
+    Vector2 pauseTitleTextBaseSize_ = {};
+    float pauseMenuBlinkTimer_ = 0.0f;
     bool pauseUiUsesGamepad_ = false;
     bool hasAppliedPauseInputUi_ = false;
     bool isGameClearSequence_ = false;

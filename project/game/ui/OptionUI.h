@@ -63,10 +63,13 @@ private:
     Sprite* selectLeftSprite_ = nullptr;
     Sprite* selectRightSprite_ = nullptr;
     Sprite* optionControlSprite_ = nullptr;
+    Sprite* creditSprite_ = nullptr;
     Sprite* optionAIconSprite_ = nullptr;
     Sprite* optionDIconSprite_ = nullptr;
+    Vector2 optionControlBaseSize_ = { 0.0f, 0.0f };
     Vector2 optionAIconBaseSize_ = { 0.0f, 0.0f };
     Vector2 optionDIconBaseSize_ = { 0.0f, 0.0f };
+    float operationGuideBlinkTime_ = 0.0f;
     float tabConfirmBlinkTime_ = 0.0f;
     int confirmedTopTab_ = (int)TopTab::AudioCamera;
     bool optionUiUsesGamepad_ = false;
