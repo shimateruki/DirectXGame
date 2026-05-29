@@ -434,8 +434,9 @@ void BossCore::Update(float deltaTime) {
                         dir.z = std::sin(angle);
                     }
 
-                    float horizontalSpeed = 7.0f + (rand() % 30) * 0.1f; // 15〜20 から半分程度に減少
-                    float verticalSpeed = 7.0f + (rand() % 30) * 0.1f;   // 15〜20 から半分程度に減少
+                    // 重なりを避けるため、水平方向の吹き飛ぶ最低速度を上げる（元は7.0fだったものを15.0f以上に）
+                    float horizontalSpeed = 15.0f + (rand() % 30) * 0.3f; 
+                    float verticalSpeed = 7.0f + (rand() % 30) * 0.1f;
 
                     fallingBlockVelocities_.push_back({
                         dir.x * horizontalSpeed,
@@ -916,9 +917,9 @@ void BossCore::Update(float deltaTime) {
 
 
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-                // ボスを中心に、半径15～30の距離に散らす
+                // ボスを中心にランダムに散らす（重なりを避けるため、最低半径を30に拡大）
                 float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
-                float distance = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 15.0f;
+                float distance = 30.0f + (static_cast<float>(rand()) / RAND_MAX) * 20.0f;
 
                 // ====================================================
                 // ブロックは「ボスの子供（ローカル座標）」なので計算を変えます
