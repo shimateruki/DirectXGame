@@ -10,8 +10,10 @@ private:
 
     // ロックオンしたブロックだけを入れる専用リスト
     std::vector<MapBlock*> targetMapBlocks_;
+    BossCore* boss_ = nullptr;
 
 public:
     void Initialize(BossCore* boss) override;
     void Update(BossCore* boss, float deltaTime) override;
+    void Finalize() override;
 };

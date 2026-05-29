@@ -23,6 +23,7 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include <SaveDataManager.h>
 
 void GameOverScene::Initialize() {
     // --- 1. エンジン基盤の取得 ---
@@ -34,7 +35,9 @@ void GameOverScene::Initialize() {
     ModelManager::GetInstance()->LoadModel("player");
     LOG("GameOverScene Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/GameOver.mp3");
+    SaveDataManager::GetInstance()->Load();
+    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/defeat/defeat.mp3");
+    audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
 
     // --- 3. 共通クラス・マネージャの初期化 ---
     CameraManager::GetInstance()->Initialize();

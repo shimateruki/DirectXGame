@@ -97,4 +97,9 @@ private:
     Sprite* sensitivityBarSprite_ = nullptr;
     Sprite* volumeBarSprite_ = nullptr;         // 音量バーのスプライト（エディタ配置、古い用）
     Sprite* soundConfigCursorSprite_ = nullptr; // サウンド設定画面での項目選択カーソル（エディタ配置、古い用）
+
+    // --- SE ---
+    uint32_t seCursorMove_ = 0;
+    uint32_t seDecide_ = 0;
+    uint32_t seCancel_ = 0;
 };

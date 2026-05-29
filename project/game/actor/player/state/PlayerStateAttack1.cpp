@@ -1,10 +1,14 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStateAttack1::Enter(Player* player)
 {
 	DebugConsole::GetInstance()->AddLog("★ ENTER: Attack1 State");
 
 	if (player) {
+		// 攻撃1段目SEの再生
+		AudioPlayer::GetInstance()->PlaySE(player->GetSESwingMiss1Handle(), false, 1.0f);
+
 		player->SetIsControlActive(false);
 		
 		// タイクラーさんの変更: 攻撃方向の設定

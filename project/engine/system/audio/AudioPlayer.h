@@ -113,6 +113,11 @@ public:
 	/// </summary>
 	void SetSEVolume(float volume);
 
+	/// <summary>
+	/// 指定したSEの音量を変更します。
+	/// </summary>
+	void SetSEVolume(AudioHandle handle, float volume);
+
 	// ▼▼▼ IsPlaying を追加（あると便利） ▼▼▼
 	/// <summary>
 	/// 指定したハンドルが現在再生中か確認します。

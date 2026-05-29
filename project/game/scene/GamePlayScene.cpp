@@ -137,7 +137,25 @@ void GamePlayScene::Initialize() {
 
     LOG("Game Initialized!");
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+    SaveDataManager::GetInstance()->Load();
+    bgmTutorialHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/tutorial.mp3");
+    bgmWindHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/Wind.mp3");
+    bgmBattle01Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/battle_01.mp3");
+    bgmBattle02Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/game/battle_02.mp3");
+    bgmDefeatHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/defeat/defeat.mp3");
+
+    seMissionHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/Mission.mp3");
+    seMissionClear3Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/MissionClear3.mp3");
+
+    seCursorMove_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen1.mp3");
+    seDecide_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen2.mp3");
+    seCancel_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectClose.mp3");
+
+
+    // --- 演出用SEロード ---
+    seElevatorHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/Elevator.mp3");
+    seOpenDoor1Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/OpenDoor1.mp3");
+    seOpenDoor2Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/OpenDoor2.mp3");
 
     // --- 2. 各種マネージャ初期化 ---
     EventManager::GetInstance()->ClearAllListeners();
@@ -668,6 +686,8 @@ void GamePlayScene::Initialize() {
             movieState_ = MovieState::kTutorialPlatformDescent;
             movieTimer_ = 0.0f;
 
+            // エレベーター降下SEの再生（ループ）
+            audioPlayer_->PlaySE(seElevatorHandle_, true, SaveDataManager::GetInstance()->GetSEVolume());
             if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 CameraEditor::GetInstance()->PlayOverrideCamera(camera, "elevator_movie");
             }
@@ -677,6 +697,10 @@ void GamePlayScene::Initialize() {
             player_->SetIsPhysicsActive(false);
         }
     }
+
+    audioPlayer_->StopBGM();
+    bgmHandle_ = bgmTutorialHandle_;
+    audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
 
     // OptionUIの初期化
     optionUI_.Initialize(this, spriteCommon_.get());
@@ -733,6 +757,10 @@ void GamePlayScene::Finalize() {
     // パーティクルの停止
     GPUParticleManager::GetInstance()->StopAutoEmitter(bossContainerTopParticleId_);
     GPUParticleManager::GetInstance()->StopAutoEmitter(bossContainerBottomParticleId_);
+
+    // ループ音の強制停止
+    audioPlayer_->StopSe(seElevatorHandle_);
+    audioPlayer_->StopSe(seOpenDoor2Handle_);
 }
 
 void GamePlayScene::Update(float deltaTime) {
@@ -778,6 +806,25 @@ void GamePlayScene::Update(float deltaTime) {
     UpdateGameOver(originalDeltaTime);
     UpdateGameplaySystems(deltaTime);
     UpdateBossMovie(deltaTime);
+    
+    // ボスHP半減イベントの監視とBGM切り替え
+    if (boss_ && hasBossAppeared_) {
+        float hpRatio = boss_->GetHp() / boss_->GetMaxHp();
+        if (hpRatio <= 0.5f && bgmHandle_ != bgmBattle02Handle_ && bgmHandle_ != bgmDefeatHandle_) {
+            if (boss_->IsHpHalfEventActive()) {
+                // 演出中は一度BGMを停止
+                if (audioPlayer_->IsPlaying(bgmHandle_)) {
+                    audioPlayer_->StopBGM();
+                }
+            }
+            else {
+                // 演出終了後にBGMをbattle_02.mp3に切り替えて再生
+                bgmHandle_ = bgmBattle02Handle_;
+                audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+            }
+        }
+    }
+
     UpdateClearSequence(deltaTime);
 }
 
@@ -825,6 +872,11 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
         }
         else {
             isPaused_ = !isPaused_; // フラグを反転
+            if (isPaused_) {
+                audioPlayer_->PlaySE(seDecide_, false, 1.0f);
+            } else {
+                audioPlayer_->PlaySE(seCancel_, false, 1.0f);
+            }
 
             // 文字用のアルファ値 (1.0 = 完全不透明, 0.0 = 完全透明)
             float textAlpha = isPaused_ ? 1.0f : 0.0f;
@@ -860,16 +912,22 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
         }
     }
     else if (isPaused_) {
+        bool cursorMoved = false;
         // 上下キーで項目切り替え
         if (inputManager_->IsActionTriggered("Forward")) {
             currentPauseMenuIndex_--;
             if (currentPauseMenuIndex_ < 0)
                 currentPauseMenuIndex_ = (int)PauseMenuIndex::Max - 1;
+            cursorMoved = true;
         }
         if (inputManager_->IsActionTriggered("Backward")) {
             currentPauseMenuIndex_++;
             if (currentPauseMenuIndex_ >= (int)PauseMenuIndex::Max)
                 currentPauseMenuIndex_ = 0;
+            cursorMoved = true;
+        }
+        if (cursorMoved) {
+            audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
         }
 
         // 選択中の項目をハイライト
@@ -898,6 +956,7 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
 
         // 決定ボタンで遷移
         if (inputManager_->IsKeyTriggered(DIK_SPACE) || inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+            audioPlayer_->PlaySE(seDecide_, false, 1.0f);
             PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
             postParams->dangerVignette = 0.0f;
             postParams->blackout = 0.0f;
@@ -992,12 +1051,18 @@ void GamePlayScene::UpdateTutorialDoor(float deltaTime) {
                 TutorialDoll* doll = dynamic_cast<TutorialDoll*>(obj.get());
                 if (doll && doll->HasBeenDefeatedAtLeastOnce()) {
                     hasFinishedTutorial_ = true;
+                    audioPlayer_->PlaySE(seMissionClear3Handle_, false, SaveDataManager::GetInstance()->GetSEVolume());
 
                     // ムービー開始
                     movieState_ = MovieState::kTutorialDoorOpen;
                     movieTimer_ = 0.0f;
+                    audioPlayer_->StopBGM();
                     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                     CameraEditor::GetInstance()->PlayOverrideCamera(camera, "tutorial movie");
+
+                    // ドア開閉SEの再生 (開始音と、開放中ループ音)
+                    audioPlayer_->PlaySE(seOpenDoor1Handle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+                    audioPlayer_->PlaySE(seOpenDoor2Handle_, true, SaveDataManager::GetInstance()->GetSEVolume());
 
                     break;
                 }
@@ -1010,6 +1075,9 @@ void GamePlayScene::UpdateTutorialDoor(float deltaTime) {
             doorOpenProgress_ += deltaTime * 0.5f; // 2秒で開く
             if (doorOpenProgress_ > 1.0f) {
                 doorOpenProgress_ = 1.0f;
+                // ドア開放中SEの停止
+                audioPlayer_->StopSe(seOpenDoor2Handle_);
+
                 // ドアが完全に開いた瞬間モデルを消しておく
                 for (auto& obj : objectManager_->GetObjects()) {
                     std::string name = obj->GetName();
@@ -1216,6 +1284,11 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
         if (movieTimer_ > 2.5f) {
             movieState_ = MovieState::kNone;
             hasTutorialMovieFinished_ = true; // ムービー終了
+
+            // 扉が開いた後、WindのBGMを再生
+            bgmHandle_ = bgmWindHandle_;
+            audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume() / 2);
+
             missionSwitchDelayTimer_ = 0.5f;  // 0.5秒待機
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
@@ -1243,6 +1316,8 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                 player_->SetIsControlActive(true);
                 player_->SetIsPhysicsActive(true); // 物理復帰
 
+                // エレベーター降下SEの停止
+                audioPlayer_->StopSe(seElevatorHandle_);
                 if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                     camera->EndOverride(1.5f);
                 }
@@ -1802,6 +1877,12 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
         // プレイヤーの点滅演出(3.5秒)が終わったら処理開始
         if (player_->GetDeathTimer() > 3.5f) {
 
+            // BGMを敗北曲（defeat.mp3）に切り替える
+            if (bgmHandle_ != bgmDefeatHandle_) {
+                bgmHandle_ = bgmDefeatHandle_;
+                audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+            }
+
             // --- 1. テキストのフェードイン ---
             if (!isGameOverUiReady_) {
                 bool allFadedIn = true;
@@ -1832,16 +1913,22 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
             else {
                 InputManager* input = InputManager::GetInstance();
 
+                bool cursorMoved = false;
                 // 上下キーで項目切り替え (パッドの十字キーにも対応)
                 if (input->IsActionTriggered("Forward")) {
                     currentGameOverMenuIndex_--;
                     if (currentGameOverMenuIndex_ < 0)
                         currentGameOverMenuIndex_ = (int)GameOverMenuIndex::Max - 1;
+                    cursorMoved = true;
                 }
                 if (input->IsActionTriggered("Backward")) {
                     currentGameOverMenuIndex_++;
                     if (currentGameOverMenuIndex_ >= (int)GameOverMenuIndex::Max)
                         currentGameOverMenuIndex_ = 0;
+                    cursorMoved = true;
+                }
+                if (cursorMoved) {
+                    audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
                 }
 
                 // 選択中の項目をハイライト
@@ -1863,6 +1950,7 @@ void GamePlayScene::UpdateGameOver(float originalDeltaTime) {
                 }
                 // 決定ボタンで遷移
                 if (input->IsActionTriggered("Jump")) {
+                    audioPlayer_->PlaySE(seDecide_, false, 1.0f);
 
                     // 共通のUI透明化ラムダ式
                     auto SetAlphaZero = [](Sprite* sprite) {
@@ -1935,6 +2023,10 @@ void GamePlayScene::UpdateBossMovie(float deltaTime) {
                 player_->SetIsPhysicsActive(true);
             }
 
+            // BGMを戦闘曲(battle_01.mp3)に切り替えて再生
+            bgmHandle_ = bgmBattle01Handle_;
+            audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+
             boss_->StartBattle();
 
             // ボス登場後に missionText_boss を表示（1回だけ）
@@ -1954,6 +2046,7 @@ void GamePlayScene::UpdateClearSequence(float deltaTime) {
         // ボスが完全に消滅し、かつまだクリアシーケンスに入っていなければ開始
         if (boss_->IsCompletelyDead() && !isGameClearSequence_) {
             isGameClearSequence_ = true;
+            audioPlayer_->PlaySE(seMissionClear3Handle_, false, SaveDataManager::GetInstance()->GetSEVolume());
             gameClearTimer_ = 0.0f;
 
             // タイマーを止める
@@ -2526,6 +2619,10 @@ void GamePlayScene::UpdateUI(float deltaTime) {
                 missionText_lever_->SetSize(missionLeverBaseSize_);
                 SetAlpha(missionText_lever_, missionLeverAnimProgress_);
             }
+            if (missionLeverAnimProgress_ >= 1.0f && !missionLeverSePlayed_) {
+                missionLeverSePlayed_ = true;
+                AudioPlayer::GetInstance()->PlaySE(seMissionHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+            }
         }
         else {
             if (missionSwitchDelayTimer_ > 0.0f) return; // 0.2秒待機
@@ -2553,6 +2650,10 @@ void GamePlayScene::UpdateUI(float deltaTime) {
                 missionText_go_->SetSize(missionGoBaseSize_);
                 SetAlpha(missionText_go_, missionGoAnimProgress_);
             }
+            if (missionGoAnimProgress_ >= 1.0f && !missionGoSePlayed_) {
+                missionGoSePlayed_ = true;
+                AudioPlayer::GetInstance()->PlaySE(seMissionHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+            }
         }
         else {
             if (missionSwitchDelayTimer_ > 0.0f) return; // 0.2秒待機
@@ -2577,6 +2678,10 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             missionText_boss_->SetPosition({ missionBossBasePos_.x, missionBossBasePos_.y + offsetY });
             missionText_boss_->SetSize(missionBossBaseSize_);
             SetAlpha(missionText_boss_, missionBossAnimProgress_);
+        }
+        if (missionBossAnimProgress_ >= 1.0f && !missionBossSePlayed_) {
+            missionBossSePlayed_ = true;
+            AudioPlayer::GetInstance()->PlaySE(seMissionHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
         }
     }
 }
@@ -2613,6 +2718,8 @@ void GamePlayScene::StartBossAppearanceMovie() {
 
     isBossMoviePlaying_ = true;
     hasBossAppeared_ = true;
+    audioPlayer_->StopBGM(); // ボス登場演出中はBGMを止める
+    audioPlayer_->PlaySE(seMissionClear3Handle_, false, SaveDataManager::GetInstance()->GetSEVolume());
     movieTimer_ = 0.0f;
 
     // ボスコンテナのパーティクルを停止

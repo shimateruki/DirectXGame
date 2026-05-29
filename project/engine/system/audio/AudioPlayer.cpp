@@ -328,6 +328,7 @@ void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
 }
 
 void AudioPlayer::SetBGMVolume(float volume) {
+	volume *= 0.5f; // 全体のBGM音量を半減
 	masterVolumeBGM_ = volume;
 	if (currentBgmHandle_ != kInvalidAudioHandle) {
 		auto it = streamingSoundDatas_.find(currentBgmHandle_);
@@ -339,8 +340,17 @@ void AudioPlayer::SetBGMVolume(float volume) {
 
 void AudioPlayer::SetSEVolume(float volume) {
 	masterVolumeSE_ = volume;
+	// 再生中の全SEに反映させるなどの処理を足してもOK
 }
 
+void AudioPlayer::SetSEVolume(AudioHandle handle, float volume) {
+	auto it = streamingSoundDatas_.find(handle);
+	if (it != streamingSoundDatas_.end()) {
+		if (it->second->sourceVoice) {
+			it->second->sourceVoice->SetVolume(volume * masterVolumeSE_);
+		}
+	}
+}
 /// <summary>
 /// 現在再生中のBGMを停止します。
 /// </summary>

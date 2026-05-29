@@ -1,5 +1,6 @@
 #include "BossAttack3_Hammer.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include <algorithm>
 #include <cmath>
@@ -182,6 +183,7 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
         if (moveT >= 1.0f) {
             animPhase_ = 22;
             animTimer_ = 0.0f;
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack3SwingHandle(), false, 1.0f);
             animStartRot_ = boss->GetRotation(); 
             for (auto* block : armorBlocks) {
                 if (block) {
@@ -232,6 +234,10 @@ void BossAttack3_Hammer::Update(BossCore* boss, float deltaTime) {
             }
             
             // 予兆エリアの非表示設定を削除（そもそも表示していないため）
+            
+            if (attackCount_ == 2) {
+                AudioPlayer::GetInstance()->PlaySE(boss->GetSEPlayerDownAttack2Handle(), false, 1.0f);
+            }
             
             attackCount_++;
 

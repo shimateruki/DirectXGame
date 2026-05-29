@@ -8,6 +8,7 @@
 #include "IMoveStrategy.h"
 #include "PlayerState.h"
 #include "PostEffect.h"
+#include "AudioPlayer.h"
 #include <DebugConsole.h>
 #include <algorithm>
 #include <fstream>
@@ -39,6 +40,16 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     // 前回シーンの静的な姿勢キャッシュが残らないように初期化する。
     ResetPlayerStateStatics();
 
+    // SEのロード
+    seAvoidHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerAvoid.mp3");
+    seJumpHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerJump.mp3");
+    seMoveHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerMove.mp3");
+    seSwingMiss1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSwingMiss1.mp3");
+    seSwingMiss2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSwingMiss2.mp3");
+    seSwordHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerSword.mp3");
+    seDownAttack1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack1.mp3");
+    seDownAttack2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
+    seDamageHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDamage.mp3");
     // --- 残像用プールの初期化 ---
     ghostPool_.clear();
     for (int i = 0; i < 60; ++i) {
@@ -347,6 +358,9 @@ bool Player::OnCollision(Object3d* other)
 
             // 被弾無敵だけを立て、回避ダッシュ側の無敵とは分けて扱う。
             SetDamageInvincible(true);
+
+            // ダメージSE再生
+            AudioPlayer::GetInstance()->PlaySE(seDamageHandle_, false, 1.0f);
 
             // ノックバックと被弾モーションを再生する。
             ChangeState(std::make_unique<PlayerStateDamage>());

@@ -1,4 +1,5 @@
 #include "BossCoreShared.h"
+#include "AudioPlayer.h"
 
 namespace {
 constexpr Vector4 kBossBreakCoreColor = { 0.0f, 0.59459448f, 1.0f, 1.0f };
@@ -28,6 +29,8 @@ void BossCore::StartDeathSequence() {
     deathPhase_ = 1;         // フェーズ1（無音で静止）
     sequenceTimer_ = 1.0f;   // 1秒間待機
 
+    // ボス撃破SE再生
+    AudioPlayer::GetInstance()->PlaySE(seBossDieHandle_, false, 1.0f);
     ApplyBossBreakCoreVisual(this);
     defaultColor_ = kBossBreakCoreColor;
 
@@ -87,6 +90,7 @@ void BossCore::StartDeathSequence() {
 // ==========================================
 void BossCore::ShowCrackedCore() {
     DebugConsole::GetInstance()->AddLog("[撃破] コアに亀裂が…！生成予約");
+    AudioPlayer::GetInstance()->PlaySE(seBossGlassBreaks1Handle_, false, 1.0f);
 
     // 生成はここではやらず、フラグだけ立てる
     isShardSpawnRequested_ = true;
@@ -136,6 +140,7 @@ void BossCore::BreakCore() {
     isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動
     deathTimer_ = 0.0f;
 
+    AudioPlayer::GetInstance()->PlaySE(seBossGlassBreaks2Handle_, false, 1.0f);
     DebugConsole::GetInstance()->AddLog("[撃破] コア完全粉砕！！！");
 
     for (auto& piece : corePieces_) {

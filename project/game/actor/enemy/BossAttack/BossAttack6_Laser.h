@@ -11,6 +11,7 @@ private:
     Vector3 animStartPos_ = { 0,0,0 };
 
     Vector3 animStartRot_ = { 0.0f, 0.0f, 0.0f };
+    float deformationSeTimer_ = 0.0f;
 
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;

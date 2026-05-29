@@ -42,6 +42,9 @@ private:
     float timer_ = 0.0f;
     float duration_ = 0.5f;
 
+    uint32_t seFadeCloseHandle_ = 0;
+    uint32_t seFadeOpenHandle_ = 0;
+
     float screenWidth_ = 1280.0f;
     float screenHeight_ = 720.0f;
 };

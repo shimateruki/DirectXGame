@@ -1,5 +1,6 @@
 #include "BossAttack5_Humanoid.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include <algorithm>
 #include <cmath>
@@ -111,7 +112,16 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
         animTimer_ += deltaTime;
         float duration = 1.5f;
         float t = std::min(animTimer_ / duration, 1.0f);
-        float easeT = Easing::OutExpo(t);
+        float easeT = Easing::InQuad(t);
+
+        // 変形音が徐々に速くなる処理
+        deformationSeTimer_ -= deltaTime;
+        if (deformationSeTimer_ <= 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEDeformationHandle(), false, 1.0f);
+            // 最初は少し遅めの間隔（0.6秒）から始まり、徐々に速く（0.05秒）なる
+            float nextInterval = Math::Lerp(0.6f, 0.05f, easeT);
+            deformationSeTimer_ = nextInterval;
+        }
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
             if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
@@ -164,6 +174,15 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
 
             // 歩行サイクル（ドスッ、ドスッというリズム）
             float walkCycle = std::abs(std::sin(animTimer_ * 6.0f)); 
+
+            // 足音SE（歩行サイクルが地面に着くタイミングで鳴らす）
+            float period = std::numbers::pi_v<float> / 6.0f;
+            int currentStep = static_cast<int>(animTimer_ / period);
+            float prevTimer = (animTimer_ - deltaTime > 0.0f) ? (animTimer_ - deltaTime) : 0.0f;
+            int lastStep = static_cast<int>(prevTimer / period);
+            if (currentStep > lastStep) {
+                AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack5MoveHandle(), false, 1.0f);
+            }
 
             // 追いかける速度（少し速くして、足を踏み出した時に加速する）
             float baseMoveSpeed = 16.0f * deltaTime;
@@ -339,6 +358,9 @@ void BossAttack5_Humanoid::Update(BossCore* boss, float deltaTime) {
     // --- Phase 55: 起き上がって復帰 ---
     else if (animPhase_ == 55) {
         if (animTimer_ == 0.0f) {
+            // 攻撃後の変形（元に戻る）時はループさせず1回だけ再生する
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEDeformationHandle(), false, 1.0f);
+
             blockStartPos_.clear();
             blockStartScale_.clear();
             for (size_t i = 0; i < armorBlocks.size(); ++i) {

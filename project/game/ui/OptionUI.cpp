@@ -104,6 +104,10 @@ void OptionUI::Initialize(BaseScene *scene, SpriteCommon *spriteCommon) {
   AudioPlayer::GetInstance()->SetSEVolume(initialSE);
   CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(initialSens);
 
+  seCursorMove_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Setting/SelectOpen1.mp3");
+  seDecide_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Setting/SelectOpen2.mp3");
+  seCancel_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Setting/SelectClose.mp3");
+
   bgmBarMaxPosX_ = 770.0f; // 全画面スプライトの中心を基準にする
   seBarMaxPosX_ = 770.0f;
   cameraCenterPosX_ = 770.0f;
@@ -227,15 +231,24 @@ bool OptionUI::Update(float deltaTime) {
       if (input->IsKeyTriggered(DIK_A) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_LEFT_SHOULDER)) {
+          int prevTab = currentTopTab_;
           currentTopTab_ = (int)TopTab::AudioCamera;
+          if (prevTab != currentTopTab_) {
+              AudioPlayer::GetInstance()->PlaySE(seCursorMove_, false, 1.0f);
+          }
       }
       if (input->IsKeyTriggered(DIK_D) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_RIGHT_SHOULDER)) {
+          int prevTab = currentTopTab_;
           currentTopTab_ = (int)TopTab::Credit;
+          if (prevTab != currentTopTab_) {
+              AudioPlayer::GetInstance()->PlaySE(seCursorMove_, false, 1.0f);
+          }
       }
 
       if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsKeyTriggered(DIK_TAB) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
+          AudioPlayer::GetInstance()->PlaySE(seCancel_, false, 1.0f);
           SaveDataManager::GetInstance()->Save();
           return true; // オプションを閉じる
       }
@@ -244,6 +257,7 @@ bool OptionUI::Update(float deltaTime) {
           tabConfirmBlinkTime_ = 0.0f;
           confirmedTopTab_ = currentTopTab_;
           if (currentTopTab_ == (int)TopTab::AudioCamera) {
+              AudioPlayer::GetInstance()->PlaySE(seDecide_, false, 1.0f);
               currentState_ = MenuState::ItemSelect;
           }
       }
@@ -251,30 +265,46 @@ bool OptionUI::Update(float deltaTime) {
       break;
   }
   case MenuState::ItemSelect: {
+      bool cursorMoved = false;
       if (input->IsKeyTriggered(DIK_W) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) {
+              currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+              cursorMoved = true;
+          }
       }
       if (input->IsKeyTriggered(DIK_S) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM) currentSoundOptionIndex_ = (int)SoundOptionIndex::SE;
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM) {
+              currentSoundOptionIndex_ = (int)SoundOptionIndex::SE;
+              cursorMoved = true;
+          }
       }
       if (input->IsKeyTriggered(DIK_A) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT)) {
-          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera) currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+          if (currentSoundOptionIndex_ == (int)SoundOptionIndex::Camera) {
+              currentSoundOptionIndex_ = (int)SoundOptionIndex::BGM;
+              cursorMoved = true;
+          }
       }
       if (input->IsKeyTriggered(DIK_D) ||
           input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT)) {
           if (currentSoundOptionIndex_ == (int)SoundOptionIndex::BGM || currentSoundOptionIndex_ == (int)SoundOptionIndex::SE) {
               currentSoundOptionIndex_ = (int)SoundOptionIndex::Camera;
+              cursorMoved = true;
           }
+      }
+      if (cursorMoved) {
+          AudioPlayer::GetInstance()->PlaySE(seCursorMove_, false, 1.0f);
       }
 
       if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsKeyTriggered(DIK_TAB) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START)) {
+          AudioPlayer::GetInstance()->PlaySE(seCancel_, false, 1.0f);
           currentState_ = MenuState::TabSelect;
       }
 
       if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+          AudioPlayer::GetInstance()->PlaySE(seDecide_, false, 1.0f);
           currentState_ = MenuState::ValueAdjust;
       }
       UpdateSelectHighlights();
@@ -325,6 +355,7 @@ bool OptionUI::Update(float deltaTime) {
               if (sens > -5) { sens--; isChanged = true; }
           }
           if (isChanged) {
+              AudioPlayer::GetInstance()->PlaySE(seCursorMove_, false, 1.0f);
               SaveDataManager::GetInstance()->SetCameraSensitivity(sens);
               CameraEditor::GetInstance()->SetCameraSensitivity(sens);
               CameraManager::GetInstance()->GetMainCamera()->SetSensitivity(sens); // 即座に反映
@@ -333,6 +364,7 @@ bool OptionUI::Update(float deltaTime) {
       }
 
       if (input->IsKeyTriggered(DIK_BACKSPACE) || input->IsKeyTriggered(DIK_ESCAPE) || input->IsKeyTriggered(DIK_TAB) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START) || input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+          AudioPlayer::GetInstance()->PlaySE(seDecide_, false, 1.0f);
           currentState_ = MenuState::ItemSelect;
       }
       UpdateSelectHighlights();

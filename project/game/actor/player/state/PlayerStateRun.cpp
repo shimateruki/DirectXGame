@@ -1,4 +1,5 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStateRun::Enter(Player *player) {
   if (!player)
@@ -19,6 +20,7 @@ void PlayerStateRun::Enter(Player *player) {
       headSaved_ = false;
 
   animTimer_ = 0.0f;
+  footstepTimer_ = 0.0f;
 
   TryFindArms(player, leftArmObj_, rightArmObj_);
   TryFindFeet(player, leftFootObj_, rightFootObj_);
@@ -260,6 +262,16 @@ void PlayerStateRun::ApplyPostUpdate(Player *player, float deltaTime) {
                      ? std::clamp(blendTimer_ / blendDuration_, 0.0f, 1.0f)
                      : 1.0f;
   float blendEase = EaseInOutSine(blendT);
+
+  // 足音SEの再生制御
+  if (!exitBlendActive_) {
+    footstepTimer_ += deltaTime;
+    float stepInterval = stepPeriod_ / 2.0f;
+    if (footstepTimer_ >= stepInterval) {
+      footstepTimer_ -= stepInterval;
+      AudioPlayer::GetInstance()->PlaySE(player->GetSEMoveHandle(), false, 0.4f);
+    }
+  }
 
   float phase = 0.0f;
   if (stepPeriod_ > 1e-6f)
