@@ -577,6 +577,9 @@ void GamePlayScene::Initialize() {
                 obj->SetIsVisible(false); // 見えなくする
                 obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
 			}
+            else if (name.find("arrow") != std::string::npos) {
+                obj->SetIsVisible(false); // 見えなくする
+            }
         }
 
         // 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
@@ -651,6 +654,9 @@ void GamePlayScene::Initialize() {
                     npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
                     obj->SetCollisionAttribute(0);
                 }
+            }
+            if (name.find("arrow") != std::string::npos) {
+                obj->SetIsVisible(true); // 見えなくする
             }
         }
         this->hasBridgeDropped_ = false;
