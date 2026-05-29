@@ -29,6 +29,9 @@ void BossCore::StartDeathSequence() {
     deathPhase_ = 1;         // フェーズ1（無音で静止）
     sequenceTimer_ = 1.0f;   // 1秒間待機
 
+    // 演出中はBGMを一度止める
+    AudioPlayer::GetInstance()->StopBGM();
+
     // ボス撃破SE再生
     AudioPlayer::GetInstance()->PlaySE(seBossDieHandle_, false, 1.0f);
     ApplyBossBreakCoreVisual(this);
@@ -68,19 +71,19 @@ void BossCore::StartDeathSequence() {
         }
     }
 
-    // ボス登場演出の際のコアの高さ（13.16f）から、周囲の遮蔽物（巨大ブロックなど）を避けるため10m上に配置（Y=23.16f）
-    float targetY = 23.160861015319824f;
+    // ボス登場演出の際のコアの高さ（13.16f）に配置
+    float targetY = 13.160861015319824f;
     this->SetRotation({ 0.0f, 0.0f, 0.0f });
     this->SetTranslate({ 0.07232095301151276f, targetY, -2.0776538848876953f });
 
-    // カメラをパッと切り替え（0秒） - カメラ「a」のアングルと距離（2.5倍）を完全に維持したまま、高さを10m上に平行移動
+    // カメラをパッと切り替え（0秒） - カメラ「a」のアングルと距離（2.5倍）を維持
     if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         Camera::CameraOverrideParams params;
         params.duration = 0.0f;
         params.trackEyeX = false; params.trackEyeY = false; params.trackEyeZ = false;
-        params.fixedEyePos = { 0.4466233355404443f, 24.659861015319824f, -27.02978838708496f };
+        params.fixedEyePos = { 0.4466233355404443f, 14.659861015319824f, -27.02978838708496f };
         params.trackTargetX = false; params.trackTargetY = false; params.trackTargetZ = false;
-        params.fixedTargetPos = { 0.07232095301151276f, 23.160861015319824f, -2.0776538848876953f };
+        params.fixedTargetPos = { 0.07232095301151276f, 13.160861015319824f, -2.0776538848876953f };
         camera->StartOverride(params);
     }
 }
