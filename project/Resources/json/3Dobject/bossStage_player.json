@@ -35,6 +35,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.1799999475479126,
             "eventID": 0,
@@ -62,12 +63,12 @@
             "param": {
                 "enemyType": "Goblin",
                 "gravity": 54.0,
-                "hp": 500.0,
+                "hp": 250.0,
                 "interval": 3.0,
                 "jumpPower": 30.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
-                "maxHp": 500.0,
+                "maxHp": 250.0,
                 "speed": 15.0
             },
             "parentName": "",
@@ -101,7 +102,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Player"
+            "type": "Player",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
