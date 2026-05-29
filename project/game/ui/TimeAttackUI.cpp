@@ -75,7 +75,6 @@ void TimeAttackUI::SetTime(float time) {
 
 void TimeAttackUI::StartRollEffect() {
     isRolling_ = true;
-    isCountingUp_ = false;
     rollTimer_ = 0.0f;
     fixedDigitCount_ = 0;
 }
