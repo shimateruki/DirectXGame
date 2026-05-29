@@ -23,6 +23,8 @@ public:
 
     float GetBestTime() const { return bestTime_; }
     float GetLatestClearTime() const { return latestClearTime_; }
+    float GetPreviousBestTime() const { return previousBestTime_; }
+    bool WasLatestClearBest() const { return latestClearWasBest_; }
 
 private:
     SaveDataManager() = default;
@@ -31,6 +33,8 @@ private:
     // 初期値はすごく遅いタイム（9999秒など）にしておく
     float bestTime_ = 9999.0f;
     float latestClearTime_ = 0.0f;
+    float previousBestTime_ = 9999.0f;
+    bool latestClearWasBest_ = false;
 
     // 設定
     float masterVolume_ = 1.0f;
