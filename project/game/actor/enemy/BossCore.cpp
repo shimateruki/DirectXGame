@@ -161,6 +161,9 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     seDeformationHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/Deformation.mp3");
     sePlayerDownAttack2Handle_ = audio->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
     seBossAttack5MoveHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack5Move.mp3");
+    seBossAngryHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAngry.mp3");
+    seBossGlassBreaks1Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossGlassBreaks1.mp3");
+    seBossGlassBreaks2Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossGlassBreaks2.mp3");
 }
 
 void BossCore::Update(float deltaTime) {

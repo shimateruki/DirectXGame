@@ -67,6 +67,7 @@ void BossCore::StartDeathSequence() {
 // ==========================================
 void BossCore::ShowCrackedCore() {
     DebugConsole::GetInstance()->AddLog("[撃破] コアに亀裂が…！生成予約");
+    AudioPlayer::GetInstance()->PlaySE(seBossGlassBreaks1Handle_, false, 1.0f);
 
     // 生成はここではやらず、フラグだけ立てる
     isShardSpawnRequested_ = true;
@@ -122,6 +123,7 @@ void BossCore::BreakCore() {
     isCoreBroken_ = true; // UpdateCorePieces のスローモーションを起動
     deathTimer_ = 0.0f;
 
+    AudioPlayer::GetInstance()->PlaySE(seBossGlassBreaks2Handle_, false, 1.0f);
     DebugConsole::GetInstance()->AddLog("[撃破] コア完全粉砕！！！");
 
     for (auto& piece : corePieces_) {

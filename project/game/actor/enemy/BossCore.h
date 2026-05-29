@@ -281,6 +281,9 @@ public:
     uint32_t GetSEDeformationHandle() const { return seDeformationHandle_; }
     uint32_t GetSEPlayerDownAttack2Handle() const { return sePlayerDownAttack2Handle_; }
     uint32_t GetSEBossAttack5MoveHandle() const { return seBossAttack5MoveHandle_; }
+    uint32_t GetSEBossAngryHandle() const { return seBossAngryHandle_; }
+    uint32_t GetSEBossGlassBreaks1Handle() const { return seBossGlassBreaks1Handle_; }
+    uint32_t GetSEBossGlassBreaks2Handle() const { return seBossGlassBreaks2Handle_; }
 
     void SetSEBossStan1Handle(uint32_t handle) { seBossStan1Handle_ = handle; }
 private:
@@ -455,4 +458,7 @@ private:
     uint32_t seDeformationHandle_ = 0;
     uint32_t sePlayerDownAttack2Handle_ = 0;
     uint32_t seBossAttack5MoveHandle_ = 0;
+    uint32_t seBossAngryHandle_ = 0;
+    uint32_t seBossGlassBreaks1Handle_ = 0;
+    uint32_t seBossGlassBreaks2Handle_ = 0;
 };

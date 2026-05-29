@@ -1,4 +1,5 @@
 #include "BossCoreShared.h"
+#include "AudioPlayer.h"
 
 void BossCore::StartAppearance() {
     if (isAppearing_ || isBattleStarted_) return;
@@ -16,6 +17,9 @@ void BossCore::StartAppearance() {
 
 void BossCore::StartBattle() {
     if (isBattleStarted_) return; // 既に始まっていたら何もしない
+
+    // 念のため、登場用SEを停止
+    AudioPlayer::GetInstance()->StopSe(GetSEBossAngryHandle());
 
     isBattleStarted_ = true;
     startBattlePos_ = GetTranslate(); // 登場ムービー終了時の初期座標を記憶
@@ -66,6 +70,11 @@ void BossCore::UpdateAppearance(float deltaTime) {
     }
     else if (t < 1.8f) {
         // ② 咆哮・ブルブル震える
+        // tが0.5に到達した瞬間（appearanceTimer_が1.5をまたいだ瞬間）に1回だけ鳴らす
+        if (appearanceTimer_ <= 1.5f && appearanceTimer_ + deltaTime > 1.5f) {
+            AudioPlayer::GetInstance()->PlaySE(GetSEBossAngryHandle(), false, 1.0f);
+        }
+
         float p = (t - 0.5f) / 1.3f;
         float swell = (1.0f - std::pow(p, 2.0f)) * 0.3f;
 
@@ -78,6 +87,10 @@ void BossCore::UpdateAppearance(float deltaTime) {
     }
     else {
         // ③ スッ…と元に戻る
+        // 震える演出が終わった瞬間に音を止める
+        if (appearanceTimer_ <= 0.2f && appearanceTimer_ + deltaTime > 0.2f) {
+            AudioPlayer::GetInstance()->StopSe(GetSEBossAngryHandle());
+        }
         currentScale = { 1.0f, 1.0f, 1.0f };
         SetColor(greenColor_);
         defaultColor_ = greenColor_;
@@ -86,6 +99,7 @@ void BossCore::UpdateAppearance(float deltaTime) {
     SetScale(currentScale);
 
     if (appearanceTimer_ <= 0.0f) {
+        AudioPlayer::GetInstance()->StopSe(GetSEBossAngryHandle()); // 確実な停止
         isAppearing_ = false;
         SetScale({ 1.0f, 1.0f, 1.0f });
         SetColor(greenColor_);
