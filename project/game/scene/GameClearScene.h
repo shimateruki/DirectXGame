@@ -62,6 +62,10 @@ private:
     std::unique_ptr<Sprite> CreateUiSprite(const Vector2& position, const Vector2& size, const Vector4& color);
     void UpdateResultUiVisuals(float deltaTime);
     void PreviewNewBestEffect();
+    void ResetNewBestCelebration();
+    void EmitNewBestCelebration();
+    void StartMenuRunOut();
+    void UpdateMenuRunOutVisuals(float deltaTime);
 
     struct ResultTextStrip {
         std::vector<std::unique_ptr<Sprite>> pieces;
@@ -140,8 +144,16 @@ private:
     std::unique_ptr<Sprite> bestHighlightSprite_;
     std::unique_ptr<Sprite> bestHighlightTopLineSprite_;
     std::unique_ptr<Sprite> bestHighlightBottomLineSprite_;
+    std::unique_ptr<Sprite> newBestSweepSprite_;
+    std::unique_ptr<Sprite> newBestFlashSprite_;
     std::unique_ptr<Sprite> diffSignHorizontalSprite_;
     std::unique_ptr<Sprite> diffSignVerticalSprite_;
+    std::unique_ptr<Sprite> menuSelectionGlowSprite_;
+    std::unique_ptr<Sprite> transitionBeamGlowSprite_;
+    std::unique_ptr<Sprite> transitionBeamSprite_;
+    std::unique_ptr<Sprite> transitionSpeedLineASprite_;
+    std::unique_ptr<Sprite> transitionSpeedLineBSprite_;
+    std::unique_ptr<Sprite> transitionFlashSprite_;
     ResultGlyphStrip clearTitleGlyphStrip_;
     ResultGlyphStrip playerTimeGlyphStrip_;
     ResultGlyphStrip bestTimeGlyphStrip_;
@@ -173,6 +185,8 @@ private:
 
     enum class MenuIndex { Retry, Title, Max };
     int currentMenuIndex_ = (int)MenuIndex::Retry;
+    int confirmedMenuIndex_ = (int)MenuIndex::Retry;
+    float runOutDirection_ = -1.0f;
 
     float resultAlpha_ = 0.0f;
     float clearTimeAlpha_ = 0.0f;
@@ -191,6 +205,8 @@ private:
     bool diffIsPositive_ = false;
     bool victoryParticleBurstEmitted_ = false;
     float victoryParticleTimer_ = 0.0f;
+    bool newBestParticleEmitted_ = false;
+    float newBestCelebrationTimer_ = 0.0f;
     // --- プレイヤーのクリア演出位置 ---
     Vector3 targetPlayerPos_;
     Vector3 targetPlayerRot_;
