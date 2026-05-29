@@ -13,6 +13,7 @@ private:
     // フェーズ80・85（巨大メテオ）用
     std::vector<Object3d*> meteors_;
     std::vector<Object3d*> areaWarnings_;
+    Object3d* dropWarningLine_ = nullptr;
     float rainTimer_ = 0.0f;
     int rainCount_ = 0;
 
