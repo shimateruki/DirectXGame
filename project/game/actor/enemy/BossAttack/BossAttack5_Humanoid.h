@@ -7,6 +7,10 @@ class BossAttack5_Humanoid : public BaseBossAttack {
 private:
     Vector3 animStartPos_ = { 0,0,0 };
     Vector3 animStartRot_ = { 0,0,0 };
+    
+    float deformationSeTimer_ = 0.0f;
+    float lastWalkCycle_ = 0.0f;
+
     std::vector<Vector3> blockStartPos_;
     std::vector<Vector3> blockTargetPos_;
     std::vector<Vector3> blockStartScale_;

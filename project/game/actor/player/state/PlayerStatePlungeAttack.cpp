@@ -1,12 +1,15 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStatePlungeAttack::Enter(Player *player) {
   if (!player)
     return;
   DebugConsole::GetInstance()->AddLog(
       "★ ENTER: Plunge Attack (Genshin Greatsword Style)");
-
   SetSwordActive(player, true, player->GetAttackParams().damagePlunge);
+  
+  // 空中からの落下攻撃開始時
+  AudioPlayer::GetInstance()->PlaySE(player->GetSEDownAttack1Handle(), false, 1.0f);
   isPlunging_ = false;
   isLanded_ = false;
   recoveryTimer_ = 0.0f;
@@ -80,6 +83,9 @@ void PlayerStatePlungeAttack::Update(Player *player) {
       if (vel.y > -5.0f) {
         isLanded_ = true;
         DebugConsole::GetInstance()->AddLog("Plunge Attack: LANDED! (DOOOM!)");
+        
+        // 地面に激突した時
+        AudioPlayer::GetInstance()->PlaySE(player->GetSEDownAttack2Handle(), false, 1.0f);
 
         Vector3 landPos = player->GetWorldPosition();
         MeshEffectManager::GetInstance()->SpawnEffectAt(

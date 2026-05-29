@@ -1,4 +1,5 @@
 #include "boss_core/BossCoreShared.h"
+#include "AudioPlayer.h"
 
 BossCore::OrbitData BossCore::GetIdleOrbit(size_t index) {
     BossCore::OrbitData data;
@@ -163,6 +164,31 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     isHpHalfEventActive_ = false;
     hpHalfPhase_ = HpHalfEventPhase::None;
     hpHalfEffectTimer_ = 0.0f;
+
+    // --- ボスSEのロード ---
+    auto* audio = AudioPlayer::GetInstance();
+    seBleakBlockHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BleakBlock.mp3");
+    seBlockDamageHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BlockDamage.mp3");
+    seBossStan1Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossStan1.mp3");
+    seBossDamageHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossDamage.mp3");
+    seBossDieHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossDie.mp3");
+    seBossHalfe1Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfe1.mp3");
+    seBossHalfe2Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfe2.mp3");
+    seBleakArmorHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossHalfeDamage.mp3");
+    sePredictionLineHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/Predictionline.mp3");
+    seBossAttack2LaunchHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack2Launch.mp3");
+    seBossAttack2OpenHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack2Open.mp3");
+    seBossAttack3SwingHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack3Swing.mp3");
+    seBossAttack4EarthTremorHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack4EarthTremor.mp3");
+    seBossAttack6BeamHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack6Beam.mp3");
+    seBossAttack6PredictionlineHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack6Predictionline.mp3");
+    seEnemyAttack7TurnHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/EnemyAttack7Turn.mp3");
+    seDeformationHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/Deformation.mp3");
+    sePlayerDownAttack2Handle_ = audio->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
+    seBossAttack5MoveHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAttack5Move.mp3");
+    seBossAngryHandle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossAngry.mp3");
+    seBossGlassBreaks1Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossGlassBreaks1.mp3");
+    seBossGlassBreaks2Handle_ = audio->LoadSoundFile("Resources/audio/se/Boss/BossGlassBreaks2.mp3");
 }
 
 void BossCore::Update(float deltaTime) {
@@ -449,6 +475,8 @@ void BossCore::Update(float deltaTime) {
             if (hpHalfEffectTimer_ >= 1.0f) {
                 hpHalfPhase_ = HpHalfEventPhase::Recovery;
                 hpHalfEffectTimer_ = 0.0f;
+                // カメラがだんだんアップになるとき
+                AudioPlayer::GetInstance()->PlaySE(seBossHalfe2Handle_, false, 1.0f);
             }
             break;
 
@@ -466,6 +494,8 @@ void BossCore::Update(float deltaTime) {
             if (hpHalfEffectTimer_ >= 1.5f) {
                 hpHalfPhase_ = HpHalfEventPhase::Pulsing;
                 hpHalfEffectTimer_ = 0.0f;
+                // カメラがだんだん引いていくとき
+                AudioPlayer::GetInstance()->PlaySE(seBossHalfe1Handle_, false, 1.0f);
             }
         }
         break;
@@ -742,6 +772,7 @@ void BossCore::Update(float deltaTime) {
                     GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
 
                     blockHps_[i] -= dmg;
+                    AudioPlayer::GetInstance()->PlaySE(seBlockDamageHandle_, false, 1.0f);
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
                         StartArmorBlockBreak(i, weapon->GetWorldPosition(), true);
@@ -771,6 +802,7 @@ void BossCore::Update(float deltaTime) {
                         GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
 
                         blockHps_[i] -= dmg;
+                        AudioPlayer::GetInstance()->PlaySE(seBlockDamageHandle_, false, 1.0f);
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
                             StartArmorBlockBreak(i, effect->GetWorldPosition(), true);
@@ -800,6 +832,7 @@ void BossCore::Update(float deltaTime) {
                         GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
 
                         blockHps_[i] -= dmg;
+                        AudioPlayer::GetInstance()->PlaySE(seBlockDamageHandle_, false, 1.0f);
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
                             StartArmorBlockBreak(i, bullet->GetWorldPosition(), true);

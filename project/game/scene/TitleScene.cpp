@@ -32,6 +32,7 @@
 #include "Easing.h" // イージング関数利用
 #include <CinematicFade.h>
 #include <PostEffect.h>
+#include <SaveDataManager.h>
 
 void TitleScene::SetSpriteTexturePreserveSize(Sprite* sprite, const std::string& textureName) {
   if (!sprite || sprite->GetTextureName() == textureName) {
@@ -74,7 +75,13 @@ void TitleScene::Initialize() {
   ModelManager::GetInstance()->LoadModel("teapot");
   LOG("TitleScene Initialized!");
 
-  bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+  SaveDataManager::GetInstance()->Load();
+  bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/title/title.mp3");
+  audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
+  seCursorMove_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen1.mp3");
+  seDecide_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen2.mp3");
+  seCancel_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectClose.mp3");
+  seStartGame_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectGameStart.mp3");
 
   // --- 3. マネージャ・共通クラスの初期化 ---
   CameraManager::GetInstance()->Initialize();
@@ -374,11 +381,13 @@ void TitleScene::Update(float deltaTime) {
         currentMenuIndex_--;
         if (currentMenuIndex_ < 0)
           currentMenuIndex_ = (int)menuSpriteIndices_.size() - 1;
+        audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
       }
       if (input->IsKeyTriggered(DIK_S) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN) || stickDownTrig) {
         currentMenuIndex_++;
         if (currentMenuIndex_ >= (int)menuSpriteIndices_.size())
           currentMenuIndex_ = 0;
+        audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
       }
       // --- メニュー決定（Enter/Spaceキー、Aボタン(下側)）---
       if (input->IsKeyTriggered(DIK_RETURN) ||
@@ -387,14 +396,17 @@ void TitleScene::Update(float deltaTime) {
         // メニューインデックス順: 0=ゲームスタート, 1=設定, 2=終了
         switch (currentMenuIndex_) {
         case 0: // ゲームスタート
+          audioPlayer_->PlaySE(seStartGame_, false, 1.0f);
           GameProgress::GetInstance()->Reset();
           SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
           break;
         case 1: // 設定
+          audioPlayer_->PlaySE(seDecide_, false, 1.0f);
           optionUI_.Reset();
           currentState_ = TitleState::OptionMenu;
           break;
         case 2: // 終了
+          audioPlayer_->PlaySE(seCancel_, false, 1.0f);
           PostQuitMessage(0);
           break;
         }

@@ -1,5 +1,6 @@
 #include "BossAttack8_Final.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "Object3d.h" 
 #include "./easing.h" 
 #include <algorithm>
@@ -148,6 +149,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
     // --- Phase 81: 突進3連撃 (810: 構え, 811: 突進) ---
     else if (animPhase_ == 810) { // 構え
         if (animTimer_ == 0.0f) {
+            // 予測線 SE再生
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEPredictionLineHandle(), false, 1.0f);
             animStartPos_ = boss->GetTranslate();
             Vector3 targetPos = target ? target->GetWorldPosition() : Vector3{0,0,0};
             Vector3 toPlayer = { targetPos.x - animStartPos_.x, 0.0f, targetPos.z - animStartPos_.z };
@@ -240,6 +243,9 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         }
     }
     else if (animPhase_ == 811) { // 突進
+        if (animTimer_ == 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack2LaunchHandle(), false, 1.0f);
+        }
         animTimer_ += deltaTime;
         float duration = 0.6f;
         float t = std::min(animTimer_ / duration, 1.0f);
@@ -516,6 +522,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     if (armorBlocks[i]) {
                         armorBlocks[i]->SetCollisionAttribute(0);
                     }
+                    
+                    static float lastPlayTime11 = -1.0f;
+                    if (lastPlayTime11 != animTimer_) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6PredictionlineHandle(), false, 1.0f);
+                        lastPlayTime11 = animTimer_;
+                    }
                 }
             }
             else if (funnelStates_[i] == 11) { // 予兆（1.0秒）
@@ -554,6 +566,12 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 if (funnelTimers_[i] >= 1.0f) {
                     funnelStates_[i] = 12; 
                     funnelTimers_[i] = 0.0f;
+                    
+                    static float lastPlayTime12 = -1.0f;
+                    if (lastPlayTime12 != animTimer_) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6BeamHandle(), false, 1.0f);
+                        lastPlayTime12 = animTimer_;
+                    }
                 }
             }
             else if (funnelStates_[i] == 12) { // 発射（1.0秒）
@@ -777,6 +795,10 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 Object3d* warn = (i < areaWarnings_.size()) ? areaWarnings_[i] : nullptr;
 
                 if (localTime < 1.5f) {
+                    // 各ビームの予測警告が始まった最初のフレームでSE再生
+                    if (localTime < deltaTime) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEPredictionLineHandle(), false, 1.0f);
+                    }
                     // 予兆フェーズ (1.5秒)：1/4正方形エリアの警告表示
                     if (warn) {
                         warn->SetTranslate({ beamPositions[i].x, 0.2f, beamPositions[i].z });

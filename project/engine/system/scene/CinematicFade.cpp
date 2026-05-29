@@ -2,6 +2,8 @@
 #include "CinematicFade.h"
 #include "WinApp.h"
 #include "easing.h" // ※隊長の環境のイージング関数パス
+#include "AudioPlayer.h"
+#include "SaveDataManager.h"
 #include <algorithm>
 
 CinematicFade* CinematicFade::GetInstance() {
@@ -30,6 +32,9 @@ void CinematicFade::Initialize(SpriteCommon* spriteCommon) {
     topSprite_->SetPosition({ 0.0f, -(screenHeight_ / 2.0f) });
     bottomSprite_->SetPosition({ 0.0f, screenHeight_ });
 
+    seFadeCloseHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Setting/FadeClose.mp3");
+    seFadeOpenHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Setting/FadeOpen.mp3");
+
     state_ = State::kIdle;
 }
 
@@ -38,6 +43,7 @@ void CinematicFade::StartClose(float duration) {
         state_ = State::kClosing;
         timer_ = 0.0f;
         duration_ = duration;
+        AudioPlayer::GetInstance()->PlaySE(seFadeCloseHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
     }
 }
 
@@ -46,6 +52,7 @@ void CinematicFade::StartOpen(float duration) {
         state_ = State::kOpening;
         timer_ = 0.0f;
         duration_ = duration;
+        AudioPlayer::GetInstance()->PlaySE(seFadeOpenHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
     }
 }
 

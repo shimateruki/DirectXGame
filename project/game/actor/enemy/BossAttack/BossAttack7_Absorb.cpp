@@ -1,5 +1,6 @@
 #include "BossAttack7_Absorb.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h" 
 #include "../MapBlock.h" 
 #include <algorithm>
@@ -7,6 +8,7 @@
 
 void BossAttack7_Absorb::Initialize(BossCore* boss) {
     BaseBossAttack::Initialize(boss);
+    boss_ = boss;
 
     animPhase_ = 70;
     animStartPos_ = boss->GetTranslate();
@@ -77,6 +79,9 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
     }
     // --- Phase 71: ロックオンしたブロックだけを念動力で引き寄せる ---
     else if (animPhase_ == 71) {
+        if (animTimer_ == 0.0f) {
+            AudioPlayer::GetInstance()->PlaySE(boss->GetSEEnemyAttack7TurnHandle(), true, 1.0f);
+        }
         animTimer_ += deltaTime;
         Vector3 bossPos = boss->GetTranslate();
 
@@ -135,8 +140,8 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
             }
         }
 
-        // 全部吸収し終わった（すべてnullptrになった）ら、待たずにすぐ終了
         if (allAbsorbed || animTimer_ > 5.0f) {
+            AudioPlayer::GetInstance()->StopSe(boss->GetSEEnemyAttack7TurnHandle());
             animPhase_ = 72;
             animTimer_ = 0.0f;
             animStartPos_ = boss->GetTranslate();
@@ -165,4 +170,9 @@ void BossAttack7_Absorb::Update(BossCore* boss, float deltaTime) {
             isFinished_ = true;
         }
     }
+}
+
+void BossAttack7_Absorb::Finalize() {
+    // 念のため回転SEを止める
+    AudioPlayer::GetInstance()->StopSe(boss_->GetSEEnemyAttack7TurnHandle());
 }

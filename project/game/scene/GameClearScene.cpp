@@ -904,7 +904,12 @@ void GameClearScene::Initialize() {
     inputManager_ = InputManager::GetInstance();
     audioPlayer_ = AudioPlayer::GetInstance();
 
-    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
+    SaveDataManager::GetInstance()->Load();
+    bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/bgm/clear/clear.mp3");
+    audioPlayer_->StopBGM();
+
+    seCursorMove_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen1.mp3");
+    seDecide_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen2.mp3");
 
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
@@ -1143,6 +1148,10 @@ void GameClearScene::Update(float deltaTime) {
             clearTimePopTimer_ = -1.0f;
             ResetGlyphStrip(playerTimeGlyphStrip_);
             if (clearTimeUI_) clearTimeUI_->StartCountUp(clearTimeValue_, 1.15f);
+            if (clearTimeUI_) clearTimeUI_->StartRollEffect();
+
+            // クリアタイム表示開始時にクリアBGMを再生
+            audioPlayer_->PlayBGM(bgmHandle_, true, SaveDataManager::GetInstance()->GetBGMVolume());
         }
         break;
 
@@ -1200,6 +1209,7 @@ void GameClearScene::Update(float deltaTime) {
         // --- 【フェーズ3-C】 入力待ち：アクション「Jump」(Space/A)で次へ ---
         inputGuideAlpha_ = Clamp01(inputGuideAlpha_ + deltaTime * 1.8f);
         if (inputManager_->IsActionTriggered("Jump")) {
+            audioPlayer_->PlaySE(seDecide_, false, 1.0f);
             if (clearTimeUI_) clearTimeUI_->SetAlpha(0.0f);
             if (bestTimeUI_) bestTimeUI_->SetAlpha(0.0f);
             if (diffTimeUI_) diffTimeUI_->SetAlpha(0.0f);
@@ -1231,18 +1241,24 @@ void GameClearScene::Update(float deltaTime) {
         }
         break;
 
-    case ClearState::kShowMenu:
+    case ClearState::kShowMenu: {
         // --- 【フェーズ4】 メニュー：左右キー(A/D、左/右、スティック)で選択 ---
         menuAlpha_ += deltaTime * 2.0f;
         if (menuAlpha_ > 1.0f) menuAlpha_ = 1.0f;
         inputGuideAlpha_ = Clamp01(inputGuideAlpha_ + deltaTime * 1.8f);
 
         // アクション名「Left」「Right」で判定
-        if (inputManager_->IsActionTriggered("Left")) {
+        bool cursorMoved = false;
+        if (inputManager_->IsActionTriggered("Left") && currentMenuIndex_ != (int)MenuIndex::Retry) {
             currentMenuIndex_ = (int)MenuIndex::Retry;
+            cursorMoved = true;
         }
-        if (inputManager_->IsActionTriggered("Right")) {
+        if (inputManager_->IsActionTriggered("Right") && currentMenuIndex_ != (int)MenuIndex::Title) {
             currentMenuIndex_ = (int)MenuIndex::Title;
+            cursorMoved = true;
+        }
+        if (cursorMoved) {
+            audioPlayer_->PlaySE(seCursorMove_, false, 1.0f);
         }
 
         // 強調演出の更新
@@ -1264,8 +1280,25 @@ void GameClearScene::Update(float deltaTime) {
         // 決定：アクション「Jump」(Space/A)で選んだ方へ走り出す
         if (inputManager_->IsActionTriggered("Jump")) {
             StartMenuRunOut();
+            audioPlayer_->PlaySE(seDecide_, false, 1.0f);
+            if (player_) {
+                float runSpeed = 15.0f;
+                float pi = 3.14159265f;
+                if (currentMenuIndex_ == (int)MenuIndex::Retry) {
+                    player_->SetVelocity({ -runSpeed, 0.0f, 0.0f });
+                    player_->SetRotation({ 0.0f, -pi / 2.0f, 0.0f });
+                }
+                else {
+                    player_->SetVelocity({ runSpeed, 0.0f, 0.0f });
+                    player_->SetRotation({ 0.0f, pi / 2.0f, 0.0f });
+                }
+                player_->ChangeState(std::make_unique<PlayerStateRun>());
+            }
+            clearState_ = ClearState::kRunOut;
+            stateTimer_ = 0.0f;
         }
         break;
+    }
 
     case ClearState::kRunOut:
         // --- 【フェーズ5】 退場：画面外へダッシュ ---

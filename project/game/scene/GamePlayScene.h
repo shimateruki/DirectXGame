@@ -151,8 +151,21 @@ private:
 
     // --- BGM・SE ---
     uint32_t bgmHandle_ = 0;
+    uint32_t bgmTutorialHandle_ = 0;
+    uint32_t bgmWindHandle_ = 0;
+    uint32_t bgmBattle01Handle_ = 0;
+    uint32_t bgmBattle02Handle_ = 0;
+    uint32_t bgmDefeatHandle_ = 0;
     bool isBGMPlaying_ = false;
     uint32_t particleSEHandle_ = 0;
+    uint32_t seElevatorHandle_ = 0;
+    uint32_t seOpenDoor1Handle_ = 0;
+    uint32_t seOpenDoor2Handle_ = 0;
+    uint32_t seMissionHandle_ = 0;
+    uint32_t seMissionClear3Handle_ = 0;
+    uint32_t seCursorMove_ = 0;
+    uint32_t seDecide_ = 0;
+    uint32_t seCancel_ = 0;
 
     // --- ライト・描画補助リソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
@@ -173,6 +186,11 @@ private:
     float playerVisualHp_ = 0.0f;
     float playerDamageDelayTimer_ = 0.0f;
     float playerPrevHpRatio_ = 0.0f;
+
+    // --- 回避クールタイム UI ---
+    Sprite* playerDashBarSprite_ = nullptr;
+    Sprite* playerDashBackSprite_ = nullptr;
+    float playerDashBarMaxWidth_ = 0.0f;
 
     // --- チュートリアル足場 ---
     Object3d* tutorialPlatform_ = nullptr;
@@ -234,6 +252,7 @@ private:
     Sprite* optionPoseTextSprite_ = nullptr;
     Sprite* titleTextPoseSprite_ = nullptr;
     Sprite* tabPauseTextSprite_ = nullptr;
+    Sprite* optionControlsSprite_ = nullptr;
     bool pauseUiUsesGamepad_ = false;
     bool hasAppliedPauseInputUi_ = false;
     bool isGameClearSequence_ = false;
@@ -300,6 +319,9 @@ private:
     bool missionInitialShown_ = false;
     bool missionGoShown_ = false;
     bool missionBossShown_ = false;
+    bool missionLeverSePlayed_ = false;
+    bool missionGoSePlayed_ = false;
+    bool missionBossSePlayed_ = false;
 
     float tutorialTimer_ = 0.0f;
     bool tutorialUiCompleted_ = false;

@@ -1,9 +1,13 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
 
 void PlayerStateDash::Enter(Player *player) {
   if (!player)
     return;
   DebugConsole::GetInstance()->AddLog("★ ENTER: Dash State (Slide Step)");
+
+  // 回避SEの再生
+  AudioPlayer::GetInstance()->PlaySE(player->GetSEAvoidHandle(), false, 1.0f);
 
   // PlayerMover を動かし続ける（入力制御は Mover 側）
   SetSwordActive(player, false);
@@ -50,6 +54,13 @@ void PlayerStateDash::Update(Player *player) {
   animTimer_ += 1.0f / 60.0f;
   float t = std::clamp(animTimer_ / animDuration_, 0.0f, 1.0f);
   ApplyPose(t);
+
+  // 残像生成タイマー（間隔を広げてスタイリッシュにする）
+  player->ghostTimer_ += 1.0f / 60.0f;
+  if (player->ghostTimer_ >= 0.08f) { // 0.03秒から0.08秒に変更して量を減らす
+      player->CreateGhostTrail();
+      player->ghostTimer_ = 0.0f;
+  }
 
   if (animTimer_ >= animDuration_) {
     player->ChangeState(std::make_unique<PlayerStateIdle>());

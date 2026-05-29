@@ -1,4 +1,5 @@
 #include "BossCoreShared.h"
+#include "AudioPlayer.h"
 
 void BossCore::TakeBodyDamage(float damage) {
     // 既に爆散演出中、またはHP半分演出中、またはトドメ落下中は無敵
@@ -6,6 +7,9 @@ void BossCore::TakeBodyDamage(float damage) {
 
     // 被弾前の色を保存
     SaveOriginalColors();
+
+    // ボス被弾SE再生
+    AudioPlayer::GetInstance()->PlaySE(seBossDamageHandle_, false, 1.0f);
 
     // 赤色演出（ダメージフィードバック）
     SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
@@ -27,6 +31,9 @@ void BossCore::TakeBodyDamage(float damage) {
     if (!isHpHalfTriggered_ && nextHp <= halfHp) {
         param_->hp = halfHp;
         isHpHalfTriggered_ = true;
+
+        // HP半分アーマー破壊SE再生
+        AudioPlayer::GetInstance()->PlaySE(seBleakArmorHandle_, false, 1.0f);
 
         // ムービーに入るため、プレイヤーのロックオンを強制解除する
         if (target_) {
@@ -176,6 +183,9 @@ void BossCore::TakeBodyDamage(float damage) {
         isHpHalfEventActive_ = true;
         hpHalfPhase_ = HpHalfEventPhase::WaitIdle;
         hpHalfEffectTimer_ = 0.0f;
+
+        // ボスのHPが半分になった演出中のSE
+        AudioPlayer::GetInstance()->PlaySE(seBleakArmorHandle_, false, 1.0f);
 
         if (target_) {
             if (auto player = dynamic_cast<Player*>(target_)) {

@@ -38,7 +38,7 @@ private:
 
     // 設定
     float masterVolume_ = 1.0f;
-    float bgmVolume_ = 1.0f;
+    float bgmVolume_ = 0.5f;
     float seVolume_ = 1.0f;
     int cameraSensitivity_ = 0;
 

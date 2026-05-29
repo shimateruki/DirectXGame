@@ -34,6 +34,12 @@ public:
 	/// </summary>
 	void SetStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
+	// ダッシュのクールタイム回復割合を取得 (1.0 = 準備完了, 0.0 = ダッシュ直後)
+	float GetDashCooldownRatio() const {
+		if (dashCooldown_ <= 0.0f) return 1.0f;
+		return 1.0f - (dashCooldownTimer_ / dashCooldown_);
+	}
+
 private:
 	// 参照用ポインタ
 	Player* player_ = nullptr;

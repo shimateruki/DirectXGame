@@ -1,4 +1,6 @@
 #include "PlayerStateShared.h"
+#include "AudioPlayer.h"
+#include "Player.h"
 
 void PlayerStateDead::Enter(Player *player) {
   if (!player)
@@ -249,6 +251,12 @@ void PlayerStateDead::ApplyPose(float t) {
     if (t >= 0.03f && !isSwordDropped_) {
       isSwordDropped_ = true;
       dropStartTime_ = animTimer_;
+
+      // 死亡時の剣が飛ぶSE再生
+      if (bodyObj_) {
+        Player* player = static_cast<Player*>(bodyObj_);
+        AudioPlayer::GetInstance()->PlaySE(player->GetSESwordHandle(), false, 1.0f);
+      }
 
       Matrix4x4 wMat = swordObj_->GetWorldMatrix();
       swordDropPos_ = {wMat.m[3][0], wMat.m[3][1], wMat.m[3][2]};

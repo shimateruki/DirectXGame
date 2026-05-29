@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "BossAttack9_Funnels.h"
 #include "../BossCore.h"
+#include "AudioPlayer.h"
 #include "./easing.h"
 #include "SceneManager.h"
 #include "engine/system/collision/CollisionManager.h"
@@ -435,6 +436,13 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                     if (armorBlocks[i]) {
                         armorBlocks[i]->SetCollisionAttribute(0);
                     }
+                    
+                    // ウェーブ内で最初にここを通った時にSEを鳴らす（重複再生を防ぐため）
+                    static float lastPlayTime11 = -1.0f;
+                    if (lastPlayTime11 != animTimer_) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6PredictionlineHandle(), false, 1.0f);
+                        lastPlayTime11 = animTimer_;
+                    }
                 }
             }
             else if (funnelStates_[i] == 11) {
@@ -491,6 +499,12 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
                 if (funnelTimers_[i] >= 1.2f) {
                     funnelStates_[i] = 12; // 発射（当たり判定ON）へ
                     funnelTimers_[i] = 0.0f;
+                    
+                    static float lastPlayTime12 = -1.0f;
+                    if (lastPlayTime12 != animTimer_) {
+                        AudioPlayer::GetInstance()->PlaySE(boss->GetSEBossAttack6BeamHandle(), false, 2.0f);
+                        lastPlayTime12 = animTimer_;
+                    }
                 }
             }
             else if (funnelStates_[i] == 12) {

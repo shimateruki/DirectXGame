@@ -8,8 +8,18 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class IMoveStrategy; // 前方宣言
+
+// プレイヤーの残像の1フレーム分を管理する構造体
+struct GhostTrail {
+    std::vector<Object3d*> parts;
+    std::vector<Matrix4x4> baseMatrices;
+    float alpha = 1.0f;
+    float life = 1.0f;
+    float maxLife = 1.0f;
+};
 
 // プレイヤーの攻撃パラメータ（JSON保存・ImGui調整用）
 struct PlayerAttackParams {
@@ -60,6 +70,11 @@ public:
     // 移動制御 (Strategy Pattern)
     // ==================================================
     void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy);
+
+    // ==================================================
+    // 残像（Ghost Trail）関連
+    // ==================================================
+    void CreateGhostTrail();
 
     // ==================================================
     // アクセッサ
@@ -141,6 +156,9 @@ public:
     void SetForceLockOnTarget(Object3d* target) { forceLockOnTarget_ = target; }
     Object3d* GetForceLockOnTarget() const { return forceLockOnTarget_; }
 
+    // --- 回避（ダッシュ）のクールタイム割合を取得 (1.0 = 準備完了) ---
+    float GetDashCooldownRatio() const;
+
     // --- 攻撃方向の保存（吹き飛ばし用） ---
     void SetAttackDirection(const Vector3& dir) { attackDirection_ = dir; }
     Vector3 GetAttackDirection() const { return attackDirection_; }
@@ -157,6 +175,16 @@ public:
         requestClearLockOn_ = false;
         return r;
     }
+
+    // --- SE用オーディオハンドルアクセッサ ---
+    uint32_t GetSEAvoidHandle() const { return seAvoidHandle_; }
+    uint32_t GetSEJumpHandle() const { return seJumpHandle_; }
+    uint32_t GetSEMoveHandle() const { return seMoveHandle_; }
+    uint32_t GetSESwingMiss1Handle() const { return seSwingMiss1Handle_; }
+    uint32_t GetSESwingMiss2Handle() const { return seSwingMiss2Handle_; }
+    uint32_t GetSESwordHandle() const { return seSwordHandle_; }
+    uint32_t GetSEDownAttack1Handle() const { return seDownAttack1Handle_; }
+    uint32_t GetSEDownAttack2Handle() const { return seDownAttack2Handle_; }
 
 
 private:
@@ -200,5 +228,25 @@ private:
     bool requestClearLockOn_ = false;       // ロックオン解除要求フラグ
     Vector3 attackDirection_ = { 0,0,1 };   // 攻撃開始時の向き
     PlayerAttackParams attackParams_;       // 攻撃力などのパラメータ
+    
+    // --- SE用オーディオハンドル ---
+    uint32_t seAvoidHandle_ = 0;
+    uint32_t seJumpHandle_ = 0;
+    uint32_t seMoveHandle_ = 0;
+    uint32_t seSwingMiss1Handle_ = 0;
+    uint32_t seSwingMiss2Handle_ = 0;
+    uint32_t seSwordHandle_ = 0;
+    uint32_t seDownAttack1Handle_ = 0;
+    uint32_t seDownAttack2Handle_ = 0;
+    uint32_t seDamageHandle_ = 0;
+
     void UpdateColor();
+
+public:
+    // --- 残像関連 ---
+    std::vector<GhostTrail> ghostTrails_;
+    float ghostTimer_ = 0.0f;
+
+    std::vector<std::unique_ptr<Object3d>> ghostPool_;
+    int ghostPoolIndex_ = 0;
 };
