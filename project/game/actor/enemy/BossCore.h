@@ -195,6 +195,24 @@ public:
     // ==========================================
     std::vector<Object3d*>& GetArmorBlocks() { return armorBlocks_; }
     bool IsArmorBlockBroken(size_t index) const { return index >= blockBroken_.size() || blockBroken_[index]; }
+    
+    void ReviveArmorBlock(size_t index) {
+        if (index < armorBlocks_.size() && index < blockBroken_.size()) {
+            blockBroken_[index] = false;
+            blockHps_[index] = attackParams_.maxArmorBlockHp;
+            if (index < armorBreakMotions_.size()) {
+                armorBreakMotions_[index].active = false;
+                armorBreakMotions_[index].childPieces.clear();
+            }
+            if (armorBlocks_[index]) {
+                armorBlocks_[index]->SetIsVisible(true);
+                armorBlocks_[index]->SetScale({ 1.5f, 1.5f, 1.5f });
+                armorBlocks_[index]->SetCollisionAttribute(kGround);
+                armorBlocks_[index]->SetCollisionMask(kPlayer);
+            }
+        }
+    }
+
     Object3d* GetTarget() const { return target_; }
     Object3d* GetWarningArea() const { return warningArea_; }
     void HideWarningArea();

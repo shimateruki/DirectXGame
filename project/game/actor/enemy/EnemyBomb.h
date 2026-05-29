@@ -13,8 +13,8 @@ public:
 private:
     void SetupVisualParts();
     void SetVisualPartsColor(const Vector4& color);
+    void RestoreVisualPartsColor();
     void SetVisualPartsVisible(bool visible);
-    void UpdateColorByHitCount();
     void EnableReflectAfterLanding();
     bool CanReflectByPlayer() const;
 

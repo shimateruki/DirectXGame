@@ -1,23 +1,23 @@
 {
     "baseColor": [
-        1.0,
-        1.0,
-        1.0,
+        0.06386307626962662,
+        0.07790341228246689,
+        0.9729729890823364,
         1.0
     ],
     "baseSize": 0.10000000149011612,
-    "blendModeIndex": 1,
-    "colorEaseType": 0,
-    "colorIntensity": 1.0,
-    "colorMidTime": 0.20000000298023224,
+    "blendModeIndex": 0,
+    "colorEaseType": 8,
+    "colorIntensity": 0.30000001192092896,
+    "colorMidTime": 0.4000000059604645,
     "emitArea": [
         0.0,
         0.0,
         0.0
     ],
-    "emitCount": 5,
+    "emitCount": 41,
     "emitInterval": 0.10000000149011612,
-    "emitLife": 2.0,
+    "emitLife": 0.800000011920929,
     "emitPos": [
         0.0,
         1.7000000476837158,
@@ -25,7 +25,7 @@
     ],
     "emitVelocity": [
         0.0,
-        1.0,
+        0.0,
         0.0
     ],
     "enableCollision": 0,
@@ -35,35 +35,35 @@
         0.0,
         1.0
     ],
-    "endSize": 0.0,
+    "endSize": 0.009999999776482582,
     "envDrag": 0.0,
     "envGravity": [
         0.0,
-        -9.800000190734863,
+        0.0,
         0.0
     ],
-    "envTurbulence": 0.0,
+    "envTurbulence": 1.0,
     "envWind": [
         0.0,
-        10.899999618530273,
+        0.10000000149011612,
         0.0
     ],
     "isLooping": true,
     "midColor": [
-        1.0,
-        0.21621620655059814,
-        0.21621620655059814,
+        0.8416988253593445,
+        0.09424427151679993,
+        0.09424427151679993,
         1.0
     ],
-    "midSize": 0.20000000298023224,
+    "midSize": 0.5,
     "restitution": 0.5,
-    "rotSpeed": 0.0,
-    "shapeAngle": 30.0,
-    "shapeRadius": 2.0,
-    "shapeType": 4,
-    "sizeEaseType": 0,
-    "sizeMidTime": 0.20000000298023224,
+    "rotSpeed": 2.0,
+    "shapeAngle": 86.0,
+    "shapeRadius": 0.5,
+    "shapeType": 1,
+    "sizeEaseType": 5,
+    "sizeMidTime": 0.4000000059604645,
     "softParticleFade": 5.0,
-    "texturePath": "Resources/sprite/Particle.png",
-    "velocityVariance": 1.0
+    "texturePath": "Resources/sprite/yazirusi.png",
+    "velocityVariance": 2.0
 }

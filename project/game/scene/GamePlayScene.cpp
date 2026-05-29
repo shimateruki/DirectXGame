@@ -403,6 +403,8 @@ void GamePlayScene::Initialize() {
 
     seMissionHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/Mission.mp3");
     seMissionClear3Handle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/MissionClear3.mp3");
+    seFallBridgeHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Environment/FallBridge.mp3");
+    seLockOnHandle_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Player/LockOn.mp3");
 
     seCursorMove_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen1.mp3");
     seDecide_ = audioPlayer_->LoadSoundFile("Resources/audio/se/Setting/SelectOpen2.mp3");
@@ -442,6 +444,8 @@ void GamePlayScene::Initialize() {
         "Resources/json/gpu_particles/");
     GPUParticleManager::GetInstance()->PrewarmPreset("playerattak");
     GPUParticleManager::GetInstance()->PrewarmPreset("player_dash");
+    GPUParticleManager::GetInstance()->PrewarmPreset("boss_container_top");
+    GPUParticleManager::GetInstance()->PrewarmPreset("boss_container_bottom");
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
@@ -847,6 +851,9 @@ void GamePlayScene::Initialize() {
                 obj->SetIsVisible(false); // 見えなくする
                 obj->isDead = true;       // 完全に消す（UpdateやDrawの対象から外す）
 			}
+            else if (name.find("arrow") != std::string::npos) {
+                obj->SetIsVisible(false); // 見えなくする
+            }
         }
 
         // 2. 演出フラグを立てて、ムービーが二度と再生されないようにする
@@ -921,6 +928,9 @@ void GamePlayScene::Initialize() {
                     npos) { // 南の当たり判定は最初は消しておく（橋が落ちるまでは通れるように）
                     obj->SetCollisionAttribute(0);
                 }
+            }
+            if (name.find("arrow") != std::string::npos) {
+                obj->SetIsVisible(true); // 見えなくする
             }
         }
         this->hasBridgeDropped_ = false;
@@ -1431,6 +1441,10 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                         bridgeCenterMagmaImpactPlayed_ = true;
                         PlayBridgeMagmaSeIfNeeded();
                     }
+                    if (!bridgeFallSe1Played_) {
+                        audioPlayer_->PlaySE(seFallBridgeHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+                        bridgeFallSe1Played_ = true;
+                    }
                 }
                 else if (movieTimer_ > 2.0f &&
                     obj->GetName() == "Bridge_Block_Back") {
@@ -1447,6 +1461,10 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                         bridgeBackMagmaImpactPlayed_ = true;
                         PlayBridgeMagmaSeIfNeeded();
                     }
+                    if (!bridgeFallSe2Played_) {
+                        audioPlayer_->PlaySE(seFallBridgeHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+                        bridgeFallSe2Played_ = true;
+                    }
                 }
                 else if (movieTimer_ > 2.5f &&
                     obj->GetName() == "Bridge_Block_Front") {
@@ -1462,6 +1480,10 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                         obj->UpdateWorldMatrix();
                         bridgeFrontMagmaImpactPlayed_ = true;
                         PlayBridgeMagmaSeIfNeeded();
+                    }
+                    if (!bridgeFallSe3Played_) {
+                        audioPlayer_->PlaySE(seFallBridgeHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+                        bridgeFallSe3Played_ = true;
                     }
                 }
             }
@@ -1966,6 +1988,13 @@ void GamePlayScene::UpdateTutorialGuide(float deltaTime) {
 void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode, Camera* camera, Math& math) {
     // --- ロックオン & カメラ制御 ---
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_);
+
+    bool isLockingOn = lockOnSystem_->IsLockingOn();
+    if (isLockingOn && !wasLockingOn_) {
+        audioPlayer_->PlaySE(seLockOnHandle_, false, SaveDataManager::GetInstance()->GetSEVolume());
+    }
+    wasLockingOn_ = isLockingOn;
+
     CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
     // =================================================================
     // ロックオンアイコンの 2.5D 追従計算 (World To Screen)
@@ -3041,6 +3070,9 @@ void GamePlayScene::StartBridgeDropMovie() {
     bridgeBackMagmaImpactPlayed_ = false;
     bridgeFrontMagmaImpactPlayed_ = false;
     StopBridgeMagmaSe();
+    bridgeFallSe1Played_ = false;
+    bridgeFallSe2Played_ = false;
+    bridgeFallSe3Played_ = false;
 
     // CinematicCamera を探してムービーを再生する
     for (auto& obj : objectManager_->GetObjects()) {
@@ -3110,6 +3142,9 @@ bool GamePlayScene::PrepareBridgeDropPreviewForDebug() {
     bridgeBackMagmaImpactPlayed_ = false;
     bridgeFrontMagmaImpactPlayed_ = false;
     StopBridgeMagmaSe();
+    bridgeFallSe1Played_ = false;
+    bridgeFallSe2Played_ = false;
+    bridgeFallSe3Played_ = false;
     GameProgress::GetInstance()->hasBridgeDropped = false;
 
     bool hasBridgeBlock = false;

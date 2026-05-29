@@ -123,7 +123,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     BossParticle1->Initialize("Boss1", this);
     BossParticle1->Play();
 
-    // --- 2. 黄 ---
+    // --- 2. 黒 ---
     auto BossParticle2 = std::make_unique<GPUParticleEmitter>();
     BossParticle2->Initialize("Boss2", this);
     BossParticle2->Play();
@@ -133,12 +133,13 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     auto BossParticle3 = std::make_unique<GPUParticleEmitter>();
     BossParticle3->Initialize("Boss3", this);
     BossParticle3->Play();
-    particleEmitters_.push_back(std::move(BossParticle3));
+    //particleEmitters_.push_back(std::move(BossParticle3));
 
     // --- 4. 赤 ---
     auto BossParticle4 = std::make_unique<GPUParticleEmitter>();
     BossParticle4->Initialize("Boss4", this);
     BossParticle4->Play();
+    particleEmitters_.push_back(std::move(BossParticle4));
 
     // --- 5. 黄色 ---
     auto BossParticle5 = std::make_unique<GPUParticleEmitter>();
@@ -330,6 +331,8 @@ void BossCore::Update(float deltaTime) {
                 player->SetControlLock(true);
                 player->SetIsPhysicsActive(false);
                 player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player->SetTranslate({ 0.0f, 2.0f, -68.0f });
+                player->UpdateWorldMatrix();
             }
         }
 
@@ -433,8 +436,9 @@ void BossCore::Update(float deltaTime) {
                         dir.z = std::sin(angle);
                     }
 
-                    float horizontalSpeed = 7.0f + (rand() % 30) * 0.1f; // 15〜20 から半分程度に減少
-                    float verticalSpeed = 7.0f + (rand() % 30) * 0.1f;   // 15〜20 から半分程度に減少
+                    // 重なりを避けるため、水平方向の吹き飛ぶ最低速度を上げる（元は7.0fだったものを15.0f以上に）
+                    float horizontalSpeed = 15.0f + (rand() % 30) * 0.3f; 
+                    float verticalSpeed = 7.0f + (rand() % 30) * 0.1f;
 
                     fallingBlockVelocities_.push_back({
                         dir.x * horizontalSpeed,
@@ -698,6 +702,18 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     // 死亡演出の進行ロジック
     // ==========================================
+    if (deathPhase_ > 0) {
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetControlLock(true);
+                player->SetIsPhysicsActive(false);
+                player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                player->SetTranslate({ 0.0f, 2.0f, -68.0f });
+                player->UpdateWorldMatrix();
+            }
+        }
+    }
+
     if (deathPhase_ == 1 || deathPhase_ == 2) {
         sequenceTimer_ -= deltaTime; // 死亡演出のカウントダウンは実時間
 
@@ -915,9 +931,9 @@ void BossCore::Update(float deltaTime) {
 
 
             for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-                // ボスを中心に、半径15～30の距離に散らす
+                // ボスを中心にランダムに散らす（重なりを避けるため、最低半径を30に拡大）
                 float angle = (static_cast<float>(rand()) / RAND_MAX) * 2.0f * std::numbers::pi_v<float>;
-                float distance = 15.0f + (static_cast<float>(rand()) / RAND_MAX) * 15.0f;
+                float distance = 30.0f + (static_cast<float>(rand()) / RAND_MAX) * 20.0f;
 
                 // ====================================================
                 // ブロックは「ボスの子供（ローカル座標）」なので計算を変えます
@@ -1015,7 +1031,7 @@ void BossCore::Update(float deltaTime) {
             for (int c = 0; c < count; ++c) {
                 float t = static_cast<float>(c) / static_cast<float>(count);
                 Vector3 emitPos = Math::Lerp(prevPos, currentPos, t);
-                GPUParticleManager::GetInstance()->Emit("BossBlockTrail", emitPos);
+                GPUParticleManager::GetInstance()->Emit("boss_block_trail_02", emitPos);
             }
         }
 

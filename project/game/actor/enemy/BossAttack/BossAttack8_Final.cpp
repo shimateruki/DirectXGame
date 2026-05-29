@@ -13,6 +13,7 @@
 #include "../../MapBlock.h"
 #include "EnemyBomb.h"
 #include "CollisionConfig.h"
+#include "MeshEffectManager.h"
 
 BossAttack8_Final::~BossAttack8_Final() {
     Finalize();
@@ -26,6 +27,7 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
     activeCoreLasers_.clear();
     coreBeams_.clear();
     coreBeamCores_.clear();
+    dropWarningLine_ = nullptr;
     
     rainTimer_ = 0.0f;
     rainCount_ = 0;
@@ -78,9 +80,16 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
         }
     }
 
+    // 先頭6個のブロックを強制的に復活（修復）させて完全な状態で攻撃する
+    for (size_t i = 0; i < std::min(armorBlocks.size(), (size_t)6); ++i) {
+        if (boss->IsArmorBlockBroken(i)) {
+            boss->ReviveArmorBlock(i);
+        }
+    }
+
     // すべての armorBlock（先頭6個）を UpgradeToFunnel にかける (二重生成は UpgradeToFunnel 側で防がれているので安全)
     for (size_t i = 0; i < std::min(armorBlocks.size(), (size_t)6); ++i) {
-        if (armorBlocks[i]) {
+        if (armorBlocks[i] && !boss->IsArmorBlockBroken(i)) {
             boss->UpgradeToFunnel(armorBlocks[i]);
         }
     }
@@ -123,6 +132,24 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             CollisionManager::GetInstance()->AddObject(meteor.get());
             meteors_.push_back(meteor.get());
             if (currentScene) currentScene->AddObject(std::move(meteor));
+
+            if (!dropWarningLine_) {
+                auto warn = std::make_unique<Object3d>();
+                warn->Initialize(boss->GetCommon());
+                warn->SetModel("Cylinder");
+                warn->SetColliderType(ColliderType::kOBB);
+                warn->SetCollisionAttribute(0);
+                warn->SetName("Drop_WarningLine");
+                warn->SetScale({0,0,0});
+                warn->SetBlendMode(BlendMode::kAdd);
+                warn->SetColor({1.0f, 0.0f, 0.0f, 0.4f}); // 半透明の赤
+                warn->SetEmissive(2.0f);
+                warn->SetTexture("Resources/sprite/beamNoice.png");
+                warn->SetMaterialType(9);
+                
+                dropWarningLine_ = warn.get();
+                if (currentScene) currentScene->AddObject(std::move(warn));
+            }
         }
 
         animTimer_ += deltaTime;
@@ -177,7 +204,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             // ブロックを剣のように配置する基本設定 (最初の1回のみ)
             size_t useCount = std::min(armorBlocks.size(), (size_t)6);
             for (size_t i = 0; i < useCount; ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 armorBlocks[i]->SetAttackDamage(boss->GetAttackParams().damageRush);
                 armorBlocks[i]->SetParent(nullptr);
                 armorBlocks[i]->SetScale({ 2.0f, 2.0f, 4.0f });
@@ -220,7 +247,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         // 剣ブロックの位置と回転をプレイヤーに向けて更新
         size_t useCount = std::min(armorBlocks.size(), (size_t)6);
         for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             float offset = (float)i * 3.0f;
             Vector3 localPos = { 0.0f, 0.0f, offset };
             Vector3 worldPos = {
@@ -264,7 +291,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
         size_t useCount = std::min(armorBlocks.size(), (size_t)6);
         for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             float offset = (float)i * 3.0f;
             Vector3 localPos = { 0.0f, 0.0f, offset };
             Vector3 worldPos = {
@@ -297,16 +324,16 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ == 0.0f) {
             animStartPos_ = boss->GetTranslate();
             
-            funnelStates_.clear();
-            funnelTimers_.clear();
-            activeLasers_.clear();
-            activeCoreLasers_.clear();
-            laserLengths_.clear();
-            laserDelayTimers_.clear();
+            funnelStates_.assign(armorBlocks.size(), 0);
+            funnelTimers_.assign(armorBlocks.size(), 0.0f);
+            activeLasers_.assign(armorBlocks.size(), nullptr);
+            activeCoreLasers_.assign(armorBlocks.size(), nullptr);
+            laserLengths_.assign(armorBlocks.size(), 160.0f);
+            laserDelayTimers_.assign(armorBlocks.size(), 0.0f);
             
             size_t useCount = std::min(armorBlocks.size(), (size_t)6);
             for (size_t i = 0; i < useCount; ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 
                 // ワールド座標で独立して動かすために親を外す
                 Vector3 worldPos = armorBlocks[i]->GetWorldPosition();
@@ -316,8 +343,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 // ユーザー指定: ブロックサイズを 1x1x1 に縮小する
                 armorBlocks[i]->SetScale({ 1.0f, 1.0f, 1.0f }); 
                 
-                funnelStates_.push_back(0); 
-                funnelTimers_.push_back(0.0f);
+                funnelStates_[i] = 0; 
+                funnelTimers_[i] = 0.0f;
                 
                 // ==========================================
                 // 1. 赤いオーラ（外側のビーム）の生成
@@ -352,9 +379,9 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 laser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 laser->GetTransform()->isQuaternionMaster = false;
                 
-                activeLasers_.push_back(laser.get());
-                laserLengths_.push_back(160.0f);
-                laserDelayTimers_.push_back(0.0f);
+                activeLasers_[i] = laser.get();
+                laserLengths_[i] = 160.0f;
+                laserDelayTimers_[i] = 0.0f;
                 if (currentScene) currentScene->AddObject(std::move(laser));
 
                 // ==========================================
@@ -382,7 +409,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 coreLaser->SetTranslate({ 0.0f, 0.0f, 80.0f });
                 coreLaser->GetTransform()->isQuaternionMaster = false;
                 
-                activeCoreLasers_.push_back(coreLaser.get());
+                activeCoreLasers_[i] = coreLaser.get();
                 if (currentScene) currentScene->AddObject(std::move(coreLaser));
             }
             
@@ -428,7 +455,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         // ファンネル処理
         size_t useCount = std::min(armorBlocks.size(), (size_t)6);
         for (size_t i = 0; i < useCount; ++i) {
-            if (!armorBlocks[i]) continue;
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             
             Object3d* laser = (i < activeLasers_.size()) ? activeLasers_[i] : nullptr;
             Object3d* coreLaser = (i < activeCoreLasers_.size()) ? activeCoreLasers_[i] : nullptr;
@@ -875,12 +902,26 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
     }
     // --- Phase 84: 巨大ブロック落下（トドメ）---
     else if (animPhase_ == 84) {
+        // 元の四角い警告エリアは消す
         Object3d* warning = boss->GetWarningArea();
         if (warning) {
-            warning->SetTranslate({ 0.0f, 0.2f, 0.0f });
-            warning->SetScale({ 15.0f, 0.7f, 15.0f }); 
-            warning->SetColor({ 1.0f, 0.0f, 0.0f, 0.9f });
-            warning->UpdateWorldMatrix();
+            warning->SetScale({ 0.0f, 0.0f, 0.0f });
+        }
+        
+        // わかりやすい予測線（光の柱）を出す
+        if (dropWarningLine_) {
+            dropWarningLine_->SetTranslate({ 0.0f, 75.0f, 0.0f });
+            dropWarningLine_->SetScale({ 15.0f, 150.0f, 15.0f }); 
+            
+            // 点滅させる
+            float alpha = 0.4f + std::sin(animTimer_ * 20.0f) * 0.2f;
+            dropWarningLine_->SetColor({ 1.0f, 0.0f, 0.0f, alpha });
+            
+            static Math math;
+            Vector3 uvScale = { 1.0f, 20.0f, 1.0f };
+            Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, animTimer_ * -5.0f, 0.0f });
+            dropWarningLine_->SetUVTransform(uvMat);
+            dropWarningLine_->UpdateWorldMatrix();
         }
         
         if (animTimer_ == 0.0f) {
@@ -904,38 +945,78 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                     
                     if (warning) warning->SetScale({0,0,0});
                     
-                    // 攻撃を終了するフラグを立てる
-                    isFinished_ = true;
-                    DebugConsole::GetInstance()->AddLog("【最終奥義】巨大ブロック直撃！コアが剥き出しになり、中央へ落下する！");
+                    // --- 爆発エフェクトをここで発生 ---
+                    MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_bakuhatu1.json", mPos, {0,0,0}, {15.0f, 15.0f, 15.0f}, boss->GetAttackParams().damageFinal);
+                    uint32_t seExplosion = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Boss/Explosion.mp3");
+                    AudioPlayer::GetInstance()->PlaySE(seExplosion, false, 1.0f); // 爆発音
                     
-                    // プレイヤーの攻撃を待つためにHPを1にする
-                    if (boss->param_.has_value()) {
-                        boss->param_->hp = 1.0f;
-                    }
+                    // 巨大メテオと予測線は消去
+                    meteors_[0]->SetScale({ 0.0f, 0.0f, 0.0f });
+                    meteors_[0]->SetCollisionAttribute(0);
+                    if (dropWarningLine_) dropWarningLine_->SetScale({0,0,0});
+
+                    animPhase_ = 85;
+                    animTimer_ = 0.0f;
+                    rainTimer_ = 0.0f; // 連鎖爆発のタイマーに使用
                     
-                    // トドメ待ちモードを有効にする
-                    boss->SetWaitingForFinisher(true);
-                    boss->SetWaitingForDeath(true);
+                    DebugConsole::GetInstance()->AddLog("【最終奥義】超巨大爆発＆連鎖爆発開始！！");
                     
-                    // 中央の上空へワープ
-                    boss->SetTranslate({ 0.0f, 25.0f, 0.0f });
-                    boss->SetRotation({ 0.0f, 0.0f, 0.0f });
-                    boss->SetScale({ 1.0f, 1.0f, 1.0f });
-                    boss->UpdateWorldMatrix();
-                    
-                    // 落下フラグと速度の初期化
-                    boss->StartFinisherFall();
-                    
-                    // 巨大メテオは消去（非表示・当たり判定無効）
-                    if (!meteors_.empty() && meteors_[0]) {
-                        meteors_[0]->SetScale({ 0.0f, 0.0f, 0.0f });
-                        meteors_[0]->SetCollisionAttribute(0);
-                    }
-                    
-                    return; // 即座に関数を抜ける
+                    return; // 次のフレームからPhase 85
                 }
                 meteors_[0]->SetTranslate(mPos);
             }
+        }
+    }
+    // --- Phase 85: 連鎖爆発 ＆ 終了待機 ---
+    else if (animPhase_ == 85) {
+        animTimer_ += deltaTime;
+        rainTimer_ += deltaTime;
+        
+        // 0.1秒おきに周辺に広範囲のランダムな爆発を起こす
+        if (rainTimer_ >= 0.1f && animTimer_ < 1.5f) {
+            rainTimer_ = 0.0f;
+            
+            float angle = ((float)rand() / RAND_MAX) * 3.14159f * 2.0f;
+            float dist = 10.0f + ((float)rand() / RAND_MAX) * 50.0f; // 半径10〜60mの広範囲
+            Vector3 expPos = {
+                std::cos(angle) * dist,
+                0.0f,
+                std::sin(angle) * dist
+            };
+            
+            // 少し小さめの爆発エフェクトを発生
+            float scale = 3.0f + ((float)rand() / RAND_MAX) * 4.0f; // 3.0 〜 7.0
+            MeshEffectManager::GetInstance()->SpawnEffectAt("Resources/json/effect/effect_bakuhatu1.json", expPos, {0,0,0}, {scale, scale, scale}, boss->GetAttackParams().damageFinal * 0.5f);
+            
+            // SEも少し小さめで再生
+            uint32_t seExplosion = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Boss/Explosion.mp3");
+            AudioPlayer::GetInstance()->PlaySE(seExplosion, false, 0.5f);
+        }
+        
+        // 2.0秒後に完全に終了してトドメ待ちへ
+        if (animTimer_ >= 2.0f) {
+            isFinished_ = true;
+            DebugConsole::GetInstance()->AddLog("【最終奥義】コアが剥き出しになり、中央へ落下する！");
+            
+            // プレイヤーの攻撃を待つためにHPを1にする
+            if (boss->param_.has_value()) {
+                boss->param_->hp = 1.0f;
+            }
+            
+            // トドメ待ちモードを有効にする
+            boss->SetWaitingForFinisher(true);
+            boss->SetWaitingForDeath(true);
+            
+            // 中央の上空へワープ
+            boss->SetTranslate({ 0.0f, 25.0f, 0.0f });
+            boss->SetRotation({ 0.0f, 0.0f, 0.0f });
+            boss->SetScale({ 1.0f, 1.0f, 1.0f });
+            boss->UpdateWorldMatrix();
+            
+            // 落下フラグと速度の初期化
+            boss->StartFinisherFall();
+            
+            return;
         }
     }
 }
@@ -987,4 +1068,12 @@ void BossAttack8_Final::Finalize() {
         }
     }
     meteors_.clear();
+
+    if (dropWarningLine_) {
+        dropWarningLine_->SetScale({ 0.0f, 0.0f, 0.0f });
+        dropWarningLine_->SetCollisionAttribute(0);
+        dropWarningLine_->SetParent(nullptr);
+        // CollisionManager::GetInstance()->RemoveObject(dropWarningLine_); // Managed by Scene
+        dropWarningLine_ = nullptr;
+    }
 }
