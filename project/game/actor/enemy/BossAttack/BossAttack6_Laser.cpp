@@ -113,6 +113,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         if (animTimer_ == 0.0f) {
             deformationSeTimer_ = 0.0f; // 回転音のタイマー初期化
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
                 BossCore::OrbitData orbit = boss->GetIdleOrbit(i);
                 armorBlocks[i]->SetParent(boss);
                 armorBlocks[i]->SetTranslate(orbit.pos);
@@ -150,18 +151,19 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
     // --- Phase 62: 大回転を維持したまま、砲台陣形へ変形 ---
     else if (animPhase_ == 62) {
         if (animTimer_ == 0.0f) {
-            blockStartPos_.clear();
-            blockTargetPos_.clear();
-            blockStartScale_.clear();
-            blockTargetScale_.clear();
-            attentionStartRot_.clear();
+            blockStartPos_.assign(armorBlocks.size(), {});
+            blockTargetPos_.assign(armorBlocks.size(), {});
+            blockStartScale_.assign(armorBlocks.size(), {});
+            blockTargetScale_.assign(armorBlocks.size(), {});
+            attentionStartRot_.assign(armorBlocks.size(), {});
 
             float radius = 12.0f;
 
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
-                blockStartScale_.push_back(armorBlocks[i]->GetScale());
-                attentionStartRot_.push_back(armorBlocks[i]->GetRotation());
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
+                blockStartPos_[i] = armorBlocks[i]->GetTranslate();
+                blockStartScale_[i] = armorBlocks[i]->GetScale();
+                attentionStartRot_[i] = armorBlocks[i]->GetRotation();
 
                 float angle = (i * 2.0f * std::numbers::pi_v<float>) / armorBlocks.size();
                 Vector3 targetPos = {
@@ -169,8 +171,8 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                     0.0f,
                     std::sin(angle) * radius
                 };
-                blockTargetPos_.push_back(targetPos);
-                blockTargetScale_.push_back({ 1.5f, 1.5f, 1.5f });
+                blockTargetPos_[i] = targetPos;
+                blockTargetScale_[i] = { 1.5f, 1.5f, 1.5f };
             }
         }
 
@@ -192,6 +194,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         }
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             if (i < blockStartPos_.size() && i < blockTargetPos_.size()) {
                 Vector3 pos = Math::Lerp(blockStartPos_[i], blockTargetPos_[i], easeT);
                 armorBlocks[i]->SetTranslate(pos);
@@ -232,8 +235,13 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 }
             }
 
+            activeBeams_.assign(armorBlocks.size(), nullptr);
+            activeCoreBeams_.assign(armorBlocks.size(), nullptr);
+            laserLengths_.assign(armorBlocks.size(), 160.0f);
+            laserDelayTimers_.assign(armorBlocks.size(), 0.0f);
+
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                if (!armorBlocks[i]) continue;
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
 
                 // ==========================================
                 // 1. 赤いオーラ（外側のビーム）の生成
@@ -282,9 +290,9 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 // 自傷（レイキャスト自己衝突）防止のために一時的に装甲ブロックの地形判定を消す
                 armorBlocks[i]->SetCollisionAttribute(0);
 
-                activeBeams_.push_back(laser);
-                laserLengths_.push_back(160.0f);
-                laserDelayTimers_.push_back(0.0f);
+                activeBeams_[i] = laser;
+                laserLengths_[i] = 160.0f;
+                laserDelayTimers_[i] = 0.0f;
 
                 // ==========================================
                 // 2. 白いコア（内側のビーム）の生成
@@ -321,7 +329,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
                 coreLaser->GetTransform()->isQuaternionMaster = false;
                 coreLaser->UpdateWorldMatrix();
 
-                activeCoreBeams_.push_back(coreLaser);
+                activeCoreBeams_[i] = coreLaser;
             }
         }
 
@@ -364,8 +372,9 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         float currentThickness = baseThickness * pulse;
 
         // 2層のビームをそれぞれ更新する
-        for (size_t i = 0; i < activeBeams_.size(); ++i) {
-            Object3d* beam = activeBeams_[i];
+        for (size_t i = 0; i < armorBlocks.size(); ++i) {
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
+            Object3d* beam = (i < activeBeams_.size()) ? activeBeams_[i] : nullptr;
             Object3d* coreBeam = (i < activeCoreBeams_.size()) ? activeCoreBeams_[i] : nullptr;
 
             // レイキャストで障害物までの距離を測る
@@ -497,11 +506,12 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
             }
             activeCoreBeams_.clear();
 
-            blockStartPos_.clear();
-            blockStartScale_.clear();
+            blockStartPos_.assign(armorBlocks.size(), {});
+            blockStartScale_.assign(armorBlocks.size(), {});
             for (size_t i = 0; i < armorBlocks.size(); ++i) {
-                blockStartPos_.push_back(armorBlocks[i]->GetTranslate());
-                blockStartScale_.push_back(armorBlocks[i]->GetScale());
+                if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
+                blockStartPos_[i] = armorBlocks[i]->GetTranslate();
+                blockStartScale_[i] = armorBlocks[i]->GetScale();
             }
         }
         }
@@ -518,6 +528,7 @@ void BossAttack6_Laser::Update(BossCore* boss, float deltaTime) {
         boss->GetTransform()->isQuaternionMaster = false;
 
         for (size_t i = 0; i < armorBlocks.size(); ++i) {
+            if (!armorBlocks[i] || boss->IsArmorBlockBroken(i)) continue;
             if (i < blockStartPos_.size()) {
                 BossCore::OrbitData orbit = boss->GetIdleOrbit(i);
                 Vector3 pos = Math::Lerp(blockStartPos_[i], orbit.pos, easeT);
