@@ -27,9 +27,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967291,
             "color": [
-                0.6718146800994873,
-                0.6718146800994873,
-                0.6718146800994873,
+                0.1853281855583191,
+                0.1853281855583191,
+                0.1853281855583191,
                 1.0
             ],
             "emissive": 1.0,
@@ -37,7 +37,7 @@
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.19599999487400055,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -54,11 +54,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.19099999964237213,
+            "metallic": 0.20000000298023224,
             "modelName": "map_floor_01",
             "myEventID": -1,
             "name": "Map_Floor_Base",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "",
             "position": [
@@ -82,7 +82,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.100000023841858,
@@ -90,7 +90,7 @@
                 1.100000023841858
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -2209,7 +2209,7 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
+                    -2.0,
                     0.0
                 ],
                 "rotation": [
@@ -2219,8 +2219,8 @@
                 ],
                 "size": [
                     16.0,
-                    2.0,
-                    25.0
+                    4.0,
+                    28.0
                 ],
                 "type": 3
             },
@@ -2327,9 +2327,9 @@
             "collisionAttribute": 4,
             "collisionMask": 3,
             "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
+                0.49806952476501465,
+                0.42114758491516113,
+                0.42114758491516113,
                 1.0
             ],
             "emissive": 1.0,
@@ -2358,7 +2358,7 @@
             "modelName": "map_tutorial_01",
             "myEventID": -1,
             "name": "Tutorial_Room_Base",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "",
             "position": [
@@ -2390,7 +2390,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3126,9 +3126,9 @@
             "collisionAttribute": 6,
             "collisionMask": 4294967137,
             "color": [
-                0.5882353186607361,
-                0.4313725531101227,
-                0.4313725531101227,
+                0.07722008228302002,
+                0.07422249764204025,
+                0.0736423134803772,
                 1.0
             ],
             "emissive": 1.0,
@@ -3162,12 +3162,12 @@
             "param": {
                 "enemyType": "Tutorial_Doll",
                 "gravity": 0.0,
-                "hp": 100.0,
+                "hp": 180.0,
                 "interval": 3.0,
                 "jumpPower": 0.0,
                 "maxCount": 0,
                 "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
+                "maxHp": 180.0,
                 "speed": 1.0
             },
             "parentName": "",
@@ -3228,339 +3228,6 @@
                     0.0
                 ],
                 "size": [
-                    0.550000011920929,
-                    0.550000011920929,
-                    0.550000011920929
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 6,
-            "collisionMask": 4294967137,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enableOutline": false,
-            "enemyType": "Tutorial_Doll",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "tutorialDoll",
-            "myEventID": -1,
-            "name": "Tutorial_Doll_Scarecrow_1",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Tutorial_Doll",
-                "gravity": 0.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 0.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                24.0,
-                23.881000518798828,
-                -210.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.5,
-                2.5,
-                1.5
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model",
-            "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.5,
-                "waveSpeed": 2.0
-            }
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.550000011920929,
-                    0.550000011920929,
-                    0.550000011920929
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 6,
-            "collisionMask": 4294967137,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enableOutline": false,
-            "enemyType": "Tutorial_Doll",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "tutorialDoll",
-            "myEventID": -1,
-            "name": "Tutorial_Doll_Scarecrow_2",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Tutorial_Doll",
-                "gravity": 0.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 0.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                24.0,
-                23.881000518798828,
-                -218.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.5,
-                2.5,
-                1.5
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model",
-            "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.5,
-                "waveSpeed": 2.0
-            }
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    0.550000011920929,
-                    0.550000011920929,
-                    0.550000011920929
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 6,
-            "collisionMask": 4294967137,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enableOutline": false,
-            "enemyType": "Tutorial_Doll",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "tutorialDoll",
-            "myEventID": -1,
-            "name": "Tutorial_Doll_Scarecrow_3",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "param": {
-                "enemyType": "Tutorial_Doll",
-                "gravity": 0.0,
-                "hp": 100.0,
-                "interval": 3.0,
-                "jumpPower": 0.0,
-                "maxCount": 5,
-                "maxFallSpeed": 60.0,
-                "maxHp": 100.0,
-                "speed": 1.0
-            },
-            "parentName": "",
-            "position": [
-                24.0,
-                23.881000518798828,
-                -226.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.5,
-                2.5,
-                1.5
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model",
-            "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.5,
-                "waveSpeed": 2.0
-            }
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
                     0.0,
                     0.0,
                     0.0
@@ -3570,9 +3237,9 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.5907335877418518,
-                0.23492492735385895,
-                0.23492492735385895,
+                0.3899613618850708,
+                0.2318689227104187,
+                0.2318689227104187,
                 1.0
             ],
             "emissive": 1.0,
@@ -3597,11 +3264,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.4099999964237213,
+            "metallic": 0.0,
             "modelName": "map_floor_02",
             "myEventID": -1,
             "name": "Map_Floor_WireMesh",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3625,7 +3292,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.0,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -3633,7 +3300,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3671,16 +3338,16 @@
             "collisionMask": 0,
             "color": [
                 0.4285714030265808,
-                0.4269166886806488,
-                0.4269166886806488,
+                0.4285714030265808,
+                0.4285714030265808,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.10100000351667404,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -3701,7 +3368,7 @@
             "modelName": "map_floor_03",
             "myEventID": -1,
             "name": "Map_Floor_Panel",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3733,7 +3400,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3777,7 +3444,7 @@
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -5170,14 +4837,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                0.364705890417099,
-                0.364705890417099,
-                0.364705890417099,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -5201,7 +4868,7 @@
             "modelName": "map_tutorial_07",
             "myEventID": -1,
             "name": "Tutorial_Door_Left",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -5233,7 +4900,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -5270,14 +4937,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                0.364705890417099,
-                0.364705890417099,
-                0.364705890417099,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -5301,7 +4968,7 @@
             "modelName": "map_tutorial_08",
             "myEventID": -1,
             "name": "Tutorial_Door_Right",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -5333,7 +5000,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -6370,17 +6037,17 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.6602316498756409,
+                0.6602316498756409,
+                0.6602316498756409,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": false,
+            "enableEnvMap": true,
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.10100000351667404,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -6397,11 +6064,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.017000000923871994,
+            "metallic": 0.0,
             "modelName": "map_equipment_door_01",
             "myEventID": -1,
             "name": "Map_Equipment_Door_01",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -6425,7 +6092,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -6433,7 +6100,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -6470,9 +6137,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.12355214357376099,
+                0.12355214357376099,
+                0.12355214357376099,
                 1.0
             ],
             "emissive": 1.0,
@@ -6570,9 +6237,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.12741315364837646,
+                0.12741315364837646,
+                0.12741315364837646,
                 1.0
             ],
             "emissive": 1.0,
@@ -6670,14 +6337,14 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.16988414525985718,
-                0.16988414525985718,
-                0.16988414525985718,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.15800000727176666,
@@ -6701,7 +6368,7 @@
             "modelName": "map_tutorial_02",
             "myEventID": -1,
             "name": "Tutorial_Ceiling",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -6733,7 +6400,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -6770,14 +6437,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967073,
             "color": [
-                0.21621620655059814,
-                0.21538139879703522,
-                0.21538139879703522,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.0729999989271164,
@@ -6801,7 +6468,7 @@
             "modelName": "map_tutorial_09",
             "myEventID": -1,
             "name": "Tutorial_Platform_01",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -6833,7 +6500,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -7959,14 +7626,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                0.16862745583057404,
-                0.16862745583057404,
-                0.16862745583057404,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -7990,7 +7657,7 @@
             "modelName": "map_tutorial_03",
             "myEventID": -1,
             "name": "Tutorial_Room_Wall_Left",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -8022,7 +7689,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -8059,14 +7726,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                0.16862745583057404,
-                0.16862745583057404,
-                0.16862745583057404,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -8090,7 +7757,7 @@
             "modelName": "map_tutorial_04",
             "myEventID": -1,
             "name": "Tutorial_Room_Wall_Back",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -8122,7 +7789,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -8159,14 +7826,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                0.16862745583057404,
-                0.16862745583057404,
-                0.16862745583057404,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -8190,7 +7857,7 @@
             "modelName": "map_tutorial_05",
             "myEventID": -1,
             "name": "Tutorial_Room_Wall_Right",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -8222,7 +7889,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -8259,14 +7926,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967295,
             "color": [
-                0.16862745583057404,
-                0.16862745583057404,
-                0.16862745583057404,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -8290,7 +7957,7 @@
             "modelName": "map_tutorial_06",
             "myEventID": -1,
             "name": "Tutorial_Room_Wall_Front",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Room_Base",
             "position": [
@@ -8322,7 +7989,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -9449,14 +9116,14 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
-                0.21621620655059814,
-                0.2078680843114853,
-                0.2078680843114853,
+                0.41312742233276367,
+                0.41312742233276367,
+                0.41312742233276367,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.0,
@@ -9480,7 +9147,7 @@
             "modelName": "map_turorial_10",
             "myEventID": -1,
             "name": "Turorial_Platform_02",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Platform_01",
             "position": [
@@ -9512,7 +9179,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -9549,9 +9216,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
-                1.0,
-                0.5,
-                0.5,
+                0.14671814441680908,
+                0.14671814441680908,
+                0.14671814441680908,
                 1.0
             ],
             "emissive": 10.0,
@@ -9649,9 +9316,9 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967072,
             "color": [
-                0.7843137383460999,
-                0.47058823704719543,
-                0.47058823704719543,
+                0.8880308866500854,
+                1.0,
+                0.0,
                 1.0
             ],
             "emissive": 1.0,
@@ -10186,6 +9853,1499 @@
                 -10.569000244140625,
                 23.6299991607666,
                 -218.31199645996094
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -8.797645568847656e-05,
+                    -0.01695150136947632,
+                    5.997717380523682e-06
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.4989714622497559,
+                    0.19999998807907104
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "emissive": 2.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "arrow",
+            "myEventID": -1,
+            "name": "arrow",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -10.472339630126953,
+                30.391494750976563,
+                -218.31199645996094
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    27.141952514648438,
+                    -2.747722625732422
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    41.700103759765625,
+                    44.64195251464844,
+                    35.9639778137207
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_10",
+            "myEventID": -1,
+            "name": "Tutorial_Room_10",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Ceiling",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -3.814697265625e-06,
+                    32.63546371459961,
+                    -0.07854652404785156
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    40.590576171875,
+                    2.9201135635375977,
+                    30.374958038330078
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_11",
+            "myEventID": -1,
+            "name": "Tutorial_Room_11",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                -4.371138828673793e-08
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.1415927410125732,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0030517578125,
+                    44.73332214355469,
+                    2.90045166015625
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    40.28725051879883,
+                    16.46845817565918,
+                    33.06913375854492
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                0.15057915449142456,
+                0.1343003213405609,
+                0.1343003213405609,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_12",
+            "myEventID": -1,
+            "name": "Tutorial_Room_12",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                -4.371138828673793e-08
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.1415927410125732,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.14406394958496094,
+                    41.42219543457031,
+                    -0.10707569122314453
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    40.45823669433594,
+                    19.834373474121094,
+                    29.9412841796875
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_13",
+            "myEventID": -1,
+            "name": "Tutorial_Room_13",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                -4.300000190734863,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                -4.371138828673793e-08
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.1415927410125732,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    3.3040504455566406,
+                    37.188941955566406,
+                    -0.048259735107421875
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    36.410301208496094,
+                    7.360342025756836,
+                    30.231815338134766
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                0.5328184962272644,
+                0.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_14",
+            "myEventID": -1,
+            "name": "Tutorial_Room_14",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Room_Base",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    5.0,
+                    35.00000762939453,
+                    32.49999237060547
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    5.000000953674316,
+                    2.400003433227539
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_15",
+            "myEventID": -1,
+            "name": "Tutorial_Room_15",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Door_Right",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                -4.371138828673793e-08
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.1415927410125732,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -5.0,
+                    35.00000762939453,
+                    32.49999237060547
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    5.000000953674316,
+                    2.400003433227539
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_tutorial_16",
+            "myEventID": -1,
+            "name": "Tutorial_Room_16",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Tutorial_Door_Left",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                1.0,
+                0.0,
+                -4.371138828673793e-08
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                3.1415927410125732,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    5.0,
+                    5.0,
+                    2.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Decoration_01",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -43.0,
+                20.5,
+                -214.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.0,
+                    14.0,
+                    8.199999809265137
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Decoration_02",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -43.599998474121094,
+                30.0,
+                -239.1999969482422
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    14.0,
+                    6.5
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Decoration_03",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -31.15399932861328,
+                30.0,
+                -267.1960144042969
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.199999809265137,
+                    8.0,
+                    6.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Decoration_04",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                27.299999237060547,
+                20.799999237060547,
+                -265.20001220703125
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.5,
+                    14.0,
+                    2.0
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Collision_Box_Decoration_05",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                44.900001525878906,
+                30.0,
+                -212.10000610351563
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.0,
+                    14.0,
+                    2.200000047683716
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Corridor_Collision_Box_Decoration_01",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                13.600000381469727,
+                31.0,
+                -158.6999969482422
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    6.0,
+                    14.0,
+                    2.200000047683716
+                ],
+                "type": 3
+            },
+            "collisionAttribute": 4,
+            "collisionMask": 4294967073,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "myEventID": -1,
+            "name": "Tutorial_Corridor_Collision_Box_Decoration_02",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "position": [
+                -13.600000381469727,
+                31.0,
+                -158.6999969482422
             ],
             "quaternion": [
                 0.0,
@@ -12009,106 +13169,6 @@
                 0.0,
                 0.0,
                 0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model",
-            "waterParam": {
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.5,
-                "waveSpeed": 2.0
-            }
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    -8.797645568847656e-05,
-                    -0.01695150136947632,
-                    5.997717380523682e-06
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.4989714622497559,
-                    0.19999998807907104
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enableOutline": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "arrow",
-            "myEventID": -1,
-            "name": "arrow",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "",
-            "position": [
-                -10.472339630126953,
-                30.7559814453125,
-                -218.31199645996094
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                -0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
             ],
             "targetID": -1,
             "texturePath": "",

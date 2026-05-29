@@ -87,6 +87,12 @@ private:
     Vector3 movieStartCameraEye_;
     Vector3 movieStartCameraTarget_;
     bool hasBridgeDropped_ = false;
+    bool bridgeCenterMagmaImpactPlayed_ = false;
+    bool bridgeBackMagmaImpactPlayed_ = false;
+    bool bridgeFrontMagmaImpactPlayed_ = false;
+#ifdef USE_IMGUI
+    bool isBridgeDropPreviewForDebug_ = false;
+#endif
     Vector3 movieStoredPlayerPos_;
 
     // --- チュートリアル進行とドア制御 ---
@@ -110,6 +116,9 @@ private:
     void UpdateGameplaySystems(float deltaTime);
     void UpdateBossMovie(float deltaTime);
     void UpdateClearSequence(float deltaTime);
+#ifdef USE_IMGUI
+    bool PrepareBridgeDropPreviewForDebug();
+#endif
 
     // --- UI入力表示 ---
     void ApplyPauseInputUiIfNeeded();
@@ -178,6 +187,11 @@ private:
     float playerDamageDelayTimer_ = 0.0f;
     float playerPrevHpRatio_ = 0.0f;
 
+    // --- 回避クールタイム UI ---
+    Sprite* playerDashBarSprite_ = nullptr;
+    Sprite* playerDashBackSprite_ = nullptr;
+    float playerDashBarMaxWidth_ = 0.0f;
+
     // --- チュートリアル足場 ---
     Object3d* tutorialPlatform_ = nullptr;
     float tutorialPlatformOffset_ = 0.0f;
@@ -238,6 +252,7 @@ private:
     Sprite* optionPoseTextSprite_ = nullptr;
     Sprite* titleTextPoseSprite_ = nullptr;
     Sprite* tabPauseTextSprite_ = nullptr;
+    Sprite* optionControlsSprite_ = nullptr;
     bool pauseUiUsesGamepad_ = false;
     bool hasAppliedPauseInputUi_ = false;
     bool isGameClearSequence_ = false;
@@ -285,6 +300,12 @@ private:
     int tutorialJumpCount_ = 0;
     float doorOpenedTimer_ = 0.0f;
     class IAnimationState* tutorialPrevState_ = nullptr;
+
+    // --- チュートリアル矢印用 ---
+    Object3d* tutorialArrow_ = nullptr;
+    float tutorialArrowAnimTimer_ = 0.0f;
+    Vector3 tutorialArrowDefaultPos_;
+    size_t tutorialArrowWaypointIndex_ = 0;
 
     // --- ミッション表示スプライト ---
     Sprite* missionText_mission_ = nullptr;

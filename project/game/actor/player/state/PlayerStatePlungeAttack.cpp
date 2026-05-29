@@ -470,6 +470,3 @@ void PlayerStatePlungeAttack::ApplyPose(Player *player) {
     swordObj_->UpdateWorldMatrix();
   }
 }
-
-// ========================================================
-// PlayerStateJump 実装

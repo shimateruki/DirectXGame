@@ -1,4 +1,5 @@
 {
+    "crashStunDuration": 5.0,
     "damageAbsorb": 15.0,
     "damageBomb": 30.0,
     "damageBombReflect": 20.0,
@@ -13,7 +14,7 @@
     "damageWall": 30.0,
     "lowArmorAbsorbRate": 90,
     "lowArmorThreshold": 3,
-    "maxArmorBlockHp": 200.0,
+    "maxArmorBlockHp": 20.0,
     "maxBarrierHp": 300.0,
     "phase1Attacks": [
         {

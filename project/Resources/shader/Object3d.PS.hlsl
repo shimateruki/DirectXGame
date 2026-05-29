@@ -140,6 +140,144 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
     return F0 + (1.0f - F0) * pow(clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
 }
 
+float Hash31(float3 p)
+{
+    return frac(sin(dot(p, float3(127.1f, 311.7f, 74.7f))) * 43758.5453f);
+}
+
+float ValueNoise3D(float3 p)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    float3 u = f * f * (3.0f - 2.0f * f);
+
+    float n000 = Hash31(i + float3(0.0f, 0.0f, 0.0f));
+    float n100 = Hash31(i + float3(1.0f, 0.0f, 0.0f));
+    float n010 = Hash31(i + float3(0.0f, 1.0f, 0.0f));
+    float n110 = Hash31(i + float3(1.0f, 1.0f, 0.0f));
+    float n001 = Hash31(i + float3(0.0f, 0.0f, 1.0f));
+    float n101 = Hash31(i + float3(1.0f, 0.0f, 1.0f));
+    float n011 = Hash31(i + float3(0.0f, 1.0f, 1.0f));
+    float n111 = Hash31(i + float3(1.0f, 1.0f, 1.0f));
+
+    float nx00 = lerp(n000, n100, u.x);
+    float nx10 = lerp(n010, n110, u.x);
+    float nx01 = lerp(n001, n101, u.x);
+    float nx11 = lerp(n011, n111, u.x);
+    float nxy0 = lerp(nx00, nx10, u.y);
+    float nxy1 = lerp(nx01, nx11, u.y);
+    return lerp(nxy0, nxy1, u.z);
+}
+
+float FbmNoise3D(float3 p)
+{
+    float value = 0.0f;
+    float amplitude = 0.5f;
+    float frequency = 1.0f;
+
+    [unroll]
+    for (int i = 0; i < 4; ++i)
+    {
+        value += ValueNoise3D(p * frequency) * amplitude;
+        frequency *= 2.03f;
+        amplitude *= 0.5f;
+    }
+
+    return saturate(value);
+}
+
+float2 ProjectArmorCrackUV(float3 localPosition)
+{
+    float3 absPos = abs(localPosition);
+    if (absPos.x > absPos.y && absPos.x > absPos.z)
+    {
+        return localPosition.yz;
+    }
+    if (absPos.y > absPos.z)
+    {
+        return localPosition.xz;
+    }
+    return localPosition.xy;
+}
+
+float ArmorBlockPanelMask(float3 localPosition, float2 faceUV)
+{
+    float3 absPos = abs(localPosition);
+    float protrusion = max(max(absPos.x, absPos.y), absPos.z);
+    float protrusionMask = 1.0f - smoothstep(1.002f, 1.035f, protrusion);
+    float edgeMask = 1.0f - smoothstep(0.705f, 0.825f, max(abs(faceUV.x), abs(faceUV.y)));
+    return saturate(protrusionMask * edgeMask);
+}
+
+float ArmorBlockRivetMask(float2 faceUV)
+{
+    float mask = 1.0f;
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 center = float2((float) x, (float) y) * 0.5f;
+            mask *= smoothstep(0.095f, 0.165f, length(faceUV - center));
+        }
+    }
+    return saturate(mask);
+}
+
+float DistanceToSegment2D(float2 p, float2 a, float2 b)
+{
+    float2 pa = p - a;
+    float2 ba = b - a;
+    float h = saturate(dot(pa, ba) / max(dot(ba, ba), 0.0001f));
+    return length(pa - ba * h);
+}
+
+float CrackSegmentMask(float2 p, float2 a, float2 b, float width)
+{
+    float distance = DistanceToSegment2D(p, a, b);
+    return 1.0f - smoothstep(width, width * 2.15f, distance);
+}
+
+float2 PixelateArmorUV(float2 uv)
+{
+    const float gridSize = 34.0f;
+    return (floor(uv * gridSize) + 0.5f) / gridSize;
+}
+
+float ArmorCrackMask(float3 localPosition, float amount, float widthScale)
+{
+    float2 uv = ProjectArmorCrackUV(localPosition);
+    float panelMask = ArmorBlockPanelMask(localPosition, uv);
+    float rivetMask = ArmorBlockRivetMask(uv);
+    float2 crackUV = PixelateArmorUV(uv);
+    float width = lerp(0.010f, 0.018f, amount) * widthScale;
+    float visibility = smoothstep(0.035f, 0.18f, amount);
+
+    float mask = 0.0f;
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.58f, 0.34f), float2(-0.40f, 0.34f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.40f, 0.34f), float2(-0.40f, 0.12f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.40f, 0.12f), float2(-0.18f, 0.12f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.18f, 0.12f), float2(-0.18f, -0.10f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.18f, -0.10f), float2(0.06f, -0.10f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.06f, -0.10f), float2(0.06f, -0.30f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.06f, -0.30f), float2(0.34f, -0.30f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.34f, -0.30f), float2(0.34f, -0.12f), width));
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.34f, -0.12f), float2(0.62f, -0.12f), width));
+
+    float branchA = smoothstep(0.12f, 0.34f, amount);
+    float branchB = smoothstep(0.30f, 0.62f, amount);
+    float branchC = smoothstep(0.52f, 0.86f, amount);
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.18f, 0.12f), float2(-0.34f, -0.04f), width * 0.82f) * branchA);
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.34f, -0.04f), float2(-0.52f, -0.04f), width * 0.82f) * branchA);
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.06f, -0.10f), float2(0.24f, 0.08f), width * 0.76f) * branchB);
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.24f, 0.08f), float2(0.48f, 0.08f), width * 0.76f) * branchB);
+    mask = max(mask, CrackSegmentMask(crackUV, float2(0.34f, -0.30f), float2(0.52f, -0.46f), width * 0.70f) * branchC);
+    mask = max(mask, CrackSegmentMask(crackUV, float2(-0.40f, 0.34f), float2(-0.54f, 0.50f), width * 0.70f) * branchC);
+
+    return saturate(mask * visibility * panelMask * rivetMask);
+}
+
 float3 CalcPBRLight(float3 L, float3 V, float3 N, float3 radiance, float3 albedo, float roughness, float metallic, float3 F0)
 {
     float3 H = normalize(V + L);
@@ -349,28 +487,57 @@ PixelShanderOutput main(VecrtexShaderOutput input)
             // ===========================================================
                 else if (gMaterial.materialType == 4)
                 {
-                    float2 st = input.texcoord * 15.0f;
-                    float noise = frac(sin(dot(st, float2(12.9898f, 78.233f))) * 43758.5453123f);
-                    float threshold = gMaterial.color.a;
+                    float3 dissolvePos = input.worldPosition * 1.25f + normalize(input.normal) * 0.35f;
+                    float coarseNoise = FbmNoise3D(dissolvePos);
+                    float detailNoise = ValueNoise3D(dissolvePos * 4.5f) * 0.12f;
+                    float noise = smoothstep(0.18f, 0.88f, saturate(coarseNoise * 0.92f + detailNoise));
+                    float dissolveAmount = saturate(1.0f - gMaterial.color.a);
 
-                    if (noise > threshold)
+                    if (noise < dissolveAmount)
                     {
                         discard;
                     }
                     
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
-                    float edgeWidth = 0.08f;
+                    float edgeWidth = lerp(0.075f, 0.045f, dissolveAmount);
+                    float edgeMask = 1.0f - smoothstep(dissolveAmount, dissolveAmount + edgeWidth, noise);
+                    edgeMask *= smoothstep(0.03f, 0.18f, dissolveAmount);
 
-                    if (noise > threshold - edgeWidth)
+                    float3 N = normalize(input.normal);
+                    float3 V = normalize(gCamera.worldPosition - input.worldPosition);
+                    float3 ormColor = gOrmMap.Sample(gSampler, input.texcoord).rgb;
+                    float roughness = max(0.04f, gMaterial.roughness * ormColor.g);
+                    float metallic = gMaterial.metallic * ormColor.b;
+
+                    if (gMaterial.enableNormalMap == 1)
                     {
-                        float3 fireColor = float3(3.0f, 0.5f, 0.0f);
-                        output.color.rgb = baseColor + fireColor;
+                        float3 T = normalize(input.tangent);
+                        T = normalize(T - dot(T, N) * N);
+                        float3 B = cross(N, T);
+                        float3x3 TBN = float3x3(T, B, N);
+                        float3 normalMap = gNormalMap.Sample(gSampler, input.texcoord).rgb;
+                        normalMap = normalMap * 2.0f - 1.0f;
+                        N = normalize(mul(normalMap, TBN));
                     }
-                    else
+
+                    float3 F0 = float3(0.04f, 0.04f, 0.04f);
+                    F0 = lerp(F0, baseColor, metallic);
+                    float3 L_dir = normalize(-gDirectionalLight.direction);
+                    float3 lightIntensity = lerp(float3(0.15f, 0.25f, 0.5f), float3(1.0f, 1.0f, 1.0f), shadowFactor);
+                    float3 radiance = gDirectionalLight.color.rgb * gDirectionalLight.intenssity * lightIntensity;
+                    float3 litColor = CalcPBRLight(L_dir, V, N, radiance, baseColor, roughness, metallic, F0);
+                    float3 ambient = gDirectionalLight.ambientColor * baseColor * (1.0f - metallic);
+
+                    if (gMaterial.enableEnvMap == 1)
                     {
-                        float NdotL = saturate(dot(normalize(input.normal), -gDirectionalLight.direction));
-                        output.color.rgb = baseColor * gDirectionalLight.color.rgb * NdotL + (baseColor * 0.2f);
+                        float3 R = reflect(-V, N);
+                        float3 envColor = gEnvTexture.SampleLevel(gSampler, R, roughness * 5.0f).rgb * gMaterial.envIntensity;
+                        float3 F_ibl = FresnelSchlick(max(dot(N, V), 0.0f), F0);
+                        ambient += envColor * F_ibl;
                     }
+
+                    float3 edgeColor = (baseColor * 1.2f + float3(0.8f, 0.22f, 0.06f)) * edgeMask * 2.2f;
+                    output.color.rgb = litColor + ambient + edgeColor;
                     output.color.a = 1.0f;
                 }
             // ===========================================================
@@ -557,6 +724,20 @@ PixelShanderOutput main(VecrtexShaderOutput input)
 
                     output.color.rgb = Lo + ambient;
                     output.color.a = gMaterial.color.a * textureColor.a;
+
+                    if (gMaterial.materialType == 13)
+                    {
+                        float crackAmount = saturate(gMaterial.emissive - 1.0f);
+                        float crackCore = ArmorCrackMask(input.localPosition, crackAmount, 0.58f);
+                        float crackGroove = ArmorCrackMask(input.localPosition, crackAmount, 1.05f);
+                        float crackLip = saturate(ArmorCrackMask(input.localPosition, crackAmount, 1.55f) - crackGroove);
+                        float3 grooveColor = output.color.rgb * 0.36f;
+                        float3 coreColor = output.color.rgb * 0.08f;
+                        float3 lipColor = saturate(output.color.rgb + float3(0.16f, 0.18f, 0.20f));
+                        output.color.rgb = lerp(output.color.rgb, grooveColor, crackGroove * 0.58f);
+                        output.color.rgb = lerp(output.color.rgb, lipColor, crackLip * 0.44f);
+                        output.color.rgb = lerp(output.color.rgb, coreColor, crackCore * 0.86f);
+                    }
                 }
                 if (gDirectionalLight.enableFog != 0 && output.color.a > 0.0f)
                 {
@@ -647,7 +828,7 @@ PixelShanderOutput main(VecrtexShaderOutput input)
                         }
                     }
                 }
-                if (gMaterial.emissive > 1.0f)
+                if (gMaterial.emissive > 1.0f && gMaterial.materialType != 13)
                 {
         // オブジェクト本来の色（光の影響なし）
                     float3 emissiveColor = gMaterial.color.rgb * textureColor.rgb;

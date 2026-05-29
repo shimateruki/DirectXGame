@@ -6,11 +6,17 @@ class EnemyBomb : public BaseEnemy {
 public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
+    void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     bool OnCollision(Object3d* other) override;
     std::unique_ptr<Object3d> Clone() const override;
 
 private:
+    void SetupVisualParts();
+    void SetVisualPartsColor(const Vector4& color);
+    void SetVisualPartsVisible(bool visible);
     void UpdateColorByHitCount();
+    void EnableReflectAfterLanding();
+    bool CanReflectByPlayer() const;
 
     // ボム兵の状態
     enum class State {
@@ -33,6 +39,7 @@ private:
     // 吹き飛ばし・跳ね返し用
     int hitCount_ = 0;
     bool isBlownAway_ = false;
+    bool hasLandedOnce_ = false;
     float shakeTimer_ = 0.0f;
     float stunTimer_ = 0.0f;
     Vector3 lastShakeOffset_ = { 0,0,0 };
@@ -44,4 +51,7 @@ private:
     // コロコロ転がり挙動用
     bool isRolling_ = true;
     float rollTimer_ = 0.0f;
+
+    std::unique_ptr<Object3d> bodyPart_;
+    std::unique_ptr<Object3d> ringPart_;
 };

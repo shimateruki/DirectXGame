@@ -32,6 +32,7 @@ public:
 
     // ★課題: Cylinderを使った横UVスクロール・色アニメのポータルエフェクト
     void SpawnPortalEffect(const Vector3& position, float lifetime = 3.0f);
+    void SpawnLightningArc(const Vector3& position, float radius = 1.0f, float length = 2.0f, float width = 0.08f);
 
     // シーン切り替え時などに全てのエフェクトを消す
     // common_ も一緒にリセットし、次のSpawn時に自己修復させる

@@ -1,6 +1,26 @@
 #include "BossCoreShared.h"
 #include "AudioPlayer.h"
 
+namespace {
+constexpr Vector4 kBossBreakCoreColor = { 0.0f, 0.59459448f, 1.0f, 1.0f };
+
+void ApplyBossBreakCoreVisual(Object3d* object, float emissive = 2.0f) {
+    if (!object) {
+        return;
+    }
+
+    object->SetColor(kBossBreakCoreColor);
+    object->SetMaterialType(2);
+    object->SetSelectedLighting(2);
+    object->SetEmissive(emissive);
+    object->SetMetallic(0.0f);
+    object->SetRoughness(0.5f);
+    object->SetEnableNormalMap(false);
+    object->SetEnableEnvMap(false);
+    object->SetEnvIntensity(0.0f);
+}
+}
+
 void BossCore::StartDeathSequence() {
     if (deathPhase_ != 0) return; // 既に死亡処理中なら何もしない
 
@@ -11,6 +31,8 @@ void BossCore::StartDeathSequence() {
 
     // ボス撃破SE再生
     AudioPlayer::GetInstance()->PlaySE(seBossDieHandle_, false, 1.0f);
+    ApplyBossBreakCoreVisual(this);
+    defaultColor_ = kBossBreakCoreColor;
 
     DebugConsole::GetInstance()->AddLog("[撃破] ボス沈黙…！！");
 
@@ -28,6 +50,7 @@ void BossCore::StartDeathSequence() {
         currentAttack_->Finalize();
         currentAttack_.reset();
     }
+    HideWarningArea();
     isWaitingForDeath_ = true;
     ChangeState(State::Idle);
 
@@ -88,13 +111,7 @@ void BossCore::ActuallySpawnShards() {
             pieceObj->Initialize(common_);
             pieceObj->SetStatic(true);
             pieceObj->SetModel("enemy_core_shards/enemy_core" + std::to_string(i + 1));
-            pieceObj->SetColor({ 0.0f, 0.5946f, 1.0f, 1.0f });
-            pieceObj->SetMaterialType(2);
-            pieceObj->SetEmissive(2.0f);
-            pieceObj->SetMetallic(0.0f);
-            pieceObj->SetRoughness(0.5f);
-            pieceObj->SetEnableEnvMap(true);
-            pieceObj->SetEnvIntensity(1.035f);
+            ApplyBossBreakCoreVisual(pieceObj.get());
             pieceObj->SetScale({ 1.0f, 1.0f, 1.0f });
             pieceObj->SetCollisionAttribute(0);
 
@@ -139,7 +156,7 @@ void BossCore::BreakCore() {
             };
 
             // 発光を元に戻す
-            piece.obj->SetEmissive(1.0f);
+            ApplyBossBreakCoreVisual(piece.obj, 1.0f);
         }
     }
 }

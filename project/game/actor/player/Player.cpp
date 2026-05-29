@@ -50,6 +50,23 @@ void Player::Initialize(Object3dCommon* common, InputManager* inputManager, Part
     seDownAttack1Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack1.mp3");
     seDownAttack2Handle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDownAttack2.mp3");
     seDamageHandle_ = AudioPlayer::GetInstance()->LoadSoundFile("Resources/audio/se/Player/PlayerDamage.mp3");
+    // --- 残像用プールの初期化 ---
+    ghostPool_.clear();
+    for (int i = 0; i < 60; ++i) {
+        auto ghostObj = std::make_unique<Object3d>();
+        ghostObj->Initialize(common_);
+        ghostObj->SetColliderType(ColliderType::kNone);
+        ghostObj->SetBlendMode(BlendMode::kNormal); // 加算合成だと背景に消されるため通常ブレンドに戻す
+        
+        // 残像が暗闇でも見えるようにライティングを無効化する
+        if (ghostObj->GetMeshRenderer() && ghostObj->GetMeshRenderer()->GetMaterialData()) {
+            ghostObj->GetMeshRenderer()->GetMaterialData()->enableLighting = 0;
+            ghostObj->GetMeshRenderer()->GetMaterialData()->emissive = 1.5f; // 発光を強める
+        }
+        
+        ghostPool_.push_back(std::move(ghostObj));
+    }
+    ghostPoolIndex_ = 0;
 
     // ステートマシン初期化 (待機状態からスタート)
     ChangeState(std::make_unique<PlayerStateIdle>());
@@ -220,17 +237,52 @@ void Player::Update(float deltaTime)
                 isDead = false;
                 deathTimer_ = 0.0f;
 
-                postParams->dangerVignette = 0.0f;
-                postParams->blackout = 0.0f; // リセット
                 postParams->wobbleIntensity = 0.0f;
                 postParams->damageFlash = 0.0f;
             }
         }
     }
 
+    // =======================================================
+    // 7. 残像 (Ghost Trail) の更新
+    // =======================================================
+    for (auto it = ghostTrails_.begin(); it != ghostTrails_.end();) {
+        it->life -= deltaTime;
+        if (it->life <= 0.0f) {
+            it = ghostTrails_.erase(it);
+        } else {
+            // アルファ値の減衰（より早くシュッと消え、かつ最初からかなり透明にする）
+            float ratio = (it->life / it->maxLife);
+            it->alpha = ratio * 0.4f; // 初期最大0.4f (かなり透けている状態)
+            
+            for (size_t i = 0; i < it->parts.size(); ++i) {
+                auto* part = it->parts[i];
+                // スタイリッシュな「暗い影（シャドウ）」の色。黒ベースにわずかに紫を入れる
+                part->SetColor({ 0.05f, 0.05f, 0.1f, it->alpha });
+                
+                // スケール変更をやめて元のサイズを維持する
+                Transform* t = part->GetTransform();
+                t->matWorld = it->baseMatrices[i];
+                
+                // Object3d::Update() を呼ぶとmatWorldが再計算されてしまうため、
+                // MeshRendererの定数バッファだけを更新して、過去のmatWorldを維持する。
+                if (part->GetMeshRenderer()) {
+                    part->GetMeshRenderer()->Update();
+                }
+            }
+            ++it;
+        }
+    }
 }
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {
+    // 残像の描画 (本体の描画の前に描画するか後に描画するか。加算合成なので後でも綺麗)
+    for (auto& trail : ghostTrails_) {
+        for (auto* part : trail.parts) {
+            part->Draw(pointLightResource, spotLightResource);
+        }
+    }
+
     Character::Draw(pointLightResource, spotLightResource);
 }
 
@@ -295,6 +347,11 @@ bool Player::OnCollision(Object3d* other)
             dmgEvent.attacker = other;
             dmgEvent.damageAmount = other->GetAttackDamage();
             EventManager::GetInstance()->Dispatch(dmgEvent);
+
+            if (IsDeathSequenceActive())
+            {
+                return true;
+            }
 
             // 無敵時間をセット
             damageCooldownTimer_ = 1.5f;
@@ -383,9 +440,9 @@ void Player::SetDashInvincible(bool inv) {
 }
 
 void Player::UpdateColor() {
-    const bool isInvincible = isDamageInvincible_ || isDashInvincible_;
+    const bool shouldUseDamageTint = isDamageInvincible_;
 
-    if (isInvincible && !hasSavedInvincibleColors_) {
+    if (shouldUseDamageTint && !hasSavedInvincibleColors_) {
         savedColor_ = GetColor();
         childSavedColors_.clear();
         for (Object3d* child : GetChildren()) {
@@ -396,7 +453,7 @@ void Player::UpdateColor() {
         hasSavedInvincibleColors_ = true;
     }
 
-    if (!isInvincible) {
+    if (!shouldUseDamageTint) {
         if (hasSavedInvincibleColors_) {
             SetColor(savedColor_);
             for (auto& entry : childSavedColors_) {
@@ -410,9 +467,7 @@ void Player::UpdateColor() {
         return;
     }
 
-    Vector4 invincibleColor = isDamageInvincible_
-        ? Vector4{ 1.0f, 0.0f, 0.0f, 1.0f }
-        : Vector4{ 0.0f, 0.45f, 1.0f, 1.0f };
+    Vector4 invincibleColor = { 1.0f, 0.0f, 0.0f, 1.0f };
     SetColor(invincibleColor);
     for (Object3d* child : GetChildren()) {
         if (child) child->SetColor(invincibleColor);
@@ -460,6 +515,13 @@ bool Player::ConsumeBufferedAttackInput()
     }
     return false;
 }
+float Player::GetDashCooldownRatio() const {
+    if (mover_) {
+        return mover_->GetDashCooldownRatio();
+    }
+    return 1.0f;
+}
+
 void Player::LoadAttackParams() {
     std::string filePath = "Resources/json/player/attack_params.json";
     if (!std::filesystem::exists(filePath)) {
@@ -487,5 +549,66 @@ void Player::SaveAttackParams() {
         json j;
         attackParams_.ToJson(j);
         ofs << j.dump(4);
+    }
+}
+
+// =======================================================
+// 残像エフェクト (Ghost Trail)
+// =======================================================
+void Player::CreateGhostTrail()
+{
+    GhostTrail trail;
+    trail.alpha = 1.0f;
+    trail.life = 0.2f;    // 寿命を短くしてシュッと消えるようにする
+    trail.maxLife = 0.2f; // 同上
+
+    // 自身と全ての子パーツ（頭、腕、足など）を対象にする
+    std::vector<Object3d*> targets;
+    targets.push_back(this);
+    for (Object3d* child : GetChildren()) {
+        targets.push_back(child);
+    }
+
+    for (Object3d* obj : targets) {
+        if (!obj->GetModel()) continue; // モデルがない部位（ロケータなど）は無視
+        if (ghostPool_.empty()) continue; // セーフティチェック
+        
+        // プールから取得
+        Object3d* ghostNode = ghostPool_[ghostPoolIndex_].get();
+        ghostPoolIndex_ = (ghostPoolIndex_ + 1) % ghostPool_.size();
+        
+        ghostNode->SetModel(obj->GetModel()); // モデルのポインタを直接セット
+        
+        // 初期色（シャドウ）
+        ghostNode->SetColor({ 0.05f, 0.05f, 0.1f, trail.alpha });
+        
+        // Transformの完全上書き（ワールド行列のコピー）
+        Transform* t = ghostNode->GetTransform();
+        Matrix4x4 mat = obj->GetWorldMatrix();
+        
+        // 残像を一回り小さくして、回避後に立ち止まった時に本物と重ならないようにする
+        float ghostScale = 0.85f;
+        for(int col = 0; col < 3; ++col){
+            mat.m[0][col] *= ghostScale;
+            mat.m[1][col] *= ghostScale;
+            mat.m[2][col] *= ghostScale;
+        }
+        
+        // 地面とのZファイティングやめり込みを防止するため、わずかにY軸を上げる
+        mat.m[3][1] += 0.05f;
+        
+        t->matWorld = mat;
+        
+        trail.parts.push_back(ghostNode);
+        trail.baseMatrices.push_back(mat); // 元の行列を保存してスケールダウンに使う
+    }
+    
+    ghostTrails_.push_back(std::move(trail));
+
+    // --- 軽量化対策 ---
+    // 連続回避などで残像が増えすぎると、描画負荷（DrawCall）が跳ね上がって重くなるため、
+    // 同時に存在できる残像の数を最大3つ（あるいは2つ）に制限する。
+    while (ghostTrails_.size() > 2) {
+        ghostTrails_.erase(ghostTrails_.begin());
     }
 }

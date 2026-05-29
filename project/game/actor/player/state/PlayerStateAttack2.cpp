@@ -472,6 +472,3 @@ void PlayerStateAttack2::ApplyPose(float t)
 		leftFootObj_->UpdateWorldMatrix();
 	}
 }
-
-// ========================================================
-// 攻撃3段目状態 (Attack3 - 突き攻撃) 実装

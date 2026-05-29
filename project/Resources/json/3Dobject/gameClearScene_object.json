@@ -35,6 +35,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.19599999487400055,
             "eventID": 0,
@@ -90,7 +91,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -119,14 +127,15 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
-                0.16028381884098053,
-                0.16162467002868652,
-                0.2471042275428772,
+                0.6370656490325928,
+                0.6370656490325928,
+                0.6370656490325928,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.0560000017285347,
             "eventID": 0,
@@ -145,11 +154,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.9549999833106995,
+            "metallic": 0.0,
             "modelName": "map_wall_01",
             "myEventID": -1,
             "name": "Battle_Field_Dome",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "",
             "position": [
@@ -170,7 +179,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 1.0,
@@ -181,8 +190,15 @@
                 1.399999976158142
             ],
             "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -219,6 +235,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -274,99 +291,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_001_01",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -403,6 +335,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -446,7 +379,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -458,99 +391,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_001_02",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -587,6 +435,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -630,7 +479,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -642,99 +491,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_001_03",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -771,6 +535,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -814,7 +579,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -826,99 +591,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_002_01",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -955,6 +635,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -998,7 +679,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -1010,99 +691,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_002_02",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -1139,6 +735,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -1182,7 +779,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -1194,99 +791,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_002_03",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -1323,6 +835,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -1366,7 +879,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -1378,99 +891,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_003_01",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -1507,6 +935,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -1550,7 +979,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -1562,99 +991,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_003_02",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -1691,6 +1035,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -1734,7 +1079,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -1746,99 +1091,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_003_03",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -1875,6 +1135,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -1918,7 +1179,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -1930,99 +1191,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_004_01",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -2059,6 +1235,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -2102,7 +1279,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -2114,99 +1291,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_004_02",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -2243,6 +1335,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -2286,7 +1379,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -2298,99 +1391,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_004_03",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -2427,6 +1435,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -2470,7 +1479,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -2482,99 +1491,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_005_01",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -2611,6 +1535,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -2654,7 +1579,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -2666,99 +1591,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_005_02",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -2795,6 +1635,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -2838,7 +1679,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -2850,99 +1691,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_005_03",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -2979,6 +1735,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -3022,7 +1779,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -3034,99 +1791,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_006_01",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3163,6 +1835,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -3206,7 +1879,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -3218,99 +1891,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_006_02",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3347,6 +1935,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -3390,7 +1979,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -3402,99 +1991,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "isAnimLoop": true
-            },
-            "blendMode": 1,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "type": 2
-            },
-            "collisionAttribute": 0,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "metallic": 0.0,
-            "modelName": "Cylinder",
-            "myEventID": -1,
-            "name": "Beam_Cylinder",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentName": "Pilar_Block_006_03",
-            "position": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.5,
-            "saveCategory": "Object",
-            "scale": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3531,6 +2035,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10000000149011612,
             "eventID": 0,
@@ -3574,7 +2079,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.800000011920929,
@@ -3586,7 +2091,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "MapBlock"
+            "type": "MapBlock",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3623,6 +2135,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -3678,7 +2191,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3715,6 +2235,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -3758,7 +2279,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -3770,7 +2291,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3807,6 +2335,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -3862,7 +2391,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3899,6 +2435,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 3,
@@ -3941,7 +2478,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -3953,7 +2490,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "InvisibleBox"
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -3990,6 +2534,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4033,7 +2578,7 @@
             },
             "rotation": [
                 0.24434608221054077,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4045,7 +2590,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4082,6 +2634,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4125,7 +2678,7 @@
             },
             "rotation": [
                 0.24434611201286316,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4137,7 +2690,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4174,6 +2734,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4217,7 +2778,7 @@
             },
             "rotation": [
                 0.24434611201286316,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4229,7 +2790,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4266,6 +2834,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4321,7 +2890,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "CinematicCamera"
+            "type": "CinematicCamera",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4358,6 +2934,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4401,7 +2978,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4413,7 +2990,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4450,6 +3034,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4493,7 +3078,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4505,7 +3090,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4542,6 +3134,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4585,7 +3178,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4597,7 +3190,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4634,6 +3234,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4677,7 +3278,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4689,7 +3290,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4726,6 +3334,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4769,7 +3378,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4781,7 +3390,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4818,6 +3434,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4861,7 +3478,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4873,7 +3490,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -4910,6 +3534,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -4953,7 +3578,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -4965,7 +3590,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5002,6 +3634,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "Tutorial_Doll",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -5056,7 +3689,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -5068,7 +3701,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5105,6 +3745,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.4099999964237213,
             "eventID": 0,
@@ -5160,7 +3801,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5171,8 +3819,8 @@
             "collider": {
                 "center": [
                     0.0,
-                    0.0,
-                    0.0
+                    -0.6499999761581421,
+                    -25.549999237060547
                 ],
                 "rotation": [
                     0.0,
@@ -5180,14 +3828,14 @@
                     0.0
                 ],
                 "size": [
-                    0.0,
-                    0.0,
-                    0.0
+                    10.0,
+                    1.0,
+                    10.0
                 ],
-                "type": 2
+                "type": 3
             },
-            "collisionAttribute": 0,
-            "collisionMask": 0,
+            "collisionAttribute": 4,
+            "collisionMask": 1,
             "color": [
                 0.4285714030265808,
                 0.4269166886806488,
@@ -5197,6 +3845,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -5252,7 +3901,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5289,6 +3945,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5344,7 +4001,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5381,6 +4045,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5436,7 +4101,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5473,6 +4145,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5528,7 +4201,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5565,6 +4245,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5620,7 +4301,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5657,6 +4345,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5712,7 +4401,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5749,6 +4445,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.2809999883174896,
             "eventID": 0,
@@ -5804,7 +4501,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5841,6 +4545,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5896,7 +4601,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -5933,6 +4645,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
             "eventID": 0,
@@ -5988,7 +4701,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6025,6 +4745,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -6080,7 +4801,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6117,6 +4845,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.04500000178813934,
             "eventID": 0,
@@ -6172,7 +4901,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6209,6 +4945,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.12999999523162842,
             "eventID": 0,
@@ -6264,7 +5001,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6301,6 +5045,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.1850000023841858,
             "eventID": 0,
@@ -6356,7 +5101,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6393,6 +5145,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.24199999868869781,
             "eventID": 0,
@@ -6448,7 +5201,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6477,16 +5237,17 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
-                0.21235519647598267,
-                0.168900266289711,
-                0.168900266289711,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.22499999403953552,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -6503,11 +5264,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.12399999797344208,
+            "metallic": 0.0,
             "modelName": "map_wall_02",
             "myEventID": -1,
             "name": "map_wall_02",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Battle_Field_Dome",
             "position": [
@@ -6531,16 +5292,23 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.0,
             "saveCategory": "Object",
             "scale": [
+                0.699999988079071,
                 1.0,
-                1.0,
-                1.0
+                0.699999988079071
             ],
             "targetID": -1,
-            "texturePath": "",
-            "type": "Model"
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6577,6 +5345,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.16899999976158142,
             "eventID": 0,
@@ -6620,7 +5389,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 1.0,
@@ -6632,7 +5401,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6669,6 +5445,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.16899999976158142,
             "eventID": 0,
@@ -6712,7 +5489,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 1.0,
@@ -6724,7 +5501,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6761,6 +5545,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -6804,7 +5589,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 0.5,
@@ -6816,7 +5601,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6853,6 +5645,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -6908,7 +5701,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -6945,6 +5745,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7000,7 +5801,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7037,6 +5845,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7092,7 +5901,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7129,6 +5945,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7184,7 +6001,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7221,6 +6045,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7276,7 +6101,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7313,6 +6145,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -7368,7 +6201,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7405,6 +6245,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -7448,7 +6289,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 1.0,
@@ -7460,7 +6301,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7497,6 +6345,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -7552,7 +6401,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7589,6 +6445,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -7644,7 +6501,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7681,6 +6545,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -7736,7 +6601,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7773,6 +6645,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -7828,7 +6701,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7865,6 +6745,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -7908,7 +6789,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 1.0,
@@ -7920,7 +6801,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -7957,6 +6845,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": true,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.10100000351667404,
             "eventID": 0,
@@ -8000,7 +6889,7 @@
             },
             "rotation": [
                 0.0,
-                -0.0,
+                0.0,
                 0.0
             ],
             "roughness": 1.0,
@@ -8012,7 +6901,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -8049,6 +6945,7 @@
             "emissive": 1.0,
             "enableEnvMap": true,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.24199999868869781,
             "eventID": 0,
@@ -8104,7 +7001,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -8141,6 +7045,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -8196,7 +7101,14 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "Model"
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         },
         {
             "animation": {
@@ -8233,6 +7145,7 @@
             "emissive": 1.0,
             "enableEnvMap": false,
             "enableNormalMap": false,
+            "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
             "eventID": 0,
@@ -8287,7 +7200,2114 @@
             ],
             "targetID": -1,
             "texturePath": "",
-            "type": "InvisibleBox"
+            "type": "InvisibleBox",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.08150100708007813,
+                    14.963020324707031,
+                    -0.07817840576171875
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    124.71919250488281,
+                    67.10887908935547,
+                    114.09195709228516
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_wall_03",
+            "myEventID": -1,
+            "name": "map_wall_03",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Battle_Field_Dome",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.40909576416015625,
+                    27.826553344726563,
+                    0.411376953125
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    129.07174682617188,
+                    53.09130859375,
+                    117.88810729980469
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                0.16602319478988647,
+                0.16602319478988647,
+                0.16602319478988647,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_wall_04",
+            "myEventID": -1,
+            "name": "map_wall_04",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Battle_Field_Dome",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.1332550048828125,
+                    15.016454696655273,
+                    0.7391777038574219
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    119.95756530761719,
+                    65.63093566894531,
+                    109.14033508300781
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                0.28185325860977173,
+                0.28185325860977173,
+                0.28185325860977173,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": true,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "map_wall_05",
+            "myEventID": -1,
+            "name": "map_wall_05",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "ormMapPath": "",
+            "parentName": "Battle_Field_Dome",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_001_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_001_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_001_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_002_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_002_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_002_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_003_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_003_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_003_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_004_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_004_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_004_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_005_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_005_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_005_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_01",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_02",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 4294967295,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enableOutline": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "metallic": 0.0,
+            "modelName": "Cylinder",
+            "myEventID": -1,
+            "name": "Beam_Cylinder",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "Pilar_Block_006_03",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Model",
+            "waterParam": {
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 0.5,
+                "waveSpeed": 2.0
+            }
         }
     ]
 }

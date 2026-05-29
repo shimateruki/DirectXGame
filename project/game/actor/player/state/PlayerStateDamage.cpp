@@ -240,5 +240,3 @@ void PlayerStateDamage::ApplyPose(Player *player, float t) {
     leftFootObj_->UpdateWorldMatrix();
   }
 }
-// ========================================================
-// 勝利状態 (Win) 実装

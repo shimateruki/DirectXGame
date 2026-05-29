@@ -384,7 +384,9 @@ void BossCore::UpdateIdle(float deltaTime) {
 
 void BossCore::UpdateWeak(float deltaTime) {
     float actionDelta = deltaTime * kBaseSpeedMultiplier;
-    float duration = std::max(0.0f, attackParams_.stunDuration - 2.0f); // Reduce stun time by 2 seconds
+    float duration = isCrashStun_
+        ? std::max(0.1f, attackParams_.crashStunDuration)
+        : std::max(0.0f, attackParams_.stunDuration - 2.0f);
     float wakeUpStart = duration > 2.0f ? duration - 2.0f : duration * 0.666f;
     float wakeUpDuration = duration - wakeUpStart;
 
@@ -560,6 +562,18 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
     int landedCount = 0;
     static Math math;
 
+    flyingBlocks_.erase(
+        std::remove_if(flyingBlocks_.begin(), flyingBlocks_.end(),
+            [this](const FlyingBlock& fb) {
+                if (!fb.block || fb.originalIndex < 0) {
+                    return true;
+                }
+
+                size_t index = static_cast<size_t>(fb.originalIndex);
+                return index >= blockBroken_.size() || blockBroken_[index];
+            }),
+        flyingBlocks_.end());
+
     for (auto& fb : flyingBlocks_) {
         if (!fb.block) continue;
 
@@ -656,7 +670,7 @@ void BossCore::UpdateFlyingBlocks(float deltaTime) {
         }
     }
 
-    if (!flyingBlocks_.empty() && landedCount == flyingBlocks_.size() && flyingBlocks_.size() == armorBlocks_.size()) {
+    if (!flyingBlocks_.empty() && landedCount == flyingBlocks_.size()) {
         returnDelayTimer_ += deltaTime;
         if (returnDelayTimer_ >= 5.0f) {
             for (auto& fb : flyingBlocks_) {

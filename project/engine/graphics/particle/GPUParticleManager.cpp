@@ -3,6 +3,7 @@
 #include <fstream>
 #include "json.hpp"
 #include "DebugConsole.h"
+#include "TextureManager.h"
 #include <d3d12.h>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -132,6 +133,19 @@ void GPUParticleManager::LoadAllPresets(const std::string& directoryPath) {
             }
         }
     }
+}
+
+void GPUParticleManager::PrewarmPreset(const std::string& presetName) {
+    auto it = presets_.find(presetName);
+    if (it == presets_.end() || !dxCommon_) {
+        return;
+    }
+
+    const GPUParticleConfig& config = it->second;
+    if (!config.texturePath.empty()) {
+        TextureManager::GetInstance()->Load(config.texturePath);
+    }
+    GetOrCreateSystem(config);
 }
 
 uint32_t GPUParticleManager::PlayAutoEmitter(const std::string& presetName, const Vector3& position) {

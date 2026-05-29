@@ -7,7 +7,7 @@
         1.0
     ],
     "Collision": {
-        "HasCollision": true,
+        "HasCollision": false,
         "Offset": [
             0.0,
             0.0,

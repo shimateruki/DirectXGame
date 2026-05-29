@@ -424,6 +424,3 @@ void PlayerStateRun::ApplyPostUpdate(Player *player, float deltaTime) {
     headObj_->UpdateWorldMatrix();
   }
 }
-
-// ========================================================
-// 攻撃1段目状態 (Attack1)

@@ -40,8 +40,12 @@ void BossAttack8_Final::Initialize(BossCore* boss) {
     // 1. ステージ上のブロック(MapBlock)を全消去（非表示・無効化）
     for (MapBlock* mb : MapBlock::s_activeBlocks) {
         if (mb) {
-            mb->SetScale({ 0.0f, 0.0f, 0.0f });
-            mb->SetCollisionAttribute(0);
+            Vector3 impulse = {
+                (mb->GetTranslate().x - boss->GetTranslate().x) * 0.2f,
+                10.0f,
+                (mb->GetTranslate().z - boss->GetTranslate().z) * 0.2f
+            };
+            mb->StartBreak(impulse);
         }
     }
 
@@ -207,7 +211,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             
             static Math math;
             Vector3 uvScale = { 3.0f, 20.0f, 1.0f };
-            Vector3 uvTranslate = { 0.0f, animTimer_ * 10.0f, 0.0f };
+            constexpr float kRushWarningUvSpeed = 2.0f;
+            Vector3 uvTranslate = { 0.0f, animTimer_ * kRushWarningUvSpeed, 0.0f };
             warning->SetUVTransform(math.MakeAffineMatrix(uvScale, {0,0,0}, uvTranslate));
             warning->UpdateWorldMatrix();
         }

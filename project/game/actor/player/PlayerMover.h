@@ -34,6 +34,12 @@ public:
 	/// </summary>
 	void SetStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
+	// ダッシュのクールタイム回復割合を取得 (1.0 = 準備完了, 0.0 = ダッシュ直後)
+	float GetDashCooldownRatio() const {
+		if (dashCooldown_ <= 0.0f) return 1.0f;
+		return 1.0f - (dashCooldownTimer_ / dashCooldown_);
+	}
+
 private:
 	// 参照用ポインタ
 	Player* player_ = nullptr;
@@ -55,6 +61,8 @@ private:
 	float dashCooldownTimer_ = 0.0f;// クールダウン残り時間
 	bool dashAvailable_ = true;     // ダッシュが使えるかどうか
 	Vector3 dashDirection_{};       // 値初期化（{0,0,0}）
+	// --- ダッシュ演出補助 ---
+	uint32_t dashParticleId_ = 0;
 
 	// 子オブジェクトの元の衝突属性を保存して復元するためのマップ
 	std::unordered_map<Object3d*, uint32_t> childOriginalAttributes_;

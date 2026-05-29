@@ -301,6 +301,3 @@ void PlayerStateJump::Exit(Player *player) {
     swordObj_->UpdateWorldMatrix();
   }
 }
-
-// ========================================================
-// 被弾・吹っ飛び状態 (Damage / Knockback) 実装

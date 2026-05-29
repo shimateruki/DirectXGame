@@ -51,6 +51,18 @@ BossCore::OrbitData BossCore::GetIdleOrbit(size_t index) {
     return data;
 }
 
+void BossCore::HideWarningArea() {
+    if (!warningArea_) {
+        return;
+    }
+
+    warningArea_->SetScale({ 0.0f, 0.0f, 0.0f });
+    warningArea_->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+    warningArea_->SetCollisionAttribute(0);
+    warningArea_->SetCollisionMask(0);
+    warningArea_->UpdateWorldMatrix();
+}
+
 // =================================================================
 // 初期化・更新
 // =================================================================
@@ -68,6 +80,19 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
     // 現在登録されているブロックのHPを読み込んだパラメータに初期化
     for (size_t i = 0; i < blockHps_.size(); ++i) {
         blockHps_[i] = attackParams_.maxArmorBlockHp;
+    }
+
+    while (armorBlockBaseMaterialTypes_.size() < armorBlocks_.size()) {
+        size_t index = armorBlockBaseMaterialTypes_.size();
+        int32_t baseMaterialType = armorBlocks_[index] ? armorBlocks_[index]->GetMaterialType() : 0;
+        if (baseMaterialType == 4 || baseMaterialType >= 13) {
+            baseMaterialType = 0;
+        }
+        armorBlockBaseMaterialTypes_.push_back(baseMaterialType);
+    }
+    while (armorBlockBaseEmissives_.size() < armorBlocks_.size()) {
+        size_t index = armorBlockBaseEmissives_.size();
+        armorBlockBaseEmissives_.push_back(armorBlocks_[index] ? armorBlocks_[index]->GetEmissive() : 1.0f);
     }
 
     // パラメータが未初期化ならデフォルト値で初期化（アクセス違反防止）
@@ -235,6 +260,7 @@ void BossCore::Update(float deltaTime) {
                 currentAttack_->Finalize();
                 currentAttack_.reset();
             }
+            HideWarningArea();
             ChangeState(State::Idle);
             animTimer_ = 0.0f;
 
@@ -298,6 +324,14 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     if (isHpHalfEventActive_) {
         hpHalfEffectTimer_ += deltaTime; // 演出タイマーは実時間
+
+        if (target_) {
+            if (auto player = dynamic_cast<Player*>(target_)) {
+                player->SetControlLock(true);
+                player->SetIsPhysicsActive(false);
+                player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+            }
+        }
 
         // カメラ演出の終了を監視し、終わった瞬間に向きをボスに合わせる
         if (!isPlayerRotated_) {
@@ -561,7 +595,12 @@ void BossCore::Update(float deltaTime) {
 
             if (target_) {
                 if (auto player = dynamic_cast<Player*>(target_)) {
-                    player->SetIsControlActive(true);
+                    player->SetControlLock(false);
+                    player->SetVelocity({ 0.0f, 0.0f, 0.0f });
+                    player->SetIsPhysicsActive(true);
+                    if (!player->IsDeathSequenceActive()) {
+                        player->SetIsControlActive(true);
+                    }
                 }
             }
             SetColor(greenColor_);
@@ -736,9 +775,10 @@ void BossCore::Update(float deltaTime) {
                     AudioPlayer::GetInstance()->PlaySE(seBlockDamageHandle_, false, 1.0f);
                     if (blockHps_[i] <= 0.0f) {
                         blockBroken_[i] = true;
-                        GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
-                        AudioPlayer::GetInstance()->PlaySE(seBleakBlockHandle_, false, 1.0f);
+                        StartArmorBlockBreak(i, weapon->GetWorldPosition(), true);
                         DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
+                    } else {
+                        UpdateArmorCrackVisual(i);
                     }
                     hitFound = true;
                     break;
@@ -765,9 +805,10 @@ void BossCore::Update(float deltaTime) {
                         AudioPlayer::GetInstance()->PlaySE(seBlockDamageHandle_, false, 1.0f);
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
-                            GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
-                            AudioPlayer::GetInstance()->PlaySE(seBleakBlockHandle_, false, 1.0f);
+                            StartArmorBlockBreak(i, effect->GetWorldPosition(), true);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
+                        } else {
+                            UpdateArmorCrackVisual(i);
                         }
                         hitFound = true;
                         break;
@@ -794,9 +835,10 @@ void BossCore::Update(float deltaTime) {
                         AudioPlayer::GetInstance()->PlaySE(seBlockDamageHandle_, false, 1.0f);
                         if (blockHps_[i] <= 0.0f) {
                             blockBroken_[i] = true;
-                            GPUParticleManager::GetInstance()->Emit("BossHitSpark", block->GetWorldPosition(), Math::MakeIdentity4x4());
-                            AudioPlayer::GetInstance()->PlaySE(seBleakBlockHandle_, false, 1.0f);
+                            StartArmorBlockBreak(i, bullet->GetWorldPosition(), true);
                             DebugConsole::GetInstance()->AddLog("[BREAK] ブロック " + std::to_string(i) + " が破壊された！！！");
+                        } else {
+                            UpdateArmorCrackVisual(i);
                         }
                         hitFound = true;
                         break;
@@ -850,6 +892,9 @@ void BossCore::Update(float deltaTime) {
                             armorBlocks_.erase(armorBlocks_.begin() + i);
                             if (i < blockHps_.size()) blockHps_.erase(blockHps_.begin() + i);
                             if (i < blockBroken_.size()) blockBroken_.erase(blockBroken_.begin() + i);
+                            if (i < armorBreakMotions_.size()) armorBreakMotions_.erase(armorBreakMotions_.begin() + i);
+                            if (i < armorBlockBaseMaterialTypes_.size()) armorBlockBaseMaterialTypes_.erase(armorBlockBaseMaterialTypes_.begin() + i);
+                            if (i < armorBlockBaseEmissives_.size()) armorBlockBaseEmissives_.erase(armorBlockBaseEmissives_.begin() + i);
                         }
                         else {
                             ++i;
@@ -932,12 +977,7 @@ void BossCore::Update(float deltaTime) {
     // ==========================================
     // 魔法の処理：破壊されたブロックの強制消去
     // ==========================================
-    for (size_t i = 0; i < armorBlocks_.size(); ++i) {
-        if (blockBroken_[i] && armorBlocks_[i]) {
-            armorBlocks_[i]->SetScale({ 0.0f, 0.0f, 0.0f });
-            armorBlocks_[i]->SetCollisionAttribute(0);
-        }
-    }
+    UpdateBrokenArmorBlocks(deltaTime);
 
     // ==========================================
     // 破片の物理計算と退場タイマーを進める

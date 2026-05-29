@@ -8,8 +8,18 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class IMoveStrategy; // 前方宣言
+
+// プレイヤーの残像の1フレーム分を管理する構造体
+struct GhostTrail {
+    std::vector<Object3d*> parts;
+    std::vector<Matrix4x4> baseMatrices;
+    float alpha = 1.0f;
+    float life = 1.0f;
+    float maxLife = 1.0f;
+};
 
 // プレイヤーの攻撃パラメータ（JSON保存・ImGui調整用）
 struct PlayerAttackParams {
@@ -62,6 +72,11 @@ public:
     void SetMoveStrategy(std::unique_ptr<IMoveStrategy> strategy);
 
     // ==================================================
+    // 残像（Ghost Trail）関連
+    // ==================================================
+    void CreateGhostTrail();
+
+    // ==================================================
     // アクセッサ
     // ==================================================
     // --- 物理・姿勢 ---
@@ -89,7 +104,14 @@ public:
     // --- 状態フラグ ---
     void SetLockOn(bool isLockingOn) { isLockingOn_ = isLockingOn; }
     bool IsLockingOn() const { return isLockingOn_; }
-    void SetIsControlActive(bool isActive) { isControlActive_ = isActive; }
+    void SetIsControlActive(bool isActive) { isControlActive_ = isControlLocked_ ? false : isActive; }
+    void SetControlLock(bool isLocked)
+    {
+        isControlLocked_ = isLocked;
+        if (isLocked) {
+            isControlActive_ = false;
+        }
+    }
     void SetIsPhysicsActive(bool active) { isPhysicsActive_ = active; }
     bool GetIsControlActive() const { return isControlActive_; }
     bool IsPhysicsActive() const { return isPhysicsActive_; }
@@ -126,12 +148,16 @@ public:
     void SetDashInvincible(bool inv);   // 回避ダッシュ時のフラグ
 
     // どっちか一つでもtrueなら無敵として扱う
-    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_; }
+    bool IsDeathSequenceActive() const { return param_.has_value() && param_->hp <= 0.0f; }
+    bool IsInvincible() const { return isDamageInvincible_ || isDashInvincible_ || IsDeathSequenceActive(); }
     float GetHp() const { return param_.has_value() ? param_->hp : 100.0f; }
     float GetMaxHp() const { return param_.has_value() ? param_->maxHp : 100.0f; }
     float GetDeathTimer() const { return deathTimer_; }
     void SetForceLockOnTarget(Object3d* target) { forceLockOnTarget_ = target; }
     Object3d* GetForceLockOnTarget() const { return forceLockOnTarget_; }
+
+    // --- 回避（ダッシュ）のクールタイム割合を取得 (1.0 = 準備完了) ---
+    float GetDashCooldownRatio() const;
 
     // --- 攻撃方向の保存（吹き飛ばし用） ---
     void SetAttackDirection(const Vector3& dir) { attackDirection_ = dir; }
@@ -174,6 +200,7 @@ private:
     bool isLockingOn_ = false;       // 敵をロックオンしているか
     bool isControlActive_ = true;    // 入力を受け付ける状態か（デモシーン等で制限用）
     bool isPhysicsActive_ = true;    // 物理演算・移動計算を行うか（座標固定用）
+    bool isControlLocked_ = false;
 
     // コンボ待ちフラグ：Attack1 終了後に次のクリックで Attack2 を出すために使う
     bool pendingAttack2_ = false;
@@ -214,4 +241,12 @@ private:
     uint32_t seDamageHandle_ = 0;
 
     void UpdateColor();
+
+public:
+    // --- 残像関連 ---
+    std::vector<GhostTrail> ghostTrails_;
+    float ghostTimer_ = 0.0f;
+
+    std::vector<std::unique_ptr<Object3d>> ghostPool_;
+    int ghostPoolIndex_ = 0;
 };

@@ -182,6 +182,8 @@ void GamePlayScene::Initialize() {
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets(
         "Resources/json/gpu_particles/");
+    GPUParticleManager::GetInstance()->PrewarmPreset("playerattak");
+    GPUParticleManager::GetInstance()->PrewarmPreset("player_dash");
 
     LightEditor::GetInstance()->SetObject3dCommon(object3dCommon_.get());
 
@@ -241,6 +243,43 @@ void GamePlayScene::Initialize() {
         else if (sprite->GetName() == "playerDamageBar") {
             playerDamageBarSprite_ = sprite.get();
         }
+    }
+
+    // =======================================================
+    // プレイヤーの回避クールタイム用ゲージを動的生成
+    // =======================================================
+    if (playerHpBarSprite_) {
+        uint32_t whiteTex = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+        
+        Vector2 hpPos = playerHpBarSprite_->GetPosition();
+        // HPバーのアンカーが中央であることを考慮し、左端の座標を計算
+        float hpLeftX = hpPos.x - (playerHpBarMaxWidth_ * 0.5f);
+        Vector2 backSize = { playerHpBarMaxWidth_, 6.0f }; // ゲージの長さをHPバーと同じに
+        
+        // 背景 (暗いグレー)
+        auto dashBack = std::make_unique<Sprite>();
+        dashBack->Initialize(spriteCommon_.get(), whiteTex);
+        dashBack->SetSize(backSize);
+        dashBack->SetAnchorPoint({ 0.0f, 0.5f }); // 左端を基準にする
+        dashBack->SetPosition({ hpLeftX + 140.0f, hpPos.y - 60.0f }); // ちょい左に戻す
+        dashBack->SetColor({ 0.1f, 0.1f, 0.1f, 0.8f });
+        dashBack->SetName("playerDashBackBar");
+        
+        // ゲージ本体 (水色)
+        auto dashBar = std::make_unique<Sprite>();
+        dashBar->Initialize(spriteCommon_.get(), whiteTex);
+        dashBar->SetSize(backSize);
+        dashBar->SetAnchorPoint({ 0.0f, 0.5f }); // 左端を基準にする
+        dashBar->SetPosition({ hpLeftX + 140.0f, hpPos.y - 60.0f }); // 背景と同じ位置
+        dashBar->SetColor({ 0.0f, 1.0f, 1.0f, 1.0f });
+        dashBar->SetName("playerDashBar");
+        
+        playerDashBackSprite_ = dashBack.get();
+        playerDashBarSprite_ = dashBar.get();
+        playerDashBarMaxWidth_ = backSize.x;
+        
+        sprites_.push_back(std::move(dashBack));
+        sprites_.push_back(std::move(dashBar));
     }
 
     // =======================================================
@@ -321,6 +360,7 @@ void GamePlayScene::Initialize() {
     titleTextPoseSprite_ = GetSpriteByName("titleTextPose.png");
     optionPoseTextSprite_ = GetSpriteByName("optionText.png");
     tabPauseTextSprite_ = GetSpriteByName("tab_text.png");
+    optionControlsSprite_ = GetSpriteByName("option_controls.png");
 
     auto SetAlpha = [](Sprite* sprite, float alpha) {
         if (sprite) {
@@ -335,6 +375,7 @@ void GamePlayScene::Initialize() {
     SetAlpha(restartPoseTextSprite_, 0.0f);
     SetAlpha(titleTextPoseSprite_, 0.0f);
     SetAlpha(optionPoseTextSprite_, 0.0f);
+    SetAlpha(optionControlsSprite_, 0.0f);
     isPaused_ = false;
     ApplyPauseInputUiIfNeeded();
 
@@ -486,6 +527,18 @@ void GamePlayScene::Initialize() {
     }
 
     // =======================================================
+    // チュートリアル矢印モデルの取得と初期化
+    // =======================================================
+    for (auto& obj : objectManager_->GetObjects()) {
+        if (obj->GetName() == "arrow") {
+            tutorialArrow_ = obj.get();
+            tutorialArrowDefaultPos_ = obj->GetTransform()->translate;
+            tutorialArrowWaypointIndex_ = 0;
+            break;
+        }
+    }
+
+    // =======================================================
     // 進行状況の復元：橋がすでに落ちている場合の処理
     // =======================================================
     if (GameProgress::GetInstance()->hasBridgeDropped) {
@@ -629,12 +682,15 @@ void GamePlayScene::Initialize() {
             player_->UpdateLocalMatrix();
             player_->UpdateWorldMatrix();
 
-            // 演出開始
+            // ムービー開始
             movieState_ = MovieState::kTutorialPlatformDescent;
             movieTimer_ = 0.0f;
 
             // エレベーター降下SEの再生（ループ）
             audioPlayer_->PlaySE(seElevatorHandle_, true, SaveDataManager::GetInstance()->GetSEVolume());
+            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                CameraEditor::GetInstance()->PlayOverrideCamera(camera, "elevator_movie");
+            }
 
             // 重力に任せると跳ねるため、物理を無効化して手動更新にする
             player_->SetIsControlActive(false);
@@ -773,6 +829,7 @@ void GamePlayScene::Update(float deltaTime) {
 }
 
 bool GamePlayScene::HandleEscapeKey() {
+#ifdef USE_IMGUI
     // ---------------------------------------------------------
     // 0. ESCキーでの強制終了（オプション画面以外）
     // ---------------------------------------------------------
@@ -791,6 +848,8 @@ bool GamePlayScene::HandleEscapeKey() {
             SetAlpha(poseTextSprite_, 0.0f);
             SetAlpha(restartPoseTextSprite_, 0.0f);
             SetAlpha(titleTextPoseSprite_, 0.0f);
+            SetAlpha(optionPoseTextSprite_, 0.0f);
+            SetAlpha(optionControlsSprite_, 0.0f);
             currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
         }
         else {
@@ -799,6 +858,7 @@ bool GamePlayScene::HandleEscapeKey() {
         }
         return true;
     }
+#endif
     return false;
 }
 
@@ -835,6 +895,8 @@ bool GamePlayScene::UpdatePauseAndOptionMenus(float deltaTime, float originalDel
             SetAlpha(poseTextSprite_, textAlpha);
             SetAlpha(restartPoseTextSprite_, textAlpha);
             SetAlpha(titleTextPoseSprite_, textAlpha);
+            SetAlpha(optionPoseTextSprite_, textAlpha);
+            SetAlpha(optionControlsSprite_, textAlpha);
 
             // 選択位置をリセット
             currentPauseMenuIndex_ = (int)PauseMenuIndex::Restart;
@@ -1086,6 +1148,15 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
 
         // カメラ制御は GhostRecorder に任せるため、ブロックの崩落演出のみ実行する
         if (movieTimer_ > 1.5f) {
+            float magmaSurfaceY = -49.5f;
+            for (const auto& obj : objectManager_->GetObjects()) {
+                if (obj && obj->GetName() == "maguma") {
+                    magmaSurfaceY = obj->GetWorldPosition().y;
+                    break;
+                }
+            }
+            const float bridgeMagmaEnterY = magmaSurfaceY + 1.0f;
+
             // まず親の当たり判定を無効化する（プレイヤーが落ちるように）
             for (auto& obj : objectManager_->GetObjects()) {
                 if (obj->GetName() == "Bridge_Block_Front") {
@@ -1096,28 +1167,46 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
             for (auto& obj : objectManager_->GetObjects()) {
                 if (obj->GetName() == "Bridge_Block_Center") {
                     Transform* trans = obj->GetTransform();
-                    trans->translate.y -= 26.0f * deltaTime;
-                    trans->rotate.x -= 1.0f * deltaTime; // 自然な傾き（下へ折れ曲がる）
+                    const bool isSinking = bridgeCenterMagmaImpactPlayed_;
+                    trans->translate.y -= (isSinking ? 4.0f : 26.0f) * deltaTime;
+                    trans->rotate.x -= (isSinking ? 0.35f : 1.0f) * deltaTime; // 自然な傾き（下へ折れ曲がる）
                     trans->isQuaternionMaster = false;
                     obj->UpdateWorldMatrix();
+                    if (!bridgeCenterMagmaImpactPlayed_ && obj->GetWorldPosition().y <= bridgeMagmaEnterY) {
+                        trans->translate.y = bridgeMagmaEnterY;
+                        obj->UpdateWorldMatrix();
+                        bridgeCenterMagmaImpactPlayed_ = true;
+                    }
                 }
                 else if (movieTimer_ > 2.0f &&
                     obj->GetName() == "Bridge_Block_Back") {
                     // 少し遅れて奥のブロックもさらに崩れる
                     Transform* trans = obj->GetTransform();
-                    trans->translate.y -= 32.0f * deltaTime;
-                    trans->rotate.x += 1.8f * deltaTime; // 折れ曲がる
+                    const bool isSinking = bridgeBackMagmaImpactPlayed_;
+                    trans->translate.y -= (isSinking ? 4.0f : 32.0f) * deltaTime;
+                    trans->rotate.x += (isSinking ? 0.45f : 1.8f) * deltaTime; // 折れ曲がる
                     trans->isQuaternionMaster = false;
                     obj->UpdateWorldMatrix();
+                    if (!bridgeBackMagmaImpactPlayed_ && obj->GetWorldPosition().y <= bridgeMagmaEnterY) {
+                        trans->translate.y = bridgeMagmaEnterY;
+                        obj->UpdateWorldMatrix();
+                        bridgeBackMagmaImpactPlayed_ = true;
+                    }
                 }
                 else if (movieTimer_ > 2.5f &&
                     obj->GetName() == "Bridge_Block_Front") {
                     // 最後に手前の親ブロックごと崩落する
                     Transform* trans = obj->GetTransform();
-                    trans->translate.y -= 48.0f * deltaTime;
-                    trans->rotate.x += 0.6f * deltaTime;
+                    const bool isSinking = bridgeFrontMagmaImpactPlayed_;
+                    trans->translate.y -= (isSinking ? 5.0f : 48.0f) * deltaTime;
+                    trans->rotate.x += (isSinking ? 0.25f : 0.6f) * deltaTime;
                     trans->isQuaternionMaster = false;
                     obj->UpdateWorldMatrix();
+                    if (!bridgeFrontMagmaImpactPlayed_ && obj->GetWorldPosition().y <= bridgeMagmaEnterY) {
+                        trans->translate.y = bridgeMagmaEnterY;
+                        obj->UpdateWorldMatrix();
+                        bridgeFrontMagmaImpactPlayed_ = true;
+                    }
                 }
             }
         }
@@ -1125,6 +1214,11 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
         // ムービー終了判定
         // (ブリッジブロックの物理的な落下演出自体はカメラが終わる頃まで続く想定)
         if (movieTimer_ >= 5.5f) {
+#ifdef USE_IMGUI
+            const bool isDebugBridgePreview = isBridgeDropPreviewForDebug_;
+#else
+            const bool isDebugBridgePreview = false;
+#endif
             auto& objects_ref = objectManager_->GetObjects();
             for (auto& obj : objects_ref) {
                 std::string name = obj->GetName();
@@ -1134,16 +1228,16 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
                     if (name.find("Bridge_Block") !=
                         std::string::npos) {    // ブリッジブロックは完全に消す
                         obj->SetIsVisible(false); // 見えなくする
-                        obj->isDead = true; // 完全に消す（UpdateやDrawの対象から外す）
+                        obj->isDead = !isDebugBridgePreview; // プレビュー時は再生し直せるように保持する
                     }
                 }
                 else if (
                     name.find("Battle_Field_Collision_Box_South") !=
                     std::string::
                     npos) { // 南の当たり判定を復活させる（橋が落ちた後は通れなくする）
-                    obj->SetCollisionAttribute(kGround);
+                    obj->SetCollisionAttribute(isDebugBridgePreview ? 0 : kGround);
                 }
-                else if (name.find("Tutorial_") != std::string::npos) {
+                else if (!isDebugBridgePreview && name.find("Tutorial_") != std::string::npos) {
                     if (name.find("Tutorial_Platform_02") != std::string::npos) {
                         continue;
                     }
@@ -1163,7 +1257,15 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
             movieState_ = MovieState::kNone;
             player_->SetIsControlActive(true);
             player_->SetIsPhysicsActive(true);
-            GameProgress::GetInstance()->hasBridgeDropped = true;
+            if (isDebugBridgePreview) {
+                hasBridgeDropped_ = false;
+                GameProgress::GetInstance()->hasBridgeDropped = false;
+#ifdef USE_IMGUI
+                isBridgeDropPreviewForDebug_ = false;
+#endif
+            } else {
+                GameProgress::GetInstance()->hasBridgeDropped = true;
+            }
         }
 
         // ムービー中は通常のプレイヤー入力やカメラ操作をスキップ
@@ -1216,6 +1318,9 @@ void GamePlayScene::UpdateMovieState(float deltaTime) {
 
                 // エレベーター降下SEの停止
                 audioPlayer_->StopSe(seElevatorHandle_);
+                if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+                    camera->EndOverride(1.5f);
+                }
 
                 if (!hasFinishedTutorial_) {
                     tutorialStep_ = TutorialStep::kShowMove;
@@ -1469,6 +1574,135 @@ void GamePlayScene::UpdateTutorialGuide(float deltaTime) {
         default:
             break;
         }
+    }
+
+    // =======================================================
+    // チュートリアル矢印の演出処理
+    // =======================================================
+    if (tutorialArrow_) {
+        Transform* trans = tutorialArrow_->GetTransform();
+        
+        if (doorOpenProgress_ < 1.0f) {
+            tutorialArrowAnimTimer_ += deltaTime;
+            
+            // 1. 上下運動 (サイン波でふわふわ)
+            float hover = std::sin(tutorialArrowAnimTimer_ * 3.0f) * 0.3f;
+            
+            // 2. 定期的なY軸回転 (イージング)
+            float cycle = std::fmod(tutorialArrowAnimTimer_, 4.0f); // 4秒周期
+            float rotY = 0.0f;
+            if (cycle < 1.0f) {
+                // 0~1秒の間に360度回転させる (EaseInOutCubic)
+                float t = cycle;
+                float easeT = t < 0.5f ? 4.0f * t * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) / 2.0f;
+                rotY = easeT * 3.14159265f * 2.0f;
+            } else {
+                rotY = 0.0f; // 回転完了後待機
+            }
+            
+            trans->translate = tutorialArrowDefaultPos_ + Vector3{0.0f, hover, 0.0f};
+            trans->rotate = {0.0f, rotY, 0.0f};
+        } else {
+            // 3. ドアが開いた後の道案内ロジック
+            
+            // ウェイポイントの定義
+            std::vector<Vector3> waypoints = {
+                {0.0f, 24.0f, -200.0f},
+                {0.3f, 24.0f, -153.0f}
+            };
+            
+            if (tutorialArrowWaypointIndex_ <= waypoints.size()) {
+                Vector3 targetPos;
+                bool isFinalTarget = false;
+                
+                if (tutorialArrowWaypointIndex_ < waypoints.size()) {
+                    targetPos = waypoints[tutorialArrowWaypointIndex_];
+                } else if (boss_) {
+                    targetPos = boss_->GetWorldPosition();
+                    targetPos.y += 2.0f; // ボスコアの少し上を狙う
+                    isFinalTarget = true;
+                } else {
+                    tutorialArrow_->SetIsVisible(false);
+                    tutorialArrowWaypointIndex_ = 999;
+                    targetPos = tutorialArrowDefaultPos_;
+                }
+                
+                Vector3 dir = {
+                    targetPos.x - tutorialArrowDefaultPos_.x,
+                    targetPos.y - tutorialArrowDefaultPos_.y,
+                    targetPos.z - tutorialArrowDefaultPos_.z
+                };
+                
+                float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+                
+                if (dist < 2.0f) {
+                    if (isFinalTarget) {
+                        // ボスコアに着いたら消す
+                        tutorialArrow_->SetIsVisible(false);
+                        tutorialArrowWaypointIndex_ = 999;
+                    } else {
+                        // 中継ポイントでプレイヤーが近づくのを待つ
+                        // 待機時はX軸の回転を-90度に固定し、次の目的地の方角(Y軸)を向くようにする
+                        trans->rotate.x = -90.0f * (3.14159265f / 180.0f);
+                        
+                        Vector3 nextTargetPos;
+                        bool hasNextTarget = false;
+                        if (tutorialArrowWaypointIndex_ + 1 < waypoints.size()) {
+                            nextTargetPos = waypoints[tutorialArrowWaypointIndex_ + 1];
+                            hasNextTarget = true;
+                        } else if (boss_) {
+                            nextTargetPos = boss_->GetWorldPosition();
+                            nextTargetPos.y += 2.0f;
+                            hasNextTarget = true;
+                        }
+                        
+                        if (hasNextTarget) {
+                            float nx = nextTargetPos.x - tutorialArrowDefaultPos_.x;
+                            float nz = nextTargetPos.z - tutorialArrowDefaultPos_.z;
+                            trans->rotate.y = std::atan2(nx, nz);
+                        }
+                        
+                        if (player_) {
+                            Vector3 playerPos = player_->GetWorldPosition();
+                            float pDistX = playerPos.x - tutorialArrowDefaultPos_.x;
+                            float pDistY = playerPos.y - tutorialArrowDefaultPos_.y;
+                            float pDistZ = playerPos.z - tutorialArrowDefaultPos_.z;
+                            float distToPlayer = std::sqrt(pDistX * pDistX + pDistY * pDistY + pDistZ * pDistZ);
+                            
+                            // プレイヤーがある程度近づいたら次のポイントへ進む
+                            if (distToPlayer < 10.0f) {
+                                tutorialArrowWaypointIndex_++;
+                            }
+                        }
+                    }
+                } else {
+                    // ターゲットに向かって速く移動する
+                    float speed = 80.0f; // 移動速度アップ
+                    dir.x /= dist;
+                    dir.y /= dist;
+                    dir.z /= dist;
+                    
+                    float moveDist = speed * deltaTime;
+                    if (moveDist > dist) moveDist = dist; // 行き過ぎ防止
+                    
+                    tutorialArrowDefaultPos_.x += dir.x * moveDist;
+                    tutorialArrowDefaultPos_.y += dir.y * moveDist;
+                    tutorialArrowDefaultPos_.z += dir.z * moveDist;
+                    
+                    // 矢印の向きを進行方向に合わせる
+                    float distXZ = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+                    float targetRotY = std::atan2(dir.x, dir.z);
+                    float targetRotX = -std::atan2(dir.y, distXZ);
+                    
+                    // モデルの元々の向き(上向きを想定)を考慮し、X軸に-90度(-PI/2)のオフセットを加える
+                    trans->rotate = { targetRotX - (3.14159265f / 2.0f), targetRotY, 0.0f };
+                }
+            }
+            trans->translate = tutorialArrowDefaultPos_;
+        }
+
+        trans->isQuaternionMaster = false;
+        tutorialArrow_->UpdateWorldMatrix();
     }
 }
 
@@ -2065,7 +2299,7 @@ void GamePlayScene::DrawUI() {
     auto IsPauseUI = [&](Sprite* sp) {
         return sp == poseBackSprite_ || sp == poseTextSprite_ ||
                sp == restartPoseTextSprite_ || sp == titleTextPoseSprite_ ||
-               sp == optionPoseTextSprite_;
+               sp == optionPoseTextSprite_ || sp == optionControlsSprite_;
     };
     auto IsGameOverUI = [&](Sprite* sp) {
         return sp == gameOverTextSprite_ || sp == restartTextSprite_ ||
@@ -2166,6 +2400,24 @@ void GamePlayScene::UpdateUI(float deltaTime) {
             playerDamageBarSprite_->SetSize({ playerHpBarMaxWidth_ * playerVisualHp_, playerDamageBarSprite_->GetSize().y });
         }
     }
+
+    // 1.5 プレイヤーの回避クールタイム同期
+    if (player_ && playerDashBarSprite_ && playerDashBackSprite_) {
+        float dashRatio = player_->GetDashCooldownRatio();
+        
+        // ゲージの長さを反映
+        playerDashBarSprite_->SetSize({ playerDashBarMaxWidth_ * dashRatio, playerDashBarSprite_->GetSize().y });
+        
+        // 状態によって色を変える
+        if (dashRatio >= 1.0f) {
+            // 準備完了：明るいシアン
+            playerDashBarSprite_->SetColor({ 0.0f, 1.0f, 1.0f, 1.0f });
+        } else {
+            // クールダウン中：オレンジ
+            playerDashBarSprite_->SetColor({ 1.0f, 0.6f, 0.0f, 1.0f });
+        }
+    }
+
     if (boss_) {
         // =======================================================
         // ボスUIの表示・非表示制御
@@ -2441,6 +2693,9 @@ void GamePlayScene::StartBridgeDropMovie() {
     movieState_ = MovieState::kBridgeDrop;
     movieTimer_ = 0.0f;
     hasBridgeDropped_ = true;
+    bridgeCenterMagmaImpactPlayed_ = false;
+    bridgeBackMagmaImpactPlayed_ = false;
+    bridgeFrontMagmaImpactPlayed_ = false;
 
     // CinematicCamera を探してムービーを再生する
     for (auto& obj : objectManager_->GetObjects()) {
@@ -2501,10 +2756,82 @@ void GamePlayScene::StartBossAppearanceMovie() {
     boss_->StartAppearance();
 }
 
+#ifdef USE_IMGUI
+bool GamePlayScene::PrepareBridgeDropPreviewForDebug() {
+    movieState_ = MovieState::kNone;
+    movieTimer_ = 0.0f;
+    hasBridgeDropped_ = false;
+    bridgeCenterMagmaImpactPlayed_ = false;
+    bridgeBackMagmaImpactPlayed_ = false;
+    bridgeFrontMagmaImpactPlayed_ = false;
+    GameProgress::GetInstance()->hasBridgeDropped = false;
+
+    bool hasBridgeBlock = false;
+    for (auto& obj : objectManager_->GetObjects()) {
+        if (!obj) {
+            continue;
+        }
+
+        const std::string& name = obj->GetName();
+        if (name == "Bridge_Block_Front" || name == "Bridge_Block_Center" || name == "Bridge_Block_Back") {
+            Transform* trans = obj->GetTransform();
+            if (name == "Bridge_Block_Front") {
+                trans->translate = { 0.0f, 3.0f, -88.0f };
+            } else if (name == "Bridge_Block_Center") {
+                trans->translate = { 0.0f, 9.7749996f, -115.1679993f };
+            } else {
+                trans->translate = { 0.0f, 16.5489998f, -142.3359985f };
+            }
+
+            trans->rotate = { 0.2443461f, 0.0f, 0.0f };
+            trans->quaternion = Math::EulerToQuaternion(trans->rotate);
+            trans->isQuaternionMaster = true;
+            obj->isDead = false;
+            obj->SetIsVisible(true);
+            obj->SetCollisionAttribute(kGround);
+            obj->UpdateLocalMatrix();
+            obj->UpdateWorldMatrix();
+            hasBridgeBlock = true;
+            continue;
+        }
+
+        if (name.find("Bridge_Collision") != std::string::npos) {
+            obj->isDead = false;
+            obj->SetCollisionAttribute(kGround);
+        } else if (name.find("Battle_Field_Collision_Box_South") != std::string::npos) {
+            obj->SetCollisionAttribute(0);
+        }
+    }
+
+    if (player_) {
+        player_->SetVelocity({ 0.0f, 0.0f, 0.0f });
+        player_->SetIsControlActive(true);
+        player_->SetIsPhysicsActive(true);
+    }
+
+    return hasBridgeBlock;
+}
+#endif
+
 void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
     // Begin/End を削除し、既存の Inspector ウィンドウ内に描画されるようにする
     if (ImGui::CollapsingHeader("Game Debug Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        if (ImGui::TreeNode("演出確認 (Cinematic Preview)")) {
+            if (movieState_ == MovieState::kBridgeDrop) {
+                ImGui::Text("橋落下演出を再生中");
+            } else if (ImGui::Button("橋落下演出を再生", ImVec2(-1, 30))) {
+                if (PrepareBridgeDropPreviewForDebug()) {
+                    StartBridgeDropMovie();
+                    isBridgeDropPreviewForDebug_ = (movieState_ == MovieState::kBridgeDrop);
+                    DebugConsole::GetInstance()->AddLog("【DEBUG】 橋落下演出を手動再生しました");
+                } else {
+                    DebugConsole::GetInstance()->AddLog(LogLevel::Warning, "【DEBUG】 橋ブロックが見つからないため、橋落下演出を再生できませんでした");
+                }
+            }
+            ImGui::TreePop();
+        }
 
         if (ImGui::TreeNode("プレイヤー・ボス状態 (Player/Enemy Status)")) {
             if (ImGui::Button("プレイヤー HP -> 0")) {
@@ -2654,6 +2981,7 @@ void GamePlayScene::DrawImGui() {
                 ImGui::DragFloat("ボス 最大バリアHP", &params.maxBarrierHp, 1.0f, 10.0f, 1000.0f);
                 ImGui::DragFloat("装甲ブロック単体のHP", &params.maxArmorBlockHp, 1.0f, 10.0f, 1000.0f);
                 ImGui::DragFloat("ボス スタン時間 (秒)", &params.stunDuration, 0.1f, 1.0f, 60.0f);
+                ImGui::DragFloat("突進クラッシュスタン時間 (秒)", &params.crashStunDuration, 0.1f, 0.1f, 30.0f);
                 ImGui::DragInt("低装甲時 吸収トリガー数", &params.lowArmorThreshold, 0.1f, 0, 10);
                 ImGui::SliderInt("低装甲時 吸収発動確率 (％)", &params.lowArmorAbsorbRate, 0, 100);
 
