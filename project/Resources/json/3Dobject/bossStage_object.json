@@ -2227,14 +2227,14 @@
             "collisionAttribute": 4,
             "collisionMask": 3,
             "color": [
-                0.15830117464065552,
-                0.15830117464065552,
-                0.15830117464065552,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -2258,7 +2258,7 @@
             "modelName": "map_corridor_01",
             "myEventID": -1,
             "name": "Tutorial_Corridor_Main",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "",
             "position": [
@@ -2290,7 +2290,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -2926,14 +2926,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                0.1568627506494522,
-                0.1568627506494522,
-                0.1568627506494522,
+                0.6293436288833618,
+                0.6293436288833618,
+                0.6293436288833618,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -2957,7 +2957,7 @@
             "modelName": "map_corridor_03",
             "myEventID": -1,
             "name": "Tutorial_Corridor_Left",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Corridor_Main",
             "position": [
@@ -2989,7 +2989,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3026,14 +3026,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                0.15830117464065552,
-                0.15830117464065552,
-                0.15830117464065552,
+                0.6293436288833618,
+                0.6293436288833618,
+                0.6293436288833618,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -3057,7 +3057,7 @@
             "modelName": "map_corridor_02",
             "myEventID": -1,
             "name": "Tutorial_Corridor_Right",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Corridor_Main",
             "position": [
@@ -3089,7 +3089,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3237,9 +3237,9 @@
             "collisionAttribute": 0,
             "collisionMask": 0,
             "color": [
-                0.3899613618850708,
-                0.2318689227104187,
-                0.2318689227104187,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
@@ -3247,7 +3247,7 @@
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.4099999964237213,
+            "envIntensity": 0.27000001072883606,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -3264,11 +3264,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.0,
+            "metallic": 0.2809999883174896,
             "modelName": "map_floor_02",
             "myEventID": -1,
             "name": "Map_Floor_WireMesh",
-            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3292,7 +3292,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -3300,7 +3300,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+            "texturePath": "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3347,7 +3347,7 @@
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.0,
+            "envIntensity": 0.27000001072883606,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -3368,7 +3368,7 @@
             "modelName": "map_floor_03",
             "myEventID": -1,
             "name": "Map_Floor_Panel",
-            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3400,7 +3400,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3437,9 +3437,9 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23166024684906006,
-                0.23166024684906006,
-                0.23166024684906006,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
@@ -3468,7 +3468,7 @@
             "modelName": "map_floor_05",
             "myEventID": -1,
             "name": "Map_Floor_Inbox_01",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3500,7 +3500,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3537,14 +3537,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -3568,7 +3568,7 @@
             "modelName": "map_floor_06",
             "myEventID": -1,
             "name": "Map_Floor_Inbox_02",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3600,7 +3600,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3637,14 +3637,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -3668,7 +3668,7 @@
             "modelName": "map_floor_07",
             "myEventID": -1,
             "name": "Map_Floor_Inbox_03",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3700,7 +3700,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3737,14 +3737,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -3768,7 +3768,7 @@
             "modelName": "map_floor_08",
             "myEventID": -1,
             "name": "Map_Floor_Inbox_04",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3800,7 +3800,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3837,14 +3837,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -3868,7 +3868,7 @@
             "modelName": "map_floor_09",
             "myEventID": -1,
             "name": "Map_Floor_Outbox_01",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3900,7 +3900,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -3937,14 +3937,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.2809999883174896,
@@ -3964,11 +3964,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.9039999842643738,
+            "metallic": 0.5789999961853027,
             "modelName": "map_floor_10",
             "myEventID": -1,
             "name": "Map_Floor_Outbox_02",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -3992,7 +3992,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -4000,7 +4000,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -4037,14 +4037,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -4068,7 +4068,7 @@
             "modelName": "map_floor_11",
             "myEventID": -1,
             "name": "Map_Floor_Outbox_03",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -4100,7 +4100,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -4137,14 +4137,14 @@
             "collisionAttribute": 4,
             "collisionMask": 219,
             "color": [
-                0.23137255012989044,
-                0.23137255012989044,
-                0.23137255012989044,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": true,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 0.27000001072883606,
@@ -4168,7 +4168,7 @@
             "modelName": "map_floor_12",
             "myEventID": -1,
             "name": "Map_Floor_Outbox_04",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -4200,7 +4200,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -4237,9 +4237,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.1853281855583191,
+                0.1853281855583191,
+                0.1853281855583191,
                 1.0
             ],
             "emissive": 1.0,
@@ -4268,7 +4268,7 @@
             "modelName": "map_top_equipment_01",
             "myEventID": -1,
             "name": "Map_Top_Equipment_01",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -4292,7 +4292,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -4300,7 +4300,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -4337,17 +4337,17 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.45945948362350464,
-                0.26077431440353394,
-                0.26077431440353394,
+                0.3320463299751282,
+                0.3320463299751282,
+                0.3320463299751282,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.04500000178813934,
+            "envIntensity": 0.0,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -4364,7 +4364,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.7979999780654907,
+            "metallic": 0.6000000238418579,
             "modelName": "map_top_equipment_02",
             "myEventID": -1,
             "name": "Map_Top_Equipment_02",
@@ -4392,7 +4392,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -4437,17 +4437,17 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.7722007632255554,
-                0.5128128528594971,
-                0.5128128528594971,
+                0.7374517321586609,
+                0.7374517321586609,
+                0.7374517321586609,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
-            "envIntensity": 0.12999999523162842,
+            "envIntensity": 0.27000001072883606,
             "eventID": 0,
             "localFog": {
                 "color": [
@@ -4464,7 +4464,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.781000018119812,
+            "metallic": 0.6000000238418579,
             "modelName": "map_top_equipment_03",
             "myEventID": -1,
             "name": "Map_Top_Equipment_03",
@@ -4492,7 +4492,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -4537,13 +4537,13 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.1411764770746231,
-                0.1411764770746231,
-                0.1411764770746231,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
@@ -4568,7 +4568,7 @@
             "modelName": "map_top_equipment_04",
             "myEventID": -1,
             "name": "Map_Top_Equipment_04",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Top_Equipment_01",
             "position": [
@@ -4600,7 +4600,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -4637,13 +4637,13 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.1428571343421936,
-                0.1428571343421936,
-                0.1428571343421936,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
-            "enableEnvMap": true,
+            "enableEnvMap": false,
             "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
@@ -4664,11 +4664,11 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.5389999747276306,
+            "metallic": 0.20000000298023224,
             "modelName": "map_top_equipment_05",
             "myEventID": -1,
             "name": "Map_Top_Equipment_05",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Top_Equipment_01",
             "position": [
@@ -4692,7 +4692,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.6000000238418579,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -4700,7 +4700,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -5637,9 +5637,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.18918919563293457,
+                0.18918919563293457,
+                0.18918919563293457,
                 1.0
             ],
             "emissive": 1.0,
@@ -5668,7 +5668,7 @@
             "modelName": "map_under_equipment_01",
             "myEventID": -1,
             "name": "Map_Under_Equipment_01",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -5700,7 +5700,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -5737,9 +5737,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.3320463299751282,
+                0.3320463299751282,
+                0.3320463299751282,
                 1.0
             ],
             "emissive": 1.0,
@@ -5764,7 +5764,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.017000000923871994,
+            "metallic": 0.6000000238418579,
             "modelName": "map_under_equipment_02",
             "myEventID": -1,
             "name": "Map_Under_Equipment_02",
@@ -5792,7 +5792,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -5837,9 +5837,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                0.7258687019348145,
+                0.7258687019348145,
+                0.7258687019348145,
                 1.0
             ],
             "emissive": 1.0,
@@ -5864,7 +5864,7 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
-            "metallic": 0.017000000923871994,
+            "metallic": 0.6000000238418579,
             "modelName": "map_under_equipment_03",
             "myEventID": -1,
             "name": "Map_Under_Equipment_03",
@@ -5892,7 +5892,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 1.0,
+            "roughness": 0.5,
             "saveCategory": "Object",
             "scale": [
                 1.0,
@@ -5937,9 +5937,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967072,
             "color": [
-                0.5868725776672363,
-                0.5075654983520508,
-                0.5075654983520508,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
@@ -5968,7 +5968,7 @@
             "modelName": "map_under_equipment_04",
             "myEventID": -1,
             "name": "Map_Under_Equipment_04",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Under_Equipment_01",
             "position": [
@@ -6000,7 +6000,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -6068,7 +6068,7 @@
             "modelName": "map_equipment_door_01",
             "myEventID": -1,
             "name": "Map_Equipment_Door_01",
-            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Map_Floor_Base",
             "position": [
@@ -6100,7 +6100,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -8818,14 +8818,14 @@
             "collisionAttribute": 4,
             "collisionMask": 4294967075,
             "color": [
-                0.1568627506494522,
-                0.1568627506494522,
-                0.1568627506494522,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
             "enableEnvMap": false,
-            "enableNormalMap": false,
+            "enableNormalMap": true,
             "enableOutline": false,
             "enemyType": "",
             "envIntensity": 1.0,
@@ -8849,7 +8849,7 @@
             "modelName": "map_corridor_04",
             "myEventID": -1,
             "name": "Tutorial_Corridor_Top",
-            "normalMapPath": "",
+            "normalMapPath": "Resources/texture/PBR/Normal/metal_plate_02_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Tutorial_Corridor_Main",
             "position": [
@@ -8881,7 +8881,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "",
+            "texturePath": "Resources/texture/PBR/Albedo/metal_plate_02_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -9616,9 +9616,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
-                0.16602319478988647,
-                0.16602319478988647,
-                0.16602319478988647,
+                1.0,
+                1.0,
+                1.0,
                 1.0
             ],
             "emissive": 1.0,
@@ -9647,7 +9647,7 @@
             "modelName": "map_wall_04",
             "myEventID": -1,
             "name": "map_wall_04",
-            "normalMapPath": "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Battle_Field_Dome",
             "position": [
@@ -9679,7 +9679,7 @@
                 1.0
             ],
             "targetID": -1,
-            "texturePath": "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
+            "texturePath": "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
             "type": "Model",
             "waterParam": {
                 "flowSpeedX": 0.10000000149011612,
@@ -9716,9 +9716,9 @@
             "collisionAttribute": 0,
             "collisionMask": 4294967295,
             "color": [
-                0.28185325860977173,
-                0.28185325860977173,
-                0.28185325860977173,
+                0.2686304450035095,
+                0.2778281271457672,
+                0.3281853199005127,
                 1.0
             ],
             "emissive": 1.0,
@@ -9747,7 +9747,7 @@
             "modelName": "map_wall_05",
             "myEventID": -1,
             "name": "map_wall_05",
-            "normalMapPath": "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+            "normalMapPath": "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
             "ormMapPath": "",
             "parentName": "Battle_Field_Dome",
             "position": [

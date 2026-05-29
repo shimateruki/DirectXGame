@@ -2227,9 +2227,9 @@
                         "collisionAttribute":  0,
                         "collisionMask":  0,
                         "color":  [
-                                      0.5907335877418518,
-                                      0.23492492735385895,
-                                      0.23492492735385895,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
@@ -2237,7 +2237,7 @@
                         "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
-                        "envIntensity":  0.4099999964237213,
+                        "envIntensity":  0.27000001072883606,
                         "eventID":  0,
                         "localFog":  {
                                          "color":  [
@@ -2254,11 +2254,11 @@
                                          "scatteringIntensity":  0.0
                                      },
                         "materialType":  0,
-                        "metallic":  0.4099999964237213,
+                        "metallic":  0.2809999883174896,
                         "modelName":  "map_floor_02",
                         "myEventID":  -1,
                         "name":  "Map_Floor_WireMesh",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2282,7 +2282,7 @@
                                          0.0,
                                          0.0
                                      ],
-                        "roughness":  1.0,
+                        "roughness":  0.5,
                         "saveCategory":  "Object",
                         "scale":  [
                                       1.0,
@@ -2290,7 +2290,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2327,17 +2327,17 @@
                         "collisionAttribute":  0,
                         "collisionMask":  0,
                         "color":  [
-                                      0.25482624769210815,
-                                      0.25482624769210815,
-                                      0.25482624769210815,
+                                      0.4285714030265808,
+                                      0.4285714030265808,
+                                      0.4285714030265808,
                                       1.0
                                   ],
                         "emissive":  1.0,
-                        "enableEnvMap":  false,
-                        "enableNormalMap":  false,
+                        "enableEnvMap":  true,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
-                        "envIntensity":  0.10100000351667404,
+                        "envIntensity":  0.27000001072883606,
                         "eventID":  0,
                         "localFog":  {
                                          "color":  [
@@ -2358,7 +2358,7 @@
                         "modelName":  "map_floor_03",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Panel",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2390,7 +2390,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2408,9 +2408,9 @@
                         "blendMode":  1,
                         "collider":  {
                                          "center":  [
-                                                        -13.350000381469727,
-                                                        0.75,
-                                                        -13.350000381469727
+                                                        -13.949999809265137,
+                                                        -7.75,
+                                                        -14.0
                                                     ],
                                          "rotation":  [
                                                           0.017453286796808243,
@@ -2419,22 +2419,22 @@
                                                       ],
                                          "size":  [
                                                       1.600000023841858,
-                                                      1.0,
-                                                      2.5
+                                                      8.199999809265137,
+                                                      2.549999952316284
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23166024684906006,
-                                      0.23166024684906006,
-                                      0.23166024684906006,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -2458,7 +2458,7 @@
                         "modelName":  "map_floor_05",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Inbox_01",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2490,7 +2490,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2508,9 +2508,9 @@
                         "blendMode":  1,
                         "collider":  {
                                          "center":  [
-                                                        12.850000381469727,
-                                                        0.44999998807907104,
-                                                        -12.838000297546387
+                                                        14.050000190734863,
+                                                        -7.75,
+                                                        -13.98799991607666
                                                     ],
                                          "rotation":  [
                                                           0.0,
@@ -2518,23 +2518,23 @@
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      3.0,
-                                                      0.8500000238418579,
-                                                      1.6779999732971191
+                                                      2.549999952316284,
+                                                      8.199999809265137,
+                                                      1.649999976158142
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -2558,7 +2558,7 @@
                         "modelName":  "map_floor_06",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Inbox_02",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2590,7 +2590,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2608,9 +2608,9 @@
                         "blendMode":  1,
                         "collider":  {
                                          "center":  [
-                                                        12.949999809265137,
-                                                        0.3499999940395355,
-                                                        12.949999809265137
+                                                        14.0,
+                                                        -7.75,
+                                                        14.050000190734863
                                                     ],
                                          "rotation":  [
                                                           0.0,
@@ -2618,23 +2618,23 @@
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      1.600000023841858,
-                                                      1.4999990463256836,
-                                                      3.0
+                                                      1.5499999523162842,
+                                                      8.199999809265137,
+                                                      2.5
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -2658,7 +2658,7 @@
                         "modelName":  "map_floor_07",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Inbox_03",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2690,7 +2690,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2708,9 +2708,9 @@
                         "blendMode":  1,
                         "collider":  {
                                          "center":  [
-                                                        -13.050000190734863,
-                                                        0.30000001192092896,
-                                                        13.088000297546387
+                                                        -14.0,
+                                                        -7.75,
+                                                        13.98799991607666
                                                     ],
                                          "rotation":  [
                                                           0.0,
@@ -2718,23 +2718,23 @@
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      2.75,
-                                                      1.4999990463256836,
-                                                      1.600000023841858
+                                                      2.549999952316284,
+                                                      8.199999809265137,
+                                                      1.5499999523162842
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -2758,7 +2758,7 @@
                         "modelName":  "map_floor_08",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Inbox_04",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2790,7 +2790,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2809,32 +2809,32 @@
                         "collider":  {
                                          "center":  [
                                                         -49.1439208984375,
-                                                        -0.30000001192092896,
+                                                        -7.599999904632568,
                                                         -49.1439208984375
                                                     ],
                                          "rotation":  [
                                                           0.0,
-                                                          0.0,
+                                                          0.7853981852531433,
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      2.1213226318359375,
-                                                      1.4999990463256836,
-                                                      2.1213226318359375
+                                                      1.5499999523162842,
+                                                      7.699999809265137,
+                                                      1.5499999523162842
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -2858,7 +2858,7 @@
                         "modelName":  "map_floor_09",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Outbox_01",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2890,7 +2890,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -2909,32 +2909,32 @@
                         "collider":  {
                                          "center":  [
                                                         49.1439208984375,
-                                                        -0.30000001192092896,
+                                                        -7.599999904632568,
                                                         -49.1439208984375
                                                     ],
                                          "rotation":  [
                                                           0.0,
-                                                          0.0,
+                                                          0.7853981852531433,
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      2.1213226318359375,
-                                                      1.4999990463256836,
-                                                      2.1213226318359375
+                                                      1.5499999523162842,
+                                                      7.699999809265137,
+                                                      1.5499999523162842
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.2809999883174896,
@@ -2954,11 +2954,11 @@
                                          "scatteringIntensity":  0.0
                                      },
                         "materialType":  0,
-                        "metallic":  0.9039999842643738,
+                        "metallic":  0.5789999961853027,
                         "modelName":  "map_floor_10",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Outbox_02",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -2982,7 +2982,7 @@
                                          0.0,
                                          0.0
                                      ],
-                        "roughness":  1.0,
+                        "roughness":  0.5,
                         "saveCategory":  "Object",
                         "scale":  [
                                       1.0,
@@ -2990,7 +2990,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -3009,32 +3009,32 @@
                         "collider":  {
                                          "center":  [
                                                         49.143917083740234,
-                                                        -0.30000001192092896,
+                                                        -7.599999904632568,
                                                         49.143924713134766
                                                     ],
                                          "rotation":  [
                                                           0.0,
-                                                          0.0,
+                                                          0.7853981852531433,
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      2.1213226318359375,
-                                                      1.4999990463256836,
-                                                      2.1213226318359375
+                                                      1.5499999523162842,
+                                                      7.699999809265137,
+                                                      1.5499999523162842
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -3058,7 +3058,7 @@
                         "modelName":  "map_floor_11",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Outbox_03",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -3090,7 +3090,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -3109,32 +3109,32 @@
                         "collider":  {
                                          "center":  [
                                                         -49.1439208984375,
-                                                        -0.30000001192092896,
+                                                        -7.599999904632568,
                                                         49.1439208984375
                                                     ],
                                          "rotation":  [
                                                           0.0,
-                                                          0.0,
+                                                          0.7853981852531433,
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      2.1213226318359375,
-                                                      1.4999990463256836,
-                                                      2.1213226318359375
+                                                      1.5499999523162842,
+                                                      7.699999809265137,
+                                                      1.5499999523162842
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
                         "collisionAttribute":  4,
                         "collisionMask":  219,
                         "color":  [
-                                      0.23137255012989044,
-                                      0.23137255012989044,
-                                      0.23137255012989044,
+                                      1.0,
+                                      1.0,
+                                      1.0,
                                       1.0
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  false,
+                        "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.27000001072883606,
@@ -3158,7 +3158,7 @@
                         "modelName":  "map_floor_12",
                         "myEventID":  -1,
                         "name":  "Map_Floor_Outbox_04",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rust_coarse_01_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -3190,7 +3190,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rust_coarse_01_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -3227,9 +3227,9 @@
                         "collisionAttribute":  0,
                         "collisionMask":  4294967072,
                         "color":  [
-                                      0.5868725776672363,
-                                      0.5075654983520508,
-                                      0.5075654983520508,
+                                      0.1853281855583191,
+                                      0.1853281855583191,
+                                      0.1853281855583191,
                                       1.0
                                   ],
                         "emissive":  1.0,
@@ -3258,7 +3258,7 @@
                         "modelName":  "map_top_equipment_01",
                         "myEventID":  -1,
                         "name":  "Map_Top_Equipment_01",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -3282,7 +3282,7 @@
                                          0.0,
                                          0.0
                                      ],
-                        "roughness":  1.0,
+                        "roughness":  0.5,
                         "saveCategory":  "Object",
                         "scale":  [
                                       1.0,
@@ -3290,7 +3290,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -3333,7 +3333,7 @@
                                       1.0
                                   ],
                         "emissive":  1.0,
-                        "enableEnvMap":  true,
+                        "enableEnvMap":  false,
                         "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
@@ -3433,7 +3433,7 @@
                                       1.0
                                   ],
                         "emissive":  1.0,
-                        "enableEnvMap":  true,
+                        "enableEnvMap":  false,
                         "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
@@ -3533,7 +3533,7 @@
                                       1.0
                                   ],
                         "emissive":  1.0,
-                        "enableEnvMap":  true,
+                        "enableEnvMap":  false,
                         "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
@@ -3634,7 +3634,7 @@
                                   ],
                         "emissive":  1.0,
                         "enableEnvMap":  true,
-                        "enableNormalMap":  true,
+                        "enableNormalMap":  false,
                         "enableOutline":  false,
                         "enemyType":  "",
                         "envIntensity":  0.24199999868869781,
@@ -4027,9 +4027,9 @@
                         "collisionAttribute":  0,
                         "collisionMask":  4294967072,
                         "color":  [
-                                      0.5868725776672363,
-                                      0.5075654983520508,
-                                      0.5075654983520508,
+                                      0.18918919563293457,
+                                      0.18918919563293457,
+                                      0.18918919563293457,
                                       1.0
                                   ],
                         "emissive":  1.0,
@@ -4058,7 +4058,7 @@
                         "modelName":  "map_under_equipment_01",
                         "myEventID":  -1,
                         "name":  "Map_Under_Equipment_01",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -4090,7 +4090,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -4409,7 +4409,7 @@
                         "collider":  {
                                          "center":  [
                                                         0.0,
-                                                        0.0,
+                                                        -9.600000381469727,
                                                         0.0
                                                     ],
                                          "rotation":  [
@@ -4418,26 +4418,26 @@
                                                           0.0
                                                       ],
                                          "size":  [
-                                                      0.0,
-                                                      0.0,
-                                                      0.0
+                                                      15.0,
+                                                      10.0,
+                                                      15.0
                                                   ],
-                                         "type":  0
+                                         "type":  3
                                      },
-                        "collisionAttribute":  0,
-                        "collisionMask":  4294967072,
+                        "collisionAttribute":  4,
+                        "collisionMask":  4294967073,
                         "color":  [
-                                      0.5868725776672363,
-                                      0.5075654983520508,
-                                      0.5075654983520508,
+                                      0.6602316498756409,
+                                      0.6602316498756409,
+                                      0.6602316498756409,
                                       1.0
                                   ],
                         "emissive":  1.0,
-                        "enableEnvMap":  false,
+                        "enableEnvMap":  true,
                         "enableNormalMap":  true,
                         "enableOutline":  false,
                         "enemyType":  "",
-                        "envIntensity":  0.10100000351667404,
+                        "envIntensity":  0.0,
                         "eventID":  0,
                         "localFog":  {
                                          "color":  [
@@ -4454,11 +4454,11 @@
                                          "scatteringIntensity":  0.0
                                      },
                         "materialType":  0,
-                        "metallic":  0.017000000923871994,
+                        "metallic":  0.0,
                         "modelName":  "map_equipment_door_01",
                         "myEventID":  -1,
                         "name":  "Map_Equipment_Door_01",
-                        "normalMapPath":  "",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_04_nor_gl_2k.dds",
                         "ormMapPath":  "",
                         "parentName":  "Map_Floor_Base",
                         "position":  [
@@ -4482,7 +4482,7 @@
                                          0.0,
                                          0.0
                                      ],
-                        "roughness":  1.0,
+                        "roughness":  0.5,
                         "saveCategory":  "Object",
                         "scale":  [
                                       1.0,
@@ -4490,7 +4490,7 @@
                                       1.0
                                   ],
                         "targetID":  -1,
-                        "texturePath":  "",
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_04_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -4527,9 +4527,9 @@
                         "collisionAttribute":  0,
                         "collisionMask":  4294967072,
                         "color":  [
-                                      0.13513511419296265,
-                                      0.13513511419296265,
-                                      0.13513511419296265,
+                                      0.12355214357376099,
+                                      0.12355214357376099,
+                                      0.12355214357376099,
                                       1.0
                                   ],
                         "emissive":  1.0,
@@ -4564,7 +4564,7 @@
                         "position":  [
                                          0.0,
                                          0.0,
-                                         -3.0
+                                         4.0
                                      ],
                         "quaternion":  [
                                            0.0,
@@ -4627,9 +4627,9 @@
                         "collisionAttribute":  0,
                         "collisionMask":  4294967072,
                         "color":  [
-                                      0.13333334028720856,
-                                      0.13333334028720856,
-                                      0.13333334028720856,
+                                      0.12741315364837646,
+                                      0.12741315364837646,
+                                      0.12741315364837646,
                                       1.0
                                   ],
                         "emissive":  1.0,
@@ -4664,7 +4664,7 @@
                         "position":  [
                                          0.0,
                                          0.0,
-                                         3.0
+                                         -4.0
                                      ],
                         "quaternion":  [
                                            0.0,
@@ -4991,6 +4991,306 @@
                                   ],
                         "targetID":  -1,
                         "texturePath":  "",
+                        "type":  "Model",
+                        "waterParam":  {
+                                           "flowSpeedX":  0.10000000149011612,
+                                           "flowSpeedY":  0.10000000149011612,
+                                           "waveFrequency":  1.5,
+                                           "waveHeight":  0.5,
+                                           "waveSpeed":  2.0
+                                       }
+                    },
+                    {
+                        "animation":  {
+                                          "animName":  "",
+                                          "isAnimLoop":  true
+                                      },
+                        "blendMode":  1,
+                        "collider":  {
+                                         "center":  [
+                                                        -0.08150100708007813,
+                                                        14.963020324707031,
+                                                        -0.07817840576171875
+                                                    ],
+                                         "rotation":  [
+                                                          0.0,
+                                                          0.0,
+                                                          0.0
+                                                      ],
+                                         "size":  [
+                                                      124.71919250488281,
+                                                      67.10887908935547,
+                                                      114.09195709228516
+                                                  ],
+                                         "type":  2
+                                     },
+                        "collisionAttribute":  0,
+                        "collisionMask":  4294967295,
+                        "color":  [
+                                      1.0,
+                                      1.0,
+                                      1.0,
+                                      1.0
+                                  ],
+                        "emissive":  1.0,
+                        "enableEnvMap":  false,
+                        "enableNormalMap":  true,
+                        "enableOutline":  false,
+                        "enemyType":  "",
+                        "envIntensity":  1.0,
+                        "eventID":  0,
+                        "localFog":  {
+                                         "color":  [
+                                                       0.20000000298023224,
+                                                       0.800000011920929,
+                                                       0.5,
+                                                       1.0
+                                                   ],
+                                         "density":  0.5,
+                                         "edgeFade":  0.0,
+                                         "noiseScale":  0.0,
+                                         "noiseSpeed":  0.0,
+                                         "scatteringG":  0.0,
+                                         "scatteringIntensity":  0.0
+                                     },
+                        "materialType":  0,
+                        "metallic":  0.0,
+                        "modelName":  "map_wall_03",
+                        "myEventID":  -1,
+                        "name":  "map_wall_03",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
+                        "ormMapPath":  "",
+                        "parentName":  "Battle_Field_Dome",
+                        "position":  [
+                                         0.0,
+                                         0.0,
+                                         0.0
+                                     ],
+                        "quaternion":  [
+                                           0.0,
+                                           0.0,
+                                           0.0,
+                                           1.0
+                                       ],
+                        "recorder":  {
+                                         "isRecordLoop":  false,
+                                         "isRecordRelative":  false,
+                                         "recordPathName":  ""
+                                     },
+                        "rotation":  [
+                                         0.0,
+                                         0.0,
+                                         0.0
+                                     ],
+                        "roughness":  0.5,
+                        "saveCategory":  "Object",
+                        "scale":  [
+                                      1.0,
+                                      1.0,
+                                      1.0
+                                  ],
+                        "targetID":  -1,
+                        "texturePath":  "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
+                        "type":  "Model",
+                        "waterParam":  {
+                                           "flowSpeedX":  0.10000000149011612,
+                                           "flowSpeedY":  0.10000000149011612,
+                                           "waveFrequency":  1.5,
+                                           "waveHeight":  0.5,
+                                           "waveSpeed":  2.0
+                                       }
+                    },
+                    {
+                        "animation":  {
+                                          "animName":  "",
+                                          "isAnimLoop":  true
+                                      },
+                        "blendMode":  1,
+                        "collider":  {
+                                         "center":  [
+                                                        -0.40909576416015625,
+                                                        27.826553344726563,
+                                                        0.411376953125
+                                                    ],
+                                         "rotation":  [
+                                                          0.0,
+                                                          0.0,
+                                                          0.0
+                                                      ],
+                                         "size":  [
+                                                      129.07174682617188,
+                                                      53.09130859375,
+                                                      117.88810729980469
+                                                  ],
+                                         "type":  2
+                                     },
+                        "collisionAttribute":  0,
+                        "collisionMask":  4294967295,
+                        "color":  [
+                                      1.0,
+                                      1.0,
+                                      1.0,
+                                      1.0
+                                  ],
+                        "emissive":  1.0,
+                        "enableEnvMap":  false,
+                        "enableNormalMap":  true,
+                        "enableOutline":  false,
+                        "enemyType":  "",
+                        "envIntensity":  1.0,
+                        "eventID":  0,
+                        "localFog":  {
+                                         "color":  [
+                                                       0.20000000298023224,
+                                                       0.800000011920929,
+                                                       0.5,
+                                                       1.0
+                                                   ],
+                                         "density":  0.5,
+                                         "edgeFade":  0.0,
+                                         "noiseScale":  0.0,
+                                         "noiseSpeed":  0.0,
+                                         "scatteringG":  0.0,
+                                         "scatteringIntensity":  0.0
+                                     },
+                        "materialType":  0,
+                        "metallic":  0.0,
+                        "modelName":  "map_wall_04",
+                        "myEventID":  -1,
+                        "name":  "map_wall_04",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
+                        "ormMapPath":  "",
+                        "parentName":  "Battle_Field_Dome",
+                        "position":  [
+                                         0.0,
+                                         0.0,
+                                         0.0
+                                     ],
+                        "quaternion":  [
+                                           0.0,
+                                           0.0,
+                                           0.0,
+                                           1.0
+                                       ],
+                        "recorder":  {
+                                         "isRecordLoop":  false,
+                                         "isRecordRelative":  false,
+                                         "recordPathName":  ""
+                                     },
+                        "rotation":  [
+                                         0.0,
+                                         0.0,
+                                         0.0
+                                     ],
+                        "roughness":  0.5,
+                        "saveCategory":  "Object",
+                        "scale":  [
+                                      1.0,
+                                      1.0,
+                                      1.0
+                                  ],
+                        "targetID":  -1,
+                        "texturePath":  "Resources/texture/PBR/Albedo/rusty_metal_sheet_diff_2k.dds",
+                        "type":  "Model",
+                        "waterParam":  {
+                                           "flowSpeedX":  0.10000000149011612,
+                                           "flowSpeedY":  0.10000000149011612,
+                                           "waveFrequency":  1.5,
+                                           "waveHeight":  0.5,
+                                           "waveSpeed":  2.0
+                                       }
+                    },
+                    {
+                        "animation":  {
+                                          "animName":  "",
+                                          "isAnimLoop":  true
+                                      },
+                        "blendMode":  1,
+                        "collider":  {
+                                         "center":  [
+                                                        -0.1332550048828125,
+                                                        15.016454696655273,
+                                                        0.7391777038574219
+                                                    ],
+                                         "rotation":  [
+                                                          0.0,
+                                                          0.0,
+                                                          0.0
+                                                      ],
+                                         "size":  [
+                                                      119.95756530761719,
+                                                      65.63093566894531,
+                                                      109.14033508300781
+                                                  ],
+                                         "type":  2
+                                     },
+                        "collisionAttribute":  0,
+                        "collisionMask":  4294967295,
+                        "color":  [
+                                      0.2686304450035095,
+                                      0.2778281271457672,
+                                      0.3281853199005127,
+                                      1.0
+                                  ],
+                        "emissive":  1.0,
+                        "enableEnvMap":  false,
+                        "enableNormalMap":  true,
+                        "enableOutline":  false,
+                        "enemyType":  "",
+                        "envIntensity":  1.0,
+                        "eventID":  0,
+                        "localFog":  {
+                                         "color":  [
+                                                       0.20000000298023224,
+                                                       0.800000011920929,
+                                                       0.5,
+                                                       1.0
+                                                   ],
+                                         "density":  0.5,
+                                         "edgeFade":  0.0,
+                                         "noiseScale":  0.0,
+                                         "noiseSpeed":  0.0,
+                                         "scatteringG":  0.0,
+                                         "scatteringIntensity":  0.0
+                                     },
+                        "materialType":  0,
+                        "metallic":  0.0,
+                        "modelName":  "map_wall_05",
+                        "myEventID":  -1,
+                        "name":  "map_wall_05",
+                        "normalMapPath":  "Resources/texture/PBR/Normal/rusty_metal_sheet_nor_gl_2k.dds",
+                        "ormMapPath":  "",
+                        "parentName":  "Battle_Field_Dome",
+                        "position":  [
+                                         0.0,
+                                         0.0,
+                                         0.0
+                                     ],
+                        "quaternion":  [
+                                           0.0,
+                                           0.0,
+                                           0.0,
+                                           1.0
+                                       ],
+                        "recorder":  {
+                                         "isRecordLoop":  false,
+                                         "isRecordRelative":  false,
+                                         "recordPathName":  ""
+                                     },
+                        "rotation":  [
+                                         0.0,
+                                         0.0,
+                                         0.0
+                                     ],
+                        "roughness":  0.5,
+                        "saveCategory":  "Object",
+                        "scale":  [
+                                      1.0,
+                                      1.0,
+                                      1.0
+                                  ],
+                        "targetID":  -1,
+                        "texturePath":  "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
@@ -6791,306 +7091,6 @@
                                   ],
                         "targetID":  -1,
                         "texturePath":  "",
-                        "type":  "Model",
-                        "waterParam":  {
-                                           "flowSpeedX":  0.10000000149011612,
-                                           "flowSpeedY":  0.10000000149011612,
-                                           "waveFrequency":  1.5,
-                                           "waveHeight":  0.5,
-                                           "waveSpeed":  2.0
-                                       }
-                    },
-                    {
-                        "animation":  {
-                                          "animName":  "",
-                                          "isAnimLoop":  true
-                                      },
-                        "blendMode":  1,
-                        "collider":  {
-                                         "center":  [
-                                                        -0.08150100708007813,
-                                                        14.963020324707031,
-                                                        -0.07817840576171875
-                                                    ],
-                                         "rotation":  [
-                                                          0.0,
-                                                          0.0,
-                                                          0.0
-                                                      ],
-                                         "size":  [
-                                                      124.71919250488281,
-                                                      67.10887908935547,
-                                                      114.09195709228516
-                                                  ],
-                                         "type":  2
-                                     },
-                        "collisionAttribute":  0,
-                        "collisionMask":  4294967295,
-                        "color":  [
-                                      1.0,
-                                      1.0,
-                                      1.0,
-                                      1.0
-                                  ],
-                        "emissive":  1.0,
-                        "enableEnvMap":  false,
-                        "enableNormalMap":  true,
-                        "enableOutline":  false,
-                        "enemyType":  "",
-                        "envIntensity":  1.0,
-                        "eventID":  0,
-                        "localFog":  {
-                                         "color":  [
-                                                       0.20000000298023224,
-                                                       0.800000011920929,
-                                                       0.5,
-                                                       1.0
-                                                   ],
-                                         "density":  0.5,
-                                         "edgeFade":  0.0,
-                                         "noiseScale":  0.0,
-                                         "noiseSpeed":  0.0,
-                                         "scatteringG":  0.0,
-                                         "scatteringIntensity":  0.0
-                                     },
-                        "materialType":  0,
-                        "metallic":  0.0,
-                        "modelName":  "map_wall_03",
-                        "myEventID":  -1,
-                        "name":  "map_wall_03",
-                        "normalMapPath":  "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
-                        "ormMapPath":  "",
-                        "parentName":  "Battle_Field_Dome",
-                        "position":  [
-                                         0.0,
-                                         0.0,
-                                         0.0
-                                     ],
-                        "quaternion":  [
-                                           0.0,
-                                           0.0,
-                                           0.0,
-                                           1.0
-                                       ],
-                        "recorder":  {
-                                         "isRecordLoop":  false,
-                                         "isRecordRelative":  false,
-                                         "recordPathName":  ""
-                                     },
-                        "rotation":  [
-                                         0.0,
-                                         0.0,
-                                         0.0
-                                     ],
-                        "roughness":  0.5,
-                        "saveCategory":  "Object",
-                        "scale":  [
-                                      1.0,
-                                      1.0,
-                                      1.0
-                                  ],
-                        "targetID":  -1,
-                        "texturePath":  "Resources/texture/PBR/Albedo/blue_metal_plate_diff_2k.dds",
-                        "type":  "Model",
-                        "waterParam":  {
-                                           "flowSpeedX":  0.10000000149011612,
-                                           "flowSpeedY":  0.10000000149011612,
-                                           "waveFrequency":  1.5,
-                                           "waveHeight":  0.5,
-                                           "waveSpeed":  2.0
-                                       }
-                    },
-                    {
-                        "animation":  {
-                                          "animName":  "",
-                                          "isAnimLoop":  true
-                                      },
-                        "blendMode":  1,
-                        "collider":  {
-                                         "center":  [
-                                                        -0.40909576416015625,
-                                                        27.826553344726563,
-                                                        0.411376953125
-                                                    ],
-                                         "rotation":  [
-                                                          0.0,
-                                                          0.0,
-                                                          0.0
-                                                      ],
-                                         "size":  [
-                                                      129.07174682617188,
-                                                      53.09130859375,
-                                                      117.88810729980469
-                                                  ],
-                                         "type":  2
-                                     },
-                        "collisionAttribute":  0,
-                        "collisionMask":  4294967295,
-                        "color":  [
-                                      0.16602319478988647,
-                                      0.16602319478988647,
-                                      0.16602319478988647,
-                                      1.0
-                                  ],
-                        "emissive":  1.0,
-                        "enableEnvMap":  false,
-                        "enableNormalMap":  true,
-                        "enableOutline":  false,
-                        "enemyType":  "",
-                        "envIntensity":  1.0,
-                        "eventID":  0,
-                        "localFog":  {
-                                         "color":  [
-                                                       0.20000000298023224,
-                                                       0.800000011920929,
-                                                       0.5,
-                                                       1.0
-                                                   ],
-                                         "density":  0.5,
-                                         "edgeFade":  0.0,
-                                         "noiseScale":  0.0,
-                                         "noiseSpeed":  0.0,
-                                         "scatteringG":  0.0,
-                                         "scatteringIntensity":  0.0
-                                     },
-                        "materialType":  0,
-                        "metallic":  0.0,
-                        "modelName":  "map_wall_04",
-                        "myEventID":  -1,
-                        "name":  "map_wall_04",
-                        "normalMapPath":  "Resources/texture/PBR/Normal/plastered_wall_02_nor_gl_2k.dds",
-                        "ormMapPath":  "",
-                        "parentName":  "Battle_Field_Dome",
-                        "position":  [
-                                         0.0,
-                                         0.0,
-                                         0.0
-                                     ],
-                        "quaternion":  [
-                                           0.0,
-                                           0.0,
-                                           0.0,
-                                           1.0
-                                       ],
-                        "recorder":  {
-                                         "isRecordLoop":  false,
-                                         "isRecordRelative":  false,
-                                         "recordPathName":  ""
-                                     },
-                        "rotation":  [
-                                         0.0,
-                                         0.0,
-                                         0.0
-                                     ],
-                        "roughness":  0.5,
-                        "saveCategory":  "Object",
-                        "scale":  [
-                                      1.0,
-                                      1.0,
-                                      1.0
-                                  ],
-                        "targetID":  -1,
-                        "texturePath":  "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
-                        "type":  "Model",
-                        "waterParam":  {
-                                           "flowSpeedX":  0.10000000149011612,
-                                           "flowSpeedY":  0.10000000149011612,
-                                           "waveFrequency":  1.5,
-                                           "waveHeight":  0.5,
-                                           "waveSpeed":  2.0
-                                       }
-                    },
-                    {
-                        "animation":  {
-                                          "animName":  "",
-                                          "isAnimLoop":  true
-                                      },
-                        "blendMode":  1,
-                        "collider":  {
-                                         "center":  [
-                                                        -0.1332550048828125,
-                                                        15.016454696655273,
-                                                        0.7391777038574219
-                                                    ],
-                                         "rotation":  [
-                                                          0.0,
-                                                          0.0,
-                                                          0.0
-                                                      ],
-                                         "size":  [
-                                                      119.95756530761719,
-                                                      65.63093566894531,
-                                                      109.14033508300781
-                                                  ],
-                                         "type":  2
-                                     },
-                        "collisionAttribute":  0,
-                        "collisionMask":  4294967295,
-                        "color":  [
-                                      0.28185325860977173,
-                                      0.28185325860977173,
-                                      0.28185325860977173,
-                                      1.0
-                                  ],
-                        "emissive":  1.0,
-                        "enableEnvMap":  false,
-                        "enableNormalMap":  true,
-                        "enableOutline":  false,
-                        "enemyType":  "",
-                        "envIntensity":  1.0,
-                        "eventID":  0,
-                        "localFog":  {
-                                         "color":  [
-                                                       0.20000000298023224,
-                                                       0.800000011920929,
-                                                       0.5,
-                                                       1.0
-                                                   ],
-                                         "density":  0.5,
-                                         "edgeFade":  0.0,
-                                         "noiseScale":  0.0,
-                                         "noiseSpeed":  0.0,
-                                         "scatteringG":  0.0,
-                                         "scatteringIntensity":  0.0
-                                     },
-                        "materialType":  0,
-                        "metallic":  0.0,
-                        "modelName":  "map_wall_05",
-                        "myEventID":  -1,
-                        "name":  "map_wall_05",
-                        "normalMapPath":  "Resources/texture/PBR/Normal/blue_metal_plate_nor_gl_2k.dds",
-                        "ormMapPath":  "",
-                        "parentName":  "Battle_Field_Dome",
-                        "position":  [
-                                         0.0,
-                                         0.0,
-                                         0.0
-                                     ],
-                        "quaternion":  [
-                                           0.0,
-                                           0.0,
-                                           0.0,
-                                           1.0
-                                       ],
-                        "recorder":  {
-                                         "isRecordLoop":  false,
-                                         "isRecordRelative":  false,
-                                         "recordPathName":  ""
-                                     },
-                        "rotation":  [
-                                         0.0,
-                                         0.0,
-                                         0.0
-                                     ],
-                        "roughness":  0.5,
-                        "saveCategory":  "Object",
-                        "scale":  [
-                                      1.0,
-                                      1.0,
-                                      1.0
-                                  ],
-                        "targetID":  -1,
-                        "texturePath":  "Resources/texture/PBR/Albedo/plastered_wall_02_diff_2k.dds",
                         "type":  "Model",
                         "waterParam":  {
                                            "flowSpeedX":  0.10000000149011612,
