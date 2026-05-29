@@ -90,7 +90,6 @@ void BossCore::ChangeState(State nextState) {
         break;
 
     case State::Attack: {
-        static int lastAttack = 0;
         int totalWeight = 0;
         std::vector<::AttackWeight> candidates;
 
@@ -111,33 +110,50 @@ void BossCore::ChangeState(State nextState) {
         int nextAttack = 1;
         bool isForcedAbsorb = false;
 
+        auto canUseAttack = [this](const ::AttackWeight& attack, bool excludeLast) {
+            if (excludeLast && attack.id == lastSelectedAttackId_) {
+                return false;
+            }
+            if (attack.id == 7 && IsArmorFull()) {
+                return false;
+            }
+            return true;
+        };
+
+        auto hasNonRepeatCandidate = [&]() {
+            for (const auto& attack : attackPool) {
+                if (canUseAttack(attack, true)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         if (isLowArmorTriggered) {
             // 0〜99の乱数を取得し、設定された確率（％）未満なら「吸収攻撃 (ID: 7)」を確定させる
             int roll = std::rand() % 100;
-            if (roll < attackParams_.lowArmorAbsorbRate) {
+            if (roll < attackParams_.lowArmorAbsorbRate &&
+                (lastSelectedAttackId_ != 7 || !hasNonRepeatCandidate())) {
                 nextAttack = 7;
                 isForcedAbsorb = true;
             }
         }
 
         if (!isForcedAbsorb) {
+            bool excludeLastAttack = hasNonRepeatCandidate();
             // 通常通りの重み付き抽選を行う
             for (const auto& a : attackPool) {
-                // 他に候補がある場合は、連続して同じ攻撃を出すのを防ぐ
-                if (attackPool.size() > 1 && a.id == lastAttack) continue;
-                // 通常抽選からは、装甲満タン時の吸収攻撃のみ除外
-                if (a.id == 7 && IsArmorFull()) continue;
-
+                if (!canUseAttack(a, excludeLastAttack)) continue;
                 candidates.push_back(a);
-                totalWeight += a.weight;
+                totalWeight += std::max(0, a.weight);
             }
 
             // 連続制限などで候補が空になってしまった場合のセーフティ
             if (candidates.empty() && !attackPool.empty()) {
                 for (const auto& a : attackPool) {
-                    if (a.id == 7 && IsArmorFull()) continue;
+                    if (!canUseAttack(a, false)) continue;
                     candidates.push_back(a);
-                    totalWeight += a.weight;
+                    totalWeight += std::max(0, a.weight);
                 }
             }
 
@@ -145,20 +161,18 @@ void BossCore::ChangeState(State nextState) {
                 int randomVal = std::rand() % totalWeight;
                 int currentSum = 0;
                 for (const auto& c : candidates) {
-                    currentSum += c.weight;
+                    currentSum += std::max(0, c.weight);
                     if (randomVal < currentSum) {
                         nextAttack = c.id;
                         break;
                     }
                 }
             }
-            else if (!attackPool.empty()) {
+            else if (!candidates.empty()) {
                 // 重みが設定されていない場合のセーフティ
-                nextAttack = attackPool[std::rand() % attackPool.size()].id;
+                nextAttack = candidates[std::rand() % candidates.size()].id;
             }
         }
-
-        lastAttack = nextAttack;
 
         if (s_debugForceAttack != 0) {
             nextAttack = s_debugForceAttack;
@@ -183,6 +197,7 @@ void BossCore::ChangeState(State nextState) {
         else if (nextAttack == 10) currentAttack_ = std::make_unique<BossAttack9_Spawn>();
 
         if (currentAttack_) {
+            lastSelectedAttackId_ = nextAttack;
             currentAttack_->Initialize(this);
         }
         break;

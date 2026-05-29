@@ -431,6 +431,8 @@ public:
 private:
 	bool isPlunging_ = false;
 	bool isLanded_ = false;
+	float landedBodyY_ = 0.0f;
+	float landedGroundY_ = 0.0f;
 	float recoveryTimer_ = 0.0f;
 	float recoveryDuration_ = 0.2f;
 

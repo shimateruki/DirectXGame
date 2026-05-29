@@ -309,6 +309,9 @@ bool Player::OnCollision(Object3d* other)
     for (Object3d* child : GetChildren())
     {
         if (!child) continue;
+        const uint32_t childAttribute = child->GetCollisionAttribute();
+        if ((childAttribute & kPlayer) == 0) continue;
+
         CollisionInfo childInfo = child->CheckCollision(other);
         if (childInfo.isColliding)
         {

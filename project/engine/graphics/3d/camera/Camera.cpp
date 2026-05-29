@@ -55,6 +55,17 @@ void ApplyAlphaToHierarchy(Object3d* object, float alpha) {
         ApplyAlphaToHierarchy(child, alpha);
     }
 }
+
+void ClampLookTargetPitch(Vector3& target, const Vector3& eye, float maxUpPitch) {
+    Vector3 toTarget = target - eye;
+    float horizontal = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
+    float baseHorizontal = std::max(horizontal, 1.0f);
+    float maxUpY = std::tan(maxUpPitch) * baseHorizontal;
+
+    if (toTarget.y > maxUpY) {
+        target.y = eye.y + maxUpY;
+    }
+}
 }
 
 void Camera::ConfigFixedPoint(const Vector3& position, const Vector3& angle) {
@@ -84,6 +95,8 @@ void Camera::Initialize() {
     followMode_ = FollowMode::kAimable;
     distance_ = 10.0f;
     isInputEnabled_ = true;
+    collisionEye_ = eye_;
+    isCollisionEyeInitialized_ = false;
 }
 
 void Camera::Update() {
@@ -255,7 +268,8 @@ void Camera::Update() {
         // -----------------------------------------------------------------
         // (D) 障害物判定 (Collision)
         // -----------------------------------------------------------------
-        if (!isEyeFrozen_) {
+        const bool isCinematicCameraActive = isOverridden_ || overrideWeight_ > 0.0f;
+        if (!isEyeFrozen_ && !isCinematicCameraActive) {
             if (followMode_ != FollowMode::kFirstPerson && followMode_ != FollowMode::kFixedPoint) {
                 // レイの開始点をプレイヤーの頭の高さに設定
                 // (注視点そのものを使うとロックオン中に敵の内側から判定が始まってしまうため)
@@ -266,32 +280,42 @@ void Camera::Update() {
                 float dist = math.Length(toSmoothEye);
                 Vector3 direction = (dist > 0.001f) ? math.Normalize(toSmoothEye) : Vector3{ 0,0,1 };
 
+                Vector3 resolvedEye = smoothEye_;
                 if (dist > 0.1f) {
                     RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(
                         rayStartPos, direction, dist, kGround | kMapBlock, IsIgnoredForCameraCollision
                     );
 
-                    if (hit.isHit) {
+                    if (hit.isHit && hit.distance > 0.35f) {
                         const float kEpsilon = 0.2f;
-                        eye_ = hit.hitPoint - (direction * kEpsilon);
+                        resolvedEye = hit.hitPoint - (direction * kEpsilon);
                     }
-                    else {
-                        eye_ = smoothEye_;
-                    }
-                }
-                else {
-                    eye_ = smoothEye_;
                 }
 
                 // 地面へのめり込み防止
                 float groundLimitY = playerPos.y + 0.5f;
-                if (eye_.y < groundLimitY) {
-                    eye_.y = groundLimitY;
+                if (resolvedEye.y < groundLimitY) {
+                    resolvedEye.y = groundLimitY;
                 }
+
+                if (!isCollisionEyeInitialized_) {
+                    collisionEye_ = resolvedEye;
+                    isCollisionEyeInitialized_ = true;
+                }
+
+                float collisionLerpFactor = (math.Length(resolvedEye - smoothEye_) > 0.01f) ? 0.45f : 0.2f;
+                collisionEye_ = LerpVec3(collisionEye_, resolvedEye, collisionLerpFactor);
+                eye_ = collisionEye_;
             }
             else {
                 eye_ = desiredEye;
+                collisionEye_ = eye_;
+                isCollisionEyeInitialized_ = true;
             }
+        }
+        else {
+            collisionEye_ = eye_;
+            isCollisionEyeInitialized_ = true;
         }
 
         // -----------------------------------------------------------------
@@ -304,7 +328,6 @@ void Camera::Update() {
         float camToPlayerDist = math.Length(toPlayer);
 
         float alpha = 1.0f;
-        const bool isCinematicCameraActive = isOverridden_ || overrideWeight_ > 0.0f;
         if (!isCinematicCameraActive && camToPlayerDist < 3.5f) {
             alpha = std::max(0.0f, (camToPlayerDist - 1.0f) / 2.5f);
         }
@@ -400,6 +423,11 @@ void Camera::Update() {
     // =================================================================
     // [3] 行列とプロジェクションの更新
     // =================================================================
+    if (followObject_ && !isOverridden_ && overrideWeight_ <= 0.0f &&
+        followMode_ != FollowMode::kFixedPoint) {
+        ClampLookTargetPitch(target_, eye_, 0.55f);
+    }
+
     Vector3 forward = { target_.x - eye_.x, target_.y - eye_.y, target_.z - eye_.z };
     Vector3 currentUp = up_;
 
@@ -485,6 +513,8 @@ void Camera::SyncRotationToCurrentView() {
 
     smoothTarget_ = target_;
     smoothEye_ = eye_;
+    collisionEye_ = eye_;
+    isCollisionEyeInitialized_ = true;
 }
 
 void Camera::StartOverride(const CameraOverrideParams& params) {
@@ -493,6 +523,7 @@ void Camera::StartOverride(const CameraOverrideParams& params) {
     overrideDuration_ = params.duration;
     overrideStartEye_ = eye_;
     overrideStartTarget_ = target_;
+    isCollisionEyeInitialized_ = false;
 
     if (overrideWeight_ <= 0.0f) {
         overrideTimer_ = 0.0f;
@@ -507,6 +538,7 @@ void Camera::EndOverride(float duration) {
     overrideDuration_ = duration;
     overrideStartEye_ = eye_;
     overrideStartTarget_ = target_;
+    isCollisionEyeInitialized_ = false;
 
     overrideTimer_ = overrideWeight_ * duration;
 }
