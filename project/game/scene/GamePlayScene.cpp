@@ -2077,7 +2077,11 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime, bool isCinematicMode,
     }
 
     // 自由カメラモード以外の操作
-    if (!CameraEditor::GetInstance()->IsEditorMode() && !isCinematicMode) {
+    const bool isCameraOverrideActive =
+        camera && (camera->IsOverridden() || camera->GetOverrideWeight() > 0.001f);
+    const bool isCameraReturnLocked =
+        isCameraOverrideActive || CameraEditor::GetInstance()->IsCinematicReturnInputLocked();
+    if (!CameraEditor::GetInstance()->IsEditorMode() && !isCinematicMode && !isCameraReturnLocked) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
 
         if (player_ && player_->GetHp() > 0.0f &&

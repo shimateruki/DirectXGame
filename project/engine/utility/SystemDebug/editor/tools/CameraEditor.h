@@ -74,8 +74,14 @@ public:
         settings_.cameraSensitivity = val;
     }
 
-    void SetCinematicActive(bool active) { isCinematicActive_ = active; }
+    void SetCinematicActive(bool active) {
+        if (isCinematicActive_ && !active) {
+            cinematicReturnInputLockTimer_ = kCinematicReturnInputLockDuration_;
+        }
+        isCinematicActive_ = active;
+    }
     bool IsCinematicActive() const { return isCinematicActive_; }
+    bool IsCinematicReturnInputLocked() const { return cinematicReturnInputLockTimer_ > 0.0f; }
 
 
 private:
@@ -98,4 +104,6 @@ private:
     char newOverrideNameBuffer_[64] = "";   // 新規作成時の名前入力欄
     Object3d* targetPlayer_ = nullptr;
     bool isCinematicActive_ = false;
+    float cinematicReturnInputLockTimer_ = 0.0f;
+    static constexpr float kCinematicReturnInputLockDuration_ = 1.0f;
 };

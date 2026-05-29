@@ -12,6 +12,8 @@ void PlayerStatePlungeAttack::Enter(Player *player) {
   AudioPlayer::GetInstance()->PlaySE(player->GetSEDownAttack1Handle(), false, 1.0f);
   isPlunging_ = false;
   isLanded_ = false;
+  landedBodyY_ = player->GetTranslate().y;
+  landedGroundY_ = landedBodyY_;
   recoveryTimer_ = 0.0f;
   bodyObj_ = player;
 
@@ -80,8 +82,24 @@ void PlayerStatePlungeAttack::Update(Player *player) {
       }
     } else {
       // 着地判定：猛スピード(-40)だったのが、床にぶつかって速度が0に近づいたら着地
-      if (vel.y > -5.0f) {
+      if (player->IsGrounded() || vel.y > -5.0f) {
         isLanded_ = true;
+        vel.y = 0.0f;
+        player->SetVelocity(vel);
+        landedBodyY_ = player->GetTranslate().y;
+        landedGroundY_ = landedBodyY_;
+        float landedFootY = 1e9f;
+        if (leftFootObj_) {
+          AABB a = leftFootObj_->GetAABB();
+          landedFootY = (std::min)(landedFootY, a.min.y);
+        }
+        if (rightFootObj_) {
+          AABB b = rightFootObj_->GetAABB();
+          landedFootY = (std::min)(landedFootY, b.min.y);
+        }
+        if (landedFootY < 1e8f) {
+          landedGroundY_ = landedFootY;
+        }
         DebugConsole::GetInstance()->AddLog("Plunge Attack: LANDED! (DOOOM!)");
         
         // 地面に激突した時
@@ -360,8 +378,11 @@ void PlayerStatePlungeAttack::ApplyPose(Player *player) {
     tf->translate.x = bodyDefaultPos_.x + curBodyPos.x;
     tf->translate.z = bodyDefaultPos_.z + curBodyPos.z;
     float engineY = tf->translate.y;
-    const float groundLevel = 0.55f;
-    tf->translate.y = (std::max)(groundLevel, engineY + curBodyPos.y);
+    if (isLanded_) {
+      tf->translate.y = (std::max)(landedBodyY_, engineY + curBodyPos.y);
+    } else {
+      tf->translate.y = engineY + curBodyPos.y;
+    }
 
     tf->rotate = curBodyRot;
     tf->quaternion = Math::EulerToQuaternion(tf->rotate);
@@ -424,7 +445,7 @@ void PlayerStatePlungeAttack::ApplyPose(Player *player) {
   // 補正: 着地時、足のワールドAABBを基準に body の Y
   // を微調整して足が地面に埋まらないようにする ---
   if (isLanded_ && bodyObj_) {
-    const float groundLevel = 0.55f;
+    const float groundLevel = landedGroundY_;
     float minFootY = 1e9f;
     if (leftFootObj_) {
       AABB a = leftFootObj_->GetAABB();

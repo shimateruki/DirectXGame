@@ -371,6 +371,7 @@ private:
     // 現在実行中の新しい攻撃クラスを保持するポインタ
     // ==========================================
     std::unique_ptr<BaseBossAttack> currentAttack_ = nullptr;
+    int lastSelectedAttackId_ = 0;
 
     // ==========================================
     // ブロックごとのHPと破壊状態

@@ -150,7 +150,9 @@ private:
     // --- 補間用・スムージング ---
     Vector3 smoothTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 smoothEye_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 collisionEye_ = { 0.0f, 0.0f, 0.0f };
     bool isCameraInitialized_ = false;
+    bool isCollisionEyeInitialized_ = false;
 
     // --- 各モード用パラメータ ---
     Vector3 fixedOffset_ = { 0.0f, 5.0f, -10.0f };       // kFixed 用

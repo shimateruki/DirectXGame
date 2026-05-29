@@ -58,6 +58,12 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
     targetPlayer_ = player;
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera) return;
+    if (cinematicReturnInputLockTimer_ > 0.0f) {
+        cinematicReturnInputLockTimer_ -= 1.0f / 60.0f;
+        if (cinematicReturnInputLockTimer_ < 0.0f) {
+            cinematicReturnInputLockTimer_ = 0.0f;
+        }
+    }
 
     if (settings_.currentMode == Mode::Game && isLockingOn) {
         return;
@@ -67,6 +73,10 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
         if (player) {
             camera->SetFollowTarget(player);
             camera->SetFollowMode(settings_.gameFollowMode);
+            const bool isCameraOverrideActive =
+                camera->IsOverridden() || camera->GetOverrideWeight() > 0.001f;
+            const bool isCameraReturnLocked =
+                isCameraOverrideActive || IsCinematicReturnInputLocked();
             InputManager* input = InputManager::GetInstance();
 
             // =========================================================
@@ -97,7 +107,7 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             // =========================================================
             // カメラの値の反映処理
             // =========================================================
-            if (isControllingCamera) {
+            if (!isCameraReturnLocked && isControllingCamera) {
                 // 操作中： カメラの値を Editor に逆反映 (Read)
                 // カメラには書き込まない！
                 if (settings_.gameFollowMode == Camera::FollowMode::kAimable ||
@@ -673,7 +683,7 @@ void CameraEditor::LoadFile(const std::string& fileName) {
 void CameraEditor::SetMode(Mode mode) {
     settings_.currentMode = mode;
     if (mode == Mode::Game) {
-        isCinematicActive_ = false;
+        SetCinematicActive(false);
     }
 }
 

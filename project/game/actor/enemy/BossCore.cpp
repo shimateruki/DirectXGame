@@ -76,6 +76,7 @@ void BossCore::Initialize(Object3dCommon* common, const std::string& modelName) 
 
     barrierHp_ = attackParams_.maxBarrierHp;
     maxBarrierHp_ = attackParams_.maxBarrierHp;
+    lastSelectedAttackId_ = 0;
 
     // 現在登録されているブロックのHPを読み込んだパラメータに初期化
     for (size_t i = 0; i < blockHps_.size(); ++i) {
