@@ -28,11 +28,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         if (wparam != SIZE_MINIMIZED) {
             int32_t width = LOWORD(lparam);
             int32_t height = HIWORD(lparam);
-            WinApp::kClientWidth = width;
-            WinApp::kClientHeight = height;
-            if (DirectXCommon::GetInstance()->GetDevice()) {
-                DirectXCommon::GetInstance()->ResizeSwapChain(width, height);
-            }
+            WinApp::kWindowWidth = width;
+            WinApp::kWindowHeight = height;
         }
         return 0;
 
@@ -62,9 +59,9 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-    // 内部の解像度設定を、実際のモニターサイズに合わせる
-    kClientWidth = screenWidth;
-    kClientHeight = screenHeight;
+    // ゲーム内の基準解像度は固定し、ウィンドウだけ実画面サイズに合わせる
+    kWindowWidth = screenWidth;
+    kWindowHeight = screenHeight;
 
     // ウィンドウ作成
     // ★ WS_POPUP を指定することで、タイトルバーやサイズ変更枠を完全に消去します

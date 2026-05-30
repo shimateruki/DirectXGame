@@ -1,11 +1,14 @@
 #pragma once
 #include <Windows.h>
+#include <cstdint>
 #include <string>
 
 class WinApp {
 public:
-    inline static int32_t kClientWidth = 1280;
-    inline static int32_t kClientHeight = 720;
+    inline static constexpr int32_t kClientWidth = 1536;
+    inline static constexpr int32_t kClientHeight = 864;
+    inline static int32_t kWindowWidth = kClientWidth;
+    inline static int32_t kWindowHeight = kClientHeight;
     // 初期化（ウィンドウを作成）
     void Initialize(const wchar_t* title = L"CG2", int width = kClientWidth, int height = kClientHeight);
 

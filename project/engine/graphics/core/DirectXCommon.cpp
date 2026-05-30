@@ -376,6 +376,7 @@ void DirectXCommon::CreateSwapChain() {
 	swapChainDesc.Height = WinApp::kClientHeight;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.BufferCount = (UINT)backBufferCount_;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -1029,6 +1030,11 @@ void DirectXCommon::UpdateGrabTexture() {
 }
 
 void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
+	(void)width;
+	(void)height;
+	const int32_t bufferWidth = WinApp::kClientWidth;
+	const int32_t bufferHeight = WinApp::kClientHeight;
+
 	// 1. GPUの完了を待つ (動いている最中に作り直すとクラッシュするため)
 	WaitForGPUAndReset();
 
@@ -1044,8 +1050,8 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 	swapChain_->GetDesc1(&desc);
 	HRESULT hr = swapChain_->ResizeBuffers(
 		(UINT)backBufferCount_,
-		(UINT)width,
-		(UINT)height,
+		(UINT)bufferWidth,
+		(UINT)bufferHeight,
 		desc.Format,
 		desc.Flags
 	);
@@ -1066,17 +1072,17 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
 	}
 
 	// 5. DSV（深度バッファ）を新しいサイズで再作成
-	depthStencilResource_ = CreateDepthStencilTextureResource(width, height);
+	depthStencilResource_ = CreateDepthStencilTextureResource(bufferWidth, bufferHeight);
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	device_->CreateDepthStencilView(depthStencilResource_.Get(), &dsvDesc, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
 
 	// 6. ビューポートとシザー矩形も更新
-	viewport_.Width = (float)width;
-	viewport_.Height = (float)height;
-	scissorRect_.right = width;
-	scissorRect_.bottom = height;
+	viewport_.Width = (float)bufferWidth;
+	viewport_.Height = (float)bufferHeight;
+	scissorRect_.right = bufferWidth;
+	scissorRect_.bottom = bufferHeight;
 
 
 	CreateRenderTexture();
