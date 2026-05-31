@@ -267,6 +267,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
             
             // 突進目標地点をタメ終了時のプレイヤー方向に基づいて確定
             animTargetPos_ = { currentBossPos.x + toPlayer.x * 120.0f, 2.0f, currentBossPos.z + toPlayer.z * 120.0f };
+            boss->SetArmorAttackCollisionActive(true);
         }
     }
     else if (animPhase_ == 811) { // 突進
@@ -305,6 +306,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         }
 
         if (t >= 1.0f) {
+            boss->SetArmorAttackCollisionActive(false);
             rushCount_++;
             if (rushCount_ < 3) {
                 animPhase_ = 810; 
