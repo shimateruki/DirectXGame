@@ -359,9 +359,23 @@ void BossAttack9_Funnels::Update(BossCore* boss, float deltaTime) {
 
                 dir = Math::Normalize(dir);
                 
-                RaycastHit hit = CollisionManager::GetInstance()->Raycast(startPos, dir, maxDist, kGround | kMapBlock);
+                // 自分自身とその子オブジェクトを無視するフィルタ
+                auto ignoreSelfAndChildren = [&](Object3d* obj) {
+                    if (obj == armorBlocks[i]) return true;
+                    Object3d* parent = obj->GetParent();
+                    while (parent) {
+                        if (parent == armorBlocks[i]) return true;
+                        parent = parent->GetParent();
+                    }
+                    return false;
+                };
+
+                RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(startPos, dir, maxDist, kGround | kMapBlock, ignoreSelfAndChildren);
                 if (hit.isHit) {
-                    actualDist = hit.distance;
+                    // 2.0m未満の至近距離ヒットは誤ヒットとみなして無視する
+                    if (hit.distance >= 2.0f) {
+                        actualDist = hit.distance;
+                    }
                 }
             }
 
