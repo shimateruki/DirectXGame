@@ -500,9 +500,23 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
                 dir = Math::Normalize(dir);
                 
-                RaycastHit hit = CollisionManager::GetInstance()->Raycast(startPos, dir, maxDist, kGround | kMapBlock);
+                // 自分自身とその子オブジェクトを無視するフィルタ
+                auto ignoreSelfAndChildren = [&](Object3d* obj) {
+                    if (obj == armorBlocks[i]) return true;
+                    Object3d* parent = obj->GetParent();
+                    while (parent) {
+                        if (parent == armorBlocks[i]) return true;
+                        parent = parent->GetParent();
+                    }
+                    return false;
+                };
+
+                RaycastHit hit = CollisionManager::GetInstance()->RaycastFiltered(startPos, dir, maxDist, kGround | kMapBlock, ignoreSelfAndChildren);
                 if (hit.isHit) {
-                    actualDist = hit.distance;
+                    // 2.0m未満の至近距離ヒットは誤ヒットとみなして無視する
+                    if (hit.distance >= 2.0f) {
+                        actualDist = hit.distance;
+                    }
                 }
             }
 
@@ -540,8 +554,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 Vector3 pos = Math::Lerp(armorBlocks[i]->GetTranslate(), tgtPos, 5.0f * deltaTime);
                 armorBlocks[i]->SetTranslate(pos);
 
-                if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
-                if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
+                if (laser) { laser->SetIsVisible(false); laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                if (coreLaser) { coreLaser->SetIsVisible(false); coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
                 
                 if (animTimer_ < 11.5f && animTimer_ > 2.0f + i * 0.8f) {
                     funnelStates_[i] = 11; 
@@ -563,12 +577,20 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 funnelTimers_[i] += deltaTime;
                 
                 if (laser) {
+                    laser->SetIsVisible(true);
                     laser->SetScale({ 0.02f, scaleY, 0.02f });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetColor({ 1.0f, 0.0f, 0.0f, 0.8f });
                     laser->SetCollisionAttribute(0);
+                    
+                    static Math math;
+                    Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
+                    Vector3 uvTranslate = { 0.0f, funnelTimers_[i] * -30.0f, 0.0f };
+                    laser->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
                     laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
+                    coreLaser->SetIsVisible(false);
                     coreLaser->SetScale({ 0.0f, scaleY, 0.0f });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0);
@@ -607,26 +629,30 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 funnelTimers_[i] += deltaTime;
                 
                 if (laser) {
+                    laser->SetIsVisible(true);
                     laser->SetScale({ 1.0f, scaleY, 1.0f });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    laser->SetColor({ 1.0f, 0.0f, 0.0f, 1.0f });
                     laser->SetCollisionAttribute(kEnemyAttack);
                     laser->SetAttackDamage(boss->GetAttackParams().damageFunnels);
                     
                     static Math math;
                     Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
-                    Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, funnelTimers_[i]*5.0f, 0.0f });
-                    laser->SetUVTransform(uvMat);
+                    Vector3 uvTranslate = { 0.0f, funnelTimers_[i] * -30.0f, 0.0f };
+                    laser->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
                     laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
+                    coreLaser->SetIsVisible(true);
                     coreLaser->SetScale({ 0.4f, scaleY, 0.4f });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
+                    coreLaser->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
                     coreLaser->SetCollisionAttribute(0);
                     
                     static Math math;
-                    Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
-                    Matrix4x4 uvMat = math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, { 0.0f, funnelTimers_[i]*5.0f, 0.0f });
-                    coreLaser->SetUVTransform(uvMat);
+                    Vector3 coreUvScale = { 1.0f, 20.0f, 1.0f };
+                    Vector3 coreUvTranslate = { 0.0f, funnelTimers_[i] * -50.0f, 0.0f };
+                    coreLaser->SetUVTransform(math.MakeAffineMatrix(coreUvScale, { 0.0f, 0.0f, 0.0f }, coreUvTranslate));
                     coreLaser->UpdateWorldMatrix();
                 }
 
@@ -650,15 +676,27 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
                 float shrinkT = 1.0f - t;
 
                 if (laser) {
+                    laser->SetIsVisible(true);
                     laser->SetScale({ 1.0f * shrinkT, scaleY, 1.0f * shrinkT });
                     laser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     laser->SetCollisionAttribute(0);
+                    
+                    static Math math;
+                    Vector3 uvScale = { 1.0f, 15.0f, 1.0f };
+                    Vector3 uvTranslate = { 0.0f, funnelTimers_[i] * -30.0f, 0.0f };
+                    laser->SetUVTransform(math.MakeAffineMatrix(uvScale, { 0.0f, 0.0f, 0.0f }, uvTranslate));
                     laser->UpdateWorldMatrix();
                 }
                 if (coreLaser) {
+                    coreLaser->SetIsVisible(true);
                     coreLaser->SetScale({ 0.4f * shrinkT, scaleY, 0.4f * shrinkT });
                     coreLaser->SetTranslate({ 0.0f, 0.0f, offsetZ });
                     coreLaser->SetCollisionAttribute(0);
+                    
+                    static Math math;
+                    Vector3 coreUvScale = { 1.0f, 20.0f, 1.0f };
+                    Vector3 coreUvTranslate = { 0.0f, funnelTimers_[i] * -50.0f, 0.0f };
+                    coreLaser->SetUVTransform(math.MakeAffineMatrix(coreUvScale, { 0.0f, 0.0f, 0.0f }, coreUvTranslate));
                     coreLaser->UpdateWorldMatrix();
                 }
 
@@ -672,8 +710,8 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
                 if (t >= 1.0f) {
                     funnelStates_[i] = 0; 
-                    if (laser) { laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
-                    if (coreLaser) { coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
+                    if (laser) { laser->SetIsVisible(false); laser->SetScale({ 0.0f, 0.0f, 0.0f }); laser->SetCollisionAttribute(0); laser->UpdateWorldMatrix(); }
+                    if (coreLaser) { coreLaser->SetIsVisible(false); coreLaser->SetScale({ 0.0f, 0.0f, 0.0f }); coreLaser->SetCollisionAttribute(0); coreLaser->UpdateWorldMatrix(); }
 
                     // ビーム終了：地形属性判定を元に戻す
                     if (armorBlocks[i]) {
@@ -699,6 +737,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
         if (allFinished) {
             for (auto* laser : activeLasers_) {
                 if (laser) {
+                    laser->SetIsVisible(false);
                     laser->SetScale({0,0,0});
                     laser->SetCollisionAttribute(0);
                     laser->SetParent(nullptr);
@@ -709,6 +748,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 
             for (auto* core : activeCoreLasers_) {
                 if (core) {
+                    core->SetIsVisible(false);
                     core->SetScale({0,0,0});
                     core->SetCollisionAttribute(0);
                     core->SetParent(nullptr);
@@ -1026,6 +1066,7 @@ void BossAttack8_Final::Update(BossCore* boss, float deltaTime) {
 void BossAttack8_Final::Finalize() {
     for (auto* laser : activeLasers_) {
         if (laser) {
+            laser->SetIsVisible(false);
             laser->SetScale({ 0.0f, 0.0f, 0.0f });
             laser->SetCollisionAttribute(0);
             laser->SetParent(nullptr); // 行列更新時の親アクセス違反防止
@@ -1036,6 +1077,7 @@ void BossAttack8_Final::Finalize() {
 
     for (auto* core : activeCoreLasers_) {
         if (core) {
+            core->SetIsVisible(false);
             core->SetScale({ 0.0f, 0.0f, 0.0f });
             core->SetCollisionAttribute(0);
             core->SetParent(nullptr);
