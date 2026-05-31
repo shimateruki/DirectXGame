@@ -156,6 +156,10 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game\actor\enemy\EnemyBomber.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemyMushroom.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemyGiantSlime.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemyBat.cpp" />
+    <ClCompile Include="game\actor\enemy\EnemyBeamDrone.cpp" />
     <ClCompile Include="engine\graphics\effect\EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
@@ -504,6 +508,10 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\system\EnemyFactory.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />
     <ClInclude Include="game\actor\enemy\EnemyBomb.h" />
+    <ClInclude Include="game\actor\enemy\EnemyMushroom.h" />
+    <ClInclude Include="game\actor\enemy\EnemyGiantSlime.h" />
+    <ClInclude Include="game\actor\enemy\EnemyBat.h" />
+    <ClInclude Include="game\actor\enemy\EnemyBeamDrone.h" />
     <ClInclude Include="game\system\EnemySpawner.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.h" />
     <ClInclude Include="engine\utility\math\Easing.h" />

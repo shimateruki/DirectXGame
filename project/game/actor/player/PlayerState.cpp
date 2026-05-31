@@ -8,6 +8,7 @@
 #include "engine/graphics/postprocess/PostEffect.h"
 #include "engine/graphics/3d/camera/CameraManager.h"
 #include"BaseEnemy.h"
+#include "EnemyGiantSlime.h"
 #include "GimmickHookPullBlock.h"
 #include "CollisionConfig.h"
 #include "CollisionManager.h"
@@ -745,6 +746,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
 
     player->SetIsControlActive(false);
     player->SetVelocity({ 0.0f, 0.0f, 0.0f }); // プレイヤー自身はその場で停止
+    isHeavyPullTarget_ = dynamic_cast<EnemyGiantSlime*>(targetEnemy_) != nullptr;
 
     phase_ = Phase::kShootHook;
     hookTipPos_ = player->GetWorldPosition();
@@ -778,10 +780,15 @@ void PlayerStatePullEnemy::Update(Player* player) {
             enemyStartPos_ = enemyPos;
             pullTimer_ = -0.12f; // ヒットストップ：命中後0.12秒間タメる
             
-            // 命中時に敵を「Carried（持ち運び）」状態へ移行させ、衝突判定を無効化
-            BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_);
-            if (enemyBase) {
-                enemyBase->SetCarried(true);
+            if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(targetEnemy_)) {
+                isHeavyPullTarget_ = true;
+                giantSlime->BeginHookSplitPull(playerPos);
+            } else {
+                // 命中時に敵を「Carried（持ち運び）」状態へ移行させ、衝突判定を無効化
+                BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_);
+                if (enemyBase) {
+                    enemyBase->SetCarried(true);
+                }
             }
 
             // 命中した瞬間の火花（パーティクル）
@@ -851,6 +858,48 @@ void PlayerStatePullEnemy::Update(Player* player) {
                 marker->UpdateWorldMatrix();
             }
             return; // これ以上は更新しない（時を止める）
+        }
+
+        if (isHeavyPullTarget_) {
+            auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(targetEnemy_);
+            if (!giantSlime || giantSlime->HasSplit()) {
+                player->ChangeState(std::make_unique<PlayerStateIdle>());
+                return;
+            }
+
+            bool hasSplit = giantSlime->UpdateHookSplitPull(deltaTime, playerPos, player->GetParticleSystem());
+            float progress = giantSlime->GetHookSplitProgress();
+            float strain = (1.0f - progress * 0.45f) * 0.55f;
+            player->GetTransform()->scale = { 1.0f + strain, 1.0f - strain * 0.7f, 1.0f + strain };
+
+            Object3d* marker = player->GetHookMarker();
+            if (marker) {
+                Vector3 enemyCurrentPos = targetEnemy_->GetTransform()->translate;
+                Vector3 diff = enemyCurrentPos - playerPos;
+                float len = Math::Length(diff);
+                if (len < 0.01f) len = 0.01f;
+
+                marker->GetTransform()->translate = playerPos + diff * 0.5f;
+                marker->GetTransform()->rotate = {
+                    std::atan2(-diff.y, std::sqrt(diff.x * diff.x + diff.z * diff.z)),
+                    std::atan2(diff.x, diff.z),
+                    0.0f
+                };
+                marker->GetTransform()->isQuaternionMaster = false;
+
+                float tension = std::sin(pullTimer_ * 56.0f) * (1.0f - progress) * 0.16f;
+                float thickness = Math::Lerp(0.18f, 0.08f, progress);
+                marker->GetTransform()->scale = { thickness + tension, thickness - tension, len };
+                marker->SetColor({ 0.35f + progress * 0.6f, 0.95f, 1.0f, 1.0f });
+                marker->UpdateLocalMatrix();
+                marker->UpdateWorldMatrix();
+            }
+
+            if (hasSplit) {
+                player->GetTransform()->scale = { 2.4f, 0.45f, 2.4f };
+                player->ChangeState(std::make_unique<PlayerStateIdle>());
+            }
+            return;
         }
 
         const float kPullDuration = 0.45f; // 少しだけ時間を長くしてタメを作る
@@ -939,6 +988,14 @@ void PlayerStatePullEnemy::Update(Player* player) {
 void PlayerStatePullEnemy::Exit(Player* player) {
     player->SetIsControlActive(true);
     if (player) {
+        if (isHeavyPullTarget_) {
+            if (auto* giantSlime = dynamic_cast<EnemyGiantSlime*>(targetEnemy_)) {
+                if (!giantSlime->HasSplit()) {
+                    giantSlime->CancelHookSplitPull();
+                }
+            }
+        }
+
         Object3d* marker = player->GetHookMarker();
         if (marker) {
             marker->SetIsVisible(false);

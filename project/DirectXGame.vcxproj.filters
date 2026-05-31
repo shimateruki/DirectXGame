@@ -234,6 +234,18 @@
     <ClCompile Include="game\actor\enemy\EnemyBomb.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyMushroom.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyGiantSlime.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyBat.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\enemy\EnemyBeamDrone.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="game\system\EnemyFactory.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -979,6 +991,18 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\enemy\EnemyBomb.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyMushroom.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyGiantSlime.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyBat.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\enemy\EnemyBeamDrone.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\system\EnemyFactory.h">

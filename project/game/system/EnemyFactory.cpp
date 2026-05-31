@@ -1,6 +1,10 @@
 ﻿#include "EnemyFactory.h"
 #include "EnemySlime.h"
 #include "EnemyBomb.h"
+#include "EnemyMushroom.h"
+#include "EnemyGiantSlime.h"
+#include "EnemyBat.h"
+#include "EnemyBeamDrone.h"
 #include <BossCore.h>
 #include "SceneManager.h"
 #include <EnemyBomber.h>
@@ -94,6 +98,83 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         bomber->SetDetectionRange(p.detectionRange);
 
         newEnemy = std::move(bomber);
+    }
+    else if (enemyName == "Mushroom")
+    {
+        auto mushroom = std::make_unique<EnemyMushroom>();
+        mushroom->Initialize(common, "Primitives/cylinder");
+
+        if (!mushroom->param_.has_value()) {
+            mushroom->param_.emplace();
+        }
+
+        auto& p = mushroom->param_.value();
+        p.hp = 35.0f;
+        p.maxHp = 35.0f;
+        p.speed = 2.1f;
+        p.gravity = 60.0f;
+        p.detectionRange = 16.0f;
+        mushroom->SetDetectionRange(p.detectionRange);
+
+        newEnemy = std::move(mushroom);
+    }
+    else if (enemyName == "GiantSlime")
+    {
+        auto giantSlime = std::make_unique<EnemyGiantSlime>();
+        giantSlime->Initialize(common, "Primitives/sphere");
+
+        if (!giantSlime->param_.has_value()) {
+            giantSlime->param_.emplace();
+        }
+
+        auto& p = giantSlime->param_.value();
+        p.hp = 160.0f;
+        p.maxHp = 160.0f;
+        p.speed = 0.0f;
+        p.gravity = 70.0f;
+        p.jumpPower = 24.0f;
+        p.detectionRange = 26.0f;
+        giantSlime->SetDetectionRange(p.detectionRange);
+
+        newEnemy = std::move(giantSlime);
+    }
+    else if (enemyName == "Bat")
+    {
+        auto bat = std::make_unique<EnemyBat>();
+        bat->Initialize(common, "Primitives/sphere");
+
+        if (!bat->param_.has_value()) {
+            bat->param_.emplace();
+        }
+
+        auto& p = bat->param_.value();
+        p.hp = 25.0f;
+        p.maxHp = 25.0f;
+        p.speed = 6.0f;
+        p.gravity = 0.0f;
+        p.detectionRange = 22.0f;
+        bat->SetDetectionRange(p.detectionRange);
+
+        newEnemy = std::move(bat);
+    }
+    else if (enemyName == "BeamDrone")
+    {
+        auto beamDrone = std::make_unique<EnemyBeamDrone>();
+        beamDrone->Initialize(common, "Primitives/sphere");
+
+        if (!beamDrone->param_.has_value()) {
+            beamDrone->param_.emplace();
+        }
+
+        auto& p = beamDrone->param_.value();
+        p.hp = 45.0f;
+        p.maxHp = 45.0f;
+        p.speed = 4.0f;
+        p.gravity = 0.0f;
+        p.detectionRange = 30.0f;
+        beamDrone->SetDetectionRange(p.detectionRange);
+
+        newEnemy = std::move(beamDrone);
     }
     //:作った敵に「名札」をつける
     if (newEnemy) {

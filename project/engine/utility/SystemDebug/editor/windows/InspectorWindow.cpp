@@ -832,7 +832,7 @@ void InspectorWindow::DrawSpawnerSettings() {
         strcpy_s(typeBuf, sizeof(typeBuf), p.enemyType.c_str());
     }
 
-    const char* enemyTypes[] = { "Slime", "Bomb" };
+    const char* enemyTypes[] = { "Slime", "Bomb", "Bomber", "Mushroom", "GiantSlime", "Bat", "BeamDrone" };
     int currentTypeIndex = -1;
     for (int i = 0; i < IM_ARRAYSIZE(enemyTypes); i++) {
         if (p.enemyType == enemyTypes[i]) currentTypeIndex = i;
@@ -855,7 +855,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber" };
+    const char* enemyTypes[] = { "Slime", "BossCore", "Bomb", "Bomber", "Mushroom", "GiantSlime", "Bat", "BeamDrone" };
     std::string currentType = selectedObject->GetEnemyType();
 
     int currentIndex = -1;

@@ -177,6 +177,7 @@ private:
     
     Vector3 enemyStartPos_; // 引っ張り開始時の敵の座標
     float pullTimer_ = 0.0f; // 引っ張りにかかる時間のタイマー
+    bool isHeavyPullTarget_ = false;
 };
 
 // --------------------------------------------------------
