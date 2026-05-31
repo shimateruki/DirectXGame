@@ -2932,7 +2932,7 @@ void GamePlayScene::UpdateUI(float deltaTime) {
         SetAlpha(missionText_line_, 1.0f); // ボス戦中もラインは維持
     }
     else if (hasBridgeDropped_) {
-        SetAlpha(missionText_mission_, 0.0f);
+        SetAlpha(missionText_mission_, 1.0f);
         SetAlpha(missionText_line_, 1.0f);
     }
     else if (missionInitialShown_) {
