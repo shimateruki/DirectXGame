@@ -46,6 +46,60 @@
 #include <GPUParticleManager.h>
 #include <SrvManager.h>
 #include <PostEffect.h>
+#include "StageManager.h"
+#include "GameDataManager.h"
+#include "GimmickStageGate.h"
+#include "CollisionConfig.h"
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <sstream>
+
+namespace {
+constexpr float kUnlockPresentationDuration = 2.6f;
+constexpr uint32_t kStageSelectSolidMask = 0xFFFFFFFFu;
+
+Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse) {
+	if (!unlocked && !unlocking) {
+		return { 0.16f, 0.17f, 0.20f, 0.78f };
+	}
+	if (unlocking) {
+		return { 0.88f, 0.66f + pulse * 0.18f, 0.28f, 1.0f };
+	}
+	if (selected) {
+		switch (stageIndex) {
+		case 0:
+			return { 0.56f, 0.70f, 0.50f, 1.0f };
+		case 1:
+			return { 0.48f, 0.58f, 0.72f, 1.0f };
+		case 2:
+			return { 0.62f, 0.52f, 0.72f, 1.0f };
+		default:
+			return { 0.54f, 0.64f, 0.58f, 1.0f };
+		}
+	}
+	switch (stageIndex) {
+	case 0:
+		return { 0.46f, 0.60f, 0.44f, 1.0f };
+	case 1:
+		return { 0.38f, 0.48f, 0.62f, 1.0f };
+	case 2:
+		return { 0.52f, 0.44f, 0.64f, 1.0f };
+	default:
+		return { 0.40f, 0.52f, 0.48f, 1.0f };
+	}
+}
+
+float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float pulse) {
+	if (unlocking) {
+		return 1.8f + pulse * 1.2f;
+	}
+	if (!unlocked) {
+		return 0.18f;
+	}
+	return selected ? 1.05f + pulse * 0.45f : 0.72f;
+}
+}
 
 GameSelectScene::GameSelectScene() {}
 GameSelectScene::~GameSelectScene() {}
@@ -60,6 +114,23 @@ void GameSelectScene::Initialize() {
 
 
 	LOG("Game Select Initialized!");
+
+	StageManager::GetInstance()->Initialize();
+	selectedStageIndex_ = StageManager::GetInstance()->GetCurrentStageIndex();
+	if (selectedStageIndex_ < 0 || selectedStageIndex_ >= static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
+		selectedStageIndex_ = 0;
+	}
+	if (GameDataManager::GetInstance()->IsStageCleared(selectedStageIndex_) &&
+		IsStageUnlocked(selectedStageIndex_ + 1)) {
+		selectedStageIndex_++;
+	}
+	previousSelectedStageIndex_ = -1;
+	stageDecisionCooldown_ = 0.0f;
+	isChangingStage_ = false;
+	unlockingStageIndex_ = -1;
+	unlockPresentationTimer_ = 0.0f;
+	unlockParticleTimer_ = 0.0f;
+	stageSelectTime_ = 0.0f;
 
 	bgmHandle_ = audioPlayer_->LoadSoundFile("Resources/bgm/Alarm02.mp3");
 
@@ -114,12 +185,21 @@ void GameSelectScene::Initialize() {
 	// --- 5. レベルデータ読み込み (JSON) ---
 	levelLoader_ = std::make_unique<LevelLoader>();
 	// セレクトシーン用のレイアウトがあればそれを読み込むが、一旦 bossStage.json で代用
-	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/bossStage.json");
-	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/sprite_layout.json");
+	levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/stageSelect.json");
+	levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
+	GameDataManager::GetInstance()->MarkStageUnlockSeen(0);
+	unlockingStageIndex_ = FindPendingUnlockStage();
+	if (unlockingStageIndex_ >= 0) {
+		selectedStageIndex_ = unlockingStageIndex_;
+		DebugConsole::GetInstance()->AddLog("Stage Select: crown unlock presentation start.");
+	}
+	ApplyStageGateStates();
+	UpdateStageSelectDecorations(0.0f);
+    
 	dxCommon_->FlushCommandQueue(false);
 }
 
@@ -213,6 +293,7 @@ void GameSelectScene::Update(float deltaTime) {
 	// --- 全体更新 ---
 	CameraManager::GetInstance()->Update();
 	particleSystem_->Update(deltaTime);
+	UpdateStageGateSelection(deltaTime);
 	objectManager_->Update(deltaTime);
 	GPUParticleManager::GetInstance()->Update(deltaTime);
 	for (auto& sprite : sprites_) sprite->Update();
@@ -245,6 +326,7 @@ void GameSelectScene::Draw() {
 
 	// --- 1. 不透明描画 ---
 	for (auto& obj : objects) {
+		if (!obj->GetIsVisible()) continue;
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
 			Object3d* current = obj.get();
@@ -267,6 +349,7 @@ void GameSelectScene::Draw() {
 
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {
+		if (!obj->GetIsVisible()) continue;
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
 			Object3d* current = obj.get();
@@ -282,19 +365,20 @@ void GameSelectScene::Draw() {
 
 	// 4. ローカルフォグ
 	bool hasFog = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() == 7) hasFog = true;
+	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() == 7) hasFog = true;
 	if (hasFog) {
 		dxCommon_->PreDrawLocalFog();
-		for (auto& obj : objects) if (obj->GetMaterialType() == 7) obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
+		for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() == 7) obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
 		dxCommon_->PostDrawLocalFog();
 	}
 
 	// 5. 流体描画
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) hasFluid = true;
+	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) hasFluid = true;
 	if (hasFluid) {
 		dxCommon_->UpdateGrabTexture();
 		for (auto& obj : objects) {
+			if (!obj->GetIsVisible()) continue;
 			int matType = obj->GetMaterialType();
 			if (matType == 8) obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
@@ -321,3 +405,376 @@ void GameSelectScene::DrawShadow() {
 }
 
 void GameSelectScene::UpdateUI() {}
+
+void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
+	stageSelectTime_ += deltaTime;
+
+	if (stageDecisionCooldown_ > 0.0f) {
+		stageDecisionCooldown_ -= deltaTime;
+		if (stageDecisionCooldown_ < 0.0f) stageDecisionCooldown_ = 0.0f;
+	}
+
+	UpdateUnlockPresentation(deltaTime);
+
+	if (unlockingStageIndex_ >= 0) {
+		ApplyStageGateStates();
+		UpdateStageSelectDecorations(deltaTime);
+		return;
+	}
+
+	float nearestDistance = std::numeric_limits<float>::max();
+	GimmickStageGate* nearestGate = FindNearestStageGate(&nearestDistance);
+	if (nearestGate && nearestDistance <= gateSelectRadius_) {
+		int gateStageIndex = nearestGate->GetStageIndex();
+		if (gateStageIndex >= 0 && gateStageIndex < static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
+			selectedStageIndex_ = gateStageIndex;
+		}
+	}
+
+	ApplyStageGateStates();
+	UpdateStageSelectDecorations(deltaTime);
+
+	if (selectedStageIndex_ != previousSelectedStageIndex_) {
+		const auto& stages = StageManager::GetInstance()->GetStages();
+		if (selectedStageIndex_ >= 0 && selectedStageIndex_ < static_cast<int>(stages.size())) {
+			const StageData& stage = stages[selectedStageIndex_];
+			DebugConsole::GetInstance()->AddLog("Stage Select: " + stage.name);
+		}
+		previousSelectedStageIndex_ = selectedStageIndex_;
+	}
+
+	bool decide =
+		inputManager_->IsKeyTriggered(DIK_SPACE) ||
+		inputManager_->IsKeyTriggered(DIK_RETURN) ||
+		inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A);
+
+	if (decide) {
+		EnterSelectedStage();
+	}
+}
+
+void GameSelectScene::ApplyStageGateStates() {
+	if (!objectManager_) {
+		return;
+	}
+
+	for (auto& object : objectManager_->GetObjects()) {
+		auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
+		if (!gate) {
+			continue;
+		}
+
+		int stageIndex = gate->GetStageIndex();
+		bool unlocked = IsStageUnlocked(stageIndex);
+		bool cleared = GameDataManager::GetInstance()->IsStageCleared(stageIndex);
+		bool unlocking = stageIndex == unlockingStageIndex_;
+		gate->SetGateState(stageIndex == selectedStageIndex_, unlocked, cleared, unlocking);
+	}
+}
+
+bool GameSelectScene::IsStageUnlocked(int stageIndex) const {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	if (stageIndex < 0 || stageIndex >= static_cast<int>(stages.size())) {
+		return false;
+	}
+
+	const StageData& stage = stages[stageIndex];
+	if (stage.defaultUnlocked || stageIndex == 0) {
+		return true;
+	}
+	if (stage.unlockStageIndex < 0) {
+		return false;
+	}
+	return GameDataManager::GetInstance()->IsStageCleared(stage.unlockStageIndex);
+}
+
+int GameSelectScene::FindPendingUnlockStage() const {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	auto* save = GameDataManager::GetInstance();
+
+	for (int stageIndex = 1; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
+		if (IsStageUnlocked(stageIndex) && !save->IsStageUnlockSeen(stageIndex)) {
+			return stageIndex;
+		}
+	}
+	return -1;
+}
+
+void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
+	if (unlockingStageIndex_ < 0) {
+		return;
+	}
+
+	unlockPresentationTimer_ += deltaTime;
+	unlockParticleTimer_ -= deltaTime;
+	selectedStageIndex_ = unlockingStageIndex_;
+
+	Object3d* crown = FindObjectByName("StageSelect_CrownCore");
+	if (crown) {
+		Transform* transform = crown->GetTransform();
+		transform->rotate.y += deltaTime * 1.8f;
+		transform->isQuaternionMaster = false;
+		crown->SetColor({ 1.0f, 0.78f, 0.18f, 1.0f });
+		crown->SetEmissive(3.5f + std::sin(stageSelectTime_ * 9.0f) * 0.8f);
+	}
+
+	if (unlockParticleTimer_ <= 0.0f && particleSystem_) {
+		unlockParticleTimer_ = 0.08f;
+		Vector3 up = { 0.0f, 1.0f, 0.0f };
+		Vector3 nodePos = GetStageNodePosition(unlockingStageIndex_);
+		if (crown) {
+			particleSystem_->SpawnParticles(
+				crown->GetWorldPosition() + Vector3{ 0.0f, 1.6f, 0.0f },
+				6,
+				5.5f,
+				&up,
+				1.1f,
+				{ 1.0f, 0.86f, 0.22f, 1.0f },
+				{ 1.0f, 0.95f, 0.55f, 0.0f },
+				0.35f,
+				0.75f,
+				0.55f,
+				0.05f
+			);
+		}
+		particleSystem_->SpawnParticles(
+			nodePos + Vector3{ 0.0f, 1.4f, 0.0f },
+			5,
+			4.2f,
+			&up,
+			1.0f,
+			{ 0.65f, 0.9f, 1.0f, 1.0f },
+			{ 1.0f, 0.85f, 0.2f, 0.0f },
+			0.3f,
+			0.65f,
+			0.45f,
+			0.04f
+		);
+	}
+
+	if (unlockPresentationTimer_ >= kUnlockPresentationDuration) {
+		GameDataManager::GetInstance()->MarkStageUnlockSeen(unlockingStageIndex_);
+		DebugConsole::GetInstance()->AddLog("Stage Select: stage unlocked.");
+		unlockingStageIndex_ = -1;
+		unlockPresentationTimer_ = 0.0f;
+		unlockParticleTimer_ = 0.0f;
+	}
+}
+
+void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	float pulse = (std::sin(stageSelectTime_ * 5.0f) + 1.0f) * 0.5f;
+
+	Object3d* crown = FindObjectByName("StageSelect_CrownCore");
+	if (crown && unlockingStageIndex_ < 0) {
+		Transform* transform = crown->GetTransform();
+		transform->rotate.y += deltaTime * 0.55f;
+		transform->isQuaternionMaster = false;
+		crown->SetColor({ 1.0f, 0.72f, 0.18f, 1.0f });
+		crown->SetEmissive(1.5f + pulse * 0.45f);
+	}
+
+	for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
+		bool unlocked = IsStageUnlocked(stageIndex);
+		bool unlocking = stageIndex == unlockingStageIndex_;
+		bool selected = stageIndex == selectedStageIndex_;
+
+		Object3d* island = FindObjectByName("StageIsland_" + std::to_string(stageIndex));
+		if (island) {
+			island->SetIsVisible(true);
+			island->SetCollisionAttribute(unlocked ? kGround : 0);
+			island->SetCollisionMask(unlocked ? kStageSelectSolidMask : 0);
+			island->SetColor(GetStageIslandColor(stageIndex, unlocked, selected, unlocking, pulse));
+			island->SetEmissive(GetStageIslandEmissive(unlocked, selected, unlocking, pulse));
+		}
+
+		Object3d* markerPad = FindObjectByName("StageMarkerPad_" + std::to_string(stageIndex));
+		if (markerPad) {
+			markerPad->SetIsVisible(true);
+			if (unlocking) {
+				markerPad->SetColor({ 1.0f, 0.82f + pulse * 0.12f, 0.28f, 1.0f });
+				markerPad->SetEmissive(2.4f + pulse * 1.1f);
+			} else if (unlocked) {
+				markerPad->SetColor(selected ? Vector4{ 0.86f, 0.92f, 1.0f, 1.0f } : Vector4{ 0.45f, 0.66f, 0.88f, 1.0f });
+				markerPad->SetEmissive(selected ? 1.8f + pulse * 0.45f : 0.95f);
+			} else {
+				markerPad->SetColor({ 0.22f, 0.24f, 0.30f, 1.0f });
+				markerPad->SetEmissive(0.18f);
+			}
+		}
+
+		Object3d* flag = FindObjectByName("StageFlag_" + std::to_string(stageIndex));
+		if (flag) {
+			flag->SetIsVisible(true);
+			if (unlocking) {
+				flag->SetColor({ 1.0f, 0.88f, 0.36f, 1.0f });
+				flag->SetEmissive(2.0f + pulse * 1.0f);
+			} else if (unlocked) {
+				flag->SetColor(selected ? Vector4{ 0.95f, 1.0f, 1.0f, 1.0f } : Vector4{ 0.74f, 0.90f, 1.0f, 1.0f });
+				flag->SetEmissive(selected ? 1.65f + pulse * 0.35f : 1.05f);
+			} else {
+				flag->SetColor({ 0.32f, 0.36f, 0.46f, 1.0f });
+				flag->SetEmissive(0.2f);
+			}
+		}
+
+		UpdatePathDisplay(stageIndex, unlocked, unlocking, pulse);
+	}
+
+	UpdateStarCoinDisplays(deltaTime);
+}
+
+void GameSelectScene::UpdatePathDisplay(int stageIndex, bool active, bool unlocking, float pulse) {
+	for (int segmentIndex = 0; segmentIndex < 12; ++segmentIndex) {
+		std::ostringstream name;
+		name << "StagePath_" << stageIndex << "_" << segmentIndex;
+		Object3d* path = FindObjectByName(name.str());
+		if (!path) {
+			continue;
+		}
+
+		bool visible = active || unlocking;
+		path->SetIsVisible(visible);
+		path->SetCollisionAttribute(active ? kGround : 0);
+		path->SetCollisionMask(active ? kStageSelectSolidMask : 0);
+
+		if (unlocking) {
+			path->SetColor({ 1.0f, 0.78f + pulse * 0.16f, 0.28f, 1.0f });
+			path->SetEmissive(2.2f + pulse * 1.4f);
+		} else if (active) {
+			path->SetColor({ 0.66f, 0.84f, 1.0f, 1.0f });
+			path->SetEmissive(1.05f);
+		} else {
+			path->SetColor({ 0.12f, 0.14f, 0.18f, 0.35f });
+			path->SetEmissive(0.1f);
+		}
+	}
+}
+
+void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	auto* save = GameDataManager::GetInstance();
+
+	for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
+		bool unlocked = IsStageUnlocked(stageIndex);
+		for (int coinIndex = 0; coinIndex < 3; ++coinIndex) {
+			std::ostringstream name;
+			name << "StageCoin_" << stageIndex << "_" << coinIndex;
+			Object3d* coin = FindObjectByName(name.str());
+			if (!coin) {
+				continue;
+			}
+
+			coin->SetIsVisible(unlocked);
+			coin->SetCollisionAttribute(0);
+			coin->SetCollisionMask(0);
+			if (!unlocked) {
+				continue;
+			}
+
+			Transform* transform = coin->GetTransform();
+			transform->rotate.y += deltaTime * 1.8f;
+			transform->isQuaternionMaster = false;
+
+			if (save->IsStarCoinCollected(stageIndex, coinIndex)) {
+				coin->SetColor({ 1.0f, 0.85f, 0.12f, 1.0f });
+				coin->SetEmissive(2.2f);
+			} else {
+				coin->SetColor({ 0.32f, 0.34f, 0.38f, 0.78f });
+				coin->SetEmissive(0.35f);
+			}
+		}
+	}
+}
+
+Object3d* GameSelectScene::FindObjectByName(const std::string& name) const {
+	if (!objectManager_) {
+		return nullptr;
+	}
+
+	for (const auto& object : objectManager_->GetObjects()) {
+		if (object && object->GetName() == name) {
+			return object.get();
+		}
+	}
+	return nullptr;
+}
+
+Vector3 GameSelectScene::GetStageNodePosition(int stageIndex) const {
+	if (objectManager_) {
+		for (const auto& object : objectManager_->GetObjects()) {
+			auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
+			if (gate && gate->GetStageIndex() == stageIndex) {
+				return gate->GetWorldPosition();
+			}
+		}
+	}
+
+	static const Vector3 fallbackPositions[] = {
+		{ -8.0f, 1.4f, 3.0f },
+		{ 0.0f, 1.4f, -4.2f },
+		{ 8.0f, 1.4f, 3.0f },
+	};
+	constexpr int fallbackCount = static_cast<int>(sizeof(fallbackPositions) / sizeof(fallbackPositions[0]));
+	if (stageIndex >= 0 && stageIndex < fallbackCount) {
+		return fallbackPositions[stageIndex];
+	}
+	return { 0.0f, 1.4f, 0.0f };
+}
+
+void GameSelectScene::EnterSelectedStage() {
+	if (isChangingStage_ || stageDecisionCooldown_ > 0.0f) {
+		return;
+	}
+
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	if (selectedStageIndex_ < 0 || selectedStageIndex_ >= static_cast<int>(stages.size())) {
+		return;
+	}
+
+	const StageData& stage = stages[selectedStageIndex_];
+	if (!IsStageUnlocked(selectedStageIndex_)) {
+		DebugConsole::GetInstance()->AddLog("Stage Select: " + stage.name + " is locked.");
+		stageDecisionCooldown_ = 0.35f;
+		return;
+	}
+
+	StageManager::GetInstance()->SetCurrentStage(selectedStageIndex_);
+	DebugConsole::GetInstance()->AddLog("Stage Select: enter " + stage.name);
+	isChangingStage_ = true;
+	SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+}
+
+GimmickStageGate* GameSelectScene::FindNearestStageGate(float* outDistance) const {
+	if (outDistance) {
+		*outDistance = std::numeric_limits<float>::max();
+	}
+	if (!objectManager_ || !player_) {
+		return nullptr;
+	}
+
+	const Vector3 playerPos = player_->GetWorldPosition();
+	GimmickStageGate* nearestGate = nullptr;
+	float nearestDistanceSq = std::numeric_limits<float>::max();
+
+	for (const auto& object : objectManager_->GetObjects()) {
+		auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
+		if (!gate) {
+			continue;
+		}
+
+		const Vector3 gatePos = gate->GetWorldPosition();
+		float dx = gatePos.x - playerPos.x;
+		float dz = gatePos.z - playerPos.z;
+		float distanceSq = dx * dx + dz * dz;
+		if (distanceSq < nearestDistanceSq) {
+			nearestDistanceSq = distanceSq;
+			nearestGate = gate;
+		}
+	}
+
+	if (outDistance && nearestGate) {
+		*outDistance = std::sqrt(nearestDistanceSq);
+	}
+	return nearestGate;
+}

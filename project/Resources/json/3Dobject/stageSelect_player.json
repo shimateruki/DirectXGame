@@ -1,0 +1,78 @@
+{
+    "objects": [
+        {
+            "name": "Player",
+            "type": "Player",
+            "saveCategory": "Player",
+            "modelName": "Characters/slime",
+            "position": [0.0, 2.2, 9.0],
+            "rotation": [0.0, 3.1415927, 0.0],
+            "quaternion": [0.0, 0.0, 0.0, 1.0],
+            "scale": [1.0, 1.0, 1.0],
+            "collider": {
+                "type": 3,
+                "center": [0.0, 0.35, 0.0],
+                "size": [0.55, 0.42, 0.55],
+                "rotation": [0.0, 0.0, 0.0]
+            },
+            "collisionAttribute": 1,
+            "collisionMask": 4294967295,
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "blendMode": 1,
+            "materialType": 0,
+            "metallic": 0.0,
+            "roughness": 0.18,
+            "enableNormalMap": false,
+            "enableEnvMap": true,
+            "envIntensity": 0.35,
+            "emissive": 1.0,
+            "texturePath": "",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "particleName": "",
+            "gpuParticleName": "",
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "enemyType": "",
+            "gimmickType": "",
+            "itemType": "",
+            "eventID": 0,
+            "targetID": -1,
+            "myEventID": -1,
+            "parentName": "",
+            "param": {
+                "hp": 6.0,
+                "maxHp": 6.0,
+                "speed": 25.0,
+                "gravity": 50.0,
+                "jumpPower": 24.0,
+                "maxFallSpeed": 60.0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "gimmickType": "",
+                "itemType": "",
+                "healAmount": 1.0,
+                "interval": 3.0,
+                "maxCount": 5,
+                "shakeDuration": 1.0,
+                "fallDuration": 2.0,
+                "colorType": 0,
+                "switchMode": 0,
+                "actionMode": 0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "startActive": false,
+                "returnOnOff": true
+            },
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "recorder": {
+                "recordPathName": "",
+                "isRecordLoop": false,
+                "isRecordRelative": false
+            }
+        }
+    ]
+}

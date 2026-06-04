@@ -81,6 +81,9 @@
     <ClCompile Include="engine\core\Game.cpp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </ClCompile>
+    <ClCompile Include="engine\core\GameEditorController.cpp">
+      <Filter>ソース ファイル\engine\scene</Filter>
+    </ClCompile>
     <ClCompile Include="engine\system\input\InputManager.cpp">
       <Filter>ソース ファイル\engine\io</Filter>
     </ClCompile>
@@ -366,6 +369,9 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneSerializer.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -473,6 +479,9 @@
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\GimmickLaserNode.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickStageGate.cpp">
+      <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\item\BaseItem.cpp">
       <Filter>ソース ファイル</Filter>
@@ -589,6 +598,9 @@
       <Filter>ヘッダー ファイル\engine\base</Filter>
     </ClInclude>
     <ClInclude Include="engine\core\Game.h">
+      <Filter>ヘッダー ファイル\engine\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\core\GameEditorController.h">
       <Filter>ヘッダー ファイル\engine\scene</Filter>
     </ClInclude>
     <ClInclude Include="engine\system\input\InputManager.h">
@@ -1422,6 +1434,9 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1535,6 +1550,9 @@
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\GimmickLaserNode.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickStageGate.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\item\BaseItem.h">
       <Filter>ヘッダー ファイル</Filter>

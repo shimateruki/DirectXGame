@@ -27,6 +27,7 @@
 #include "MaterialPreviewBoard.h"
 #include "EffectPreviewStage.h"
 #include "AnimationWorkbench.h"
+#include "SceneSavePreview.h"
 
 
 // ========================================================================
@@ -182,6 +183,8 @@ private:
     Vector3 WorldToScreen(const Vector3& worldPos);
     void Draw3DIcons();
     void DrawEventIDOverlay();
+    void DrawSavePreview();
+    std::string MakeSavePreviewTitle(SaveMode mode) const;
 private:
     // ====================================================================
     // メンバ変数
@@ -258,6 +261,7 @@ private:
     SceneValidator sceneValidator_;
     MaterialPreviewBoard materialPreviewBoard_;
     AnimationWorkbench animationWorkbench_;
+    SceneSavePreview sceneSavePreview_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;
 

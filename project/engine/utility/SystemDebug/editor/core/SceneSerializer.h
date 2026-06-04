@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "json.hpp"
 #include "EditorCommon.h"
 
@@ -11,7 +12,18 @@ public:
     SceneSerializer() = default;
     ~SceneSerializer() = default;
 
+    struct SaveTarget {
+        std::string label;
+        std::string path;
+        nlohmann::json data;
+        bool isMetadata = false;
+    };
+
     void Initialize(DebugEditor* editor);
+
+    std::vector<SaveTarget> BuildSceneSaveTargets(const std::string& currentFilename, SaveMode mode);
+    std::vector<SaveTarget> BuildSingleObjectSaveTargets(Object3d* object, const std::string& filename);
+    std::string SaveTargets(const std::vector<SaveTarget>& targets);
 
     std::string SaveScene(const std::string& currentFilename, SaveMode mode);
     void UpdateObjectInSceneJSON(Object3d* object, const std::string& filename);

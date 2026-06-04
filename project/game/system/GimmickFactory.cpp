@@ -23,6 +23,7 @@
 #include "GimmickPhaseFlipFloor.h"
 #include "GimmickLaserEmitter.h"
 #include "GimmickLaserNode.h"
+#include "GimmickStageGate.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -176,6 +177,11 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         auto node = std::make_unique<GimmickLaserNode>();
         node->Initialize(common, "Primitives/sphere");
         newGimmick = std::move(node);
+    }
+    else if (gimmickName == "StageGate") {
+        auto gate = std::make_unique<GimmickStageGate>();
+        gate->Initialize(common, "Gimmicks/goal");
+        newGimmick = std::move(gate);
     }
 
     // 該当するギミックがない場合、またはベースを直接生成する場合

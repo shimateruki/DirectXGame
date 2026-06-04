@@ -323,6 +323,7 @@ void DebugEditor::Update() {
     // 3. UI描画関連 (最前面)
     // =========================================================
     DrawSaveNotification();
+    DrawSavePreview();
     Draw3DIcons();
     DrawEventIDOverlay();
 #endif
@@ -771,24 +772,76 @@ void DebugEditor::DrawProjectWindow() {
 
 
 void DebugEditor::SaveScene(SaveMode mode) {
-    // 1. シリアライザーに重たい処理をすべて丸投げする
-    std::string savedFiles = serializer_.SaveScene(currentSceneFilename_, mode);
+#ifdef USE_IMGUI
+    auto targets = serializer_.BuildSceneSaveTargets(currentSceneFilename_, mode);
+    if (targets.empty()) {
+        DebugConsole::GetInstance()->AddLog("Save Preview: 保存対象がありません。");
+        return;
+    }
 
-    // 2. 通知などの「エディタ側」の演出だけを行う
-    std::string baseName = currentSceneFilename_;
-    size_t extPos = baseName.find(".json");
-    if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
-
-    TriggerSaveNotification(baseName + " (" + savedFiles + ")");
+    sceneSavePreview_.Build(targets, MakeSavePreviewTitle(mode));
+    sceneSavePreview_.Open();
+#else
+    serializer_.SaveScene(currentSceneFilename_, mode);
+#endif
 }
 void DebugEditor::SaveSingleObject() {
     if (!selectedObject_) return;
 
-    // シリアライザーに丸投げ！
-    serializer_.UpdateObjectInSceneJSON(selectedObject_, std::string(currentSceneFilename_));
+#ifdef USE_IMGUI
+    auto targets = serializer_.BuildSingleObjectSaveTargets(selectedObject_, std::string(currentSceneFilename_));
+    if (targets.empty()) {
+        DebugConsole::GetInstance()->AddLog("Save Preview: 単体保存の対象を作成できませんでした。");
+        return;
+    }
 
-    DebugConsole::GetInstance()->AddLog("Saved SINGLE Object: " + selectedObject_->GetName());
-    TriggerSaveNotification(std::string(currentSceneFilename_));
+    sceneSavePreview_.Build(targets, "単体保存: " + selectedObject_->GetName());
+    sceneSavePreview_.Open();
+#else
+    serializer_.UpdateObjectInSceneJSON(selectedObject_, std::string(currentSceneFilename_));
+#endif
+}
+
+void DebugEditor::DrawSavePreview() {
+#ifdef USE_IMGUI
+    SceneSavePreview::Action action = sceneSavePreview_.Draw();
+    if (action == SceneSavePreview::Action::None) {
+        return;
+    }
+
+    if (action == SceneSavePreview::Action::Confirm) {
+        std::string savedFiles = serializer_.SaveTargets(sceneSavePreview_.GetTargets());
+        std::string notificationName = sceneSavePreview_.GetTitle();
+        if (!savedFiles.empty()) {
+            notificationName += " (" + savedFiles + ")";
+        }
+        DebugConsole::GetInstance()->AddLog("Save Preview: 保存を確定しました。");
+        TriggerSaveNotification(notificationName);
+    }
+    else {
+        DebugConsole::GetInstance()->AddLog("Save Preview: 保存をキャンセルしました。");
+    }
+
+    sceneSavePreview_.Close();
+#endif
+}
+
+std::string DebugEditor::MakeSavePreviewTitle(SaveMode mode) const {
+    std::string baseName = currentSceneFilename_;
+    size_t extPos = baseName.find(".json");
+    if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
+
+    switch (mode) {
+    case SaveMode::Player:
+        return "シーン保存: " + baseName + " / Player";
+    case SaveMode::Enemy:
+        return "シーン保存: " + baseName + " / Enemy";
+    case SaveMode::Object:
+        return "シーン保存: " + baseName + " / Object";
+    case SaveMode::All:
+    default:
+        return "シーン全体保存: " + baseName;
+    }
 }
 
 // 複製 (スマート・コピペ版)

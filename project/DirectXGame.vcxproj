@@ -190,6 +190,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\actor\gimmick\GimmickPhaseFlipFloor.cpp" />
     <ClCompile Include="game\actor\gimmick\GimmickLaserEmitter.cpp" />
     <ClCompile Include="game\actor\gimmick\GimmickLaserNode.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickStageGate.cpp" />
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\item\HealItem.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
@@ -241,6 +242,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </ClCompile>
     <ClCompile Include="engine\core\Framework.cpp" />
     <ClCompile Include="engine\core\Game.cpp" />
+    <ClCompile Include="engine\core\GameEditorController.cpp" />
     <ClCompile Include="engine\system\input\InputManager.cpp" />
     <ClCompile Include="game\scene\GamePlayScene.cpp" />
     <ClCompile Include="game\scene\PreviewScene.cpp" />
@@ -302,6 +304,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.cpp" />
@@ -508,6 +511,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\gimmick\GimmickPhaseFlipFloor.h" />
     <ClInclude Include="game\actor\gimmick\GimmickLaserEmitter.h" />
     <ClInclude Include="game\actor\gimmick\GimmickLaserNode.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickStageGate.h" />
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\item\HealItem.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
@@ -725,6 +729,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="externals\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="engine\core\Framework.h" />
     <ClInclude Include="engine\core\Game.h" />
+    <ClInclude Include="engine\core\GameEditorController.h" />
     <ClInclude Include="engine\system\input\InputManager.h" />
     <ClInclude Include="engine\graphics\3d\model\Model.h" />
     <ClInclude Include="engine\graphics\3d\model\ModelCommon.h" />
@@ -787,6 +792,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\HierarchyWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneValidator.h" />

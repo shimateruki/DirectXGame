@@ -15,8 +15,9 @@ void SceneSerializer::Initialize(DebugEditor* editor) {
     editor_ = editor;
 }
 
-std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveMode mode) {
-    if (!editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) return "";
+std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(const std::string& currentFilename, SaveMode mode) {
+    std::vector<SaveTarget> targets;
+    if (!editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) return targets;
 
     // ベース名の取得 (stage1.json -> stage1)
     std::string baseName = currentFilename;
@@ -46,33 +47,102 @@ std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveM
         else objectSceneData["objects"].push_back(d);
     }
 
-    std::string savedFilesMsg = "";
-
     // モードに応じた書き出し
     if (mode == SaveMode::All || mode == SaveMode::Player) {
-        SaveToFile(basePath + "_player.json", playerSceneData);
-        savedFilesMsg += "Player, ";
+        targets.push_back({ "Player", basePath + "_player.json", playerSceneData, false });
     }
     if (mode == SaveMode::All || mode == SaveMode::Enemy) {
-        SaveToFile(basePath + "_enemy.json", enemySceneData);
-        savedFilesMsg += "Enemy, ";
+        targets.push_back({ "Enemy", basePath + "_enemy.json", enemySceneData, false });
     }
     if (mode == SaveMode::All || mode == SaveMode::Object) {
-        SaveToFile(basePath + "_object.json", objectSceneData);
-        savedFilesMsg += "Object, ";
+        targets.push_back({ "Object", basePath + "_object.json", objectSceneData, false });
     }
 
     // メタデータファイルの作成
     if (mode == SaveMode::All) {
         json dummyData;
         dummyData["_comment"] = "Actual data is in _player, _enemy, and _object.json";
-        SaveToFile("Resources/json/3Dobject/" + currentFilename, dummyData);
+        targets.push_back({ "Meta", "Resources/json/3Dobject/" + currentFilename, dummyData, true });
+    }
+
+    return targets;
+}
+
+std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveTargets(Object3d* object, const std::string& filename) {
+    std::vector<SaveTarget> targets;
+    if (!object) return targets;
+
+    // 1. ファイル名の自動振り分け
+    std::string baseName = filename;
+    size_t extPos = baseName.find(".json");
+    if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
+
+    std::string cat = object->GetSaveCategory();
+    std::string targetFilename;
+    if (cat == "Player") targetFilename = "Resources/json/3Dobject/" + baseName + "_player.json";
+    else if (cat == "Enemy") targetFilename = "Resources/json/3Dobject/" + baseName + "_enemy.json";
+    else targetFilename = "Resources/json/3Dobject/" + baseName + "_object.json";
+
+    // 2. 既存JSONの読み込み
+    json sceneData;
+    std::ifstream inFile(targetFilename);
+    if (inFile.is_open()) {
+        try {
+            if (inFile.peek() != std::ifstream::traits_type::eof()) inFile >> sceneData;
+            else sceneData["objects"] = json::array();
+        }
+        catch (...) {
+            sceneData["objects"] = json::array();
+        }
+        inFile.close();
+    }
+    else {
+        sceneData["objects"] = json::array();
+    }
+
+    // 3. データの構築
+    json currentData = SerializeObject(object);
+
+    // 4. 配列内を探して更新 or 追加
+    bool found = false;
+    if (!sceneData.contains("objects") || !sceneData["objects"].is_array()) {
+        sceneData["objects"] = json::array();
+    }
+
+    for (auto& objData : sceneData["objects"]) {
+        if (objData.contains("name") && objData["name"] == object->GetName()) {
+            objData = currentData;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        sceneData["objects"].push_back(currentData);
+    }
+
+    targets.push_back({ cat.empty() ? "Object" : cat, targetFilename, sceneData, false });
+    return targets;
+}
+
+std::string SceneSerializer::SaveTargets(const std::vector<SaveTarget>& targets) {
+    std::string savedFilesMsg;
+
+    for (const auto& target : targets) {
+        SaveToFile(target.path, target.data);
+        if (!target.label.empty()) {
+            savedFilesMsg += target.label + ", ";
+        }
     }
 
     if (!savedFilesMsg.empty()) {
         savedFilesMsg.pop_back(); savedFilesMsg.pop_back();
     }
     return savedFilesMsg;
+}
+
+std::string SceneSerializer::SaveScene(const std::string& currentFilename, SaveMode mode) {
+    return SaveTargets(BuildSceneSaveTargets(currentFilename, mode));
 }
 
 nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
@@ -202,61 +272,8 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
 void SceneSerializer::UpdateObjectInSceneJSON(Object3d* object, const std::string& filename) {
     if (!object) return;
 
-    // 1. ファイル名の自動振り分け
-    std::string baseName = filename;
-    size_t extPos = baseName.find(".json");
-    if (extPos != std::string::npos) baseName = baseName.substr(0, extPos);
-
-    std::string cat = object->GetSaveCategory();
-    std::string targetFilename;
-    if (cat == "Player") targetFilename = "Resources/json/3Dobject/" + baseName + "_player.json";
-    else if (cat == "Enemy") targetFilename = "Resources/json/3Dobject/" + baseName + "_enemy.json";
-    else targetFilename = "Resources/json/3Dobject/" + baseName + "_object.json";
-
-    // 2. 既存JSONの読み込み
-    json sceneData;
-    std::ifstream inFile(targetFilename);
-    if (inFile.is_open()) {
-        try {
-            if (inFile.peek() != std::ifstream::traits_type::eof()) inFile >> sceneData;
-            else sceneData["objects"] = json::array();
-        }
-        catch (...) {
-            sceneData["objects"] = json::array();
-        }
-        inFile.close();
-    }
-    else {
-        sceneData["objects"] = json::array();
-    }
-
-    // 3. データの構築 (共通のSerializeObjectを使用！)
-    json currentData = SerializeObject(object);
-
-    // 4. 配列内を探して更新 or 追加
-    bool found = false;
-    if (!sceneData.contains("objects") || !sceneData["objects"].is_array()) {
-        sceneData["objects"] = json::array();
-    }
-
-    for (auto& objData : sceneData["objects"]) {
-        if (objData.contains("name") && objData["name"] == object->GetName()) {
-            objData = currentData;
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        sceneData["objects"].push_back(currentData);
-        DebugConsole::GetInstance()->AddLog("Added new object: " + object->GetName());
-    }
-    else {
-        DebugConsole::GetInstance()->AddLog("Updated object: " + object->GetName());
-    }
-
-    // 5. 書き込み
-    SaveToFile(targetFilename, sceneData);
+    SaveTargets(BuildSingleObjectSaveTargets(object, filename));
+    DebugConsole::GetInstance()->AddLog("Updated object JSON: " + object->GetName());
 }
 
 void SceneSerializer::SaveToFile(const std::string& path, const json& data) {

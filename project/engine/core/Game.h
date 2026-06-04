@@ -1,31 +1,18 @@
 #pragma once
+
+#include "AbstractSceneFactory.h"
 #include "Framework.h"
-#include <memory>
-#include <chrono>
 #include "SceneManager.h"
-#include"CameraManager.h"
-#include"AbstractSceneFactory.h"
-#include "PostEffect.h"
+
+#include <chrono>
+#include <memory>
+#include <string>
+
 #ifdef USE_IMGUI
-#include "DebugEditor.h"
-#include "SpriteDebugEditor.h"
-#include "ParticleEditor.h"
-#include "imgui_internal.h"
-#include <imgui.h>
-#include "VFXSequencerEditor.h"
+#include "GameEditorController.h"
 #endif
 
-#include"LightEditor.h"
-#include <GhostRecorder.h>
-#include "CameraEditor.h"
-#include <PostEffectEditor.h>
-#include "GhostDirector.h"
-#include "GPUParticleEditor.h"
-#include "EngineManualWindow.h"
-#include"MeshEffectEditor.h"
-#include "TrailEmitterEditor.h"
-
-class WinApp;
+class PostEffect;
 
 class Game : public Framework {
 public:
@@ -37,44 +24,49 @@ protected:
 	void Draw() override;
 
 private:
-	void SaveAllEditors();
+	void InitializeEngineServices();
+	void InitializeScene();
+	void InitializePostProcess();
+	void InitializeEditorTools();
+	void ConfigureInitialPlayState();
+	void ApplyInitialSceneOverrides();
+
+	std::string ResolveStartSceneName() const;
+	float CalculateDeltaTime();
+
+	void UpdateEditorFrame(float deltaTime);
+	void UpdateGameSystems(float deltaTime, float finalDeltaTime);
+	void RecordUpdateProfile(const std::chrono::high_resolution_clock::time_point& startUpdate);
+
+	void DrawEditorFrame(PostEffect* postEffect);
+	void DrawRuntimeFrame(PostEffect* postEffect);
+	void DrawSceneToRenderTexture(bool editorMode);
+	void ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorGameView);
+	void RecordDrawProfile(const std::chrono::high_resolution_clock::time_point& startDraw);
+	void RecordFixedFpsProfile();
+
 private:
 	std::unique_ptr<SceneManager> sceneManager_ = nullptr;
+	std::unique_ptr<AbstractSceneFactory> sceneFactory_ = nullptr;
+
 	std::chrono::high_resolution_clock::time_point lastTime_;
-	std::unique_ptr<AbstractSceneFactory> sceneFactory_;
+	std::chrono::high_resolution_clock::time_point prePostDrawTime_;
+
 	float timeScale_ = 1.0f;
 	bool isPlaying_ = false;
 	std::string currentSceneName_;
-	std::unique_ptr<PostEffectEditor> postEffectEditor_;
+
 	float sceneUpdateTimeMs_ = 0.0f;
 	float sceneDrawTimeMs_ = 0.0f;
-	float updateTimeHistory_[120] = { 0 };
+	float updateTimeHistory_[120] = {};
 	int timeHistoryIndex_ = 0;
+
 	float drawTimeMs_ = 0.0f;
 	float cpuCmdTimeMs_ = 0.0f;
-	float drawTimeHistory_[120] = { 0 };
-	std::chrono::high_resolution_clock::time_point prePostDrawTime_;
+	float drawTimeHistory_[120] = {};
+
 #ifdef USE_IMGUI
-	std::unique_ptr<DebugEditor> debugEditor_;
-	std::unique_ptr<SpriteDebugEditor> spriteDebugEditor_;
-	std::unique_ptr<ParticleEditor> particleEditor_;
-	std::unique_ptr<GhostRecorder> ghostRecorder_;
-	std::unique_ptr<GhostDirector> ghostDirector_;
-	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
-	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
-	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
-	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
-	EngineManualWindow engineManualWindow_;
-	bool showLightEditor_ = false;
-	bool showParticleEditor_ = false;
-	bool showDebugWindows_ = true;
-	bool showSpriteInspector_ = false;
-	bool showDebugConsole_ = true;
-	bool showCameraEditor = false;
-	bool showGhostRecorder_ = false;
-	bool showTimeController_ = true;
-	bool showPostEffectEditor_ = false; 
-	bool showBossDebug_ = false;
-	ImVec2 lastGameViewSize_ = { 0, 0 };
+	std::unique_ptr<GameEditorController> editorController_;
+	EditorFrameState editorFrameState_;
 #endif
 };

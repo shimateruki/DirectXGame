@@ -30,6 +30,7 @@ class SceneManager;
 class LevelLoader;
 class LockOnSystem;
 class GameRule;
+class GimmickStageGate;
 
 
 /// <summary>
@@ -72,7 +73,18 @@ public:
 
 
 private:
-
+    void UpdateStageGateSelection(float deltaTime);
+    void ApplyStageGateStates();
+    bool IsStageUnlocked(int stageIndex) const;
+    void EnterSelectedStage();
+    GimmickStageGate* FindNearestStageGate(float* outDistance) const;
+    int FindPendingUnlockStage() const;
+    void UpdateUnlockPresentation(float deltaTime);
+    void UpdateStageSelectDecorations(float deltaTime);
+    void UpdatePathDisplay(int stageIndex, bool active, bool unlocking, float pulse);
+    void UpdateStarCoinDisplays(float deltaTime);
+    Object3d* FindObjectByName(const std::string& name) const;
+    Vector3 GetStageNodePosition(int stageIndex) const;
 
 private:
     // --- エンジンシステムへのポインタ ---
@@ -116,4 +128,14 @@ private:
 
     // アニメーションモデルのテスト用変数
     std::unique_ptr<Object3d> animatedCube_;
+
+    int selectedStageIndex_ = 0;
+    int previousSelectedStageIndex_ = -1;
+    float gateSelectRadius_ = 8.0f;
+    float stageDecisionCooldown_ = 0.0f;
+    bool isChangingStage_ = false;
+    int unlockingStageIndex_ = -1;
+    float unlockPresentationTimer_ = 0.0f;
+    float unlockParticleTimer_ = 0.0f;
+    float stageSelectTime_ = 0.0f;
 };

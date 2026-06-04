@@ -1,0 +1,34 @@
+{
+    "stages": [
+        {
+            "id": "stage1",
+            "name": "Stage 1 - First Island",
+            "description": "王冠の力で最初に開いた空島。",
+            "levelPath": "Resources/json/3Dobject/stage1.json",
+            "spritePath": "Resources/json/sprite/stage1_sprite.json",
+            "bgmPath": "Resources/bgm/Alarm02.mp3",
+            "defaultUnlocked": true,
+            "unlockStageIndex": -1
+        },
+        {
+            "id": "stage2",
+            "name": "Stage 2 - Crown Bridge",
+            "description": "Stage 1クリア後に王冠の橋が伸びる空島。",
+            "levelPath": "Resources/json/3Dobject/stage2.json",
+            "spritePath": "Resources/json/sprite/stage2_sprite.json",
+            "bgmPath": "Resources/bgm/Alarm02.mp3",
+            "defaultUnlocked": false,
+            "unlockStageIndex": 0
+        },
+        {
+            "id": "stage3",
+            "name": "Stage 3 - High Crown",
+            "description": "Stage 2クリア後に解放される最後の空島。",
+            "levelPath": "Resources/json/3Dobject/stage3.json",
+            "spritePath": "Resources/json/sprite/stage3_sprite.json",
+            "bgmPath": "Resources/bgm/Alarm02.mp3",
+            "defaultUnlocked": false,
+            "unlockStageIndex": 1
+        }
+    ]
+}

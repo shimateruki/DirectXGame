@@ -195,6 +195,12 @@ void InputManager::Update()
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN;
         }
+        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
+            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT;
+        }
+        if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+            gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
+        }
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_START)) {
             gamepadState.Gamepad.wButtons |= XINPUT_GAMEPAD_START;
         }
