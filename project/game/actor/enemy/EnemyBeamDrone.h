@@ -8,6 +8,9 @@ public:
     void Update(float deltaTime) override;
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
     std::unique_ptr<Object3d> Clone() const override;
+    void SetCarried(bool isCarried) override;
+    void ExecuteAbility(class Player* player) override;
+    void UpdateCarriedAbility(class Player* player, float deltaTime) override;
 
 private:
     enum class BeamState {
@@ -23,18 +26,34 @@ private:
     void FireBeam();
     void UpdateBeamVisual();
     void UpdateBeamDamage();
+    void HideBeamVisuals();
+    void ApplyBeamVisualTransform(Object3d* visual, const Vector3& source, const Vector3& target, float thickness, const Vector4& color, float emissive);
+    Vector3 GetBeamMuzzlePosition() const;
+    void StartPlayerBeamCharge(class Player* player);
+    void FirePlayerBeam(class Player* player);
+    void UpdatePlayerBeam(class Player* player, float deltaTime);
+    void UpdatePlayerBeamVisual();
+    void UpdatePlayerBeamDamage(class Player* player);
+    Vector3 GetPlayerBeamMuzzlePosition(class Player* player) const;
+    Vector3 GetPlayerBeamDirection(class Player* player) const;
     float CalcDistancePointToSegment(const Vector3& point, const Vector3& start, const Vector3& end) const;
-    Quaternion MakeYAxisToDirectionQuaternion(const Vector3& direction) const;
 
     std::unique_ptr<Object3d> beamVisual_;
+    std::unique_ptr<Object3d> beamCoreVisual_;
     BeamState state_ = BeamState::Idle;
     Vector3 homePosition_ = { 0.0f, 0.0f, 0.0f };
     Vector3 beamStart_ = { 0.0f, 0.0f, 0.0f };
     Vector3 beamEnd_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 beamDirection_ = { 0.0f, 0.0f, 1.0f };
+    Vector3 smoothedVelocity_ = { 0.0f, 0.0f, 0.0f };
+    float beamLength_ = 0.0f;
     float hoverTimer_ = 0.0f;
     float cooldownTimer_ = 1.0f;
     float chargeTimer_ = 0.0f;
     float beamTimer_ = 0.0f;
+    float playerBeamEffectTimer_ = 0.0f;
     bool hasHomePosition_ = false;
     bool beamDamageDone_ = false;
+    bool isPlayerBeamMode_ = false;
+    bool playerBeamDamageDone_ = false;
 };

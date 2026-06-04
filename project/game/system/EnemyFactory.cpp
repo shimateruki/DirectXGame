@@ -121,7 +121,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     else if (enemyName == "GiantSlime")
     {
         auto giantSlime = std::make_unique<EnemyGiantSlime>();
-        giantSlime->Initialize(common, "Primitives/sphere");
+        giantSlime->Initialize(common, "Characters/slime");
 
         if (!giantSlime->param_.has_value()) {
             giantSlime->param_.emplace();
@@ -141,7 +141,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     else if (enemyName == "Bat")
     {
         auto bat = std::make_unique<EnemyBat>();
-        bat->Initialize(common, "Primitives/sphere");
+        bat->Initialize(common, "Characters/bat");
 
         if (!bat->param_.has_value()) {
             bat->param_.emplace();
@@ -150,9 +150,9 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
         auto& p = bat->param_.value();
         p.hp = 25.0f;
         p.maxHp = 25.0f;
-        p.speed = 6.0f;
+        p.speed = 2.6f;
         p.gravity = 0.0f;
-        p.detectionRange = 22.0f;
+        p.detectionRange = 24.0f;
         bat->SetDetectionRange(p.detectionRange);
 
         newEnemy = std::move(bat);
@@ -160,7 +160,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     else if (enemyName == "BeamDrone")
     {
         auto beamDrone = std::make_unique<EnemyBeamDrone>();
-        beamDrone->Initialize(common, "Primitives/sphere");
+        beamDrone->Initialize(common, "Characters/eye");
 
         if (!beamDrone->param_.has_value()) {
             beamDrone->param_.emplace();

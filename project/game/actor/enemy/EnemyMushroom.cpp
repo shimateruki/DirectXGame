@@ -11,7 +11,6 @@ constexpr float kAttackRange = 3.2f;
 constexpr float kRangedMinRange = 5.0f;
 constexpr float kSporeDamage = 1.0f;
 constexpr float kMoveSpeedScale = 1.0f;
-constexpr float kPi = 3.14159265358979323846f;
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
@@ -38,6 +37,10 @@ void EnemyMushroom::Initialize(Object3dCommon* common, const std::string& modelN
 
 void EnemyMushroom::Update(float deltaTime) {
     if (isCarried_) {
+        return;
+    }
+    if (IsThrowRecovering()) {
+        BaseEnemy::Update(deltaTime);
         return;
     }
 
@@ -80,9 +83,9 @@ void EnemyMushroom::Update(float deltaTime) {
             velocity.x = direction.x * speed * approachSign;
             velocity.z = direction.z * speed * approachSign;
         } else {
-            const float patrol = std::sin(idleTimer_ * 0.8f) * 0.45f;
-            velocity.x = std::sin(GetRotation().y + kPi * 0.5f) * patrol;
-            velocity.z = std::cos(GetRotation().y + kPi * 0.5f) * patrol;
+            const float speed = (std::max)(0.55f, param_->speed * 0.42f);
+            velocity = CalculateWanderVelocity(deltaTime, speed, 0.65f);
+            UpdateFacing({ velocity.x, 0.0f, velocity.z });
         }
     }
 

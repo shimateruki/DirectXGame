@@ -30,14 +30,14 @@ void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& mode
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_GiantSlime");
     SetEnemyType("GiantSlime");
-    SetColor({ 0.18f, 0.62f, 0.98f, 1.0f });
+    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     defaultColor_ = GetColor();
-    SetScale({ 2.4f, 2.0f, 2.4f });
+    SetScale({ 2.8f, 2.8f, 2.8f });
 
     SetCollisionAttribute(kEnemy);
     SetCollisionMask(kPlayer | kGround | kPlayerAttack | kAttributePlayerBullet);
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(1.45f);
+    SetCollisionRadius(2.2f);
 }
 
 void EnemyGiantSlime::Update(float deltaTime) {
@@ -53,6 +53,10 @@ void EnemyGiantSlime::Update(float deltaTime) {
     if (isHookSplitPulled_) {
         idleTimer_ += deltaTime;
         SetVelocity({ 0.0f, 0.0f, 0.0f });
+        return;
+    }
+    if (IsThrowRecovering()) {
+        BaseEnemy::Update(deltaTime);
         return;
     }
 
@@ -90,7 +94,21 @@ void EnemyGiantSlime::Update(float deltaTime) {
                     jumpTimer_ = 0.0f;
                 }
             } else {
-                jumpTimer_ = 0.0f;
+                jumpTimer_ += deltaTime * 0.65f;
+                Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, 1.25f, 0.55f);
+                Vector3 wanderDirection = { wanderVelocity.x, 0.0f, wanderVelocity.z };
+                const float wanderLength = Math::Length(wanderDirection);
+                if (wanderLength > 0.001f) {
+                    wanderDirection = wanderDirection / wanderLength;
+                    const float targetYaw = std::atan2(wanderDirection.x, wanderDirection.z);
+                    SetRotationY(Math::LerpShortAngle(GetRotation().y, targetYaw, 0.05f));
+                }
+
+                if (jumpTimer_ >= 1.75f && wanderLength > 0.05f) {
+                    const float jumpPower = param_->jumpPower > 0.0f ? param_->jumpPower * 0.5f : 11.0f;
+                    SetVelocity({ wanderDirection.x * 5.2f, jumpPower, wanderDirection.z * 5.2f });
+                    jumpTimer_ = 0.0f;
+                }
             }
         }
     }

@@ -10,6 +10,7 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+
 // ==========================================
 // 初期化: メッシュごとにバッファを作る
 // ==========================================
@@ -72,6 +73,10 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
         }
         // 頂点バッファ
         mesh.vertexResource = dxCommon->CreateBufferResource(sizeof(VertexData) * mesh.vertices.size());
+        if (!mesh.vertexResource) {
+            DebugConsole::GetInstance()->AddLog("Model vertex buffer creation failed: " + filename);
+            continue;
+        }
         mesh.vertexBufferView.BufferLocation = mesh.vertexResource->GetGPUVirtualAddress();
         mesh.vertexBufferView.SizeInBytes = UINT(sizeof(VertexData) * mesh.vertices.size());
         mesh.vertexBufferView.StrideInBytes = sizeof(VertexData);
@@ -83,6 +88,11 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
 
         // インデックスバッファ
         mesh.indexResource = dxCommon->CreateBufferResource(sizeof(uint32_t) * mesh.indices.size());
+        if (!mesh.indexResource) {
+            DebugConsole::GetInstance()->AddLog("Model index buffer creation failed: " + filename);
+            mesh.vertexResource.Reset();
+            continue;
+        }
         mesh.indexBufferView.BufferLocation = mesh.indexResource->GetGPUVirtualAddress();
         mesh.indexBufferView.SizeInBytes = UINT(sizeof(uint32_t) * mesh.indices.size());
         mesh.indexBufferView.Format = DXGI_FORMAT_R32_UINT;
@@ -521,8 +531,12 @@ Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
 
 // 毎フレーム呼ぶ更新処理
 void Model::Update() {
+    Update(false);
+}
+
+void Model::Update(bool force) {
     uint32_t currentFrame = DirectXCommon::GetInstance()->GetFrameCount();
-    if (lastUpdateFrame_ == currentFrame) {
+    if (!force && lastUpdateFrame_ == currentFrame) {
         return; // すでにこのフレームで更新済み
     }
     lastUpdateFrame_ = currentFrame;

@@ -87,6 +87,11 @@ void EnemyBomb::Update(float deltaTime) {
     if (isCarried_) {
         // 掴まれている間は移動や重力処理は行わないが、カウントダウンと演出は更新する
         UpdateIgnited(deltaTime);
+    } else if (IsThrownPhysics()) {
+        UpdateIgnited(deltaTime);
+        if (state_ != State::Exploded) {
+            BaseEnemy::Update(deltaTime);
+        }
     } else {
         // 通常時（地面にいる、または投げられた状態）
         // 速度に重力を適用する
@@ -154,6 +159,19 @@ void EnemyBomb::UpdateChase(float deltaTime) {
     toPlayer.y = 0.0f; // 高低差は無視して水平移動
 
     float distance = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
+
+    if (distance > detectionRange_) {
+        const float wanderSpeed = param_.has_value() ? (std::max)(0.35f, param_.value().speed * 4.0f) : 0.55f;
+        Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
+        velocity_.x = wanderVelocity.x;
+        velocity_.z = wanderVelocity.z;
+
+        const float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
+        if (speedXZ > 0.05f) {
+            SetRotationY(std::atan2(velocity_.x, velocity_.z));
+        }
+        return;
+    }
 
     // 一定距離内に入ったら点火（Ignited）に移行
     if (distance <= 4.0f) {
@@ -275,6 +293,7 @@ void EnemyBomb::SetCarried(bool isCarried) {
     } else {
         // 投げられた（isCarried_ が false になり、プレイヤーから速度を与えられた状態）
         isThrown_ = true;
+        throwRecoveryTimer_ = 0.0f;
     }
 }
 

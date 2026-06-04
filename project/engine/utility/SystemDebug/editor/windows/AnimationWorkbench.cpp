@@ -5,12 +5,14 @@
 #include "CameraManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
+#ifdef USE_IMGUI
 #include "IconsFontAwesome5.h"
+#include "imgui.h"
 #include "ImGuizmo.h"
+#endif
 #include "ModelManager.h"
 #include "Object3d.h"
 #include "SceneManager.h"
-#include "imgui.h"
 #include "json.hpp"
 
 #include <algorithm>
@@ -48,6 +50,7 @@ void AnimationWorkbench::Initialize(SceneManager* sceneManager, DirectXCommon* d
 }
 
 void AnimationWorkbench::Finalize() {
+    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, false);
     RemovePreviewObject();
     previewModel_ = nullptr;
     ClearAllEditOverrides();
@@ -55,6 +58,8 @@ void AnimationWorkbench::Finalize() {
 
 void AnimationWorkbench::Update(float deltaTime) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+
+    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 1, enabled_);
 
     if (enabled_ && !wasEnabled_) {
         hasPlacedCamera_ = false;

@@ -1,110 +1,4 @@
-﻿{
-    "move": {
-        "animation": {
-            "animName": "",
-            "isAnimLoop": true
-        },
-        "blendMode": 1,
-        "collider": {
-            "center": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "rotation": [
-                0.0,
-                0.0,
-                0.0
-            ],
-            "size": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "type": 2
-        },
-        "collisionAttribute": 4,
-        "collisionMask": 4294967295,
-        "color": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-        ],
-        "emissive": 1.0,
-        "enableEnvMap": false,
-        "enableNormalMap": false,
-        "enemyType": "",
-        "envIntensity": 1.0,
-        "eventType": 0,
-        "gimmickType": "MovingFloor",
-        "isLocked": false,
-        "isVisible": true,
-        "localFog": {
-            "color": [
-                0.20000000298023224,
-                0.800000011920929,
-                0.5,
-                1.0
-            ],
-            "density": 0.5,
-            "edgeFade": 0.0,
-            "noiseScale": 0.0,
-            "noiseSpeed": 0.0,
-            "scatteringG": 0.0,
-            "scatteringIntensity": 0.0
-        },
-        "materialType": 0,
-        "metallic": 0.0,
-        "modelName": "Stages/block",
-        "myEventID": -1,
-        "name": "Gimmick_MovingFloor",
-        "normalMapPath": "",
-        "ormMapPath": "",
-        "param": {
-            "enemyType": "Goblin",
-            "gimmickType": "MovingFloor",
-            "gravity": 50.0,
-            "hp": 100.0,
-            "interval": 3.0,
-            "jumpPower": 100.0,
-            "maxCount": 5,
-            "maxFallSpeed": 60.0,
-            "maxHp": 100.0,
-            "speed": 1.0
-        },
-        "quaternion": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-        ],
-        "recorder": {
-            "isRecordLoop": false,
-            "isRecordRelative": false,
-            "recordPathName": ""
-        },
-        "rotate": [
-            0.0,
-            -0.0,
-            0.0
-        ],
-        "roughness": 0.5,
-        "saveCategory": "Object",
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ],
-        "targetID": -1,
-        "texturePath": "",
-        "translate": [
-            -21.00454330444336,
-            0.0,
-            5.417048454284668
-        ],
-        "type": "Gimmick"
-    },
+{
     "Characters/player": {
         "animation": {
             "animName": "",
@@ -248,5 +142,692 @@
             -38.68240737915039
         ],
         "type": "Enemy"
+    },
+    "boom": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 1,
+        "collider": {
+            "center": [
+                0.0,
+                1.1920928955078125e-07,
+                -0.2644650936126709
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                2.75,
+                2.75,
+                3.01446533203125
+            ],
+            "type": 2
+        },
+        "collisionAttribute": 6,
+        "collisionMask": 4294967295,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableNormalMap": false,
+        "enemyType": "Bomb",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "",
+        "isLocked": false,
+        "isVisible": true,
+        "itemType": "",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Gimmicks/blob",
+        "myEventID": -1,
+        "name": "Enemy_Bomb_Copy0",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "colorType": 0,
+            "detectionRange": 20.0,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "returnOnOff": true,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": false,
+            "switchMode": 0
+        },
+        "quaternion": [
+            0.7035784721374512,
+            0.0705503597855568,
+            -0.0705503597855568,
+            0.7035784721374512
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            1.5707963705062866,
+            0.19987912476062775,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Enemy",
+        "scale": [
+            0.5,
+            0.5,
+            0.5
+        ],
+        "targetID": -1,
+        "texturePath": "",
+        "translate": [
+            -30.206436157226563,
+            -0.727569580078125,
+            -65.30419921875
+        ],
+        "type": "Enemy"
+    },
+    "goal": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 1,
+        "collider": {
+            "center": [
+                7.832050323486328e-05,
+                0.08764949440956116,
+                -2.5987625122070313e-05
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                0.4275921881198883,
+                1.0
+            ],
+            "type": 2
+        },
+        "collisionAttribute": 16,
+        "collisionMask": 4294967295,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 5,
+        "gimmickType": "",
+        "isLocked": false,
+        "isVisible": true,
+        "itemType": "",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Stages/crown",
+        "myEventID": -1,
+        "name": "sample_6",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            -0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "targetID": -1,
+        "texturePath": "",
+        "translate": [
+            -8.645085334777832,
+            0.055629804730415344,
+            -34.52012634277344
+        ],
+        "type": "Model"
+    },
+    "heart": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 1,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.2000000476837158,
+                1.2000000476837158,
+                1.2000000476837158
+            ],
+            "type": 1
+        },
+        "collisionAttribute": 16,
+        "collisionMask": 1,
+        "color": [
+            1.0,
+            0.019304990768432617,
+            0.019304990768432617,
+            1.0
+        ],
+        "emissive": 1.7999999523162842,
+        "enableEnvMap": true,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 0.0,
+        "eventType": 0,
+        "gimmickType": "",
+        "isLocked": false,
+        "isVisible": true,
+        "itemType": "Heal",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 1,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Item/heart.gltf",
+        "myEventID": -1,
+        "name": "Item/heart_43",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "colorType": 0,
+            "detectionRange": 20.0,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "Heal",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "returnOnOff": true,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": false,
+            "switchMode": 0
+        },
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            -0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            0.800000011920929,
+            0.800000011920929,
+            0.800000011920929
+        ],
+        "targetID": -1,
+        "texturePath": "",
+        "translate": [
+            0.15970966219902039,
+            1.2420687675476074,
+            -73.45299530029297
+        ],
+        "type": "Item"
+    },
+    "koin": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 0,
+        "collider": {
+            "center": [
+                0.0,
+                1.9073486328125e-06,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                14.572802543640137,
+                14.572803497314453,
+                4.011283874511719
+            ],
+            "type": 1
+        },
+        "collisionAttribute": 16,
+        "collisionMask": 1,
+        "color": [
+            1.0,
+            0.8999999761581421,
+            0.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.628999948501587,
+        "eventType": 0,
+        "gimmickType": "Coin",
+        "isLocked": false,
+        "isVisible": true,
+        "itemType": "",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Gimmicks/koin",
+        "myEventID": -1,
+        "name": "Gimmick_Coin",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "colorType": 0,
+            "detectionRange": 20.0,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "Coin",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "returnOnOff": true,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": false,
+            "switchMode": 0
+        },
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            0.05000000074505806,
+            0.05000000074505806,
+            0.05000000074505806
+        ],
+        "targetID": -1,
+        "texturePath": "",
+        "translate": [
+            -0.8346042633056641,
+            1.0875550508499146,
+            -66.79327392578125
+        ],
+        "type": "Gimmick"
+    },
+    "move": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 1,
+        "collider": {
+            "center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "type": 2
+        },
+        "collisionAttribute": 4,
+        "collisionMask": 4294967295,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "emissive": 1.0,
+        "enableEnvMap": false,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 0,
+        "gimmickType": "MovingFloor",
+        "isLocked": false,
+        "isVisible": true,
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "metallic": 0.0,
+        "modelName": "Stages/block",
+        "myEventID": -1,
+        "name": "Gimmick_MovingFloor",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "enemyType": "Goblin",
+            "gimmickType": "MovingFloor",
+            "gravity": 50.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "jumpPower": 100.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "speed": 1.0
+        },
+        "quaternion": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            0.0,
+            -0.0,
+            0.0
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "targetID": -1,
+        "texturePath": "",
+        "translate": [
+            -21.00454330444336,
+            0.0,
+            5.417048454284668
+        ],
+        "type": "Gimmick"
+    },
+    "star": {
+        "animation": {
+            "animName": "",
+            "isAnimLoop": true
+        },
+        "blendMode": 1,
+        "collider": {
+            "center": [
+                -9.5367431640625e-07,
+                0.0,
+                -2.8734655380249023
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                28.618576049804688,
+                5.73111629486084,
+                27.217884063720703
+            ],
+            "type": 2
+        },
+        "collisionAttribute": 16,
+        "collisionMask": 4294967295,
+        "color": [
+            0.7722008228302002,
+            1.0,
+            0.0,
+            1.0
+        ],
+        "emissive": 1.600000023841858,
+        "enableEnvMap": false,
+        "enableNormalMap": false,
+        "enemyType": "",
+        "envIntensity": 1.0,
+        "eventType": 7,
+        "gimmickType": "",
+        "isLocked": false,
+        "isVisible": true,
+        "itemType": "",
+        "localFog": {
+            "color": [
+                0.20000000298023224,
+                0.800000011920929,
+                0.5,
+                1.0
+            ],
+            "density": 0.5,
+            "edgeFade": 0.0,
+            "noiseScale": 0.0,
+            "noiseSpeed": 0.0,
+            "scatteringG": 0.0,
+            "scatteringIntensity": 0.0
+        },
+        "materialType": 0,
+        "meshEffect1": "",
+        "meshEffect2": "",
+        "metallic": 0.0,
+        "modelName": "Gimmicks/star",
+        "myEventID": -1,
+        "name": "star.gltf_13",
+        "normalMapPath": "",
+        "ormMapPath": "",
+        "param": {
+            "actionMode": 0,
+            "colorType": 0,
+            "detectionRange": 20.0,
+            "enemyType": "",
+            "fallDuration": 2.0,
+            "gimmickType": "",
+            "gravity": 50.0,
+            "healAmount": 1.0,
+            "hp": 100.0,
+            "interval": 3.0,
+            "itemType": "",
+            "jumpPower": 10.0,
+            "maxCount": 5,
+            "maxFallSpeed": 60.0,
+            "maxHp": 100.0,
+            "moveAmount": 10.0,
+            "moveSpeed": 6.0,
+            "returnOnOff": true,
+            "shakeDuration": 1.0,
+            "speed": 1.0,
+            "startActive": false,
+            "switchMode": 0
+        },
+        "quaternion": [
+            0.554969847202301,
+            -0.4364432394504547,
+            0.43109163641929626,
+            0.5618592500686646
+        ],
+        "recorder": {
+            "isRecordLoop": false,
+            "isRecordRelative": false,
+            "recordPathName": ""
+        },
+        "rotate": [
+            1.5584590435028076,
+            -1.320847749710083,
+            -4.819375476472487e-07
+        ],
+        "roughness": 0.5,
+        "saveCategory": "Object",
+        "scale": [
+            0.05000000819563866,
+            0.05000007525086403,
+            0.05000002682209015
+        ],
+        "targetID": 0,
+        "texturePath": "",
+        "translate": [
+            -6.70865535736084,
+            0.09478132426738739,
+            -51.2886848449707
+        ],
+        "type": "Model"
     }
 }

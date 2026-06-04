@@ -17,6 +17,8 @@
 #include "DirectXCommon.h"
 #include"BaseEnemy.h"
 #include "GimmickHookPullBlock.h"
+#include "MeshEffectManager.h"
+#include "GPUParticleManager.h"
 // =================================================================
 // 初期化・更新・描画
 // =================================================================
@@ -215,42 +217,109 @@ void Player::Update(float deltaTime)
         }
     }
 
+    BaseEnemy* carriedEnemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
+    const bool isCarryingBat = carriedEnemyBase && carriedEnemyBase->GetEnemyType() == "Bat";
+
     if (isControlActive_) {
-        // 右クリック入力処理：重力を弱める
-        if (inputManager_->IsMouseButtonPressed(1)) {
-            SetGravity(10.0f);
+        float gravity = inputManager_->IsMouseButtonPressed(1) ? 10.0f : 50.0f;
+        float maxFallSpeed = 60.0f;
+
+        if (isCarryingBat && velocity_.y < 0.0f) {
+            gravity = (std::min)(gravity, 12.0f);
+            maxFallSpeed = 12.0f;
+            if (velocity_.y < -maxFallSpeed) {
+                velocity_.y = Math::Lerp(velocity_.y, -maxFallSpeed, 0.22f);
+            }
         }
-        else {
-            SetGravity(50.0f);
-        }
+
+        SetGravity(gravity);
+        SetMaxFallSpeed(maxFallSpeed);
     }
 
     // 6. 親クラスの更新
     Character::Update(deltaTime);
+
+    if (isCarryingBat && velocity_.y < -0.25f && deltaTime > 0.0f) {
+        carryGlideEffectTimer_ -= deltaTime;
+        if (carryGlideEffectTimer_ <= 0.0f) {
+            const Vector3 playerPos = GetWorldPosition();
+            const float yaw = GetRotation().y;
+            Vector3 windDir = { -std::sin(yaw), 0.18f, -std::cos(yaw) };
+            const float windLength = std::sqrt(windDir.x * windDir.x + windDir.y * windDir.y + windDir.z * windDir.z);
+            if (windLength > 0.001f) {
+                windDir = windDir / windLength;
+            }
+
+            if (particleSystem_) {
+                particleSystem_->SpawnParticles(
+                    playerPos + Vector3{ 0.0f, 1.25f, 0.0f },
+                    10,
+                    2.4f,
+                    &windDir,
+                    34.0f,
+                    { 0.55f, 0.85f, 1.0f, 0.65f },
+                    { 0.75f, 1.0f, 1.0f, 0.0f },
+                    0.22f,
+                    0.5f,
+                    0.32f,
+                    0.04f
+                );
+            }
+
+            if (MeshEffectManager::GetInstance()) {
+                MeshEffectManager::GetInstance()->SpawnEffectAt(
+                    "Resources/json/effect/effect_carry_bat_glide_ring.json",
+                    playerPos + Vector3{ 0.0f, 1.15f, 0.0f },
+                    { 1.5707963f, yaw, 0.0f },
+                    { 1.0f, 1.0f, 1.0f }
+                );
+            }
+            if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+                gpuParticleManager->Emit("carry_bat_glide_wisp", playerPos + Vector3{ 0.0f, 1.1f, 0.0f });
+            }
+            carryGlideEffectTimer_ = 0.14f;
+        }
+    }
+    else {
+        carryGlideEffectTimer_ = 0.0f;
+    }
+
+    const bool carryAbilityHeld =
+        inputManager_->IsKeyPressed(DIK_E) ||
+        inputManager_->IsGamepadButtonPressed(XINPUT_GAMEPAD_Y) ||
+        inputManager_->IsActionPressed("Ability");
+    const bool carryAbilityTriggered =
+        inputManager_->IsKeyTriggered(DIK_E) ||
+        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_Y) ||
+        inputManager_->IsActionTriggered("Ability");
+
     if (carriedEnemy_ && inputManager_->IsMouseButtonPressed(0)) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
             // ① カメラの向いている方向（投げる方向）を計算
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            Vector3 throwDir = { 0.0f, 0.5f, 1.0f }; // デフォルト
+            Vector3 throwForward = { std::sin(GetRotation().y), 0.0f, std::cos(GetRotation().y) };
+            float throwUpSpeed = 17.0f;
             if (camera) {
                 Vector3 camRot = camera->GetRotation();
-                throwDir.x = std::sin(camRot.y) * std::cos(camRot.x);
-                // 放物線を綺麗にするため、少し上向きに補正
-                throwDir.y = -std::sin(camRot.x) + 0.3f;
-                throwDir.z = std::cos(camRot.y) * std::cos(camRot.x);
-
-                // 正規化（長さを1にする）
-                float len = std::sqrt(throwDir.x * throwDir.x + throwDir.y * throwDir.y + throwDir.z * throwDir.z);
-                if (len > 0.0f) { throwDir.x /= len; throwDir.y /= len; throwDir.z /= len; }
+                throwForward = { std::sin(camRot.y), 0.0f, std::cos(camRot.y) };
+                throwUpSpeed = (std::clamp)(17.0f - std::sin(camRot.x) * 7.0f, 10.0f, 21.0f);
+            }
+            float forwardLength = std::sqrt(throwForward.x * throwForward.x + throwForward.z * throwForward.z);
+            if (forwardLength > 0.001f) {
+                throwForward.x /= forwardLength;
+                throwForward.z /= forwardLength;
+            }
+            else {
+                throwForward = { 0.0f, 0.0f, 1.0f };
             }
 
             // ② プレイヤーに自爆ヒットしないように、少し前方にずらして配置
             Vector3 playerPos = GetWorldPosition();
             enemyBase->GetTransform()->translate = {
-                playerPos.x + throwDir.x * 4.0f,
-                playerPos.y + throwDir.y * 4.0f + 1.0f, // 頭の高さから投げる
-                playerPos.z + throwDir.z * 4.0f
+                playerPos.x + throwForward.x * 2.2f,
+                playerPos.y + 2.2f,
+                playerPos.z + throwForward.z * 2.2f
             };
 
             // ③ 無力化を解除（当たり判定復活）して、初速（Velocity）を与える！
@@ -261,16 +330,25 @@ void Player::Update(float deltaTime)
             enemyBase->GetTransform()->rotate = { 0.0f, 0.0f, 0.0f };
             enemyBase->GetTransform()->isQuaternionMaster = true;
 
-            // 勢いよくぶん投げる！（120.0f はスピード。お好みで調整してください）
-            enemyBase->SetVelocity({ throwDir.x * 120.0f, throwDir.y * 120.0f, throwDir.z * 120.0f });
+            Vector3 throwVelocity = {
+                throwForward.x * 32.0f,
+                throwUpSpeed,
+                throwForward.z * 32.0f
+            };
+            enemyBase->BeginThrown(throwVelocity);
 
             // 【案D：投げアクション演出】
             // ① プレイヤー本体を鋭く前方に伸ばす
             transform_.scale = { 0.7f, 1.8f, 0.7f };
             // ② 投げた瞬間の衝撃エフェクト（パーティクル）
             if (particleSystem_) {
+                Vector3 effectDir = { throwForward.x, 0.35f, throwForward.z };
+                float effectDirLength = std::sqrt(effectDir.x * effectDir.x + effectDir.y * effectDir.y + effectDir.z * effectDir.z);
+                if (effectDirLength > 0.001f) {
+                    effectDir = effectDir / effectDirLength;
+                }
                 particleSystem_->SpawnParticles(
-                    playerPos + Vector3{0.0f, 2.5f, 0.0f}, 30, 2.0f, &throwDir, 40.0f,
+                    playerPos + Vector3{0.0f, 2.5f, 0.0f}, 24, 1.6f, &effectDir, 32.0f,
                     { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 0.0f },
                     0.1f, 0.3f, 0.8f, 0.1f
                 );
@@ -281,7 +359,8 @@ void Player::Update(float deltaTime)
         carriedEnemy_ = nullptr;
         DebugConsole::GetInstance()->AddLog("Throw Enemy!");
     }
-    else if (carriedEnemy_ && inputManager_->IsKeyPressed(DIK_E)) {
+    else if (carriedEnemy_ && carriedEnemyBase &&
+        (carriedEnemyBase->GetEnemyType() == "Bomber" ? carryAbilityHeld : carryAbilityTriggered)) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
             // 乗せている敵の「固有能力」を呼び出す！
@@ -319,6 +398,10 @@ void Player::Update(float deltaTime)
         // 行列を強制更新して、1フレームの遅れもなくピタッと追従させる
         carriedEnemy_->UpdateLocalMatrix();
         carriedEnemy_->UpdateWorldMatrix();
+
+        if (BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_)) {
+            enemyBase->UpdateCarriedAbility(this, deltaTime);
+        }
     }
 
     // --- スケールの自然な復元（Squash & Stretch のための自動リセット） ---

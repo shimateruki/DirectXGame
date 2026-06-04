@@ -4,9 +4,20 @@
 #include <cmath>
 
 namespace {
-constexpr float kHoverHeight = 3.0f;
-constexpr float kSwoopDuration = 0.75f;
-constexpr float kSwoopRange = 10.0f;
+constexpr float kHoverHeight = 5.2f;
+constexpr float kOrbitRadius = 9.0f;
+constexpr float kOrbitBobHeight = 0.55f;
+constexpr float kOrbitAngularSpeed = 0.85f;
+constexpr float kTelegraphDuration = 0.55f;
+constexpr float kDiveDuration = 0.95f;
+constexpr float kRecoverDuration = 1.0f;
+constexpr float kDiveCooldown = 3.8f;
+constexpr float kDiveStartRange = 15.0f;
+constexpr float kDiveHitHeight = 0.75f;
+constexpr float kOrbitSpeed = 2.4f;
+constexpr float kTelegraphSpeed = 2.0f;
+constexpr float kDiveSpeed = 7.2f;
+constexpr float kRecoverSpeed = 3.0f;
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
@@ -22,14 +33,18 @@ void EnemyBat::Initialize(Object3dCommon* common, const std::string& modelName) 
     BaseEnemy::Initialize(common, modelName);
     SetName("Enemy_Bat");
     SetEnemyType("Bat");
-    SetColor({ 0.35f, 0.18f, 0.74f, 1.0f });
+    SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     defaultColor_ = GetColor();
-    SetScale({ 1.4f, 0.55f, 0.85f });
+    SetScale({ 0.6f, 0.6f, 0.6f });
+    animName_ = "ArmatureAction";
+    isAnimLoop_ = true;
+    animationTime_ = 0.0f;
+    EnsureAnimation();
 
     SetCollisionAttribute(kEnemy);
-    SetCollisionMask(kPlayer | kPlayerAttack | kAttributePlayerBullet);
+    SetPlayerContactEnabled(false);
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(0.75f);
+    SetCollisionRadius(0.85f);
 }
 
 void EnemyBat::Update(float deltaTime) {
@@ -37,48 +52,95 @@ void EnemyBat::Update(float deltaTime) {
         return;
     }
 
+    EnsureAnimation();
+    if (IsThrowRecovering()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     CaptureHomePosition();
     hoverTimer_ += deltaTime;
-    swoopCooldown_ = (std::max)(0.0f, swoopCooldown_ - deltaTime);
-    if (swoopTimer_ > 0.0f) {
-        swoopTimer_ = (std::max)(0.0f, swoopTimer_ - deltaTime);
+    diveCooldown_ = (std::max)(0.0f, diveCooldown_ - deltaTime);
+    stateTimer_ = (std::max)(0.0f, stateTimer_ - deltaTime);
+    if (state_ != BatState::Dive) {
+        SetPlayerContactEnabled(false);
     }
 
     Vector3 desired = homePosition_;
     Vector3 direction = { 0.0f, 0.0f, 1.0f };
     float distance = 9999.0f;
+    float moveSpeed = kOrbitSpeed;
 
     if (target_) {
         Vector3 toTarget = target_->GetTranslate() - GetTranslate();
         direction = NormalizePlanar(toTarget);
         distance = std::sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
         if (distance <= detectionRange_) {
-            if (distance <= kSwoopRange && swoopCooldown_ <= 0.0f && swoopTimer_ <= 0.0f) {
-                swoopTimer_ = kSwoopDuration;
-                swoopCooldown_ = 2.4f;
+            if (state_ == BatState::Orbit && diveCooldown_ <= 0.0f && distance <= kDiveStartRange) {
+                state_ = BatState::Telegraph;
+                stateTimer_ = kTelegraphDuration;
             }
-            desired = CalcDesiredPosition(distance, direction);
+
+            switch (state_) {
+            case BatState::Orbit:
+                desired = CalcOrbitPosition();
+                moveSpeed = kOrbitSpeed;
+                break;
+            case BatState::Telegraph:
+                desired = CalcOrbitPosition();
+                desired.y += 1.0f;
+                moveSpeed = kTelegraphSpeed;
+                if (stateTimer_ <= 0.0f) {
+                    diveTarget_ = target_->GetTranslate();
+                    diveTarget_.y += kDiveHitHeight;
+                    state_ = BatState::Dive;
+                    stateTimer_ = kDiveDuration;
+                    SetPlayerContactEnabled(true);
+                }
+                break;
+            case BatState::Dive:
+                desired = diveTarget_;
+                moveSpeed = kDiveSpeed;
+                if (stateTimer_ <= 0.0f || Math::Length(GetTranslate() - diveTarget_) < 1.2f) {
+                    state_ = BatState::Recover;
+                    stateTimer_ = kRecoverDuration;
+                    diveCooldown_ = kDiveCooldown;
+                    SetPlayerContactEnabled(false);
+                }
+                break;
+            case BatState::Recover:
+                desired = CalcOrbitPosition();
+                moveSpeed = kRecoverSpeed;
+                if (stateTimer_ <= 0.0f) {
+                    state_ = BatState::Orbit;
+                }
+                break;
+            }
             UpdateFacing(direction);
         } else {
+            desired = GetWanderTargetPosition(deltaTime, 0.55f);
             desired.y += std::sin(hoverTimer_ * 2.6f) * 0.55f;
+            moveSpeed = kOrbitSpeed * 0.75f;
+            state_ = BatState::Orbit;
+            SetPlayerContactEnabled(false);
+            UpdateFacing(NormalizePlanar(desired - GetTranslate()));
         }
+    }
+    else {
+        desired = GetWanderTargetPosition(deltaTime, 0.55f);
+        desired.y += std::sin(hoverTimer_ * 2.6f) * 0.55f;
+        moveSpeed = kOrbitSpeed * 0.75f;
+        SetPlayerContactEnabled(false);
+        UpdateFacing(NormalizePlanar(desired - GetTranslate()));
     }
 
     Vector3 toDesired = desired - GetTranslate();
-    const float maxSpeed = param_.has_value() ? (std::max)(1.0f, param_->speed) : 7.0f;
-    const float speed = swoopTimer_ > 0.0f ? maxSpeed * 1.8f : maxSpeed;
+    const float paramSpeed = param_.has_value() ? (std::max)(0.5f, param_->speed) : kOrbitSpeed;
+    const float speed = std::min(moveSpeed, paramSpeed * (moveSpeed / kOrbitSpeed));
     Vector3 velocity = toDesired * std::min(1.0f, deltaTime * speed);
     if (deltaTime > 0.001f) {
         velocity = velocity / deltaTime;
     }
     SetVelocity(velocity);
-
-    const float wing = std::sin(hoverTimer_ * 14.0f) * 0.22f;
-    Vector3 scale = GetScale();
-    scale.y = baseScale_.y + std::abs(wing) * baseScale_.y * 0.45f;
-    scale.x = baseScale_.x + wing * baseScale_.x;
-    scale.z = baseScale_.z;
-    SetScale(scale);
 
     BaseEnemy::Update(deltaTime);
 }
@@ -104,22 +166,43 @@ void EnemyBat::CaptureHomePosition() {
     hasHomePosition_ = true;
 }
 
+void EnemyBat::EnsureAnimation() {
+    Model* model = GetModel();
+    if (!model) {
+        return;
+    }
+
+    const auto& animations = model->GetModelData().animations;
+    if (animations.empty()) {
+        return;
+    }
+
+    if (animName_.empty() || !model->GetAnimation(animName_)) {
+        animName_ = animations.front().name;
+        animationTime_ = 0.0f;
+    }
+    isAnimLoop_ = true;
+}
+
 void EnemyBat::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq <= 0.0001f) return;
     SetRotationY(Math::LerpShortAngle(GetRotation().y, std::atan2(direction.x, direction.z), 0.18f));
 }
 
-Vector3 EnemyBat::CalcDesiredPosition(float distance, const Vector3& direction) const {
+Vector3 EnemyBat::CalcOrbitPosition() const {
     Vector3 targetPos = target_->GetTranslate();
-    targetPos.y += swoopTimer_ > 0.0f ? 0.6f : kHoverHeight + std::sin(hoverTimer_ * 3.2f) * 0.55f;
+    const float angle = hoverTimer_ * kOrbitAngularSpeed;
+    targetPos.x += std::cos(angle) * kOrbitRadius;
+    targetPos.y += kHoverHeight + std::sin(hoverTimer_ * 2.2f) * kOrbitBobHeight;
+    targetPos.z += std::sin(angle) * kOrbitRadius;
+    return targetPos;
+}
 
-    if (swoopTimer_ > 0.0f) {
-        return targetPos;
+void EnemyBat::SetPlayerContactEnabled(bool enabled) {
+    uint32_t mask = kPlayerAttack | kAttributePlayerBullet;
+    if (enabled) {
+        mask |= kPlayer;
     }
-
-    Vector3 side = { direction.z, 0.0f, -direction.x };
-    const float orbit = std::sin(hoverTimer_ * 1.4f) * 3.0f;
-    const float keepDistance = std::clamp(distance, 3.5f, 6.0f);
-    return targetPos - direction * keepDistance + side * orbit;
+    SetCollisionMask(mask);
 }

@@ -625,7 +625,7 @@ void InspectorWindow::Draw() {
 
             ImGui::Separator();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "--- Object Type Settings ---");
-            const char* classItems[] = { "Model", "Spawner", "Player", "Enemy", "Gimmick", "InvisibleBox", "Block" };
+            const char* classItems[] = { "Model", "Spawner", "Player", "Enemy", "Gimmick", "Item", "InvisibleBox", "Block" };
             std::string currentClass = selectedObject->GetClassName();
             int currentClassIndex = 0;
             for (int i = 0; i < IM_ARRAYSIZE(classItems); i++) {
@@ -638,6 +638,26 @@ void InspectorWindow::Draw() {
                     if (selectedObject->GetName().find("Object") != std::string::npos) selectedObject->SetName("Spawner_New");
                     if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
                 }
+                else if (std::string(classItems[currentClassIndex]) == "Item") {
+                    if (selectedObject->GetName().find("Object") != std::string::npos) selectedObject->SetName("Item_Heal");
+                    if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+                    selectedObject->SetItemType("Heal");
+                    selectedObject->param_->itemType = "Heal";
+                    selectedObject->param_->healAmount = 1.0f;
+                    selectedObject->SetModel("Item/heart.gltf");
+                    selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
+                    selectedObject->SetEmissive(1.8f);
+                    selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+                    selectedObject->SetStatic(false);
+
+                    Object3d::ColliderConfig colConfig;
+                    colConfig.type = ColliderType::kSphere;
+                    colConfig.size = { 1.2f, 1.2f, 1.2f };
+                    selectedObject->SetColliderConfig(colConfig);
+                    selectedObject->SetCollisionRadius(1.2f);
+                }
             }
 
             if (selectedObject->GetClassName() == "Spawner") DrawSpawnerSettings();
@@ -648,6 +668,9 @@ void InspectorWindow::Draw() {
             }
             if (selectedObject->GetClassName() == "Gimmick") {
                 ImGui::Indent(); DrawGimmickTypeSelector(); ImGui::Unindent();
+            }
+            if (selectedObject->GetClassName() == "Item") {
+                ImGui::Indent(); DrawItemTypeSelector(); ImGui::Unindent();
             }
 
             if (selectedObject->GetClassName() == "Enemy" || selectedObject->GetClassName() == "Player") {
@@ -784,6 +807,24 @@ void InspectorWindow::Draw() {
                 }
                 ImGui::Unindent();
             }
+            else if (selectedObject->GetClassName() == "Item") {
+                if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+                auto& p = selectedObject->param_.value();
+
+                ImGui::Text(ICON_FA_HEART " アイテム設定:");
+                ImGui::Indent();
+
+                std::string itemType = selectedObject->GetItemType();
+                if (itemType == "Heal") {
+                    ImGui::DragFloat(ICON_FA_HEARTBEAT " 回復量", &p.healAmount, 0.1f, 0.0f, 999.0f);
+                    ImGui::TextDisabled("プレイヤーが触れるとHPを回復して消えます");
+                }
+                else {
+                    ImGui::TextDisabled("(この種類には個別設定がありません)");
+                }
+
+                ImGui::Unindent();
+            }
         }
 
         ImGui::EndDisabled();
@@ -874,6 +915,41 @@ void InspectorWindow::DrawEnemyTypeSelector() {
             if (ImGui::Selectable(enemyTypes[i], isSelected)) {
                 selectedObject->SetEnemyType(enemyTypes[i]);
                 selectedObject->SetName("Enemy_" + std::string(enemyTypes[i]));
+                if (std::string(enemyTypes[i]) == "Bat") {
+                    selectedObject->SetModel("Characters/bat");
+                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    selectedObject->SetScale({ 0.6f, 0.6f, 0.6f });
+                    selectedObject->animName_ = "ArmatureAction";
+                    selectedObject->isAnimLoop_ = true;
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetColliderType(ColliderType::kSphere);
+                    selectedObject->SetCollisionRadius(0.85f);
+                }
+                else if (std::string(enemyTypes[i]) == "BeamDrone") {
+                    selectedObject->SetModel("Characters/eye");
+                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    selectedObject->SetEmissive(1.4f);
+                    selectedObject->SetScale({ 0.85f, 0.85f, 0.85f });
+                    selectedObject->animName_.clear();
+                    selectedObject->isAnimLoop_ = false;
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetColliderType(ColliderType::kSphere);
+                    selectedObject->SetCollisionRadius(1.1f);
+                }
+                else if (std::string(enemyTypes[i]) == "GiantSlime") {
+                    selectedObject->SetModel("Characters/slime");
+                    selectedObject->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+                    selectedObject->SetEmissive(1.0f);
+                    selectedObject->SetScale({ 2.8f, 2.8f, 2.8f });
+                    selectedObject->animName_.clear();
+                    selectedObject->isAnimLoop_ = false;
+                    selectedObject->SetCollisionAttribute(CollisionAttribute::kEnemy);
+                    selectedObject->SetCollisionMask(CollisionAttribute::kPlayer | CollisionAttribute::kGround | CollisionAttribute::kPlayerAttack | CollisionAttribute::kAttributePlayerBullet);
+                    selectedObject->SetColliderType(ColliderType::kSphere);
+                    selectedObject->SetCollisionRadius(2.2f);
+                }
             }
             if (isSelected) ImGui::SetItemDefaultFocus();
         }
@@ -1319,6 +1395,76 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     }
     
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成されるギミッククラスを指定します。");
+#endif
+}
+
+void InspectorWindow::DrawItemTypeSelector() {
+#ifdef USE_IMGUI
+    Object3d* selectedObject = editor_->GetSelectedObject();
+    if (!selectedObject) return;
+
+    const char* itemTypes[] = { "Heal" };
+    const char* itemTypeLabels[] = { "体力回復" };
+    std::string currentType = selectedObject->GetItemType();
+    if (currentType.empty()) {
+        currentType = "Heal";
+        selectedObject->SetItemType(currentType);
+        if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+        selectedObject->param_->itemType = currentType;
+        selectedObject->param_->healAmount = 1.0f;
+        selectedObject->SetName("Item_Heal");
+        selectedObject->SetModel("Item/heart.gltf");
+        selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
+        selectedObject->SetEmissive(1.8f);
+        selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
+        selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+        selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+        selectedObject->SetStatic(false);
+
+        Object3d::ColliderConfig colConfig;
+        colConfig.type = ColliderType::kSphere;
+        colConfig.size = { 1.2f, 1.2f, 1.2f };
+        selectedObject->SetColliderConfig(colConfig);
+        selectedObject->SetCollisionRadius(1.2f);
+    }
+
+    int currentIndex = 0;
+    for (int i = 0; i < IM_ARRAYSIZE(itemTypes); i++) {
+        if (currentType == itemTypes[i]) {
+            currentIndex = i;
+            break;
+        }
+    }
+
+    if (ImGui::Combo("アイテムの種類", &currentIndex, itemTypeLabels, IM_ARRAYSIZE(itemTypeLabels))) {
+        std::string selectedItemType = itemTypes[currentIndex];
+        selectedObject->SetClassName("Item");
+        selectedObject->SetItemType(selectedItemType);
+
+        if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+        selectedObject->param_->itemType = selectedItemType;
+
+        if (selectedItemType == "Heal") {
+            selectedObject->SetName("Item_Heal");
+            selectedObject->SetModel("Item/heart.gltf");
+            selectedObject->SetColor({ 1.0f, 0.15f, 0.35f, 1.0f });
+            selectedObject->SetEmissive(1.8f);
+            selectedObject->SetScale({ 0.8f, 0.8f, 0.8f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(false);
+
+            selectedObject->param_->healAmount = 1.0f;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kSphere;
+            colConfig.size = { 1.2f, 1.2f, 1.2f };
+            selectedObject->SetColliderConfig(colConfig);
+            selectedObject->SetCollisionRadius(1.2f);
+        }
+    }
+
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("ロード時に生成されるアイテムクラスを指定します。");
 #endif
 }
 

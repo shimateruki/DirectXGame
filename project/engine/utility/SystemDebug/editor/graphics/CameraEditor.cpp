@@ -272,14 +272,18 @@ void CameraEditor::UpdateFreeCamera(Camera* camera) {
     eye.z += moveVelocity.z;
 
     camera->SetEye(eye);
-    settings_.editorCameraPos = eye;
-    settings_.editorCameraAngle = rotation;
+    if (!IsEditorStateSaveBlocked()) {
+        settings_.editorCameraPos = eye;
+        settings_.editorCameraAngle = rotation;
+    }
 
-    static float saveTimer = 0.0f;
-    saveTimer += 0.016f; // おおよそ60fps
-    if (saveTimer > 1.0f) { // 1秒ごとに自動保存
-        SaveEditorState(); // 専用ファイルに保存
-        saveTimer = 0.0f;
+    if (!IsEditorStateSaveBlocked()) {
+        static float saveTimer = 0.0f;
+        saveTimer += 0.016f; // おおよそ60fps
+        if (saveTimer > 1.0f) { // 1秒ごとに自動保存
+            SaveEditorState(); // 専用ファイルに保存
+            saveTimer = 0.0f;
+        }
     }
 
     // ----------------------------------------------------------
@@ -669,6 +673,15 @@ void CameraEditor::SetMode(Mode mode) {
     settings_.currentMode = mode;
 }
 
+void CameraEditor::SetEditorStateSaveBlocker(uint32_t blocker, bool enabled) {
+    if (enabled) {
+        editorStateSaveBlockers_ |= blocker;
+    }
+    else {
+        editorStateSaveBlockers_ &= ~blocker;
+    }
+}
+
 void CameraEditor::SetEditorCameraTransform(const Vector3& position, const Vector3& rotation) {
     Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (camera) {
@@ -696,6 +709,8 @@ bool CameraEditor::PlayOverrideCamera(Camera* camera, const std::string& cameraN
 }
 
 void CameraEditor::SaveEditorState() {
+    if (IsEditorStateSaveBlocked()) return;
+
     std::string filePath = kDirectoryPath_ + "editor_camera_state.json";
     json j;
     j["editorCameraPos"] = { settings_.editorCameraPos.x, settings_.editorCameraPos.y, settings_.editorCameraPos.z };

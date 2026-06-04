@@ -40,6 +40,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -55,6 +56,8 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -62,20 +65,28 @@
             "normalMapPath": "",
             "ormMapPath": "",
             "param": {
+                "actionMode": 0,
                 "colorType": 0,
                 "detectionRange": 20.0,
                 "enemyType": "",
                 "fallDuration": 2.0,
                 "gimmickType": "",
                 "gravity": 50.0,
+                "healAmount": 1.0,
                 "hp": 100.0,
                 "interval": 3.0,
+                "itemType": "",
                 "jumpPower": 10.0,
                 "maxCount": 5,
                 "maxFallSpeed": 60.0,
                 "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
                 "shakeDuration": 1.0,
-                "speed": 1.0
+                "speed": 1.0,
+                "startActive": false,
+                "switchMode": 0
             },
             "parentName": "",
             "particleName": "",
@@ -83,6 +94,104 @@
                 21.50333023071289,
                 9.263617515563965,
                 -46.591331481933594
+            ],
+            "quaternion": [
+                0.0,
+                -0.6853874921798706,
+                0.0,
+                0.7281785607337952
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -1.510271430015564,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Enemy",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "ArmatureAction",
+                "isAnimLoop": true
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    -0.14091990888118744,
+                    0.04769076779484749,
+                    1.1324882507324219e-06
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 73,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "Bat",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Characters/bat",
+            "myEventID": -1,
+            "name": "Enemy_Bat",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -37.602718353271484,
+                -17.47226333618164,
+                -70.19631958007813
             ],
             "quaternion": [
                 0.0,
@@ -97,15 +206,113 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.5,
             "saveCategory": "Enemy",
             "scale": [
+                0.6000000238418579,
+                0.6000000238418579,
+                0.6000000238418579
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "type": "Enemy"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": false
+            },
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    1.100000023841858,
+                    1.100000023841858,
+                    1.100000023841858
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 2,
+            "collisionMask": 73,
+            "color": [
+                1.0,
                 1.0,
                 1.0,
                 1.0
+            ],
+            "emissive": 1.399999976158142,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "BeamDrone",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Characters/eye",
+            "myEventID": -1,
+            "name": "Enemy_BeamDrone",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                -48.10128402709961,
+                -21.31939697265625,
+                -72.39521026611328
+            ],
+            "quaternion": [
+                0.0036556285340338945,
+                0.027291659265756607,
+                -0.69366055727005,
+                0.7197755575180054
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                -0.032637741416692734,
+                0.044373832643032074,
+                -1.5345722436904907
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Enemy",
+            "scale": [
+                0.8500000238418579,
+                0.8500000238418579,
+                0.8500000238418579
             ],
             "targetID": -1,
             "texturePath": "",

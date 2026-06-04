@@ -2,6 +2,7 @@
 #include "engine/utility/math/Math.h"
 #include "Camera.h"
 #include "IEditable.h"
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <map>
@@ -65,6 +66,8 @@ public:
     Mode GetMode() const { return settings_.currentMode; }
     void SetEditorCameraTransform(const Vector3& position, const Vector3& rotation);
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; }
+    void SetEditorStateSaveBlocker(uint32_t blocker, bool enabled);
+    bool IsEditorStateSaveBlocked() const { return editorStateSaveBlockers_ != 0; }
     /// <summary>
     /// 保存されている名前を呼び出すだけで、指定カメラを自動でオーバーライドさせる
     /// </summary>
@@ -92,6 +95,7 @@ private:
     std::vector<std::string> fileList_;
     bool isGameViewHovered_ = false;
     std::map<std::string, Camera::CameraOverrideParams> overrideParamsMap_;
+    uint32_t editorStateSaveBlockers_ = 0;
     std::string selectedOverrideName_ = ""; // 現在エディタで選択中のカメラ名
     char newOverrideNameBuffer_[64] = "";   // 新規作成時の名前入力欄
     Object3d* targetPlayer_ = nullptr;

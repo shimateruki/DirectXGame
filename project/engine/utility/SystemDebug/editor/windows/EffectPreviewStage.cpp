@@ -30,6 +30,8 @@ void EffectPreviewStage::Initialize(SceneManager* sceneManager, DirectXCommon* d
 }
 
 void EffectPreviewStage::Update() {
+    CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 0, enabled_ && isolatedSpace_);
+
     if (enabled_ && !wasEnabled_) {
         CaptureCameraState();
         hasPlacedCamera_ = false;

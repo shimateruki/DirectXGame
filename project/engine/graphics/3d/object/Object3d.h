@@ -38,6 +38,8 @@ public:
         float jumpPower = 10.0f;
         std::string enemyType = "";
         std::string gimmickType = "";
+        std::string itemType = "";
+        float healAmount = 1.0f;
         float interval = 3.0f;
         int maxCount = 5;
         float detectionRange = 20.0f;
@@ -200,6 +202,8 @@ public:
     std::string GetEnemyType() const { return enemyType_; }
     void SetGimmickType(const std::string& type) { gimmickType_ = type; }
     std::string GetGimmickType() const { return gimmickType_; }
+    void SetItemType(const std::string& type) { itemType_ = type; }
+    std::string GetItemType() const { return itemType_; }
     virtual void OnRecordEvent(int eventID) {}
     // ゲッター・セッターがいっぱい並んでいるあたりに追加
     void SetEnableNormalMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableNormalMap(enable); }
@@ -262,6 +266,7 @@ protected:
     int targetID_ = -1;
     std::string enemyType_ = "";
     std::string gimmickType_ = "";
+    std::string itemType_ = "";
 
     std::string particleName_ = ""; // JSONファイル名
     std::string gpuParticleName_ = ""; // GPUパーティクル用

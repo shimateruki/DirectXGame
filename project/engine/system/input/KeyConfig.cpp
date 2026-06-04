@@ -24,6 +24,8 @@ void KeyConfig::Initialize() {
     bindings_["Attack"] = { 0x2C, XINPUT_GAMEPAD_X };            // Z / Xボタン
     bindings_["Dash"] = { 0x2A, XINPUT_GAMEPAD_RIGHT_SHOULDER };// L-Shift / RB
 
+    bindings_["Ability"] = { 0x12, XINPUT_GAMEPAD_Y };
+
     Load();
 }
 

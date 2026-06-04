@@ -143,6 +143,7 @@ public: // メンバ関数
     /// </summary>
     void Initialize(ModelCommon* common, const std::string& directoryPath, const std::string& filename);
     void Update();
+    void Update(bool force);
     /// <summary>
     /// 描画
     /// </summary>

@@ -4,8 +4,13 @@
 #include <PlayerState.h>
 #include"Player.h"
 #include <DebugConsole.h>
+#include <algorithm>
 void EnemySlime::Update(float deltaTime) {
     if (isCarried_) {
+        return;
+    }
+    if (IsThrowRecovering()) {
+        BaseEnemy::Update(deltaTime);
         return;
     }
     if (!target_ || !param_.has_value()) {
@@ -43,6 +48,28 @@ void EnemySlime::Update(float deltaTime) {
 
                 velocity_.x = dir.x * speed * 5.0f; // 跳ねる瞬間に勢いをつける
                 velocity_.z = dir.z * speed * 5.0f;
+                velocity_.y = jumpPower;
+
+                jumpTimer_ = 0.0f;
+                isHopping_ = true;
+            }
+        } else if (length >= detectionRange_) {
+            jumpTimer_ += deltaTime * 0.75f;
+
+            const float wanderSpeed = (std::max)(0.5f, param_->speed * 4.0f);
+            Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);
+            Vector3 wanderDirection = { wanderVelocity.x, 0.0f, wanderVelocity.z };
+            const float wanderLength = math.Length(wanderDirection);
+            if (wanderLength > 0.001f) {
+                wanderDirection = wanderDirection / wanderLength;
+                float targetRotY = std::atan2(wanderDirection.x, wanderDirection.z);
+                transform_.rotate.y = math.LerpShortAngle(transform_.rotate.y, targetRotY, 0.08f);
+            }
+
+            if (jumpTimer_ > 1.35f && wanderLength > 0.05f) {
+                float jumpPower = param_->jumpPower > 0.0f ? param_->jumpPower * 0.65f : 10.0f;
+                velocity_.x = wanderDirection.x * wanderSpeed;
+                velocity_.z = wanderDirection.z * wanderSpeed;
                 velocity_.y = jumpPower;
 
                 jumpTimer_ = 0.0f;

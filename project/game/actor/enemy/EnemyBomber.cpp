@@ -2,6 +2,11 @@
 #include "CollisionConfig.h"
 #include "EnemyBomb.h"
 #include "EnemyFactory.h"
+#include "Player.h"
+#include "MeshEffectManager.h"
+#include "GPUParticleManager.h"
+#include "SceneManager.h"
+#include "BaseScene.h"
 #include <algorithm>
 #include <cmath>
 
@@ -10,6 +15,11 @@ constexpr float kMinThrowDistance = 1.0f;
 constexpr float kBombSpawnHeight = 2.0f;
 constexpr float kFootworkSpeed = 1.25f;
 constexpr float kPreferredDistance = 13.0f;
+constexpr float kCarryThrowInterval = 0.42f;
+constexpr float kCarryBombForwardSpeed = 24.0f;
+constexpr float kCarryBombUpSpeed = 8.0f;
+constexpr const char* kCarryBomberThrowEffect = "Resources/json/effect/effect_carry_bomber_throw_burst.json";
+constexpr const char* kCarryBomberSparkPreset = "carry_bomber_throw_sparks";
 }
 
 void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelName) {
@@ -26,7 +36,15 @@ void EnemyBomber::Initialize(Object3dCommon* common, const std::string& modelNam
 }
 
 void EnemyBomber::Update(float deltaTime) {
+    if (isCarried_) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     if (!target_ || isDead) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
+    if (IsThrowRecovering()) {
         BaseEnemy::Update(deltaTime);
         return;
     }
@@ -34,7 +52,9 @@ void EnemyBomber::Update(float deltaTime) {
     float distance = 0.0f;
     Vector3 direction{};
     const bool inRange = IsTargetInRange(&distance, &direction);
-    UpdateFacing(direction);
+    if (inRange) {
+        UpdateFacing(direction);
+    }
     UpdateFootwork(deltaTime, direction, distance, inRange);
 
     if (inRange) {
@@ -67,6 +87,34 @@ void EnemyBomber::Update(float deltaTime) {
     }
 
     BaseEnemy::Update(deltaTime);
+}
+
+void EnemyBomber::SetCarried(bool isCarried) {
+    BaseEnemy::SetCarried(isCarried);
+    carriedThrowCooldown_ = 0.0f;
+    carriedEffectTimer_ = 0.0f;
+    throwState_ = ThrowState::Idle;
+    windupTimer_ = 0.0f;
+    SetColor(defaultColor_);
+}
+
+void EnemyBomber::ExecuteAbility(Player* player) {
+    if (!player || !isCarried_ || carriedThrowCooldown_ > 0.0f) {
+        return;
+    }
+
+    ThrowCarryBomb(player);
+    carriedThrowCooldown_ = kCarryThrowInterval;
+}
+
+void EnemyBomber::UpdateCarriedAbility(Player* player, float deltaTime) {
+    (void)player;
+    carriedThrowCooldown_ = (std::max)(0.0f, carriedThrowCooldown_ - deltaTime);
+    carriedEffectTimer_ = (std::max)(0.0f, carriedEffectTimer_ - deltaTime);
+
+    const float chargeRate = 1.0f - (std::clamp)(carriedThrowCooldown_ / kCarryThrowInterval, 0.0f, 1.0f);
+    const float warm = 0.65f + chargeRate * 0.35f;
+    SetColor({ 1.0f, warm, 0.55f, 1.0f });
 }
 
 bool EnemyBomber::IsTargetInRange(float* outDistance, Vector3* outDirection) const {
@@ -124,6 +172,13 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const Vector3& direction, floa
             velocity.x += direction.x * 0.6f;
             velocity.z += direction.z * 0.6f;
         }
+    } else {
+        velocity = CalculateWanderVelocity(deltaTime, kFootworkSpeed * 0.65f, 0.7f);
+        Vector3 wanderDirection = { velocity.x, 0.0f, velocity.z };
+        const float lengthSq = wanderDirection.x * wanderDirection.x + wanderDirection.z * wanderDirection.z;
+        if (lengthSq > 0.0001f) {
+            SetRotationY(Math::LerpShortAngle(GetRotation().y, std::atan2(wanderDirection.x, wanderDirection.z), 0.08f));
+        }
     }
 
     SetVelocity(velocity);
@@ -166,4 +221,82 @@ void EnemyBomber::ThrowBomb() {
     }
 
     spawnCallback_(std::move(bomb));
+}
+
+void EnemyBomber::ThrowCarryBomb(Player* player) {
+    if (!player || !common_) {
+        return;
+    }
+
+    auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", common_);
+    if (!bomb) {
+        return;
+    }
+
+    const Vector3 forward = GetPlayerForward(player);
+    const Vector3 playerPos = player->GetWorldPosition();
+    Vector3 spawnPos = {
+        playerPos.x + forward.x * 2.1f,
+        playerPos.y + 2.15f,
+        playerPos.z + forward.z * 2.1f
+    };
+
+    bomb->SetTranslate(spawnPos);
+    bomb->SetRotationY(std::atan2(forward.x, forward.z));
+    bomb->SetTarget(target_ ? target_ : player);
+    bomb->SetCarried(false);
+    bomb->SetVelocity({
+        forward.x * kCarryBombForwardSpeed,
+        kCarryBombUpSpeed,
+        forward.z * kCarryBombForwardSpeed
+    });
+
+    if (auto* enemyBomb = dynamic_cast<EnemyBomb*>(bomb.get())) {
+        enemyBomb->Ignite(2.25f);
+    }
+
+    if (MeshEffectManager::GetInstance()) {
+        MeshEffectManager::GetInstance()->SpawnEffectAt(
+            kCarryBomberThrowEffect,
+            spawnPos,
+            { 0.0f, std::atan2(forward.x, forward.z), 0.0f },
+            { 1.0f, 1.0f, 1.0f }
+        );
+    }
+    if (auto* gpuParticleManager = GPUParticleManager::GetInstance(); gpuParticleManager->IsInitialized()) {
+        gpuParticleManager->Emit(kCarryBomberSparkPreset, spawnPos);
+    }
+
+    SpawnBombObject(std::move(bomb));
+}
+
+void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {
+    if (!bomb) {
+        return;
+    }
+
+    if (spawnCallback_) {
+        spawnCallback_(std::move(bomb));
+        return;
+    }
+
+    SceneManager* sceneManager = SceneManager::GetInstance();
+    if (!sceneManager || !sceneManager->GetCurrentScene()) {
+        return;
+    }
+
+    if (!bomb->IsCarried()) {
+        bomb->SetTarget(sceneManager->GetCurrentScene()->GetPlayer());
+    }
+    sceneManager->GetCurrentScene()->AddObject(std::move(bomb));
+}
+
+Vector3 EnemyBomber::GetPlayerForward(Player* player) const {
+    const Vector3 rotation = player->GetRotation();
+    Vector3 forward = { std::sin(rotation.y), 0.0f, std::cos(rotation.y) };
+    const float length = std::sqrt(forward.x * forward.x + forward.z * forward.z);
+    if (length <= 0.001f) {
+        return { 0.0f, 0.0f, 1.0f };
+    }
+    return { forward.x / length, 0.0f, forward.z / length };
 }

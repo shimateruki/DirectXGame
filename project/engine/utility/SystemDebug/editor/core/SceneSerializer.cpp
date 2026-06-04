@@ -86,6 +86,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["saveCategory"] = obj->GetSaveCategory();
     d["enemyType"] = obj->GetEnemyType();
     d["gimmickType"] = obj->GetGimmickType();
+    d["itemType"] = obj->GetItemType();
 
     if (className != "InvisibleBox") {
         d["modelName"] = obj->GetModelName();
@@ -128,6 +129,8 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["param"]["maxFallSpeed"] = p.maxFallSpeed;
         d["param"]["enemyType"] = p.enemyType;
         d["param"]["gimmickType"] = p.gimmickType;
+        d["param"]["itemType"] = p.itemType;
+        d["param"]["healAmount"] = p.healAmount;
         d["param"]["interval"] = p.interval;
         d["param"]["maxCount"] = p.maxCount;
         d["param"]["shakeDuration"] = p.shakeDuration;

@@ -16,6 +16,7 @@
 #include "EnemyBomber.h"
 #include "GimmickFactory.h"
 #include "BaseGimmick.h"
+#include "ItemFactory.h"
 #include "MoveStrategy3D.h"
 #include "GhostRecorder.h"
 // マネージャ系
@@ -189,6 +190,11 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         gimmickType = objData["gimmickType"].get<std::string>();
                     }
 
+                    std::string itemType = "";
+                    if (objData.contains("itemType") && objData["itemType"].is_string()) {
+                        itemType = objData["itemType"].get<std::string>();
+                    }
+
                     // --- 生成分岐 ---
 
                     // パターンA: 敵 (Factory)
@@ -259,7 +265,16 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             });
                         newObj = std::move(spawner);
                     }
-                    // パターンD: ギミック (Factory)
+                    // パターンD: アイテム (Factory)
+                    else if (!itemType.empty() || type == "Item") {
+                        std::string iType = itemType.empty() ? "Heal" : itemType;
+                        auto item = ItemFactory::GetInstance()->CreateItem(iType, object3dCommon);
+                        if (item) {
+                            item->SetItemType(iType);
+                            newObj = std::move(item);
+                        }
+                    }
+                    // パターンE: ギミック (Factory)
                     else if (!gimmickType.empty() || type == "Gimmick") {
                         // type == "Gimmick" だが gimmickType が空の場合はデフォルト名で作成
                         std::string gType = gimmickType.empty() ? "DefaultGimmick" : gimmickType;
@@ -272,7 +287,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                             newObj = std::move(gimmick);
                         }
                     }
-                    // パターンE: 通常オブジェクト
+                    // パターンF: 通常オブジェクト
                     else {
                         newObj = std::make_unique<Object3d>();
                         newObj->Initialize(object3dCommon);
@@ -281,7 +296,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (newObj) {
                         newObj->SetName(name);
                         std::string currentClass = newObj->GetClassName();
-                        if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner" && currentClass != "Gimmick") {
+                        if (currentClass != "Enemy" && currentClass != "Player" && currentClass != "Spawner" && currentClass != "Gimmick" && currentClass != "Item") {
                             newObj->SetClassName(type);
                         }
 
@@ -424,6 +439,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("eventID")) targetObject->SetEventType(static_cast<EventType>(objData["eventID"]));
                 if (objData.contains("targetID")) targetObject->SetTargetID(objData["targetID"]);
                 if (objData.contains("myEventID")) targetObject->SetEventID(objData["myEventID"]);
+                if (objData.contains("itemType") && objData["itemType"].is_string()) {
+                    targetObject->SetItemType(objData["itemType"].get<std::string>());
+                }
 
                 if (objData.contains("param") && objData["param"].is_object()) {
                     if (!targetObject->param_.has_value()) targetObject->param_.emplace();
@@ -437,6 +455,8 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("maxFallSpeed")) param.maxFallSpeed = p["maxFallSpeed"];
                     if (p.contains("enemyType")) param.enemyType = p["enemyType"];
                     if (p.contains("gimmickType")) param.gimmickType = p["gimmickType"];
+                    if (p.contains("itemType")) param.itemType = p["itemType"];
+                    if (p.contains("healAmount")) param.healAmount = p["healAmount"];
                     if (p.contains("interval")) param.interval = p["interval"];
                     if (p.contains("maxCount")) param.maxCount = p["maxCount"];
                     if (p.contains("shakeDuration")) param.shakeDuration = p["shakeDuration"];

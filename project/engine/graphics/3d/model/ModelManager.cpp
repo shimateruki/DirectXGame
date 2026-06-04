@@ -2,6 +2,7 @@
 #include "ModelCommon.h"
 #include <cassert>
 #include <filesystem> 
+#include <algorithm>
 #include "ProfilerManager.h"
 #include <chrono>
 
@@ -38,9 +39,22 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     }
 
     std::filesystem::path path(modelName);
-    std::string parentPath = path.parent_path().string(); // "enemy_core_shards"
-    std::string stem = path.stem().string();              // "enemy_core1"
+    std::string parentPath = path.parent_path().string();
+    std::replace(parentPath.begin(), parentPath.end(), '\\', '/');
+    std::string stem = path.stem().string();
     std::string ext = path.extension().string();
+
+    // 事前ロードは拡張子なしのキーで登録されるため、gltf指定でも同じモデルを再利用する
+    if (!ext.empty()) {
+        std::string extensionlessKey = parentPath.empty() ? stem : parentPath + "/" + stem;
+        std::replace(extensionlessKey.begin(), extensionlessKey.end(), '\\', '/');
+        if (models_.contains(extensionlessKey)) {
+            return models_[extensionlessKey].get();
+        }
+        if (!parentPath.empty() && models_.contains(parentPath)) {
+            return models_[parentPath].get();
+        }
+    }
 
     std::string directoryPath;
     std::string fileName;
@@ -58,9 +72,45 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 
     if (!ext.empty()) {
         fileName = path.filename().string();
+        std::string legacyDirectory = directoryPath;
+        std::string directDirectory = kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
+        if (std::filesystem::exists(legacyDirectory + fileName)) {
+            directoryPath = legacyDirectory;
+        }
+        else if (std::filesystem::exists(directDirectory + fileName)) {
+            directoryPath = directDirectory;
+        }
     }
     else {
-        fileName = stem + ".obj";
+        const std::string objName = stem + ".obj";
+        const std::string gltfName = stem + ".gltf";
+        const std::string glbName = stem + ".glb";
+
+        if (std::filesystem::exists(directoryPath + objName)) {
+            fileName = objName;
+        }
+        else if (std::filesystem::exists(directoryPath + gltfName)) {
+            fileName = gltfName;
+        }
+        else if (std::filesystem::exists(directoryPath + glbName)) {
+            fileName = glbName;
+        }
+        else if (std::filesystem::exists(directoryPath)) {
+            for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+                if (!entry.is_regular_file()) continue;
+                std::string candidateExt = entry.path().extension().string();
+                if (candidateExt == ".obj" || candidateExt == ".gltf" || candidateExt == ".glb") {
+                    fileName = entry.path().filename().string();
+                    break;
+                }
+            }
+            if (fileName.empty()) {
+                fileName = objName;
+            }
+        }
+        else {
+            fileName = objName;
+        }
     }
 
     std::string fullPath = directoryPath + fileName;

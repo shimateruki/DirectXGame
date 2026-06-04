@@ -23,6 +23,7 @@ public:
 
     float GetTimeScale() const { return timeScale_; }
     void SetTimeScale(float timeScale) { timeScale_ = timeScale; }
+    bool IsInitialized() const { return dxCommon_ != nullptr; }
 
     const std::map<std::string, GPUParticleConfig>& GetPresets() const { return presets_; }
 

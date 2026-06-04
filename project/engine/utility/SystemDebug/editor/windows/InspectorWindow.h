@@ -18,6 +18,7 @@ private:
     void DrawSpawnerSettings();
     void DrawEnemyTypeSelector();
     void DrawGimmickTypeSelector();
+    void DrawItemTypeSelector();
     void DrawAttributeSelector(const char* label, uint32_t* attribute);
 
     DebugEditor* editor_ = nullptr;

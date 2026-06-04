@@ -116,8 +116,9 @@ void Object3d::Update(float deltaTime) {
     // --- アニメーション計測 ---
     auto startAnim = std::chrono::high_resolution_clock::now();
     if (meshRenderer_ && meshRenderer_->GetModel()) {
+        bool appliedAnimation = false;
+        Model* model = meshRenderer_->GetModel();
         if (!animName_.empty()) {
-            Model* model = meshRenderer_->GetModel();
             const Model::Animation* anim = model->GetAnimation(animName_);
             if (anim) {
                 animationTime_ += deltaTime;
@@ -128,9 +129,10 @@ void Object3d::Update(float deltaTime) {
                     time = std::min(time, anim->duration);
                 }
                 model->ApplyAnimation(*anim, time);
+                appliedAnimation = true;
             }
         }
-        meshRenderer_->GetModel()->Update();
+        model->Update(appliedAnimation);
     }
     auto endAnim = std::chrono::high_resolution_clock::now();
     cpuAnimTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endAnim - startAnim).count()) / 1000.0f;
@@ -556,6 +558,7 @@ void Object3d::CopyFrom(const Object3d* other) {
     this->saveCategory_ = other->saveCategory_;
     this->enemyType_ = other->enemyType_;
     this->gimmickType_ = other->gimmickType_;
+    this->itemType_ = other->itemType_;
     this->isVisible_ = other->isVisible_;
     this->isLocked_ = other->isLocked_;
     if (!other->GetModelName().empty()) {
@@ -642,6 +645,7 @@ json Object3d::ExportToJson() {
     d["saveCategory"] = saveCategory_;
     d["enemyType"] = enemyType_;
     d["gimmickType"] = gimmickType_;
+    d["itemType"] = itemType_;
     d["isVisible"] = isVisible_;
     d["isLocked"] = isLocked_;
 
@@ -682,6 +686,8 @@ json Object3d::ExportToJson() {
         jp["maxFallSpeed"] = p.maxFallSpeed;
         jp["enemyType"] = p.enemyType;
         jp["gimmickType"] = p.gimmickType;
+        jp["itemType"] = p.itemType;
+        jp["healAmount"] = p.healAmount;
         jp["interval"] = p.interval;
         jp["maxCount"] = p.maxCount;
         jp["detectionRange"] = p.detectionRange;
@@ -747,6 +753,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("saveCategory")) saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType")) enemyType_ = j["enemyType"];
     if (j.contains("gimmickType")) gimmickType_ = j["gimmickType"];
+    if (j.contains("itemType")) itemType_ = j["itemType"];
     if (j.contains("isVisible")) isVisible_ = j["isVisible"];
     if (j.contains("isLocked")) isLocked_ = j["isLocked"];
 
@@ -795,6 +802,8 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("maxFallSpeed")) p.maxFallSpeed = jp["maxFallSpeed"];
         if (jp.contains("enemyType")) p.enemyType = jp["enemyType"];
         if (jp.contains("gimmickType")) p.gimmickType = jp["gimmickType"];
+        if (jp.contains("itemType")) p.itemType = jp["itemType"];
+        if (jp.contains("healAmount")) p.healAmount = jp["healAmount"];
         if (jp.contains("interval")) p.interval = jp["interval"];
         if (jp.contains("maxCount")) p.maxCount = jp["maxCount"];
         if (jp.contains("detectionRange")) p.detectionRange = jp["detectionRange"];

@@ -168,6 +168,7 @@ private:
     // 現在頭に乗せているキャラクター（敵）のポインタ
     Object3d* carriedEnemy_ = nullptr;
     Object3d* aimTargetObject_ = nullptr;  // エイム中にレイが当たっている対象
+    float carryGlideEffectTimer_ = 0.0f;
 public:
     Object3d* GetHookMarker() const { return hookMarker_.get(); }
 private:
