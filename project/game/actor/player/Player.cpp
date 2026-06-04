@@ -245,10 +245,6 @@ bool Player::OnCollision(Object3d* other)
         ApplyPhysicsCollision(info, attribute);
     }
 
-    // =======================================================
-    // 2. ダメージ処理 (敵の攻撃に当たった時)
-    // =======================================================
-    // 属性が「kEnemyAttack」の時のみダメージ判定を行います。
     if (attribute & kEnemyAttack)
     {
         // タイマーと「総合的な無敵状態」の両方をチェック
@@ -266,9 +262,11 @@ bool Player::OnCollision(Object3d* other)
 
             // ★重要: ダメージ用の無敵フラグのみを立てる (赤色になる)
             SetDamageInvincible(true);
+
+            // ★追加: ここで新しい「被弾ステート」に強制遷移させる！
+            ChangeState(std::make_unique<PlayerStateDamage>());
         }
     }
-
     // =======================================================
     // 3. ギミック・汎用イベントの発行
     // =======================================================

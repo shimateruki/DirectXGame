@@ -155,12 +155,22 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.cpp" />
+    <ClCompile Include="EnemyBomb.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack6_Laser.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack4_Wall.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BossAttack1_Rush.cpp" />
+    <ClCompile Include="game\actor\enemy\BossAttack\BaseBossAttack.cpp" />
     <ClCompile Include="EffectObject3d.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EngineManualWindow.cpp" />
     <ClCompile Include="game\actor\enemy\BossCore.cpp" />
     <ClCompile Include="game\actor\enemy\BaseEnemy.cpp" />
     <ClCompile Include="engine\component\Collider.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\EditorManager.cpp" />
+    <ClCompile Include="game\actor\enemy\TutorialDoll.cpp" />
     <ClCompile Include="game\actor\MapBlock.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
     <ClCompile Include="game\actor\enemy\EnemySlime.cpp" />
@@ -271,6 +281,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\system\input\KeyConfig.cpp" />
     <ClCompile Include="MeshEffectEditor.cpp" />
     <ClCompile Include="MeshEffectManager.cpp" />
+    <ClCompile Include="OptionUI.cpp" />
+    <ClCompile Include="SaveDataManager.cpp" />
+    <ClCompile Include="TimeAttackUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconflg" />
@@ -375,6 +388,15 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack7_Absorb.h" />
+    <ClInclude Include="EnemyBomb.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack6_Laser.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack5_Humanoid.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack4_Wall.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack3_Hammer.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack2_Shoot.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BossAttack1_Rush.h" />
+    <ClInclude Include="game\actor\enemy\BossAttack\BaseBossAttack.h" />
     <ClInclude Include="EffectObject3d.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorCommon.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EngineManualWindow.h" />
@@ -385,6 +407,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\enemy\BaseEnemy.h" />
     <ClInclude Include="engine\component\Collider.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\EditorManager.h" />
+    <ClInclude Include="game\actor\enemy\TutorialDoll.h" />
     <ClInclude Include="game\actor\MapBlock.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
     <ClInclude Include="game\actor\enemy\EnemySlime.h" />
@@ -653,11 +676,14 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\system\input\KeyConfig.h" />
     <ClInclude Include="MeshEffectEditor.h" />
     <ClInclude Include="MeshEffectManager.h" />
+    <ClInclude Include="OptionUI.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="engine\graphics\core\RootSignatureBuilder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\SceneSerializer.h" />
     <ClInclude Include="engine\graphics\particle\VFXSequencer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\VFXSequencerEditor.h" />
+    <ClInclude Include="SaveDataManager.h" />
+    <ClInclude Include="TimeAttackUI.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

@@ -35,6 +35,7 @@ public:
     std::string GetKeyName(int keyCode) const;
     std::string GetPadName(WORD padCode) const;
     const BindData* GetBindData(const std::string& actionName) const;
+    void SetKeyCode(const std::string& actionName, int keyCode);
 private:
     KeyConfig() = default;
     ~KeyConfig() = default;
