@@ -21,6 +21,10 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreateMagmaPipeline();
     CreateIcePipeline();
     CreateFirePipeline();
+    CreateLaserPipeline();
+    CreateSlimeGelPipeline();
+    CreateShockwavePipeline();
+    CreateLiquidContactPipeline();
 
     CreateSkyboxPipeline();
 }
@@ -418,6 +422,29 @@ void Object3dCommon::SetWaterGraphicsCommand() {
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
+void Object3dCommon::CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState) {
+    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    auto vsBlob = dxCommon_->CompileShader(vertexShaderPath, L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(pixelShaderPath, L"ps_6_0");
+
+    GraphicsPipelineBuilder psoBuilder;
+    psoBuilder.SetRootSignature(waterRootSignature_.Get());
+    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
+    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
+    psoBuilder.SetRasterizerState(cullMode, D3D12_FILL_MODE_SOLID);
+    psoBuilder.SetBlendMode(blendMode);
+    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
+
+    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
+    psoBuilder.Build(dxCommon_->GetDevice(), outPipelineState);
+}
+
 // ==========================================
 // マグマ専用のパイプライン作成
 // ==========================================
@@ -525,6 +552,78 @@ void Object3dCommon::SetFireGraphicsCommand() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(firePipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::CreateLaserPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/LaserBeam.VS.hlsl",
+        L"Resources/shader/LaserBeam.PS.hlsl",
+        BlendMode::kAdd,
+        D3D12_CULL_MODE_NONE,
+        laserPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateSlimeGelPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/SlimeGel.VS.hlsl",
+        L"Resources/shader/SlimeGel.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        slimeGelPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateShockwavePipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/GroundShockwave.VS.hlsl",
+        L"Resources/shader/GroundShockwave.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        shockwavePipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateLiquidContactPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/LiquidContact.VS.hlsl",
+        L"Resources/shader/LiquidContact.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        liquidContactPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::SetLaserGraphicsCommand() {
+    if (!laserPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(laserPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetSlimeGelGraphicsCommand() {
+    if (!slimeGelPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(slimeGelPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetShockwaveGraphicsCommand() {
+    if (!shockwavePipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(shockwavePipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetLiquidContactGraphicsCommand() {
+    if (!liquidContactPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(liquidContactPipelineState_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 

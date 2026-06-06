@@ -374,7 +374,7 @@ void GameSelectScene::Draw() {
 
 	// 5. 流体描画
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) hasFluid = true;
+	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 15) hasFluid = true;
 	if (hasFluid) {
 		dxCommon_->UpdateGrabTexture();
 		for (auto& obj : objects) {
@@ -384,6 +384,10 @@ void GameSelectScene::Draw() {
 			else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 12) obj->DrawLaser(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 13) obj->DrawSlimeGel(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 14) obj->DrawShockwave(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 15) obj->DrawLiquidContact(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
 	}
 

@@ -222,11 +222,13 @@ void InspectorWindow::Draw() {
                                          "通常 (Standard)", "ガラス (Glass)", "氷・宝石 (Ice/Crystal)",
                                          "ホログラム (Hologram)", "消滅 (Dissolve)", "旧マグマ (Emissive)",
                                          "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
-                                         "水 (Water)", "新マグマ (Magma)", "分厚い氷 (Ice)", "炎 (Fire)"
+                                         "水 (Water)", "新マグマ (Magma)", "分厚い氷 (Ice)", "炎 (Fire)",
+                                         "レーザー (Laser)", "スライムジェル (Slime Gel)",
+                                         "地面衝撃波 (Shockwave)", "水/マグマ接触 (Liquid Contact)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 11) currentMatType = 0; 
+                if (currentMatType > 15) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -259,7 +261,7 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
-                if (currentMatType >= 8 && currentMatType <= 11) {
+                if (currentMatType >= 8 && currentMatType <= 15) {
                     ImGui::Separator();
 
                     if (selectedObject->GetMeshRenderer() && selectedObject->GetMeshRenderer()->GetWaterParamData()) {
@@ -278,6 +280,49 @@ void InspectorWindow::Draw() {
                             if (ImGui::DragFloat("描画サイズ (Billboard Size)", &waterData->billboardScale, 0.01f, 0.05f, 3.0f)) isGraphicsChanged = true;
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("炎の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 12) {
+                            ImGui::TextColored(ImVec4(0.25f, 0.85f, 1.0f, 1.0f), ICON_FA_BOLT " --- Laser Settings ---");
+                            if (ImGui::DragFloat("流れる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 20.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("縞の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 30.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("外側の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 13) {
+                            ImGui::TextColored(ImVec4(0.15f, 1.0f, 0.8f, 1.0f), ICON_FA_WATER " --- Slime Gel Settings ---");
+                            if (ImGui::DragFloat("ぷるぷる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("変形量 (Wobble Height)", &waterData->waveHeight, 0.01f, 0.0f, 3.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("内部模様の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 20.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("屈折の強さ (Refraction)", &waterData->effectScale, 0.01f, 0.05f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("表面の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("透明感の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 14) {
+                            ImGui::TextColored(ImVec4(0.45f, 0.85f, 1.0f, 1.0f), ICON_FA_BULLSEYE " --- Ground Shockwave Settings ---");
+                            if (ImGui::DragFloat("広がる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("ひびの細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 24.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("衝撃波の半径 (Radius Scale)", &waterData->effectScale, 0.01f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("リング幅 (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("明るさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 6.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 15) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.18f, 1.0f), ICON_FA_BURN " --- Liquid Contact Settings ---");
+                            const char* contactTypes[] = { "水の泡 (Foam)", "マグマ蒸気 (Steam)" };
+                            int contactType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 1);
+                            if (ImGui::Combo("接触タイプ (Contact Type)", &contactType, contactTypes, IM_ARRAYSIZE(contactTypes))) {
+                                waterData->effectType = static_cast<float>(contactType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("流れる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("泡/蒸気の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 24.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("帯の幅 (Band Width)", &waterData->effectScale, 0.01f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("境界の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("明るさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 6.0f)) isGraphicsChanged = true;
+                            ImGui::Separator();
+                            ImGui::Text(ICON_FA_WIND " --- Flow Settings ---");
+                            if (ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
                         }
                         else {
                             const char* settingTitle = (currentMatType == 8) ? ICON_FA_TINT " --- Water Settings ---" :
@@ -1357,7 +1402,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetModel("Primitives/cube");
             selectedObject->SetColor({ 1.0f, 0.08f, 0.05f, 0.9f });
             selectedObject->SetBlendMode(BlendMode::kAdd);
-            selectedObject->SetMaterialType(3);
+            selectedObject->SetMaterialType(12);
             selectedObject->SetTexture("Resources/sprite/white.png");
             selectedObject->SetEmissive(6.0f);
             selectedObject->SetScale({ 0.25f, 0.25f, 1.0f });

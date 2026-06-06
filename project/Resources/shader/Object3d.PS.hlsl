@@ -399,13 +399,18 @@ PixelShaderOutput main(VertexShaderOutput input)
                 {
                     float2 uv = input.texcoord;
                     float radial = abs(uv.x - 0.5f) * 2.0f;
-                    float core = 1.0f - smoothstep(0.0f, 0.28f, radial);
-                    float glow = 1.0f - smoothstep(0.08f, 1.0f, radial);
-                    float stripe = 0.72f + 0.28f * sin(uv.y * 48.0f);
+                    float core = 1.0f - smoothstep(0.0f, 0.22f, radial);
+                    float innerGlow = 1.0f - smoothstep(0.08f, 0.58f, radial);
+                    float outerGlow = 1.0f - smoothstep(0.20f, 1.0f, radial);
+                    float strandA = 0.5f + 0.5f * sin(uv.y * 54.0f + radial * 8.0f);
+                    float strandB = 0.5f + 0.5f * sin(uv.y * 31.0f - radial * 13.0f);
+                    float shell = smoothstep(0.34f, 0.62f, radial) * (1.0f - smoothstep(0.78f, 1.0f, radial));
+                    shell *= strandA * 0.65f + strandB * 0.45f;
                     float3 baseColor = gMaterial.color.rgb * textureColor.rgb;
+                    float3 hotCore = lerp(float3(1.9f, 2.35f, 2.8f), baseColor * 2.2f, 0.38f);
 
-                    output.color.rgb = baseColor * (core * 5.0f + glow * 1.8f) * gMaterial.emissive * stripe;
-                    output.color.a = saturate(gMaterial.color.a * (core + glow * 0.5f));
+                    output.color.rgb = (hotCore * core * 3.6f + baseColor * innerGlow * 2.6f + baseColor * outerGlow * 1.25f + baseColor * shell * 2.0f) * gMaterial.emissive;
+                    output.color.a = saturate(gMaterial.color.a * (core + innerGlow * 0.55f + outerGlow * 0.28f + shell * 0.45f));
                 }
             // ===========================================================
             // 通常のPBRマテリアル

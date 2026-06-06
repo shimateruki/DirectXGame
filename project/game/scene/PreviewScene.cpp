@@ -326,7 +326,7 @@ void PreviewScene::Draw() {
 	// 5. GPUパーティクル / 流体
 	bool hasFluid = false;
 	for (auto& obj : objects) {
-		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) { hasFluid = true; break; }
+		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 15) { hasFluid = true; break; }
 	}
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
 	bool grabUpdated = false;
@@ -349,6 +349,10 @@ void PreviewScene::Draw() {
 				else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 12) obj->DrawLaser(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 13) obj->DrawSlimeGel(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 14) obj->DrawShockwave(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 15) obj->DrawLiquidContact(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			}
 		}
 		if (hasGPUParticles) {

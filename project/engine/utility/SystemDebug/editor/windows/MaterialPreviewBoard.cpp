@@ -1,8 +1,8 @@
 #include "MaterialPreviewBoard.h"
 
 #include "BaseScene.h"
-#include "DebugEditor.h"
 #include "DebugConsole.h"
+#include "DebugEditor.h"
 #include "EffectPreviewStage.h"
 #include "IconsFontAwesome5.h"
 #include "ModelManager.h"
@@ -11,7 +11,6 @@
 #include "imgui.h"
 
 #include <algorithm>
-#include <cmath>
 #include <memory>
 
 namespace {
@@ -37,6 +36,7 @@ void MaterialPreviewBoard::DrawImGui() {
     ImGui::SliderInt("列数", &columns_, 1, 8);
     ImGui::Checkbox("Effect Preview Stage内に生成", &useEffectPreviewStage_);
     ImGui::Checkbox("選択中オブジェクトの近くに生成", &placeNearSelected_);
+
     if (useEffectPreviewStage_) {
         EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
         if (stage && stage->IsEnabled()) {
@@ -47,8 +47,7 @@ void MaterialPreviewBoard::DrawImGui() {
         }
     }
 
-    int currentCount = CountBoardObjects();
-    ImGui::TextDisabled("現在のPreview数: %d", currentCount);
+    ImGui::TextDisabled("現在のPreview数: %d", CountBoardObjects());
 
     if (ImGui::Button(ICON_FA_MAGIC " Preview Boardを生成", ImVec2(-1, 0))) {
         CreateBoard();
@@ -59,7 +58,7 @@ void MaterialPreviewBoard::DrawImGui() {
     }
 
     ImGui::Separator();
-    ImGui::TextWrapped("生成物は保存対象から除外されます。見た目確認用なので、必要がなくなったら削除してください。");
+    ImGui::TextWrapped("生成物は保存対象から除外されます。見た目確認用なので、不要になったら削除してください。");
 
     if (ImGui::BeginTable("MaterialPreviewTypes", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 60.0f);
@@ -74,12 +73,7 @@ void MaterialPreviewBoard::DrawImGui() {
             ImGui::TableSetColumnIndex(1);
             ImGui::TextUnformatted(entry.label);
             ImGui::TableSetColumnIndex(2);
-            if (entry.materialType >= 8) {
-                ImGui::TextDisabled("専用描画パスで確認");
-            }
-            else {
-                ImGui::TextDisabled("通常描画パスで確認");
-            }
+            ImGui::TextDisabled(entry.materialType >= 8 ? "専用描画パスで確認" : "通常描画パスで確認");
         }
 
         ImGui::EndTable();
@@ -131,7 +125,7 @@ void MaterialPreviewBoard::CreateBoard() {
         object->SetCollisionAttribute(0);
         object->SetCollisionMask(0);
         object->SetMaterialType(entry.materialType);
-        object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 ? BlendMode::kNormal : BlendMode::kNone);
+        object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 || entry.materialType >= 8 ? BlendMode::kNormal : BlendMode::kNone);
         object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         object->SetEmissive(entry.materialType == 3 ? 2.5f : 1.0f);
 
@@ -196,6 +190,10 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         { 8, "水 (Water)", "Water" },
         { 9, "新マグマ (Magma)", "Magma" },
         { 10, "分厚い氷 (Ice)", "Ice" },
-        { 11, "炎 (Fire)", "Fire" }
+        { 11, "炎 (Fire)", "Fire" },
+        { 12, "レーザー (Laser)", "Laser" },
+        { 13, "スライムジェル (Slime Gel)", "SlimeGel" },
+        { 14, "地面衝撃波 (Shockwave)", "Shockwave" },
+        { 15, "水/マグマ接触 (Liquid Contact)", "LiquidContact" }
     };
 }

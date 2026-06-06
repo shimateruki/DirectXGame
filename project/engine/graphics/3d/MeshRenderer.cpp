@@ -274,6 +274,35 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     drawModel->DrawMeshOnly();
 }
 
+void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)()) {
+    if (!model_ || !common_ || !waterParamResource_ || !setGraphicsCommand) return;
+
+    (common_->*setGraphicsCommand)();
+    ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
+    commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(1, waterParamResource_->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    model_->DrawMeshOnly();
+}
+
+void MeshRenderer::DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetLaserGraphicsCommand);
+}
+
+void MeshRenderer::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetSlimeGelGraphicsCommand);
+}
+
+void MeshRenderer::DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetShockwaveGraphicsCommand);
+}
+
+void MeshRenderer::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetLiquidContactGraphicsCommand);
+}
+
 void MeshRenderer::InitializeFireProxyModel() {
     ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
     if (!modelCommon) {

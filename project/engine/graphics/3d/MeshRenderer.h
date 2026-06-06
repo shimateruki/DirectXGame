@@ -163,9 +163,14 @@ public:
     void DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle); 
     void DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle);   
     void DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
     void InitializeFireProxyModel();
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)());
 
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;

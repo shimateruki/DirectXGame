@@ -478,7 +478,7 @@ void GamePlayScene::Draw() {
 	// =======================================================
 	bool hasFluid = false;
 	for (auto& obj : objects) {
-		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 11) {
+		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 15) {
 			hasFluid = true;
 			break;
 		}
@@ -515,6 +515,18 @@ void GamePlayScene::Draw() {
 				}
 				else if (matType == 11) {
 					obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				else if (matType == 12) {
+					obj->DrawLaser(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				else if (matType == 13) {
+					obj->DrawSlimeGel(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				else if (matType == 14) {
+					obj->DrawShockwave(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
+				else if (matType == 15) {
+					obj->DrawLiquidContact(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				}
 			}
 		}

@@ -308,6 +308,26 @@ void Object3d::DrawFire(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
         meshRenderer_->DrawFire(depthSrvHandle, grabSrvHandle);
     }
 }
+void Object3d::DrawLaser(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawLaser(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawShockwave(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
+    }
+}
 Model* Object3d::GetModel() const {
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }
@@ -723,7 +743,7 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
-    if (GetMaterialType() >= 8 && GetMaterialType() <= 11 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+    if (GetMaterialType() >= 8 && GetMaterialType() <= 15 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         json jw;
         jw["waveSpeed"] = water->waveSpeed;
@@ -853,7 +873,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
-    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 11) {
+    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 15) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
             const auto& jw = j["waterParam"];

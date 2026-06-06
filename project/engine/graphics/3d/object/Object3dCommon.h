@@ -53,9 +53,17 @@ public:
    void CreateMagmaPipeline();
    void CreateIcePipeline();
    void CreateFirePipeline();
+   void CreateLaserPipeline();
+   void CreateSlimeGelPipeline();
+   void CreateShockwavePipeline();
+   void CreateLiquidContactPipeline();
    void SetMagmaGraphicsCommand();
    void SetIceGraphicsCommand();
    void SetFireGraphicsCommand();
+   void SetLaserGraphicsCommand();
+   void SetSlimeGelGraphicsCommand();
+   void SetShockwaveGraphicsCommand();
+   void SetLiquidContactGraphicsCommand();
 
    void CreateSkyboxPipeline();
    ID3D12RootSignature* GetSkyboxRootSignature() const { return skyboxRootSignature_.Get(); }
@@ -64,7 +72,8 @@ private:
    /// <summary>
    /// ルートシグネチャの作成
    /// </summary>
-    void CreatePipelineStates();
+   void CreatePipelineStates();
+   void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState);
 
 
 
@@ -87,6 +96,10 @@ private:
    Microsoft::WRL::ComPtr<ID3D12PipelineState> magmaPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> icePipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> firePipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> laserPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> slimeGelPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> shockwavePipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> liquidContactPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;
