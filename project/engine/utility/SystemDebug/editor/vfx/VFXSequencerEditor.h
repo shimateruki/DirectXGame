@@ -1,25 +1,30 @@
 #pragma once
+
 #include "IEditable.h"
 #include "VFXSequencer.h"
+#include <string>
+#include <vector>
 
-// ==========================================================
-// VFXシーケンサーをImGuiで組み立てる専用エディタ
-// ==========================================================
 class VFXSequencerEditor : public IEditable {
 public:
-
     void Initialize();
     void Update(float deltaTime);
     void DrawImGui() override;
 
-    std::string GetName() override { return "VFX Sequencer Editor"; }
+    std::string GetName() override { return "VFX Cue Editor"; }
     void RefreshFileList();
+
 private:
-    VFXSequencer previewSequencer_; // エディタ上で再生テストするための本体
+    void DrawTimelinePreview();
+    void DrawEventEditor(int index, VFXEvent& event);
+    void DrawPresetCombo(const char* label, std::string& value, const std::vector<std::string>& list);
+    void AddDefaultEvent(VFXEventType type);
+    const char* GetEventTypeName(VFXEventType type) const;
+
+    VFXSequencer previewSequencer_;
     char sequenceNameInput_[64] = "UltimateMeteor";
-    std::vector<std::string> particlePresetList_; // パーティクル（素材）のリスト
-    std::vector<std::string> sequenceFileList_;   // シーケンス（必殺技）のリスト
+    std::vector<std::string> particlePresetList_;
+    std::vector<std::string> sequenceFileList_;
     std::vector<std::string> meshEffectList_;
     std::vector<std::string> seFileList_;
-
 };

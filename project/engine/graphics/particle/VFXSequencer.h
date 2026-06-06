@@ -4,55 +4,73 @@
 #include "engine/utility/math/Math.h"
 #include "Transform.h"
 #include "Object3d.h"
+
 enum class VFXEventType {
     GPUParticle = 0,
     MeshEffect = 1,
     SoundEffect = 2,
-    MovingParticle = 3
+    MovingParticle = 3,
+    CameraShake = 4,
+    PostEffectPulse = 5
 };
-// タイムライン上の1つの発火イベント
+
 struct VFXEvent {
     VFXEventType type = VFXEventType::GPUParticle;
+    std::string presetName;
+    float triggerTime = 0.0f;
+    Vector3 offset = { 0.0f, 0.0f, 0.0f };
+    Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+    Vector3 scale = { 1.0f, 1.0f, 1.0f };
+    bool hasFired = false;
+    Vector3 controlPoint = { 0.0f, 5.0f, 0.0f };
+    Vector3 endOffset = { 0.0f, 0.0f, 10.0f };
+    float duration = 1.0f;
+    int easingType = 0;
+    bool isFinished = false;
 
-    std::string presetName; // 呼び出すパーティクルのプリセット名
-    float triggerTime;      // Play開始から何秒後に発火するか
-    Vector3 offset;         // 対象からの位置ズレ（足元、頭上など）
-    Vector3 rotation = { 0.0f, 0.0f, 0.0f }; // ★追加：回転ズレ
-    Vector3 scale = { 1.0f, 1.0f, 1.0f };    // ★追加：スケール倍率
-    bool hasFired = false;  // 実行済みフラグ（内部用）
-    Vector3 controlPoint = { 0.0f, 5.0f, 0.0f }; // 中間点（カーブを引っ張る方向）
-    Vector3 endOffset = { 0.0f, 0.0f, 10.0f };   // 終点
-    float duration = 1.0f;                       // 移動にかける時間
-    int easingType = 0;                          // イージングの種類
-    bool isFinished = false; // 処理が完全に終わったか
+    float intensity = 0.2f;
+    float frequency = 24.0f;
+    float radialIntensity = 0.0f;
+    float damageFlash = 0.0f;
+    float chromaticAberration = 0.0f;
+    float wobbleIntensity = 0.0f;
+
+    bool hasCapturedPostBase = false;
+    float baseRadialIntensity = 0.0f;
+    float baseDamageFlash = 0.0f;
+    float baseChromaticAberration = 0.0f;
+    float baseWobbleIntensity = 0.0f;
 };
 
-// ==========================================================
-// 複数のエフェクトを時間差で連続再生する最強の演出コンポーネント
-// ==========================================================
 class VFXSequencer {
 public:
     VFXSequencer() = default;
     ~VFXSequencer() = default;
-    void Initialize(Object3d* targetObject = nullptr);
 
-    // 毎フレーム呼ぶ（内部でタイマーを進めてエフェクトを発火）
+    void Initialize(Object3d* targetObject = nullptr);
     void Update(float deltaTime);
 
-    // 再生コントロール
     void Play();
     void Stop();
     void Reset();
 
-    // 演出をタイムラインに追加する！
-    void AddEvent(VFXEventType type, const std::string& presetName, float triggerTime, const Vector3& offset = { 0.0f, 0.0f, 0.0f }, const Vector3& rotation = { 0.0f, 0.0f, 0.0f }, const Vector3& scale = { 1.0f, 1.0f, 1.0f });
+    void AddEvent(
+        VFXEventType type,
+        const std::string& presetName,
+        float triggerTime,
+        const Vector3& offset = { 0.0f, 0.0f, 0.0f },
+        const Vector3& rotation = { 0.0f, 0.0f, 0.0f },
+        const Vector3& scale = { 1.0f, 1.0f, 1.0f });
 
     bool IsPlaying() const { return isPlaying_; }
+    float GetDuration() const;
     void Save(const std::string& sequenceName);
     void Load(const std::string& sequenceName);
-    std::vector<VFXEvent>& GetEvents() { return events_; } // エディタから配列をいじる用
+    std::vector<VFXEvent>& GetEvents() { return events_; }
+    const std::vector<VFXEvent>& GetEvents() const { return events_; }
     void SetTargetObject(Object3d* targetObject) { targetObject_ = targetObject; }
     Object3d* GetTargetObject() const { return targetObject_; }
+
 private:
     std::vector<VFXEvent> events_;
     Object3d* targetObject_ = nullptr;

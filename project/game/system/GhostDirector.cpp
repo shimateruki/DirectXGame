@@ -1,28 +1,70 @@
 #define NOMINMAX
 #include "GhostDirector.h"
-#include "imgui.h"
 #include "BaseScene.h"
-#include <fstream>
-#include "json.hpp"
-#include <filesystem>
-#include <DebugConsole.h>
+#include "DebugConsole.h"
 #include "GhostRecorder.h"
 #include "IconsFontAwesome5.h"
+#include "imgui.h"
+#include "json.hpp"
+#include <algorithm>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+
 using json = nlohmann::json;
 namespace fs = std::filesystem;
+
+namespace {
+    constexpr const char* kScenarioDir = "Resources/json/scenario/";
+    constexpr const char* kAnimationDir = "Resources/json/animation/";
+    constexpr const char* kVFXDir = "Resources/json/vfx_sequence/";
+
+    std::vector<std::string> CollectJsonStems(const std::string& directory) {
+        std::vector<std::string> names;
+        if (!fs::exists(directory)) {
+            return names;
+        }
+
+        for (const auto& entry : fs::directory_iterator(directory)) {
+            if (entry.path().extension() == ".json") {
+                names.push_back(entry.path().stem().string());
+            }
+        }
+        std::sort(names.begin(), names.end());
+        return names;
+    }
+
+    void AddDebugLog(const std::string& text) {
+        if (DebugConsole::GetInstance()) {
+            DebugConsole::GetInstance()->AddLog(text);
+        }
+    }
+
+    std::string BuildTargetLabel(Object3d* target, const std::string& targetName, bool allowWorld) {
+        if (target) {
+            return target->GetName();
+        }
+        if (!targetName.empty()) {
+            return targetName + " (未解決)";
+        }
+        return allowWorld ? "(ワールド座標)" : "(未選択)";
+    }
+}
 
 void GhostDirector::Initialize(SceneManager* sceneManager) {
     sceneManager_ = sceneManager;
     tracks_.clear();
+    vfxTracks_.clear();
     isPlaying_ = false;
     playTimer_ = 0.0f;
+    currentScrubTime_ = 0.0f;
 }
 
 void GhostDirector::Update(float deltaTime) {
-    if (!isPlaying_) return;
+    if (!isPlaying_) {
+        return;
+    }
 
-    // ゲーム再生中（useImguiTime_ == false）なら、ゲームの deltaTime で進める
-    // これにより、ゲーム側の停止処理（deltaTime=0）でボスも止まります
     if (!useImguiTime_) {
         AdvanceTime(deltaTime);
     }
@@ -30,58 +72,79 @@ void GhostDirector::Update(float deltaTime) {
 
 void GhostDirector::DrawImGui() {
 #ifdef USE_IMGUI
-    // =======================================================
-    // 1. 時間の更新（エディタ再生モード時のみ）
-    // =======================================================
     if (isPlaying_ && useImguiTime_) {
         AdvanceTime(ImGui::GetIO().DeltaTime);
     }
 
-    ImGui::Text(ICON_FA_FILM " --- ゴーストディレクター (Cinematic Director) ---");
+    auto drawTargetCombo = [this](const char* label, Object3d*& target, std::string& targetName, bool allowWorld) {
+        std::string currentTargetName = BuildTargetLabel(target, targetName, allowWorld);
+        if (ImGui::BeginCombo(label, currentTargetName.c_str())) {
+            if (allowWorld && ImGui::Selectable("(ワールド座標)", target == nullptr && targetName.empty())) {
+                target = nullptr;
+                targetName.clear();
+            }
 
-    // =======================================================
-    // 2. シナリオファイル管理
-    // =======================================================
-    if (ImGui::CollapsingHeader(ICON_FA_SAVE " シナリオファイル管理", ImGuiTreeNodeFlags_DefaultOpen)) {
-        std::string dirPath = "Resources/json/scenario/";
-        if (!fs::exists(dirPath)) fs::create_directories(dirPath);
-
-        if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存シナリオをロード", scenarioNameBuf_)) {
-            for (const auto& entry : fs::directory_iterator(dirPath)) {
-                if (entry.path().extension() == ".json") {
-                    std::string fileName = entry.path().stem().string();
-                    bool isSelected = (std::string(scenarioNameBuf_) == fileName);
-                    if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-                        strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
-                        LoadScenario(scenarioNameBuf_);
+            if (sceneManager_ && sceneManager_->GetCurrentScene()) {
+                for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+                    bool isSelected = (target == obj.get());
+                    if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
+                        target = obj.get();
+                        targetName = obj->GetName();
                     }
-                    if (isSelected) ImGui::SetItemDefaultFocus();
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
                 }
             }
             ImGui::EndCombo();
         }
+    };
+
+    ImGui::Text(ICON_FA_FILM " Cinematic Director");
+    ImGui::TextDisabled("GhostRecorderのパス演出とVFX Cueを同じタイムラインで再生します。");
+
+    if (ImGui::CollapsingHeader(ICON_FA_SAVE " シナリオファイル", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (!fs::exists(kScenarioDir)) {
+            fs::create_directories(kScenarioDir);
+        }
+
+        const auto scenarioFiles = CollectJsonStems(kScenarioDir);
+        if (ImGui::BeginCombo(ICON_FA_FOLDER_OPEN " 既存シナリオ", scenarioNameBuf_)) {
+            for (const auto& fileName : scenarioFiles) {
+                const bool isSelected = (std::string(scenarioNameBuf_) == fileName);
+                if (ImGui::Selectable(fileName.c_str(), isSelected)) {
+                    strncpy_s(scenarioNameBuf_, sizeof(scenarioNameBuf_), fileName.c_str(), _TRUNCATE);
+                    LoadScenario(scenarioNameBuf_);
+                }
+                if (isSelected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
         ImGui::InputText(ICON_FA_FILE_SIGNATURE " シナリオ名", scenarioNameBuf_, sizeof(scenarioNameBuf_));
 
-        if (ImGui::Button(ICON_FA_DOWNLOAD " Save Scenario")) SaveScenario(scenarioNameBuf_);
+        if (ImGui::Button(ICON_FA_DOWNLOAD " Save Scenario")) {
+            SaveScenario(scenarioNameBuf_);
+        }
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_UPLOAD " Load Scenario")) LoadScenario(scenarioNameBuf_);
+        if (ImGui::Button(ICON_FA_UPLOAD " Load Scenario")) {
+            LoadScenario(scenarioNameBuf_);
+        }
     }
 
     ImGui::Separator();
 
-    // =======================================================
-    // 3. トラック管理 (配役表)
-    // =======================================================
-    if (ImGui::CollapsingHeader(ICON_FA_USERS " トラック管理 (配役表)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (ImGui::Button(ICON_FA_PLUS_CIRCLE " + トラックを追加")) {
+    if (ImGui::CollapsingHeader(ICON_FA_USERS " パストラック", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button(ICON_FA_PLUS_CIRCLE " パストラックを追加")) {
             tracks_.push_back(Track());
         }
 
-        ImGui::Spacing();
-
+        const auto animationFiles = CollectJsonStems(kAnimationDir);
         for (int i = 0; i < static_cast<int>(tracks_.size()); ++i) {
             ImGui::PushID(i);
-            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_USER " Track %d", i + 1);
+            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), ICON_FA_USER " Path Track %d", i + 1);
             ImGui::SameLine(ImGui::GetWindowWidth() - 50);
             if (ImGui::Button(ICON_FA_TRASH_ALT " Del")) {
                 tracks_.erase(tracks_.begin() + i);
@@ -90,46 +153,71 @@ void GhostDirector::DrawImGui() {
             }
 
             auto& track = tracks_[i];
+            drawTargetCombo(ICON_FA_CROSSHAIRS " Target", track.target, track.targetName, false);
 
-            // ターゲットオブジェクト選択
-            std::string currentTargetName = track.target ? track.target->GetName() : track.targetName.empty() ? "(未選択)" : track.targetName + " (見つかりません)";
-            if (ImGui::BeginCombo(ICON_FA_CROSSHAIRS " Target (役者)", currentTargetName.c_str())) {
-                if (sceneManager_ && sceneManager_->GetCurrentScene()) {
-                    for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
-                        bool isSelected = (track.target == obj.get());
-                        if (ImGui::Selectable(obj->GetName().c_str(), isSelected)) {
-                            track.target = obj.get();
-                            track.targetName = obj->GetName();
-                        }
-                        if (isSelected) ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            // 録画データ（パス）選択
             std::string currentPath = track.pathFileName.empty() ? "(未選択)" : track.pathFileName;
-            if (ImGui::BeginCombo(ICON_FA_MAP_SIGNS " Path Data (演技)", currentPath.c_str())) {
-                std::string animDirPath = "Resources/json/animation/";
-                if (fs::exists(animDirPath)) {
-                    for (const auto& entry : fs::directory_iterator(animDirPath)) {
-                        if (entry.path().extension() == ".json") {
-                            std::string fileName = entry.path().stem().string();
-                            bool isSelected = (track.pathFileName == fileName);
-                            if (ImGui::Selectable(fileName.c_str(), isSelected)) {
-                                track.pathFileName = fileName;
-                                if (track.target && track.target->recorder_) {
-                                    track.target->recorder_->Load(fileName);
-                                }
-                            }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
+            if (ImGui::BeginCombo(ICON_FA_MAP_SIGNS " Path Data", currentPath.c_str())) {
+                for (const auto& fileName : animationFiles) {
+                    const bool isSelected = (track.pathFileName == fileName);
+                    if (ImGui::Selectable(fileName.c_str(), isSelected)) {
+                        track.pathFileName = fileName;
+                        if (track.target && track.target->recorder_) {
+                            track.target->recorder_->Load(fileName);
                         }
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
                     }
                 }
                 ImGui::EndCombo();
             }
 
-            ImGui::SliderFloat(ICON_FA_CLOCK " 開始ディレイ (秒)", &track.delayTime, 0.0f, 10.0f, "%.2f sec");
+            ImGui::SliderFloat(ICON_FA_CLOCK " 開始ディレイ", &track.delayTime, 0.0f, 30.0f, "%.2f sec");
+            ImGui::Separator();
+            ImGui::PopID();
+        }
+    }
+
+    if (ImGui::CollapsingHeader(ICON_FA_MAGIC " VFX Cueトラック", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button(ICON_FA_PLUS_CIRCLE " VFX Cueを追加")) {
+            VFXTrack track;
+            track.sequencer.Initialize(nullptr);
+            vfxTracks_.push_back(track);
+        }
+
+        const auto vfxFiles = CollectJsonStems(kVFXDir);
+        for (int i = 0; i < static_cast<int>(vfxTracks_.size()); ++i) {
+            ImGui::PushID(10000 + i);
+            ImGui::TextColored(ImVec4(0.78f, 0.42f, 1.0f, 1.0f), ICON_FA_MAGIC " VFX Cue %d", i + 1);
+            ImGui::SameLine(ImGui::GetWindowWidth() - 50);
+            if (ImGui::Button(ICON_FA_TRASH_ALT " Del")) {
+                vfxTracks_.erase(vfxTracks_.begin() + i);
+                ImGui::PopID();
+                break;
+            }
+
+            auto& track = vfxTracks_[i];
+            drawTargetCombo(ICON_FA_CROSSHAIRS " Target", track.target, track.targetName, true);
+            track.sequencer.SetTargetObject(track.target);
+
+            std::string currentSequence = track.sequenceName.empty() ? "(未選択)" : track.sequenceName;
+            if (ImGui::BeginCombo(ICON_FA_FILM " VFX Sequence", currentSequence.c_str())) {
+                for (const auto& fileName : vfxFiles) {
+                    const bool isSelected = (track.sequenceName == fileName);
+                    if (ImGui::Selectable(fileName.c_str(), isSelected)) {
+                        track.sequenceName = fileName;
+                        track.sequencer.Initialize(track.target);
+                        track.sequencer.Load(fileName);
+                    }
+                    if (isSelected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::SliderFloat(ICON_FA_CLOCK " 発火ディレイ", &track.delayTime, 0.0f, 30.0f, "%.2f sec");
+            ImGui::TextDisabled("Targetなしの場合はCue内の座標をワールド座標として使います。");
             ImGui::Separator();
             ImGui::PopID();
         }
@@ -137,25 +225,18 @@ void GhostDirector::DrawImGui() {
 
     ImGui::Separator();
 
-    // =======================================================
-    // 4. タイムライン操作 (Scrub)
-    // =======================================================
-    if (ImGui::CollapsingHeader(ICON_FA_STREAM " タイムライン操作 (Timeline Scrub)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        float maxTime = 0.0f;
-        for (const auto& track : tracks_) {
-            if (track.target && track.target->recorder_) {
-                float duration = track.target->recorder_->GetTotalFrames() / 60.0f;
-                maxTime = std::max(maxTime, track.delayTime + duration);
-            }
-        }
+    if (ImGui::CollapsingHeader(ICON_FA_STREAM " タイムライン", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const float maxTime = GetScenarioDuration();
+        ImGui::Text(ICON_FA_STOPWATCH " 全体尺: %.2f sec", maxTime);
+        ImGui::TextDisabled("VFX Cueは一瞬の発火演出なので、スクラブ中はパスだけを確認します。");
 
-        ImGui::Text(ICON_FA_STOPWATCH " 全体の長さ: %.2f sec", maxTime);
-
-        bool isScrubbingChanged = ImGui::SliderFloat("##Scrub", &currentScrubTime_, 0.0f, maxTime, "%.2f sec");
+        const bool isScrubbingChanged = ImGui::SliderFloat("##Scrub", &currentScrubTime_, 0.0f, maxTime, "%.2f sec");
 
         if (ImGui::IsItemActivated()) {
             for (auto& track : tracks_) {
-                if (track.target && track.target->recorder_) track.target->recorder_->CaptureBasePose();
+                if (track.target && track.target->recorder_) {
+                    track.target->recorder_->CaptureBasePose();
+                }
             }
         }
 
@@ -163,7 +244,9 @@ void GhostDirector::DrawImGui() {
             for (auto& track : tracks_) {
                 if (track.target && track.target->recorder_) {
                     float localTime = currentScrubTime_ - track.delayTime;
-                    if (localTime < 0.0f) localTime = 0.0f;
+                    if (localTime < 0.0f) {
+                        localTime = 0.0f;
+                    }
                     track.target->recorder_->EvaluateAtFrame(static_cast<int>(localTime * 60.0f));
                 }
             }
@@ -171,252 +254,343 @@ void GhostDirector::DrawImGui() {
 
         if (ImGui::IsItemDeactivated()) {
             for (auto& track : tracks_) {
-                if (track.target && track.target->recorder_) track.target->recorder_->RestoreBasePose();
+                if (track.target && track.target->recorder_) {
+                    track.target->recorder_->RestoreBasePose();
+                }
             }
         }
 
-        if (ImGui::Button(ICON_FA_BACKWARD " 先頭に戻す (Rewind)")) {
+        if (ImGui::Button(ICON_FA_BACKWARD " 先頭に戻す")) {
             currentScrubTime_ = 0.0f;
             for (auto& track : tracks_) {
-                if (track.target && track.target->recorder_) track.target->recorder_->EvaluateAtFrame(0);
+                if (track.target && track.target->recorder_) {
+                    track.target->recorder_->EvaluateAtFrame(0);
+                }
             }
         }
     }
 
     ImGui::Separator();
 
-    // =======================================================
-    // 5. 再生コントロール
-    // =======================================================
     if (isPlaying_) {
-        ImGui::TextColored(ImVec4(0, 1, 0, 1), ICON_FA_PLAY_CIRCLE " ▶ 再生中 (%sモード): %.2f sec",
-            useImguiTime_ ? "エディタ" : "ゲーム", playTimer_);
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FA_PLAY_CIRCLE " 再生中 (%s): %.2f sec",
+            useImguiTime_ ? "Editor" : "Game", playTimer_);
     }
     else {
-        ImGui::TextColored(ImVec4(1, 1, 1, 1), ICON_FA_STOP_CIRCLE " ■ 待機中");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), ICON_FA_STOP_CIRCLE " 待機中");
     }
 
     static bool editorLoopCheck = false;
     ImGui::Checkbox(ICON_FA_REDO " Loop Playback", &editorLoopCheck);
 
-    // エディタ用：ゲームが止まっていても動く
-    if (ImGui::Button(ICON_FA_PLAY " ▶ エディタでプレビュー (Editor Preview)", ImVec2(-1, 40))) {
+    if (ImGui::Button(ICON_FA_PLAY " Editor Preview", ImVec2(-1, 40))) {
         PlayScenario(editorLoopCheck, true);
     }
 
-    // ゲーム内挙動テスト
-    if (ImGui::Button(ICON_FA_GAMEPAD " ▶ ゲーム内挙動テスト (Game Play Test)", ImVec2(-1, 30))) {
+    if (ImGui::Button(ICON_FA_GAMEPAD " Game Play Test", ImVec2(-1, 30))) {
         PlayScenario(editorLoopCheck, false);
     }
 
-    if (ImGui::Button(ICON_FA_STOP " ■ 停止 (Stop Scenario)", ImVec2(-1, 30))) {
+    if (ImGui::Button(ICON_FA_STOP " Stop Scenario", ImVec2(-1, 30))) {
         StopScenario();
     }
 #endif
 }
+
 void GhostDirector::PlayScenario(bool isLoop, bool useImguiTime) {
-    DebugConsole::GetInstance()->AddLog("GhostDirector: PlayScenario [" + std::string(scenarioNameBuf_) +
+    AddDebugLog("GhostDirector: PlayScenario [" + std::string(scenarioNameBuf_) +
         "] (Loop: " + (isLoop ? "On" : "Off") + ")");
 
-    // 1. 再生フラグとタイマーの初期化
     isPlaying_ = true;
     playTimer_ = 0.0f;
-    isLooping_ = isLoop;           // シナリオ全体をループさせるか
-    useImguiTime_ = useImguiTime;  // UpdateのdeltaTimeを無視してImGuiのdeltaを使うか
+    currentScrubTime_ = 0.0f;
+    isLooping_ = isLoop;
+    useImguiTime_ = useImguiTime;
 
-    // 2. 全トラックの状態をリセット
     for (auto& track : tracks_) {
-        track.hasStarted = false; // ディレイ待ち状態に戻す
+        PreparePathTrack(track);
+    }
 
-        // ターゲットが外れている（ロード直後など）場合は名前で再検索
-        if (!track.target && !track.targetName.empty() && sceneManager_ && sceneManager_->GetCurrentScene()) {
-            for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
-                if (obj->GetName() == track.targetName) {
-                    track.target = obj.get();
-                    break;
-                }
-            }
-        }
-
-        // 3. 各オブジェクト（レコーダー）の準備
-        if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
-            // 一旦停止させてからデータを最新状態にロード
-            track.target->recorder_->Stop();
-            track.target->recorder_->Load(track.pathFileName);
-            track.target->recorder_->CaptureBasePose();
-            // 再生開始前に「0フレーム目」のポーズをとらせる
-            // これにより、ディレイがあるトラックも開始地点で待機できる
-            track.target->recorder_->EvaluateAtFrame(0);
-        }
+    for (auto& track : vfxTracks_) {
+        PrepareVFXTrack(track);
     }
 }
 
 void GhostDirector::StopScenario() {
     isPlaying_ = false;
     playTimer_ = 0.0f;
+    currentScrubTime_ = 0.0f;
+
     for (auto& track : tracks_) {
         track.hasStarted = false;
         if (track.target && track.target->recorder_) {
             track.target->recorder_->Stop();
         }
     }
+
+    for (auto& track : vfxTracks_) {
+        track.hasStarted = false;
+        track.sequencer.Stop();
+    }
 }
 
 void GhostDirector::SaveScenario(const std::string& fileName) {
-    if (tracks_.empty()) return;
     json root;
+    root["version"] = 2;
     root["tracks"] = json::array();
+    root["vfxCues"] = json::array();
+
     for (const auto& track : tracks_) {
         json t;
         t["targetName"] = track.target ? track.target->GetName() : track.targetName;
         t["pathFileName"] = track.pathFileName;
         t["delayTime"] = track.delayTime;
-        // 以前の仕様との互換性のため、不要なフラグは保存しない
         root["tracks"].push_back(t);
     }
 
-    std::string dirPath = "Resources/json/scenario/";
-    if (!fs::exists(dirPath)) fs::create_directories(dirPath);
+    for (const auto& track : vfxTracks_) {
+        json t;
+        t["targetName"] = track.target ? track.target->GetName() : track.targetName;
+        t["sequenceName"] = track.sequenceName;
+        t["delayTime"] = track.delayTime;
+        root["vfxCues"].push_back(t);
+    }
 
-    std::string path = dirPath + fileName + ".json";
+    if (!fs::exists(kScenarioDir)) {
+        fs::create_directories(kScenarioDir);
+    }
+
+    const std::string path = std::string(kScenarioDir) + fileName + ".json";
     std::ofstream file(path);
     if (file.is_open()) {
         file << root.dump(4);
-        file.close();
-        DebugConsole::GetInstance()->AddLog("GhostDirector: Saved " + path);
+        AddDebugLog("GhostDirector: Saved " + path);
     }
 }
 
-
 void GhostDirector::LoadScenario(const std::string& fileName) {
-    std::string path = "Resources/json/scenario/" + fileName + ".json";
+    const std::string path = std::string(kScenarioDir) + fileName + ".json";
     std::ifstream file(path);
-    if (!file.is_open()) return;
+    if (!file.is_open()) {
+        return;
+    }
 
-    json root; file >> root;
+    json root;
+    file >> root;
     tracks_.clear();
+    vfxTracks_.clear();
 
     if (root.contains("tracks")) {
         for (const auto& j : root["tracks"]) {
-            Track t;
-            t.targetName = j.value("targetName", "");
-            t.pathFileName = j.value("pathFileName", "");
-            t.delayTime = j.value("delayTime", 0.0f);
-            t.target = nullptr;
-
-            if (sceneManager_ && sceneManager_->GetCurrentScene() && !t.targetName.empty()) {
-                for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
-                    if (obj->GetName() == t.targetName) {
-                        t.target = obj.get();
-                        break;
-                    }
-                }
-            }
-            if (t.target && t.target->recorder_ && !t.pathFileName.empty()) {
-                t.target->recorder_->Load(t.pathFileName);
-                t.target->recorder_->CaptureBasePose();
-                t.target->recorder_->EvaluateAtFrame(0);
-            }
-            tracks_.push_back(t);
+            Track track;
+            track.targetName = j.value("targetName", "");
+            track.pathFileName = j.value("pathFileName", "");
+            track.delayTime = j.value("delayTime", 0.0f);
+            PreparePathTrack(track);
+            tracks_.push_back(track);
         }
-        DebugConsole::GetInstance()->AddLog("GhostDirector: Loaded " + path);
     }
+
+    if (root.contains("vfxCues")) {
+        for (const auto& j : root["vfxCues"]) {
+            VFXTrack track;
+            track.targetName = j.value("targetName", "");
+            track.sequenceName = j.value("sequenceName", "");
+            track.delayTime = j.value("delayTime", 0.0f);
+            PrepareVFXTrack(track);
+            vfxTracks_.push_back(track);
+        }
+    }
+
+    AddDebugLog("GhostDirector: Loaded " + path);
 }
 
-bool GhostDirector::IsFinished() const
-{
-    if (!isPlaying_) return true; // 再生してなければ終了扱い
+bool GhostDirector::IsFinished() const {
+    if (!isPlaying_) {
+        return true;
+    }
 
-    // 全てのトラック（キューブ）の再生が終わったかチェック
     for (const auto& track : tracks_) {
-
-
         if (!track.hasStarted) {
             return false;
         }
 
-        if (track.target && track.target->recorder_) {
-            // もしどれか一つでも再生中なら、まだ終わっていない
-            if (track.target->recorder_->GetState() == GhostRecorder::State::Playing) {
-                return false;
-            }
+        if (track.target && track.target->recorder_ &&
+            track.target->recorder_->GetState() == GhostRecorder::State::Playing) {
+            return false;
         }
     }
-    return true; // 全員が出番を迎え、かつ全再生が終わった！
-}
-int GhostDirector::GetActiveEventID() const
-{
-    {
-        if (!isPlaying_) return 0;
 
-        // 全トラック（キューブ）を調べて、イベントが発生していたらそれを返す
-        for (const auto& track : tracks_) {
-            if (track.target && track.target->recorder_) {
-                int eID = track.target->recorder_->GetCurrentEventID();
-                if (eID != 0) return eID; // イベントを見つけたらボスコアに報告！
-            }
+    for (const auto& track : vfxTracks_) {
+        if (!track.hasStarted) {
+            return false;
         }
+
+        if (track.sequencer.IsPlaying()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int GhostDirector::GetActiveEventID() const {
+    if (!isPlaying_) {
         return 0;
     }
+
+    for (const auto& track : tracks_) {
+        if (track.target && track.target->recorder_) {
+            int eventID = track.target->recorder_->GetCurrentEventID();
+            if (eventID != 0) {
+                return eventID;
+            }
+        }
+    }
+
+    return 0;
 }
 
 void GhostDirector::DrawPreview(const Matrix4x4& viewProjection, const Vector2& offset, const Vector2& size) {
     for (auto& track : tracks_) {
-        // ターゲットが存在し、レコーダーがあり、パスデータがセットされていれば描画
         if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
-
-            // 第4引数に true (isReadOnly) を渡すことで、誤操作を防ぎつつ線だけを描画
             track.target->recorder_->DrawPreview(viewProjection, offset, size, true);
         }
     }
 }
 
-
 ActiveEvent GhostDirector::GetActiveEvent() const {
     ActiveEvent result;
-    if (!isPlaying_) return result;
+    if (!isPlaying_) {
+        return result;
+    }
 
-    // 全員（全トラック）を調べて、イベントを起こしている奴がいないかチェック
     for (const auto& track : tracks_) {
         if (track.target && track.target->recorder_) {
-            int eID = track.target->recorder_->GetCurrentEventID();
-
-            if (eID != 0) {
-                // イベントを見つけたら、「誰が」「何の」イベントを起こしたか詰めて返す！
-                result.id = eID;
+            int eventID = track.target->recorder_->GetCurrentEventID();
+            if (eventID != 0) {
+                result.id = eventID;
                 result.targetObject = track.target;
                 return result;
             }
         }
     }
-    return result; // 誰も起こしていなければ id=0 で返る
+
+    return result;
 }
 
 void GhostDirector::AdvanceTime(float deltaTime) {
-    playTimer_ += deltaTime;
+    const float timeStep = deltaTime > 0.0001f ? deltaTime : 1.0f / 60.0f;
+    playTimer_ += timeStep;
+    currentScrubTime_ = playTimer_;
 
     for (auto& track : tracks_) {
         if (!track.hasStarted && playTimer_ >= track.delayTime) {
             if (track.target && track.target->recorder_) {
-                bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
+                const bool isCinematic = (track.target->GetClassName() == "CinematicCamera");
                 track.target->recorder_->PlayFromMemory(false, isCinematic);
             }
             track.hasStarted = true;
         }
     }
 
-    // 全員の再生が終わったかチェック
+    for (auto& track : vfxTracks_) {
+        if (!track.hasStarted && playTimer_ >= track.delayTime) {
+            if (!track.sequenceName.empty()) {
+                track.sequencer.SetTargetObject(track.target);
+                track.sequencer.Play();
+                AddDebugLog("GhostDirector: Play VFX Cue [" + track.sequenceName + "]");
+            }
+            track.hasStarted = true;
+        }
+
+        if (track.hasStarted && track.sequencer.IsPlaying()) {
+            track.sequencer.Update(timeStep);
+        }
+    }
+
     if (IsFinished()) {
         if (isLooping_) {
-            // ループありなら、タイマーと各トラックの開始フラグをリセットして最初から
             playTimer_ = 0.0f;
-            for (auto& t : tracks_) {
-                t.hasStarted = false;
-                // 最初に戻すポーズをとらせる
-                if (t.target && t.target->recorder_) t.target->recorder_->EvaluateAtFrame(0);
+            currentScrubTime_ = 0.0f;
+
+            for (auto& track : tracks_) {
+                track.hasStarted = false;
+                if (track.target && track.target->recorder_) {
+                    track.target->recorder_->EvaluateAtFrame(0);
+                }
             }
-        } else {
+
+            for (auto& track : vfxTracks_) {
+                PrepareVFXTrack(track);
+            }
+        }
+        else {
             StopScenario();
         }
     }
+}
+
+Object3d* GhostDirector::ResolveObjectByName(const std::string& name) const {
+    if (name.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        return nullptr;
+    }
+
+    for (auto& obj : sceneManager_->GetCurrentScene()->GetObjects()) {
+        if (obj && obj->GetName() == name) {
+            return obj.get();
+        }
+    }
+
+    return nullptr;
+}
+
+void GhostDirector::PreparePathTrack(Track& track) {
+    track.hasStarted = false;
+
+    if (!track.target && !track.targetName.empty()) {
+        track.target = ResolveObjectByName(track.targetName);
+    }
+
+    if (track.target && track.target->recorder_ && !track.pathFileName.empty()) {
+        track.target->recorder_->Stop();
+        track.target->recorder_->Load(track.pathFileName);
+        track.target->recorder_->CaptureBasePose();
+        track.target->recorder_->EvaluateAtFrame(0);
+    }
+}
+
+void GhostDirector::PrepareVFXTrack(VFXTrack& track) {
+    track.hasStarted = false;
+
+    if (!track.target && !track.targetName.empty()) {
+        track.target = ResolveObjectByName(track.targetName);
+    }
+
+    track.sequencer.Initialize(track.target);
+    if (!track.sequenceName.empty()) {
+        track.sequencer.Load(track.sequenceName);
+    }
+}
+
+float GhostDirector::GetScenarioDuration() const {
+    float duration = 0.1f;
+
+    for (const auto& track : tracks_) {
+        float trackDuration = 0.0f;
+        if (track.target && track.target->recorder_) {
+            trackDuration = static_cast<float>(track.target->recorder_->GetTotalFrames()) / 60.0f;
+        }
+        duration = (std::max)(duration, track.delayTime + trackDuration);
+    }
+
+    for (const auto& track : vfxTracks_) {
+        float cueDuration = track.sequencer.GetDuration();
+        if (!track.sequenceName.empty() && cueDuration <= 0.0f) {
+            cueDuration = 0.1f;
+        }
+        duration = (std::max)(duration, track.delayTime + cueDuration);
+    }
+
+    return duration;
 }

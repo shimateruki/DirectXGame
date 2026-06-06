@@ -191,11 +191,21 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			bool isHovered = ImGui::IsItemHovered();
 			ImVec2 mousePos = ImGui::GetIO().MousePos;
 
+			if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+				camera->SetAspectRatio(area.width / area.height);
+				camera->UpdateProjectionMatrix();
+			}
+
 			if (debugEditor_) {
 				debugEditor_->SetGameViewRegion({ area.screenX, area.screenY }, { area.width, area.height });
 				debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
 				debugEditor_->SetGameViewHovered(isHovered);
 				debugEditor_->Update();
+				if (!isPlaying && isHovered && !ImGuizmo::IsOver() && ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
+					debugEditor_->SetGameViewMousePos({ mousePos.x - area.screenX, mousePos.y - area.screenY });
+					debugEditor_->OpenGameViewCreateContextMenu();
+				}
+				debugEditor_->DrawGameViewCreateContextMenu();
 				frameState.gizmoBusy = ImGuizmo::IsUsing();
 			}
 
@@ -212,11 +222,6 @@ EditorFrameState GameEditorController::DrawGameView(SceneManager* sceneManager, 
 			}
 
 			DrawGhostPreview(isPlaying, area);
-
-			if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
-				camera->SetAspectRatio(area.width / area.height);
-				camera->UpdateProjectionMatrix();
-			}
 		}
 	}
 	ImGui::End();
@@ -502,6 +507,12 @@ void GameEditorController::DrawStatusWindow(
 void GameEditorController::CapturePendingThumbnails() {
 	if (debugEditor_ && debugEditor_->GetProjectWindow()) {
 		debugEditor_->GetProjectWindow()->CapturePendingThumbnails();
+	}
+}
+
+void GameEditorController::DrawScenePreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
+	if (debugEditor_) {
+		debugEditor_->DrawPreview(pointLightResource, spotLightResource);
 	}
 }
 

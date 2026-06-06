@@ -122,6 +122,8 @@ public:
     bool IsOverridden() const { return isOverridden_; }
     float GetOverrideWeight() const { return overrideWeight_; }
     const Frustum& GetFrustum() const { return frustum_; }
+    void StartShake(float duration, float amplitude, float frequency = 24.0f, const Vector3& axisWeight = { 1.0f, 1.0f, 0.5f });
+    bool IsShaking() const { return shakeTimer_ > 0.0f; }
 
     // ==================================================
     // 定数バッファ
@@ -199,6 +201,12 @@ private:
     Vector3 overrideStartTarget_ = { 0.0f, 0.0f, 0.0f };
     Vector3 fixedPointAngle_ = { 0.0f, 0.0f, 0.0f };
     Frustum frustum_;
+
+    float shakeTimer_ = 0.0f;
+    float shakeDuration_ = 0.0f;
+    float shakeAmplitude_ = 0.0f;
+    float shakeFrequency_ = 24.0f;
+    Vector3 shakeAxisWeight_ = { 1.0f, 1.0f, 0.5f };
 
     Microsoft::WRL::ComPtr<ID3D12Resource> constBuffer_;
     CameraVP* constMap_ = nullptr;

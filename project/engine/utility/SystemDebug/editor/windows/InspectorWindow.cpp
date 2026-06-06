@@ -261,17 +261,37 @@ void InspectorWindow::Draw() {
                 }
                 if (currentMatType >= 8 && currentMatType <= 11) {
                     ImGui::Separator();
-                    ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ICON_FA_TINT " --- Water Settings ---");
 
                     if (selectedObject->GetMeshRenderer() && selectedObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* waterData = selectedObject->GetMeshRenderer()->GetWaterParamData();
-                        ImGui::DragFloat("Wave Speed (波の速さ)", &waterData->waveSpeed, 0.05f, 0.0f, 10.0f);
-                        ImGui::DragFloat("Wave Height (波の高さ)", &waterData->waveHeight, 0.05f, 0.0f, 10.0f);
-                        ImGui::DragFloat("Wave Frequency (波の細かさ)", &waterData->waveFrequency, 0.05f, 0.0f, 20.0f);
-                        ImGui::Separator();
-                        ImGui::Text(ICON_FA_WIND " --- Flow Settings ---");
-                        ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f);
-                        ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f);
+                        if (currentMatType == 11) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.08f, 1.0f), ICON_FA_FIRE " --- Fire Settings ---");
+                            const char* fireTypes[] = { "炎の形 (Flame Shape)", "炎の球 (Fire Ball)" };
+                            int fireType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 1);
+                            if (ImGui::Combo("炎タイプ (Fire Type)", &fireType, fireTypes, IM_ARRAYSIZE(fireTypes))) {
+                                waterData->effectType = static_cast<float>(fireType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("揺らぎ速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("炎の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 20.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.01f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("描画サイズ (Billboard Size)", &waterData->billboardScale, 0.01f, 0.05f, 3.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("炎の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                        }
+                        else {
+                            const char* settingTitle = (currentMatType == 8) ? ICON_FA_TINT " --- Water Settings ---" :
+                                (currentMatType == 9) ? ICON_FA_FIRE " --- Magma Settings ---" :
+                                ICON_FA_SNOWFLAKE " --- Ice Settings ---";
+                            ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), settingTitle);
+                            if (ImGui::DragFloat("Wave Speed (波の速さ)", &waterData->waveSpeed, 0.05f, 0.0f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("Wave Height (波の高さ)", &waterData->waveHeight, 0.05f, 0.0f, 10.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("Wave Frequency (波の細かさ)", &waterData->waveFrequency, 0.05f, 0.0f, 20.0f)) isGraphicsChanged = true;
+                            ImGui::Separator();
+                            ImGui::Text(ICON_FA_WIND " --- Flow Settings ---");
+                            if (ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
+                        }
                     }
                 }
                 ImGui::Separator();

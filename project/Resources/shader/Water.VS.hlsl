@@ -18,6 +18,7 @@ VSOutput main(VSInput input)
     output.pos = mul(localPos, WVP);
     output.worldPos = mul(localPos, world).xyz;
     output.screenPos = output.pos;
+    output.localPos = localPos.xyz;
     
     // 法線の計算
     float dy_dx = waveHeight * waveFrequency * cos(phaseX) * topMask;

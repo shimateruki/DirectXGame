@@ -316,8 +316,13 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 #ifdef USE_IMGUI
 	if (editorMode) {
 		dxCommon_->StartGpuProfile("  3Dシーン");
+		ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
+		ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
 		if (sceneManager_) {
 			sceneManager_->Draw();
+		}
+		if (editorController_) {
+			editorController_->DrawScenePreview(pointLight, spotLight);
 		}
 		dxCommon_->EndGpuProfile("  3Dシーン");
 
@@ -328,8 +333,6 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		dxCommon_->EndGpuProfile("  ゲームUI");
 
 		dxCommon_->StartGpuProfile("  エフェクト");
-		ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-		ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
 		MeshEffectManager::GetInstance()->Draw(pointLight, spotLight);
 		dxCommon_->EndGpuProfile("  エフェクト");
 

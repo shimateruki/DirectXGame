@@ -723,6 +723,21 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
+    if (GetMaterialType() >= 8 && GetMaterialType() <= 11 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+        auto* water = GetMeshRenderer()->GetWaterParamData();
+        json jw;
+        jw["waveSpeed"] = water->waveSpeed;
+        jw["waveHeight"] = water->waveHeight;
+        jw["waveFrequency"] = water->waveFrequency;
+        jw["flowSpeedX"] = water->flowSpeedX;
+        jw["flowSpeedY"] = water->flowSpeedY;
+        jw["effectType"] = water->effectType;
+        jw["effectScale"] = water->effectScale;
+        jw["effectSoftness"] = water->effectSoftness;
+        jw["effectIntensity"] = water->effectIntensity;
+        jw["billboardScale"] = water->billboardScale;
+        d["waterParam"] = jw;
+    }
     // 7. アニメーション
     d["animation"]["animName"] = animName_;
     d["animation"]["isAnimLoop"] = isAnimLoop_;
@@ -838,6 +853,22 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
+    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 11) {
+        if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+            auto* water = GetMeshRenderer()->GetWaterParamData();
+            const auto& jw = j["waterParam"];
+            if (jw.contains("waveSpeed")) water->waveSpeed = jw["waveSpeed"];
+            if (jw.contains("waveHeight")) water->waveHeight = jw["waveHeight"];
+            if (jw.contains("waveFrequency")) water->waveFrequency = jw["waveFrequency"];
+            if (jw.contains("flowSpeedX")) water->flowSpeedX = jw["flowSpeedX"];
+            if (jw.contains("flowSpeedY")) water->flowSpeedY = jw["flowSpeedY"];
+            if (jw.contains("effectType")) water->effectType = jw["effectType"];
+            if (jw.contains("effectScale")) water->effectScale = jw["effectScale"];
+            if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
+            if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
+            if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];
+        }
+    }
 
     // 7. アニメーション
     if (j.contains("animation")) {

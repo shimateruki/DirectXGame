@@ -408,17 +408,22 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (f.contains("scatteringG")) fogData->scatteringG = f["scatteringG"];
                         if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
                     }
-                    if (objData.contains("waterParam") && targetObject->GetMaterialType() == 8) {
-                        if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
-                            auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
-                            const auto& jw = objData["waterParam"];
+                }
+                if (objData.contains("waterParam") && targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 11) {
+                    if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
+                        auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
+                        const auto& jw = objData["waterParam"];
 
-                            if (jw.contains("waveSpeed"))     water->waveSpeed = jw["waveSpeed"];
-                            if (jw.contains("waveHeight"))    water->waveHeight = jw["waveHeight"];
-                            if (jw.contains("waveFrequency")) water->waveFrequency = jw["waveFrequency"];
-                            if (jw.contains("flowSpeedX"))    water->flowSpeedX = jw["flowSpeedX"];
-                            if (jw.contains("flowSpeedY"))    water->flowSpeedY = jw["flowSpeedY"];
-                        }
+                        if (jw.contains("waveSpeed"))     water->waveSpeed = jw["waveSpeed"];
+                        if (jw.contains("waveHeight"))    water->waveHeight = jw["waveHeight"];
+                        if (jw.contains("waveFrequency")) water->waveFrequency = jw["waveFrequency"];
+                        if (jw.contains("flowSpeedX"))    water->flowSpeedX = jw["flowSpeedX"];
+                        if (jw.contains("flowSpeedY"))    water->flowSpeedY = jw["flowSpeedY"];
+                        if (jw.contains("effectType"))    water->effectType = jw["effectType"];
+                        if (jw.contains("effectScale"))   water->effectScale = jw["effectScale"];
+                        if (jw.contains("effectSoftness")) water->effectSoftness = jw["effectSoftness"];
+                        if (jw.contains("effectIntensity")) water->effectIntensity = jw["effectIntensity"];
+                        if (jw.contains("billboardScale")) water->billboardScale = jw["billboardScale"];
                     }
                 }
                 // 5. Collider

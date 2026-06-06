@@ -11,6 +11,7 @@ class EngineManualWindow;
 class GhostDirector;
 class GhostRecorder;
 class GPUParticleEditor;
+struct ID3D12Resource;
 struct ID3D12GraphicsCommandList;
 class MeshEffectEditor;
 class ParticleEditor;
@@ -54,6 +55,7 @@ public:
 		int timeHistoryIndex);
 
 	void CapturePendingThumbnails();
+	void DrawScenePreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 	void DrawSceneDebug(ID3D12GraphicsCommandList* commandList);
 	void DrawBackBufferUi();
 	void EndFrame();

@@ -63,6 +63,12 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->waveFrequency = 1.5f;
     waterParamData_->flowSpeedX = 0.1f; // 緩やかに流れる
     waterParamData_->flowSpeedY = 0.1f;
+    waterParamData_->effectType = 0.0f;
+    waterParamData_->effectScale = 1.0f;
+    waterParamData_->effectSoftness = 0.55f;
+    waterParamData_->effectIntensity = 1.0f;
+    waterParamData_->cameraWorldPosition = { 0.0f, 0.0f, -1.0f };
+    waterParamData_->billboardScale = 0.55f;
     
 }
 
@@ -107,6 +113,9 @@ void MeshRenderer::Update() {
             wvpData_->world = worldMatrix;
             wvpData_->WorldInverseTranspose = math.Transpose(math.Inverse(worldMatrix));
             cameraData_->worldPosition = camera->GetEye();
+            if (waterParamData_) {
+                waterParamData_->cameraWorldPosition = camera->GetEye();
+            }
             localFogData_->cameraPos = camera->GetEye();
             
             // 軽量化: ViewProjの逆行列はカメラ共通なのでキャッシュする
@@ -250,6 +259,10 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     if (!model_ || !common_ || !waterParamResource_) return;
 
+    if (!fireProxyModel_) {
+        InitializeFireProxyModel();
+    }
+
     common_->SetFireGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     commandList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
@@ -257,8 +270,37 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
-    model_->DrawMeshOnly();
+    Model* drawModel = fireProxyModel_ ? fireProxyModel_.get() : model_;
+    drawModel->DrawMeshOnly();
 }
+
+void MeshRenderer::InitializeFireProxyModel() {
+    ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
+    if (!modelCommon) {
+        return;
+    }
+
+    fireProxyModel_ = std::make_unique<Model>();
+
+    std::vector<Model::VertexData> vertices(4);
+    auto setVertex = [](Model::VertexData& vertex, float x, float y, float u, float v) {
+        vertex.position = { x, y, 0.0f, 1.0f };
+        vertex.texcoord = { u, v };
+        vertex.normal = { 0.0f, 0.0f, 1.0f };
+        vertex.tangent = { 1.0f, 0.0f, 0.0f };
+        vertex.boneWeights = { 0.0f, 0.0f, 0.0f, 0.0f };
+        vertex.boneIndices = { 0.0f, 0.0f, 0.0f, 0.0f };
+    };
+
+    setVertex(vertices[0], -1.0f, -1.0f, 0.0f, 1.0f);
+    setVertex(vertices[1], -1.0f, 1.0f, 0.0f, 0.0f);
+    setVertex(vertices[2], 1.0f, 1.0f, 1.0f, 0.0f);
+    setVertex(vertices[3], 1.0f, -1.0f, 1.0f, 1.0f);
+
+    const std::vector<uint32_t> indices = { 0, 1, 2, 0, 2, 3 };
+    fireProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
+}
+
 void MeshRenderer::SetModel(const std::string& modelName) {
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);

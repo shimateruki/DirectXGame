@@ -4,88 +4,209 @@ Texture2D<float> depthTex : register(t0);
 Texture2D<float4> grabTex : register(t1);
 SamplerState smp : register(s0);
 
-float random(float2 st)
+static const float kNearClip = 0.1f;
+static const float kFarClip = 1000.0f;
+
+float Hash12(float2 p)
 {
-    return frac(sin(dot(st.xy, float2(12.9898, 78.233))) * 43758.5453123);
+    float3 p3 = frac(float3(p.xyx) * 0.1031f);
+    p3 += dot(p3, p3.yzx + 33.33f);
+    return frac((p3.x + p3.y) * p3.z);
 }
 
-float noise(float2 st)
+float Noise2D(float2 p)
 {
-    float2 i = floor(st);
-    float2 f = frac(st);
-    float a = random(i);
-    float b = random(i + float2(1.0, 0.0));
-    float c = random(i + float2(0.0, 1.0));
-    float d = random(i + float2(1.0, 1.0));
-    float2 u = f * f * (3.0 - 2.0 * f);
-    return lerp(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float2 u = f * f * (3.0f - 2.0f * f);
+
+    float a = Hash12(i + float2(0.0f, 0.0f));
+    float b = Hash12(i + float2(1.0f, 0.0f));
+    float c = Hash12(i + float2(0.0f, 1.0f));
+    float d = Hash12(i + float2(1.0f, 1.0f));
+
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
 }
 
-float fbm(float2 st)
+float Fbm2(float2 p)
 {
-    float v = 0.0;
-    float a = 0.5;
-    float2 shift = float2(100, 100);
-    for (int i = 0; i < 3; ++i)
+    float value = 0.0f;
+    float amp = 0.5f;
+
+    [unroll]
+    for (int i = 0; i < 5; ++i)
     {
-        v += a * noise(st);
-        st = st * 2.0 + shift;
-        a *= 0.5;
+        value += Noise2D(p) * amp;
+        p = p * 2.02f + float2(19.13f, 31.71f);
+        amp *= 0.5f;
     }
-    return v;
+
+    return value;
 }
 
 float LinearizeDepth(float z)
 {
-    float nearClip = 0.1f;
-    float farClip = 1000.0f;
-    return (nearClip * farClip) / (farClip - z * (farClip - nearClip));
+    z = saturate(z);
+    return (kNearClip * kFarClip) / max(kFarClip - z * (kFarClip - kNearClip), 0.0001f);
+}
+
+float3 TonalFireRamp(float heat, float ember, float3 artistTint)
+{
+    float3 deepCoal = float3(0.060f, 0.006f, 0.002f);
+    float3 redCore = lerp(float3(0.95f, 0.040f, 0.008f), artistTint, 0.18f);
+    float3 orange = float3(2.10f, 0.50f, 0.055f);
+    float3 yellow = float3(3.35f, 1.55f, 0.23f);
+    float3 whiteHot = float3(4.65f, 3.65f, 1.70f);
+
+    float3 c = deepCoal;
+    c = lerp(c, redCore, smoothstep(0.18f, 0.22f, heat));
+    c = lerp(c, orange, smoothstep(0.42f, 0.47f, heat));
+    c = lerp(c, yellow, smoothstep(0.64f, 0.69f, heat));
+    c = lerp(c, whiteHot, smoothstep(0.86f, 0.91f, heat));
+    c += float3(1.0f, 0.22f, 0.025f) * ember * 0.55f;
+    return c;
+}
+
+float2 BuildSurfaceUV(float3 worldPos, float3 normal)
+{
+    float3 n = abs(normalize(normal));
+    n = max(n, float3(0.001f, 0.001f, 0.001f));
+    n /= (n.x + n.y + n.z);
+
+    float2 uvX = float2(worldPos.z, worldPos.y);
+    float2 uvY = float2(worldPos.x, worldPos.z);
+    float2 uvZ = float2(worldPos.x, worldPos.y);
+    return uvX * n.x + uvY * n.y + uvZ * n.z;
 }
 
 float4 main(VSOutput input) : SV_TARGET
 {
     float2 screenUV = input.screenPos.xy / input.screenPos.w * float2(0.5f, -0.5f) + 0.5f;
+    screenUV = saturate(screenUV);
 
-    // 1. ノイズによる炎の形状 (2番目のバージョンに近い設定)
-    float2 scrollUV = input.worldPos.xz * 0.4f;
-    scrollUV.y = input.worldPos.y * 0.6f - time * 1.3f;
-    
-    float n1 = fbm(scrollUV);
-    float n2 = fbm(scrollUV * 1.5f + float2(time * 0.5f, time * 0.2f));
-    float flameValue = n1 * n2 * 2.2f;
-    
-    // 先端がちぎれるように削るロジックを復活
-    float verticalMask = saturate(1.1f - input.uv.y);
-    flameValue *= (verticalMask * verticalMask);
-    flameValue -= (1.0f - verticalMask) * 0.4f; // 上に行くほど不規則に削る
+    float animSpeed = max(waveSpeed, 0.05f);
+    float detail = max(waveFrequency, 0.1f);
+    float softness = saturate(effectSoftness);
+    float intensity = max(effectIntensity, 0.05f);
+    float patternScale = max(effectScale, 0.05f);
 
-    if (flameValue < 0.05f) discard;
+    float3 centerWorld = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), world).xyz;
+    float3 cameraToCenter = centerWorld - cameraWorldPosition;
+    float cameraDistance = max(length(cameraToCenter), 0.0001f);
+    float3 viewForward = cameraToCenter / cameraDistance;
+    float3 upSeed = (abs(viewForward.y) > 0.96f) ? float3(0.0f, 0.0f, 1.0f) : float3(0.0f, 1.0f, 0.0f);
+    float3 viewRight = normalize(cross(upSeed, viewForward));
+    float3 viewUp = normalize(cross(viewForward, viewRight));
 
-    // 2. 接地部分のボケ（ソフトエッジ）のみ継続採用
-    float bgDepthZ = depthTex.Sample(smp, screenUV).r;
-    float bgLinearDepth = LinearizeDepth(bgDepthZ);
-    float fireLinearDepth = LinearizeDepth(input.screenPos.z / input.screenPos.w);
-    float depthDiff = max(bgLinearDepth - fireLinearDepth, 0.0f);
-    float softFactor = saturate(depthDiff / 0.3f);
+    float3 axisX = float3(world._11, world._12, world._13);
+    float3 axisY = float3(world._21, world._22, world._23);
+    float3 axisZ = float3(world._31, world._32, world._33);
+    float proxyRadius = max(max(length(axisX), length(axisY)), length(axisZ));
+    proxyRadius *= max(billboardScale, 0.05f) * patternScale;
+    proxyRadius = max(proxyRadius, 0.001f);
 
-    // 3. カラーマッピング (赤とオレンジを強調)
-    float3 fireDark = float3(0.2f, 0.02f, 0.0f);
-    float3 fireRed = color.rgb;
-    float3 fireOrange = float3(1.0f, 0.4f, 0.0f);
-    float3 fireYellow = float3(1.0f, 0.9f, 0.2f);
-    float3 fireWhite = float3(1.5f, 1.5f, 1.2f);
+    float3 toPixel = input.worldPos - centerWorld;
+    float2 billboard = float2(dot(toPixel, viewRight), dot(toPixel, viewUp)) / proxyRadius;
+    float proxyMask = 1.0f;
+    float2 proceduralUV = billboard * 0.5f + 0.5f;
+    float2 surfaceUV = proceduralUV * 2.0f - 1.0f;
 
-    float3 finalColor = fireDark;
-    finalColor = lerp(finalColor, fireRed,    smoothstep(0.1f, 0.35f, flameValue));
-    finalColor = lerp(finalColor, fireOrange, smoothstep(0.35f, 0.6f, flameValue));
-    finalColor = lerp(finalColor, fireYellow, smoothstep(0.6f, 0.85f, flameValue));
-    finalColor = lerp(finalColor, fireWhite,  smoothstep(0.85f, 1.0f, flameValue));
+    float heat = 0.0f;
+    float core = 0.0f;
+    float edgeGlow = 0.0f;
+    float ember = 0.0f;
+    float smoke = 0.0f;
+    float alpha = 0.0f;
 
-    // 4. 背景歪み (陽炎)
-    float2 distort = float2(n1 - 0.5f, n2 - 0.5f) * 0.025f * verticalMask;
-    float3 background = grabTex.Sample(smp, screenUV + distort).rgb;
+    if (effectType < 0.5f)
+    {
+        float height01 = saturate(proceduralUV.y);
+        float fromBase = 1.0f - height01;
 
-    // 5. 最終合成
-    float alpha = saturate(flameValue * 2.0f) * color.a * softFactor;
-    return float4(background + finalColor, alpha);
+        float side = abs(billboard.x);
+
+        float2 flameUV = float2(
+            (billboard.x * 0.5f + 0.5f) * (3.2f + detail * 0.8f),
+            height01 * (4.0f + detail * 1.4f) - time * animSpeed * 1.15f
+        );
+        float bodyNoise = Fbm2(flameUV + float2(time * 0.10f, 0.0f));
+        float tongueNoise = Fbm2(float2(side * 5.8f + bodyNoise * 2.2f, height01 * 8.5f - time * animSpeed * 2.0f));
+        float emberNoise = Fbm2(float2(proceduralUV.x * 19.0f + time * 0.35f, height01 * 18.0f - time * animSpeed * 3.0f));
+
+        float width = lerp(0.92f, 0.14f, smoothstep(0.06f, 1.0f, height01));
+        width += fromBase * 0.12f;
+        width += (bodyNoise - 0.5f) * 0.12f;
+
+        float edge = side + (tongueNoise - 0.5f) * lerp(0.14f, 0.34f, height01);
+        float edgeSoft = lerp(0.055f, 0.22f, softness);
+        float flameMask = smoothstep(width + edgeSoft, width - edgeSoft, edge);
+        flameMask *= smoothstep(0.00f, 0.08f, height01);
+        flameMask *= lerp(1.0f, 0.58f, smoothstep(0.88f, 1.0f, height01));
+
+        float inner = saturate(1.0f - side);
+        heat = saturate(0.20f + fromBase * 0.20f + inner * 0.18f + bodyNoise * 0.34f + tongueNoise * 0.34f);
+        core = smoothstep(0.58f, 0.92f, heat + inner * 0.18f - height01 * 0.06f) * flameMask;
+        edgeGlow = smoothstep(0.40f, 0.92f, tongueNoise + bodyNoise * 0.35f) * flameMask;
+        ember = smoothstep(0.78f, 0.96f, emberNoise + fromBase * 0.12f) * flameMask;
+        smoke = smoothstep(0.62f, 0.96f, height01) * smoothstep(0.35f, 0.86f, 1.0f - bodyNoise) * flameMask;
+        alpha = saturate(flameMask * proxyMask * (0.30f + heat * 0.50f + core * 0.26f));
+    }
+    else
+    {
+        float radial = length(billboard);
+        float2 orbUV = billboard * (2.2f + detail * 0.42f);
+        float bodyNoise = Fbm2(orbUV + float2(time * 0.18f, -time * animSpeed * 0.44f));
+        float broadNoise = Fbm2(orbUV * 0.48f + float2(-time * 0.07f, time * 0.11f));
+        float crackNoise = Fbm2(orbUV * 3.4f + float2(time * 0.46f, -time * animSpeed * 0.96f));
+        float pulse = sin(time * animSpeed * 2.4f + bodyNoise * 5.2f) * 0.5f + 0.5f;
+        float edgeSoft = lerp(0.035f, 0.20f, softness);
+        float sphereMask = smoothstep(1.0f + edgeSoft, 1.0f - edgeSoft, radial + (bodyNoise - 0.5f) * 0.10f);
+
+        float patch = smoothstep(0.30f, 0.84f, bodyNoise + crackNoise * 0.28f);
+        heat = saturate(0.18f + broadNoise * 0.25f + bodyNoise * 0.30f + crackNoise * 0.22f + pulse * 0.10f);
+        core = smoothstep(0.58f, 0.90f, heat + patch * 0.18f) * sphereMask;
+        edgeGlow = smoothstep(0.60f, 0.94f, crackNoise + bodyNoise * 0.25f) * sphereMask;
+        ember = smoothstep(0.76f, 0.96f, crackNoise + pulse * 0.22f) * sphereMask;
+        smoke = smoothstep(0.58f, 0.94f, 1.0f - broadNoise) * smoothstep(0.22f, 0.82f, heat) * sphereMask;
+        alpha = saturate((0.24f + patch * 0.38f + heat * 0.22f + core * 0.18f) * sphereMask * proxyMask);
+    }
+
+    float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
+    float fireDepth = input.screenPos.z / input.screenPos.w;
+    float depthDiff = LinearizeDepth(bgDepth) - LinearizeDepth(fireDepth);
+    float softFactor = lerp(0.68f, 1.0f, saturate(depthDiff / 0.36f));
+    softFactor = (bgDepth >= 0.999f) ? 1.0f : softFactor;
+
+    float2 distortionNoise;
+    distortionNoise.x = Fbm2(surfaceUV * 2.1f + float2(time * 0.23f, -time * 1.25f));
+    distortionNoise.y = Fbm2(surfaceUV * 2.4f + float2(4.3f - time * 0.18f, -time * 1.05f));
+    distortionNoise = distortionNoise * 2.0f - 1.0f;
+
+    float heatDistortion = (0.004f + 0.010f * heat) * saturate(0.35f + core + edgeGlow * 0.45f);
+    float2 distortedUV = saturate(screenUV + distortionNoise * heatDistortion * softFactor);
+    float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;
+    float3 distortedScene = grabTex.SampleLevel(smp, distortedUV, 0).rgb;
+
+    float3 artistTint = max(color.rgb, float3(0.08f, 0.02f, 0.005f));
+    float3 fireColor = TonalFireRamp(heat, ember, artistTint);
+
+    fireColor += float3(1.25f, 0.28f, 0.035f) * edgeGlow * 0.55f;
+    fireColor += float3(2.0f, 0.75f, 0.12f) * core * 0.28f;
+    fireColor *= intensity;
+
+    float3 smokeColor = lerp(float3(0.105f, 0.044f, 0.018f), float3(0.032f, 0.025f, 0.020f), heat);
+    fireColor = lerp(fireColor, smokeColor, smoke * 0.18f);
+
+    alpha *= softFactor * color.a;
+    if (alpha < 0.012f)
+    {
+        discard;
+    }
+
+    float distortMix = saturate((0.18f + heat * 0.28f + smoke * 0.16f) * softFactor);
+    float3 background = lerp(sceneColor, distortedScene, distortMix);
+    float3 source = lerp(background, fireColor, saturate(alpha * 0.92f + 0.16f));
+    source += fireColor * (0.12f + core * 0.24f + ember * 0.12f);
+
+    return float4(source, alpha);
 }

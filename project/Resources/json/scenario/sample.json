@@ -1,0 +1,11 @@
+{
+    "tracks": [],
+    "version": 2,
+    "vfxCues": [
+        {
+            "delayTime": 0.0,
+            "sequenceName": "UltimateMeteor",
+            "targetName": "block_15"
+        }
+    ]
+}

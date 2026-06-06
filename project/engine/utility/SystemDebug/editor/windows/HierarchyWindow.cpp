@@ -8,6 +8,7 @@
 #include "IconsFontAwesome5.h"
 #include "EditorManager.h"
 #include "CameraEditor.h"
+#include "CameraManager.h"
 #include "PostEffectEditor.h"
 #include "SpriteDebugEditor.h"
 #include "GPUParticleEditor.h"
@@ -23,9 +24,13 @@
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
 #include "TrailEmitterEditor.h"
+#include "GimmickFactory.h"
+#include "EnemyFactory.h"
+#include "ItemFactory.h"
 #include "json.hpp"
 #include <filesystem>
 #include <algorithm> // std::transform用
+#include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -34,6 +39,272 @@ static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
 static float ToDegrees(float radians) { return radians * (180.0f / PI); }
 
 namespace fs = std::filesystem;
+
+namespace {
+    std::string MakeUniqueName(BaseScene* scene, const std::string& baseName) {
+        if (!scene) return baseName;
+
+        auto exists = [&](const std::string& name) {
+            for (const auto& obj : scene->GetObjects()) {
+                if (obj && obj->GetName() == name) return true;
+            }
+            return false;
+        };
+
+        if (!exists(baseName)) return baseName;
+
+        for (int index = 1; index < 10000; ++index) {
+            std::string candidate = baseName + "_" + std::to_string(index);
+            if (!exists(candidate)) return candidate;
+        }
+        return baseName + "_New";
+    }
+
+    float GetObjectYOffset(const Object3d* object) {
+        if (!object) return 1.0f;
+
+        Object3d::ColliderConfig colConfig = object->GetColliderConfig();
+        if (colConfig.size.y > 0.0f) return colConfig.size.y;
+        if (object->GetTransform().scale.y > 0.0f) return object->GetTransform().scale.y;
+        return 1.0f;
+    }
+
+    Vector3 CalculateCameraForward(const Vector3& rotation) {
+        return {
+            std::sin(rotation.y) * std::cos(rotation.x),
+            -std::sin(rotation.x),
+            std::cos(rotation.y) * std::cos(rotation.x)
+        };
+    }
+
+    Vector3 GetDefaultCreatePosition(DebugEditor* editor, const Object3d* object) {
+        if (!editor) return { 0.0f, 1.0f, 0.0f };
+
+        Object3d* selected = editor->GetSelectedObject();
+        if (selected) {
+            Matrix4x4 world = selected->GetWorldMatrix();
+            return { world.m[3][0] + 2.0f, world.m[3][1], world.m[3][2] };
+        }
+
+        Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+        if (!camera) {
+            return { 0.0f, GetObjectYOffset(object), 0.0f };
+        }
+
+        Vector3 eye = camera->GetEye();
+        Vector3 forward = CalculateCameraForward(camera->GetRotation());
+        Vector3 position = {
+            eye.x + forward.x * 10.0f,
+            eye.y + forward.y * 10.0f,
+            eye.z + forward.z * 10.0f
+        };
+
+        // カメラが床方向を向いている時は、画面中央の床付近に生成する
+        if (std::abs(forward.y) > 0.0001f) {
+            float t = (0.0f - eye.y) / forward.y;
+            if (t > 0.0f && t < 80.0f) {
+                position = {
+                    eye.x + forward.x * t,
+                    0.0f,
+                    eye.z + forward.z * t
+                };
+            }
+        }
+
+        position.y += GetObjectYOffset(object);
+        return position;
+    }
+
+    void AddCreatedObject(DebugEditor* editor, BaseScene* scene, std::unique_ptr<Object3d> object, const std::string& baseName, const std::string& commandLabel, bool useGameViewCursor) {
+        if (!editor || !scene || !object) return;
+
+        object->SetName(MakeUniqueName(scene, baseName));
+        if (useGameViewCursor) {
+            editor->StartGameViewCreatePreview(std::move(object), commandLabel);
+            return;
+        }
+
+        Vector3 createPosition = useGameViewCursor
+            ? editor->CalculateGameViewCreatePosition(object.get())
+            : GetDefaultCreatePosition(editor, object.get());
+        object->SetTranslate(createPosition);
+        object->UpdateLocalMatrix();
+        object->UpdateWorldMatrix();
+
+        std::string createdName = object->GetName();
+        editor->AddEditorObject(std::move(object), commandLabel);
+        DebugConsole::GetInstance()->AddLog("Create: " + createdName);
+    }
+
+    void CreatePrimitive(DebugEditor* editor, BaseScene* scene, const std::string& modelName, const std::string& baseName, bool useGameViewCursor, const Vector3& scale = { 1.0f, 1.0f, 1.0f }) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto object = std::make_unique<Object3d>();
+        object->Initialize(scene->GetObject3dCommon());
+        ModelManager::GetInstance()->LoadModel(modelName);
+        object->SetModel(modelName);
+        object->SetClassName("Model");
+        object->SetScale(scale);
+        AddCreatedObject(editor, scene, std::move(object), baseName, "Create " + baseName, useGameViewCursor);
+    }
+
+    void CreateTriggerBox(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto object = std::make_unique<Object3d>();
+        object->Initialize(scene->GetObject3dCommon());
+        object->SetModel(nullptr);
+        object->SetIsVisible(true);
+        object->SetClassName("InvisibleBox");
+        Object3d::ColliderConfig colConfig;
+        colConfig.type = ColliderType::kAABB;
+        colConfig.size = { 1.0f, 1.0f, 1.0f };
+        object->SetColliderConfig(colConfig);
+        object->SetCollisionAttribute(CollisionAttribute::kTrigger);
+        AddCreatedObject(editor, scene, std::move(object), "Trigger_Box", "Create Trigger Box", useGameViewCursor);
+    }
+
+    void CreateCollisionBox(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto object = std::make_unique<Object3d>();
+        object->Initialize(scene->GetObject3dCommon());
+        object->SetModel(nullptr);
+        object->SetIsVisible(true);
+        object->SetClassName("InvisibleBox");
+        Object3d::ColliderConfig colConfig;
+        colConfig.type = ColliderType::kAABB;
+        colConfig.size = { 1.0f, 1.0f, 1.0f };
+        object->SetColliderConfig(colConfig);
+        object->SetCollisionAttribute(CollisionAttribute::kGround);
+        AddCreatedObject(editor, scene, std::move(object), "Collision_Box", "Create Collision Box", useGameViewCursor);
+    }
+
+    void CreateCinematicCamera(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto object = std::make_unique<Object3d>();
+        object->Initialize(scene->GetObject3dCommon());
+        object->SetModel("Stages/block");
+        object->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f });
+        object->SetIsVisible(true);
+        object->SetClassName("CinematicCamera");
+        Object3d::ColliderConfig colConfig;
+        colConfig.type = ColliderType::kAABB;
+        colConfig.size = { 1.0f, 1.0f, 1.0f };
+        object->SetColliderConfig(colConfig);
+        object->SetTranslate({ 0.0f, 5.0f, -10.0f });
+        AddCreatedObject(editor, scene, std::move(object), "Cinematic_Camera", "Create Cinematic Camera", useGameViewCursor);
+    }
+
+    void CreateGimmick(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto gimmick = GimmickFactory::GetInstance()->CreateGimmick(type, scene->GetObject3dCommon());
+        AddCreatedObject(editor, scene, std::move(gimmick), "Gimmick_" + type, "Create Gimmick " + type, useGameViewCursor);
+    }
+
+    void CreateEnemy(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto enemy = EnemyFactory::GetInstance()->CreateEnemy(type, scene->GetObject3dCommon());
+        AddCreatedObject(editor, scene, std::move(enemy), "Enemy_" + type, "Create Enemy " + type, useGameViewCursor);
+    }
+
+    void CreateItem(DebugEditor* editor, BaseScene* scene, const std::string& type, bool useGameViewCursor) {
+        if (!scene || !scene->GetObject3dCommon()) return;
+
+        auto item = ItemFactory::GetInstance()->CreateItem(type, scene->GetObject3dCommon());
+        AddCreatedObject(editor, scene, std::move(item), "Item_" + type, "Create Item " + type, useGameViewCursor);
+    }
+
+    void DrawCreateContextMenu(DebugEditor* editor, BaseScene* scene, bool useGameViewCursor) {
+#ifdef USE_IMGUI
+        if (!editor || !scene) return;
+
+        if (useGameViewCursor) {
+            ImGui::TextDisabled("選択後: 半透明プレビュー配置");
+            ImGui::TextDisabled("左クリックで確定 / 右クリック・Eでキャンセル");
+            ImGui::TextDisabled("面スナップ・法線整列: 有効");
+        }
+        else {
+            ImGui::TextDisabled("作成位置: 選択中オブジェクトの横 / 未選択ならカメラ前方");
+        }
+        ImGui::Separator();
+
+        if (ImGui::BeginMenu(ICON_FA_CUBE " 基本オブジェクト")) {
+            if (ImGui::MenuItem("ステージブロック")) CreatePrimitive(editor, scene, "Stages/block", "Block", useGameViewCursor);
+            if (ImGui::MenuItem("Cube")) CreatePrimitive(editor, scene, "Primitives/cube", "Cube", useGameViewCursor);
+            if (ImGui::MenuItem("Sphere")) CreatePrimitive(editor, scene, "Primitives/sphere", "Sphere", useGameViewCursor);
+            if (ImGui::MenuItem("Cylinder")) CreatePrimitive(editor, scene, "Primitives/cylinder", "Cylinder", useGameViewCursor);
+            ImGui::Separator();
+            if (ImGui::MenuItem("トリガーボックス")) CreateTriggerBox(editor, scene, useGameViewCursor);
+            if (ImGui::MenuItem("当たり判定ボックス")) CreateCollisionBox(editor, scene, useGameViewCursor);
+            if (ImGui::MenuItem("演出用カメラ")) CreateCinematicCamera(editor, scene, useGameViewCursor);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu(ICON_FA_PUZZLE_PIECE " ギミック")) {
+            if (ImGui::MenuItem("動く床")) CreateGimmick(editor, scene, "MovingFloor", useGameViewCursor);
+            if (ImGui::MenuItem("ジャンプ台")) CreateGimmick(editor, scene, "Trampoline", useGameViewCursor);
+            if (ImGui::MenuItem("沈む床")) CreateGimmick(editor, scene, "SinkingFloor", useGameViewCursor);
+            if (ImGui::MenuItem("シーソー床")) CreateGimmick(editor, scene, "SeesawFloor", useGameViewCursor);
+            if (ImGui::MenuItem("ダッシュパネル")) CreateGimmick(editor, scene, "DashPanel", useGameViewCursor);
+            if (ImGui::MenuItem("氷の床")) CreateGimmick(editor, scene, "IceFloor", useGameViewCursor);
+            if (ImGui::MenuItem("時限スイッチ")) CreateGimmick(editor, scene, "TimedSwitch", useGameViewCursor);
+            if (ImGui::MenuItem("出現床")) CreateGimmick(editor, scene, "AppearingFloor", useGameViewCursor);
+            if (ImGui::MenuItem("汎用スイッチ")) CreateGimmick(editor, scene, "Switch", useGameViewCursor);
+            if (ImGui::MenuItem("イベント受信")) CreateGimmick(editor, scene, "EventReceiver", useGameViewCursor);
+            if (ImGui::MenuItem("フックアンカー")) CreateGimmick(editor, scene, "HookAnchor", useGameViewCursor);
+            if (ImGui::MenuItem("フック可動ブロック")) CreateGimmick(editor, scene, "HookPullBlock", useGameViewCursor);
+            if (ImGui::MenuItem("一方通行床")) CreateGimmick(editor, scene, "OneWayFloor", useGameViewCursor);
+            if (ImGui::MenuItem("水位/マグマ上下")) CreateGimmick(editor, scene, "LiquidLevel", useGameViewCursor);
+            if (ImGui::MenuItem("連鎖崩れ床")) CreateGimmick(editor, scene, "ChainCollapseFloor", useGameViewCursor);
+            if (ImGui::MenuItem("回転床")) CreateGimmick(editor, scene, "RotatingFloor", useGameViewCursor);
+            if (ImGui::MenuItem("回転柱")) CreateGimmick(editor, scene, "RotatingPillar", useGameViewCursor);
+            if (ImGui::MenuItem("時間反転床")) CreateGimmick(editor, scene, "PhaseFlipFloor", useGameViewCursor);
+            if (ImGui::MenuItem("レーザー発射")) CreateGimmick(editor, scene, "LaserEmitter", useGameViewCursor);
+            if (ImGui::MenuItem("レーザーノード")) CreateGimmick(editor, scene, "LaserNode", useGameViewCursor);
+            if (ImGui::MenuItem("ステージゲート")) CreateGimmick(editor, scene, "StageGate", useGameViewCursor);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu(ICON_FA_SKULL " 敵")) {
+            if (ImGui::MenuItem("スライム")) CreateEnemy(editor, scene, "Slime", useGameViewCursor);
+            if (ImGui::MenuItem("ボム")) CreateEnemy(editor, scene, "Bomb", useGameViewCursor);
+            if (ImGui::MenuItem("ボマー")) CreateEnemy(editor, scene, "Bomber", useGameViewCursor);
+            if (ImGui::MenuItem("キノコ")) CreateEnemy(editor, scene, "Mushroom", useGameViewCursor);
+            if (ImGui::MenuItem("巨大スライム")) CreateEnemy(editor, scene, "GiantSlime", useGameViewCursor);
+            if (ImGui::MenuItem("コウモリ")) CreateEnemy(editor, scene, "Bat", useGameViewCursor);
+            if (ImGui::MenuItem("目玉ビーム")) CreateEnemy(editor, scene, "BeamDrone", useGameViewCursor);
+            if (ImGui::MenuItem("ボスコア")) CreateEnemy(editor, scene, "BossCore", useGameViewCursor);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu(ICON_FA_HEART " アイテム")) {
+            if (ImGui::MenuItem("体力回復")) CreateItem(editor, scene, "Heal", useGameViewCursor);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu(ICON_FA_SAVE " プリセット")) {
+            const auto& presets = PresetManager::GetInstance()->GetPresets();
+            if (presets.empty()) {
+                ImGui::TextDisabled("プリセットがありません");
+            }
+            for (const auto& [presetName, data] : presets) {
+                if (ImGui::MenuItem(presetName.c_str())) {
+                    if (!scene->GetObject3dCommon()) continue;
+                    auto object = std::make_unique<Object3d>();
+                    object->Initialize(scene->GetObject3dCommon());
+                    PresetManager::GetInstance()->ApplyPresetToObject(presetName, object.get());
+                    AddCreatedObject(editor, scene, std::move(object), presetName, "Create Preset " + presetName, useGameViewCursor);
+                }
+            }
+            ImGui::EndMenu();
+        }
+#endif
+    }
+}
 
 void HierarchyWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
@@ -51,6 +322,11 @@ void HierarchyWindow::Draw() {
     if (currentScene == nullptr) return;
 
     ImGui::Begin(ICON_FA_SITEMAP " Hierarchy###Hierarchy");
+
+    if (ImGui::BeginPopupContextWindow("HierarchyCreateContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+        DrawCreateContextMenu(currentScene, false);
+        ImGui::EndPopup();
+    }
 
     if (ImGui::CollapsingHeader(ICON_FA_COGS " システム設定 (System Settings)", ImGuiTreeNodeFlags_DefaultOpen)) {
         IEditable* currentObj = EditorManager::GetInstance()->GetSelectedObject();
@@ -112,6 +388,10 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimationWorkbench());
         }
+        if (editor_->GetEventLinkGraph() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " イベントリンク図 (Event Link Graph)", currentObj == editor_->GetEventLinkGraph())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetEventLinkGraph());
+        }
         ImGui::Separator();
         if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {
             editor_->SetSelectedObject(nullptr);
@@ -143,6 +423,12 @@ void HierarchyWindow::Draw() {
         }
 
         ImGui::InputText(ICON_FA_FILE_SIGNATURE " 保存名 (.json)", editor_->GetCurrentSceneFilenameBuffer(), editor_->GetSceneFilenameBufferSize());
+        if (editor_->HasAnyDirty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.72f, 0.2f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " %s", editor_->GetDirtySummaryText().c_str());
+        }
+        else {
+            ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.55f, 1.0f), ICON_FA_CHECK_CIRCLE " %s", editor_->GetDirtySummaryText().c_str());
+        }
         ImGui::Text(ICON_FA_FILTER " 個別保存 (競合回避用):");
         if (ImGui::Button(ICON_FA_USER " Playerのみ保存")) editor_->SaveScene(SaveMode::Player);
         ImGui::SameLine();
@@ -206,6 +492,13 @@ void HierarchyWindow::Draw() {
     }
     else {
         ImGui::Button(ICON_FA_BOX_OPEN " [ ここにモデルをドロップして生成 ]", ImVec2(-1, 30));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("右クリックで作成メニューを開けます");
+        }
+        if (ImGui::BeginPopupContextItem("HierarchyDropCreateContext", ImGuiPopupFlags_MouseButtonRight)) {
+            DrawCreateContextMenu(currentScene, false);
+            ImGui::EndPopup();
+        }
         if (ImGui::BeginDragDropTarget()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_ASSET")) {
                 const char* modelName = (const char*)payload->Data;
@@ -240,9 +533,7 @@ void HierarchyWindow::Draw() {
                     auto newObj = std::make_unique<Object3d>();
                     newObj->Initialize(common); newObj->SetModel("Stages/block"); newObj->SetName("Camera_Cinematic"); newObj->SetClassName("CinematicCamera");
                     newObj->SetTranslate({ 0.0f, 5.0f, -10.0f }); newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
-                    editor_->SetSelectedObject(newObj.get());
-                    currentScene->AddObject(std::move(newObj));
-                    EditorManager::GetInstance()->SetSelectedObject(editor_);
+                    editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
                 }
             }
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PARTICLE_ASSET")) {
@@ -289,7 +580,7 @@ void HierarchyWindow::Draw() {
             newObj->Initialize(common); newObj->SetModel(nullptr); newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("Trigger_Box");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionAttribute::kTrigger); newObj->SetTranslate({ 0, 2.0f, 0 });
-            editor_->SetSelectedObject(newObj.get()); currentScene->AddObject(std::move(newObj)); EditorManager::GetInstance()->SetSelectedObject(editor_);
+            editor_->AddEditorObject(std::move(newObj), "Create Trigger Box");
         }
     }
     if (ImGui::Button(ICON_FA_SHIELD_ALT " 透明ボックス生成 (当たり判定用)", ImVec2(-1, 40))) {
@@ -299,7 +590,7 @@ void HierarchyWindow::Draw() {
             newObj->Initialize(common); newObj->SetModel(nullptr);newObj->SetIsVisible(true); newObj->SetClassName("InvisibleBox"); newObj->SetName("collision_Box");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetCollisionAttribute(CollisionAttribute::kGround); newObj->SetTranslate({ 0, 2.0f, 0 });
-            editor_->SetSelectedObject(newObj.get()); currentScene->AddObject(std::move(newObj)); EditorManager::GetInstance()->SetSelectedObject(editor_);
+            editor_->AddEditorObject(std::move(newObj), "Create Collision Box");
         }
     }
     if (ImGui::Button(ICON_FA_VIDEO " 演出用カメラ生成 (Cinematic)", ImVec2(-1, 40))) {
@@ -309,7 +600,7 @@ void HierarchyWindow::Draw() {
             newObj->Initialize(common); newObj->SetModel("Stages/block"); newObj->SetColor({ 0.8f, 0.2f, 0.8f, 1.0f }); newObj->SetIsVisible(true); newObj->SetClassName("CinematicCamera"); newObj->SetName("Cinematic_Camera_01");
             Object3d::ColliderConfig colConfig; colConfig.type = ColliderType::kAABB; colConfig.size = { 1.0f, 1.0f, 1.0f };
             newObj->SetColliderConfig(colConfig); newObj->SetTranslate({ 0, 5.0f, -10.0f }); newObj->UpdateWorldMatrix();
-            editor_->SetSelectedObject(newObj.get()); currentScene->AddObject(std::move(newObj)); EditorManager::GetInstance()->SetSelectedObject(editor_);
+            editor_->AddEditorObject(std::move(newObj), "Create Cinematic Camera");
         }
     }
 
@@ -320,6 +611,7 @@ void HierarchyWindow::Draw() {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
             if (sourceObj->GetParent() != nullptr) {
+                nlohmann::json beforeState = editor_->CaptureObjectState(sourceObj);
                 Matrix4x4 worldMat = sourceObj->GetWorldMatrix();
                 sourceObj->SetParent(nullptr);
                 Vector3 t, rDeg, s;
@@ -328,11 +620,21 @@ void HierarchyWindow::Draw() {
                 sourceObj->GetTransform()->rotate = { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) };
                 sourceObj->GetTransform()->scale = s;
                 sourceObj->UpdateWorldMatrix();
+                editor_->RegisterObjectEdited(sourceObj, beforeState, "Unparent Object");
             }
         }
         ImGui::EndDragDropTarget();
     }
     ImGui::End();
+#endif
+}
+
+void HierarchyWindow::DrawCreateContextMenu(BaseScene* scene, bool useGameViewCursor) {
+#ifdef USE_IMGUI
+    ::DrawCreateContextMenu(editor_, scene, useGameViewCursor);
+#else
+    (void)scene;
+    (void)useGameViewCursor;
 #endif
 }
 
@@ -370,7 +672,9 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("HIERARCHY_OBJ")) {
             Object3d* sourceObj = *(Object3d**)payload->Data;
             if (sourceObj != obj && sourceObj->GetParent() != obj) {
+                nlohmann::json beforeState = editor_->CaptureObjectState(sourceObj);
                 sourceObj->SetParent(obj);
+                editor_->RegisterObjectEdited(sourceObj, beforeState, "Parent Object");
             }
         }
         ImGui::EndDragDropTarget();
@@ -386,7 +690,9 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
     const char* eyeIcon = isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
     if (!isVisible) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f)); // 非表示時はグレーアウト
     if (ImGui::Button(eyeIcon)) {
+        nlohmann::json beforeState = editor_->CaptureObjectState(obj);
         obj->SetIsVisible(!isVisible);
+        editor_->RegisterObjectEdited(obj, beforeState, "Toggle Visibility");
     }
     if (!isVisible) ImGui::PopStyleColor();
 
@@ -397,7 +703,9 @@ void HierarchyWindow::DrawHierarchyNode(Object3d* obj) {
     const char* lockIcon = isLocked ? ICON_FA_LOCK : ICON_FA_UNLOCK;
     if (isLocked) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f)); // ロック時は赤色
     if (ImGui::Button(lockIcon)) {
+        nlohmann::json beforeState = editor_->CaptureObjectState(obj);
         obj->SetIsLocked(!isLocked);
+        editor_->RegisterObjectEdited(obj, beforeState, "Toggle Lock");
     }
     if (isLocked) ImGui::PopStyleColor();
 

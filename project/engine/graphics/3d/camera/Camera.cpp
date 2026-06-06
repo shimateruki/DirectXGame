@@ -383,7 +383,27 @@ void Camera::Update() {
     // =================================================================
     // [3] 行列とプロジェクションの更新
     // =================================================================
-    Vector3 forward = { target_.x - eye_.x, target_.y - eye_.y, target_.z - eye_.z };
+    Vector3 viewEye = eye_;
+    Vector3 viewTarget = target_;
+    if (shakeTimer_ > 0.0f && shakeDuration_ > 0.0f && shakeAmplitude_ > 0.0f) {
+        constexpr float kFrameDelta = 1.0f / 60.0f;
+        float elapsed = shakeDuration_ - shakeTimer_;
+        float progress = std::clamp(elapsed / shakeDuration_, 0.0f, 1.0f);
+        float envelope = (1.0f - progress) * (1.0f - progress);
+        float phase = elapsed * shakeFrequency_ * 2.0f * PI;
+        float amp = shakeAmplitude_ * envelope;
+
+        Vector3 offset = {
+            std::sin(phase * 1.13f) * amp * shakeAxisWeight_.x,
+            std::cos(phase * 1.37f) * amp * shakeAxisWeight_.y,
+            std::sin(phase * 0.79f + 0.7f) * amp * shakeAxisWeight_.z
+        };
+        viewEye = viewEye + offset;
+        viewTarget = viewTarget + offset * 0.25f;
+        shakeTimer_ = std::max(0.0f, shakeTimer_ - kFrameDelta);
+    }
+
+    Vector3 forward = { viewTarget.x - viewEye.x, viewTarget.y - viewEye.y, viewTarget.z - viewEye.z };
     Vector3 currentUp = up_;
 
     if (std::abs(forward.x) < 0.001f && std::abs(forward.z) < 0.001f) {
@@ -395,7 +415,7 @@ void Camera::Update() {
         }
     }
 
-    viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, currentUp);
+    viewMatrix_ = math.MakeLookAtMatrix(viewEye, viewTarget, currentUp);
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
 
     Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
@@ -484,6 +504,14 @@ void Camera::SyncRotationToCurrentView() {
     // カメラの距離も現在の距離に同期する（一瞬で近づくのを防ぐ）
     aimDistance_ = dist;
 }
+void Camera::StartShake(float duration, float amplitude, float frequency, const Vector3& axisWeight) {
+    shakeDuration_ = std::max(duration, 0.01f);
+    shakeTimer_ = shakeDuration_;
+    shakeAmplitude_ = std::max(amplitude, 0.0f);
+    shakeFrequency_ = std::max(frequency, 1.0f);
+    shakeAxisWeight_ = axisWeight;
+}
+
 void Camera::StartOverride(const CameraOverrideParams& params) {
     isOverridden_ = true;
     overrideParams_ = params;

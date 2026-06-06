@@ -14,6 +14,7 @@
 #include "BaseScene.h"
 #include "Transform.h"
 #include "IEditable.h" 
+#include "CollisionConfig.h"
 
 // --- サブモジュール群 ---
 #include "HierarchyWindow.h"
@@ -28,6 +29,7 @@
 #include "EffectPreviewStage.h"
 #include "AnimationWorkbench.h"
 #include "SceneSavePreview.h"
+#include "EventLinkGraph.h"
 
 
 // ========================================================================
@@ -37,6 +39,7 @@ class Object3d;
 class DirectXCommon;
 class SceneManager;
 class GhostRecorder;
+class Model;
 class PostEffectEditor;
 class SpriteDebugEditor;
 class ParticleEditor;
@@ -98,6 +101,20 @@ public:
     void InstantiateModelAtCursor(const std::string& modelName);
     void InstantiatePresetAtCursor(const std::string& presetName);
     void InstantiateParticleAtCursor(const std::string& particleName);
+    void OpenGameViewCreateContextMenu();
+    void DrawGameViewCreateContextMenu();
+    Vector3 CalculateGameViewCreatePosition(const Object3d* object);
+    void StartGameViewCreatePreview(std::unique_ptr<Object3d> object, const std::string& label);
+    void AddEditorObject(std::unique_ptr<Object3d> object, const std::string& label);
+    nlohmann::json CaptureObjectState(Object3d* object) const;
+    void RegisterObjectEdited(Object3d* object, const std::string& label);
+    void RegisterObjectEdited(Object3d* object, const nlohmann::json& beforeState, const std::string& label);
+    void MarkDirtyForObject(Object3d* object);
+    void MarkDirty(SaveMode mode);
+    void ClearDirty(SaveMode mode);
+    bool IsDirty(SaveMode mode) const;
+    bool HasAnyDirty() const;
+    std::string GetDirtySummaryText() const;
     // --------------------------------------------------------------------
     // セッター (Setters)
     // --------------------------------------------------------------------
@@ -115,7 +132,7 @@ public:
         strcpy_s(currentSceneFilename_, sizeof(currentSceneFilename_), name.c_str());
     }
     void SetSelectedObject(Object3d* obj) { selectedObject_ = obj; }
-    void SetPreviewObject(std::unique_ptr<Object3d> obj) { previewObject_ = std::move(obj); }
+    void SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label = "Place Preview Object");
     void SetIsPathEditMode(bool mode) { isPathEditMode_ = mode; }
     void SetEditors(
         PostEffectEditor* postEffectEditor,
@@ -171,20 +188,44 @@ public:
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
+    EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
 private:
+    struct PlacementResult {
+        Vector3 position = { 0.0f, 0.0f, 0.0f };
+        Vector3 contactPosition = { 0.0f, 0.0f, 0.0f };
+        Vector3 normal = { 0.0f, 1.0f, 0.0f };
+        bool found = false;
+        bool hasSurface = false;
+    };
+
     // --------------------------------------------------------------------
     // 内部ヘルパー (Internal Helpers)
     // --------------------------------------------------------------------
     Ray ScreenPointToRay(const Vector2& mousePos);
     bool IntersectRayPlane(const Ray& ray, Vector3& intersectOut);
+    PlacementResult CalculateGameViewPlacement(const Object3d* object, const Vector2& mousePos, bool useGridSnap = true);
+    void ApplyGameViewPlacement(Object3d* object, const PlacementResult& placement, bool alignToSurface);
+    void UpdatePreviewPlacement();
+    void ConfirmPreviewPlacement();
+    void CancelPreviewPlacement();
+    void ApplyPreviewVisual(Object3d* object);
+    void RestorePreviewVisual(Object3d* object);
+    void DrawPreviewWire(ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
+    void DrawPreviewMarker();
     Vector3 WorldToScreen(const Vector3& worldPos);
     void Draw3DIcons();
     void DrawEventIDOverlay();
     void DrawSavePreview();
     std::string MakeSavePreviewTitle(SaveMode mode) const;
+    void ApplyObjectState(Object3d* object, const nlohmann::json& state);
+    Object3d* FindObjectByName(const std::string& name) const;
+    Object3d* AddObjectFromState(const nlohmann::json& state);
+    std::unique_ptr<Object3d> RemoveObjectImmediate(Object3d* object);
+    void TrackInspectorEdit(Object3d* beforeTarget, const nlohmann::json& beforeState);
+    void MarkDirtyForCategory(const std::string& category);
 private:
     // ====================================================================
     // メンバ変数
@@ -198,6 +239,18 @@ private:
     // --- エディタの状態・データ ---
     Object3d* selectedObject_ = nullptr;
     std::unique_ptr<Object3d> previewObject_ = nullptr;
+    Vector4 previewObjectOriginalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    BlendMode previewObjectOriginalBlendMode_ = BlendMode::kNormal;
+    int32_t previewObjectOriginalMaterialType_ = 0;
+    float previewObjectOriginalEmissive_ = 1.0f;
+    std::string previewObjectOriginalClassName_;
+    std::string previewObjectOriginalModelName_;
+    Model* previewObjectOriginalModel_ = nullptr;
+    ColliderConfig previewObjectOriginalColliderConfig_{};
+    bool previewObjectUsesFallbackModel_ = false;
+    Vector3 previewPlacementContactPosition_ = { 0.0f, 0.0f, 0.0f };
+    bool hasPreviewPlacementContact_ = false;
+    std::string previewCreateCommandLabel_ = "Place Preview Object";
     BaseScene* lastUpdatedScene_ = nullptr;
 
     bool drawColliders_ = true;
@@ -218,16 +271,39 @@ private:
     Vector2 gameViewSize_ = { 1266, 530 };
     Vector2 gameViewOffset_ = { 0, 0 };
     bool isGameViewHovered_ = false;
+    Vector2 gameViewCreateMenuMousePos_ = { 0, 0 };
+    Vector2 gameViewCreateMenuScreenPos_ = { 0, 0 };
+    bool requestGameViewCreateMenu_ = false;
+
+    // --- Dirty管理 ---
+    bool dirtyPlayer_ = false;
+    bool dirtyEnemy_ = false;
+    bool dirtyObject_ = false;
+    SaveMode pendingSaveMode_ = SaveMode::All;
+    bool pendingSaveIsSingleObject_ = false;
 
     // --- Undo/Redo システム ---
-    struct TransformCommand {
-        Object3d* target;
-        Transform oldTf;
-        Transform newTf;
+    enum class EditorCommandType {
+        ObjectCreated,
+        ObjectDeleted,
+        ObjectEdited
     };
-    std::deque<TransformCommand> undoStack_;
-    std::deque<TransformCommand> redoStack_;
+    struct EditorCommand {
+        EditorCommandType type = EditorCommandType::ObjectEdited;
+        std::string label;
+        std::string beforeName;
+        std::string afterName;
+        nlohmann::json beforeState;
+        nlohmann::json afterState;
+    };
+    void RegisterCommand(const EditorCommand& command);
+    std::deque<EditorCommand> undoStack_;
+    std::deque<EditorCommand> redoStack_;
+    nlohmann::json inspectorEditStartState_;
+    Object3d* inspectorEditTarget_ = nullptr;
+    bool hasInspectorEditStart_ = false;
     Transform tempTransformStart_;
+    nlohmann::json tempObjectStateStart_;
     bool isDraggingTransform_ = false;
 
     // --- スナップ機能 ---
@@ -262,6 +338,7 @@ private:
     MaterialPreviewBoard materialPreviewBoard_;
     AnimationWorkbench animationWorkbench_;
     SceneSavePreview sceneSavePreview_;
+    EventLinkGraph eventLinkGraph_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;
 

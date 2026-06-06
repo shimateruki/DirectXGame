@@ -31,6 +31,7 @@ VSOutput main(VSInput input)
     output.pos = mul(localPos, WVP);
     output.worldPos = mul(localPos, world).xyz;
     output.screenPos = output.pos;
+    output.localPos = localPos.xyz;
     
     output.normal = normalize(mul(input.normal, (float3x3) world));
     output.uv = input.uv;

@@ -1,6 +1,7 @@
 #pragma once
 
 class DebugEditor; // 前方宣言
+class BaseScene;
 class Object3d;
 
 // 左パネル（Hierarchy）の描画だけを専門に担当するクラス
@@ -14,6 +15,7 @@ public:
 
     // 毎フレームの描画処理
     void Draw();
+    void DrawCreateContextMenu(BaseScene* scene, bool useGameViewCursor);
 
 private:
     // 階層の再帰描画処理

@@ -17,6 +17,12 @@ cbuffer cbWaterParam : register(b1)
     float flowSpeedY;
     float uvOffsetX;
     float uvOffsetY;
+    float effectType;
+    float effectScale;
+    float effectSoftness;
+    float effectIntensity;
+    float3 cameraWorldPosition;
+    float billboardScale;
 };
 
 // [2] マテリアル (b2レジスタ) : Inspectorの色情報を受け取る
@@ -38,5 +44,6 @@ struct VSOutput
     float3 worldPos : POSITION;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD;
+    float3 localPos : TEXCOORD2;
     float4 screenPos : TEXCOORD1;
 };

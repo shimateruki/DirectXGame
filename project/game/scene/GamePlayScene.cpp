@@ -424,7 +424,6 @@ void GamePlayScene::Draw() {
 	// 2. 中間描画 (弾・デバッグUI・背景など)
 	// =======================================================
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
-	if (debugEditor_) debugEditor_->DrawPreview(pointLightResource_.Get(), spotLightResource_.Get());
 	LightEditor::GetInstance()->Draw3D();
 	if (skybox_) {
 		skybox_->Draw(camera->GetConstantBuffer());

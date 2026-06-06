@@ -84,6 +84,12 @@ public:
         float flowSpeedY;    // Y(Z)方向への流れる速さ
         float uvOffsetX;
         float uvOffsetY;
+        float effectType;
+        float effectScale;
+        float effectSoftness;
+        float effectIntensity;
+        Vector3 cameraWorldPosition;
+        float billboardScale;
     };
 public:
     // コンストラクタ: 描画対象のTransformを受け取る
@@ -100,7 +106,7 @@ public:
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     // --- アクセッサ (Setters) ---
-    void SetModel(Model* model) { model_ = model; }
+    void SetModel(Model* model) { model_ = model; modelName_.clear(); }
     void SetModel(const std::string& modelName);
     Model* GetModel() const { return model_; }
     const std::string& GetModelName() const { return modelName_; }
@@ -159,6 +165,8 @@ public:
     void DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
+    void InitializeFireProxyModel();
+
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
     Transform* transform_ = nullptr; // 位置情報元
@@ -193,6 +201,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
     WaterParamForGPU* waterParamData_ = nullptr;
+    std::unique_ptr<Model> fireProxyModel_;
     Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource_;
     TransformationMatrix* shadowWvpData_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> localFogResource_;
