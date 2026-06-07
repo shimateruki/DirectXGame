@@ -147,15 +147,18 @@ void ParticleEditor::DrawImGui() {
         int index = 0;
 
         if (fs::exists(directoryPath)) {
-            for (const auto& entry : fs::directory_iterator(directoryPath)) {
-                if (entry.path().extension() == ".png") {
-                    std::string fileName = entry.path().filename().string();
-                    files.push_back(fileName);
-                    if (params.textureName.find(fileName) != std::string::npos) {
-                        currentItem = index;
-                    }
-                    index++;
+            for (const auto& entry : fs::recursive_directory_iterator(directoryPath)) {
+                if (!entry.is_regular_file() || entry.path().extension() != ".png") {
+                    continue;
                 }
+
+                std::string relativePath = fs::relative(entry.path(), directoryPath).generic_string();
+                files.push_back(relativePath);
+                if (params.textureName.find(relativePath) != std::string::npos ||
+                    params.textureName.find(entry.path().filename().string()) != std::string::npos) {
+                    currentItem = index;
+                }
+                index++;
             }
         }
 

@@ -409,7 +409,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
                     }
                 }
-                if (objData.contains("waterParam") && targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 15) {
+                if (objData.contains("waterParam") && targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 20) {
                     if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
                         const auto& jw = objData["waterParam"];

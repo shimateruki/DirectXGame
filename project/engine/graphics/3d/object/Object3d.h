@@ -234,6 +234,12 @@ public:
     void DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawStunBind(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;

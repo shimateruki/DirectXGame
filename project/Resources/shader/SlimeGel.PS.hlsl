@@ -87,7 +87,7 @@ float4 main(VSOutput input) : SV_TARGET
     float2 bendNoise;
     bendNoise.x = flowA * 2.0f - 1.0f;
     bendNoise.y = flowB * 2.0f - 1.0f;
-    float2 distortion = (normal.xy * 0.012f + bendNoise * 0.017f) * refractionScale;
+    float2 distortion = (normal.xy * 0.006f + bendNoise * 0.008f) * refractionScale;
 
     float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
     float gelDepth = input.screenPos.z / input.screenPos.w;
@@ -97,19 +97,17 @@ float4 main(VSOutput input) : SV_TARGET
     float3 sceneColor = grabTex.SampleLevel(smp, screenUV, 0).rgb;
     float3 refractedColor = grabTex.SampleLevel(smp, saturate(screenUV + distortion * depthFade), 0).rgb;
 
-    float3 baseGel = float3(0.02f, 0.62f, 0.78f);
-    float3 deepGel = float3(0.015f, 0.20f, 0.31f);
-    float3 artistTint = lerp(baseGel, saturate(color.rgb), 0.48f);
-    float3 gelColor = lerp(deepGel, artistTint, 0.62f + flowA * 0.24f);
-    gelColor += float3(0.38f, 0.95f, 1.0f) * (fresnel * 0.85f + bubbles * 0.55f + membranes * 0.18f);
-    gelColor *= intensity;
+    float3 baseGel = float3(0.05f, 0.68f, 0.82f);
+    float3 artistTint = lerp(baseGel, saturate(color.rgb), 0.34f);
+    float3 gelHighlight = artistTint * (fresnel * 0.95f + bubbles * 0.45f + membranes * 0.16f);
+    gelHighlight += float3(0.55f, 1.0f, 0.95f) * bubbles * 0.22f;
+    gelHighlight *= intensity;
 
-    float alpha = saturate(color.a * (0.34f + fresnel * 0.45f + membranes * 0.12f + bubbles * 0.16f));
-    alpha *= lerp(0.72f, 1.0f, depthFade);
+    float alpha = saturate(color.a * (0.10f + fresnel * 0.30f + membranes * 0.05f + bubbles * 0.09f));
+    alpha *= lerp(0.56f, 0.88f, depthFade);
 
-    float3 background = lerp(sceneColor, refractedColor, saturate(0.58f + fresnel * 0.22f));
-    float3 finalColor = lerp(background, gelColor, saturate(alpha * 0.78f + fresnel * 0.08f));
-    finalColor += float3(0.15f, 0.9f, 1.0f) * fresnel * 0.22f * intensity;
+    float3 background = lerp(sceneColor, refractedColor, saturate(0.24f + fresnel * 0.18f));
+    float3 finalColor = background + gelHighlight * (0.30f + alpha * 0.55f);
 
     return float4(finalColor, alpha);
 }

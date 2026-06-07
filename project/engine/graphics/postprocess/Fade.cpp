@@ -10,7 +10,7 @@ Fade* Fade::GetInstance() {
 
 void Fade::Initialize() {
     // スライムフェード用のノイズテクスチャをロードしてセット
-    uint32_t noiseHandle = TextureManager::GetInstance()->Load("Resources/sprite/noise0.png");
+    uint32_t noiseHandle = TextureManager::GetInstance()->Load("Resources/sprite/effect/noise0.png");
     PostEffect::GetInstance()->SetNoiseTexture(noiseHandle);
 }
 

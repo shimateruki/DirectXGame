@@ -37,11 +37,17 @@ void MeshEffectEditor::RefreshTextureList() {
     std::string path = "Resources/sprite/"; // テクスチャフォルダのパス
 
     // 指定フォルダ内のファイルを走査
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (entry.is_regular_file()) {
-            // ファイル名だけをリストに追加
-            textureFileList_.push_back(entry.path().filename().string());
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
+        if (!entry.is_regular_file()) {
+            continue;
         }
+
+        const std::string ext = entry.path().extension().string();
+        if (ext != ".png" && ext != ".dds" && ext != ".jpg") {
+            continue;
+        }
+
+        textureFileList_.push_back(std::filesystem::relative(entry.path(), path).generic_string());
     }
 
     // currentTextureIndex_ の安全対策
@@ -51,9 +57,11 @@ void MeshEffectEditor::RefreshTextureList() {
     else {
         // 現在の editTexturePath_ に一致するものを探してインデックスを合わせる
         currentTextureIndex_ = 0; // デフォルト
-        std::string currentFileName = std::filesystem::path(editTexturePath_).filename().string();
         for (int i = 0; i < textureFileList_.size(); ++i) {
-            if (textureFileList_[i] == currentFileName) {
+            std::string fullPath = "Resources/sprite/" + textureFileList_[i];
+            if (textureFileList_[i] == editTexturePath_ ||
+                fullPath == editTexturePath_ ||
+                std::filesystem::path(textureFileList_[i]).filename() == std::filesystem::path(editTexturePath_).filename()) {
                 currentTextureIndex_ = i;
                 break;
             }
@@ -972,9 +980,13 @@ void MeshEffectEditor::LoadFromJson() {
 void MeshEffectEditor::SyncTextureIndices() {
     auto findIndex = [&](const std::string& path) -> int {
         if (path.empty()) return -1;
-        std::string fileName = std::filesystem::path(path).filename().string();
         for (int i = 0; i < (int)textureFileList_.size(); ++i) {
-            if (textureFileList_[i] == fileName) return i;
+            std::string fullPath = "Resources/sprite/" + textureFileList_[i];
+            if (textureFileList_[i] == path ||
+                fullPath == path ||
+                std::filesystem::path(textureFileList_[i]).filename() == std::filesystem::path(path).filename()) {
+                return i;
+            }
         }
         return -1;
         };

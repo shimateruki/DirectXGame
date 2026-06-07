@@ -23,6 +23,11 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include "GameDataManager.h"
+#include "WinApp.h"
+
+#include <algorithm>
+#include <cmath>
 
 void TitleScene::Initialize() {
     // --- 1. システム基盤の取得 ---
@@ -51,7 +56,7 @@ void TitleScene::Initialize() {
     particleCommon_->Initialize(dxCommon_);
 
     particleSystem_ = std::make_unique<ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
+    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
     // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
@@ -69,7 +74,7 @@ void TitleScene::Initialize() {
     //  GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
 
 
@@ -83,6 +88,8 @@ void TitleScene::Initialize() {
     
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
+    InitializeSaveSlotUI();
+    UpdateSaveSlotUI();
 
     dxCommon_->FlushCommandQueue(false);
 }
@@ -92,6 +99,13 @@ void TitleScene::Finalize() {
     BulletManager::GetInstance()->Finalize();
 
     objectManager_.reset();
+    titleUiSprites_.clear();
+    saveSlotCards_.fill(nullptr);
+    saveSlotIcons_.fill(nullptr);
+    for (auto& dots : saveSlotProgressDots_) {
+        dots.fill(nullptr);
+    }
+    saveSelectHeader_ = nullptr;
     sprites_.clear();
     particleSystem_.reset();
     particleCommon_.reset();
@@ -100,49 +114,15 @@ void TitleScene::Finalize() {
 }
 
 void TitleScene::Update(float deltaTime) {
+    titleUiTime_ += deltaTime;
 
-    // -------------------------------------------------
-    // 1. 入力によるメニューの上下移動
-    // -------------------------------------------------
-    InputManager* input = InputManager::GetInstance();
-
-    // （KeyConfigを実装済みなら "Up" や "Down" などのアクション名に置き換えてください！）
-    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
-        currentMenuIndex_--;
-        if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1; // 一番上なら一番下へループ
-    }
-    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
-        currentMenuIndex_++;
-        if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0; // 一番下なら一番上へループ
+    if (titleMode_ == TitleMode::MainMenu) {
+        UpdateMainMenu();
+    } else {
+        UpdateSaveSelect();
     }
 
-    // -------------------------------------------------
-    // 2. 選択中のメニューをハイライト(色を変える)
-    // -------------------------------------------------
-    Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f }; // 非選択時は少し暗くする
-    Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f }; // 選択時は明るく白！
-
-    if (startTextSprite_) {
-        startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
-    }
-    if (settingTextSprite_) {
-        settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
-    }
-
-    // -------------------------------------------------
-    // 3. 決定ボタンでシーン遷移
-    // -------------------------------------------------
-    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
-        if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
-            // ゲーム開始！
-            SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
-        }
-        else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
-            // 設定画面へ！(まだシーンがない場合は一旦ログを出すだけにしておきます)
-            DebugConsole::GetInstance()->AddLog("【Title】設定画面へ移行します！");
-            // SceneManager::GetInstance()->ChangeScene("SETTING"); 
-        }
-    }
+    UpdateSaveSlotUI();
 
     // 常に実行されるマネージャ更新
     LightEditor::GetInstance()->Update();
@@ -156,10 +136,226 @@ void TitleScene::Update(float deltaTime) {
     for (auto& sprite : sprites_) {
         sprite->Update();
     }
+    for (auto& sprite : titleUiSprites_) {
+        sprite->Update();
+    }
 
     // 各種グローバル更新
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
+}
+
+void TitleScene::UpdateMainMenu() {
+    InputManager* input = InputManager::GetInstance();
+
+    if (input->IsKeyTriggered(DIK_UP) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP)) {
+        currentMenuIndex_--;
+        if (currentMenuIndex_ < 0) currentMenuIndex_ = (int)MenuIndex::Max - 1;
+    }
+    if (input->IsKeyTriggered(DIK_DOWN) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN)) {
+        currentMenuIndex_++;
+        if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
+    }
+
+    Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+    Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    if (startTextSprite_) {
+        startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
+    }
+    if (settingTextSprite_) {
+        settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+    }
+
+    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+        if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
+            titleMode_ = TitleMode::SaveSelect;
+            currentSaveSlotIndex_ = std::clamp(currentSaveSlotIndex_, 0, GameDataManager::kSaveSlotCount - 1);
+            DebugConsole::GetInstance()->AddLog("[Title] Open save slot select.");
+        }
+        else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
+            DebugConsole::GetInstance()->AddLog("[Title] Settings scene is not implemented yet.");
+            // SceneManager::GetInstance()->ChangeScene("SETTING"); 
+        }
+    }
+}
+
+void TitleScene::UpdateSaveSelect() {
+    InputManager* input = InputManager::GetInstance();
+
+    const bool moveLeft =
+        input->IsKeyTriggered(DIK_LEFT) ||
+        input->IsKeyTriggered(DIK_UP) ||
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
+    const bool moveRight =
+        input->IsKeyTriggered(DIK_RIGHT) ||
+        input->IsKeyTriggered(DIK_DOWN) ||
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ||
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+
+    if (moveLeft) {
+        currentSaveSlotIndex_--;
+        if (currentSaveSlotIndex_ < 0) {
+            currentSaveSlotIndex_ = GameDataManager::kSaveSlotCount - 1;
+        }
+    }
+
+    if (moveRight) {
+        currentSaveSlotIndex_++;
+        if (currentSaveSlotIndex_ >= GameDataManager::kSaveSlotCount) {
+            currentSaveSlotIndex_ = 0;
+        }
+    }
+
+    if (input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+        titleMode_ = TitleMode::MainMenu;
+        DebugConsole::GetInstance()->AddLog("[Title] Close save slot select.");
+        return;
+    }
+
+    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+        StartSelectedSaveSlot();
+    }
+}
+
+void TitleScene::InitializeSaveSlotUI() {
+    titleUiSprites_.clear();
+    saveSlotCards_.fill(nullptr);
+    saveSlotIcons_.fill(nullptr);
+    for (auto& dots : saveSlotProgressDots_) {
+        dots.fill(nullptr);
+    }
+    saveSelectHeader_ = nullptr;
+
+    const float screenW = static_cast<float>(WinApp::kClientWidth);
+    const float screenH = static_cast<float>(WinApp::kClientHeight);
+    const float centerY = screenH * 0.62f;
+    const float slotStep = 280.0f;
+    const std::array<Vector2, 3> slotPositions = {
+        Vector2{ screenW * 0.5f - slotStep, centerY },
+        Vector2{ screenW * 0.5f, centerY },
+        Vector2{ screenW * 0.5f + slotStep, centerY }
+    };
+
+    saveSelectHeader_ = CreateUISprite(
+        "Resources/sprite/common/white.png",
+        { screenW * 0.5f, screenH * 0.26f },
+        { 520.0f, 8.0f },
+        { 0.55f, 0.95f, 1.0f, 0.85f }
+    );
+
+    for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
+        const Vector2& pos = slotPositions[i];
+        saveSlotCards_[i] = CreateUISprite(
+            "Resources/sprite/common/white.png",
+            pos,
+            { 230.0f, 230.0f },
+            { 0.08f, 0.24f, 0.32f, 0.82f }
+        );
+        saveSlotIcons_[i] = CreateUISprite(
+            "Resources/sprite/title/slime_save_icon.png",
+            { pos.x, pos.y - 32.0f },
+            { 122.0f, 122.0f },
+            { 1.0f, 1.0f, 1.0f, 1.0f }
+        );
+
+        for (int dot = 0; dot < 3; ++dot) {
+            saveSlotProgressDots_[i][dot] = CreateUISprite(
+                "Resources/sprite/common/white.png",
+                { pos.x - 36.0f + dot * 36.0f, pos.y + 76.0f },
+                { 18.0f, 18.0f },
+                { 0.35f, 0.42f, 0.48f, 0.8f }
+            );
+        }
+    }
+}
+
+Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector4& color) {
+    auto sprite = std::make_unique<Sprite>();
+    sprite->Initialize(spriteCommon_.get(), texturePath);
+    sprite->SetPosition(position);
+    sprite->SetSize(size);
+    sprite->SetColor(color);
+    sprite->SetAnchorPoint({ 0.5f, 0.5f });
+    sprite->SetVisible(false);
+    sprite->Update();
+
+    Sprite* raw = sprite.get();
+    titleUiSprites_.push_back(std::move(sprite));
+    return raw;
+}
+
+void TitleScene::UpdateSaveSlotUI() {
+    const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
+    if (startTextSprite_) startTextSprite_->SetVisible(!inSaveSelect);
+    if (settingTextSprite_) settingTextSprite_->SetVisible(!inSaveSelect);
+    if (saveSelectHeader_) saveSelectHeader_->SetVisible(inSaveSelect);
+
+    for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
+        const bool selected = inSaveSelect && i == currentSaveSlotIndex_;
+        const GameDataManager::SaveSlotSummary summary = GameDataManager::GetInstance()->GetSlotSummary(i);
+
+        const float pulse = selected ? (0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f)) : 0.0f;
+        const Vector4 cardColor = selected
+            ? Vector4{ 0.18f + pulse * 0.08f, 0.58f + pulse * 0.12f, 0.72f + pulse * 0.16f, 0.94f }
+            : Vector4{ 0.08f, 0.22f, 0.30f, summary.exists ? 0.78f : 0.50f };
+        const Vector4 iconColor = summary.exists
+            ? Vector4{ 1.0f, 1.0f, 1.0f, selected ? 1.0f : 0.82f }
+            : Vector4{ 0.62f, 0.76f, 0.82f, selected ? 0.80f : 0.44f };
+
+        if (saveSlotCards_[i]) {
+            saveSlotCards_[i]->SetVisible(inSaveSelect);
+            saveSlotCards_[i]->SetColor(cardColor);
+            saveSlotCards_[i]->SetSize(selected ? Vector2{ 252.0f, 252.0f } : Vector2{ 230.0f, 230.0f });
+        }
+        if (saveSlotIcons_[i]) {
+            saveSlotIcons_[i]->SetVisible(inSaveSelect);
+            saveSlotIcons_[i]->SetColor(iconColor);
+            saveSlotIcons_[i]->SetSize(selected ? Vector2{ 138.0f, 138.0f } : Vector2{ 122.0f, 122.0f });
+        }
+
+        const int stageDots = std::clamp(summary.clearedStageCount, 0, 3);
+        for (int dot = 0; dot < 3; ++dot) {
+            Sprite* dotSprite = saveSlotProgressDots_[i][dot];
+            if (!dotSprite) continue;
+
+            Vector4 dotColor = { 0.26f, 0.32f, 0.38f, 0.78f };
+            if (summary.tutorialCleared && dot == 0) {
+                dotColor = { 0.35f, 0.95f, 1.0f, 0.92f };
+            }
+            if (dot < stageDots) {
+                dotColor = { 1.0f, 0.86f, 0.22f, 0.96f };
+            }
+            if (!summary.exists) {
+                dotColor = { 0.24f, 0.28f, 0.32f, 0.42f };
+            }
+
+            dotSprite->SetVisible(inSaveSelect);
+            dotSprite->SetColor(dotColor);
+            dotSprite->SetSize(selected ? Vector2{ 21.0f, 21.0f } : Vector2{ 18.0f, 18.0f });
+        }
+    }
+}
+
+void TitleScene::StartSelectedSaveSlot() {
+    GameDataManager* saveData = GameDataManager::GetInstance();
+    const GameDataManager::SaveSlotSummary summary = saveData->GetSlotSummary(currentSaveSlotIndex_);
+
+    saveData->SetActiveSlot(currentSaveSlotIndex_);
+    if (!summary.exists) {
+        saveData->ResetAll();
+    }
+
+    const bool tutorialCleared = saveData->IsStageCleared(-1);
+    DebugConsole::GetInstance()->AddLog(tutorialCleared ? "[Title] Start from stage select." : "[Title] Start tutorial.");
+    SceneManager::GetInstance()->ChangeScene(tutorialCleared ? "SELECT" : "TUTORIAL");
+}
+
+void TitleScene::DrawSaveSlotUI() {
+    for (auto& sprite : titleUiSprites_) {
+        sprite->Draw();
+    }
 }
 
 void TitleScene::Draw() {
@@ -242,6 +438,7 @@ void TitleScene::DrawUI() {
     for (auto& sprite : sprites_) {
         sprite->Draw();
     }
+    DrawSaveSlotUI();
 }
 
 // シャドウマップ描画の実装

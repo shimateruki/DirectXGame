@@ -70,7 +70,7 @@ void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& model
     beamVisual_->SetName("Enemy_BeamDrone_Beam");
     beamVisual_->SetClassName("Effect");
     beamVisual_->SetModel("Primitives/cylinder");
-    beamVisual_->SetTexture("Resources/sprite/white.png");
+    beamVisual_->SetTexture("Resources/sprite/common/white.png");
     beamVisual_->SetBlendMode(BlendMode::kAdd);
     beamVisual_->SetMaterialType(12);
     beamVisual_->SetColor({ 0.15f, 0.9f, 1.0f, 0.9f });
@@ -85,7 +85,7 @@ void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& model
     beamCoreVisual_->SetName("Enemy_BeamDrone_BeamCore");
     beamCoreVisual_->SetClassName("Effect");
     beamCoreVisual_->SetModel("Primitives/cylinder");
-    beamCoreVisual_->SetTexture("Resources/sprite/white.png");
+    beamCoreVisual_->SetTexture("Resources/sprite/common/white.png");
     beamCoreVisual_->SetBlendMode(BlendMode::kAdd);
     beamCoreVisual_->SetMaterialType(12);
     beamCoreVisual_->SetColor({ 0.85f, 1.0f, 1.0f, 1.0f });

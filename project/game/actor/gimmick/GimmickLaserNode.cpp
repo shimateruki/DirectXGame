@@ -19,7 +19,7 @@ void GimmickLaserNode::Initialize(Object3dCommon* common, const std::string& mod
     SetColor({ 1.0f, 0.18f, 0.08f, 1.0f });
     SetBlendMode(BlendMode::kAdd);
     SetMaterialType(3);
-    SetTexture("Resources/sprite/white.png");
+    SetTexture("Resources/sprite/common/white.png");
     SetEmissive(3.5f);
     SetScale({ 0.35f, 0.35f, 0.35f });
     SetStatic(false);
@@ -41,7 +41,7 @@ void GimmickLaserNode::Initialize(Object3dCommon* common, const std::string& mod
     beamVisual_->SetName("LaserNode_Beam");
     beamVisual_->SetClassName("Effect");
     beamVisual_->SetModel("Primitives/cylinder");
-    beamVisual_->SetTexture("Resources/sprite/white.png");
+    beamVisual_->SetTexture("Resources/sprite/common/white.png");
     beamVisual_->SetBlendMode(BlendMode::kAdd);
     beamVisual_->SetMaterialType(12);
     beamVisual_->SetColor({ 1.0f, 0.05f, 0.02f, 0.88f });

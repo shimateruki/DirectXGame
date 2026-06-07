@@ -46,7 +46,7 @@
     "Lifetime": 1.0,
     "MeshSegments": 16,
     "ModelName": "Primitives/plane",
-    "NoiseTexturePath": "Resources/sprite/image3.png",
+    "NoiseTexturePath": "Resources/sprite/effect/image3.png",
     "OuterRadius": 4.0,
     "PlaneSize": [
         2.0,
@@ -58,7 +58,7 @@
         0.0
     ],
     "ProceduralType": 4,
-    "RampTexturePath": "Resources/sprite/abc.dds",
+    "RampTexturePath": "Resources/sprite/effect/abc.dds",
     "RingInnerRadius": 0.5,
     "RingOuterRadius": 1.0,
     "Rotation": [

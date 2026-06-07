@@ -457,7 +457,7 @@ void MeshEffectManager::SpawnRingWaveEffect(const Vector3& position) {
 
     // テクスチャ設定 (スライドの gradationLine.png)
     if (effect->GetMeshRenderer()) {
-        effect->GetMeshRenderer()->SetTexture("Resources/sprite/gradationLine.png");
+        effect->GetMeshRenderer()->SetTexture("Resources/sprite/effect/gradationLine.png");
     }
 
     // 配置
@@ -529,7 +529,7 @@ void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetim
 
     // グラデーションラインテクスチャで縦縞を作る
     if (effect->GetMeshRenderer()) {
-        effect->GetMeshRenderer()->SetTexture("Resources/sprite/gradationLine.png");
+        effect->GetMeshRenderer()->SetTexture("Resources/sprite/effect/gradationLine.png");
     }
 
     // ★ 5. スケールアニメーション (少し脈動させる)
@@ -547,4 +547,4 @@ void MeshEffectManager::SpawnPortalEffect(const Vector3& position, float lifetim
     effect->UpdateWorldMatrix();
 
     activeEffects_.push_back(std::move(effect));
-}
+}

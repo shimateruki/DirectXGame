@@ -15,7 +15,7 @@ VSOutput main(VSInput input)
     float3 localNormal = normalize(input.normal);
     float speed = max(waveSpeed, 0.05f);
     float detail = max(waveFrequency, 0.1f);
-    float wobblePower = waveHeight * 0.075f;
+    float wobblePower = waveHeight * 0.035f;
 
     float phaseA = dot(localPos, float3(1.7f, 0.8f, 1.2f)) * detail + time * speed * 2.1f;
     float phaseB = dot(localPos, float3(-0.6f, 1.9f, 1.4f)) * detail - time * speed * 1.55f;

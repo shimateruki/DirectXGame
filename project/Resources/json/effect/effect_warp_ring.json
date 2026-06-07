@@ -86,7 +86,7 @@
         0.2
     ],
     "TargetName": "",
-    "TexturePath": "Resources/sprite/circle2.png",
+    "TexturePath": "Resources/sprite/common/circle2.png",
     "Thickness": 0.5,
     "ThrustLength": 5.0,
     "ThrustRadius": 0.8,

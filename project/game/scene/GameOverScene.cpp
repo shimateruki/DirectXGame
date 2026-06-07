@@ -50,7 +50,7 @@ void GameOverScene::Initialize() {
     particleCommon_->Initialize(dxCommon_);
 
     particleSystem_ = std::make_unique<ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
+    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
     // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
@@ -68,7 +68,7 @@ void GameOverScene::Initialize() {
     // GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
     // --- 5. レベルデータの読み込み (LevelLoaderへ委譲) ---
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameOverScene.json");

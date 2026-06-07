@@ -100,18 +100,20 @@ float4 main(VSOutput input) : SV_TARGET
     float angle = atan2(dot(radialVec, sideB), dot(radialVec, sideA));
 
     float shellNoise = Noise2D(float2(axis01 * (32.0f + detail * 3.0f) - time * speed * 5.0f, angle * 1.7f));
-    float scan = 0.5f + 0.5f * sin(axis01 * (48.0f + patternScale * 18.0f) - time * speed * 9.0f + shellNoise * 3.0f);
+    float scan = 0.5f + 0.5f * sin(axis01 * (72.0f + patternScale * 22.0f) - time * speed * 13.0f + shellNoise * 2.2f);
     float spiralA = 0.5f + 0.5f * sin(angle * 3.0f + axis01 * (28.0f + detail) - time * speed * 8.0f);
     float spiralB = 0.5f + 0.5f * sin(-angle * 4.0f + axis01 * (20.0f + detail * 1.6f) + time * speed * 6.0f);
 
-    float edgeSoft = lerp(0.035f, 0.20f, softness);
-    float core = 1.0f - smoothstep(0.0f, 0.28f + edgeSoft, radial);
-    float glow = 1.0f - smoothstep(0.18f, 1.15f + edgeSoft, radial);
-    float shell = smoothstep(0.42f, 0.72f, radial) * (1.0f - smoothstep(0.88f, 1.24f, radial));
-    shell *= saturate(spiralA * 0.65f + spiralB * 0.55f + shellNoise * 0.25f);
+    float edgeSoft = lerp(0.018f, 0.13f, softness);
+    float core = 1.0f - smoothstep(0.0f, 0.16f + edgeSoft, radial);
+    float inner = 1.0f - smoothstep(0.12f, 0.34f + edgeSoft, radial);
+    float glow = 1.0f - smoothstep(0.22f, 1.28f + edgeSoft, radial);
+    float shell = smoothstep(0.36f, 0.56f, radial) * (1.0f - smoothstep(0.82f, 1.18f, radial));
+    shell *= saturate(spiralA * 0.36f + spiralB * 0.28f + shellNoise * 0.16f);
 
     float endFade = smoothstep(0.0f, 0.04f, axis01) * (1.0f - smoothstep(0.96f, 1.0f, axis01));
-    float energy = saturate(core * (1.25f + scan * 0.45f) + glow * 0.50f + shell * 0.78f) * endFade;
+    float scanLine = pow(scan, 5.0f) * inner;
+    float energy = saturate(core * (1.95f + scan * 0.35f) + scanLine * 1.15f + glow * 0.38f + shell * 0.42f) * endFade;
 
     float bgDepth = depthTex.SampleLevel(smp, screenUV, 0).r;
     float beamDepth = input.screenPos.z / input.screenPos.w;
@@ -119,9 +121,9 @@ float4 main(VSOutput input) : SV_TARGET
     float depthFade = (bgDepth >= 0.999f) ? 1.0f : saturate(depthDiff / 0.65f + 0.45f);
     energy *= depthFade;
 
-    float3 tint = lerp(float3(0.25f, 0.92f, 1.55f), saturate(color.rgb), 0.70f);
-    float3 hotCore = lerp(float3(2.4f, 2.8f, 3.2f), tint * 2.2f, 0.28f);
-    float3 beamColor = tint * (glow * 2.1f + shell * 1.7f) + hotCore * core * 2.8f;
+    float3 tint = lerp(float3(0.12f, 0.78f, 1.75f), saturate(color.rgb), 0.58f);
+    float3 hotCore = float3(3.2f, 3.7f, 4.0f);
+    float3 beamColor = tint * (glow * 1.85f + shell * 0.95f + scanLine * 1.2f) + hotCore * core * 3.4f;
     beamColor *= intensity;
 
     float alpha = saturate(color.a * energy);

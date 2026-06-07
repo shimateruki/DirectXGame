@@ -57,6 +57,12 @@ public:
    void CreateSlimeGelPipeline();
    void CreateShockwavePipeline();
    void CreateLiquidContactPipeline();
+   void CreateDamageCrackPipeline();
+   void CreateUpdraftPipeline();
+   void CreateStunBindPipeline();
+   void CreateCrownUnlockPipeline();
+   void CreatePoisonSporePipeline();
+   void CreateCloudPipeline();
    void SetMagmaGraphicsCommand();
    void SetIceGraphicsCommand();
    void SetFireGraphicsCommand();
@@ -64,6 +70,12 @@ public:
    void SetSlimeGelGraphicsCommand();
    void SetShockwaveGraphicsCommand();
    void SetLiquidContactGraphicsCommand();
+   void SetDamageCrackGraphicsCommand();
+   void SetUpdraftGraphicsCommand();
+   void SetStunBindGraphicsCommand();
+   void SetCrownUnlockGraphicsCommand();
+   void SetPoisonSporeGraphicsCommand();
+   void SetCloudGraphicsCommand();
 
    void CreateSkyboxPipeline();
    ID3D12RootSignature* GetSkyboxRootSignature() const { return skyboxRootSignature_.Get(); }
@@ -100,6 +112,12 @@ private:
    Microsoft::WRL::ComPtr<ID3D12PipelineState> slimeGelPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> shockwavePipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> liquidContactPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> damageCrackPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> updraftPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> stunBindPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> crownUnlockPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> poisonSporePipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> cloudPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;

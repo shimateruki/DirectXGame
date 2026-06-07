@@ -46,7 +46,7 @@
     "Lifetime": 99999.0,
     "MeshSegments": 64,
     "ModelName": "",
-    "NoiseTexturePath": "Resources/sprite/noise0.png",
+    "NoiseTexturePath": "Resources/sprite/effect/noise0.png",
     "OuterRadius": 4.0,
     "PlaneSize": [
         2.0,
@@ -86,7 +86,7 @@
         1.0
     ],
     "TargetName": "",
-    "TexturePath": "Resources/sprite/circle2.png",
+    "TexturePath": "Resources/sprite/common/circle2.png",
     "Thickness": 0.5,
     "ThrustLength": 5.0,
     "ThrustRadius": 0.8,

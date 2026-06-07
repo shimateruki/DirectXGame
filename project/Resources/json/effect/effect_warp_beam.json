@@ -46,7 +46,7 @@
     "Lifetime": 1.2,
     "MeshSegments": 32,
     "ModelName": "",
-    "NoiseTexturePath": "Resources/sprite/noise0.png",
+    "NoiseTexturePath": "Resources/sprite/effect/noise0.png",
     "OuterRadius": 4.0,
     "PlaneSize": [
         2.0,
@@ -86,7 +86,7 @@
         0.3
     ],
     "TargetName": "",
-    "TexturePath": "Resources/sprite/gradationLine.png",
+    "TexturePath": "Resources/sprite/effect/gradationLine.png",
     "Thickness": 0.5,
     "ThrustLength": 5.0,
     "ThrustRadius": 0.8,

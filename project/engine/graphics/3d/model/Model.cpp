@@ -221,14 +221,14 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     uint32_t handleToBind = normalMapHandle;
     if (handleToBind == 0) {
         // 画像が設定されていない場合はダミーの白画像を使う
-        handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+        handleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
     }
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 9, handleToBind);
     uint32_t ormHandleToBind = ormMapHandle;
 
     // 画像が未設定(0)、または異常な値の時は「white.png (RGBすべて1.0)」をセットする！
     if (ormHandleToBind <= 0 || ormHandleToBind >= DirectXCommon::kMaxSRVCount) {
-        ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+        ormHandleToBind = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
     }
 
     // 次のインデックス(例: 10番)にORMマップをセット！
@@ -308,7 +308,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
             modelData.materials[i].textureFilePath = directoryPath + sep + texFilename;
         }
         else {
-            modelData.materials[i].textureFilePath = "Resources/sprite/white.png";
+            modelData.materials[i].textureFilePath = "Resources/sprite/common/white.png";
         }
     }
 

@@ -671,7 +671,7 @@ void SpriteDebugEditor::Draw() {
 	if (gizmoArrowX_ == nullptr || initializedSpriteCommon_ != currentSpriteCommon) {
 
 		// ギズモを「現在のシーンの Common」で再作成
-		gizmoTextureHandle_ = Sprite::LoadTexture("white");
+		gizmoTextureHandle_ = Sprite::LoadTexture("common/white.png");
 
 		gizmoArrowX_ = std::make_unique<Sprite>();
 		gizmoArrowX_->Initialize(currentSpriteCommon, gizmoTextureHandle_);

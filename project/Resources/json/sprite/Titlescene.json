@@ -20,7 +20,7 @@
                 600.0,
                 240.0
             ],
-            "texture": "gameStartText.png"
+            "texture": "title/gameStartText.png"
         },
         {
             "anchor": [
@@ -42,7 +42,7 @@
                 300.0,
                 54.0
             ],
-            "texture": "setting.png"
+            "texture": "title/setting.png"
         },
         {
             "anchor": [
@@ -64,7 +64,7 @@
                 300.0,
                 54.0
             ],
-            "texture": "titleText.png"
+            "texture": "title/titleText.png"
         }
     ]
 }

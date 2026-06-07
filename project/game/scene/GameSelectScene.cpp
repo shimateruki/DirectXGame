@@ -149,7 +149,7 @@ void GameSelectScene::Initialize() {
 	particleCommon_->Initialize(dxCommon_);
 
 	particleSystem_ = std::make_unique<ParticleSystem>();
-	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/circle2.png");
+	particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/circle2.png");
 
 	ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
@@ -163,7 +163,7 @@ void GameSelectScene::Initialize() {
 
 	lockOnSystem_ = std::make_unique<LockOnSystem>();
 	lockOnSystem_->Initialize(inputManager_);
-	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/lockOn.png"); 
+	uint32_t lockOnTex = TextureManager::GetInstance()->Load("Resources/sprite/ui/hud/lockOn.png"); 
 	lockOnSprite_ = std::make_unique<Sprite>();
 	lockOnSprite_->Initialize(spriteCommon_.get(), lockOnTex);
 	lockOnSprite_->SetAnchorPoint({ 0.5f, 0.5f }); // 画像の中心を基準にする
@@ -173,7 +173,7 @@ void GameSelectScene::Initialize() {
 	GPUParticleManager::GetInstance()->Initialize(dxCommon_);
 	GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
 	// パーティクルで使う画像を読み込み、ハンドル(番号)を保存しておく
-	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+	gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
 	// 1. キューブマップ（DDS）の読み込み
 	skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
@@ -374,7 +374,7 @@ void GameSelectScene::Draw() {
 
 	// 5. 流体描画
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 15) hasFluid = true;
+	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 20) hasFluid = true;
 	if (hasFluid) {
 		dxCommon_->UpdateGrabTexture();
 		for (auto& obj : objects) {
@@ -388,6 +388,12 @@ void GameSelectScene::Draw() {
 			else if (matType == 13) obj->DrawSlimeGel(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 14) obj->DrawShockwave(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 15) obj->DrawLiquidContact(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 16) obj->DrawDamageCrack(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 17) obj->DrawUpdraft(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 18) obj->DrawStunBind(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 19) obj->DrawCrownUnlock(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 20) obj->DrawPoisonSpore(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 21) obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
 	}
 

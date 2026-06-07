@@ -167,10 +167,16 @@ public:
     void DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawDamageCrack(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawUpdraft(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawStunBind(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
     void InitializeFireProxyModel();
-    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)());
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false);
 
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;

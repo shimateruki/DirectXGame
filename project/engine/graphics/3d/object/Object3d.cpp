@@ -328,6 +328,37 @@ void Object3d::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle
         meshRenderer_->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
     }
 }
+void Object3d::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawUpdraft(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawStunBind(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawStunBind(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawCrownUnlock(depthSrvHandle, grabSrvHandle);
+    }
+}
+void Object3d::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);
+    }
+}
+
+void Object3d::DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawCloud(depthSrvHandle, grabSrvHandle);
+    }
+}
 Model* Object3d::GetModel() const {
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }
@@ -743,7 +774,7 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
-    if (GetMaterialType() >= 8 && GetMaterialType() <= 15 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+    if (GetMaterialType() >= 8 && GetMaterialType() <= 20 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         json jw;
         jw["waveSpeed"] = water->waveSpeed;
@@ -873,7 +904,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
-    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 15) {
+    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 20) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
             const auto& jw = j["waterParam"];

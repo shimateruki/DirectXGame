@@ -49,7 +49,7 @@ void GameClearScene::Initialize() {
     particleCommon_->Initialize(dxCommon_);
 
     particleSystem_ = std::make_unique<ParticleSystem>();
-    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/white.png");
+    particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
     // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
@@ -69,10 +69,10 @@ void GameClearScene::Initialize() {
     // GPUパーティクルの初期化
     GPUParticleManager::GetInstance()->Initialize(dxCommon_);
     GPUParticleManager::GetInstance()->LoadAllPresets("Resources/json/gpu_particles/");
-    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/white.png");
+    gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
     // --- 5. 固定スプライトの生成 (必要であれば) ---
-    uint32_t monsterBallHandle = Sprite::LoadTexture("monsterBall.png");
+    uint32_t monsterBallHandle = Sprite::LoadTexture("ui/result/monsterBall.png");
     auto monsterBallSprite = std::make_unique<Sprite>();
     monsterBallSprite->Initialize(spriteCommon_.get(), monsterBallHandle);
     monsterBallSprite->SetPosition({ 200.0f, 360.0f });

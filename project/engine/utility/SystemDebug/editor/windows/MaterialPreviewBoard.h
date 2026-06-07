@@ -6,6 +6,7 @@
 
 class SceneManager;
 class DebugEditor;
+class Object3d;
 
 class MaterialPreviewBoard : public IEditable {
 public:
@@ -16,8 +17,10 @@ public:
 private:
     struct MaterialPreviewEntry {
         int materialType = 0;
-        const char* label = "";
-        const char* shortLabel = "";
+        float effectType = 0.0f;
+        std::string label;
+        std::string shortLabel;
+        std::string modeLabel;
     };
 
 private:
@@ -25,6 +28,10 @@ private:
     void RemoveBoard();
     int CountBoardObjects() const;
     std::vector<MaterialPreviewEntry> GetEntries() const;
+    void RefreshModelCandidates();
+    void SetPreviewModel(const std::string& modelName);
+    void DrawModelSelector();
+    void ApplyPreviewDefaults(Object3d* object, const MaterialPreviewEntry& entry) const;
 
 private:
     SceneManager* sceneManager_ = nullptr;
@@ -34,4 +41,8 @@ private:
     int columns_ = 4;
     bool placeNearSelected_ = true;
     bool useEffectPreviewStage_ = true;
+    bool expandModeVariants_ = true;
+    bool showOnlySpecialMaterials_ = false;
+    std::vector<std::string> modelCandidates_;
+    int selectedModelIndex_ = 0;
 };

@@ -17,6 +17,7 @@
 #include <GhostRecorder.h>
 #include <GameRule.h>
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -56,6 +57,19 @@ public:
 
 
 private:
+    enum class TitleMode {
+        MainMenu,
+        SaveSelect
+    };
+
+    void InitializeSaveSlotUI();
+    void UpdateMainMenu();
+    void UpdateSaveSelect();
+    void UpdateSaveSlotUI();
+    void DrawSaveSlotUI();
+    void StartSelectedSaveSlot();
+    Sprite* CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector4& color);
+
     // --- システムポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -94,8 +108,16 @@ private:
     };
 
     int currentMenuIndex_ = (int)MenuIndex::GameStart; // 現在の選択番号
+    TitleMode titleMode_ = TitleMode::MainMenu;
+    int currentSaveSlotIndex_ = 0;
+    float titleUiTime_ = 0.0f;
 
     // スプライトのポインタを保持しておく
     Sprite* startTextSprite_ = nullptr;
     Sprite* settingTextSprite_ = nullptr;
+    std::vector<std::unique_ptr<Sprite>> titleUiSprites_;
+    std::array<Sprite*, 3> saveSlotCards_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotIcons_ = { nullptr, nullptr, nullptr };
+    std::array<std::array<Sprite*, 3>, 3> saveSlotProgressDots_{};
+    Sprite* saveSelectHeader_ = nullptr;
 };

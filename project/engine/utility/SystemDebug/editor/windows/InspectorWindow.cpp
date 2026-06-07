@@ -224,11 +224,14 @@ void InspectorWindow::Draw() {
                                          "トゥーン調 (Cel Shaded)", "ローカルフォグ (Local Fog)",
                                          "水 (Water)", "新マグマ (Magma)", "分厚い氷 (Ice)", "炎 (Fire)",
                                          "レーザー (Laser)", "スライムジェル (Slime Gel)",
-                                         "地面衝撃波 (Shockwave)", "水/マグマ接触 (Liquid Contact)"
+                                         "地面衝撃波 (Shockwave)", "水/マグマ接触 (Liquid Contact)",
+                                         "ダメージ亀裂 (Damage Crack)", "上昇気流 (Updraft)",
+                                         "スタン拘束 (Stun Bind)", "王冠解放 (Crown Unlock)",
+                                         "毒胞子 (Poison Spore)", "雲 (Cloud)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 15) currentMatType = 0;
+                if (currentMatType > 21) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -261,7 +264,7 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
-                if (currentMatType >= 8 && currentMatType <= 15) {
+                if (currentMatType >= 8 && currentMatType <= 21) {
                     ImGui::Separator();
 
                     if (selectedObject->GetMeshRenderer() && selectedObject->GetMeshRenderer()->GetWaterParamData()) {
@@ -323,6 +326,95 @@ void InspectorWindow::Draw() {
                             ImGui::Text(ICON_FA_WIND " --- Flow Settings ---");
                             if (ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 16) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.32f, 0.18f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " --- Damage Crack Settings ---");
+                            const char* crackTypes[] = { "ブロック亀裂 (Block Crack)", "ガラス亀裂 (Glass Crack)", "弱点コア亀裂 (Core Crack)" };
+                            int crackType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("亀裂タイプ (Crack Type)", &crackType, crackTypes, IM_ARRAYSIZE(crackTypes))) {
+                                waterData->effectType = static_cast<float>(crackType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("脈動速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 12.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("亀裂の深さ (Depth)", &waterData->waveHeight, 0.01f, 0.0f, 3.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("亀裂の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 30.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("亀裂スケール (Crack Scale)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("縁の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 17) {
+                            ImGui::TextColored(ImVec4(0.45f, 0.95f, 1.0f, 1.0f), ICON_FA_WIND " --- Updraft Settings ---");
+                            const char* updraftTypes[] = { "上昇柱 (Column)", "渦リング (Vortex Ring)", "横風スラッシュ (Wind Slash)" };
+                            int updraftType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("風タイプ (Wind Type)", &updraftType, updraftTypes, IM_ARRAYSIZE(updraftTypes))) {
+                                waterData->effectType = static_cast<float>(updraftType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("流れる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 16.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("揺らぎの高さ (Wobble)", &waterData->waveHeight, 0.01f, 0.0f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("筋の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 30.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("渦の広さ (Vortex Scale)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("境界の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("透明感/強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 18) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.25f, 1.0f), ICON_FA_BOLT " --- Stun Bind Settings ---");
+                            const char* stunTypes[] = { "拘束リング (Bind Rings)", "電撃ケージ (Electric Cage)", "スタン球 (Stun Orb)" };
+                            int stunType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("拘束タイプ (Bind Type)", &stunType, stunTypes, IM_ARRAYSIZE(stunTypes))) {
+                                waterData->effectType = static_cast<float>(stunType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("電撃速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 20.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("リング間隔 (Ring Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 32.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("拘束の太さ (Bind Width)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("外側の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 19) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.25f, 1.0f), ICON_FA_MAGIC " --- Crown Unlock Settings ---");
+                            const char* crownTypes[] = { "魔法陣 (Magic Circle)", "王冠バースト (Crown Burst)", "解放ポータル (Unlock Portal)" };
+                            int crownType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("解放タイプ (Unlock Type)", &crownType, crownTypes, IM_ARRAYSIZE(crownTypes))) {
+                                waterData->effectType = static_cast<float>(crownType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("演出速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 12.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("光線の数/細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 32.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("紋章スケール (Glyph Scale)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("縁の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("神々しさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 10.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 20) {
+                            ImGui::TextColored(ImVec4(0.55f, 1.0f, 0.25f, 1.0f), ICON_FA_SMOG " --- Poison Spore Settings ---");
+                            const char* sporeTypes[] = { "毒霧 (Poison Mist)", "胞子雲 (Spore Cloud)", "毒リング (Poison Ring)" };
+                            int sporeType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("毒タイプ (Poison Type)", &sporeType, sporeTypes, IM_ARRAYSIZE(sporeTypes))) {
+                                waterData->effectType = static_cast<float>(sporeType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("漂う速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 12.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("霧の厚み (Density)", &waterData->waveHeight, 0.01f, 0.0f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("胞子の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 30.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("境界の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("毒の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 21) {
+                            ImGui::TextColored(ImVec4(0.75f, 0.9f, 1.0f, 1.0f), ICON_FA_CLOUD " --- Cloud Settings ---");
+                            const char* cloudTypes[] = { "雲の塊 (Puff)", "流れる雲 (Drift)", "足元の煙 (Ground Mist)" };
+                            int cloudType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("雲タイプ (Cloud Type)", &cloudType, cloudTypes, IM_ARRAYSIZE(cloudTypes))) {
+                                waterData->effectType = static_cast<float>(cloudType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("流れる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 12.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("厚み (Density)", &waterData->waveHeight, 0.01f, 0.0f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("雲の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 30.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("雲スケール (Cloud Scale)", &waterData->effectScale, 0.01f, 0.05f, 8.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("描画サイズ (Billboard Size)", &waterData->billboardScale, 0.01f, 0.05f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("明るさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
                         }
                         else {
                             const char* settingTitle = (currentMatType == 8) ? ICON_FA_TINT " --- Water Settings ---" :
@@ -1403,7 +1495,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 1.0f, 0.08f, 0.05f, 0.9f });
             selectedObject->SetBlendMode(BlendMode::kAdd);
             selectedObject->SetMaterialType(12);
-            selectedObject->SetTexture("Resources/sprite/white.png");
+            selectedObject->SetTexture("Resources/sprite/common/white.png");
             selectedObject->SetEmissive(6.0f);
             selectedObject->SetScale({ 0.25f, 0.25f, 1.0f });
             selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
@@ -1429,7 +1521,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetColor({ 1.0f, 0.18f, 0.08f, 1.0f });
             selectedObject->SetBlendMode(BlendMode::kAdd);
             selectedObject->SetMaterialType(3);
-            selectedObject->SetTexture("Resources/sprite/white.png");
+            selectedObject->SetTexture("Resources/sprite/common/white.png");
             selectedObject->SetEmissive(3.5f);
             selectedObject->SetScale({ 0.35f, 0.35f, 0.35f });
             selectedObject->SetCollisionAttribute(0);

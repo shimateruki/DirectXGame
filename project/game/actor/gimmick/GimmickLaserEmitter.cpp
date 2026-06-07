@@ -20,7 +20,7 @@ void GimmickLaserEmitter::Initialize(Object3dCommon* common, const std::string& 
     SetColor({ 1.0f, 0.08f, 0.05f, 0.9f });
     SetBlendMode(BlendMode::kAdd);
     SetMaterialType(12);
-    SetTexture("Resources/sprite/white.png");
+    SetTexture("Resources/sprite/common/white.png");
     SetEmissive(6.0f);
     SetScale({ 0.25f, 0.25f, 1.0f });
     SetStatic(false);

@@ -25,6 +25,12 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     CreateSlimeGelPipeline();
     CreateShockwavePipeline();
     CreateLiquidContactPipeline();
+    CreateDamageCrackPipeline();
+    CreateUpdraftPipeline();
+    CreateStunBindPipeline();
+    CreateCrownUnlockPipeline();
+    CreatePoisonSporePipeline();
+    CreateCloudPipeline();
 
     CreateSkyboxPipeline();
 }
@@ -595,6 +601,66 @@ void Object3dCommon::CreateLiquidContactPipeline() {
     );
 }
 
+void Object3dCommon::CreateDamageCrackPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/DamageCrack.VS.hlsl",
+        L"Resources/shader/DamageCrack.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        damageCrackPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateUpdraftPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/Updraft.VS.hlsl",
+        L"Resources/shader/Updraft.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        updraftPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateStunBindPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/StunBind.VS.hlsl",
+        L"Resources/shader/StunBind.PS.hlsl",
+        BlendMode::kAdd,
+        D3D12_CULL_MODE_NONE,
+        stunBindPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateCrownUnlockPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/CrownUnlock.VS.hlsl",
+        L"Resources/shader/CrownUnlock.PS.hlsl",
+        BlendMode::kAdd,
+        D3D12_CULL_MODE_NONE,
+        crownUnlockPipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreatePoisonSporePipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/PoisonSpore.VS.hlsl",
+        L"Resources/shader/PoisonSpore.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        poisonSporePipelineState_.GetAddressOf()
+    );
+}
+
+void Object3dCommon::CreateCloudPipeline() {
+    CreateSpecialMaterialPipeline(
+        L"Resources/shader/Cloud.VS.hlsl",
+        L"Resources/shader/Cloud.PS.hlsl",
+        BlendMode::kNormal,
+        D3D12_CULL_MODE_NONE,
+        cloudPipelineState_.GetAddressOf()
+    );
+}
+
 void Object3dCommon::SetLaserGraphicsCommand() {
     if (!laserPipelineState_) return;
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
@@ -624,6 +690,54 @@ void Object3dCommon::SetLiquidContactGraphicsCommand() {
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
     commandList->SetPipelineState(liquidContactPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetDamageCrackGraphicsCommand() {
+    if (!damageCrackPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(damageCrackPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetUpdraftGraphicsCommand() {
+    if (!updraftPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(updraftPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetStunBindGraphicsCommand() {
+    if (!stunBindPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(stunBindPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetCrownUnlockGraphicsCommand() {
+    if (!crownUnlockPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(crownUnlockPipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetPoisonSporeGraphicsCommand() {
+    if (!poisonSporePipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(poisonSporePipelineState_.Get());
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+void Object3dCommon::SetCloudGraphicsCommand() {
+    if (!cloudPipelineState_) return;
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
+    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
+    commandList->SetPipelineState(cloudPipelineState_.Get());
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
