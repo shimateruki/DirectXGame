@@ -23,8 +23,20 @@
 #include "LightEditor.h"
 #include "ParticleManager.h"
 #include "GPUParticleManager.h"
+#include "Fade.h"
+#include "PostEffect.h"
 
 void GameOverScene::Initialize() {
+    Fade::GetInstance()->Stop();
+    PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
+    if (postParams) {
+        postParams->slimeFadeIntensity = 0.0f;
+        postParams->irisFadeIntensity = 0.0f;
+        postParams->blackout = 0.0f;
+        postParams->dangerVignette = 0.0f;
+        postParams->damageFlash = 0.0f;
+    }
+
     // --- 1. エンジン基盤の取得 ---
     dxCommon_ = DirectXCommon::GetInstance();
     inputManager_ = InputManager::GetInstance();

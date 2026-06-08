@@ -19,7 +19,7 @@ constexpr float kBeamOuterThickness = 0.34f;
 constexpr float kBeamCoreThickness = 0.11f;
 constexpr float kBeamOvershootLength = 6.0f;
 constexpr float kBeamHitRadius = 1.0f;
-constexpr float kBeamDamage = 2.0f;
+constexpr float kBeamDamage = 1.0f;
 constexpr float kOrbitSideOffset = 4.2f;
 constexpr float kSteeringResponse = 2.8f;
 constexpr float kPlayerBeamChargeTime = 0.65f;
@@ -48,6 +48,28 @@ Vector3 SafeNormalize(const Vector3& value, const Vector3& fallback) {
         return fallback;
     }
     return value / length;
+}
+
+Quaternion MakeYAxisToDirectionQuaternion(const Vector3& direction) {
+    Vector3 to = direction;
+    if (Math::Length(to) < 0.001f) {
+        return { 0.0f, 0.0f, 0.0f, 1.0f };
+    }
+    to = Math::Normalize(to);
+
+    const Vector3 from = { 0.0f, 1.0f, 0.0f };
+    const float dot = std::clamp(Math::Dot(from, to), -1.0f, 1.0f);
+    if (dot > 0.9999f) {
+        return { 0.0f, 0.0f, 0.0f, 1.0f };
+    }
+    if (dot < -0.9999f) {
+        return { 1.0f, 0.0f, 0.0f, 0.0f };
+    }
+
+    Vector3 axis = Math::Cross(from, to);
+    const float s = std::sqrt((1.0f + dot) * 2.0f);
+    const float invS = 1.0f / s;
+    return { axis.x * invS, axis.y * invS, axis.z * invS, s * 0.5f };
 }
 }
 
@@ -110,7 +132,13 @@ void EnemyBeamDrone::Update(float deltaTime) {
     hoverTimer_ += deltaTime;
     cooldownTimer_ = (std::max)(0.0f, cooldownTimer_ - deltaTime);
 
-    UpdateHover(deltaTime);
+    if (state_ == BeamState::Beam) {
+        smoothedVelocity_ = { 0.0f, 0.0f, 0.0f };
+        SetVelocity({ 0.0f, 0.0f, 0.0f });
+    }
+    else {
+        UpdateHover(deltaTime);
+    }
 
     Vector3 toTarget = { 0.0f, 0.0f, 1.0f };
     Vector3 direction = { 0.0f, 0.0f, 1.0f };
@@ -357,15 +385,6 @@ void EnemyBeamDrone::FireBeam() {
 void EnemyBeamDrone::UpdateBeamVisual() {
     if (!beamVisual_ || !beamCoreVisual_) return;
 
-    beamStart_ = GetBeamMuzzlePosition();
-    if (target_) {
-        Vector3 aimPoint = target_->GetTranslate();
-        aimPoint.y += 0.8f;
-        const Vector3 aimDiff = aimPoint - beamStart_;
-        const float aimLength = (std::max)(0.01f, Math::Length(aimDiff));
-        beamDirection_ = SafeNormalize(aimDiff, beamDirection_);
-        beamLength_ = aimLength + kBeamOvershootLength;
-    }
     beamEnd_ = beamStart_ + beamDirection_ * beamLength_;
 
     Vector3 diff = beamEnd_ - beamStart_;
@@ -383,13 +402,19 @@ void EnemyBeamDrone::UpdateBeamVisual() {
 void EnemyBeamDrone::UpdateBeamDamage() {
     if (beamDamageDone_ || !target_) return;
 
-    Vector3 targetPoint = target_->GetTranslate();
-    targetPoint.y += 0.8f;
-    if (CalcDistancePointToSegment(targetPoint, beamStart_, beamEnd_) > kBeamHitRadius) {
+    Vector3 damageStart = beamStart_;
+    Vector3 damageEnd = beamEnd_;
+    if (!GetVisibleBeamSegment(damageStart, damageEnd)) {
         return;
     }
 
-    Vector3 knockback = NormalizePlanar(target_->GetTranslate() - beamStart_);
+    Vector3 targetPoint = target_->GetTranslate();
+    targetPoint.y += 0.8f;
+    if (CalcDistancePointToSegment(targetPoint, damageStart, damageEnd) > kBeamHitRadius) {
+        return;
+    }
+
+    Vector3 knockback = NormalizePlanar(target_->GetTranslate() - damageStart);
     DamageEvent damageEvent;
     damageEvent.target = target_;
     damageEvent.attacker = this;
@@ -418,18 +443,47 @@ void EnemyBeamDrone::ApplyBeamVisualTransform(Object3d* visual, const Vector3& s
         return;
     }
 
-    const Vector3 midpoint = source + diff * 0.5f;
-    const float yaw = std::atan2(diff.x, diff.z);
-    const float horizontalLength = std::sqrt(diff.x * diff.x + diff.z * diff.z);
-    const float pitch = std::atan2(-diff.y, horizontalLength);
-
-    visual->SetTranslate(midpoint);
-    visual->SetRotation({ pitch, yaw, 0.0f });
-    visual->SetScale({ thickness, thickness, length * 0.5f });
+    visual->SetTranslate(source + diff * 0.5f);
+    visual->SetScale({ thickness, length * 0.5f, thickness });
+    visual->GetTransform()->quaternion = MakeYAxisToDirectionQuaternion(diff);
+    visual->GetTransform()->isQuaternionMaster = true;
     visual->SetColor(color);
     visual->SetEmissive(emissive);
     visual->SetIsVisible(true);
     visual->UpdateWorldMatrix();
+}
+
+bool EnemyBeamDrone::GetVisibleBeamSegment(Vector3& outStart, Vector3& outEnd) const {
+    if (!beamVisual_ || !beamVisual_->GetIsVisible()) {
+        return false;
+    }
+
+    const Matrix4x4& world = beamVisual_->GetWorldMatrix();
+    const Vector3 center = { world.m[3][0], world.m[3][1], world.m[3][2] };
+    const Vector3 axisX = { world.m[0][0], world.m[0][1], world.m[0][2] };
+    const Vector3 axisY = { world.m[1][0], world.m[1][1], world.m[1][2] };
+    const Vector3 axisZ = { world.m[2][0], world.m[2][1], world.m[2][2] };
+
+    Vector3 halfAxis = axisX;
+    float halfLength = Math::Length(axisX);
+    const float lengthY = Math::Length(axisY);
+    const float lengthZ = Math::Length(axisZ);
+    if (lengthY > halfLength) {
+        halfAxis = axisY;
+        halfLength = lengthY;
+    }
+    if (lengthZ > halfLength) {
+        halfAxis = axisZ;
+        halfLength = lengthZ;
+    }
+
+    if (halfLength <= 0.001f) {
+        return false;
+    }
+
+    outStart = center - halfAxis;
+    outEnd = center + halfAxis;
+    return true;
 }
 
 Vector3 EnemyBeamDrone::GetBeamMuzzlePosition() const {
@@ -512,6 +566,12 @@ void EnemyBeamDrone::UpdatePlayerBeamDamage(Player* player) {
         return;
     }
 
+    Vector3 damageStart = beamStart_;
+    Vector3 damageEnd = beamEnd_;
+    if (!GetVisibleBeamSegment(damageStart, damageEnd)) {
+        return;
+    }
+
     CollisionManager* collisionManager = CollisionManager::GetInstance();
     if (!collisionManager) {
         return;
@@ -527,7 +587,7 @@ void EnemyBeamDrone::UpdatePlayerBeamDamage(Player* player) {
 
         Vector3 targetPoint = object->GetWorldPosition();
         targetPoint.y += 0.8f;
-        if (CalcDistancePointToSegment(targetPoint, beamStart_, beamEnd_) > kPlayerBeamHitRadius) {
+        if (CalcDistancePointToSegment(targetPoint, damageStart, damageEnd) > kPlayerBeamHitRadius) {
             continue;
         }
 

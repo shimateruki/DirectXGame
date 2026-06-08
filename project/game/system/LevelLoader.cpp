@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <utility>
 #include <Windows.h> // OutputDebugStringA用
 
 // 生成するクラス群のインクルード
@@ -546,6 +547,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
     try {
         layoutData = json::parse(file);
         if (layoutData.contains("sprites") && layoutData["sprites"].is_array()) {
+            std::vector<std::pair<Sprite*, std::string>> spriteParentPending;
             for (const auto& spriteData : layoutData["sprites"]) {
                 if (!spriteData.contains("name")) continue;
                 std::string name = spriteData["name"];
@@ -587,8 +589,28 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     if (spriteData.contains("emissive")) {
                         targetSprite->SetEmissive(spriteData["emissive"].get<float>());
                     }
+                    if (spriteData.contains("parentName") && spriteData["parentName"].is_string()) {
+                        spriteParentPending.emplace_back(targetSprite, spriteData["parentName"].get<std::string>());
+                    } else {
+                        targetSprite->SetParent(nullptr);
+                    }
                     targetSprite->Update();
                 }
+            }
+            for (const auto& [sprite, parentName] : spriteParentPending) {
+                if (!sprite) continue;
+
+                Sprite* parentSprite = nullptr;
+                if (!parentName.empty()) {
+                    for (auto& candidate : sprites) {
+                        if (candidate && candidate.get() != sprite && candidate->GetName() == parentName) {
+                            parentSprite = candidate.get();
+                            break;
+                        }
+                    }
+                }
+                sprite->SetParent(parentSprite);
+                sprite->Update();
             }
         }
     }

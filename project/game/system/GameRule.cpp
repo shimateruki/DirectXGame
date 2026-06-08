@@ -157,6 +157,7 @@ void GameRule::Initialize(BaseScene* scene) {
         int lives = GameDataManager::GetInstance()->GetLives();
 
         DebugConsole::GetInstance()->AddLog("Player Died! Remaining Lives: " + std::to_string(lives));
+        return;
 
         if (lives <= 0) {
             // 残機ゼロならゲームオーバー

@@ -82,7 +82,7 @@ public:
     void SetEye(const Vector3& eye) { eye_ = eye; }
     void SetTarget(const Vector3& target) { target_ = target; }
     void SetRotation(const Vector3& rotation) { rotation_ = rotation; }
-    void SetFreezeEye(bool freeze) { isEyeFrozen_ = freeze; }
+    void SetFreezeEye(bool freeze);
     void SetAimCameraSuppressed(bool suppressed) { isAimCameraSuppressed_ = suppressed; }
 
     // FOV（視野角）の動的変更

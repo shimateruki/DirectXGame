@@ -57,6 +57,11 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+private:
+    float timer_ = 0.0f;
+    bool sceneChangeRequested_ = false;
+    bool lifePresentationStarted_ = false;
+    Vector2 irisCenter_ = { 0.5f, 0.5f };
 };
 
 // --------------------------------------------------------
@@ -88,12 +93,14 @@ public:
     void Exit(Player* player) override;
 private:
     enum class Phase {
+        LifeLost,
         Waiting,  // 落下を見せる待機時間
         IrisOut,  // 画面を閉じる
         IrisIn    // 画面を開く
     };
     Phase phase_ = Phase::Waiting;
     float waitTimer_ = 0.0f;
+    Vector2 irisCenter_ = { 0.5f, 0.5f };
 };
 
 // --------------------------------------------------------

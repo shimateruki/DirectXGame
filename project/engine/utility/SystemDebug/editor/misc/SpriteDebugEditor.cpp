@@ -94,7 +94,8 @@ void SpriteDebugEditor::Update(const Vector2& localMousePos, bool isHovered) {
 				// 元のスプライトのパラメータを丸コピー
 				newSprite->SetName(selectedSprite_->GetName() + "_Copy");
 				// ※完全に重なると見えないので、少しズラして配置する
-				newSprite->SetPosition({ selectedSprite_->GetPosition().x + 20.0f, selectedSprite_->GetPosition().y + 20.0f });
+				Vector2 selectedWorldPos = selectedSprite_->GetWorldPosition();
+				newSprite->SetPosition({ selectedWorldPos.x + 20.0f, selectedWorldPos.y + 20.0f });
 				newSprite->SetSize(selectedSprite_->GetSize());
 				newSprite->SetAnchorPoint(selectedSprite_->GetAnchorPoint());
 				newSprite->SetColor(selectedSprite_->GetColor());
@@ -263,6 +264,9 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 	for (const auto& spritePtr : sprites) {
 		Sprite* sprite = spritePtr.get();
 		if (!sprite) continue;
+		if (sprite->GetParent() != nullptr) continue;
+		DrawSpriteNode(sprite);
+		continue;
 
 		ImGui::PushID(id++);
 
@@ -314,6 +318,12 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 			sprites.push_back(std::move(newSprite));
 			selectedSprite_ = sprites.back().get();
 		}
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
+			Sprite* sourceSprite = *(Sprite**)payload->Data;
+			if (sourceSprite) {
+				sourceSprite->SetParent(nullptr);
+			}
+		}
 		ImGui::EndDragDropTarget();
 	}
 	ImGui::EndChild();
@@ -324,6 +334,72 @@ void SpriteDebugEditor::DrawHierarchyWindow() {
 // =========================================================================
 // 2. Inspector (右パネル) の描画
 // =========================================================================
+void SpriteDebugEditor::DrawSpriteNode(Sprite* sprite) {
+#ifdef USE_IMGUI
+	if (!sprite) return;
+
+	ImGui::PushID(sprite);
+
+	bool isVisible = sprite->IsVisible();
+	const char* eyeIcon = isVisible ? ICON_FA_EYE : ICON_FA_EYE_SLASH;
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_Text, isVisible ? ImVec4(1, 1, 1, 1) : ImVec4(0.5f, 0.5f, 0.5f, 1));
+	if (ImGui::Button(eyeIcon)) sprite->SetVisible(!isVisible);
+	ImGui::PopStyleColor(2);
+
+	ImGui::SameLine();
+
+	bool isLocked = sprite->IsLocked();
+	const char* lockIcon = isLocked ? ICON_FA_LOCK : ICON_FA_UNLOCK;
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+	ImGui::PushStyleColor(ImGuiCol_Text, isLocked ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+	if (ImGui::Button(lockIcon)) sprite->SetLocked(!isLocked);
+	ImGui::PopStyleColor(2);
+
+	ImGui::SameLine();
+
+	std::string label = sprite->GetName().empty() ? "Sprite" : sprite->GetName();
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+	if (selectedSprite_ == sprite) flags |= ImGuiTreeNodeFlags_Selected;
+	if (sprite->GetChildren().empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+	if (!isVisible) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+	bool nodeOpen = ImGui::TreeNodeEx("##SpriteNode", flags, ICON_FA_IMAGE " %s", label.c_str());
+	if (!isVisible) ImGui::PopStyleColor();
+
+	if (ImGui::IsItemClicked()) {
+		selectedSprite_ = sprite;
+	}
+
+	if (ImGui::BeginDragDropSource()) {
+		Sprite* payloadSprite = sprite;
+		ImGui::SetDragDropPayload("SPRITE_NODE", &payloadSprite, sizeof(Sprite*));
+		ImGui::Text("Sprite: %s", label.c_str());
+		ImGui::EndDragDropSource();
+	}
+
+	if (ImGui::BeginDragDropTarget()) {
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_NODE")) {
+			Sprite* sourceSprite = *(Sprite**)payload->Data;
+			if (sourceSprite && sourceSprite != sprite) {
+				sourceSprite->SetParent(sprite);
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+
+	if (nodeOpen) {
+		for (Sprite* child : sprite->GetChildren()) {
+			if (child && child->GetParent() == sprite) {
+				DrawSpriteNode(child);
+			}
+		}
+		ImGui::TreePop();
+	}
+
+	ImGui::PopID();
+#endif
+}
+
 void SpriteDebugEditor::DrawInspectorWindow() {
 #ifdef USE_IMGUI
 	if (!sceneManager_) return;
@@ -357,6 +433,15 @@ void SpriteDebugEditor::DrawInspectorWindow() {
 		if (ImGui::InputText(ICON_FA_PEN " 名前 (Name)", nameBuffer, sizeof(nameBuffer))) {
 			selectedSprite_->SetName(nameBuffer);
 		}
+		if (selectedSprite_->GetParent()) {
+			ImGui::TextDisabled(ICON_FA_SITEMAP " Parent: %s", selectedSprite_->GetParent()->GetName().c_str());
+			if (ImGui::Button(ICON_FA_UNLINK " Unparent Sprite")) {
+				selectedSprite_->SetParent(nullptr);
+			}
+		} else {
+			ImGui::TextDisabled(ICON_FA_SITEMAP " Parent: None");
+		}
+		ImGui::Separator();
 
 		// 基本パラメータ
 		Vector2 pos = selectedSprite_->GetPosition();
@@ -615,6 +700,7 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 		spriteData["color"] = { color.x, color.y, color.z };
 		spriteData["texture"] = sprite->GetTextureName();
 		spriteData["emissive"] = sprite->GetEmissive();
+		spriteData["parentName"] = sprite->GetParent() ? sprite->GetParent()->GetName() : "";
 		spriteArray.push_back(spriteData);
 	}
 	root["sprites"] = spriteArray;
@@ -631,7 +717,7 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 bool SpriteDebugEditor::IsMouseOver(Sprite* sprite, const Vector2& localMousePos) const {
 	if (sprite == nullptr) return false;
 
-	Vector2 pos = sprite->GetPosition();
+	Vector2 pos = sprite->GetWorldPosition();
 	Vector2 size = sprite->GetSize();
 	Vector2 anchor = sprite->GetAnchorPoint();
 
@@ -690,7 +776,7 @@ void SpriteDebugEditor::Draw() {
 	}
 
 	// --- ギズモの描画 ---
-	Vector2 pos = selectedSprite_->GetPosition();
+	Vector2 pos = selectedSprite_->GetWorldPosition();
 	gizmoArrowX_->SetPosition(pos);
 	gizmoArrowY_->SetPosition(pos);
 

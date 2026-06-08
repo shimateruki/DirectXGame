@@ -521,9 +521,14 @@ void HierarchyWindow::Draw() {
                     Object3dCommon* common = currentScene->GetObject3dCommon();
                     if (common) {
                         auto newObj = std::make_unique<Object3d>();
-                        newObj->Initialize(common); newObj->ImportFromJson(data); newObj->SetModel(modelName); newObj->SetName("Preview_" + std::string(presetName));
+                        newObj->Initialize(common); newObj->ImportFromJson(data); newObj->SetModel(modelName);
                         newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
-                        editor_->SetPreviewObject(std::move(newObj));
+                        std::string baseName = std::string(presetName);
+                        size_t slash = baseName.find_last_of("/\\");
+                        if (slash != std::string::npos) {
+                            baseName = baseName.substr(slash + 1);
+                        }
+                        AddCreatedObject(editor_, currentScene, std::move(newObj), baseName, "Create Preset " + std::string(presetName), false);
                     }
                 }
             }

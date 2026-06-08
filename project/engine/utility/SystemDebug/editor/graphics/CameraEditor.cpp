@@ -96,13 +96,7 @@ void CameraEditor::Update(Object3d* player, bool isLockingOn) {
             // =========================================================
             // 操作中判定（環境による分岐）
             // =========================================================
-#ifdef USE_IMGUI
-            // Debug/Develop環境：エディタ操作の誤爆を防ぐため、右クリック中のみ操作中とみなす
-            bool isControllingCamera = input->IsMouseButtonPressed(1) ||
-#else
-            // Release環境：マウス移動および右クリックを操作として判定
             bool isControllingCamera = input->IsMouseButtonPressed(1) || isMouseMoving ||
-#endif
                 (std::abs(input->GetRightStick().x) > 0.1f) ||
                 (std::abs(input->GetRightStick().y) > 0.1f) ||
                 isGyroActive;

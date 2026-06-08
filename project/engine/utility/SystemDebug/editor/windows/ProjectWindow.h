@@ -31,6 +31,8 @@ public:
     //  ゲームの描画ループの先頭で呼ばれる「裏撮影」関数
     void CapturePendingThumbnails();
 
+    uint64_t GetPresetThumbnailGpuPtr(const std::string& presetName);
+
 private:
     // 画用紙を作る関数
     void CreateThumbnailResource(const std::string& modelName);

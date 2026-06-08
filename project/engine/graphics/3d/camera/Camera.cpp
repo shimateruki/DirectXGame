@@ -29,6 +29,14 @@ void Camera::UpdateProjectionMatrix() {
     // 現在のパラメータを使ってプロジェクション行列を再計算
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
 }
+
+void Camera::SetFreezeEye(bool freeze) {
+    isEyeFrozen_ = freeze;
+    if (freeze) {
+        smoothEye_ = eye_;
+    }
+}
+
 void Camera::Initialize() {
     // デフォルトの視点、注視点、上方向を設定
     eye_ = { 0.0f, 5.0f, -20.0f };
@@ -222,6 +230,9 @@ void Camera::Update() {
             target_ = smoothTarget_;
 
             smoothEye_ = LerpVec3(smoothEye_, desiredEye, eyeLerpFactor);
+            if (isEyeFrozen_) {
+                smoothEye_ = eye_;
+            }
             eye_ = smoothEye_;
         }
 

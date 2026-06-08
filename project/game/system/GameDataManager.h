@@ -165,6 +165,13 @@ public:
     }
     void ResetCoins() { coins_ = 0; Save(); }
 
+    void RequestRespawnIrisIn() { pendingRespawnIrisIn_ = true; }
+    bool ConsumeRespawnIrisInRequest() {
+        const bool requested = pendingRespawnIrisIn_;
+        pendingRespawnIrisIn_ = false;
+        return requested;
+    }
+
     // --- ステージクリア状況 ---
     void MarkStageCleared(int index) {
         if (std::find(clearedStages_.begin(), clearedStages_.end(), index) == clearedStages_.end()) {
@@ -245,6 +252,7 @@ private:
     int lives_ = 3;
     int coins_ = 0;
     int activeSlot_ = 0;
+    bool pendingRespawnIrisIn_ = false;
     std::vector<int> clearedStages_;
     std::vector<int> seenUnlockedStages_;
     std::map<int, std::vector<bool>> stageStarCoins_; // ステージ番号 -> [コイン0, コイン1, コイン2]

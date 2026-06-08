@@ -536,9 +536,9 @@ void GameEditorController::EndFrame() {
 	ImGuiManager::GetInstance()->EndFrame();
 }
 
-void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameState) {
+void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying) {
 	if (Camera* mainCamera = CameraManager::GetInstance()->GetActiveCamera()) {
-		mainCamera->SetInputEnabled(!(frameState.spriteEditorBusy || frameState.gizmoBusy));
+		mainCamera->SetInputEnabled(isPlaying || !(frameState.spriteEditorBusy || frameState.gizmoBusy));
 	}
 }
 

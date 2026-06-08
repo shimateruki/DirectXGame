@@ -69,6 +69,7 @@ private:
     void DrawSaveSlotUI();
     void StartSelectedSaveSlot();
     Sprite* CreateUISprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector4& color);
+    void SetNumberSprites(std::array<Sprite*, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
 
     // --- システムポインタ ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -113,11 +114,17 @@ private:
     float titleUiTime_ = 0.0f;
 
     // スプライトのポインタを保持しておく
+    Sprite* titleTextSprite_ = nullptr;
     Sprite* startTextSprite_ = nullptr;
     Sprite* settingTextSprite_ = nullptr;
     std::vector<std::unique_ptr<Sprite>> titleUiSprites_;
     std::array<Sprite*, 3> saveSlotCards_ = { nullptr, nullptr, nullptr };
+    std::array<std::array<Sprite*, 4>, 3> saveSlotFrames_{};
     std::array<Sprite*, 3> saveSlotIcons_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotNumberSprites_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotLifeIcons_ = { nullptr, nullptr, nullptr };
+    std::array<Sprite*, 3> saveSlotLifeXIcons_ = { nullptr, nullptr, nullptr };
+    std::array<std::array<Sprite*, 2>, 3> saveSlotLifeDigits_{};
     std::array<std::array<Sprite*, 3>, 3> saveSlotProgressDots_{};
     Sprite* saveSelectHeader_ = nullptr;
 };

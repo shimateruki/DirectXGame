@@ -4,6 +4,48 @@
 #include <cassert>
 #include "TextureManager.h"
 #include "SRVManager.h"
+#include <algorithm>
+
+namespace {
+Matrix4x4 MakeSpriteLocalMatrix(const Sprite* sprite) {
+	Math math;
+	Vector2 position = sprite ? sprite->GetPosition() : Vector2{ 0.0f, 0.0f };
+	float rotation = sprite ? sprite->GetRotation() : 0.0f;
+	return math.MakeAffineMatrix(
+		{ 1.0f, 1.0f, 1.0f },
+		{ 0.0f, 0.0f, rotation },
+		{ position.x, position.y, 0.0f });
+}
+
+Matrix4x4 MakeSpriteWorldMatrix(const Sprite* sprite) {
+	Math math;
+	Matrix4x4 localMatrix = MakeSpriteLocalMatrix(sprite);
+	Sprite* parent = sprite ? sprite->GetParent() : nullptr;
+	if (!parent) {
+		return localMatrix;
+	}
+	return math.Multiply(localMatrix, MakeSpriteWorldMatrix(parent));
+}
+
+bool HasParentInChain(Sprite* sprite, const Sprite* parent) {
+	for (Sprite* current = sprite; current != nullptr; current = current->GetParent()) {
+		if (current == parent) {
+			return true;
+		}
+	}
+	return false;
+}
+}
+
+Sprite::~Sprite() {
+	SetParent(nullptr, false);
+	for (Sprite* child : children_) {
+		if (child) {
+			child->parent_ = nullptr;
+		}
+	}
+	children_.clear();
+}
 
 /// <summary>
 /// 初期化 (ファイルパス指定)
@@ -120,12 +162,8 @@ void Sprite::Update() {
 	}
 
 	// --- 行列計算 ---
-	transform_.scale = { 1.0f, 1.0f, 1.0f };
-	transform_.rotate = { 0.0f, 0.0f, rotation_ };
-	transform_.translate = { position_.x, position_.y, 0.0f };
-
 	Math math;
-	Matrix4x4 worldMatrix = math.MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+	Matrix4x4 worldMatrix = MakeSpriteWorldMatrix(this);
 	Matrix4x4 viewMatrix = math.MakeIdentity4x4();
 	Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::kClientWidth, (float)WinApp::kClientHeight, 0.0f, 100.0f);
 	Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
@@ -206,4 +244,44 @@ void Sprite::Play() {
 /// </summary>
 void Sprite::Stop() {
 	isPlaying_ = false;
+}
+
+void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
+	if (parent == this || HasParentInChain(parent, this)) {
+		return;
+	}
+
+	Vector2 worldPosition = GetWorldPosition();
+
+	if (parent_) {
+		auto& siblings = parent_->children_;
+		siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
+	}
+
+	parent_ = parent;
+
+	if (parent_) {
+		auto& siblings = parent_->children_;
+		if (std::find(siblings.begin(), siblings.end(), this) == siblings.end()) {
+			siblings.push_back(this);
+		}
+	}
+
+	if (keepWorldPosition) {
+		if (parent_) {
+			Math math;
+			Matrix4x4 parentWorld = MakeSpriteWorldMatrix(parent_);
+			Matrix4x4 inverseParent = math.Inverse(parentWorld);
+			Vector3 local = math.Transform({ worldPosition.x, worldPosition.y, 0.0f }, inverseParent);
+			position_ = { local.x, local.y };
+		} else {
+			position_ = worldPosition;
+		}
+	}
+}
+
+Vector2 Sprite::GetWorldPosition() const {
+	Math math;
+	Vector3 world = math.Transform({ 0.0f, 0.0f, 0.0f }, MakeSpriteWorldMatrix(this));
+	return { world.x, world.y };
 }

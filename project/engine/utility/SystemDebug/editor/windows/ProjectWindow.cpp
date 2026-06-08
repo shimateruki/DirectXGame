@@ -127,6 +127,24 @@ void ProjectWindow::CreatePresetThumbnailResource(const std::string& presetName)
     data.isCaptured = false;
 }
 
+uint64_t ProjectWindow::GetPresetThumbnailGpuPtr(const std::string& presetName) {
+    if (presetName.empty()) {
+        return 0;
+    }
+
+    if (presetThumbnailAlbum_.find(presetName) == presetThumbnailAlbum_.end()) {
+        CreatePresetThumbnailResource(presetName);
+    }
+
+    auto it = presetThumbnailAlbum_.find(presetName);
+    if (it == presetThumbnailAlbum_.end() || it->second.srvHandle == 0) {
+        return 0;
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(it->second.srvHandle);
+    return static_cast<uint64_t>(gpuHandle.ptr);
+}
+
 // ==========================================================
 // 撮影処理（Game::Drawの最初で呼ばれる）
 // ==========================================================

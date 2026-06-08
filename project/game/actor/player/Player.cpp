@@ -198,13 +198,9 @@ void Player::Update(float deltaTime)
         }
 
         // 5. 落下判定
-        if (transform_.translate.y < -40.0f && !isDead && isControlActive_) {
+        if (transform_.translate.y < -18.0f && !isDead && isControlActive_) {
             ChangeState(std::make_unique<PlayerStateFallingOut>());
             GameDataManager::GetInstance()->SubtractLife();
-
-            if (GameDataManager::GetInstance()->GetLives() <= 0) {
-                SceneManager::GetInstance()->ChangeScene("GAMEOVER");
-            }
         }
 
         // 6. ポストエフェクト：HPが1の時に赤枠（ピンチ演出）を出す

@@ -4,6 +4,7 @@
 #include "engine/utility/math/Math.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "SpriteCommon.h" 
 class DirectXCommon;
 
@@ -41,6 +42,7 @@ public: // メンバ関数
 	/// <summary>
 	/// 初期化
 	/// </summary>
+	~Sprite();
 	void Initialize(SpriteCommon* common, uint32_t textureHandle);
 	void Initialize(SpriteCommon* common, const std::string& textureFilePath);
 	/// <summary>
@@ -126,6 +128,10 @@ public: // メンバ関数
 	void SetLocked(bool isLocked) { isLocked_ = isLocked; }
 	const std::string& GetTextureName() const { return textureName_; }
 	void SetTextureName(const std::string& name) { textureName_ = name; }
+	void SetParent(Sprite* parent, bool keepWorldPosition = true);
+	Sprite* GetParent() const { return parent_; }
+	const std::vector<Sprite*>& GetChildren() const { return children_; }
+	Vector2 GetWorldPosition() const;
 private: // メンバ変数
 	SpriteCommon* common_ = nullptr;
 	DirectXCommon* dxCommon_ = nullptr;
@@ -178,4 +184,6 @@ private: // メンバ変数
 	bool isVisible_ = true; // デフォルトは表示
 	bool isLocked_ = false; // デフォルトは操作可能（アンロック）
 	std::string textureName_ = "";
+	Sprite* parent_ = nullptr;
+	std::vector<Sprite*> children_;
 };

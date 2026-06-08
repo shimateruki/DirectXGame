@@ -186,7 +186,7 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		updateTimeHistory_,
 		drawTimeHistory_,
 		timeHistoryIndex_);
-	editorController_->ApplyCameraInputState(editorFrameState_);
+	editorController_->ApplyCameraInputState(editorFrameState_, isPlaying_);
 #else
 	(void)deltaTime;
 #endif

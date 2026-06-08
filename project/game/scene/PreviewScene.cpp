@@ -210,10 +210,8 @@ void PreviewScene::Update(float deltaTime) {
 		Camera::FollowMode currentMode = camera->GetFollowMode();
 		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
 			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
-			if (inputManager_->IsMouseButtonPressed(1)) {
-				if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
-					camera->AddRotation(mouseDelta);
-				}
+			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
+				camera->AddRotation(mouseDelta);
 			}
 		}
 	}

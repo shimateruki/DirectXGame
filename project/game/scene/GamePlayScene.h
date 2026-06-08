@@ -20,6 +20,7 @@
 #include <GhostRecorder.h>
 
 #include <memory>
+#include <array>
 #include <vector>
 #include <Skybox.h>
 
@@ -44,7 +45,7 @@ public:
     void Initialize() override;
     void Finalize() override;
     void Update(float deltaTime) override;
-    void UpdateUI();
+    void UpdateUI(float deltaTime);
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
@@ -85,6 +86,9 @@ public:
             sessionStarCoins_[coinIndex] = true;
         }
     }
+    void StartLifeLostPresentation(int beforeLives, int afterLives);
+    bool IsLifeLostPresentationFinished() const { return lifeLostPresentationFinished_; }
+    void HideLifeLostPresentationOverlay();
 
 
 
@@ -148,6 +152,38 @@ private:
 
     bool isGoal_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+
+    std::unique_ptr<Sprite> hudLifeMeter_;
+    std::unique_ptr<Sprite> hudLifeMeterDigit_;
+    std::unique_ptr<Sprite> hudLifeIcon_;
+    std::unique_ptr<Sprite> hudLifeXIcon_;
+    std::array<std::unique_ptr<Sprite>, 2> hudLifeDigits_;
+    std::unique_ptr<Sprite> hudCoinIcon_;
+    std::unique_ptr<Sprite> hudCoinXIcon_;
+    std::array<std::unique_ptr<Sprite>, 2> hudCoinDigits_;
+    float hudPreviousHp_ = 0.0f;
+    float hudDamagePulseTimer_ = 0.0f;
+    int hudDisplayedLife_ = 6;
+    bool lifeLostPresentationActive_ = false;
+    bool lifeLostPresentationFinished_ = true;
+    bool lifeLostBlackHold_ = false;
+    bool lifeLostNumberDropped_ = false;
+    float lifeLostPresentationTimer_ = 0.0f;
+    int lifeLostBeforeLives_ = 0;
+    int lifeLostAfterLives_ = 0;
+    Vector2 lifeLostIrisCenter_ = { 0.5f, 0.5f };
+    std::unique_ptr<Sprite> lifeLostIcon_;
+    std::unique_ptr<Sprite> lifeLostXIcon_;
+    std::array<std::unique_ptr<Sprite>, 2> lifeLostDigits_;
+    std::unique_ptr<Sprite> lifeLostBackdrop_;
+
+    void InitializeGameplayHUD();
+    void UpdateGameplayHUD(float deltaTime);
+    void UpdateLifeLostPresentation(float deltaTime);
+    void DrawGameplayHUD();
+    void DrawLifeLostPresentation();
+    std::unique_ptr<Sprite> CreateGameplayHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
+    void SetGameplayHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
 
     // フラスタムカリング判定
     bool IsVisible(Object3d* obj);

@@ -35,6 +35,7 @@ public:
     // ギズモ操作中など、エディタがマウス入力を占有しているか
     bool IsMouseBusy() const;
     void DrawHierarchyWindow();
+    void DrawSpriteNode(Sprite* sprite);
     void DrawInspectorWindow();
     void DrawProjectWindow();
     void SetSelectedSprite(Sprite* sprite) { selectedSprite_ = sprite; }

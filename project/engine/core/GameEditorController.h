@@ -59,7 +59,7 @@ public:
 	void DrawSceneDebug(ID3D12GraphicsCommandList* commandList);
 	void DrawBackBufferUi();
 	void EndFrame();
-	void ApplyCameraInputState(const EditorFrameState& frameState);
+	void ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying);
 	void ApplyCameraOverrides();
 	void SaveAllEditors();
 
