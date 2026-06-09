@@ -32,6 +32,8 @@
 #include "IconsFontAwesome5.h"
 #include <fstream>
 #include <string>
+#include <algorithm>
+#include <cmath>
 #include "json.hpp"
 #include <numbers>
 #include <CameraEditor.h>
@@ -126,6 +128,8 @@ void PreviewScene::Initialize() {
 	animatedCube_->SetTranslate({0.0f, 0.0f, 0.0f}); 
 	animatedCube_->SetScale({2.0f, 2.0f, 2.0f});
 
+	InitializePreviewHUD();
+
 	dxCommon_->FlushCommandQueue(false);
 }
 
@@ -134,6 +138,18 @@ void PreviewScene::Finalize() {
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
 	particleCommon_.reset();
+	hudLifeMeter_.reset();
+	hudLifeMeterDigit_.reset();
+	hudLifeIcon_.reset();
+	hudLifeXIcon_.reset();
+	for (auto& digit : hudLifeDigits_) {
+		digit.reset();
+	}
+	hudCoinIcon_.reset();
+	hudCoinXIcon_.reset();
+	for (auto& digit : hudCoinDigits_) {
+		digit.reset();
+	}
 	sprites_.clear();
 	spriteCommon_.reset();
 	object3dCommon_.reset();
@@ -230,7 +246,7 @@ void PreviewScene::Update(float deltaTime) {
 		PROFILE_SCOPE("衝突判定");
 		CollisionManager::GetInstance()->Update();
 	}
-	UpdateUI();
+	UpdateUI(deltaTime);
 
 	if (animatedCube_) {
 		animatedCube_->Update(deltaTime);
@@ -256,7 +272,12 @@ void PreviewScene::Draw() {
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
 	auto& objects = objectManager_->GetObjects();
 
-	// 1. 不透明モデル描画
+	// 1. 背景描画
+	if (skybox_ && camera) {
+		skybox_->Draw(camera->GetConstantBuffer());
+	}
+
+	// 2. 不透明モデル描画
 	object3dCommon_->SetGraphicsCommand();
 	object3dCommon_->SetPipelineState(BlendMode::kNone);
 
@@ -282,14 +303,11 @@ void PreviewScene::Draw() {
 		animatedCube_->Draw(pointLightRes, spotLightRes);
 	}
 
-	// 2. 中間描画
+	// 3. 中間描画
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	LightEditor::GetInstance()->Draw3D();
-	if (skybox_) {
-		skybox_->Draw(camera->GetConstantBuffer());
-	}
 
-	// 3. 半透明モデル描画
+	// 4. 半透明モデル描画
 	for (auto& obj : objects) {
 		bool isPlayerPart = false;
 		if (isFirstPerson) {
@@ -306,7 +324,7 @@ void PreviewScene::Draw() {
 	}
 	particleSystem_->Draw();
 
-	// 4. ローカルフォグ
+	// 5. ローカルフォグ
 	bool hasFog = false;
 	for (auto& obj : objects) {
 		if (obj->GetMaterialType() == 7) { hasFog = true; break; }
@@ -321,7 +339,7 @@ void PreviewScene::Draw() {
 		dxCommon_->PostDrawLocalFog();
 	}
 
-	// 5. GPUパーティクル / 流体
+	// 6. GPUパーティクル / 流体
 	bool hasFluid = false;
 	for (auto& obj : objects) {
 		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 20) { hasFluid = true; break; }
@@ -406,6 +424,7 @@ void PreviewScene::DrawUI() {
 	if (player_) {
 		player_->DrawUI();
 	}
+	DrawPreviewHUD();
 }
 
 void PreviewScene::DrawShadow() {
@@ -414,7 +433,222 @@ void PreviewScene::DrawShadow() {
 	}
 }
 
-void PreviewScene::UpdateUI() {}
+void PreviewScene::UpdateUI(float deltaTime) {
+	UpdatePreviewHUD(deltaTime);
+}
+
+std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color) {
+	auto sprite = std::make_unique<Sprite>();
+	sprite->Initialize(spriteCommon_.get(), texturePath);
+	sprite->SetPosition(position);
+	sprite->SetSize(size);
+	sprite->SetAnchorPoint(anchor);
+	sprite->SetColor(color);
+	sprite->SetVisible(true);
+	sprite->Update();
+	return sprite;
+}
+
+void PreviewScene::InitializePreviewHUD() {
+	hudLifeMeter_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/life_meter_6.png",
+		{ static_cast<float>(WinApp::kClientWidth) - 118.0f, 92.0f },
+		{ 138.0f, 138.0f },
+		{ 0.5f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 0.96f }
+	);
+	hudLifeMeterDigit_ = CreatePreviewHUDSprite(
+		"Resources/sprite/number/big6.png",
+		{ static_cast<float>(WinApp::kClientWidth) - 118.0f, 95.0f },
+		{ 52.0f, 76.0f },
+		{ 0.5f, 0.5f },
+		{ 1.0f, 0.88f, 0.20f, 1.0f }
+	);
+	hudLifeIcon_ = CreatePreviewHUDSprite(
+		"Resources/sprite/title/slime_save_icon.png",
+		{ 38.0f, 100.0f },
+		{ 50.0f, 50.0f },
+		{ 0.0f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 0.96f }
+	);
+	hudLifeXIcon_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/xUi.png",
+		{ 92.0f, 100.0f },
+		{ 44.0f, 44.0f },
+		{ 0.5f, 0.5f },
+		{ 1.0f, 0.96f, 0.62f, 0.96f }
+	);
+	for (auto& digit : hudLifeDigits_) {
+		digit = CreatePreviewHUDSprite(
+			"Resources/sprite/number/0.png",
+			{ 100.0f, 100.0f },
+			{ 26.0f, 38.0f },
+			{ 0.5f, 0.5f },
+			{ 1.0f, 0.95f, 0.56f, 1.0f }
+		);
+	}
+
+	hudCoinIcon_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/coin_icon.png",
+		{ 38.0f, 154.0f },
+		{ 48.0f, 48.0f },
+		{ 0.0f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 0.96f }
+	);
+	hudCoinXIcon_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/xUi.png",
+		{ 92.0f, 154.0f },
+		{ 44.0f, 44.0f },
+		{ 0.5f, 0.5f },
+		{ 1.0f, 0.90f, 0.42f, 0.96f }
+	);
+	for (auto& digit : hudCoinDigits_) {
+		digit = CreatePreviewHUDSprite(
+			"Resources/sprite/number/0.png",
+			{ 100.0f, 154.0f },
+			{ 26.0f, 38.0f },
+			{ 0.5f, 0.5f },
+			{ 1.0f, 0.86f, 0.28f, 1.0f }
+		);
+	}
+
+	hudPreviousHp_ = player_ ? player_->GetHp() : 0.0f;
+	hudDamagePulseTimer_ = 0.0f;
+	hudDisplayedLife_ = 6;
+	UpdatePreviewHUD(0.0f);
+}
+
+void PreviewScene::SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible) {
+	value = std::clamp(value, 0, 99);
+
+	const std::array<int, 2> digitValues = { value / 10, value % 10 };
+	const int digitCount = value >= 10 ? 2 : 1;
+	const float digitWidth = digitHeight * 0.68f;
+	const float spacing = digitWidth * 0.82f;
+	const float totalWidth = digitCount == 2 ? spacing + digitWidth : digitWidth;
+	const float startX = rightAlignedPosition.x - totalWidth + digitWidth * 0.5f;
+
+	for (int i = 0; i < 2; ++i) {
+		Sprite* sprite = digits[i].get();
+		if (!sprite) continue;
+
+		const bool digitVisible = visible && (digitCount == 2 || i == 1);
+		sprite->SetVisible(digitVisible);
+		if (!digitVisible) {
+			continue;
+		}
+
+		const int sourceIndex = digitCount == 2 ? i : 1;
+		const int digit = digitValues[sourceIndex];
+		const uint32_t handle = Sprite::LoadTexture("number/" + std::to_string(digit) + ".png");
+		sprite->SetTextureHandle(handle);
+		sprite->SetPosition({ startX + (sourceIndex - (2 - digitCount)) * spacing, rightAlignedPosition.y });
+		sprite->SetSize({ digitWidth, digitHeight });
+		sprite->SetColor(color);
+		sprite->Update();
+	}
+}
+
+void PreviewScene::UpdatePreviewHUD(float deltaTime) {
+	const bool visible = player_ != nullptr;
+	const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
+	const float hp = player_ ? std::clamp(player_->GetHp(), 0.0f, maxHp) : 0.0f;
+	const float hpRate = hp / maxHp;
+	int lifeValue = hp <= 0.0f ? 0 : static_cast<int>(std::ceil(hpRate * 6.0f));
+	lifeValue = std::clamp(lifeValue, 0, 6);
+
+	if (visible && (hp < hudPreviousHp_ - 0.01f || lifeValue != hudDisplayedLife_)) {
+		hudDamagePulseTimer_ = 0.28f;
+	}
+	hudDisplayedLife_ = lifeValue;
+	hudPreviousHp_ = hp;
+	hudDamagePulseTimer_ = std::max(0.0f, hudDamagePulseTimer_ - deltaTime);
+
+	const float pulse = hudDamagePulseTimer_ > 0.0f ? std::sin(hudDamagePulseTimer_ * 70.0f) : 0.0f;
+	const float lifePulse = hudDamagePulseTimer_ > 0.0f ? 1.0f + std::abs(pulse) * 0.08f : 1.0f;
+	const Vector2 meterCenter = { static_cast<float>(WinApp::kClientWidth) - 118.0f, 92.0f };
+
+	if (hudLifeMeter_) {
+		const uint32_t handle = Sprite::LoadTexture("ui/hud/life_meter_" + std::to_string(lifeValue) + ".png");
+		hudLifeMeter_->SetTextureHandle(handle);
+		hudLifeMeter_->SetVisible(visible);
+		hudLifeMeter_->SetPosition(meterCenter);
+		hudLifeMeter_->SetSize({ 138.0f * lifePulse, 138.0f * lifePulse });
+		hudLifeMeter_->SetRotation(pulse * 0.03f);
+		hudLifeMeter_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
+		hudLifeMeter_->Update();
+	}
+	if (hudLifeMeterDigit_) {
+		const uint32_t handle = Sprite::LoadTexture("number/big" + std::to_string(lifeValue) + ".png");
+		hudLifeMeterDigit_->SetTextureHandle(handle);
+		hudLifeMeterDigit_->SetVisible(visible);
+		hudLifeMeterDigit_->SetPosition({ meterCenter.x, meterCenter.y + 3.0f });
+		hudLifeMeterDigit_->SetSize({ 52.0f * lifePulse, 76.0f * lifePulse });
+		hudLifeMeterDigit_->SetColor(lifeValue <= 1 ? Vector4{ 1.0f, 0.35f, 0.25f, 1.0f } : Vector4{ 1.0f, 0.88f, 0.20f, 1.0f });
+		hudLifeMeterDigit_->Update();
+	}
+	if (hudLifeIcon_) {
+		hudLifeIcon_->SetVisible(visible);
+		hudLifeIcon_->SetPosition({ 38.0f, 100.0f });
+		hudLifeIcon_->SetSize({ 50.0f * lifePulse, 50.0f * lifePulse });
+		hudLifeIcon_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
+		hudLifeIcon_->Update();
+	}
+	if (hudLifeXIcon_) {
+		hudLifeXIcon_->SetVisible(visible);
+		hudLifeXIcon_->SetPosition({ 92.0f, 100.0f });
+		hudLifeXIcon_->SetSize({ 44.0f, 44.0f });
+		hudLifeXIcon_->SetColor({ 1.0f, 0.96f, 0.62f, visible ? 0.96f : 0.0f });
+		hudLifeXIcon_->Update();
+	}
+
+	SetPreviewHUDNumber(
+		hudLifeDigits_,
+		GameDataManager::GetInstance()->GetLives(),
+		{ 162.0f, 100.0f },
+		40.0f,
+		{ 1.0f, 0.95f, 0.56f, 1.0f },
+		visible
+	);
+
+	if (hudCoinIcon_) {
+		hudCoinIcon_->SetVisible(visible);
+		hudCoinIcon_->SetPosition({ 38.0f, 154.0f });
+		hudCoinIcon_->SetSize({ 48.0f, 48.0f });
+		hudCoinIcon_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
+		hudCoinIcon_->Update();
+	}
+	if (hudCoinXIcon_) {
+		hudCoinXIcon_->SetVisible(visible);
+		hudCoinXIcon_->SetPosition({ 92.0f, 154.0f });
+		hudCoinXIcon_->SetSize({ 44.0f, 44.0f });
+		hudCoinXIcon_->SetColor({ 1.0f, 0.90f, 0.42f, visible ? 0.96f : 0.0f });
+		hudCoinXIcon_->Update();
+	}
+	SetPreviewHUDNumber(
+		hudCoinDigits_,
+		GameDataManager::GetInstance()->GetCoins(),
+		{ 162.0f, 154.0f },
+		40.0f,
+		{ 1.0f, 0.86f, 0.28f, 1.0f },
+		visible
+	);
+}
+
+void PreviewScene::DrawPreviewHUD() {
+	if (hudLifeIcon_) hudLifeIcon_->Draw();
+	if (hudLifeXIcon_) hudLifeXIcon_->Draw();
+	for (auto& digit : hudLifeDigits_) {
+		if (digit) digit->Draw();
+	}
+	if (hudCoinIcon_) hudCoinIcon_->Draw();
+	if (hudCoinXIcon_) hudCoinXIcon_->Draw();
+	for (auto& digit : hudCoinDigits_) {
+		if (digit) digit->Draw();
+	}
+	if (hudLifeMeter_) hudLifeMeter_->Draw();
+	if (hudLifeMeterDigit_) hudLifeMeterDigit_->Draw();
+}
 
 void PreviewScene::DrawImGui() {
 #ifdef USE_IMGUI

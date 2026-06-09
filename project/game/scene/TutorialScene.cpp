@@ -285,6 +285,10 @@ void TutorialScene::Draw() {
 
 	auto& objects = objectManager_->GetObjects();
 
+	if (skybox_ && camera) {
+		skybox_->Draw(camera->GetConstantBuffer());
+	}
+
 	object3dCommon_->SetGraphicsCommand();
 	object3dCommon_->SetPipelineState(BlendMode::kNone);
 
@@ -316,9 +320,6 @@ void TutorialScene::Draw() {
 
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	LightEditor::GetInstance()->Draw3D();
-	if (skybox_) {
-		skybox_->Draw(camera->GetConstantBuffer());
-	}
 
 	for (auto& obj : objects) {
 		bool isPlayerPart = false;

@@ -56,6 +56,7 @@ public:
 
     std::string LoadLastSceneName();
     void SaveLastSceneName(const std::string& sceneName);
+    const std::string& GetCurrentSceneName() const { return currentSceneName_; }
 
     // <summary>
     /// 現在のシーンのポインタを取得する (Editor用)
@@ -77,4 +78,6 @@ private:
     const std::string kUserConfigPath = "Resources/json/user_config.json";
     bool isPlaying_ = false;
     std::string nextSceneName_ = "";
+    std::string currentSceneName_;
+    std::string pendingSceneNameForSwap_;
 };

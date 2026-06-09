@@ -2,6 +2,7 @@
 #include "Game.h"
 
 #include "CameraEditor.h"
+#include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
 #include "GameDataManager.h"
@@ -132,6 +133,7 @@ void Game::Finalize() {
 	if (sceneManager_) {
 		sceneManager_->Finalize();
 	}
+	DebrisEffectManager::GetInstance()->Clear();
 
 #ifdef USE_IMGUI
 	if (editorController_) {
@@ -176,6 +178,9 @@ void Game::UpdateEditorFrame(float deltaTime) {
 
 	editorController_->BeginFrame();
 	editorFrameState_ = editorController_->DrawGameView(sceneManager_.get(), isPlaying_);
+	if (sceneManager_ && !sceneManager_->GetCurrentSceneName().empty()) {
+		currentSceneName_ = sceneManager_->GetCurrentSceneName();
+	}
 	editorController_->DrawMainMenuBar(sceneManager_.get(), isPlaying_, currentSceneName_);
 	editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
 	editorController_->DrawToolWindows(
@@ -209,6 +214,12 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		PROFILE_SCOPE("パーティクル");
 		GPUParticleManager::GetInstance()->Update(deltaTime);
 	}
+	if (sceneManager_) {
+		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
+			DebrisEffectManager::GetInstance()->Initialize(currentScene->GetObject3dCommon());
+		}
+	}
+	DebrisEffectManager::GetInstance()->Update(deltaTime);
 	{
 		PROFILE_SCOPE("フェード");
 		Fade::GetInstance()->Update(deltaTime);
@@ -324,6 +335,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		if (editorController_) {
 			editorController_->DrawScenePreview(pointLight, spotLight);
 		}
+		DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
 		dxCommon_->EndGpuProfile("  3Dシーン");
 
 		dxCommon_->StartGpuProfile("  ゲームUI");
@@ -346,6 +358,9 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	{
 		if (sceneManager_) {
 			sceneManager_->Draw();
+			ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
+			ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+			DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
 			sceneManager_->DrawUI();
 		}
 	}

@@ -19,6 +19,27 @@
 #include "GimmickHookPullBlock.h"
 #include "MeshEffectManager.h"
 #include "GPUParticleManager.h"
+#include <cmath>
+
+namespace {
+    constexpr float kPi = 3.1415926535f;
+    constexpr float kTwoPi = kPi * 2.0f;
+
+    float NormalizeYaw(float yaw) {
+        while (yaw > kPi) yaw -= kTwoPi;
+        while (yaw < -kPi) yaw += kTwoPi;
+        return yaw;
+    }
+
+    Vector3 ResolveTransformEuler(const Transform& transform) {
+        if (!transform.isQuaternionMaster) {
+            return transform.rotate;
+        }
+
+        return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(transform.quaternion));
+    }
+}
+
 // =================================================================
 // 初期化・更新・描画
 // =================================================================
@@ -63,7 +84,8 @@ void Player::Update(float deltaTime)
     // 初回更新時に初期位置と初期回転を記録
     if (isFirstUpdate_) {
         respawnPosition_ = transform_.translate;
-        baseRotation_ = transform_.rotate;
+        baseRotation_ = ResolveTransformEuler(transform_);
+        transform_.rotate = baseRotation_;
         isFirstUpdate_ = false;
     }
 
@@ -89,7 +111,7 @@ void Player::Update(float deltaTime)
                 Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                 if (camera) {
                     Vector3 camRot = camera->GetRotation();
-                    SetRotation({ baseRotation_.x + camRot.x, camRot.y, baseRotation_.z });
+                    SetRotation({ baseRotation_.x + camRot.x, NormalizeYaw(camRot.y + GetVisualYawOffset()), baseRotation_.z });
 
                     // --- フック到達地点の計算とマーカー表示 ---
                     if (hookMarker_) {
@@ -155,9 +177,11 @@ void Player::Update(float deltaTime)
                     if (hookMarker_->GetIsVisible()) {
                         Vector3 targetPos = hookMarker_->GetTransform()->translate;
 
-                        // 当たった対象が「敵」なら引き寄せ、それ以外なら自分が飛ぶ
+                        // フック移動は一旦停止中。敵の引き寄せと可動ブロック引っ張りは残す。
                         if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookAnchor") {
-                            ChangeState(std::make_unique<PlayerStateSwingHook>(targetPos));
+                            // ChangeState(std::make_unique<PlayerStateSwingHook>(targetPos));
+                            hookMarker_->SetIsVisible(false);
+                            aimTargetObject_ = nullptr;
                         }
                         else if (aimTargetObject_ && aimTargetObject_->GetGimmickType() == "HookPullBlock") {
                             ChangeState(std::make_unique<PlayerStatePullObject>(aimTargetObject_, targetPos));
@@ -166,7 +190,9 @@ void Player::Update(float deltaTime)
                             ChangeState(std::make_unique<PlayerStatePullEnemy>(aimTargetObject_, targetPos));
                         }
                         else {
-                            ChangeState(std::make_unique<PlayerStateHook>(targetPos));
+                            // ChangeState(std::make_unique<PlayerStateHook>(targetPos));
+                            hookMarker_->SetIsVisible(false);
+                            aimTargetObject_ = nullptr;
                         }
                     }
                 }
@@ -239,7 +265,7 @@ void Player::Update(float deltaTime)
         carryGlideEffectTimer_ -= deltaTime;
         if (carryGlideEffectTimer_ <= 0.0f) {
             const Vector3 playerPos = GetWorldPosition();
-            const float yaw = GetRotation().y;
+            const float yaw = GetMoveYaw();
             Vector3 windDir = { -std::sin(yaw), 0.18f, -std::cos(yaw) };
             const float windLength = std::sqrt(windDir.x * windDir.x + windDir.y * windDir.y + windDir.z * windDir.z);
             if (windLength > 0.001f) {
@@ -294,7 +320,7 @@ void Player::Update(float deltaTime)
         if (enemyBase) {
             // ① カメラの向いている方向（投げる方向）を計算
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-            Vector3 throwForward = { std::sin(GetRotation().y), 0.0f, std::cos(GetRotation().y) };
+            Vector3 throwForward = GetForwardDirection();
             float throwUpSpeed = 17.0f;
             if (camera) {
                 Vector3 camRot = camera->GetRotation();
@@ -415,6 +441,28 @@ void Player::Update(float deltaTime)
 void Player::DrawUI()
 {
 }
+
+float Player::GetVisualYawOffset() const
+{
+    return NormalizeYaw(isFirstUpdate_ ? ResolveTransformEuler(transform_).y : baseRotation_.y);
+}
+
+float Player::GetMoveYaw() const
+{
+    return NormalizeYaw(transform_.rotate.y - GetVisualYawOffset());
+}
+
+Vector3 Player::GetForwardDirection() const
+{
+    const float yaw = GetMoveYaw();
+    return { std::sin(yaw), 0.0f, std::cos(yaw) };
+}
+
+void Player::SetMoveYaw(float yaw)
+{
+    SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset()));
+}
+
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)
 {
     Character::Draw(pointLightResource, spotLightResource);

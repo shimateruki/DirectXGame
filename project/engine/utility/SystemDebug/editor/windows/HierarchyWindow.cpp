@@ -23,6 +23,7 @@
 #include "PresetEditor.h"
 #include "KeyConfig.h"
 #include "MeshEffectEditor.h"
+#include "DebrisEffectEditor.h"
 #include "TrailEmitterEditor.h"
 #include "GimmickFactory.h"
 #include "EnemyFactory.h"
@@ -363,6 +364,10 @@ void HierarchyWindow::Draw() {
      if (editor_->GetMeshEffectEditor() && ImGui::Selectable("  " ICON_FA_MAGIC " メッシュエフェクト (Mesh Effect)", currentObj == editor_->GetMeshEffectEditor())) {
             editor_->SetSelectedObject(nullptr); 
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetMeshEffectEditor());
+        }
+        if (editor_->GetDebrisEffectEditor() && ImGui::Selectable("  " ICON_FA_CUBES " 3D破片エフェクト (Debris Effect)", currentObj == editor_->GetDebrisEffectEditor())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetDebrisEffectEditor());
         }
         if (editor_->GetTrailEmitterEditor() && ImGui::Selectable("  " ICON_FA_FIRE " トレイルエミッター (Trail Emitter)", currentObj == editor_->GetTrailEmitterEditor())) {
             editor_->SetSelectedObject(nullptr);

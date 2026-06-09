@@ -314,6 +314,11 @@ void GameSelectScene::Draw() {
 
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+
+	if (skybox_ && camera) {
+		skybox_->Draw(camera->GetConstantBuffer());
+	}
+
 	object3dCommon_->SetGraphicsCommand();
 
 	auto& objects = objectManager_->GetObjects();
@@ -339,7 +344,6 @@ void GameSelectScene::Draw() {
 	// --- 2. 中間描画 ---
 	BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
 	LightEditor::GetInstance()->Draw3D();
-	if (skybox_) skybox_->Draw(camera->GetConstantBuffer());
 
 	// --- 3. 透明描画 ---
 	for (auto& obj : objects) {

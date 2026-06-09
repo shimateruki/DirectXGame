@@ -5,21 +5,19 @@ VertexShaderOutput main(VertexShaderInput input)
 {
     VertexShaderOutput output;
     
-    // 【安全な移動成分の消去】
-    // view行列を3x3行列にキャストすることで、回転成分だけを抽出し平行移動を安全に切り捨てます
+    // Keep only camera rotation so the skybox never follows camera translation.
     float3x3 view3x3 = (float3x3) view;
     
-    // 頂点と3x3ビュー行列を掛け合わせる
+    // Transform the direction by the view rotation.
     float3 viewPos = mul(input.position.xyz, view3x3);
     
-    // その結果にプロジェクション行列を掛けてクリップ空間座標へ変換
+    // Project to clip space.
     output.position = mul(float4(viewPos, 1.0f), projection);
     
-    // 【深度トリック】
-    // Zの値をWと同じにすることで、パースペクティブ除算 (Z/W) 後に Z=1.0 (最奥) になる
+    // Force the skybox to the far plane after perspective divide.
     output.position.z = output.position.w;
     
-    // キューブマップのサンプリングには、頂点のローカル座標(xyz)をそのまま方向ベクトルとして使う
+    // Use local cube coordinates as the cubemap sampling direction.
     output.texcoord = input.position.xyz;
     
     return output;

@@ -128,7 +128,7 @@ void PlayerMover::Update(float deltaTime)
     if (std::abs(velocity.x) > 0.001f || std::abs(velocity.z) > 0.001f)
     {
         float targetAngle = std::atan2(velocity.x, velocity.z);
-        float currentY = player_->GetRotation().y;
+        float currentY = player_->GetMoveYaw();
 
         auto NormalizeAngle = [](float a) {
             while (a > 3.1415926535f) a -= 6.2831853071f;
@@ -143,7 +143,7 @@ void PlayerMover::Update(float deltaTime)
         float alpha = 1.0f - std::expf(-turnSpeed * deltaTime);
         float newY = currentY + diff * alpha;
 
-        player_->SetRotationY(NormalizeAngle(newY));
+        player_->SetMoveYaw(NormalizeAngle(newY));
     }
 
     // --- 7. ジャンプ・溜め攻撃処理 ---
@@ -174,7 +174,7 @@ void PlayerMover::Update(float deltaTime)
         if (jumpChargeTimer_ >= 0.4f) {
             // 空中なら使用済みフラグをチェック
             if (isGrounded || !hasAirDashed_) {
-                float yaw = player_->GetRotation().y;
+                float yaw = player_->GetMoveYaw();
                 
                 // ダッシュ（慣性移動）の仕組みに乗せる
                 currentDashSpeed_ = dashSpeed_ * (0.5f + chargeRatio * 1.5f);
@@ -247,7 +247,7 @@ void PlayerMover::Update(float deltaTime)
                     velocity.z = inputMove.z * s;
                 }
             } else {
-                float yaw = player_->GetRotation().y;
+                float yaw = player_->GetMoveYaw();
                 velocity.x = std::sin(yaw) * player_->GetMoveSpeed();
                 velocity.z = std::cos(yaw) * player_->GetMoveSpeed();
             }
@@ -360,7 +360,7 @@ void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, flo
         dir.z = velocity.z / horizontalSpeed;
     }
     else {
-        float yaw = player_->GetRotation().y;
+        float yaw = player_->GetMoveYaw();
         dir.x = std::sin(yaw);
         dir.z = std::cos(yaw);
     }

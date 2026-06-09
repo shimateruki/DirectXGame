@@ -32,6 +32,7 @@ class LevelLoader;
 class LockOnSystem;
 class GameRule;
 class BossCore;
+struct StageData;
 
 
 /// <summary>
@@ -89,12 +90,6 @@ public:
     void StartLifeLostPresentation(int beforeLives, int afterLives);
     bool IsLifeLostPresentationFinished() const { return lifeLostPresentationFinished_; }
     void HideLifeLostPresentationOverlay();
-
-
-
-
-private:
-
 
 private:
     enum class MovieState {
@@ -177,9 +172,26 @@ private:
     std::array<std::unique_ptr<Sprite>, 2> lifeLostDigits_;
     std::unique_ptr<Sprite> lifeLostBackdrop_;
 
+    // 初期化・終了処理
     void InitializeGameplayHUD();
+    void InitializeCoreSystems(const StageData& currentStage);
+    void InitializeRenderCommons();
+    void InitializeGameplaySystems();
+    void LoadCurrentStageContent(const StageData& currentStage);
+    void StartRespawnIrisInIfNeeded();
+    void InitializeDebugAnimationPreview();
+    void FinalizeGameplayResources();
+
+    // フレーム更新
+    bool HandleGoalClear(float& deltaTime);
+    void UpdatePostEffectState(float deltaTime);
+    void UpdateLockOnAndCamera(float deltaTime);
+    void UpdateSceneSystems(float deltaTime);
+    void UpdateEffectDebugShortcuts();
     void UpdateGameplayHUD(float deltaTime);
     void UpdateLifeLostPresentation(float deltaTime);
+
+    // UI描画
     void DrawGameplayHUD();
     void DrawLifeLostPresentation();
     std::unique_ptr<Sprite> CreateGameplayHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);

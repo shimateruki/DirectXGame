@@ -232,11 +232,8 @@ void PlayerStateDamage::Enter(Player* player) {
         if (dirLength > 0.001f) {
             knockbackDir_ = knockbackDir_ * (1.0f / dirLength);
         } else {
-            knockbackDir_ = {
-                -std::sin(baseRotation_.y),
-                0.0f,
-                -std::cos(baseRotation_.y)
-            };
+            Vector3 forward = player->GetForwardDirection();
+            knockbackDir_ = { -forward.x, 0.0f, -forward.z };
         }
 
         float force = 18.0f;
@@ -534,7 +531,7 @@ void PlayerStateHook::Update(Player* player) {
         player->SetVelocity(dir * speed_);
 
         float targetAngle = std::atan2(dir.x, dir.z);
-        player->SetRotationY(targetAngle);
+        player->SetMoveYaw(targetAngle);
 
         wobbleTimer_ += deltaTime;
         float wobble = std::sin(wobbleTimer_ * 20.0f) * 0.2f;
@@ -786,7 +783,7 @@ void PlayerStateSwingHook::Update(Player* player) {
 
     Vector3 flatVel = { swingVelocity_.x, 0.0f, swingVelocity_.z };
     if (Math::Length(flatVel) > 0.1f) {
-        player->SetRotationY(std::atan2(flatVel.x, flatVel.z));
+        player->SetMoveYaw(std::atan2(flatVel.x, flatVel.z));
     }
 
     float stretch = std::min(Math::Length(swingVelocity_) / 56.0f, 1.0f);

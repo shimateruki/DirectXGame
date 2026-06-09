@@ -7,6 +7,8 @@
 #include "Camera.h"
 #include "CameraEditor.h"
 #include "CameraManager.h"
+#include "DebrisEffectEditor.h"
+#include "DebrisEffectManager.h"
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "DirectXCommon.h"
@@ -73,6 +75,9 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 	meshEffectEditor_ = std::make_unique<MeshEffectEditor>();
 	meshEffectEditor_->Initialize(sceneManager);
 
+	debrisEffectEditor_ = std::make_unique<DebrisEffectEditor>();
+	debrisEffectEditor_->Initialize(sceneManager);
+
 	trailEmitterEditor_ = std::make_unique<TrailEmitterEditor>();
 	trailEmitterEditor_->Initialize(sceneManager);
 
@@ -101,12 +106,14 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 			ghostDirector_.get(),
 			LightEditor::GetInstance(),
 			meshEffectEditor_.get(),
+			debrisEffectEditor_.get(),
 			trailEmitterEditor_.get());
 	}
 }
 
 void GameEditorController::Finalize() {
 	trailEmitterEditor_.reset();
+	debrisEffectEditor_.reset();
 	meshEffectEditor_.reset();
 	vfxSequencerEditor_.reset();
 	gpuParticleEditor_.reset();
@@ -351,6 +358,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 
 	if (previousPlayingState_ != isPlaying && !isPlaying) {
 		MeshEffectManager::GetInstance()->Clear();
+		DebrisEffectManager::GetInstance()->Clear();
 		if (sceneManager) {
 			sceneManager->ChangeScene(currentSceneName);
 		}
@@ -401,6 +409,9 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 	}
 	if (meshEffectEditor_) {
 		meshEffectEditor_->Update(deltaTime);
+	}
+	if (debrisEffectEditor_) {
+		debrisEffectEditor_->Update(deltaTime);
 	}
 	if (trailEmitterEditor_) {
 		trailEmitterEditor_->Update(deltaTime);

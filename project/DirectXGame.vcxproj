@@ -245,6 +245,9 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\core\GameEditorController.cpp" />
     <ClCompile Include="engine\system\input\InputManager.cpp" />
     <ClCompile Include="game\scene\GamePlayScene.cpp" />
+    <ClCompile Include="game\scene\GamePlayScene.HUD.cpp" />
+    <ClCompile Include="game\scene\GamePlayScene.Setup.cpp" />
+    <ClCompile Include="game\scene\GamePlayScene.Update.cpp" />
     <ClCompile Include="game\scene\PreviewScene.cpp" />
     <ClCompile Include="game\scene\TutorialScene.cpp" />
     <ClCompile Include="game\scene\GameSelectScene.cpp" />
@@ -282,6 +285,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\misc\GhostRecorder.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\LightEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\core\PresetManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.cpp" />
     <ClCompile Include="engine\graphics\particle\GPUParticleManager.cpp" />
     <ClCompile Include="game\system\GhostDirector.cpp" />
     <ClCompile Include="engine\utility\state\IAnimationState.cpp" />
@@ -316,6 +320,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\system\input\KeyConfig.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\MeshEffectEditor.cpp" />
     <ClCompile Include="engine\graphics\effect\MeshEffectManager.cpp" />
+    <ClCompile Include="engine\graphics\effect\DebrisEffectManager.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\vfx\DebrisEffectEditor.cpp" />
     <ClCompile Include="engine\graphics\effect\TrailEmitter.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\vfx\TrailEmitterEditor.cpp" />
     <ClCompile Include="engine\graphics\3d\Skybox.cpp" />
@@ -767,6 +773,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\GhostRecorder.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\graphics\LightEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\core\PresetManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\core\BuiltInCreatePresetRegistry.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleManager.h" />
     <ClInclude Include="game\system\GhostDirector.h" />
     <ClInclude Include="engine\utility\state\IAnimationState.h" />
@@ -801,6 +808,8 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\system\input\KeyConfig.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\MeshEffectEditor.h" />
     <ClInclude Include="engine\graphics\effect\MeshEffectManager.h" />
+    <ClInclude Include="engine\graphics\effect\DebrisEffectManager.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\vfx\DebrisEffectEditor.h" />
     <ClInclude Include="engine\graphics\effect\TrailEmitter.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\vfx\TrailEmitterEditor.h" />
     <ClInclude Include="engine\graphics\particle\GPUParticleSystem.h" />

@@ -28,6 +28,9 @@ void Camera::UpdateProjectionMatrix() {
 
     // 現在のパラメータを使ってプロジェクション行列を再計算
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    if (constMap_) {
+        constMap_->projection = projectionMatrix_;
+    }
 }
 
 void Camera::SetFreezeEye(bool freeze) {
@@ -61,6 +64,13 @@ void Camera::Initialize() {
     // 定数バッファ作成
     constBuffer_ = DirectXCommon::GetInstance()->CreateBufferResource(sizeof(CameraVP));
     constBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&constMap_));
+
+    viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
+    projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
+    if (constMap_) {
+        constMap_->view = viewMatrix_;
+        constMap_->projection = projectionMatrix_;
+    }
 }
 
 
@@ -431,6 +441,11 @@ void Camera::Update() {
 
     Matrix4x4 vp = math.Multiply(viewMatrix_, projectionMatrix_);
     frustum_ = math.ExtractFrustumPlanes(vp);
+
+    if (constMap_) {
+        constMap_->view = viewMatrix_;
+        constMap_->projection = projectionMatrix_;
+    }
 }
 void Camera::ConfigFixed(const Vector3& offset) {
     fixedOffset_ = offset;

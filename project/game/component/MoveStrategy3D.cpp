@@ -20,7 +20,7 @@ Vector3 MoveStrategy3D::CalculateVelocity(Player* player) {
         // --- (A) ロックオン中の移動 (自キャラ基準) ---
         forward = { 0, 0, 1 };
         right = { 1, 0, 0 };
-        Matrix4x4 rotateMat = math.MakeRotateYMatrix(player->GetRotation().y);
+        Matrix4x4 rotateMat = math.MakeRotateYMatrix(player->GetMoveYaw());
         forward = math.TransformNormal(forward, rotateMat);
         right = math.TransformNormal(right, rotateMat);
     }

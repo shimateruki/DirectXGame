@@ -6,6 +6,7 @@
 #include <string>
 
 class DebugEditor;
+class DebrisEffectEditor;
 class DirectXCommon;
 class EngineManualWindow;
 class GhostDirector;
@@ -88,6 +89,7 @@ private:
 	std::unique_ptr<GPUParticleEditor> gpuParticleEditor_;
 	std::unique_ptr<VFXSequencerEditor> vfxSequencerEditor_;
 	std::unique_ptr<MeshEffectEditor> meshEffectEditor_;
+	std::unique_ptr<DebrisEffectEditor> debrisEffectEditor_;
 	std::unique_ptr<TrailEmitterEditor> trailEmitterEditor_;
 	std::unique_ptr<EngineManualWindow> engineManualWindow_;
 

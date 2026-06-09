@@ -52,6 +52,10 @@ public:
     Vector3 GetRespawnPosition() const { return respawnPosition_; }
 
     Vector3 GetRotation() const { return transform_.rotate; }
+    float GetVisualYawOffset() const;
+    float GetMoveYaw() const;
+    Vector3 GetForwardDirection() const;
+    void SetMoveYaw(float yaw);
 
     // SetRotation は Euler を受け取り、内部的にクォータニオンを更新するように修正
     void SetRotation(const Vector3& r)

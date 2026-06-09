@@ -20,6 +20,7 @@
 #include <GhostRecorder.h>
 
 #include <memory>
+#include <array>
 #include <vector>
 #include <Skybox.h>
 
@@ -43,7 +44,7 @@ public:
     void Initialize() override;
     void Finalize() override;
     void Update(float deltaTime) override;
-    void UpdateUI();
+    void UpdateUI(float deltaTime);
     void Draw() override;
     void DrawUI() override;
     void DrawShadow() override;
@@ -132,6 +133,24 @@ private:
 
     bool isGoal_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+
+    std::unique_ptr<Sprite> hudLifeMeter_;
+    std::unique_ptr<Sprite> hudLifeMeterDigit_;
+    std::unique_ptr<Sprite> hudLifeIcon_;
+    std::unique_ptr<Sprite> hudLifeXIcon_;
+    std::array<std::unique_ptr<Sprite>, 2> hudLifeDigits_;
+    std::unique_ptr<Sprite> hudCoinIcon_;
+    std::unique_ptr<Sprite> hudCoinXIcon_;
+    std::array<std::unique_ptr<Sprite>, 2> hudCoinDigits_;
+    float hudPreviousHp_ = 0.0f;
+    float hudDamagePulseTimer_ = 0.0f;
+    int hudDisplayedLife_ = 6;
+
+    std::unique_ptr<Sprite> CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
+    void InitializePreviewHUD();
+    void UpdatePreviewHUD(float deltaTime);
+    void DrawPreviewHUD();
+    void SetPreviewHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
 
     bool IsVisible(Object3d* obj);
 };

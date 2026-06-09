@@ -292,8 +292,7 @@ void EnemyBomber::SpawnBombObject(std::unique_ptr<BaseEnemy> bomb) {
 }
 
 Vector3 EnemyBomber::GetPlayerForward(Player* player) const {
-    const Vector3 rotation = player->GetRotation();
-    Vector3 forward = { std::sin(rotation.y), 0.0f, std::cos(rotation.y) };
+    Vector3 forward = player->GetForwardDirection();
     const float length = std::sqrt(forward.x * forward.x + forward.z * forward.z);
     if (length <= 0.001f) {
         return { 0.0f, 0.0f, 1.0f };

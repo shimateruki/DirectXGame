@@ -1,13 +1,13 @@
 // Skybox.PS.hlsl
 #include "Skybox.hlsli"
 
-// TextureCubeとしてテクスチャを受け取る
+// Cubemap texture.
 TextureCube<float4> skyboxTexture : register(t0);
 SamplerState smp : register(s0);
 
 float4 main(VertexShaderOutput input) : SV_TARGET
 {
-    // 3D方向ベクトルを使ってキューブマップから色をサンプリング
+    // Sample the cubemap with a 3D direction vector.
     float4 textureColor = skyboxTexture.Sample(smp, input.texcoord);
     
     return textureColor;

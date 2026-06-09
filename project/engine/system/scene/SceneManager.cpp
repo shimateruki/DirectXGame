@@ -37,6 +37,7 @@ SceneManager::~SceneManager() {
 void SceneManager::Initialize(AbstractSceneFactory* factory, const std::string& firstSceneName) {
 
     sceneFactory_ = factory; // ファクトリーを保持
+    currentSceneName_ = firstSceneName;
 
     currentScene_ = sceneFactory_->CreateScene(firstSceneName); //ファクトリー経由で生成
 
@@ -81,6 +82,7 @@ void SceneManager::Update(float deltaTime) {
         if (debugEditor_) {
             newScene->SetDebugEditor(debugEditor_);
         }
+        pendingSceneNameForSwap_ = nextSceneName_;
         SetNextScene(std::move(newScene));
         
         // フェードインを開始
@@ -105,6 +107,10 @@ void SceneManager::Update(float deltaTime) {
         // 3. 次のシーンを現在のシーンに設定
         currentScene_ = std::move(nextScene_);
         nextScene_ = nullptr;
+        if (!pendingSceneNameForSwap_.empty()) {
+            currentSceneName_ = pendingSceneNameForSwap_;
+            pendingSceneNameForSwap_.clear();
+        }
 
         // 4. 新しいシーンを初期化
         currentScene_->Initialize();

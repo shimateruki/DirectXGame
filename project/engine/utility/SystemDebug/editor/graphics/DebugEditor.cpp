@@ -41,9 +41,7 @@
 #include <PresetManager.h>
 #include <PresetEditor.h>
 #include <MeshEffectManager.h>
-#include "EnemyFactory.h"
-#include "GimmickFactory.h"
-#include "ItemFactory.h"
+#include "BuiltInCreatePresetRegistry.h"
 #include <unordered_map>
 #include <utility>
 namespace fs = std::filesystem;
@@ -151,77 +149,6 @@ namespace {
             aabb.max.z > aabb.min.z;
     }
 
-    void RegisterBuiltInPreset(const std::string& presetName, std::unique_ptr<Object3d> object, const std::string& displayName) {
-        if (!object || PresetManager::GetInstance()->HasPreset(presetName)) {
-            return;
-        }
-
-        object->SetName(displayName);
-        object->UpdateLocalMatrix();
-        object->UpdateWorldMatrix();
-
-        json data = object->ExportToJson();
-        data["name"] = displayName;
-        data["builtinCreateTemplate"] = true;
-        PresetManager::GetInstance()->GetPreset(presetName) = data;
-    }
-
-    void EnsureBuiltInCreatePresets(Object3dCommon* common) {
-        if (!common) {
-            return;
-        }
-
-        bool added = false;
-        auto presetCount = PresetManager::GetInstance()->GetPresets().size();
-
-        const std::vector<std::pair<std::string, std::string>> enemies = {
-            { "Slime", "スライム" },
-            { "Bomb", "ボム" },
-            { "Bomber", "ボマー" },
-            { "Mushroom", "キノコ" },
-            { "GiantSlime", "巨大スライム" },
-            { "Bat", "コウモリ" },
-            { "BeamDrone", "目玉ビーム" },
-            { "BossCore", "ボスコア" },
-        };
-        for (const auto& [type, label] : enemies) {
-            RegisterBuiltInPreset("Builtin/Enemy/" + type, EnemyFactory::GetInstance()->CreateEnemy(type, common), label);
-        }
-
-        const std::vector<std::pair<std::string, std::string>> gimmicks = {
-            { "MovingFloor", "動く床" },
-            { "Trampoline", "ジャンプ台" },
-            { "SinkingFloor", "沈む床" },
-            { "SeesawFloor", "シーソー床" },
-            { "DashPanel", "ダッシュパネル" },
-            { "IceFloor", "氷の床" },
-            { "TimedSwitch", "時限スイッチ" },
-            { "AppearingFloor", "出現床" },
-            { "Switch", "汎用スイッチ" },
-            { "EventReceiver", "イベント受信" },
-            { "HookAnchor", "フックアンカー" },
-            { "HookPullBlock", "フック可動ブロック" },
-            { "OneWayFloor", "一方通行床" },
-            { "LiquidLevel", "水位/マグマ上下" },
-            { "ChainCollapseFloor", "連鎖崩れ床" },
-            { "RotatingFloor", "回転床" },
-            { "RotatingPillar", "回転柱" },
-            { "PhaseFlipFloor", "時間反転床" },
-            { "LaserEmitter", "レーザー発射" },
-            { "LaserNode", "レーザーノード" },
-            { "StageGate", "ステージゲート" },
-        };
-        for (const auto& [type, label] : gimmicks) {
-            RegisterBuiltInPreset("Builtin/Gimmick/" + type, GimmickFactory::GetInstance()->CreateGimmick(type, common), label);
-        }
-
-        RegisterBuiltInPreset("Builtin/Item/Heal", ItemFactory::GetInstance()->CreateItem("Heal", common), "体力回復");
-
-        added = PresetManager::GetInstance()->GetPresets().size() != presetCount;
-        if (added) {
-            PresetManager::GetInstance()->SaveAll();
-        }
-    }
 }
 
 // ========================================================================
@@ -234,7 +161,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     lastUpdatedScene_ = nullptr;
     PresetManager::GetInstance()->Initialize();
     if (sceneManager_ && sceneManager_->GetCurrentScene()) {
-        EnsureBuiltInCreatePresets(sceneManager_->GetCurrentScene()->GetObject3dCommon());
+        BuiltInCreatePresetRegistry::EnsureRegistered(sceneManager_->GetCurrentScene()->GetObject3dCommon());
     }
     PresetEditor::GetInstance()->Initialize();
     PresetEditor::GetInstance()->SetPlacePresetCallback([this](const std::string& presetName) {

@@ -254,7 +254,7 @@ void EnemyBeamDrone::UpdateCarriedAbility(Player* player, float deltaTime) {
                 MeshEffectManager::GetInstance()->SpawnEffectAt(
                     kPlayerBeamChargeEffect,
                     muzzle,
-                    { 1.5707963f, player->GetRotation().y, 0.0f },
+                    { 1.5707963f, player->GetMoveYaw(), 0.0f },
                     { 1.0f, 1.0f, 1.0f }
                 );
             }
@@ -529,7 +529,7 @@ void EnemyBeamDrone::FirePlayerBeam(Player* player) {
         MeshEffectManager::GetInstance()->SpawnEffectAt(
             kPlayerBeamMuzzleEffect,
             beamStart_,
-            { 1.5707963f, player->GetRotation().y, 0.0f },
+            { 1.5707963f, player->GetMoveYaw(), 0.0f },
             { 1.0f, 1.0f, 1.0f }
         );
     }
@@ -616,8 +616,7 @@ Vector3 EnemyBeamDrone::GetPlayerBeamMuzzlePosition(Player* player) const {
 }
 
 Vector3 EnemyBeamDrone::GetPlayerBeamDirection(Player* player) const {
-    const Vector3 rotation = player->GetRotation();
-    Vector3 direction = { std::sin(rotation.y), 0.0f, std::cos(rotation.y) };
+    Vector3 direction = player->GetForwardDirection();
     const float length = std::sqrt(direction.x * direction.x + direction.z * direction.z);
     if (length <= 0.001f) {
         return { 0.0f, 0.0f, 1.0f };

@@ -36,6 +36,7 @@
 // 前方宣言 (Forward Declarations)
 // ========================================================================
 class Object3d;
+class DebrisEffectEditor;
 class DirectXCommon;
 class SceneManager;
 class GhostRecorder;
@@ -144,6 +145,7 @@ public:
         GhostDirector* ghostDirector,
         LightEditor* lightEditor,
         MeshEffectEditor* meshEffectEditor,
+        DebrisEffectEditor* debrisEffectEditor,
         TrailEmitterEditor* trailEmitterEditor)
     {
         postEffectEditor_    = postEffectEditor;
@@ -155,6 +157,7 @@ public:
         ghostDirector_       = ghostDirector;
         lightEditor_         = lightEditor;
         meshEffectEditor_    = meshEffectEditor;
+        debrisEffectEditor_  = debrisEffectEditor;
         trailEmitterEditor_  = trailEmitterEditor;
     }
     // --------------------------------------------------------------------
@@ -183,6 +186,7 @@ public:
 
     MeshEffectEditor* GetMeshEffectEditor() const { return meshEffectEditor_; }
     void SetMeshEffectEditor(MeshEffectEditor* editor) { meshEffectEditor_ = editor; }
+    DebrisEffectEditor* GetDebrisEffectEditor() const { return debrisEffectEditor_; }
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
     SceneValidator* GetSceneValidator() { return &sceneValidator_; }
     MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
@@ -340,6 +344,7 @@ private:
     SceneSavePreview sceneSavePreview_;
     EventLinkGraph eventLinkGraph_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
+    DebrisEffectEditor* debrisEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;
 
 };

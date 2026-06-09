@@ -1,0 +1,45 @@
+{
+    "name": "wood_splinter_burst",
+    "modelNames": [
+        "Stages/block",
+        "Primitives/cube"
+    ],
+    "spawnCount": 16,
+    "spawnOffset": [
+        0.0,
+        0.3,
+        0.0
+    ],
+    "baseDirection": [
+        0.0,
+        0.0,
+        1.0
+    ],
+    "horizontalSpread": 0.9,
+    "verticalMin": 0.25,
+    "verticalMax": 0.85,
+    "speedMin": 6.0,
+    "speedMax": 14.0,
+    "angularSpeedMin": 5.0,
+    "angularSpeedMax": 16.0,
+    "scaleMin": 0.08,
+    "scaleMax": 0.28,
+    "lifetimeMin": 0.9,
+    "lifetimeMax": 1.5,
+    "gravity": 24.0,
+    "airDrag": 0.12,
+    "restitution": 0.25,
+    "friction": 0.82,
+    "groundY": 0.0,
+    "fadeStartRatio": 0.68,
+    "color": [
+        0.55,
+        0.34,
+        0.18,
+        1.0
+    ],
+    "materialType": 0,
+    "emissive": 0.0,
+    "collideGround": true,
+    "shrinkOnFade": true
+}
