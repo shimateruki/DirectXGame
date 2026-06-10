@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <map>
 #include <sstream>
+#include <filesystem>
 #include "json.hpp"
 
 class GameDataManager {
@@ -18,6 +19,7 @@ public:
         int collectedStarCoins = 0;
         int lives = 3;
         int coins = 0;
+        int playTimeSeconds = 0;
     };
 
     static GameDataManager* GetInstance() {
@@ -58,6 +60,7 @@ public:
         summary.exists = true;
         summary.lives = data.value("lives", 3);
         summary.coins = data.value("coins", 0);
+        summary.playTimeSeconds = data.value("playTimeSeconds", 0);
 
         if (data.contains("clearedStages") && data["clearedStages"].is_array()) {
             for (const auto& stage : data["clearedStages"]) {
@@ -221,6 +224,23 @@ public:
         seenUnlockedStages_.clear();
         stageStarCoins_.clear();
         Save();
+    }
+
+    bool DeleteSlot(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= kSaveSlotCount) {
+            return false;
+        }
+
+        std::error_code ec;
+        const bool removed = std::filesystem::remove(GetSaveFilePath(slotIndex), ec);
+        if (slotIndex == 0) {
+            std::filesystem::remove(GetLegacySaveFilePath(), ec);
+        }
+
+        if (slotIndex == activeSlot_) {
+            Load();
+        }
+        return removed;
     }
 
 private:

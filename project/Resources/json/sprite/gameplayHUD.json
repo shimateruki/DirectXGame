@@ -1,0 +1,184 @@
+{
+    "sprites": [
+        {
+            "name": "hud_life_icon",
+            "texture": "title/slime_save_icon.png",
+            "position": [38.0, 100.0],
+            "size": [50.0, 50.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_life_x",
+            "texture": "ui/hud/xUi.png",
+            "position": [96.0, 100.0],
+            "size": [54.0, 54.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.96, 0.62, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_life_digit_0",
+            "texture": "number/0.png",
+            "position": [166.0, 100.0],
+            "size": [27.0, 40.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.95, 0.56, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_life_digit_1",
+            "texture": "number/0.png",
+            "position": [166.0, 100.0],
+            "size": [27.0, 40.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.95, 0.56, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_coin_icon",
+            "texture": "ui/hud/coin_icon.png",
+            "position": [38.0, 156.0],
+            "size": [48.0, 48.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_coin_x",
+            "texture": "ui/hud/xUi.png",
+            "position": [96.0, 156.0],
+            "size": [54.0, 54.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.90, 0.42, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_coin_digit_0",
+            "texture": "number/0.png",
+            "position": [166.0, 156.0],
+            "size": [27.0, 40.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.86, 0.28, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_coin_digit_1",
+            "texture": "number/0.png",
+            "position": [166.0, 156.0],
+            "size": [27.0, 40.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.86, 0.28, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_stage_star_slot_0",
+            "texture": "ui/hud/stage_star_empty.png",
+            "position": [52.0, 214.0],
+            "size": [42.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.94],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_stage_star_slot_1",
+            "texture": "ui/hud/stage_star_empty.png",
+            "position": [100.0, 214.0],
+            "size": [42.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.94],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_stage_star_slot_2",
+            "texture": "ui/hud/stage_star_empty.png",
+            "position": [148.0, 214.0],
+            "size": [42.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.94],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_life_meter",
+            "texture": "ui/hud/life_meter_6.png",
+            "position": [1802.0, 92.0],
+            "size": [138.0, 138.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_life_meter_digit",
+            "texture": "number/big6.png",
+            "position": [1802.0, 95.0],
+            "size": [52.0, 76.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.88, 0.20, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "life_lost_backdrop",
+            "texture": "common/white.png",
+            "position": [960.0, 540.0],
+            "size": [1920.0, 1080.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.0, 0.0, 0.0, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "life_lost_icon",
+            "texture": "title/slime_save_icon.png",
+            "position": [878.0, 540.0],
+            "size": [96.0, 96.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "life_lost_x",
+            "texture": "ui/hud/xUi.png",
+            "position": [966.0, 543.0],
+            "size": [78.0, 78.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.95, 0.58, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "life_lost_digit_0",
+            "texture": "number/big0.png",
+            "position": [1092.0, 542.0],
+            "size": [58.0, 86.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.92, 0.38, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "life_lost_digit_1",
+            "texture": "number/big0.png",
+            "position": [1092.0, 542.0],
+            "size": [58.0, 86.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.92, 0.38, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        }
+    ]
+}

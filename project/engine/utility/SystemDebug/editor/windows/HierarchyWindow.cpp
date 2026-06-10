@@ -32,6 +32,7 @@
 #include <filesystem>
 #include <algorithm> // std::transform用
 #include <cmath>
+#include <vector>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -59,6 +60,56 @@ namespace {
             if (!exists(candidate)) return candidate;
         }
         return baseName + "_New";
+    }
+
+    std::string GetLeafName(const std::string& path) {
+        size_t slash = path.find_last_of("/\\");
+        if (slash == std::string::npos) {
+            return path.empty() ? "Preset" : path;
+        }
+        std::string leaf = path.substr(slash + 1);
+        return leaf.empty() ? "Preset" : leaf;
+    }
+
+    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
+        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
+    }
+
+    std::string MakeUniquePresetName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
+        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
+        std::string uniqueName = MakeUniqueName(scene, base);
+        if (!ReservedHasName(reservedNames, uniqueName)) {
+            return uniqueName;
+        }
+
+        for (int index = 1; index < 10000; ++index) {
+            std::string candidate = base + "_" + std::to_string(index);
+            if (!ReservedHasName(reservedNames, candidate) && MakeUniqueName(scene, candidate) == candidate) {
+                return candidate;
+            }
+        }
+        return base + "_New";
+    }
+
+    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
+        if (objects.empty()) return;
+
+        std::vector<std::string> reservedNames;
+        std::string rootName = MakeUniquePresetName(scene, GetLeafName(presetName), reservedNames);
+        objects.front()->SetName(rootName);
+        reservedNames.push_back(rootName);
+
+        for (size_t index = 1; index < objects.size(); ++index) {
+            if (!objects[index]) continue;
+
+            std::string baseName = objects[index]->GetName();
+            if (baseName.empty()) {
+                baseName = rootName + "_Child";
+            }
+            std::string uniqueName = MakeUniquePresetName(scene, baseName, reservedNames);
+            objects[index]->SetName(uniqueName);
+            reservedNames.push_back(uniqueName);
+        }
     }
 
     float GetObjectYOffset(const Object3d* object) {
@@ -134,6 +185,28 @@ namespace {
 
         std::string createdName = object->GetName();
         editor->AddEditorObject(std::move(object), commandLabel);
+        DebugConsole::GetInstance()->AddLog("Create: " + createdName);
+    }
+
+    void AddCreatedObjects(DebugEditor* editor, BaseScene* scene, std::vector<std::unique_ptr<Object3d>> objects, const std::string& baseName, const std::string& commandLabel, bool useGameViewCursor) {
+        if (!editor || !scene || objects.empty()) return;
+
+        AssignPresetInstanceNames(scene, baseName, objects);
+        Object3d* rootObject = objects.front().get();
+        if (!rootObject) return;
+
+        if (useGameViewCursor) {
+            editor->StartGameViewCreatePreview(std::move(objects), commandLabel);
+            return;
+        }
+
+        Vector3 createPosition = GetDefaultCreatePosition(editor, rootObject);
+        rootObject->SetTranslate(createPosition);
+        rootObject->UpdateLocalMatrix();
+        rootObject->UpdateWorldMatrix();
+
+        std::string createdName = rootObject->GetName();
+        editor->AddEditorObjects(std::move(objects), commandLabel);
         DebugConsole::GetInstance()->AddLog("Create: " + createdName);
     }
 
@@ -295,10 +368,8 @@ namespace {
             for (const auto& [presetName, data] : presets) {
                 if (ImGui::MenuItem(presetName.c_str())) {
                     if (!scene->GetObject3dCommon()) continue;
-                    auto object = std::make_unique<Object3d>();
-                    object->Initialize(scene->GetObject3dCommon());
-                    PresetManager::GetInstance()->ApplyPresetToObject(presetName, object.get());
-                    AddCreatedObject(editor, scene, std::move(object), presetName, "Create Preset " + presetName, useGameViewCursor);
+                    auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(presetName, scene->GetObject3dCommon());
+                    AddCreatedObjects(editor, scene, std::move(objects), presetName, "Create Preset " + presetName, useGameViewCursor);
                 }
             }
             ImGui::EndMenu();
@@ -396,6 +467,10 @@ void HierarchyWindow::Draw() {
         if (editor_->GetEventLinkGraph() && ImGui::Selectable("  " ICON_FA_PROJECT_DIAGRAM " イベントリンク図 (Event Link Graph)", currentObj == editor_->GetEventLinkGraph())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetEventLinkGraph());
+        }
+        if (editor_->GetTextSpriteGenerator() && ImGui::Selectable("  " ICON_FA_FONT " テキストPNG生成 (Text PNG)", currentObj == editor_->GetTextSpriteGenerator())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetTextSpriteGenerator());
         }
         ImGui::Separator();
         if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {
@@ -520,20 +595,10 @@ void HierarchyWindow::Draw() {
                 const char* presetName = (const char*)payload->Data;
                 const auto& presets = PresetManager::GetInstance()->GetPresets();
                 if (presets.count(presetName) > 0) {
-                    const nlohmann::json& data = presets.at(presetName);
-                    std::string modelName = "Primitives/cube";
-                    if (data.contains("modelName")) { modelName = data["modelName"]; ModelManager::GetInstance()->LoadModel(modelName); }
                     Object3dCommon* common = currentScene->GetObject3dCommon();
                     if (common) {
-                        auto newObj = std::make_unique<Object3d>();
-                        newObj->Initialize(common); newObj->ImportFromJson(data); newObj->SetModel(modelName);
-                        newObj->UpdateLocalMatrix(); newObj->UpdateWorldMatrix();
-                        std::string baseName = std::string(presetName);
-                        size_t slash = baseName.find_last_of("/\\");
-                        if (slash != std::string::npos) {
-                            baseName = baseName.substr(slash + 1);
-                        }
-                        AddCreatedObject(editor_, currentScene, std::move(newObj), baseName, "Create Preset " + std::string(presetName), false);
+                        auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(presetName, common);
+                        AddCreatedObjects(editor_, currentScene, std::move(objects), presetName, "Create Preset " + std::string(presetName), false);
                     }
                 }
             }

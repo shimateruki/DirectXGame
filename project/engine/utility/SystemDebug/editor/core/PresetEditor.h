@@ -32,6 +32,10 @@ public:
         placePresetCallback_ = std::move(callback);
     }
 
+    void SetBrushPresetCallback(std::function<void(const std::string&)> callback) {
+        brushPresetCallback_ = std::move(callback);
+    }
+
     void SetThumbnailProvider(std::function<uint64_t(const std::string&)> provider) {
         thumbnailProvider_ = std::move(provider);
     }
@@ -229,6 +233,10 @@ private:
         ImGui::SameLine();
         if (placePresetCallback_ && ImGui::Button("配置プレビュー")) {
             placePresetCallback_(selectedName_);
+        }
+        ImGui::SameLine();
+        if (brushPresetCallback_ && ImGui::Button("ブラシ配置")) {
+            brushPresetCallback_(selectedName_);
         }
         ImGui::SameLine();
         if (ImGui::Button("保存")) {
@@ -917,6 +925,7 @@ private:
 
 private:
     std::function<void(const std::string&)> placePresetCallback_;
+    std::function<void(const std::string&)> brushPresetCallback_;
     std::function<uint64_t(const std::string&)> thumbnailProvider_;
     std::vector<std::string> modelNames_;
     std::string selectedName_;
@@ -943,6 +952,7 @@ public:
 
     void Initialize() {}
     void SetPlacePresetCallback(std::function<void(const std::string&)>) {}
+    void SetBrushPresetCallback(std::function<void(const std::string&)>) {}
     void SetThumbnailProvider(std::function<uint64_t(const std::string&)>) {}
     void DrawImGui() override {}
     std::string GetName() override { return "プリセットエディタ (Preset Editor)"; }

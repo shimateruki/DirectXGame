@@ -1,0 +1,34 @@
+{
+    "clearColor": [0.0, 0.0, 0.0, 1.0],
+    "directionalLight": {
+        "ambientColor": [0.02, 0.02, 0.025],
+        "color": [0.55, 0.65, 0.85, 1.0],
+        "direction": [0.15, -0.96, 0.23],
+        "enableFog": 0,
+        "fogColor": [0.0, 0.0, 0.0],
+        "fogEnd": 1000.0,
+        "fogHeightMax": 5.0,
+        "fogHeightMin": -5.0,
+        "fogStart": 501.0,
+        "intensity": 0.08,
+        "volumetricIntensity": 0.0,
+        "volumetricSteps": 8
+    },
+    "pointLights": [],
+    "spotLights": [
+        {
+            "position": [0.0, 5.2, -2.5],
+            "direction": [0.0, -0.92, 0.38],
+            "color": [1.0, 0.88, 0.58, 1.0],
+            "intensity": 5.0,
+            "distance": 10.0,
+            "decay": 2.0,
+            "cosAngle": 0.78,
+            "cosFalloffStart": 0.62,
+            "baseIntensity": 5.0,
+            "mode": 0,
+            "speed": 1.0,
+            "offset": [0.0, 0.0, 0.0]
+        }
+    ]
+}

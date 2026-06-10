@@ -29,6 +29,36 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+constexpr const char* kTextFile1 = "Resources/sprite/generated/text/text_1_3c19efbf.png";
+constexpr const char* kTextFile2 = "Resources/sprite/generated/text/text_2_3d19f152.png";
+constexpr const char* kTextFile3 = "Resources/sprite/generated/text/text_3_3e19f2e5.png";
+constexpr const char* kTextStartFromBeginning = "Resources/sprite/generated/text/text_text_c8a6dc24.png";
+constexpr const char* kTextContinue = "Resources/sprite/generated/text/text_text_46356cfa.png";
+constexpr const char* kTextStartQuestion = "Resources/sprite/generated/text/text_text_0bbc5855.png";
+constexpr const char* kTextDeleteFile = "Resources/sprite/generated/text/text_text_1f05b6eb.png";
+constexpr const char* kTextDeleteQuestion = "Resources/sprite/generated/text/text_text_8aae87df.png";
+constexpr const char* kTextYes = "Resources/sprite/generated/text/text_text_a214f5c6.png";
+constexpr const char* kTextBack = "Resources/sprite/generated/text/text_text_70188c3d.png";
+constexpr const char* kTextPlayTime = "Resources/sprite/generated/text/text_text_46271c76.png";
+constexpr const char* kCrownIcon = "Resources/sprite/ui/title/crown_progress_icon.png";
+constexpr const char* kStarIcon = "Resources/sprite/ui/hud/stage_star_filled.png";
+constexpr const char* kSlimeIcon = "Resources/sprite/title/slime_save_icon.png";
+constexpr const char* kXIcon = "Resources/sprite/ui/hud/xUi.png";
+constexpr const char* kWhite = "Resources/sprite/common/white.png";
+constexpr const char* kSaveSlotCard = "ui/title/save_slot_card.png";
+constexpr const char* kSaveSlotCardSelected = "ui/title/save_slot_card_selected.png";
+constexpr const char* kSaveSlotCardEmpty = "ui/title/save_slot_card_empty.png";
+constexpr const char* kSaveDeleteButton = "ui/title/save_delete_button.png";
+constexpr const char* kSaveDeleteButtonSelected = "ui/title/save_delete_button_selected.png";
+
+const std::array<const char*, 3> kFileTextPaths = {
+    kTextFile1,
+    kTextFile2,
+    kTextFile3
+};
+}
+
 void TitleScene::Initialize() {
     // --- 1. システム基盤の取得 ---
     dxCommon_ = DirectXCommon::GetInstance();
@@ -89,6 +119,14 @@ void TitleScene::Initialize() {
     titleTextSprite_ = GetSpriteByName("titleText.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
+    if (startTextSprite_) {
+        startTextBaseSize_ = startTextSprite_->GetSize();
+    }
+    if (settingTextSprite_) {
+        settingTextBaseSize_ = settingTextSprite_->GetSize();
+    }
+    settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
+    settingsOverlay_->Initialize(spriteCommon_.get());
     InitializeSaveSlotUI();
     UpdateSaveSlotUI();
 
@@ -107,16 +145,37 @@ void TitleScene::Finalize() {
     }
     saveSlotIcons_.fill(nullptr);
     saveSlotNumberSprites_.fill(nullptr);
+    saveSlotFileNameTexts_.fill(nullptr);
+    saveSlotStatusTexts_.fill(nullptr);
     saveSlotLifeIcons_.fill(nullptr);
     saveSlotLifeXIcons_.fill(nullptr);
     for (auto& digits : saveSlotLifeDigits_) {
         digits.fill(nullptr);
     }
-    for (auto& dots : saveSlotProgressDots_) {
-        dots.fill(nullptr);
+    saveSlotCrownIcons_.fill(nullptr);
+    saveSlotCrownXIcons_.fill(nullptr);
+    for (auto& digits : saveSlotCrownDigits_) {
+        digits.fill(nullptr);
+    }
+    saveSlotStarIcons_.fill(nullptr);
+    saveSlotStarXIcons_.fill(nullptr);
+    for (auto& digits : saveSlotStarDigits_) {
+        digits.fill(nullptr);
+    }
+    saveSlotPlayTimeLabels_.fill(nullptr);
+    for (auto& digits : saveSlotPlayTimeDigits_) {
+        digits.fill(nullptr);
     }
     saveSelectHeader_ = nullptr;
+    saveDeleteButtonBack_ = nullptr;
+    saveDeleteButtonText_ = nullptr;
+    savePromptBubble_ = nullptr;
+    savePromptText_ = nullptr;
+    saveDeleteQuestionText_ = nullptr;
+    saveConfirmYesText_ = nullptr;
+    saveConfirmBackText_ = nullptr;
     titleTextSprite_ = nullptr;
+    settingsOverlay_.reset();
     sprites_.clear();
     particleSystem_.reset();
     particleCommon_.reset();
@@ -127,7 +186,10 @@ void TitleScene::Finalize() {
 void TitleScene::Update(float deltaTime) {
     titleUiTime_ += deltaTime;
 
-    if (titleMode_ == TitleMode::MainMenu) {
+    const bool isSettingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
+    if (isSettingsOpen) {
+        settingsOverlay_->Update(deltaTime);
+    } else if (titleMode_ == TitleMode::MainMenu) {
         UpdateMainMenu();
     } else {
         UpdateSaveSelect();
@@ -168,25 +230,42 @@ void TitleScene::UpdateMainMenu() {
         if (currentMenuIndex_ >= (int)MenuIndex::Max) currentMenuIndex_ = 0;
     }
 
-    Vector4 normalColor = { 0.5f, 0.5f, 0.5f, 1.0f };
-    Vector4 selectColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 6.0f);
+    const float selectedScale = 1.10f + pulse * 0.06f;
+    const Vector4 normalColor = { 0.62f, 0.74f, 0.82f, 0.72f };
+    const Vector4 selectColor = { 0.35f + pulse * 0.12f, 0.86f + pulse * 0.10f, 1.0f, 1.0f };
 
     if (startTextSprite_) {
-        startTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::GameStart ? selectColor : normalColor);
+        const bool selected = currentMenuIndex_ == (int)MenuIndex::GameStart;
+        startTextSprite_->SetColor(selected ? selectColor : normalColor);
+        startTextSprite_->SetSize({
+            startTextBaseSize_.x * (selected ? selectedScale : 0.94f),
+            startTextBaseSize_.y * (selected ? selectedScale : 0.94f)
+        });
     }
     if (settingTextSprite_) {
-        settingTextSprite_->SetColor(currentMenuIndex_ == (int)MenuIndex::Setting ? selectColor : normalColor);
+        const bool selected = currentMenuIndex_ == (int)MenuIndex::Setting;
+        settingTextSprite_->SetColor(selected ? selectColor : normalColor);
+        settingTextSprite_->SetSize({
+            settingTextBaseSize_.x * (selected ? selectedScale : 0.94f),
+            settingTextBaseSize_.y * (selected ? selectedScale : 0.94f)
+        });
     }
 
     if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
         if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
             titleMode_ = TitleMode::SaveSelect;
+            saveSelectMode_ = SaveSelectMode::Browse;
+            deleteConfirmIndex_ = 1;
             currentSaveSlotIndex_ = std::clamp(currentSaveSlotIndex_, 0, GameDataManager::kSaveSlotCount - 1);
+            saveSelectFocusIndex_ = currentSaveSlotIndex_;
             DebugConsole::GetInstance()->AddLog("[Title] Open save slot select.");
         }
         else if (currentMenuIndex_ == (int)MenuIndex::Setting) {
-            DebugConsole::GetInstance()->AddLog("[Title] Settings scene is not implemented yet.");
-            // SceneManager::GetInstance()->ChangeScene("SETTING"); 
+            DebugConsole::GetInstance()->AddLog("[Title] Open settings overlay.");
+            if (settingsOverlay_) {
+                settingsOverlay_->SetActive(true);
+            }
         }
     }
 }
@@ -194,38 +273,99 @@ void TitleScene::UpdateMainMenu() {
 void TitleScene::UpdateSaveSelect() {
     InputManager* input = InputManager::GetInstance();
 
+    const bool moveUp =
+        input->IsKeyTriggered(DIK_UP) ||
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
+    const bool moveDown =
+        input->IsKeyTriggered(DIK_DOWN) ||
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
     const bool moveLeft =
         input->IsKeyTriggered(DIK_LEFT) ||
-        input->IsKeyTriggered(DIK_UP) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_UP);
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_LEFT);
     const bool moveRight =
         input->IsKeyTriggered(DIK_RIGHT) ||
-        input->IsKeyTriggered(DIK_DOWN) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT) ||
-        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_DOWN);
+        input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_DPAD_RIGHT);
 
-    if (moveLeft) {
-        currentSaveSlotIndex_--;
-        if (currentSaveSlotIndex_ < 0) {
-            currentSaveSlotIndex_ = GameDataManager::kSaveSlotCount - 1;
+    if (saveSelectMode_ == SaveSelectMode::DeleteConfirm) {
+        if (moveLeft || moveRight) {
+            deleteConfirmIndex_ = 1 - deleteConfirmIndex_;
+        }
+
+        if (input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
+            saveSelectMode_ = SaveSelectMode::Browse;
+            deleteConfirmIndex_ = 1;
+            DebugConsole::GetInstance()->AddLog("[Title] Cancel save delete.");
+            return;
+        }
+
+        if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+            if (deleteConfirmIndex_ == 0) {
+                DeleteSelectedSaveSlot();
+            }
+            saveSelectMode_ = SaveSelectMode::Browse;
+            deleteConfirmIndex_ = 1;
+            return;
+        }
+        return;
+    }
+
+    constexpr int kDeleteFocusIndex = GameDataManager::kSaveSlotCount;
+    if (moveUp) {
+        saveSelectFocusIndex_--;
+        if (saveSelectFocusIndex_ < 0) {
+            saveSelectFocusIndex_ = kDeleteFocusIndex;
         }
     }
 
-    if (moveRight) {
-        currentSaveSlotIndex_++;
-        if (currentSaveSlotIndex_ >= GameDataManager::kSaveSlotCount) {
-            currentSaveSlotIndex_ = 0;
+    if (moveDown) {
+        saveSelectFocusIndex_++;
+        if (saveSelectFocusIndex_ > kDeleteFocusIndex) {
+            saveSelectFocusIndex_ = 0;
         }
+    }
+
+    if (saveSelectFocusIndex_ < GameDataManager::kSaveSlotCount) {
+        if (moveLeft) {
+            saveSelectFocusIndex_--;
+            if (saveSelectFocusIndex_ < 0) {
+                saveSelectFocusIndex_ = GameDataManager::kSaveSlotCount - 1;
+            }
+        }
+
+        if (moveRight) {
+            saveSelectFocusIndex_++;
+            if (saveSelectFocusIndex_ >= GameDataManager::kSaveSlotCount) {
+                saveSelectFocusIndex_ = 0;
+            }
+        }
+
+        currentSaveSlotIndex_ = std::clamp(saveSelectFocusIndex_, 0, GameDataManager::kSaveSlotCount - 1);
     }
 
     if (input->IsKeyTriggered(DIK_ESCAPE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_B)) {
         titleMode_ = TitleMode::MainMenu;
+        saveSelectMode_ = SaveSelectMode::Browse;
+        saveSelectFocusIndex_ = currentSaveSlotIndex_;
+        deleteConfirmIndex_ = 1;
         DebugConsole::GetInstance()->AddLog("[Title] Close save slot select.");
         return;
     }
 
-    if (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)) {
+    const GameDataManager::SaveSlotSummary summary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
+    const bool requestDelete =
+        ((input->IsKeyTriggered(DIK_D) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_X)) && summary.exists) ||
+        (saveSelectFocusIndex_ == kDeleteFocusIndex && summary.exists &&
+            (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A)));
+
+    if (requestDelete) {
+        saveSelectMode_ = SaveSelectMode::DeleteConfirm;
+        deleteConfirmIndex_ = 1;
+        DebugConsole::GetInstance()->AddLog("[Title] Open save delete confirm.");
+        return;
+    }
+
+    if (saveSelectFocusIndex_ < GameDataManager::kSaveSlotCount &&
+        (input->IsKeyTriggered(DIK_SPACE) || input->IsGamepadButtonTriggered(XINPUT_GAMEPAD_A))) {
         StartSelectedSaveSlot();
     }
 }
@@ -238,107 +378,106 @@ void TitleScene::InitializeSaveSlotUI() {
     }
     saveSlotIcons_.fill(nullptr);
     saveSlotNumberSprites_.fill(nullptr);
+    saveSlotFileNameTexts_.fill(nullptr);
+    saveSlotStatusTexts_.fill(nullptr);
     saveSlotLifeIcons_.fill(nullptr);
+    saveSlotLifeXIcons_.fill(nullptr);
     for (auto& digits : saveSlotLifeDigits_) {
         digits.fill(nullptr);
     }
-    for (auto& dots : saveSlotProgressDots_) {
-        dots.fill(nullptr);
+    saveSlotCrownIcons_.fill(nullptr);
+    saveSlotCrownXIcons_.fill(nullptr);
+    for (auto& digits : saveSlotCrownDigits_) {
+        digits.fill(nullptr);
+    }
+    saveSlotStarIcons_.fill(nullptr);
+    saveSlotStarXIcons_.fill(nullptr);
+    for (auto& digits : saveSlotStarDigits_) {
+        digits.fill(nullptr);
+    }
+    saveSlotPlayTimeLabels_.fill(nullptr);
+    for (auto& digits : saveSlotPlayTimeDigits_) {
+        digits.fill(nullptr);
     }
     saveSelectHeader_ = nullptr;
+    saveDeleteButtonBack_ = nullptr;
+    saveDeleteButtonText_ = nullptr;
+    savePromptBubble_ = nullptr;
+    savePromptText_ = nullptr;
+    saveDeleteQuestionText_ = nullptr;
+    saveConfirmYesText_ = nullptr;
+    saveConfirmBackText_ = nullptr;
 
     const float screenW = static_cast<float>(WinApp::kClientWidth);
     const float screenH = static_cast<float>(WinApp::kClientHeight);
-    const float centerX = screenW * 0.5f;
-    const float firstY = screenH * 0.29f;
-    const float slotStep = 210.0f;
-    const std::array<Vector2, 3> slotPositions = {
-        Vector2{ centerX, firstY },
-        Vector2{ centerX, firstY + slotStep },
-        Vector2{ centerX, firstY + slotStep * 2.0f }
+    const float centerX = screenW * 0.50f;
+    const float firstY = screenH * 0.21f;
+    const float slotStep = 172.0f;
+
+    auto bindSprite = [&](Sprite*& target, const std::string& name, const std::string& texture, const Vector2& position, const Vector2& size, const Vector4& color) {
+        target = GetSpriteByName(name);
+        if (!target) {
+            const std::string fullTexture = texture.rfind("Resources/", 0) == 0 ? texture : "Resources/sprite/" + texture;
+            target = CreateUISprite(fullTexture, position, size, color);
+            target->SetName(name);
+            target->SetTextureName(texture);
+        }
+        target->SetVisible(false);
     };
 
-    saveSelectHeader_ = CreateUISprite(
-        "Resources/sprite/common/white.png",
-        { centerX, screenH * 0.17f },
-        { 860.0f, 8.0f },
-        { 0.55f, 0.95f, 1.0f, 0.85f }
-    );
+    saveSelectHeader_ = GetSpriteByName("saveSelectHeaderLine");
+    if (saveSelectHeader_) {
+        saveSelectHeader_->SetVisible(false);
+    }
 
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
-        const Vector2& pos = slotPositions[i];
-        saveSlotCards_[i] = CreateUISprite(
-            "Resources/sprite/common/white.png",
-            pos,
-            { 820.0f, 160.0f },
-            { 0.08f, 0.24f, 0.32f, 0.82f }
-        );
+        const Vector2 pos = { centerX, firstY + slotStep * static_cast<float>(i) };
+        const std::string suffix = "_" + std::to_string(i);
 
-        for (int line = 0; line < 4; ++line) {
-            saveSlotFrames_[i][line] = CreateUISprite(
-                "Resources/sprite/common/white.png",
-                pos,
-                { 8.0f, 8.0f },
-                { 0.78f, 0.96f, 1.0f, 0.9f }
-            );
-        }
-
-        saveSlotNumberSprites_[i] = CreateUISprite(
-            "Resources/sprite/number/big1.png",
-            { pos.x - 345.0f, pos.y },
-            { 48.0f, 72.0f },
-            { 0.95f, 1.0f, 1.0f, 1.0f }
-        );
-
-        saveSlotIcons_[i] = CreateUISprite(
-            "Resources/sprite/title/slime_save_icon.png",
-            { pos.x - 255.0f, pos.y },
-            { 112.0f, 112.0f },
-            { 1.0f, 1.0f, 1.0f, 1.0f }
-        );
-
-        saveSlotLifeIcons_[i] = CreateUISprite(
-            "Resources/sprite/title/slime_save_icon.png",
-            { pos.x + 210.0f, pos.y },
-            { 52.0f, 52.0f },
-            { 1.0f, 1.0f, 1.0f, 0.95f }
-        );
-        saveSlotLifeXIcons_[i] = CreateUISprite(
-            "Resources/sprite/ui/hud/xUi.png",
-            { pos.x + 265.0f, pos.y },
-            { 44.0f, 44.0f },
-            { 1.0f, 0.95f, 0.58f, 0.95f }
-        );
-
+        bindSprite(saveSlotCards_[i], "saveSlotCard" + suffix, kSaveSlotCard, pos, { 1120.0f, 162.0f }, { 1.0f, 1.0f, 1.0f, 0.92f });
+        bindSprite(saveSlotNumberSprites_[i], "saveSlotNumber" + suffix, "number/big1.png", { pos.x - 470.0f, pos.y - 2.0f }, { 72.0f, 106.0f }, { 1.0f, 0.98f, 0.78f, 1.0f });
+        bindSprite(saveSlotFileNameTexts_[i], "saveSlotFileName" + suffix, kFileTextPaths[i], { pos.x - 260.0f, pos.y - 43.0f }, { 226.0f, 87.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
+        bindSprite(saveSlotStatusTexts_[i], "saveSlotStatus" + suffix, kTextStartFromBeginning, { pos.x - 260.0f, pos.y + 38.0f }, { 210.0f, 92.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
+        bindSprite(saveSlotIcons_[i], "saveSlotIcon" + suffix, kSlimeIcon, { pos.x - 365.0f, pos.y }, { 128.0f, 128.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
+        bindSprite(saveSlotCrownIcons_[i], "saveSlotCrownIcon" + suffix, kCrownIcon, { pos.x + 65.0f, pos.y - 38.0f }, { 58.0f, 58.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
+        bindSprite(saveSlotCrownXIcons_[i], "saveSlotCrownX" + suffix, kXIcon, { pos.x + 114.0f, pos.y - 38.0f }, { 36.0f, 36.0f }, { 1.0f, 0.98f, 0.70f, 1.0f });
         for (int digit = 0; digit < 2; ++digit) {
-            saveSlotLifeDigits_[i][digit] = CreateUISprite(
-                "Resources/sprite/number/0.png",
-                { pos.x + 310.0f + digit * 36.0f, pos.y },
-                { 34.0f, 48.0f },
-                { 1.0f, 0.94f, 0.56f, 1.0f }
-            );
+            bindSprite(saveSlotCrownDigits_[i][digit], "saveSlotCrownDigit" + std::to_string(digit) + suffix, "number/0.png", { pos.x + 153.0f + digit * 31.0f, pos.y - 38.0f }, { 28.0f, 42.0f }, { 1.0f, 0.95f, 0.55f, 1.0f });
         }
 
-        for (int dot = 0; dot < 3; ++dot) {
-            saveSlotProgressDots_[i][dot] = CreateUISprite(
-                "Resources/sprite/common/white.png",
-                { pos.x + 20.0f + dot * 32.0f, pos.y + 30.0f },
-                { 18.0f, 18.0f },
-                { 0.35f, 0.42f, 0.48f, 0.8f }
-            );
+        bindSprite(saveSlotStarIcons_[i], "saveSlotStarIcon" + suffix, kStarIcon, { pos.x + 65.0f, pos.y + 28.0f }, { 54.0f, 54.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
+        bindSprite(saveSlotStarXIcons_[i], "saveSlotStarX" + suffix, kXIcon, { pos.x + 114.0f, pos.y + 28.0f }, { 36.0f, 36.0f }, { 1.0f, 0.98f, 0.70f, 1.0f });
+        for (int digit = 0; digit < 2; ++digit) {
+            bindSprite(saveSlotStarDigits_[i][digit], "saveSlotStarDigit" + std::to_string(digit) + suffix, "number/0.png", { pos.x + 153.0f + digit * 31.0f, pos.y + 28.0f }, { 28.0f, 42.0f }, { 1.0f, 0.95f, 0.55f, 1.0f });
+        }
+
+        bindSprite(saveSlotLifeIcons_[i], "saveSlotLifeIcon" + suffix, kSlimeIcon, { pos.x + 355.0f, pos.y + 28.0f }, { 56.0f, 56.0f }, { 1.0f, 1.0f, 1.0f, 0.95f });
+        bindSprite(saveSlotLifeXIcons_[i], "saveSlotLifeX" + suffix, kXIcon, { pos.x + 404.0f, pos.y + 28.0f }, { 36.0f, 36.0f }, { 1.0f, 0.95f, 0.58f, 0.95f });
+        for (int digit = 0; digit < 2; ++digit) {
+            bindSprite(saveSlotLifeDigits_[i][digit], "saveSlotLifeDigit" + std::to_string(digit) + suffix, "number/0.png", { pos.x + 443.0f + digit * 31.0f, pos.y + 28.0f }, { 28.0f, 42.0f }, { 1.0f, 0.94f, 0.56f, 1.0f });
+        }
+
+        bindSprite(saveSlotPlayTimeLabels_[i], "saveSlotPlayTimeLabel" + suffix, kTextPlayTime, { pos.x + 325.0f, pos.y - 38.0f }, { 150.0f, 54.0f }, { 1.0f, 1.0f, 1.0f, 0.86f });
+        for (int digit = 0; digit < 5; ++digit) {
+            const char* texture = digit == 2 ? "number/colon.png" : "number/0.png";
+            bindSprite(saveSlotPlayTimeDigits_[i][digit], "saveSlotPlayTimeDigit" + std::to_string(digit) + suffix, texture, { pos.x + 418.0f + digit * 24.0f, pos.y - 38.0f }, digit == 2 ? Vector2{ 13.0f, 38.0f } : Vector2{ 21.0f, 38.0f }, { 1.0f, 0.95f, 0.70f, 0.95f });
         }
     }
+
+    bindSprite(saveDeleteButtonBack_, "saveDeleteButtonBack", kSaveDeleteButton, { screenW * 0.25f, screenH * 0.82f }, { 430.0f, 86.0f }, { 1.0f, 1.0f, 1.0f, 0.88f });
+    bindSprite(saveDeleteButtonText_, "saveDeleteButtonText", kTextDeleteFile, { screenW * 0.25f, screenH * 0.82f }, { 278.0f, 74.0f }, { 1.0f, 1.0f, 1.0f, 0.96f });
+    bindSprite(savePromptBubble_, "savePromptBubble", "ui/title/save_prompt_bubble.png", { screenW * 0.70f, screenH * 0.82f }, { 720.0f, 190.0f }, { 1.0f, 1.0f, 1.0f, 0.92f });
+    bindSprite(savePromptText_, "savePromptText", kTextStartQuestion, { screenW * 0.70f, screenH * 0.78f }, { 520.0f, 83.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
+    bindSprite(saveDeleteQuestionText_, "saveDeleteQuestionText", kTextDeleteQuestion, { screenW * 0.70f, screenH * 0.76f }, { 300.0f, 92.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
+    bindSprite(saveConfirmYesText_, "saveConfirmYesText", kTextYes, { screenW * 0.64f, screenH * 0.85f }, { 92.0f, 72.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
+    bindSprite(saveConfirmBackText_, "saveConfirmBackText", kTextBack, { screenW * 0.77f, screenH * 0.85f }, { 132.0f, 74.0f }, { 0.28f, 0.20f, 0.14f, 1.0f });
 }
 
-void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible) {
+void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, const Vector4& color, bool visible) {
     value = std::clamp(value, 0, 99);
 
     std::array<int, 2> digitValues = { value / 10, value % 10 };
     const int digitCount = value >= 10 ? 2 : 1;
-    const float digitWidth = digitHeight * 0.68f;
-    const float spacing = digitWidth * 0.82f;
-    const float totalWidth = digitCount == 2 ? spacing + digitWidth : digitWidth;
-    const float startX = rightAlignedPosition.x - totalWidth + digitWidth * 0.5f;
 
     for (int i = 0; i < 2; ++i) {
         Sprite* sprite = digits[i];
@@ -354,8 +493,6 @@ void TitleScene::SetNumberSprites(std::array<Sprite*, 2>& digits, int value, con
         const int digit = digitValues[sourceIndex];
         const uint32_t handle = Sprite::LoadTexture("number/" + std::to_string(digit) + ".png");
         sprite->SetTextureHandle(handle);
-        sprite->SetPosition({ startX + (sourceIndex - (2 - digitCount)) * spacing, rightAlignedPosition.y });
-        sprite->SetSize({ digitWidth, digitHeight });
         sprite->SetColor(color);
     }
 }
@@ -377,70 +514,43 @@ Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2
 
 void TitleScene::UpdateSaveSlotUI() {
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
+    const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
     if (titleTextSprite_) titleTextSprite_->SetVisible(!inSaveSelect);
     if (startTextSprite_) startTextSprite_->SetVisible(!inSaveSelect);
     if (settingTextSprite_) settingTextSprite_->SetVisible(!inSaveSelect);
-    if (saveSelectHeader_) saveSelectHeader_->SetVisible(inSaveSelect);
+    if (saveSelectHeader_) saveSelectHeader_->SetVisible(false);
 
-    const float screenW = static_cast<float>(WinApp::kClientWidth);
-    const float screenH = static_cast<float>(WinApp::kClientHeight);
-    const float centerX = screenW * 0.5f;
-    const float firstY = screenH * 0.29f;
-    const float slotStep = 210.0f;
+    const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);
 
     for (int i = 0; i < GameDataManager::kSaveSlotCount; ++i) {
-        const bool selected = inSaveSelect && i == currentSaveSlotIndex_;
+        const bool selected = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == i;
+        const bool deleteTarget = inSaveSelect && deleteConfirm && i == currentSaveSlotIndex_;
         const GameDataManager::SaveSlotSummary summary = GameDataManager::GetInstance()->GetSlotSummary(i);
-        const Vector2 slotPos = { centerX, firstY + slotStep * static_cast<float>(i) };
-        const Vector2 cardSize = selected ? Vector2{ 880.0f, 178.0f } : Vector2{ 820.0f, 160.0f };
-
-        const float pulse = selected ? (0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f)) : 0.0f;
-        const Vector4 cardColor = selected
-            ? Vector4{ 0.10f + pulse * 0.04f, 0.35f + pulse * 0.07f, 0.43f + pulse * 0.09f, 0.92f }
-            : Vector4{ 0.07f, 0.18f, 0.24f, summary.exists ? 0.76f : 0.48f };
-        const Vector4 frameColor = selected
-            ? Vector4{ 1.0f, 0.88f + pulse * 0.10f, 0.36f, 0.98f }
-            : Vector4{ 0.50f, 0.84f, 0.92f, summary.exists ? 0.72f : 0.42f };
+        const bool emphasized = selected || deleteTarget;
+        const Vector4 cardColor = emphasized
+            ? Vector4{ 1.0f, 1.0f, 1.0f, 0.86f + pulse * 0.14f }
+            : Vector4{ 1.0f, 1.0f, 1.0f, summary.exists ? 0.82f : 0.58f };
         const Vector4 iconColor = summary.exists
-            ? Vector4{ 1.0f, 1.0f, 1.0f, selected ? 1.0f : 0.82f }
-            : Vector4{ 0.62f, 0.76f, 0.82f, selected ? 0.80f : 0.44f };
-        const Vector4 numberColor = selected
-            ? Vector4{ 1.0f, 0.96f, 0.58f, 1.0f }
-            : Vector4{ 0.74f, 0.92f, 0.98f, summary.exists ? 0.78f : 0.46f };
+            ? Vector4{ 1.0f, 1.0f, 1.0f, emphasized ? 1.0f : 0.82f }
+            : Vector4{ 0.95f, 0.95f, 0.95f, emphasized ? 0.64f : 0.36f };
+        const Vector4 numberColor = emphasized
+            ? Vector4{ 1.0f, 0.96f + pulse * 0.04f, 0.50f, 1.0f }
+            : Vector4{ 1.0f, 0.88f, 0.62f, summary.exists ? 0.80f : 0.42f };
+        const Vector4 textColor = emphasized
+            ? Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }
+            : Vector4{ 1.0f, 1.0f, 1.0f, summary.exists ? 0.82f : 0.48f };
 
         if (saveSlotCards_[i]) {
             saveSlotCards_[i]->SetVisible(inSaveSelect);
+            const char* cardTexture = emphasized ? kSaveSlotCardSelected : (summary.exists ? kSaveSlotCard : kSaveSlotCardEmpty);
+            saveSlotCards_[i]->SetTextureHandle(Sprite::LoadTexture(cardTexture));
             saveSlotCards_[i]->SetColor(cardColor);
-            saveSlotCards_[i]->SetPosition(slotPos);
-            saveSlotCards_[i]->SetSize(cardSize);
         }
 
-        const float lineThickness = selected ? 5.0f : 3.5f;
-        const float halfW = cardSize.x * 0.5f;
-        const float halfH = cardSize.y * 0.5f;
-        if (saveSlotFrames_[i][0]) {
-            saveSlotFrames_[i][0]->SetVisible(inSaveSelect);
-            saveSlotFrames_[i][0]->SetColor(frameColor);
-            saveSlotFrames_[i][0]->SetPosition({ slotPos.x, slotPos.y - halfH });
-            saveSlotFrames_[i][0]->SetSize({ cardSize.x, lineThickness });
-        }
-        if (saveSlotFrames_[i][1]) {
-            saveSlotFrames_[i][1]->SetVisible(inSaveSelect);
-            saveSlotFrames_[i][1]->SetColor(frameColor);
-            saveSlotFrames_[i][1]->SetPosition({ slotPos.x, slotPos.y + halfH });
-            saveSlotFrames_[i][1]->SetSize({ cardSize.x, lineThickness });
-        }
-        if (saveSlotFrames_[i][2]) {
-            saveSlotFrames_[i][2]->SetVisible(inSaveSelect);
-            saveSlotFrames_[i][2]->SetColor(frameColor);
-            saveSlotFrames_[i][2]->SetPosition({ slotPos.x - halfW, slotPos.y });
-            saveSlotFrames_[i][2]->SetSize({ lineThickness, cardSize.y });
-        }
-        if (saveSlotFrames_[i][3]) {
-            saveSlotFrames_[i][3]->SetVisible(inSaveSelect);
-            saveSlotFrames_[i][3]->SetColor(frameColor);
-            saveSlotFrames_[i][3]->SetPosition({ slotPos.x + halfW, slotPos.y });
-            saveSlotFrames_[i][3]->SetSize({ lineThickness, cardSize.y });
+        for (auto* frame : saveSlotFrames_[i]) {
+            if (frame) {
+                frame->SetVisible(false);
+            }
         }
 
         if (saveSlotNumberSprites_[i]) {
@@ -448,59 +558,141 @@ void TitleScene::UpdateSaveSlotUI() {
             saveSlotNumberSprites_[i]->SetTextureHandle(handle);
             saveSlotNumberSprites_[i]->SetVisible(inSaveSelect);
             saveSlotNumberSprites_[i]->SetColor(numberColor);
-            saveSlotNumberSprites_[i]->SetPosition({ slotPos.x - 360.0f, slotPos.y });
-            saveSlotNumberSprites_[i]->SetSize(selected ? Vector2{ 58.0f, 86.0f } : Vector2{ 48.0f, 72.0f });
+        }
+
+        if (saveSlotFileNameTexts_[i]) {
+            saveSlotFileNameTexts_[i]->SetVisible(inSaveSelect);
+            saveSlotFileNameTexts_[i]->SetColor(textColor);
+        }
+
+        if (saveSlotStatusTexts_[i]) {
+            const uint32_t handle = Sprite::LoadTexture(summary.exists
+                ? "generated/text/text_text_46356cfa.png"
+                : "generated/text/text_text_c8a6dc24.png");
+            saveSlotStatusTexts_[i]->SetTextureHandle(handle);
+            saveSlotStatusTexts_[i]->SetVisible(inSaveSelect);
+            saveSlotStatusTexts_[i]->SetColor(textColor);
         }
 
         if (saveSlotIcons_[i]) {
             saveSlotIcons_[i]->SetVisible(inSaveSelect);
             saveSlotIcons_[i]->SetColor(iconColor);
-            saveSlotIcons_[i]->SetPosition({ slotPos.x - 260.0f, slotPos.y });
-            saveSlotIcons_[i]->SetSize(selected ? Vector2{ 128.0f, 128.0f } : Vector2{ 112.0f, 112.0f });
         }
 
+        if (saveSlotCrownIcons_[i]) {
+            saveSlotCrownIcons_[i]->SetVisible(inSaveSelect && summary.exists);
+            saveSlotCrownIcons_[i]->SetColor(iconColor);
+        }
+        if (saveSlotCrownXIcons_[i]) {
+            saveSlotCrownXIcons_[i]->SetVisible(inSaveSelect && summary.exists);
+            saveSlotCrownXIcons_[i]->SetColor(numberColor);
+        }
+        SetNumberSprites(
+            saveSlotCrownDigits_[i],
+            summary.clearedStageCount,
+            numberColor,
+            inSaveSelect && summary.exists
+        );
+
+        if (saveSlotStarIcons_[i]) {
+            saveSlotStarIcons_[i]->SetVisible(inSaveSelect && summary.exists);
+            saveSlotStarIcons_[i]->SetColor(iconColor);
+        }
+        if (saveSlotStarXIcons_[i]) {
+            saveSlotStarXIcons_[i]->SetVisible(inSaveSelect && summary.exists);
+            saveSlotStarXIcons_[i]->SetColor(numberColor);
+        }
+        SetNumberSprites(
+            saveSlotStarDigits_[i],
+            summary.collectedStarCoins,
+            numberColor,
+            inSaveSelect && summary.exists
+        );
+
         if (saveSlotLifeIcons_[i]) {
-            saveSlotLifeIcons_[i]->SetVisible(inSaveSelect);
+            saveSlotLifeIcons_[i]->SetVisible(inSaveSelect && summary.exists);
             saveSlotLifeIcons_[i]->SetColor(iconColor);
-            saveSlotLifeIcons_[i]->SetPosition({ slotPos.x + 215.0f, slotPos.y });
-            saveSlotLifeIcons_[i]->SetSize(selected ? Vector2{ 62.0f, 62.0f } : Vector2{ 52.0f, 52.0f });
         }
         if (saveSlotLifeXIcons_[i]) {
-            saveSlotLifeXIcons_[i]->SetVisible(inSaveSelect);
+            saveSlotLifeXIcons_[i]->SetVisible(inSaveSelect && summary.exists);
             saveSlotLifeXIcons_[i]->SetColor(numberColor);
-            saveSlotLifeXIcons_[i]->SetPosition({ slotPos.x + 270.0f, slotPos.y });
-            saveSlotLifeXIcons_[i]->SetSize(selected ? Vector2{ 50.0f, 50.0f } : Vector2{ 44.0f, 44.0f });
         }
 
         SetNumberSprites(
             saveSlotLifeDigits_[i],
             summary.lives,
-            { slotPos.x + 368.0f, slotPos.y },
-            selected ? 58.0f : 50.0f,
             numberColor,
-            inSaveSelect
+            inSaveSelect && summary.exists
         );
 
-        const int stageDots = std::clamp(summary.clearedStageCount, 0, 3);
-        for (int dot = 0; dot < 3; ++dot) {
-            Sprite* dotSprite = saveSlotProgressDots_[i][dot];
-            if (!dotSprite) continue;
-
-            Vector4 dotColor = { 0.26f, 0.32f, 0.38f, 0.78f };
-            if (summary.tutorialCleared && dot == 0) {
-                dotColor = { 0.35f, 0.95f, 1.0f, 0.92f };
-            }
-            if (dot < stageDots) {
-                dotColor = { 1.0f, 0.86f, 0.22f, 0.96f };
-            }
-            if (!summary.exists) {
-                dotColor = { 0.24f, 0.28f, 0.32f, 0.42f };
-            }
-
-            dotSprite->SetVisible(false);
-            dotSprite->SetColor(dotColor);
-            dotSprite->SetSize(selected ? Vector2{ 21.0f, 21.0f } : Vector2{ 18.0f, 18.0f });
+        if (saveSlotPlayTimeLabels_[i]) {
+            saveSlotPlayTimeLabels_[i]->SetVisible(inSaveSelect && summary.exists);
+            saveSlotPlayTimeLabels_[i]->SetColor(textColor);
         }
+
+        const int totalSeconds = std::clamp(summary.playTimeSeconds, 0, 99 * 60 + 59);
+        const int minutes = totalSeconds / 60;
+        const int seconds = totalSeconds % 60;
+        const std::array<int, 4> timeDigits = { minutes / 10, minutes % 10, seconds / 10, seconds % 10 };
+        int digitIndex = 0;
+        for (int part = 0; part < 5; ++part) {
+            Sprite* sprite = saveSlotPlayTimeDigits_[i][part];
+            if (!sprite) continue;
+
+            const bool visible = inSaveSelect && summary.exists;
+            sprite->SetVisible(visible);
+            if (!visible) continue;
+
+            if (part == 2) {
+                sprite->SetTextureHandle(Sprite::LoadTexture("number/colon.png"));
+            } else {
+                const int value = timeDigits[digitIndex++];
+                sprite->SetTextureHandle(Sprite::LoadTexture("number/" + std::to_string(value) + ".png"));
+            }
+            sprite->SetColor(numberColor);
+        }
+    }
+
+    const GameDataManager::SaveSlotSummary selectedSummary = GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
+    const bool deleteFocused = inSaveSelect && !deleteConfirm && saveSelectFocusIndex_ == GameDataManager::kSaveSlotCount;
+    const Vector4 enabledDeleteColor = selectedSummary.exists
+        ? (deleteFocused ? Vector4{ 1.0f, 1.0f, 1.0f, 0.86f + pulse * 0.14f } : Vector4{ 1.0f, 1.0f, 1.0f, 0.86f })
+        : Vector4{ 0.42f, 0.42f, 0.42f, 0.34f };
+    if (saveDeleteButtonBack_) {
+        saveDeleteButtonBack_->SetVisible(inSaveSelect && !deleteConfirm);
+        saveDeleteButtonBack_->SetTextureHandle(Sprite::LoadTexture(deleteFocused ? kSaveDeleteButtonSelected : kSaveDeleteButton));
+        saveDeleteButtonBack_->SetColor(enabledDeleteColor);
+    }
+    if (saveDeleteButtonText_) {
+        saveDeleteButtonText_->SetVisible(inSaveSelect && !deleteConfirm);
+        saveDeleteButtonText_->SetColor(selectedSummary.exists
+            ? Vector4{ 1.0f, 1.0f, 1.0f, 0.96f }
+            : Vector4{ 0.68f, 0.68f, 0.68f, 0.42f });
+    }
+
+    if (savePromptBubble_) {
+        savePromptBubble_->SetVisible(inSaveSelect);
+        savePromptBubble_->SetColor(deleteConfirm
+            ? Vector4{ 1.0f, 0.86f, 0.64f, 0.94f }
+            : Vector4{ 1.0f, 0.95f, 0.72f, 0.90f });
+    }
+    if (savePromptText_) {
+        savePromptText_->SetVisible(inSaveSelect && !deleteConfirm && !deleteFocused);
+    }
+    if (saveDeleteQuestionText_) {
+        saveDeleteQuestionText_->SetVisible(deleteConfirm || deleteFocused);
+    }
+    if (saveConfirmYesText_) {
+        saveConfirmYesText_->SetVisible(deleteConfirm);
+        saveConfirmYesText_->SetColor(deleteConfirmIndex_ == 0
+            ? Vector4{ 0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f }
+            : Vector4{ 0.28f, 0.20f, 0.14f, 0.70f });
+    }
+    if (saveConfirmBackText_) {
+        saveConfirmBackText_->SetVisible(deleteConfirm);
+        saveConfirmBackText_->SetColor(deleteConfirmIndex_ == 1
+            ? Vector4{ 0.08f, 0.44f + pulse * 0.18f, 0.96f, 1.0f }
+            : Vector4{ 0.28f, 0.20f, 0.14f, 0.70f });
     }
 }
 
@@ -516,6 +708,18 @@ void TitleScene::StartSelectedSaveSlot() {
     const bool tutorialCleared = saveData->IsStageCleared(-1);
     DebugConsole::GetInstance()->AddLog(tutorialCleared ? "[Title] Start from stage select." : "[Title] Start tutorial.");
     SceneManager::GetInstance()->ChangeScene(tutorialCleared ? "SELECT" : "TUTORIAL");
+}
+
+void TitleScene::DeleteSelectedSaveSlot() {
+    GameDataManager* saveData = GameDataManager::GetInstance();
+    const GameDataManager::SaveSlotSummary summary = saveData->GetSlotSummary(currentSaveSlotIndex_);
+    if (!summary.exists) {
+        DebugConsole::GetInstance()->AddLog("[Title] Delete skipped: save slot is empty.");
+        return;
+    }
+
+    const bool deleted = saveData->DeleteSlot(currentSaveSlotIndex_);
+    DebugConsole::GetInstance()->AddLog(deleted ? "[Title] Save slot deleted." : "[Title] Save slot delete failed.");
 }
 
 void TitleScene::DrawSaveSlotUI() {
@@ -605,6 +809,9 @@ void TitleScene::DrawUI() {
         sprite->Draw();
     }
     DrawSaveSlotUI();
+    if (settingsOverlay_) {
+        settingsOverlay_->Draw();
+    }
 }
 
 // シャドウマップ描画の実装

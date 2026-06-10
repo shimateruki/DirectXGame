@@ -163,6 +163,19 @@ void SceneManager::ChangeScene(const std::string& sceneName) {
 
 void SceneManager::SaveLastSceneName(const std::string& sceneName) {
     json root;
+    {
+        std::ifstream input(kUserConfigPath);
+        if (input.is_open()) {
+            try {
+                input >> root;
+            } catch (...) {
+                root = json::object();
+            }
+        }
+    }
+    if (!root.is_object()) {
+        root = json::object();
+    }
     root["lastScene"] = sceneName;
 
     std::ofstream file(kUserConfigPath);

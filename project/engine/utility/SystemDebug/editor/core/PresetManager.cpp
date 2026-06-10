@@ -2,8 +2,67 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
+
+namespace {
+json BuildPresetNode(Object3d* object, std::unordered_set<const Object3d*>& visited) {
+    if (!object || visited.count(object) != 0) {
+        return json::object();
+    }
+
+    visited.insert(object);
+    json node = object->ExportToJson();
+    json children = json::array();
+
+    for (Object3d* child : object->GetChildren()) {
+        json childNode = BuildPresetNode(child, visited);
+        if (!childNode.empty()) {
+            children.push_back(childNode);
+        }
+    }
+
+    if (!children.empty()) {
+        node["children"] = children;
+    }
+    return node;
+}
+
+void CreateObjectFromPresetNode(
+    const json& node,
+    Object3dCommon* common,
+    Object3d* parent,
+    std::vector<std::unique_ptr<Object3d>>& outObjects) {
+    if (!node.is_object() || !common) {
+        return;
+    }
+
+    auto object = std::make_unique<Object3d>();
+    object->Initialize(common);
+    object->ImportFromJson(node);
+    if (node.contains("name") && node["name"].is_string()) {
+        object->SetName(node["name"].get<std::string>());
+    }
+
+    Object3d* raw = object.get();
+    if (parent) {
+        raw->SetParent(parent);
+    }
+    raw->UpdateLocalMatrix();
+    raw->UpdateWorldMatrix();
+
+    outObjects.push_back(std::move(object));
+
+    if (!node.contains("children") || !node["children"].is_array()) {
+        return;
+    }
+
+    for (const auto& childNode : node["children"]) {
+        CreateObjectFromPresetNode(childNode, common, raw, outObjects);
+    }
+}
+}
 
 PresetManager* PresetManager::GetInstance() {
     static PresetManager instance;
@@ -77,7 +136,8 @@ void PresetManager::SavePresets(const std::string& filename) {
 void PresetManager::AddPresetFromObject(const std::string& presetName, Object3d* obj) {
     if (!obj) return;
     // オブジェクトからJSONデータを抽出して保存
-    presets_[presetName] = obj->ExportToJson();
+    std::unordered_set<const Object3d*> visited;
+    presets_[presetName] = BuildPresetNode(obj, visited);
     SaveAll();
 }
 
@@ -88,6 +148,21 @@ void PresetManager::ApplyPresetToObject(const std::string& presetName, Object3d*
     try {
         obj->ImportFromJson(presets_[presetName]);
     } catch (...) {}
+}
+
+std::vector<std::unique_ptr<Object3d>> PresetManager::CreateObjectsFromPreset(const std::string& presetName, Object3dCommon* common) const {
+    std::vector<std::unique_ptr<Object3d>> objects;
+    if (presetName.empty() || !common) return objects;
+
+    auto it = presets_.find(presetName);
+    if (it == presets_.end()) return objects;
+
+    try {
+        CreateObjectFromPresetNode(it->second, common, nullptr, objects);
+    } catch (...) {
+        objects.clear();
+    }
+    return objects;
 }
 
 void PresetManager::RemovePreset(const std::string& presetName) {

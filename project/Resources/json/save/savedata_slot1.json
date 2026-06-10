@@ -1,19 +1,7 @@
 {
-    "bestTime": 36.0907096862793,
-    "clearedStages": [
-        0
-    ],
-    "coins": 5,
-    "latestClearTime": 138.88327026367188,
-    "lives": 2,
-    "seenUnlockedStages": [
-        0
-    ],
-    "starCoins": {
-        "0": [
-            true,
-            false,
-            false
-        ]
-    }
+    "clearedStages": [],
+    "coins": 0,
+    "lives": 3,
+    "seenUnlockedStages": [],
+    "starCoins": null
 }

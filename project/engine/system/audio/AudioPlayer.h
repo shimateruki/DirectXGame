@@ -89,6 +89,10 @@ public:
 	AudioHandle LoadSoundFile(const std::string& filename);
 	void PlaySE(AudioHandle handle, bool loop, float volume);
 	void StopSe(AudioHandle handle);
+	void SetSEMasterVolume(float volume);
+	void SetBGMMasterVolume(float volume);
+	float GetSEMasterVolume() const { return seMasterVolume_; }
+	float GetBGMMasterVolume() const { return bgmMasterVolume_; }
 
 	/// <summary>
 	/// BGMを再生（または継続）します。
@@ -116,6 +120,8 @@ private:
 	AudioPlayer& operator=(const AudioPlayer&) = delete;
 
 	void DecodeThread(SoundDataStreaming* data);
+	void PlayStreaming(AudioHandle handle, bool loop, float volume);
+	void ApplyCurrentBGMVolume();
 
 private:
 	Microsoft::WRL::ComPtr<IXAudio2> xAudio2_;
@@ -128,4 +134,7 @@ private:
 	std::map<std::string, AudioHandle> audioHandleMap_; // ファイルパスからハンドルを引くためのマップ
 	AudioHandle nextHandle_ = 0; // 次に割り当てるハンドル番号
 	AudioHandle currentBgmHandle_ = kInvalidAudioHandle;
+	float seMasterVolume_ = 1.0f;
+	float bgmMasterVolume_ = 1.0f;
+	float currentBgmBaseVolume_ = 1.0f;
 };

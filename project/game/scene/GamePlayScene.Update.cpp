@@ -9,6 +9,7 @@
 #include "Fade.h"
 #include "GPUParticleManager.h"
 #include "GameDataManager.h"
+#include "GameSettingsManager.h"
 #include "InputManager.h"
 #include "LightEditor.h"
 #include "LockOnSystem.h"
@@ -20,12 +21,19 @@
 #include "SceneManager.h"
 #include "StageManager.h"
 #include "WinApp.h"
+#ifdef USE_IMGUI
+#include "imgui.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
 
 void GamePlayScene::Update(float deltaTime) {
     if (HandleGoalClear(deltaTime)) {
+        return;
+    }
+
+    if (HandlePauseOverlay(deltaTime)) {
         return;
     }
 
@@ -38,6 +46,69 @@ void GamePlayScene::Update(float deltaTime) {
     if (animatedCube_) {
         animatedCube_->Update(deltaTime);
     }
+}
+
+bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
+    if (settingsOverlay_ && settingsOverlay_->IsActive()) {
+        settingsOverlay_->Update(deltaTime);
+        return true;
+    }
+
+    if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) {
+        PauseMenuOverlay::Action action = pauseMenuOverlay_->Update(deltaTime);
+        switch (action) {
+        case PauseMenuOverlay::Action::Resume:
+            pauseMenuOverlay_->SetActive(false);
+            break;
+        case PauseMenuOverlay::Action::Retry:
+            pauseMenuOverlay_->SetActive(false);
+            SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+            break;
+        case PauseMenuOverlay::Action::OpenSettings:
+            if (settingsOverlay_) {
+                settingsOverlay_->SetActive(true);
+            }
+            break;
+        case PauseMenuOverlay::Action::ReturnTitle:
+            pauseMenuOverlay_->SetActive(false);
+            SceneManager::GetInstance()->ChangeScene("TITLE");
+            break;
+        case PauseMenuOverlay::Action::None:
+        default:
+            break;
+        }
+        return true;
+    }
+
+    if (IsPauseOpenTriggered()) {
+        if (pauseMenuOverlay_) {
+            pauseMenuOverlay_->SetActive(true);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+bool GamePlayScene::IsPauseOpenTriggered() const {
+    if (!inputManager_) {
+        return false;
+    }
+
+#ifdef USE_IMGUI
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard || io.WantTextInput) {
+        return false;
+    }
+#endif
+
+    if (lifeLostPresentationActive_ || lifeLostBlackHold_ || isGoal_) {
+        return false;
+    }
+
+    return inputManager_->IsKeyTriggered(DIK_TAB) ||
+        inputManager_->IsKeyTriggered(DIK_ESCAPE) ||
+        inputManager_->IsGamepadButtonTriggered(XINPUT_GAMEPAD_START);
 }
 
 bool GamePlayScene::HandleGoalClear(float& deltaTime) {
@@ -134,6 +205,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
         Camera::FollowMode currentMode = camera->GetFollowMode();
         if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+            camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
                 camera->AddRotation(mouseDelta);
@@ -161,6 +233,13 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
 }
 
 void GamePlayScene::UpdateEffectDebugShortcuts() {
+#ifdef USE_IMGUI
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard || io.WantTextInput) {
+        return;
+    }
+#endif
+
     if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
         Vector3 effectPos = { 0.0f, 2.0f, 0.0f };
         particleSystem_->SpawnStarHitEffect(effectPos);

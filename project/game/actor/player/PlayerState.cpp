@@ -347,9 +347,6 @@ void PlayerStateFallingOut::Update(Player* player) {
     case Phase::IrisOut:
         if (Fade::GetInstance()->IsFinished()) {
             Fade::GetInstance()->Stop();
-            StartLifeLostPresentationOnScene();
-            phase_ = Phase::LifeLost;
-            return;
             if (GameDataManager::GetInstance()->GetLives() <= 0) {
                 CameraManager::GetInstance()->GetActiveCamera()->SetFreezeEye(false);
                 SceneManager::GetInstance()->ChangeScene("GAMEOVER");

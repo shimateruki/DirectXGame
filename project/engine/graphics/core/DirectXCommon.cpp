@@ -116,9 +116,8 @@ void DirectXCommon::PreDraw() {
 	// 出力マージャ(OM)ステージに、描画先となるRTVとDSVを設定します。
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
-	// 画面を指定した色でクリアします (例: 青みがかった灰色)。
-	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
-	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	// SetRenderClearColorで指定された色でクリアします。
+	commandList_->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
 
 	// 深度バッファをクリアします。値を1.0f(最も遠い)に設定します。
 	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -829,9 +828,8 @@ void DirectXCommon::PreDrawBackBuffer() {
 	// 2. 描画先をセット
 	commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
-	// ★追加: 画面クリア (ImGuiの背景や隙間用)
-	float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f }; // 青色など
-	commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	// SetRenderClearColorで指定された色でクリアします。
+	commandList_->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
 	// ImGuiが深度を使う場合はクリアが必要
 	commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 

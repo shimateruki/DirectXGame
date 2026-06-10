@@ -115,6 +115,12 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
     CameraEditor::GetInstance()->LoadFile("game_camera.json");
 
     InitializeGameplayHUD();
+
+    pauseMenuOverlay_ = std::make_unique<PauseMenuOverlay>();
+    pauseMenuOverlay_->Initialize(spriteCommon_.get());
+
+    settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
+    settingsOverlay_->Initialize(spriteCommon_.get());
 }
 
 void GamePlayScene::StartRespawnIrisInIfNeeded() {
@@ -162,8 +168,42 @@ void GamePlayScene::InitializeDebugAnimationPreview() {
 }
 
 void GamePlayScene::FinalizeGameplayResources() {
+    CameraManager::GetInstance()->SetActiveCamera(nullptr);
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
+    settingsOverlay_.reset();
+    pauseMenuOverlay_.reset();
+    hudLifeMeter_ = {};
+    hudLifeMeterDigit_ = {};
+    hudLifeIcon_ = {};
+    hudLifeXIcon_ = {};
+    for (auto& digit : hudLifeDigits_) {
+        digit = {};
+    }
+    hudCoinIcon_ = {};
+    hudCoinXIcon_ = {};
+    for (auto& digit : hudCoinDigits_) {
+        digit = {};
+    }
+    for (auto& slot : hudStageStarSlots_) {
+        slot = {};
+    }
+    hudStageStarFlyParticles_.clear();
+    hudStageStarPulseTimers_ = { 0.0f, 0.0f, 0.0f };
+    hudStageStarVisualCollected_ = { false, false, false };
+    hudLifeGainPulseTimer_ = 0.0f;
+    hudCoinPulseTimer_ = 0.0f;
+    hudPreviousLives_ = 0;
+    hudPreviousCoins_ = 0;
+    lifeLostIcon_ = {};
+    lifeLostXIcon_ = {};
+    for (auto& digit : lifeLostDigits_) {
+        digit = {};
+    }
+    lifeLostBackdrop_ = {};
+    lifeLostSlimeObject_.reset();
+    lifeLostStunObject_.reset();
+    lifeLostCamera_.reset();
     particleSystem_.reset();
     particleCommon_.reset();
     sprites_.clear();
@@ -171,22 +211,4 @@ void GamePlayScene::FinalizeGameplayResources() {
     object3dCommon_.reset();
     objectManager_.reset();
     lockOnSystem_.reset();
-    hudLifeMeter_.reset();
-    hudLifeMeterDigit_.reset();
-    hudLifeIcon_.reset();
-    hudLifeXIcon_.reset();
-    for (auto& digit : hudLifeDigits_) {
-        digit.reset();
-    }
-    hudCoinIcon_.reset();
-    hudCoinXIcon_.reset();
-    for (auto& digit : hudCoinDigits_) {
-        digit.reset();
-    }
-    lifeLostIcon_.reset();
-    lifeLostXIcon_.reset();
-    for (auto& digit : lifeLostDigits_) {
-        digit.reset();
-    }
-    lifeLostBackdrop_.reset();
 }

@@ -1,10 +1,14 @@
 #pragma once
 #include <string>
 #include <map>
+#include <memory>
+#include <vector>
 #include "json.hpp"
 #include "Object3d.h"
 
 using json = nlohmann::json;
+
+class Object3dCommon;
 
 class PresetManager {
 public:
@@ -24,6 +28,8 @@ public:
 
     // 指定したオブジェクトに、プリセットの設定を適用する
     void ApplyPresetToObject(const std::string& presetName, Object3d* obj);
+
+    std::vector<std::unique_ptr<Object3d>> CreateObjectsFromPreset(const std::string& presetName, Object3dCommon* common) const;
 
     // プリセットの削除
     void RemovePreset(const std::string& presetName);

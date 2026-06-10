@@ -17,7 +17,9 @@
 #include <GhostRecorder.h>
 #include <GameRule.h>
 
+#include <array>
 #include <memory>
+#include <string>
 #include <vector>
 
 // --- 前方宣言 ---
@@ -72,6 +74,26 @@ public:
     void SetPlayer(Player* player) override { player_ = player; }
 
 private:
+    enum class MenuItem {
+        Retry,
+        Title,
+        Count
+    };
+
+    struct MenuRow {
+        Sprite* backdrop = nullptr;
+        Sprite* label = nullptr;
+        Vector2 backdropBaseSize = { 0.0f, 0.0f };
+        Vector2 labelBaseSize = { 0.0f, 0.0f };
+    };
+
+    void BindLayoutSprites();
+    Sprite* FindSprite(const std::string& name) const;
+    void UpdateMenuInput();
+    void UpdateMenuSprites(float deltaTime);
+    void ChangeSelection(int direction);
+    void ConfirmSelection();
+
     // --- エンジン基盤 ---
     DirectXCommon* dxCommon_ = nullptr;
     InputManager* inputManager_ = nullptr;
@@ -101,4 +123,12 @@ private:
 
     //  GPUパーティクル用画像ハンドル
     uint32_t gpuParticleTexHandle_ = 0;
+
+    Sprite* backgroundSprite_ = nullptr;
+    std::array<Sprite*, 7> titleLetters_ = {};
+    std::array<Vector2, 7> titleLetterBasePositions_ = {};
+    std::array<Vector2, 7> titleLetterBaseSizes_ = {};
+    std::array<MenuRow, static_cast<size_t>(MenuItem::Count)> menuRows_ = {};
+    int selectedIndex_ = 0;
+    float sceneTime_ = 0.0f;
 };

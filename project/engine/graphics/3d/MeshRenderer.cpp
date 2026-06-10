@@ -332,6 +332,10 @@ void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetCloudGraphicsCommand, true);
 }
 
+void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true);
+}
+
 void MeshRenderer::InitializeFireProxyModel() {
     ModelCommon* modelCommon = ModelManager::GetInstance()->GetModelCommon();
     if (!modelCommon) {

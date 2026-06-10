@@ -697,7 +697,7 @@ void SpriteDebugEditor::SaveSpriteLayout(const std::string& filename) {
 		spriteData["position"] = { pos.x, pos.y };
 		spriteData["size"] = { size.x, size.y };
 		spriteData["anchor"] = { anchor.x, anchor.y };
-		spriteData["color"] = { color.x, color.y, color.z };
+		spriteData["color"] = { color.x, color.y, color.z, color.w };
 		spriteData["texture"] = sprite->GetTextureName();
 		spriteData["emissive"] = sprite->GetEmissive();
 		spriteData["parentName"] = sprite->GetParent() ? sprite->GetParent()->GetName() : "";

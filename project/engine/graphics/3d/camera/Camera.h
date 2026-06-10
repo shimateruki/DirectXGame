@@ -112,6 +112,8 @@ public:
     // 操作・同期
     // ==================================================
     void AddRotation(const Vector2& mouseDelta);
+    void SetRotationSensitivity(float sensitivity);
+    float GetRotationSensitivity() const { return rotationSensitivity_; }
     void SyncRotationToCurrentView();
 
     // ==================================================
@@ -190,6 +192,7 @@ private:
     float orbitSpeed_ = 0.005f;
     float orbitAngle_ = 0.0f;
     Vector3 fixedPointPos_ = { 0.0f, 5.0f, -10.0f };
+    float rotationSensitivity_ = 1.0f;
 
     // --- カメラオーバーライド用 ---
     bool isOverridden_ = false;

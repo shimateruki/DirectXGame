@@ -128,6 +128,12 @@ void LightEditor::DrawImGui() {
     ImGui::Separator();
     ImGui::Spacing();
 
+    Vector4& clearColor = lightManager_->GetSceneClearColor();
+    if (ImGui::ColorEdit4(ICON_FA_PALETTE " 背景色 (Clear Color)", &clearColor.x)) {
+        DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+    }
+    ImGui::Spacing();
+
     // -------------------------------------------------------------
     // 1. ファイル操作
     // -------------------------------------------------------------

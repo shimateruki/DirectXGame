@@ -240,6 +240,7 @@ public:
     void DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     void DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
+    void DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
     // --- ボーンアニメーション用 ---
     std::string animName_ = "";
     bool isAnimLoop_ = true;

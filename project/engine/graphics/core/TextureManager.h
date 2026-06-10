@@ -29,7 +29,7 @@ private:
 
 public:
     void Initialize(DirectXCommon* dxCommon);
-    uint32_t Load(const std::string& fileName, bool isNormalMap = false);
+    uint32_t Load(const std::string& fileName, bool isNormalMap = false, bool allowDDSCache = true, bool forceReload = false);
     const DirectX::TexMetadata& GetMetadata(uint32_t textureHandle);
     void LoadAllTexture(const std::string& directoryPath);
     std::vector<std::string> GetLoadedTexturePaths() const;

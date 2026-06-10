@@ -1,0 +1,284 @@
+{
+    "sprites": [
+        {
+            "name": "settings_background",
+            "texture": "common/white.png",
+            "position": [960.0, 540.0],
+            "size": [1920.0, 1080.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.02, 0.09, 0.12, 0.52],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_panel",
+            "texture": "ui/settings/settings_panel.png",
+            "position": [960.0, 540.0],
+            "size": [1080.0, 700.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_title",
+            "texture": "generated/text/text_text_opsion.png",
+            "position": [960.0, 190.0],
+            "size": [350.0, 82.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_hint_line",
+            "texture": "ui/settings/settings_hint_line.png",
+            "position": [960.0, 258.0],
+            "size": [560.0, 8.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.55, 0.95, 1.0, 0.92],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [960.0, 378.0],
+            "size": [900.0, 112.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.86],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_label",
+            "texture": "generated/text/text_text_bgm.png",
+            "position": [625.0, 378.0],
+            "size": [150.0, 52.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_track",
+            "texture": "ui/settings/settings_slider_track.png",
+            "position": [1010.0, 380.0],
+            "size": [460.0, 34.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.9],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_fill",
+            "texture": "ui/settings/settings_slider_fill.png",
+            "position": [780.0, 380.0],
+            "size": [276.0, 34.0],
+            "anchor": [0.0, 0.5],
+            "color": [0.22, 0.78, 0.95, 0.88],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_knob",
+            "texture": "ui/settings/settings_slider_knob.png",
+            "position": [1056.0, 380.0],
+            "size": [58.0, 58.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.84, 0.96, 1.0, 0.9],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_value0",
+            "texture": "number/0.png",
+            "position": [1260.0, 380.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_value1",
+            "texture": "number/0.png",
+            "position": [1294.0, 380.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_bgm_value2",
+            "texture": "number/0.png",
+            "position": [1328.0, 380.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [960.0, 524.0],
+            "size": [900.0, 112.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.86],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_label",
+            "texture": "generated/text/text_text_se.png",
+            "position": [624.0, 524.0],
+            "size": [98.0, 52.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_track",
+            "texture": "ui/settings/settings_slider_track.png",
+            "position": [1010.0, 526.0],
+            "size": [460.0, 34.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.9],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_fill",
+            "texture": "ui/settings/settings_slider_fill.png",
+            "position": [780.0, 526.0],
+            "size": [322.0, 34.0],
+            "anchor": [0.0, 0.5],
+            "color": [0.22, 0.78, 0.95, 0.88],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_knob",
+            "texture": "ui/settings/settings_slider_knob.png",
+            "position": [1102.0, 526.0],
+            "size": [58.0, 58.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.84, 0.96, 1.0, 0.9],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_value0",
+            "texture": "number/0.png",
+            "position": [1260.0, 526.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_value1",
+            "texture": "number/0.png",
+            "position": [1294.0, 526.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_se_value2",
+            "texture": "number/0.png",
+            "position": [1328.0, 526.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [960.0, 670.0],
+            "size": [900.0, 112.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.86],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_label",
+            "texture": "generated/text/text_text_camerakando.png",
+            "position": [650.0, 670.0],
+            "size": [268.0, 52.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_track",
+            "texture": "ui/settings/settings_slider_track.png",
+            "position": [1010.0, 672.0],
+            "size": [460.0, 34.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.9],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_fill",
+            "texture": "ui/settings/settings_slider_fill.png",
+            "position": [780.0, 672.0],
+            "size": [153.0, 34.0],
+            "anchor": [0.0, 0.5],
+            "color": [0.22, 0.78, 0.95, 0.88],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_knob",
+            "texture": "ui/settings/settings_slider_knob.png",
+            "position": [933.0, 672.0],
+            "size": [58.0, 58.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.84, 0.96, 1.0, 0.9],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_value0",
+            "texture": "number/0.png",
+            "position": [1260.0, 672.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_value1",
+            "texture": "number/0.png",
+            "position": [1294.0, 672.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "settings_camera_value2",
+            "texture": "number/0.png",
+            "position": [1328.0, 672.0],
+            "size": [28.0, 42.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.78, 0.92, 0.96, 0.82],
+            "emissive": 1.0,
+            "parentName": ""
+        }
+    ]
+}

@@ -37,7 +37,8 @@ constexpr const char* kMaterialTypeNames[] = {
     "スタン拘束 (Stun Bind)",
     "王冠解放 (Crown Unlock)",
     "毒胞子 (Poison Spore)",
-    "雲 (Cloud)"
+    "雲 (Cloud)",
+    "ゲートポータル (Gate Portal)"
 };
 
 void CopyToBuffer(std::array<char, 128>& buffer, const std::string& text) {

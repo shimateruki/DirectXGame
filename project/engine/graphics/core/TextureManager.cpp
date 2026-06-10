@@ -5,8 +5,25 @@
 #include "DirectXCommon.h" 
 #include <filesystem>
 #include <algorithm>
+#include <cctype>
 #include "ProfilerManager.h"
 #include <set>
+
+namespace {
+std::string NormalizeTexturePath(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
+    std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return path;
+}
+
+bool IsEditorPreviewTexture(const std::string& path) {
+    std::string normalized = NormalizeTexturePath(path);
+    return normalized.find("/generated/text/_preview_") != std::string::npos ||
+           normalized.find("/generated/editor/text_preview/") != std::string::npos;
+}
+}
 
 /// <summary>
 /// テクスチャデータをGPUにアップロードするためのヘルパー関数
@@ -73,12 +90,14 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 
 
 
-uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap) {
+uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, bool allowDDSCache, bool forceReload) {
 
     // 0. 自動判定: 引数がfalseでもファイル名から推測する
     if (!isNormalMap) {
         std::string lowerPath = filePath;
-        std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::tolower);
+        std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), [](unsigned char c) {
+            return static_cast<char>(std::tolower(c));
+        });
         if (lowerPath.find("normal") != std::string::npos ||
             lowerPath.find("_n") != std::string::npos ||
             lowerPath.find("nor") != std::string::npos ||  // nor_dx 等
@@ -94,7 +113,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap) {
     ddsPath.replace_extension(".dds");
 
     std::string loadPath = filePath;
-    bool alreadyHasDDS = std::filesystem::exists(ddsPath);
+    bool alreadyHasDDS = allowDDSCache && std::filesystem::exists(ddsPath) && std::filesystem::exists(path);
     bool ddsIsUpToDate = false;
 
     // DDS が存在する場合、タイムスタンプを比較
@@ -108,9 +127,11 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap) {
     }
 
     // 1. 過去に読み込み済みのテクスチャか検索
-    auto it = textureHandleMap_.find(loadPath);
-    if (it != textureHandleMap_.end()) {
-        return it->second;
+    if (!forceReload) {
+        auto it = textureHandleMap_.find(loadPath);
+        if (it != textureHandleMap_.end()) {
+            return it->second;
+        }
     }
 
     // --- 計測開始 ---
@@ -151,8 +172,14 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap) {
     }
 
 
-    // SRVManagerにSRVの作成を依頼し、返ってきた「本物のハンドル」を取得
-    uint32_t srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
+    uint32_t srvHandle = 0;
+    auto existingIt = textureHandleMap_.find(loadPath);
+    if (forceReload && existingIt != textureHandleMap_.end()) {
+        srvHandle = existingIt->second;
+        SRVManager::GetInstance()->CreateSRVforResource(srvHandle, resource.Get(), srvDesc);
+    } else {
+        srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
+    }
 
     // --- 計測終了 ---
     auto end = std::chrono::high_resolution_clock::now();
@@ -161,7 +188,7 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap) {
 
     // 4. 重いテクスチャ（かつDDSが未生成または古い）なら、次回の為にDDS変換を実行
     const float kThresholdMs = 20.0f; // 20ms を超えたら重いと判定
-    if (!ddsIsUpToDate && duration > kThresholdMs) {
+    if (allowDDSCache && !ddsIsUpToDate && duration > kThresholdMs) {
         // 0. 自動判定: 引数がfalseでもファイル名から推測する
         if (!isNormalMap) {
             if (filePath.find("Normal") != std::string::npos || 
@@ -270,6 +297,10 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
 
         // 2次スキャン：フィルタリングしてロード
         for (const std::string& path : files) {
+            if (IsEditorPreviewTexture(path)) {
+                continue;
+            }
+
             std::filesystem::path p(path);
             std::string ext = p.extension().string();
             std::string base = p.parent_path().string() + "/" + p.stem().string();

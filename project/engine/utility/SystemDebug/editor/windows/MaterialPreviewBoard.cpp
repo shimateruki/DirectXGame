@@ -297,6 +297,7 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         { 19, "王冠解放 (Crown Unlock)", "CrownUnlock", {{ 0.0f, "魔法陣", "Circle" }, { 1.0f, "王冠バースト", "Burst" }, { 2.0f, "解放ポータル", "Portal" }} },
         { 20, "毒胞子 (Poison Spore)", "PoisonSpore", {{ 0.0f, "毒霧", "Mist" }, { 1.0f, "胞子雲", "Cloud" }, { 2.0f, "毒リング", "Ring" }} },
         { 21, "雲 (Cloud)", "Cloud", {{ 0.0f, "雲の塊", "Puff" }, { 1.0f, "流れる雲", "Drift" }, { 2.0f, "足元の煙", "Ground" }} },
+        { 22, "ゲートポータル (Gate Portal)", "GatePortal", {{ 0.0f, "渦ポータル", "Swirl" }, { 1.0f, "暖色ゲート", "Warm" }, { 2.0f, "封印ゲート", "Seal" }} },
     };
 
     std::vector<MaterialPreviewEntry> entries;
@@ -469,6 +470,17 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
         water->effectSoftness = 0.72f;
         water->effectIntensity = 0.95f;
         water->billboardScale = 1.35f;
+        break;
+    case 22:
+        object->SetBlendMode(BlendMode::kNormal);
+        object->SetEmissive(3.2f);
+        water->waveSpeed = 2.1f;
+        water->waveHeight = 1.35f;
+        water->waveFrequency = 14.0f;
+        water->effectScale = 1.05f;
+        water->effectSoftness = 0.46f;
+        water->effectIntensity = 2.2f;
+        water->billboardScale = 1.15f;
         break;
     default:
         break;

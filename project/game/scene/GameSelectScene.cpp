@@ -48,6 +48,7 @@
 #include <PostEffect.h>
 #include "StageManager.h"
 #include "GameDataManager.h"
+#include "GameSettingsManager.h"
 #include "GimmickStageGate.h"
 #include "CollisionConfig.h"
 #include <algorithm>
@@ -279,6 +280,7 @@ void GameSelectScene::Update(float deltaTime) {
 	if (!CameraEditor::GetInstance()->IsEditorMode()) {
 		Camera::FollowMode currentMode = camera->GetFollowMode();
 		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+			camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
 			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
 			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) camera->AddRotation(mouseDelta);
 		}
@@ -372,7 +374,7 @@ void GameSelectScene::Draw() {
 
 	// 5. 流体描画
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 20) hasFluid = true;
+	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) hasFluid = true;
 	if (hasFluid) {
 		dxCommon_->UpdateGrabTexture();
 		for (auto& obj : objects) {
@@ -392,6 +394,7 @@ void GameSelectScene::Draw() {
 			else if (matType == 19) obj->DrawCrownUnlock(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 20) obj->DrawPoisonSpore(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 21) obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+			else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
 	}
 

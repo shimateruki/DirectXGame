@@ -63,6 +63,7 @@ public:
    void CreateCrownUnlockPipeline();
    void CreatePoisonSporePipeline();
    void CreateCloudPipeline();
+   void CreateGatePortalPipeline();
    void SetMagmaGraphicsCommand();
    void SetIceGraphicsCommand();
    void SetFireGraphicsCommand();
@@ -76,6 +77,7 @@ public:
    void SetCrownUnlockGraphicsCommand();
    void SetPoisonSporeGraphicsCommand();
    void SetCloudGraphicsCommand();
+   void SetGatePortalGraphicsCommand();
 
    void CreateSkyboxPipeline();
    ID3D12RootSignature* GetSkyboxRootSignature() const { return skyboxRootSignature_.Get(); }
@@ -118,6 +120,7 @@ private:
    Microsoft::WRL::ComPtr<ID3D12PipelineState> crownUnlockPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> poisonSporePipelineState_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> cloudPipelineState_;
+   Microsoft::WRL::ComPtr<ID3D12PipelineState> gatePortalPipelineState_;
    Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;
    Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;
    std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::kCountOfBlendMode)> effectPipelineStates_;

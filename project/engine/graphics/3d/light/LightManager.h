@@ -108,6 +108,7 @@ public:
     DirectionalLight& GetDirectionalLight() { return directionalLightData_; }
     std::vector<PointLightInstance>& GetPointLights() { return pointLights_; }
     std::vector<SpotLightInstance>& GetSpotLights() { return spotLights_; }
+    Vector4& GetSceneClearColor() { return sceneClearColor_; }
 
     // --- ライト追加・削除 ---
     PointLightInstance* AddPointLight();
@@ -144,5 +145,6 @@ private:
     DirectionalLight directionalLightData_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     uint32_t environmentMapHandle_ = 0;
+    Vector4 sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
 
 };

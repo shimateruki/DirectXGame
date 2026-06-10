@@ -410,7 +410,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                         if (f.contains("scatteringIntensity")) fogData->scatteringIntensity = f["scatteringIntensity"];
                     }
                 }
-                if (objData.contains("waterParam") && targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 20) {
+                if (objData.contains("waterParam") && targetObject->GetMaterialType() >= 8 && targetObject->GetMaterialType() <= 22) {
                     if (targetObject->GetMeshRenderer() && targetObject->GetMeshRenderer()->GetWaterParamData()) {
                         auto* water = targetObject->GetMeshRenderer()->GetWaterParamData();
                         const auto& jw = objData["waterParam"];
@@ -579,11 +579,15 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                     if (spriteData.contains("anchor")) targetSprite->SetAnchorPoint({ spriteData["anchor"][0], spriteData["anchor"][1] });
                     if (spriteData.contains("color")) {
                         Vector4 currentColor = targetSprite->GetColor();
+                        float alpha = currentColor.w;
+                        if (spriteData["color"].is_array() && spriteData["color"].size() >= 4) {
+                            alpha = spriteData["color"][3];
+                        }
                         targetSprite->SetColor({
                             spriteData["color"][0], // R
                             spriteData["color"][1], // G
                             spriteData["color"][2], // B
-                            currentColor.w          // A (現在の透明度を維持)
+                            alpha
                             });
                     }
                     if (spriteData.contains("emissive")) {

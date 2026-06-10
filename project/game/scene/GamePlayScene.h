@@ -14,6 +14,8 @@
 #include "BulletManager.h"
 #include "Camera.h"
 #include "MeshRenderer.h"
+#include "game/ui/PauseMenuOverlay.h"
+#include "game/ui/SettingsMenuOverlay.h"
 
 #include "ObjectManager.h"
 #include "DebugEditor.h" 
@@ -82,11 +84,8 @@ public:
     bool IsGoal() const { return isGoal_; }
 
     // スターコイン
-    void CollectStarCoin(int coinIndex) {
-        if (coinIndex >= 0 && coinIndex < 3) {
-            sessionStarCoins_[coinIndex] = true;
-        }
-    }
+    void CollectStarCoin(int coinIndex);
+    void CollectStarCoin(int coinIndex, const Vector3& worldPosition);
     void StartLifeLostPresentation(int beforeLives, int afterLives);
     bool IsLifeLostPresentationFinished() const { return lifeLostPresentationFinished_; }
     void HideLifeLostPresentationOverlay();
@@ -148,14 +147,41 @@ private:
     bool isGoal_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
 
-    std::unique_ptr<Sprite> hudLifeMeter_;
-    std::unique_ptr<Sprite> hudLifeMeterDigit_;
-    std::unique_ptr<Sprite> hudLifeIcon_;
-    std::unique_ptr<Sprite> hudLifeXIcon_;
-    std::array<std::unique_ptr<Sprite>, 2> hudLifeDigits_;
-    std::unique_ptr<Sprite> hudCoinIcon_;
-    std::unique_ptr<Sprite> hudCoinXIcon_;
-    std::array<std::unique_ptr<Sprite>, 2> hudCoinDigits_;
+    struct HudSpriteState {
+        Sprite* sprite = nullptr;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        Vector2 baseSize = { 0.0f, 0.0f };
+        Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    };
+
+    HudSpriteState hudLifeMeter_;
+    HudSpriteState hudLifeMeterDigit_;
+    HudSpriteState hudLifeIcon_;
+    HudSpriteState hudLifeXIcon_;
+    std::array<HudSpriteState, 2> hudLifeDigits_;
+    HudSpriteState hudCoinIcon_;
+    HudSpriteState hudCoinXIcon_;
+    std::array<HudSpriteState, 2> hudCoinDigits_;
+    std::array<HudSpriteState, 3> hudStageStarSlots_;
+    std::array<float, 3> hudStageStarPulseTimers_ = { 0.0f, 0.0f, 0.0f };
+    std::array<bool, 3> hudStageStarVisualCollected_ = { false, false, false };
+    struct StageStarUIFlyParticle {
+        std::unique_ptr<Sprite> sprite;
+        Vector2 start = { 0.0f, 0.0f };
+        Vector2 control = { 0.0f, 0.0f };
+        Vector2 end = { 0.0f, 0.0f };
+        float timer = 0.0f;
+        float duration = 0.6f;
+        float baseSize = 20.0f;
+        float rotationSpeed = 0.0f;
+        int starIndex = -1;
+        bool fillsSlot = false;
+    };
+    std::vector<StageStarUIFlyParticle> hudStageStarFlyParticles_;
+    float hudLifeGainPulseTimer_ = 0.0f;
+    float hudCoinPulseTimer_ = 0.0f;
+    int hudPreviousLives_ = 0;
+    int hudPreviousCoins_ = 0;
     float hudPreviousHp_ = 0.0f;
     float hudDamagePulseTimer_ = 0.0f;
     int hudDisplayedLife_ = 6;
@@ -167,10 +193,16 @@ private:
     int lifeLostBeforeLives_ = 0;
     int lifeLostAfterLives_ = 0;
     Vector2 lifeLostIrisCenter_ = { 0.5f, 0.5f };
-    std::unique_ptr<Sprite> lifeLostIcon_;
-    std::unique_ptr<Sprite> lifeLostXIcon_;
-    std::array<std::unique_ptr<Sprite>, 2> lifeLostDigits_;
-    std::unique_ptr<Sprite> lifeLostBackdrop_;
+    HudSpriteState lifeLostIcon_;
+    HudSpriteState lifeLostXIcon_;
+    std::array<HudSpriteState, 2> lifeLostDigits_;
+    HudSpriteState lifeLostBackdrop_;
+    std::unique_ptr<Camera> lifeLostCamera_;
+    std::unique_ptr<Object3d> lifeLostSlimeObject_;
+    std::unique_ptr<Object3d> lifeLostStunObject_;
+    bool lifeLostRevive_ = false;
+    std::unique_ptr<PauseMenuOverlay> pauseMenuOverlay_;
+    std::unique_ptr<SettingsMenuOverlay> settingsOverlay_;
 
     // 初期化・終了処理
     void InitializeGameplayHUD();
@@ -189,13 +221,24 @@ private:
     void UpdateSceneSystems(float deltaTime);
     void UpdateEffectDebugShortcuts();
     void UpdateGameplayHUD(float deltaTime);
+    void UpdateStageStarHUD(float deltaTime, bool visible);
     void UpdateLifeLostPresentation(float deltaTime);
+    bool HandlePauseOverlay(float deltaTime);
+    bool IsPauseOpenTriggered() const;
 
     // UI描画
     void DrawGameplayHUD();
+    void DrawStageStarHUD();
     void DrawLifeLostPresentation();
-    std::unique_ptr<Sprite> CreateGameplayHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
-    void SetGameplayHUDNumber(std::array<std::unique_ptr<Sprite>, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
+    void InitializeLifeLostPresentationObjects();
+    void UpdateLifeLostPresentationWorld(float deltaTime);
+    void DrawLifeLostPresentationWorld(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
+    HudSpriteState BindGameplayHUDSprite(const std::string& name, const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
+    void DrawGameplayHUDSprite(const HudSpriteState& state);
+    bool IsGameplayHUDSprite(const Sprite* sprite) const;
+    void SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, int value, const Vector2& rightAlignedPosition, float digitHeight, const Vector4& color, bool visible);
+    void StartStageStarHUDCollectEffect(int starIndex, const Vector3& worldPosition);
+    Vector2 ProjectWorldToScreen(const Vector3& worldPosition) const;
 
     // フラスタムカリング判定
     bool IsVisible(Object3d* obj);

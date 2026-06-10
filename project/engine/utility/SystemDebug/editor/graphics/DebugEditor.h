@@ -30,6 +30,7 @@
 #include "AnimationWorkbench.h"
 #include "SceneSavePreview.h"
 #include "EventLinkGraph.h"
+#include "TextSpriteGenerator.h"
 
 
 // ========================================================================
@@ -102,11 +103,15 @@ public:
     void InstantiateModelAtCursor(const std::string& modelName);
     void InstantiatePresetAtCursor(const std::string& presetName);
     void InstantiateParticleAtCursor(const std::string& particleName);
+    void StartPresetBrush(const std::string& presetName);
+    void StopPresetBrush();
     void OpenGameViewCreateContextMenu();
     void DrawGameViewCreateContextMenu();
     Vector3 CalculateGameViewCreatePosition(const Object3d* object);
     void StartGameViewCreatePreview(std::unique_ptr<Object3d> object, const std::string& label);
+    void StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label);
     void AddEditorObject(std::unique_ptr<Object3d> object, const std::string& label);
+    void AddEditorObjects(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label);
     nlohmann::json CaptureObjectState(Object3d* object) const;
     void RegisterObjectEdited(Object3d* object, const std::string& label);
     void RegisterObjectEdited(Object3d* object, const nlohmann::json& beforeState, const std::string& label);
@@ -123,6 +128,7 @@ public:
         gameViewOffset_ = offset;
         gameViewSize_ = size;
         animationWorkbench_.SetGameViewRegion(offset, size);
+        textSpriteGenerator_.SetGameViewRegion(offset, size);
     }
     void SetGameViewHovered(bool hovered) { isGameViewHovered_ = hovered; animationWorkbench_.SetGameViewHovered(hovered); }
     void SetGameViewMousePos(const Vector2& pos) { gameViewMousePos_ = pos; animationWorkbench_.SetGameViewMousePos(pos); }
@@ -193,6 +199,7 @@ public:
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
+    TextSpriteGenerator* GetTextSpriteGenerator() { return &textSpriteGenerator_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
@@ -215,6 +222,11 @@ private:
     void UpdatePreviewPlacement();
     void ConfirmPreviewPlacement();
     void CancelPreviewPlacement();
+    void UpdatePresetBrush();
+    void RebuildPresetBrushPreview();
+    void StampPresetBrush();
+    void DrawPresetBrushOverlay();
+    void ApplyBrushPreviewVisual(Object3d* object);
     void ApplyPreviewVisual(Object3d* object);
     void RestorePreviewVisual(Object3d* object);
     void DrawPreviewWire(ID3D12GraphicsCommandList* commandList, int& instanceCount, int maxDrawLimit);
@@ -243,6 +255,13 @@ private:
     // --- エディタの状態・データ ---
     Object3d* selectedObject_ = nullptr;
     std::unique_ptr<Object3d> previewObject_ = nullptr;
+    std::vector<std::unique_ptr<Object3d>> previewChildObjects_;
+    std::vector<std::unique_ptr<Object3d>> brushPreviewObjects_;
+    bool isPresetBrushMode_ = false;
+    std::string brushPresetName_;
+    float brushSpacing_ = 2.0f;
+    bool hasLastBrushStamp_ = false;
+    Vector3 lastBrushStampPosition_ = { 0.0f, 0.0f, 0.0f };
     Vector4 previewObjectOriginalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     BlendMode previewObjectOriginalBlendMode_ = BlendMode::kNormal;
     int32_t previewObjectOriginalMaterialType_ = 0;
@@ -343,6 +362,7 @@ private:
     AnimationWorkbench animationWorkbench_;
     SceneSavePreview sceneSavePreview_;
     EventLinkGraph eventLinkGraph_;
+    TextSpriteGenerator textSpriteGenerator_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     DebrisEffectEditor* debrisEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;

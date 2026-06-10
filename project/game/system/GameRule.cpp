@@ -78,7 +78,7 @@ void GameRule::Initialize(BaseScene* scene) {
 
             if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
                 // TargetID をコインの番号 (0, 1, 2) として扱う
-                gps->CollectStarCoin(coinIdx);
+                gps->CollectStarCoin(coinIdx, objectHit->GetWorldPosition());
 
                 // 演出を開始して消す (Object3d側で上昇回転する)
                 objectHit->StartCollectionAnimation();

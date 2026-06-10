@@ -490,7 +490,7 @@ void Camera::SnapToThirdPerson(float distance, float height, float pitch) {
 
 void Camera::AddRotation(const Vector2& mouseDelta) {
     // kAimable と kFirstPerson で共用の回転処理
-    const float rotateSpeed = 0.005f;
+    const float rotateSpeed = 0.005f * rotationSensitivity_;
     rotation_.x += mouseDelta.y * rotateSpeed;
     rotation_.y += mouseDelta.x * rotateSpeed;
 
@@ -502,6 +502,11 @@ void Camera::AddRotation(const Vector2& mouseDelta) {
     if (rotation_.y > PI) { rotation_.y -= 2.0f * PI; }
     if (rotation_.y < -PI) { rotation_.y += 2.0f * PI; }
 }
+
+void Camera::SetRotationSensitivity(float sensitivity) {
+    rotationSensitivity_ = std::clamp(sensitivity, 0.5f, 2.0f);
+}
+
 void Camera::SyncRotationToCurrentView() {
     static Math math;
 

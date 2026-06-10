@@ -87,6 +87,14 @@ void GamePlayScene::Draw() {
 	ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
 	ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
 
+    if (lifeLostPresentationActive_) {
+        DrawLifeLostPresentationWorld(pointLightRes, spotLightRes);
+        return;
+    }
+    if (lifeLostBlackHold_) {
+        return;
+    }
+
 	auto& objects = objectManager_->GetObjects();
 
 	// =======================================================
@@ -190,7 +198,7 @@ void GamePlayScene::Draw() {
 	// =======================================================
 	bool hasFluid = false;
 	for (auto& obj : objects) {
-		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 20) {
+		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) {
 			hasFluid = true;
 			break;
 		}
@@ -258,6 +266,9 @@ void GamePlayScene::Draw() {
 				else if (matType == 21) {
 					obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				}
+				else if (matType == 22) {
+					obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				}
 			}
 		}
 
@@ -306,8 +317,14 @@ void GamePlayScene::Draw() {
 void GamePlayScene::DrawUI() {
 	// --- 4. 2D描画 (UIスプライト) ---
 	spriteCommon_->SetPipeline(dxCommon_->GetCommandList());
+    if (lifeLostPresentationActive_ || lifeLostBlackHold_) {
+        DrawGameplayHUD();
+        return;
+    }
 	for (auto& sprite : sprites_) {
-		sprite->Draw();
+		if (sprite && !IsGameplayHUDSprite(sprite.get())) {
+			sprite->Draw();
+		}
 	}
 	if (isDrawLockOn_ && lockOnSprite_) {
 		lockOnSprite_->Draw();
@@ -316,6 +333,12 @@ void GamePlayScene::DrawUI() {
 		player_->DrawUI();
 	}
 	DrawGameplayHUD();
+    if (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive() && !(settingsOverlay_ && settingsOverlay_->IsActive())) {
+        pauseMenuOverlay_->Draw();
+    }
+    if (settingsOverlay_ && settingsOverlay_->IsActive()) {
+        settingsOverlay_->Draw();
+    }
 }
 
 

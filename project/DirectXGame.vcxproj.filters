@@ -183,6 +183,9 @@
     <ClCompile Include="game\scene\TitleScene.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\scene\SettingsScene.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -235,6 +238,15 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="game\system\GameRule.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\system\GameSettingsManager.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ui\PauseMenuOverlay.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ui\SettingsMenuOverlay.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\graphics\CameraEditor.cpp">
@@ -385,6 +397,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneSerializer.cpp">
@@ -712,6 +727,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\TitleScene.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\SettingsScene.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\misc\SpriteDebugEditor.h">
@@ -1464,6 +1482,9 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1594,6 +1615,15 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\GameSelectScene.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\system\GameSettingsManager.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ui\PauseMenuOverlay.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ui\SettingsMenuOverlay.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\player\PlayerClone.h">

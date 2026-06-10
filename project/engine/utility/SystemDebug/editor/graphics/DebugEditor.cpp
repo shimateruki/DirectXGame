@@ -18,6 +18,7 @@
 #include "InputManager.h"    
 #include <cmath>
 #include <cassert> 
+#include <algorithm>
 #include "GhostRecorder.h" 
 #include "CameraEditor.h"
 #include "Transform.h"
@@ -149,6 +150,73 @@ namespace {
             aabb.max.z > aabb.min.z;
     }
 
+    float Distance(const Vector3& a, const Vector3& b) {
+        float dx = a.x - b.x;
+        float dy = a.y - b.y;
+        float dz = a.z - b.z;
+        return std::sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    std::string GetLeafName(const std::string& path) {
+        size_t slash = path.find_last_of("/\\");
+        if (slash == std::string::npos) {
+            return path.empty() ? "Preset" : path;
+        }
+        std::string leaf = path.substr(slash + 1);
+        return leaf.empty() ? "Preset" : leaf;
+    }
+
+    bool SceneHasObjectName(BaseScene* scene, const std::string& name) {
+        if (!scene) return false;
+
+        for (const auto& object : scene->GetObjects()) {
+            if (object && object->GetName() == name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool ReservedHasName(const std::vector<std::string>& reservedNames, const std::string& name) {
+        return std::find(reservedNames.begin(), reservedNames.end(), name) != reservedNames.end();
+    }
+
+    std::string MakeUniquePresetObjectName(BaseScene* scene, const std::string& baseName, const std::vector<std::string>& reservedNames) {
+        std::string base = baseName.empty() ? "PresetObject" : GetLeafName(baseName);
+        if (!SceneHasObjectName(scene, base) && !ReservedHasName(reservedNames, base)) {
+            return base;
+        }
+
+        for (int index = 1; index < 10000; ++index) {
+            std::string candidate = base + "_" + std::to_string(index);
+            if (!SceneHasObjectName(scene, candidate) && !ReservedHasName(reservedNames, candidate)) {
+                return candidate;
+            }
+        }
+        return base + "_New";
+    }
+
+    void AssignPresetInstanceNames(BaseScene* scene, const std::string& presetName, std::vector<std::unique_ptr<Object3d>>& objects) {
+        if (objects.empty()) return;
+
+        std::vector<std::string> reservedNames;
+        std::string rootName = MakeUniquePresetObjectName(scene, GetLeafName(presetName), reservedNames);
+        objects.front()->SetName(rootName);
+        reservedNames.push_back(rootName);
+
+        for (size_t index = 1; index < objects.size(); ++index) {
+            if (!objects[index]) continue;
+
+            std::string baseName = objects[index]->GetName();
+            if (baseName.empty()) {
+                baseName = rootName + "_Child";
+            }
+            std::string uniqueName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
+            objects[index]->SetName(uniqueName);
+            reservedNames.push_back(uniqueName);
+        }
+    }
+
 }
 
 // ========================================================================
@@ -172,15 +240,16 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
         Object3dCommon* common = currentScene->GetObject3dCommon();
         if (!common) return;
 
-        auto newObj = std::make_unique<Object3d>();
-        newObj->Initialize(common);
-        PresetManager::GetInstance()->ApplyPresetToObject(presetName, newObj.get());
-        newObj->SetName(presetName + "_" + std::to_string(currentScene->GetObjects().size()));
-        newObj->UpdateLocalMatrix();
-        newObj->UpdateWorldMatrix();
+        auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(presetName, common);
+        if (objects.empty()) return;
+
+        AssignPresetInstanceNames(currentScene, presetName, objects);
 
         gameViewCreateMenuMousePos_ = gameViewMousePos_;
-        StartGameViewCreatePreview(std::move(newObj), "Create Preset: " + presetName);
+        StartGameViewCreatePreview(std::move(objects), "Create Preset: " + presetName);
+    });
+    PresetEditor::GetInstance()->SetBrushPresetCallback([this](const std::string& presetName) {
+        StartPresetBrush(presetName);
     });
     hierarchyWindow_.Initialize(this);
     projectWindow_.Initialize(this, dxCommon);
@@ -195,6 +264,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     eventLinkGraph_.Initialize(sceneManager, this);
+    textSpriteGenerator_.Initialize(sceneManager, this);
 }
 
 // ========================================================================
@@ -209,6 +279,7 @@ void DebugEditor::Update() {
 
     EffectPreviewStage::GetInstance()->Update();
     animationWorkbench_.Update(1.0f / 60.0f);
+    textSpriteGenerator_.Update();
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     InputManager* input = InputManager::GetInstance();
@@ -220,6 +291,11 @@ void DebugEditor::Update() {
     if (lastUpdatedScene_ != currentScene) {
         selectedObject_ = nullptr;
         previewObject_ = nullptr;
+        previewChildObjects_.clear();
+        brushPreviewObjects_.clear();
+        isPresetBrushMode_ = false;
+        brushPresetName_.clear();
+        hasLastBrushStamp_ = false;
         previewCreateCommandLabel_ = "Place Preview Object";
         lastUpdatedScene_ = currentScene;
         undoStack_.clear();
@@ -281,6 +357,9 @@ void DebugEditor::Update() {
         if (input->IsKeyTriggered(DIK_E) || (isGameViewHovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Right))) {
             CancelPreviewPlacement();
         }
+    }
+    else if (isPresetBrushMode_) {
+        UpdatePresetBrush();
     }
     // =========================================================
     //  モードB: 通常選択・編集モード
@@ -350,9 +429,11 @@ void DebugEditor::Update() {
         if (selectedObject_) {
             if (!isPathEditMode_ && !selectedObject_->GetIsLocked()) {
                 static ImGuizmo::OPERATION curOp = ImGuizmo::TRANSLATE;
-                if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
-                if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
-                if (input->IsKeyTriggered(DIK_S)) curOp = ImGuizmo::SCALE;
+                if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantTextInput) {
+                    if (input->IsKeyTriggered(DIK_T)) curOp = ImGuizmo::TRANSLATE;
+                    if (input->IsKeyTriggered(DIK_R)) curOp = ImGuizmo::ROTATE;
+                    if (input->IsKeyTriggered(DIK_S)) curOp = ImGuizmo::SCALE;
+                }
 
                 Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
                 if (cam) {
@@ -414,6 +495,8 @@ void DebugEditor::Update() {
     Draw3DIcons();
     DrawEventIDOverlay();
     DrawPreviewMarker();
+    DrawPresetBrushOverlay();
+    textSpriteGenerator_.DrawPreview();
 #endif
 }
 // ========================================================================
@@ -836,6 +919,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             }
         }
     }
+
 }
 
 // ==========================================================================================
@@ -870,6 +954,7 @@ void DebugEditor::DrawProjectWindow() {
 #endif
 
 void DebugEditor::SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label) {
+    previewChildObjects_.clear();
     previewObject_ = std::move(obj);
     previewCreateCommandLabel_ = label;
     if (!previewObject_) {
@@ -903,7 +988,7 @@ void DebugEditor::OpenGameViewCreateContextMenu() {
 #ifdef USE_IMGUI
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     if (sceneManager_->IsPlaying()) return;
-    if (previewObject_ || isPathEditMode_) return;
+    if (previewObject_ || isPresetBrushMode_ || isPathEditMode_) return;
 
     gameViewCreateMenuMousePos_ = gameViewMousePos_;
     gameViewCreateMenuScreenPos_ = {
@@ -919,6 +1004,10 @@ void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<Object3d> object, c
     if (!object || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     if (sceneManager_->IsPlaying()) return;
 
+    if (isPresetBrushMode_) {
+        StopPresetBrush();
+    }
+
     gameViewMousePos_ = gameViewCreateMenuMousePos_;
     SetPreviewObject(std::move(object), label);
 
@@ -930,6 +1019,29 @@ void DebugEditor::StartGameViewCreatePreview(std::unique_ptr<Object3d> object, c
     }
 #else
     (void)object;
+    (void)label;
+#endif
+}
+
+void DebugEditor::StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label) {
+#ifdef USE_IMGUI
+    if (objects.empty()) return;
+
+    std::unique_ptr<Object3d> root = std::move(objects.front());
+    StartGameViewCreatePreview(std::move(root), label);
+    if (!previewObject_) return;
+
+    previewChildObjects_.reserve(objects.size() > 0 ? objects.size() - 1 : 0);
+    for (size_t index = 1; index < objects.size(); ++index) {
+        if (objects[index]) {
+            previewChildObjects_.push_back(std::move(objects[index]));
+        }
+    }
+
+    previewObject_->UpdateLocalMatrix();
+    previewObject_->UpdateWorldMatrix();
+#else
+    (void)objects;
     (void)label;
 #endif
 }
@@ -1060,7 +1172,20 @@ void DebugEditor::ConfirmPreviewPlacement() {
     RestorePreviewVisual(previewObject_.get());
     previewObject_->UpdateLocalMatrix();
     previewObject_->UpdateWorldMatrix();
-    AddEditorObject(std::move(previewObject_), previewCreateCommandLabel_);
+
+    std::vector<std::unique_ptr<Object3d>> createdObjects;
+    createdObjects.reserve(previewChildObjects_.size() + 1);
+    createdObjects.push_back(std::move(previewObject_));
+    for (auto& child : previewChildObjects_) {
+        if (child) {
+            child->UpdateLocalMatrix();
+            child->UpdateWorldMatrix();
+            createdObjects.push_back(std::move(child));
+        }
+    }
+    previewChildObjects_.clear();
+
+    AddEditorObjects(std::move(createdObjects), previewCreateCommandLabel_);
     DebugConsole::GetInstance()->AddLog("Create: " + createdName);
     previewCreateCommandLabel_ = "Place Preview Object";
 }
@@ -1069,8 +1194,174 @@ void DebugEditor::CancelPreviewPlacement() {
     if (!previewObject_) return;
 
     DebugConsole::GetInstance()->AddLog("Cancel Preview Create: " + previewObject_->GetName());
+    previewChildObjects_.clear();
     previewObject_ = nullptr;
     previewCreateCommandLabel_ = "Place Preview Object";
+}
+
+void DebugEditor::StartPresetBrush(const std::string& presetName) {
+#ifdef USE_IMGUI
+    if (presetName.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    if (sceneManager_->IsPlaying() || isPathEditMode_) return;
+
+    if (previewObject_) {
+        CancelPreviewPlacement();
+    }
+
+    brushPresetName_ = presetName;
+    isPresetBrushMode_ = true;
+    hasLastBrushStamp_ = false;
+    RebuildPresetBrushPreview();
+    if (!isPresetBrushMode_) return;
+
+    DebugConsole::GetInstance()->AddLog("Brush Start: " + brushPresetName_);
+#else
+    (void)presetName;
+#endif
+}
+
+void DebugEditor::StopPresetBrush() {
+    if (!isPresetBrushMode_) return;
+
+    DebugConsole::GetInstance()->AddLog("Brush Stop: " + brushPresetName_);
+    isPresetBrushMode_ = false;
+    brushPresetName_.clear();
+    brushPreviewObjects_.clear();
+    hasLastBrushStamp_ = false;
+}
+
+void DebugEditor::RebuildPresetBrushPreview() {
+    brushPreviewObjects_.clear();
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene() || brushPresetName_.empty()) return;
+
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    Object3dCommon* common = scene->GetObject3dCommon();
+    if (!common) return;
+
+    brushPreviewObjects_ = PresetManager::GetInstance()->CreateObjectsFromPreset(brushPresetName_, common);
+    if (brushPreviewObjects_.empty()) {
+        StopPresetBrush();
+        return;
+    }
+
+    AssignPresetInstanceNames(scene, brushPresetName_, brushPreviewObjects_);
+    for (auto& object : brushPreviewObjects_) {
+        ApplyBrushPreviewVisual(object.get());
+    }
+}
+
+void DebugEditor::UpdatePresetBrush() {
+#ifdef USE_IMGUI
+    if (!isPresetBrushMode_) return;
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene() || sceneManager_->IsPlaying()) {
+        StopPresetBrush();
+        return;
+    }
+
+    InputManager* input = InputManager::GetInstance();
+    if (input && input->IsKeyTriggered(DIK_E)) {
+        StopPresetBrush();
+        return;
+    }
+    if (isGameViewHovered_ && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+        StopPresetBrush();
+        return;
+    }
+
+    if (brushPreviewObjects_.empty()) {
+        RebuildPresetBrushPreview();
+    }
+    if (brushPreviewObjects_.empty()) return;
+
+    Object3d* root = brushPreviewObjects_.front().get();
+    PlacementResult placement = CalculateGameViewPlacement(root, gameViewMousePos_, true);
+    ApplyGameViewPlacement(root, placement, true);
+    for (auto& object : brushPreviewObjects_) {
+        ApplyBrushPreviewVisual(object.get());
+    }
+
+    if (!isGameViewHovered_ || ImGuizmo::IsOver() || ImGuizmo::IsUsing()) {
+        return;
+    }
+
+    bool clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    bool dragging = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (!clicked && !dragging) return;
+
+    Vector3 stampPosition = root->GetWorldPosition();
+    float spacing = std::max(brushSpacing_, 0.0f);
+    bool farEnough = !hasLastBrushStamp_ || Distance(stampPosition, lastBrushStampPosition_) >= spacing;
+    if (clicked || farEnough) {
+        StampPresetBrush();
+    }
+#endif
+}
+
+void DebugEditor::StampPresetBrush() {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene() || brushPresetName_.empty() || brushPreviewObjects_.empty()) return;
+
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    Object3dCommon* common = scene->GetObject3dCommon();
+    if (!common) return;
+
+    auto objects = PresetManager::GetInstance()->CreateObjectsFromPreset(brushPresetName_, common);
+    if (objects.empty()) return;
+
+    AssignPresetInstanceNames(scene, brushPresetName_, objects);
+    Object3d* root = objects.front().get();
+    Object3d* previewRoot = brushPreviewObjects_.front().get();
+    Vector3 stampPosition = previewRoot->GetWorldPosition();
+
+    root->SetTranslate(previewRoot->GetTranslate());
+    root->SetRotation(previewRoot->GetRotation());
+    root->UpdateLocalMatrix();
+    root->UpdateWorldMatrix();
+
+    AddEditorObjects(std::move(objects), "Brush Preset " + brushPresetName_);
+    lastBrushStampPosition_ = stampPosition;
+    hasLastBrushStamp_ = true;
+}
+
+void DebugEditor::DrawPresetBrushOverlay() {
+#ifdef USE_IMGUI
+    if (!isPresetBrushMode_) return;
+
+    ImGui::SetNextWindowPos(ImVec2(gameViewOffset_.x + 12.0f, gameViewOffset_.y + 12.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.78f);
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings;
+
+    if (ImGui::Begin("プリセットブラシ", nullptr, flags)) {
+        ImGui::Text("対象: %s", brushPresetName_.c_str());
+        ImGui::SliderFloat("配置間隔", &brushSpacing_, 0.0f, 10.0f, "%.2f");
+        ImGui::TextDisabled("左ドラッグ: 配置 / 右クリック or E: 終了");
+        if (ImGui::Button("ブラシ終了")) {
+            StopPresetBrush();
+        }
+    }
+    ImGui::End();
+#endif
+}
+
+void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
+    if (!object) return;
+
+    if (!object->GetModel()) {
+        object->SetModel("Primitives/cube");
+    }
+    object->SetClassName("Model");
+    object->SetMaterialType(0);
+    object->SetBlendMode(BlendMode::kNormal);
+    Vector4 color = object->GetColor();
+    object->SetColor({ color.x, color.y, color.z, 0.45f });
+    object->SetEmissive(std::max(object->GetEmissive(), 1.4f));
+    object->UpdateLocalMatrix();
+    object->UpdateWorldMatrix();
+    if (object->GetMeshRenderer()) {
+        object->GetMeshRenderer()->Update();
+    }
 }
 
 void DebugEditor::ApplyPreviewVisual(Object3d* object) {
@@ -1381,6 +1672,22 @@ void DebugEditor::AddEditorObject(std::unique_ptr<Object3d> object, const std::s
     command.afterName = afterState.value("name", raw->GetName());
     RegisterCommand(command);
     MarkDirtyForObject(raw);
+}
+
+void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<Object3d>> objects, const std::string& label) {
+    if (objects.empty()) return;
+
+    Object3d* root = objects.front().get();
+    for (auto& object : objects) {
+        if (object) {
+            AddEditorObject(std::move(object), label);
+        }
+    }
+
+    if (root) {
+        selectedObject_ = root;
+        EditorManager::GetInstance()->SetSelectedObject(this);
+    }
 }
 
 void DebugEditor::TrackInspectorEdit(Object3d* beforeTarget, const nlohmann::json& beforeState) {
@@ -1786,17 +2093,30 @@ bool DebugEditor::IntersectRayPlane(const Ray& ray, Vector3& intersectOut) {
 
 
 void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (previewObject_) {
+    auto drawPreviewObject = [&](Object3d* object) {
+        if (!object) return;
+
         std::string originalClassName;
-        bool useClassOverride = ShouldUsePreviewDrawClassOverride(previewObject_.get());
+        bool useClassOverride = ShouldUsePreviewDrawClassOverride(object);
         if (useClassOverride) {
-            originalClassName = previewObject_->GetClassName();
-            previewObject_->SetClassName("Model");
+            originalClassName = object->GetClassName();
+            object->SetClassName("Model");
         }
-        previewObject_->Draw(pointLightResource, spotLightResource);
+        object->Draw(pointLightResource, spotLightResource);
         if (useClassOverride) {
-            previewObject_->SetClassName(originalClassName);
+            object->SetClassName(originalClassName);
         }
+    };
+
+    if (previewObject_) {
+        drawPreviewObject(previewObject_.get());
+        for (auto& child : previewChildObjects_) {
+            drawPreviewObject(child.get());
+        }
+    }
+
+    for (auto& object : brushPreviewObjects_) {
+        drawPreviewObject(object.get());
     }
 }
 
@@ -2189,17 +2509,15 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
 
-    // 1. オブジェクト生成とプリセット適用
-    auto newObj = std::make_unique<Object3d>();
-    newObj->Initialize(currentScene->GetObject3dCommon());
-    
-    // プリセットの設定（モデル、色、パラメータ等）を流し込む
-    PresetManager::GetInstance()->ApplyPresetToObject(presetName, newObj.get());
-    
-    // 名前をプリセット名ベースにする
-    newObj->SetName(presetName + "_" + std::to_string(currentScene->GetObjects().size()));
+    Object3dCommon* common = currentScene->GetObject3dCommon();
+    if (!common) return;
 
-    // 2. マウス座標からのレイキャスト（配置場所の決定）
+    auto presetObjects = PresetManager::GetInstance()->CreateObjectsFromPreset(presetName, common);
+    if (presetObjects.empty()) return;
+
+    AssignPresetInstanceNames(currentScene, presetName, presetObjects);
+    Object3d* rootObject = presetObjects.front().get();
+
     Math math;
     Ray ray = ScreenPointToRay(gameViewMousePos_);
     Vector3 finalPos = { 0, 0, 0 };
@@ -2218,8 +2536,8 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
         }
     }
 
-    float yOffset = newObj->GetColliderConfig().size.y;
-    if (yOffset == 0.0f) yOffset = newObj->GetTransform()->scale.y;
+    float yOffset = rootObject->GetColliderConfig().size.y;
+    if (yOffset == 0.0f) yOffset = rootObject->GetTransform()->scale.y;
 
     if (best.isHit) {
         finalPos = best.point;
@@ -2245,16 +2563,14 @@ void DebugEditor::InstantiatePresetAtCursor(const std::string& presetName) {
         }
     }
 
-    // 3. 座標確定とスナップ
     if (found && isGridSnapEnabled_) {
         finalPos.x = std::round(finalPos.x / snapValue_) * snapValue_;
         finalPos.z = std::round(finalPos.z / snapValue_) * snapValue_;
     }
-    newObj->GetTransform()->translate = finalPos;
-    newObj->UpdateWorldMatrix();
+    rootObject->GetTransform()->translate = finalPos;
+    rootObject->UpdateWorldMatrix();
 
-    // 4. シーンに追加
-    AddEditorObject(std::move(newObj), "Drop Preset");
+    AddEditorObjects(std::move(presetObjects), "Drop Preset");
 
     DebugConsole::GetInstance()->AddLog("Dropped Preset: " + presetName);
 }

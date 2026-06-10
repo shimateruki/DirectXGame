@@ -50,6 +50,7 @@
 #include <PostEffect.h>
 #include "StageManager.h"
 #include "GameDataManager.h"
+#include "GameSettingsManager.h"
 
 TutorialScene::TutorialScene() {}
 TutorialScene::~TutorialScene() {}
@@ -240,6 +241,7 @@ void TutorialScene::Update(float deltaTime) {
 		Camera::FollowMode currentMode = camera->GetFollowMode();
 
 		if (currentMode == Camera::FollowMode::kAimable || currentMode == Camera::FollowMode::kFirstPerson) {
+			camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
 			Vector2 mouseDelta = inputManager_->GetMouseMoveDelta();
 			if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f) {
 				camera->AddRotation(mouseDelta);
@@ -348,7 +350,7 @@ void TutorialScene::Draw() {
 	}
 
 	bool hasFluid = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 20) { hasFluid = true; break; }
+	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) { hasFluid = true; break; }
 
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
 	if (hasFluid || hasGPUParticles) {
@@ -371,6 +373,7 @@ void TutorialScene::Draw() {
 				else if (matType == 19) obj->DrawCrownUnlock(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				else if (matType == 20) obj->DrawPoisonSpore(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 				else if (matType == 21) obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
+				else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			}
 		}
 

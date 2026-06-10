@@ -1,0 +1,124 @@
+{
+    "sprites": [
+        {
+            "name": "gameover_background",
+            "texture": "common/white.png",
+            "position": [960.0, 540.0],
+            "size": [1920.0, 1080.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.0, 0.0, 0.0, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_g",
+            "texture": "generated/text/text_text_ge.png",
+            "position": [540.0, 246.0],
+            "size": [122.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_a",
+            "texture": "generated/text/text_text_-png.png",
+            "position": [680.0, 246.0],
+            "size": [122.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_m",
+            "texture": "generated/text/text_text_mupng.png",
+            "position": [820.0, 246.0],
+            "size": [122.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_e1",
+            "texture": "generated/text/text_text_o.png",
+            "position": [960.0, 246.0],
+            "size": [118.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_o",
+            "texture": "generated/text/text_text_-png.png",
+            "position": [1100.0, 246.0],
+            "size": [122.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_v",
+            "texture": "generated/text/text_text_ba.png",
+            "position": [1240.0, 246.0],
+            "size": [124.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_letter_e2",
+            "texture": "generated/text/text_text_-png.png",
+            "position": [1380.0, 246.0],
+            "size": [122.0, 156.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_retry_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [960.0, 570.0],
+            "size": [560.0, 96.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.42, 0.68, 0.80, 0.54],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_retry_label",
+            "texture": "ui/result/restartText.png",
+            "position": [960.0, 570.0],
+            "size": [300.0, 54.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.80, 0.94, 0.98, 0.78],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_title_row",
+            "texture": "ui/settings/settings_row.png",
+            "position": [960.0, 708.0],
+            "size": [560.0, 96.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.42, 0.68, 0.80, 0.54],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "gameover_title_label",
+            "texture": "ui/result/titleReturnText.png",
+            "position": [960.0, 708.0],
+            "size": [448.0, 93.0],
+            "anchor": [0.5, 0.5],
+            "color": [0.80, 0.94, 0.98, 0.78],
+            "emissive": 1.0,
+            "parentName": ""
+        }
+    ]
+}

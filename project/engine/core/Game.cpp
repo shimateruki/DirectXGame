@@ -6,6 +6,7 @@
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
 #include "GameDataManager.h"
+#include "GameSettingsManager.h"
 #include "InputManager.h"
 #include "KeyConfig.h"
 #include "LightManager.h"
@@ -53,6 +54,7 @@ void Game::InitializeEngineServices() {
 	ModelManager::GetInstance()->LoadAllModels();
 	StageManager::GetInstance()->Initialize();
 	GameDataManager::GetInstance()->Initialize();
+	GameSettingsManager::GetInstance()->Initialize();
 
 	sceneFactory_ = std::make_unique<SceneFactory>();
 	sceneManager_ = std::make_unique<SceneManager>();

@@ -37,6 +37,7 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
     directionalLightData_.fogStart = 10.0f;
     directionalLightData_.fogEnd = 1000.0f;
     directionalLightData_.fogColor = { 0.5f, 0.5f, 0.5f };
+    sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
 
     pointLights_.clear();
     spotLights_.clear();
@@ -218,6 +219,8 @@ void LightManager::ClearAllLights() {
 void LightManager::SaveState(const std::string& filename) {
     json root;
 
+    root["clearColor"] = { sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w };
+
     // --- 平行光源 ---
     root["directionalLight"]["color"] = { directionalLightData_.color.x, directionalLightData_.color.y, directionalLightData_.color.z, directionalLightData_.color.w };
     root["directionalLight"]["direction"] = { directionalLightData_.direction.x, directionalLightData_.direction.y, directionalLightData_.direction.z };
@@ -294,6 +297,18 @@ void LightManager::LoadState(const std::string& filename) {
     catch (...) { return; }
 
     ClearAllLights();
+
+    if (root.contains("clearColor") && root["clearColor"].is_array() && root["clearColor"].size() >= 4) {
+        sceneClearColor_.x = root["clearColor"][0];
+        sceneClearColor_.y = root["clearColor"][1];
+        sceneClearColor_.z = root["clearColor"][2];
+        sceneClearColor_.w = root["clearColor"][3];
+    } else {
+        sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
+    }
+    if (dxCommon_) {
+        dxCommon_->SetRenderClearColor(sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w);
+    }
 
     // --- 平行光源 ---
     if (root.contains("directionalLight")) {

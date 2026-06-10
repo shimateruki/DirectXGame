@@ -1,4 +1,5 @@
 #include "AudioPlayer.h"
+#include <algorithm>
 #include <string>
 
 AudioPlayer* AudioPlayer::GetInstance() {
@@ -102,6 +103,20 @@ AudioPlayer::AudioHandle AudioPlayer::LoadSoundFile(const std::string& filename)
 
 void AudioPlayer::PlaySE(AudioHandle handle, bool loop, float volume)
 {
+	PlayStreaming(handle, loop, std::clamp(volume, 0.0f, 1.0f) * seMasterVolume_);
+}
+
+void AudioPlayer::SetSEMasterVolume(float volume) {
+	seMasterVolume_ = std::clamp(volume, 0.0f, 1.0f);
+}
+
+void AudioPlayer::SetBGMMasterVolume(float volume) {
+	bgmMasterVolume_ = std::clamp(volume, 0.0f, 1.0f);
+	ApplyCurrentBGMVolume();
+}
+
+void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
+{
 	auto it = streamingSoundDatas_.find(handle);
 	if (it == streamingSoundDatas_.end()) {
 		return; // 無効なハンドル
@@ -138,7 +153,7 @@ void AudioPlayer::PlaySE(AudioHandle handle, bool loop, float volume)
 	xAudio2_->CreateSourceVoice(&data->sourceVoice, data->waveFormat, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback, NULL, NULL);
 
 	// ★ 新しい引数 volume を設定 ★
-	data->sourceVoice->SetVolume(volume);
+	data->sourceVoice->SetVolume(std::clamp(volume, 0.0f, 1.0f));
 
 	data->sourceVoice->Start(0);
 
@@ -306,8 +321,11 @@ void AudioPlayer::SoundPlayWave(const SoundData& soundData, bool loop)
 /// BGMを再生（または継続）します。
 /// </summary>
 void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
+	currentBgmBaseVolume_ = std::clamp(volume, 0.0f, 1.0f);
+
 	// 1. 既に再生したいBGMが再生中なら、何もしない
 	if (currentBgmHandle_ == handle && IsPlaying(handle)) {
+		ApplyCurrentBGMVolume();
 		return; // そのまま再生を続ける
 	}
 
@@ -317,7 +335,7 @@ void AudioPlayer::PlayBGM(AudioHandle handle, bool loop, float volume) {
 	}
 
 	// 3. 新しいBGMを再生する
-	PlaySE(handle, loop, volume); // 既存のPlay関数を呼び出す
+	PlayStreaming(handle, loop, currentBgmBaseVolume_ * bgmMasterVolume_);
 	currentBgmHandle_ = handle; // 今再生中のBGMとして記憶
 }
 
@@ -341,4 +359,17 @@ bool AudioPlayer::IsPlaying(AudioHandle handle) const {
 	}
 	// スレッドが動作中か (isPlaying フラグ) で判断
 	return it->second->isPlaying;
+}
+
+void AudioPlayer::ApplyCurrentBGMVolume() {
+	if (currentBgmHandle_ == kInvalidAudioHandle) {
+		return;
+	}
+
+	auto it = streamingSoundDatas_.find(currentBgmHandle_);
+	if (it == streamingSoundDatas_.end() || !it->second || !it->second->sourceVoice) {
+		return;
+	}
+
+	it->second->sourceVoice->SetVolume(currentBgmBaseVolume_ * bgmMasterVolume_);
 }

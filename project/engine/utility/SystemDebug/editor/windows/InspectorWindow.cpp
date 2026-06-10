@@ -227,11 +227,12 @@ void InspectorWindow::Draw() {
                                          "地面衝撃波 (Shockwave)", "水/マグマ接触 (Liquid Contact)",
                                          "ダメージ亀裂 (Damage Crack)", "上昇気流 (Updraft)",
                                          "スタン拘束 (Stun Bind)", "王冠解放 (Crown Unlock)",
-                                         "毒胞子 (Poison Spore)", "雲 (Cloud)"
+                                         "毒胞子 (Poison Spore)", "雲 (Cloud)",
+                                         "ゲートポータル (Gate Portal)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 21) currentMatType = 0;
+                if (currentMatType > 22) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -264,7 +265,7 @@ void InspectorWindow::Draw() {
                         ImGui::DragFloat("Light Intensity (光の明るさ)", &fogData->scatteringIntensity, 0.01f, 0.0f, 5.0f);
                     }
                 }
-                if (currentMatType >= 8 && currentMatType <= 21) {
+                if (currentMatType >= 8 && currentMatType <= 22) {
                     ImGui::Separator();
 
                     if (selectedObject->GetMeshRenderer() && selectedObject->GetMeshRenderer()->GetWaterParamData()) {
@@ -415,6 +416,22 @@ void InspectorWindow::Draw() {
                             if (ImGui::DragFloat("描画サイズ (Billboard Size)", &waterData->billboardScale, 0.01f, 0.05f, 4.0f)) isGraphicsChanged = true;
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("明るさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                        }
+                        else if (currentMatType == 22) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.58f, 0.18f, 1.0f), ICON_FA_MAGIC " --- Gate Portal Settings ---");
+                            const char* gateTypes[] = { "渦ポータル (Swirl Portal)", "暖色ゲート (Warm Gate)", "封印ゲート (Sealed Gate)" };
+                            int gateType = std::clamp(static_cast<int>(waterData->effectType + 0.5f), 0, 2);
+                            if (ImGui::Combo("ゲートタイプ (Gate Type)", &gateType, gateTypes, IM_ARRAYSIZE(gateTypes))) {
+                                waterData->effectType = static_cast<float>(gateType);
+                                isGraphicsChanged = true;
+                            }
+                            if (ImGui::DragFloat("渦の速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 12.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("奥行きの強さ (Depth)", &waterData->waveHeight, 0.01f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("渦の細かさ (Detail)", &waterData->waveFrequency, 0.05f, 0.1f, 36.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("模様スケール (Pattern Scale)", &waterData->effectScale, 0.01f, 0.05f, 6.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("描画サイズ (Portal Size)", &waterData->billboardScale, 0.01f, 0.05f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
                         }
                         else {
                             const char* settingTitle = (currentMatType == 8) ? ICON_FA_TINT " --- Water Settings ---" :

@@ -359,6 +359,13 @@ void Object3d::DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
         meshRenderer_->DrawCloud(depthSrvHandle, grabSrvHandle);
     }
 }
+
+void Object3d::DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
+    if (meshRenderer_) {
+        meshRenderer_->DrawGatePortal(depthSrvHandle, grabSrvHandle);
+    }
+}
+
 Model* Object3d::GetModel() const {
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }
@@ -774,7 +781,7 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
-    if (GetMaterialType() >= 8 && GetMaterialType() <= 20 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
+    if (GetMaterialType() >= 8 && GetMaterialType() <= 22 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         json jw;
         jw["waveSpeed"] = water->waveSpeed;
@@ -904,7 +911,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
-    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 20) {
+    if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 22) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();
             const auto& jw = j["waterParam"];

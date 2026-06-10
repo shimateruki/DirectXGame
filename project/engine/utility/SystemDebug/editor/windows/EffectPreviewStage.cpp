@@ -6,6 +6,7 @@
 #include "DebugConsole.h"
 #include "DirectXCommon.h"
 #include "IconsFontAwesome5.h"
+#include "LightManager.h"
 #include "ModelManager.h"
 #include "Object3d.h"
 #include "SceneManager.h"
@@ -16,7 +17,6 @@
 
 namespace {
 constexpr const char* kFloorName = "__Editor_EffectPreviewFloor";
-constexpr float kDefaultClearColor[4] = { 0.1f, 0.25f, 0.5f, 1.0f };
 }
 
 EffectPreviewStage* EffectPreviewStage::GetInstance() {
@@ -40,10 +40,14 @@ void EffectPreviewStage::Update() {
         RestoreCameraState();
         hasPlacedCamera_ = false;
         recenterCameraRequested_ = false;
+        const Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        dxCommon_->SetRenderClearColor(sceneClearColor.x, sceneClearColor.y, sceneClearColor.z, sceneClearColor.w);
     }
     wasEnabled_ = enabled_;
 
-    ApplyBackgroundColor();
+    if (enabled_) {
+        ApplyBackgroundColor();
+    }
 
     Object3d* floor = FindFloor();
     Vector3 previewPos = GetPreviewPosition();
@@ -206,13 +210,7 @@ Object3d* EffectPreviewStage::FindFloor() const {
 
 void EffectPreviewStage::ApplyBackgroundColor() {
     if (!dxCommon_) return;
-
-    if (enabled_) {
-        dxCommon_->SetRenderClearColor(backgroundColor_.x, backgroundColor_.y, backgroundColor_.z, backgroundColor_.w);
-    }
-    else {
-        dxCommon_->SetRenderClearColor(kDefaultClearColor[0], kDefaultClearColor[1], kDefaultClearColor[2], kDefaultClearColor[3]);
-    }
+    dxCommon_->SetRenderClearColor(backgroundColor_.x, backgroundColor_.y, backgroundColor_.z, backgroundColor_.w);
 }
 
 void EffectPreviewStage::CaptureCameraState() {

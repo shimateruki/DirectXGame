@@ -173,6 +173,7 @@ public:
     void DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     void DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
+    void DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
     void InitializeFireProxyModel();
