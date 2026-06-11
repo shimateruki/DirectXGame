@@ -512,7 +512,7 @@ void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resourc
 }
 
 
-DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
+DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath, bool forceSRGB)
 {
 	DirectX::ScratchImage image{};
 	DirectX::ScratchImage mipImages{};
@@ -534,8 +534,9 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
 		}
 	} else
 	{
-		// PNG, JPGなどの一般的な画像用
-		hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+		// PNG, JPGなどの一般的な画像用。PBRのNormal/ORMなどはlinearのまま読み込みます。
+		const auto wicFlags = forceSRGB ? DirectX::WIC_FLAGS_FORCE_SRGB : DirectX::WIC_FLAGS_IGNORE_SRGB;
+		hr = DirectX::LoadFromWICFile(filePathW.c_str(), wicFlags, nullptr, image);
 	}
 
 	// テクスチャが読み込まれなかった場合は白色のテクスチャを張る
@@ -569,7 +570,8 @@ DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
 	}
 
 	// ミニマップの作成 (DDS以外の場合のみ実行される)
-	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
+	const auto filterFlags = forceSRGB ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
+	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), filterFlags, 0, mipImages);
 	assert(SUCCEEDED(hr));
 
 	return mipImages;

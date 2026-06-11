@@ -1,7 +1,9 @@
 {
     "clearedStages": [],
     "coins": 0,
-    "lives": 3,
-    "seenUnlockedStages": [],
+    "lives": 2,
+    "seenUnlockedStages": [
+        0
+    ],
     "starCoins": null
 }

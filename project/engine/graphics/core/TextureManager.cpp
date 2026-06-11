@@ -1,32 +1,189 @@
 #include "TextureManager.h"
-#include <cassert>
-#include "SRVManager.h"
-#include "d3dx12.h"
-#include "DirectXCommon.h" 
-#include <filesystem>
+
 #include <algorithm>
+#include <cassert>
+#include <chrono>
 #include <cctype>
-#include "ProfilerManager.h"
+#include <filesystem>
+#include <fstream>
 #include <set>
 
+#include <Windows.h>
+#include <shellapi.h>
+
+#include "DirectXCommon.h"
+#include "ProfilerManager.h"
+#include "SRVManager.h"
+#include "d3dx12.h"
+
+#pragma comment(lib, "shell32.lib")
+
 namespace {
-std::string NormalizeTexturePath(std::string path) {
-    std::replace(path.begin(), path.end(), '\\', '/');
-    std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) {
+const std::filesystem::path kDDSCacheRequestPath = "Resources/.cache/dds_cache_requests.jsonl";
+
+std::string ToLower(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
+    return text;
+}
+
+std::string NormalizeTexturePath(std::string path) {
+    std::replace(path.begin(), path.end(), '\\', '/');
     return path;
 }
 
+std::string NormalizeTexturePathLower(std::string path) {
+    return ToLower(NormalizeTexturePath(std::move(path)));
+}
+
+std::string ToProjectPath(const std::filesystem::path& path) {
+    std::error_code ec;
+    std::filesystem::path absolutePath = std::filesystem::absolute(path, ec);
+    if (ec) {
+        return NormalizeTexturePath(path.string());
+    }
+
+    absolutePath = absolutePath.lexically_normal();
+    std::filesystem::path rootPath = std::filesystem::current_path(ec);
+    if (!ec) {
+        std::filesystem::path relativePath = absolutePath.lexically_relative(rootPath.lexically_normal());
+        if (!relativePath.empty()) {
+            return NormalizeTexturePath(relativePath.string());
+        }
+    }
+
+    return NormalizeTexturePath(absolutePath.string());
+}
+
+bool IsSourceTextureExtension(const std::string& ext) {
+    const std::string lowerExt = ToLower(ext);
+    return lowerExt == ".png" ||
+           lowerExt == ".jpg" ||
+           lowerExt == ".jpeg" ||
+           lowerExt == ".tga" ||
+           lowerExt == ".hdr";
+}
+
+std::filesystem::path FindSourceTextureForDDS(const std::filesystem::path& ddsPath) {
+    static const char* kSourceExts[] = { ".png", ".jpg", ".jpeg", ".tga", ".hdr" };
+    for (const char* ext : kSourceExts) {
+        std::filesystem::path candidate = ddsPath;
+        candidate.replace_extension(ext);
+        if (std::filesystem::exists(candidate)) {
+            return candidate;
+        }
+    }
+    return {};
+}
+
 bool IsEditorPreviewTexture(const std::string& path) {
-    std::string normalized = NormalizeTexturePath(path);
+    const std::string normalized = "/" + NormalizeTexturePathLower(path);
     return normalized.find("/generated/text/_preview_") != std::string::npos ||
            normalized.find("/generated/editor/text_preview/") != std::string::npos;
+}
+
+bool IsLinearTexturePath(const std::string& path) {
+    const std::string lowerPath = NormalizeTexturePathLower(path);
+    return lowerPath.find("normal") != std::string::npos ||
+           lowerPath.find("_n") != std::string::npos ||
+           lowerPath.find("nor") != std::string::npos ||
+           lowerPath.find("arm") != std::string::npos ||
+           lowerPath.find("orm") != std::string::npos ||
+           lowerPath.find("rough") != std::string::npos ||
+           lowerPath.find("metal") != std::string::npos ||
+           lowerPath.find("ao") != std::string::npos;
+}
+
+std::string GetDDSFormat(const std::string& filePath, bool isNormalMap) {
+    const std::string ext = ToLower(std::filesystem::path(filePath).extension().string());
+    if (ext == ".hdr") {
+        return "BC6H_UF16";
+    }
+    if (isNormalMap || IsLinearTexturePath(filePath)) {
+        return "BC7_UNORM";
+    }
+    return "BC7_UNORM_SRGB";
+}
+
+void StartDDSCacheWatcherIfNeeded() {
+    static bool watcherStartTried = false;
+    if (watcherStartTried) {
+        return;
+    }
+    watcherStartTried = true;
+
+    std::error_code ec;
+    const std::filesystem::path scriptPath =
+        (std::filesystem::current_path(ec) / "tools/start_dds_cache_watcher.vbs").lexically_normal();
+    if (ec || !std::filesystem::exists(scriptPath)) {
+        return;
+    }
+
+    const std::wstring parameters = L"\"" + scriptPath.wstring() + L"\"";
+    ShellExecuteW(nullptr, L"open", L"wscript.exe", parameters.c_str(), nullptr, SW_HIDE);
+}
+
+std::string EscapeJson(const std::string& text) {
+    std::string escaped;
+    escaped.reserve(text.size());
+    for (char c : text) {
+        switch (c) {
+        case '\\': escaped += "\\\\"; break;
+        case '"': escaped += "\\\""; break;
+        case '\n': escaped += "\\n"; break;
+        case '\r': escaped += "\\r"; break;
+        case '\t': escaped += "\\t"; break;
+        default: escaped += c; break;
+        }
+    }
+    return escaped;
+}
+
+void AppendDDSCacheRequest(const std::string& filePath, bool isNormalMap, float durationMs) {
+    const std::filesystem::path sourcePath(filePath);
+    const std::string ext = ToLower(sourcePath.extension().string());
+    if (!IsSourceTextureExtension(ext) || IsEditorPreviewTexture(filePath)) {
+        return;
+    }
+
+    static std::set<std::string> requestedPaths;
+    const std::string source = ToProjectPath(sourcePath);
+    if (!requestedPaths.insert(source).second) {
+        return;
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(kDDSCacheRequestPath.parent_path(), ec);
+    if (ec) {
+        return;
+    }
+
+    std::filesystem::path ddsPath = sourcePath;
+    ddsPath.replace_extension(".dds");
+
+    std::ofstream ofs(kDDSCacheRequestPath, std::ios::app);
+    if (!ofs) {
+        return;
+    }
+
+    ofs << "{\"source\":\"" << EscapeJson(source)
+        << "\",\"dds\":\"" << EscapeJson(ToProjectPath(ddsPath))
+        << "\",\"format\":\"" << EscapeJson(GetDDSFormat(filePath, isNormalMap))
+        << "\",\"durationMs\":" << durationMs
+        << "}\n";
+
+    StartDDSCacheWatcherIfNeeded();
+}
+
+std::string GetTextureBasePath(const std::filesystem::path& path) {
+    std::filesystem::path base = path.parent_path() / path.stem();
+    return NormalizeTexturePath(base.string());
 }
 }
 
 /// <summary>
-/// テクスチャデータをGPUにアップロードするためのヘルパー関数
+/// テクスチャデータをGPUにアップロードするためのヘルパー関数。
 /// </summary>
 void UploadTextureData(
     ID3D12Resource* texture,
@@ -35,15 +192,13 @@ void UploadTextureData(
     ID3D12Device* device,
     ID3D12GraphicsCommandList* commandList)
 {
-    // アップロードに必要なサブリソースの情報を準備
+    // アップロードに必要なサブリソース情報を準備します。
     std::vector<D3D12_SUBRESOURCE_DATA> subresources;
     HRESULT hr = DirectX::PrepareUpload(device, mipImages.GetImages(), mipImages.GetImageCount(), mipImages.GetMetadata(), subresources);
     assert(SUCCEEDED(hr));
 
-    // 中間リソースに必要なサイズを計算
     uint64_t intermediateSize = GetRequiredIntermediateSize(texture, 0, UINT(subresources.size()));
 
-    // --- 中間リソースの作成 ---
     D3D12_HEAP_PROPERTIES uploadHeapProperties{};
     uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
     D3D12_RESOURCE_DESC bufferDesc{};
@@ -64,10 +219,8 @@ void UploadTextureData(
         IID_PPV_ARGS(intermediateResource));
     assert(SUCCEEDED(hr));
 
-    // --- データの転送 ---
     UpdateSubresources(commandList, texture, *intermediateResource, 0, 0, UINT(subresources.size()), subresources.data());
 
-    // --- リソースバリア ---
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -88,45 +241,52 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
     device_ = dxCommon->GetDevice();
 }
 
-
-
 uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, bool allowDDSCache, bool forceReload) {
+    if (!isNormalMap && IsLinearTexturePath(filePath)) {
+        isNormalMap = true;
+    }
 
-    // 0. 自動判定: 引数がfalseでもファイル名から推測する
-    if (!isNormalMap) {
-        std::string lowerPath = filePath;
-        std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), [](unsigned char c) {
-            return static_cast<char>(std::tolower(c));
-        });
-        if (lowerPath.find("normal") != std::string::npos ||
-            lowerPath.find("_n") != std::string::npos ||
-            lowerPath.find("nor") != std::string::npos ||  // nor_dx 等
-            lowerPath.find("arm") != std::string::npos ||  // AO, Roughness, Metal
-            lowerPath.find("orm") != std::string::npos) { // ORMもデータテクスチャなのでLinearに
-            isNormalMap = true;
+    std::filesystem::path path(filePath);
+    const bool requestedDDS = ToLower(path.extension().string()) == ".dds";
+    if (requestedDDS) {
+        const std::filesystem::path sourcePath = FindSourceTextureForDDS(path);
+        if (!sourcePath.empty()) {
+            const bool ddsMissing = !std::filesystem::exists(path);
+            const bool ddsOutdated = !ddsMissing && std::filesystem::last_write_time(sourcePath) > std::filesystem::last_write_time(path);
+            if (ddsMissing || ddsOutdated) {
+                path = sourcePath;
+            }
         }
     }
 
-    // 1. すでに DDS パスが渡されているか、対応する DDS が存在するか確認
-    std::filesystem::path path(filePath);
+    const std::string effectiveFilePath = NormalizeTexturePath(path.string());
+    if (!isNormalMap && IsLinearTexturePath(effectiveFilePath)) {
+        isNormalMap = true;
+    }
+
+    const std::string ext = ToLower(path.extension().string());
+    const bool isSourceTexture = IsSourceTextureExtension(ext);
+
     std::filesystem::path ddsPath = path;
     ddsPath.replace_extension(".dds");
 
-    std::string loadPath = filePath;
-    bool alreadyHasDDS = allowDDSCache && std::filesystem::exists(ddsPath) && std::filesystem::exists(path);
+    std::string loadPath = effectiveFilePath;
     bool ddsIsUpToDate = false;
 
-    // DDS が存在する場合、タイムスタンプを比較
-    if (alreadyHasDDS) {
-        auto srcTime = std::filesystem::last_write_time(path);
-        auto dstTime = std::filesystem::last_write_time(ddsPath);
-        if (srcTime <= dstTime) {
-            loadPath = ddsPath.string(); // DDSの方が新しい（または同じ）なら採用
+    if (allowDDSCache && isSourceTexture && std::filesystem::exists(ddsPath)) {
+        if (!std::filesystem::exists(path)) {
+            loadPath = NormalizeTexturePath(ddsPath.string());
             ddsIsUpToDate = true;
+        } else {
+            const auto srcTime = std::filesystem::last_write_time(path);
+            const auto dstTime = std::filesystem::last_write_time(ddsPath);
+            if (srcTime <= dstTime) {
+                loadPath = NormalizeTexturePath(ddsPath.string());
+                ddsIsUpToDate = true;
+            }
         }
     }
 
-    // 1. 過去に読み込み済みのテクスチャか検索
     if (!forceReload) {
         auto it = textureHandleMap_.find(loadPath);
         if (it != textureHandleMap_.end()) {
@@ -134,33 +294,24 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         }
     }
 
-    // --- 計測開始 ---
-    auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::high_resolution_clock::now();
 
-    // 2. テクスチャファイルを読み込み、リソースを作成
-    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(loadPath);
+    const bool forceSRGB = !isNormalMap && ToLower(std::filesystem::path(loadPath).extension().string()) != ".hdr";
+    DirectX::ScratchImage mipImages = dxCommon_->LoadTexture(loadPath, forceSRGB);
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     Microsoft::WRL::ComPtr<ID3D12Resource> resource = dxCommon_->CreateTextureResource(metadata);
     if (!resource) {
         return 0;
     }
+
     Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
-
-
-    UploadTextureData(
-        resource.Get(), mipImages, &intermediateResource,
-        device_.Get(), dxCommon_->GetCommandList()); //コマンドが積まれる
-
-    // FlushCommandQueue(true) を呼び出す
+    UploadTextureData(resource.Get(), mipImages, &intermediateResource, device_.Get(), dxCommon_->GetCommandList());
     dxCommon_->FlushCommandQueue(true);
- 
 
-    // 3. SRVを作成し、GPU上の正しいハンドルを取得
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-    // キューブマップ対応
     if (metadata.IsCubemap()) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
@@ -171,7 +322,6 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
     }
 
-
     uint32_t srvHandle = 0;
     auto existingIt = textureHandleMap_.find(loadPath);
     if (forceReload && existingIt != textureHandleMap_.end()) {
@@ -181,29 +331,13 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
         srvHandle = SRVManager::GetInstance()->CreateSRV(resource.Get(), srvDesc);
     }
 
-    // --- 計測終了 ---
-    auto end = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
     float duration = std::chrono::duration<float, std::milli>(end - start).count();
     ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
 
-    // 4. 重いテクスチャ（かつDDSが未生成または古い）なら、次回の為にDDS変換を実行
-    const float kThresholdMs = 20.0f; // 20ms を超えたら重いと判定
-    if (allowDDSCache && !ddsIsUpToDate && duration > kThresholdMs) {
-        // 0. 自動判定: 引数がfalseでもファイル名から推測する
-        if (!isNormalMap) {
-            if (filePath.find("Normal") != std::string::npos || 
-                filePath.find("_n") != std::string::npos ||
-                filePath.find("nor") != std::string::npos ||  // nor_dx 等
-                filePath.find("arm") != std::string::npos ||  // AO, Roughness, Metal
-                filePath.find("ORM") != std::string::npos) { // ORMもデータテクスチャなのでLinearに
-                isNormalMap = true;
-            }
-        }
-        // バックグラウンド的にDDS生成 (今回は同期実行だが、パスだけ返す)
-        ConvertToDDS(filePath, isNormalMap);
+    if (allowDDSCache && isSourceTexture && !ddsIsUpToDate) {
+        AppendDDSCacheRequest(effectiveFilePath, isNormalMap, duration);
     }
-
-    // 5. 新しいテクスチャデータをmapに格納
 
     TextureData& newData = textureDatas_[srvHandle];
     newData.filePath = loadPath;
@@ -212,61 +346,8 @@ uint32_t TextureManager::Load(const std::string& filePath, bool isNormalMap, boo
     newData.intermediateResource = intermediateResource;
     newData.srvHandle = srvHandle;
 
-    // 5. ファイルパスと「本物のハンドル」の対応をマップに記録
     textureHandleMap_[loadPath] = srvHandle;
-
-    // 6. 「本物のハンドル」を返す
     return srvHandle;
-}
-
-std::string TextureManager::ConvertToDDS(const std::string& filePath, bool isNormalMap) {
-    std::filesystem::path path(filePath);
-    std::string ext = path.extension().string();
-
-    // すでに DDS なら何もしない
-    if (ext == ".dds") return filePath;
-
-    // サポートされている形式以外なら何もしない
-    if (ext != ".png" && ext != ".jpg" && ext != ".tga" && ext != ".hdr") return filePath;
-
-    // 出力先 DDS パスの生成 (元のファイルと同じ場所に .dds を作る)
-    std::filesystem::path ddsPath = path;
-    ddsPath.replace_extension(".dds");
-
-    // 更新が必要かチェック (DDSがない、または元ファイルより古い)
-    bool needUpdate = false;
-    if (!std::filesystem::exists(ddsPath)) {
-        needUpdate = true;
-    }
-    else {
-        auto srcTime = std::filesystem::last_write_time(path);
-        auto dstTime = std::filesystem::last_write_time(ddsPath);
-        if (srcTime > dstTime) {
-            needUpdate = true;
-        }
-    }
-
-    if (needUpdate) {
-        // Texconv を実行 (Windows環境のパス形式に合わせる)
-        std::string tool = "Resources\\tools\\Texconv.exe";
-        if (!std::filesystem::exists(tool)) return filePath; // ツールがなければ諦めて元のをロード
-
-        std::string format = isNormalMap ? "BC7_UNORM" : "BC7_UNORM_SRGB";
-
-        // HDR の場合は特殊処理 (BC6H)
-        if (ext == ".hdr") format = "BC6H_UF16";
-
-        std::string outputDir = path.parent_path().string();
-
-        // コマンド構築
-        // -f: 形式指定, -y: 上書き許可, -o: 出力先, -m: ミップマップ生成(デフォルト)
-        std::string command = tool + " -f " + format + " -y -o \"" + outputDir + "\" \"" + filePath + "\"";
-
-        // 実行 (コンソールウィンドウを一瞬出さないために、本来は CreateProcess 等が良いが、一旦 system)
-        std::system(command.c_str());
-    }
-
-    return ddsPath.string();
 }
 
 const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) {
@@ -276,55 +357,54 @@ const DirectX::TexMetadata& TextureManager::GetMetadata(uint32_t textureHandle) 
 }
 
 void TextureManager::LoadAllTexture(const std::string& directoryPath) {
-    if (std::filesystem::exists(directoryPath)) {
-        std::vector<std::string> files;
-        std::set<std::string> ddsBaseNames;
+    if (!std::filesystem::exists(directoryPath)) {
+        return;
+    }
 
-        // 1次スキャン：全ファイル取得とDDSの存在確認
-        for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
-            if (entry.is_regular_file()) {
-                std::string path = entry.path().string();
-                std::replace(path.begin(), path.end(), '\\', '/');
-                files.push_back(path);
+    std::vector<std::filesystem::path> files;
+    std::set<std::string> sourceBaseNames;
 
-                if (entry.path().extension() == ".dds") {
-                    std::string base = entry.path().parent_path().string() + "/" + entry.path().stem().string();
-                    std::replace(base.begin(), base.end(), '\\', '/');
-                    ddsBaseNames.insert(base);
-                }
-            }
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(directoryPath)) {
+        if (!entry.is_regular_file()) {
+            continue;
         }
 
-        // 2次スキャン：フィルタリングしてロード
-        for (const std::string& path : files) {
-            if (IsEditorPreviewTexture(path)) {
+        std::filesystem::path path = entry.path();
+        files.push_back(path);
+
+        const std::string ext = ToLower(path.extension().string());
+        if (IsSourceTextureExtension(ext) && !IsEditorPreviewTexture(path.string())) {
+            sourceBaseNames.insert(GetTextureBasePath(path));
+        }
+    }
+
+    std::sort(files.begin(), files.end(), [](const std::filesystem::path& lhs, const std::filesystem::path& rhs) {
+        return lhs.generic_string() < rhs.generic_string();
+    });
+
+    for (const auto& path : files) {
+        const std::string pathString = NormalizeTexturePath(path.string());
+        if (IsEditorPreviewTexture(pathString)) {
+            continue;
+        }
+
+        const std::string ext = ToLower(path.extension().string());
+        if (ext == ".dds") {
+            if (sourceBaseNames.count(GetTextureBasePath(path)) != 0) {
                 continue;
             }
+            Load(pathString, false);
+            continue;
+        }
 
-            std::filesystem::path p(path);
-            std::string ext = p.extension().string();
-            std::string base = p.parent_path().string() + "/" + p.stem().string();
-            std::replace(base.begin(), base.end(), '\\', '/');
-
-            // 同じ名前のDDSがあれば、元の画像(png/jpg/hdr)はロードしない
-            if ((ext == ".png" || ext == ".jpg" || ext == ".hdr") && ddsBaseNames.count(base)) {
-                continue;
-            }
-
-            if (ext == ".png" || ext == ".jpg" || ext == ".hdr" || ext == ".dds") {
-                bool isNormal = (path.find("Normal") != std::string::npos || 
-                                 path.find("_n") != std::string::npos ||
-                                 path.find("ARM") != std::string::npos ||
-                                 path.find("ORM") != std::string::npos);
-                Load(path, isNormal);
-            }
+        if (IsSourceTextureExtension(ext)) {
+            Load(pathString, IsLinearTexturePath(pathString));
         }
     }
 }
 
 std::vector<std::string> TextureManager::GetLoadedTexturePaths() const {
     std::vector<std::string> paths;
-    // textureHandleMap_ のキー(パス)を全部集めて返す
     for (const auto& pair : textureHandleMap_) {
         paths.push_back(pair.first);
     }
@@ -336,6 +416,15 @@ uint32_t TextureManager::GetSrvHandle(const std::string& filePath) {
     if (it != textureHandleMap_.end()) {
         return it->second;
     }
-    // 見つからなかった場合は0を返す（絶対にLoadを呼ばない！）
+
+    std::filesystem::path ddsPath(filePath);
+    if (IsSourceTextureExtension(ddsPath.extension().string())) {
+        ddsPath.replace_extension(".dds");
+        it = textureHandleMap_.find(NormalizeTexturePath(ddsPath.string()));
+        if (it != textureHandleMap_.end()) {
+            return it->second;
+        }
+    }
+
     return 0;
 }

@@ -265,6 +265,16 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     eventLinkGraph_.Initialize(sceneManager, this);
     textSpriteGenerator_.Initialize(sceneManager, this);
+
+    const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
+    ddsCacheNotificationReadOffset_ = 0;
+    if (fs::exists(notificationLog)) {
+        std::error_code ec;
+        ddsCacheNotificationReadOffset_ = fs::file_size(notificationLog, ec);
+        if (ec) {
+            ddsCacheNotificationReadOffset_ = 0;
+        }
+    }
 }
 
 // ========================================================================
@@ -490,6 +500,7 @@ void DebugEditor::Update() {
     // =========================================================
     // 3. UI描画関連 (最前面)
     // =========================================================
+    PollDDSCacheNotifications();
     DrawSaveNotification();
     DrawSavePreview();
     Draw3DIcons();
@@ -2125,8 +2136,62 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
 // ========================================================================
 void DebugEditor::TriggerSaveNotification(const std::string& filename) {
 #ifdef USE_IMGUI
-    saveNotificationTimer_ = 1.0f; // 1.5秒間画面に表示する
-    saveNotificationMsg_ = "[ " + filename + " ] にセーブが完了しました！";
+    saveNotificationTimer_ = 1.0f;
+    saveNotificationMsg_ = "[ " + filename + " ] にセーブしました";
+#endif
+}
+
+void DebugEditor::PollDDSCacheNotifications() {
+#ifdef USE_IMGUI
+    const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
+    if (!fs::exists(notificationLog)) {
+        ddsCacheNotificationReadOffset_ = 0;
+        return;
+    }
+
+    std::error_code ec;
+    const std::uintmax_t fileSize = fs::file_size(notificationLog, ec);
+    if (ec) {
+        return;
+    }
+    if (fileSize < ddsCacheNotificationReadOffset_) {
+        ddsCacheNotificationReadOffset_ = 0;
+    }
+    if (fileSize == ddsCacheNotificationReadOffset_) {
+        return;
+    }
+
+    std::ifstream ifs(notificationLog, std::ios::binary);
+    if (!ifs) {
+        return;
+    }
+
+    ifs.seekg(static_cast<std::streamoff>(ddsCacheNotificationReadOffset_), std::ios::beg);
+
+    std::string line;
+    bool hasCompletedConversion = false;
+    while (std::getline(ifs, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        try {
+            nlohmann::json j = nlohmann::json::parse(line);
+            if (j.value("status", "") != "built") {
+                continue;
+            }
+
+            hasCompletedConversion = true;
+        }
+        catch (...) {
+        }
+    }
+
+    ddsCacheNotificationReadOffset_ = fileSize;
+    if (hasCompletedConversion) {
+        saveNotificationTimer_ = 1.5f;
+        saveNotificationMsg_ = "DDS変換が完了しました";
+    }
 #endif
 }
 

@@ -87,7 +87,7 @@ public:
 	/// <summary>
 	/// テクスチャファイルを読み込む (staticなのでインスタンス不要)
 	/// </summary>
-	static DirectX::ScratchImage LoadTexture(const std::string& filePath);
+	static DirectX::ScratchImage LoadTexture(const std::string& filePath, bool forceSRGB = true);
 
 	/// <summary>
 	/// string を wstring に変換する (staticなのでインスタンス不要)

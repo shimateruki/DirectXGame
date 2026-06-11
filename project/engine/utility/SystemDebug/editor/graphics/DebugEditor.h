@@ -9,6 +9,7 @@
 #include <string> 
 #include <deque>
 #include <memory>
+#include <cstdint>
 
 #include "engine/utility/math/Math.h"
 #include "BaseScene.h"
@@ -235,6 +236,7 @@ private:
     void Draw3DIcons();
     void DrawEventIDOverlay();
     void DrawSavePreview();
+    void PollDDSCacheNotifications();
     std::string MakeSavePreviewTitle(SaveMode mode) const;
     void ApplyObjectState(Object3d* object, const nlohmann::json& state);
     Object3d* FindObjectByName(const std::string& name) const;
@@ -340,6 +342,7 @@ private:
     // --- 通知UI用 ---
     float saveNotificationTimer_ = 0.0f;
     std::string saveNotificationMsg_ = "";
+    std::uintmax_t ddsCacheNotificationReadOffset_ = 0;
 
     // --- 各種サブエディタへのポインタ ---
     PostEffectEditor* postEffectEditor_ = nullptr;

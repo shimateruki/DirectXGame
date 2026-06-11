@@ -1,10 +1,11 @@
 #pragma once
 
 #include <d3d12.h>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 #include <wrl.h>
+
 #include "DirectXCommon.h"
 #include "DirectXTex.h"
 
@@ -36,17 +37,12 @@ public:
     uint32_t GetSrvHandle(const std::string& filePath);
 
 private:
-    std::string ConvertToDDS(const std::string& filePath, bool isNormalMap);
-
-private:
     DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
 
-    // キーをSRVハンドル、値をテクスチャデータとする
+    // キーをSRVハンドル、値をテクスチャデータとして保持します。
     std::map<uint32_t, TextureData> textureDatas_;
 
-    // ファイルパスからSRVハンドルへのマップはそのまま
+    // 実際に読み込んだファイルパスからSRVハンドルへ引けるようにします。
     std::map<std::string, uint32_t> textureHandleMap_;
-
-
 };

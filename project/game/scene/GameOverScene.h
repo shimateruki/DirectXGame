@@ -93,6 +93,7 @@ private:
     void UpdateMenuSprites(float deltaTime);
     void ChangeSelection(int direction);
     void ConfirmSelection();
+    bool IsTitleRevealComplete() const;
 
     // --- エンジン基盤 ---
     DirectXCommon* dxCommon_ = nullptr;
@@ -131,4 +132,5 @@ private:
     std::array<MenuRow, static_cast<size_t>(MenuItem::Count)> menuRows_ = {};
     int selectedIndex_ = 0;
     float sceneTime_ = 0.0f;
+    float titleRevealTimer_ = 0.0f;
 };

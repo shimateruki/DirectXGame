@@ -31,6 +31,30 @@
 #include <cmath>
 #include <string>
 
+namespace {
+constexpr float kTitleLetterInterval = 0.18f;
+constexpr float kTitleLetterPopDuration = 0.24f;
+constexpr float kMenuRevealDelay = 0.28f;
+
+float Clamp01(float value) {
+    return std::clamp(value, 0.0f, 1.0f);
+}
+
+float EaseOutCubic(float t) {
+    t = Clamp01(t);
+    const float inv = 1.0f - t;
+    return 1.0f - inv * inv * inv;
+}
+
+float EaseOutBack(float t) {
+    t = Clamp01(t);
+    constexpr float c1 = 1.70158f;
+    constexpr float c3 = c1 + 1.0f;
+    const float shifted = t - 1.0f;
+    return 1.0f + c3 * shifted * shifted * shifted + c1 * shifted * shifted;
+}
+}
+
 void GameOverScene::Initialize() {
     Fade::GetInstance()->Stop();
     PostEffect::Params* postParams = PostEffect::GetInstance()->GetParams();
@@ -122,7 +146,10 @@ void GameOverScene::Finalize() {
 
 void GameOverScene::Update(float deltaTime) {
     sceneTime_ += deltaTime;
-    UpdateMenuInput();
+    titleRevealTimer_ += deltaTime;
+    if (IsTitleRevealComplete()) {
+        UpdateMenuInput();
+    }
     UpdateMenuSprites(deltaTime);
 
     // マネージャ・エディタ更新
@@ -315,18 +342,46 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
             continue;
         }
 
+        const float appearTime = static_cast<float>(i) * kTitleLetterInterval;
+        const float revealElapsed = titleRevealTimer_ - appearTime;
         const float wave = std::sin(sceneTime_ * 2.2f + static_cast<float>(i) * 0.42f);
         const float pulse = 0.5f + 0.5f * std::sin(sceneTime_ * 3.0f + static_cast<float>(i) * 0.28f);
         const Vector2 basePos = titleLetterBasePositions_[i];
         const Vector2 baseSize = titleLetterBaseSizes_[i];
-        letter->SetPosition({ basePos.x, basePos.y + wave * 4.0f });
-        letter->SetSize({ baseSize.x * (1.0f + pulse * 0.025f), baseSize.y * (1.0f + pulse * 0.025f) });
-        letter->SetColor({ 0.88f + pulse * 0.12f, 0.96f + pulse * 0.04f, 1.0f, 1.0f });
+
+        if (revealElapsed < 0.0f) {
+            letter->SetVisible(false);
+            letter->SetPosition(basePos);
+            letter->SetSize({ baseSize.x * 0.65f, baseSize.y * 0.65f });
+            letter->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+            continue;
+        }
+
+        letter->SetVisible(true);
+        const float revealRate = Clamp01(revealElapsed / kTitleLetterPopDuration);
+        const float revealEase = EaseOutCubic(revealRate);
+        const float popEase = EaseOutBack(revealRate);
+        const float idleScale = 1.0f + pulse * 0.025f;
+        const float revealScale = std::clamp(0.55f + popEase * 0.48f, 0.55f, 1.12f);
+        const float scale = revealRate < 1.0f ? revealScale : idleScale;
+        const float dropOffset = (1.0f - revealEase) * -34.0f;
+
+        letter->SetPosition({ basePos.x, basePos.y + dropOffset + wave * 4.0f * revealEase });
+        letter->SetSize({ baseSize.x * scale, baseSize.y * scale });
+        letter->SetColor({
+            0.88f + pulse * 0.12f,
+            0.96f + pulse * 0.04f,
+            1.0f,
+            revealEase
+        });
     }
 
     const float pulse = 0.5f + 0.5f * std::sin(sceneTime_ * 5.4f);
     const Vector4 normalText = { 0.58f, 0.72f, 0.82f, 0.74f };
     const Vector4 selectedText = { 0.28f + pulse * 0.18f, 0.84f + pulse * 0.12f, 1.0f, 1.0f };
+    const float menuStartTime = static_cast<float>(titleLetters_.size()) * kTitleLetterInterval + kMenuRevealDelay;
+    const float menuAlpha = EaseOutCubic((titleRevealTimer_ - menuStartTime) / 0.28f);
+    const bool menuVisible = menuAlpha > 0.0f;
 
     for (int i = 0; i < static_cast<int>(MenuItem::Count); ++i) {
         MenuRow& row = menuRows_[static_cast<size_t>(i)];
@@ -335,21 +390,32 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         const float labelScale = selected ? 1.08f + pulse * 0.06f : 0.96f;
 
         if (row.backdrop) {
+            row.backdrop->SetVisible(menuVisible);
             const uint32_t handle = Sprite::LoadTexture(selected ? "ui/settings/settings_row_selected.png" : "ui/settings/settings_row.png");
             row.backdrop->SetTextureHandle(handle);
             const auto& metadata = TextureManager::GetInstance()->GetMetadata(handle);
             row.backdrop->SetTextureRect({ 0.0f, 0.0f }, { static_cast<float>(metadata.width), static_cast<float>(metadata.height) });
             row.backdrop->SetSize({ row.backdropBaseSize.x * rowScale, row.backdropBaseSize.y * rowScale });
-            row.backdrop->SetColor(selected
+            Vector4 backdropColor = selected
                 ? Vector4{ 0.38f + pulse * 0.12f, 0.90f, 1.0f, 0.98f }
-                : Vector4{ 0.42f, 0.68f, 0.80f, 0.54f });
+                : Vector4{ 0.42f, 0.68f, 0.80f, 0.54f };
+            backdropColor.w *= menuAlpha;
+            row.backdrop->SetColor(backdropColor);
         }
 
         if (row.label) {
+            row.label->SetVisible(menuVisible);
             row.label->SetSize({ row.labelBaseSize.x * labelScale, row.labelBaseSize.y * labelScale });
-            row.label->SetColor(selected ? selectedText : normalText);
+            Vector4 labelColor = selected ? selectedText : normalText;
+            labelColor.w *= menuAlpha;
+            row.label->SetColor(labelColor);
         }
     }
+}
+
+bool GameOverScene::IsTitleRevealComplete() const {
+    const float menuStartTime = static_cast<float>(titleLetters_.size()) * kTitleLetterInterval + kMenuRevealDelay;
+    return titleRevealTimer_ >= menuStartTime;
 }
 
 void GameOverScene::ChangeSelection(int direction) {
