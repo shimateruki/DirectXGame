@@ -1,0 +1,56 @@
+﻿{
+    "tool":  "Model LOD Builder",
+    "version":  1,
+    "generatedAt":  "2026-06-12T04:33:17",
+    "sourceModel":  "Characters/bat",
+    "sourceFile":  "Resources/3DModel/Characters/bat/bat.gltf",
+    "sourceExtension":  ".gltf",
+    "analyzeOnly":  true,
+    "supportedForGeneration":  false,
+    "source":  {
+                   "vertices":  70063,
+                   "indices":  395076,
+                   "triangles":  131692,
+                   "meshes":  4,
+                   "primitives":  4,
+                   "skins":  1,
+                   "animations":  1,
+                   "morphTargets":  0,
+                   "skinnedPrimitives":  4,
+                   "fileSizeBytes":  4486997
+               },
+    "safety":  {
+                   "supported":  false,
+                   "reasons":  [
+                                   "skins",
+                                   "animations",
+                                   "armature node",
+                                   "skinning attributes"
+                               ]
+               },
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Characters/bat",
+                     "file":  "Resources/3DModel/Characters/bat/bat.gltf",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  70063,
+                                   "indices":  395076,
+                                   "triangles":  131692,
+                                   "meshes":  4,
+                                   "primitives":  4,
+                                   "skins":  1,
+                                   "animations":  1,
+                                   "morphTargets":  0,
+                                   "skinnedPrimitives":  4,
+                                   "fileSizeBytes":  4486997
+                               }
+                 }
+             ],
+    "warnings":  [
+                     "glTF was skipped because automatic LOD could break this model: skins, animations, armature node, skinning attributes"
+                 ]
+}

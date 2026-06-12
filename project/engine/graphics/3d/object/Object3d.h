@@ -27,6 +27,7 @@ public:
     using DirectionalLight = MeshRenderer::DirectionalLight;
     using CameraForGPU = MeshRenderer::CameraForGPU;
     using Material = MeshRenderer::MaterialData;
+    using LodLevel = MeshRenderer::LodLevel;
 
     // ゲームロジック用パラメータ
     struct EntityParameter {
@@ -102,6 +103,17 @@ public:
     void SetModel(const std::string& modelName);
     Model* GetModel() const;
     std::string GetModelName() const;
+    void SetLodEnabled(bool enabled);
+    bool IsLodEnabled() const;
+    bool HasLodLevels() const;
+    const std::vector<LodLevel>& GetLodLevels() const;
+    void SetLodLevels(const std::vector<LodLevel>& levels);
+    void ClearLodLevels();
+    bool SetLodLevelDistance(int level, float distance);
+    bool ReloadLodManifest();
+    int GetActiveLodLevel() const;
+    std::string GetActiveLodModelName() const;
+    float GetLodCameraDistance() const;
 
     Vector4 GetColor() const;
     void SetColor(const Vector4& color);

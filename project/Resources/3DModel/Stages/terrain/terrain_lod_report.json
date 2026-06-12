@@ -1,0 +1,71 @@
+﻿{
+    "tool":  "Model LOD Builder",
+    "version":  1,
+    "generatedAt":  "2026-06-12T01:16:48",
+    "sourceModel":  "Stages/terrain",
+    "sourceFile":  "Resources/3DModel/Stages/terrain/terrain.obj",
+    "sourceExtension":  ".obj",
+    "analyzeOnly":  false,
+    "supportedForGeneration":  true,
+    "source":  {
+                   "vertices":  484,
+                   "uvs":  484,
+                   "normals":  428,
+                   "faces":  882,
+                   "triangles":  882,
+                   "materials":  1
+               },
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Stages/terrain",
+                     "file":  "Resources/3DModel/Stages/terrain/terrain.obj",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  484,
+                                   "uvs":  484,
+                                   "normals":  428,
+                                   "faces":  882,
+                                   "triangles":  882,
+                                   "materials":  1
+                               }
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Stages/terrain/terrain_lod1.obj",
+                     "file":  "Resources/3DModel/Stages/terrain/terrain_lod1.obj",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  197,
+                                   "faces":  352,
+                                   "triangles":  352,
+                                   "skippedFaces":  530,
+                                   "grid":  11
+                               },
+                     "triangleReduction":  0.600907029478458
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Stages/terrain/terrain_lod2.obj",
+                     "file":  "Resources/3DModel/Stages/terrain/terrain_lod2.obj",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  120,
+                                   "faces":  224,
+                                   "triangles":  224,
+                                   "skippedFaces":  658,
+                                   "grid":  8
+                               },
+                     "triangleReduction":  0.746031746031746
+                 }
+             ],
+    "warnings":  [
+
+                 ]
+}

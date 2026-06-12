@@ -1,0 +1,28 @@
+﻿{
+    "sourceModel":  "Stages/crown",
+    "sourceFile":  "Resources/3DModel/Stages/crown/crown.gltf",
+    "generatedAt":  "2026-06-12T04:11:13",
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Stages/crown",
+                     "distance":  0,
+                     "ratio":  1,
+                     "triangles":  1184
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Stages/crown/crown_lod1.obj",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "triangles":  576
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Stages/crown/crown_lod2.obj",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "triangles":  578
+                 }
+             ]
+}

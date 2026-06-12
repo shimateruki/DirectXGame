@@ -1,0 +1,91 @@
+{
+    "tool":  "Model LOD Builder",
+    "version":  1,
+    "generatedAt":  "2026-06-12T05:20:48",
+    "sourceModel":  "Item/heart",
+    "sourceFile":  "Resources/3DModel/Item/heart/heart.gltf",
+    "sourceExtension":  ".gltf",
+    "analyzeOnly":  false,
+    "supportedForGeneration":  true,
+    "source":  {
+                   "vertices":  2252,
+                   "indices":  9792,
+                   "triangles":  3264,
+                   "meshes":  1,
+                   "primitives":  1,
+                   "skins":  0,
+                   "animations":  0,
+                   "morphTargets":  0,
+                   "skinnedPrimitives":  0,
+                   "fileSizeBytes":  93675
+               },
+    "safety":  {
+                   "supported":  true,
+                   "reasons":  [
+
+                               ]
+               },
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Item/heart",
+                     "file":  "Resources/3DModel/Item/heart/heart.gltf",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  2252,
+                                   "indices":  9792,
+                                   "triangles":  3264,
+                                   "meshes":  1,
+                                   "primitives":  1,
+                                   "skins":  0,
+                                   "animations":  0,
+                                   "morphTargets":  0,
+                                   "skinnedPrimitives":  0,
+                                   "fileSizeBytes":  93675
+                               }
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Item/heart/heart_lod1.gltf",
+                     "file":  "Resources/3DModel/Item/heart/heart_lod1.gltf",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  2000,
+                                   "faces":  1828,
+                                   "triangles":  1828,
+                                   "skippedFaces":  1436,
+                                   "format":  "gltf",
+                                   "fileSizeBytes":  90870,
+                                   "grid":  18
+                               },
+                     "triangleReduction":  0.43995098039215685,
+                     "storageDeltaBytes":  -2805
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Item/heart/heart_lod2.gltf",
+                     "file":  "Resources/3DModel/Item/heart/heart_lod2.gltf",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  1751,
+                                   "faces":  1328,
+                                   "triangles":  1328,
+                                   "skippedFaces":  1936,
+                                   "format":  "gltf",
+                                   "fileSizeBytes":  76902,
+                                   "grid":  14
+                               },
+                     "triangleReduction":  0.59313725490196079,
+                     "storageDeltaBytes":  -16773
+                 }
+             ],
+    "warnings":  [
+                     "Static glTF LOD is generated as glTF+bin for far-distance rendering. Skin, animation, morph and PBR material data are intentionally not copied."
+                 ]
+}

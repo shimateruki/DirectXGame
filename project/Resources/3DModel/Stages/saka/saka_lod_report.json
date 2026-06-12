@@ -1,0 +1,71 @@
+﻿{
+    "tool":  "Model LOD Builder",
+    "version":  1,
+    "generatedAt":  "2026-06-12T03:20:55",
+    "sourceModel":  "Stages/saka",
+    "sourceFile":  "Resources/3DModel/Stages/saka/saka.obj",
+    "sourceExtension":  ".obj",
+    "analyzeOnly":  false,
+    "supportedForGeneration":  true,
+    "source":  {
+                   "vertices":  8,
+                   "uvs":  14,
+                   "normals":  7,
+                   "faces":  12,
+                   "triangles":  12,
+                   "materials":  0
+               },
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Stages/saka",
+                     "file":  "Resources/3DModel/Stages/saka/saka.obj",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  8,
+                                   "uvs":  14,
+                                   "normals":  7,
+                                   "faces":  12,
+                                   "triangles":  12,
+                                   "materials":  0
+                               }
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Stages/saka/saka_lod1.obj",
+                     "file":  "Resources/3DModel/Stages/saka/saka_lod1.obj",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  6,
+                                   "faces":  8,
+                                   "triangles":  8,
+                                   "skippedFaces":  4,
+                                   "grid":  4
+                               },
+                     "triangleReduction":  0.33333333333333337
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Stages/saka/saka_lod2.obj",
+                     "file":  "Resources/3DModel/Stages/saka/saka_lod2.obj",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  6,
+                                   "faces":  8,
+                                   "triangles":  8,
+                                   "skippedFaces":  4,
+                                   "grid":  4
+                               },
+                     "triangleReduction":  0.33333333333333337
+                 }
+             ],
+    "warnings":  [
+
+                 ]
+}

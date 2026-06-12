@@ -16,6 +16,7 @@ public:
 
     // モデル名で「探して、なければ読み込む」賢い関数に
     Model* LoadModel(const std::string& modelName);
+    bool ReloadModel(const std::string& modelName);
     /// <summary>
     /// ロード済みのすべてのモデル名を取得する
     /// </summary>
@@ -27,6 +28,7 @@ private:
     ~ModelManager() = default;
     ModelManager(const ModelManager&) = delete;
     ModelManager& operator=(const ModelManager&) = delete;
+    bool ResolveModelPath(const std::string& modelName, std::string& directoryPath, std::string& fileName) const;
 
 private:
     static ModelManager* instance;

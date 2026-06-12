@@ -51,7 +51,9 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         if (models_.contains(extensionlessKey)) {
             return models_[extensionlessKey].get();
         }
-        if (!parentPath.empty() && models_.contains(parentPath)) {
+        const bool isFolderMainModel = !parentPath.empty() &&
+            std::filesystem::path(parentPath).filename().string() == stem;
+        if (isFolderMainModel && models_.contains(parentPath)) {
             return models_[parentPath].get();
         }
     }

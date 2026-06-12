@@ -265,6 +265,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     eventLinkGraph_.Initialize(sceneManager, this);
     textSpriteGenerator_.Initialize(sceneManager, this);
+    modelOptimizerWindow_.Initialize(this);
 
     const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
     ddsCacheNotificationReadOffset_ = 0;

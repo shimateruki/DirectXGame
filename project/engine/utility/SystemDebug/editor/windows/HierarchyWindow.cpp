@@ -472,6 +472,10 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetTextSpriteGenerator());
         }
+        if (editor_->GetModelOptimizerWindow() && ImGui::Selectable("  " ICON_FA_COMPRESS_ARROWS_ALT " モデル最適化 (Model Optimizer)", currentObj == editor_->GetModelOptimizerWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetModelOptimizerWindow());
+        }
         ImGui::Separator();
         if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {
             editor_->SetSelectedObject(nullptr);

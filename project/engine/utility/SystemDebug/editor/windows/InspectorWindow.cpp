@@ -597,6 +597,74 @@ void InspectorWindow::Draw() {
             }
 
             ImGui::Separator();
+            if (ImGui::CollapsingHeader(ICON_FA_COMPRESS_ARROWS_ALT " LOD / 軽量モデル")) {
+                MeshRenderer* renderer = selectedObject->GetMeshRenderer();
+                if (!renderer || selectedObject->GetModelName().empty()) {
+                    ImGui::TextDisabled("モデルが設定されていません。");
+                }
+                else {
+                    bool lodEnabled = selectedObject->IsLodEnabled();
+                    if (ImGui::Checkbox("距離LODを使う", &lodEnabled)) {
+                        selectedObject->SetLodEnabled(lodEnabled);
+                    }
+
+                    const int activeLodLevel = selectedObject->GetActiveLodLevel();
+                    const float lodDistance = selectedObject->GetLodCameraDistance();
+                    const std::string activeLodModel = selectedObject->GetActiveLodModelName();
+                    ImGui::TextColored(
+                        activeLodLevel == 0 ? ImVec4(0.75f, 0.9f, 1.0f, 1.0f) : ImVec4(0.45f, 1.0f, 0.55f, 1.0f),
+                        "描画中: LOD%d / 距離 %.1f",
+                        activeLodLevel,
+                        lodDistance);
+                    ImGui::TextDisabled("使用モデル: %s", activeLodModel.c_str());
+
+                    if (ImGui::Button(ICON_FA_SYNC " LOD設定を再読込")) {
+                        if (selectedObject->ReloadLodManifest()) {
+                            DebugConsole::GetInstance()->AddLog("LOD manifest reloaded: " + selectedObject->GetModelName());
+                        }
+                        else {
+                            DebugConsole::GetInstance()->AddLog("LOD manifest not found: " + selectedObject->GetModelName());
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button(ICON_FA_TRASH " LODを解除")) {
+                        selectedObject->ClearLodLevels();
+                    }
+
+                    const auto& lodLevels = selectedObject->GetLodLevels();
+                    if (lodLevels.empty()) {
+                        ImGui::TextWrapped("LOD設定がありません。モデル最適化ツールでLODを生成するか、*_lod.jsonを配置してください。");
+                    }
+                    else if (ImGui::BeginTable("ObjectLodLevels", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                        ImGui::TableSetupColumn("LOD", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+                        ImGui::TableSetupColumn("切替距離", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                        ImGui::TableSetupColumn("モデル", ImGuiTableColumnFlags_WidthStretch);
+                        ImGui::TableHeadersRow();
+
+                        for (const auto& lod : lodLevels) {
+                            ImGui::TableNextRow();
+                            if (lod.level == activeLodLevel) {
+                                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(75, 160, 95, 95));
+                            }
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::Text("LOD%d", lod.level);
+
+                            ImGui::TableSetColumnIndex(1);
+                            float distance = lod.distance;
+                            const std::string distanceLabel = "##lod_distance_" + std::to_string(lod.level);
+                            if (ImGui::DragFloat(distanceLabel.c_str(), &distance, 0.5f, 0.0f, 5000.0f, "%.1f")) {
+                                selectedObject->SetLodLevelDistance(lod.level, distance);
+                            }
+
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::TextWrapped("%s", lod.modelName.c_str());
+                        }
+                        ImGui::EndTable();
+                    }
+                }
+            }
+
+            ImGui::Separator();
             if (ImGui::CollapsingHeader(ICON_FA_FIRE " パーティクル")) {
                 // --- CPU Particle (Old) ---
                 const auto& cpuParamsMap = ParticleManager::GetInstance()->GetParamsMap();

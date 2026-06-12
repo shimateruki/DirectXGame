@@ -374,6 +374,57 @@ std::string Object3d::GetModelName() const {
     return meshRenderer_ ? meshRenderer_->GetModelName() : "";
 }
 
+void Object3d::SetLodEnabled(bool enabled) {
+    if (meshRenderer_) {
+        meshRenderer_->SetLodEnabled(enabled);
+    }
+}
+
+bool Object3d::IsLodEnabled() const {
+    return meshRenderer_ ? meshRenderer_->IsLodEnabled() : false;
+}
+
+bool Object3d::HasLodLevels() const {
+    return meshRenderer_ ? meshRenderer_->HasLodLevels() : false;
+}
+
+const std::vector<Object3d::LodLevel>& Object3d::GetLodLevels() const {
+    static const std::vector<LodLevel> empty;
+    return meshRenderer_ ? meshRenderer_->GetLodLevels() : empty;
+}
+
+void Object3d::SetLodLevels(const std::vector<LodLevel>& levels) {
+    if (meshRenderer_) {
+        meshRenderer_->SetLodLevels(levels);
+    }
+}
+
+void Object3d::ClearLodLevels() {
+    if (meshRenderer_) {
+        meshRenderer_->ClearLodLevels();
+    }
+}
+
+bool Object3d::SetLodLevelDistance(int level, float distance) {
+    return meshRenderer_ ? meshRenderer_->SetLodLevelDistance(level, distance) : false;
+}
+
+bool Object3d::ReloadLodManifest() {
+    return meshRenderer_ ? meshRenderer_->LoadLodManifestForModel(GetModelName()) : false;
+}
+
+int Object3d::GetActiveLodLevel() const {
+    return meshRenderer_ ? meshRenderer_->GetActiveLodLevel() : 0;
+}
+
+std::string Object3d::GetActiveLodModelName() const {
+    return meshRenderer_ ? meshRenderer_->GetActiveModelName() : GetModelName();
+}
+
+float Object3d::GetLodCameraDistance() const {
+    return meshRenderer_ ? meshRenderer_->GetCameraDistanceToObject() : 0.0f;
+}
+
 Vector4 Object3d::GetColor() const {
     return meshRenderer_ ? meshRenderer_->GetColor() : Vector4{ 1,1,1,1 };
 }
@@ -661,6 +712,10 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->SetEnableEnvMap(other->GetEnableEnvMap());
         this->SetEnvIntensity(other->GetEnvIntensity());
         this->SetEmissive(other->GetEmissive());
+
+        // LOD設定
+        this->SetLodEnabled(other->IsLodEnabled());
+        this->SetLodLevels(other->GetLodLevels());
     }
 
     // 7. アニメーション
@@ -781,6 +836,19 @@ json Object3d::ExportToJson() {
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
+    if (HasLodLevels()) {
+        json lodJson;
+        lodJson["enabled"] = IsLodEnabled();
+        lodJson["levels"] = json::array();
+        for (const auto& lod : GetLodLevels()) {
+            json levelJson;
+            levelJson["level"] = lod.level;
+            levelJson["modelName"] = lod.modelName;
+            levelJson["distance"] = lod.distance;
+            lodJson["levels"].push_back(levelJson);
+        }
+        d["lod"] = lodJson;
+    }
     if (GetMaterialType() >= 8 && GetMaterialType() <= 22 && GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
         auto* water = GetMeshRenderer()->GetWaterParamData();
         json jw;
@@ -911,6 +979,25 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());
+    if (j.contains("lod") && j["lod"].is_object()) {
+        const auto& lodJson = j["lod"];
+        const bool enabled = lodJson.value("enabled", true);
+        if (lodJson.contains("levels") && lodJson["levels"].is_array()) {
+            std::vector<LodLevel> levels;
+            for (const auto& levelJson : lodJson["levels"]) {
+                if (!levelJson.is_object()) continue;
+                LodLevel level;
+                level.level = levelJson.value("level", 0);
+                level.modelName = levelJson.value("modelName", "");
+                level.distance = levelJson.value("distance", 0.0f);
+                if (level.level > 0 && !level.modelName.empty()) {
+                    levels.push_back(level);
+                }
+            }
+            SetLodLevels(levels);
+        }
+        SetLodEnabled(enabled);
+    }
     if (j.contains("waterParam") && GetMaterialType() >= 8 && GetMaterialType() <= 22) {
         if (GetMeshRenderer() && GetMeshRenderer()->GetWaterParamData()) {
             auto* water = GetMeshRenderer()->GetWaterParamData();

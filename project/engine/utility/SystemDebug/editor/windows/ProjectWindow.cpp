@@ -14,10 +14,30 @@
 #include "CameraManager.h"
 #include "Object3dCommon.h"
 #include "IconsFontAwesome5.h"
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 
 
 namespace fs = std::filesystem;
+
+namespace {
+std::string ToLowerAscii(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return text;
+}
+
+bool IsModelAssetFile(const fs::path& path) {
+    const std::string ext = ToLowerAscii(path.extension().string());
+    return ext == ".obj" || ext == ".gltf" || ext == ".glb";
+}
+
+bool IsGeneratedLodAsset(const fs::path& path) {
+    return ToLowerAscii(path.stem().string()).find("_lod") != std::string::npos;
+}
+}
 
 void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
     editor_ = editor;
@@ -507,6 +527,54 @@ void ProjectWindow::Draw() {
                             ImGui::EndGroup();
                             ImGui::PopID();
                         }
+                    }
+                    else if (entry.is_regular_file() && IsModelAssetFile(entry.path())) {
+                        const std::string fileName = entry.path().filename().string();
+                        std::string payloadName = fs::relative(entry.path(), baseDirectory).generic_string();
+                        std::replace(payloadName.begin(), payloadName.end(), '\\', '/');
+                        const bool isGeneratedLod = IsGeneratedLodAsset(entry.path());
+
+                        if (thumbnailAlbum_.find(payloadName) == thumbnailAlbum_.end()) {
+                            CreateThumbnailResource(payloadName);
+                        }
+
+                        uint32_t srvHandle = thumbnailAlbum_[payloadName].srvHandle;
+                        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = SRVManager::GetInstance()->GetGPUDescriptorHandle(srvHandle);
+
+                        ImGui::TableNextColumn();
+                        ImGui::PushID(payloadName.c_str());
+                        ImGui::BeginGroup();
+
+                        if (isGeneratedLod) {
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.28f, 0.05f, 0.9f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.55f, 0.43f, 0.08f, 1.0f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.70f, 0.52f, 0.10f, 1.0f));
+                        }
+                        else {
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.1f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
+                        }
+                        ImGui::ImageButton(payloadName.c_str(), (ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(thumbnailSize, thumbnailSize));
+                        ImGui::PopStyleColor(3);
+
+                        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                            ImGui::SetDragDropPayload("MODEL_ASSET", payloadName.c_str(), payloadName.size() + 1);
+                            ImGui::Image((ImTextureID)(uintptr_t)gpuHandle.ptr, ImVec2(32.0f, 32.0f));
+                            ImGui::SameLine();
+                            ImGui::Text("Place: %s", fileName.c_str());
+                            ImGui::EndDragDropSource();
+                        }
+
+                        if (isGeneratedLod) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.25f, 1.0f), "LOD");
+                        }
+                        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + thumbnailSize);
+                        ImGui::TextWrapped("%s", fileName.c_str());
+                        ImGui::PopTextWrapPos();
+
+                        ImGui::EndGroup();
+                        ImGui::PopID();
                     }
                 }
                 ImGui::EndTable();

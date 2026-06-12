@@ -1,0 +1,121 @@
+{
+    "asset":  {
+                  "version":  "2.0",
+                  "generator":  "GE3 Model LOD Builder"
+              },
+    "scene":  0,
+    "scenes":  [
+                   {
+                       "nodes":  [
+                                     0
+                                 ]
+                   }
+               ],
+    "nodes":  [
+                  {
+                      "name":  "heart_lod1",
+                      "mesh":  0
+                  }
+              ],
+    "meshes":  [
+                   {
+                       "name":  "heart_lod1",
+                       "primitives":  [
+                                          {
+                                              "attributes":  {
+                                                                 "POSITION":  0,
+                                                                 "NORMAL":  1,
+                                                                 "TEXCOORD_0":  2
+                                                             },
+                                              "indices":  3,
+                                              "material":  0,
+                                              "mode":  4
+                                          }
+                                      ]
+                   }
+               ],
+    "materials":  [
+                      {
+                          "name":  "LOD_Default",
+                          "doubleSided":  true,
+                          "pbrMetallicRoughness":  {
+                                                       "baseColorFactor":  [
+                                                                               1,
+                                                                               1,
+                                                                               1,
+                                                                               1
+                                                                           ],
+                                                       "metallicFactor":  0,
+                                                       "roughnessFactor":  0.7
+                                                   }
+                      }
+                  ],
+    "buffers":  [
+                    {
+                        "uri":  "heart_lod1.bin",
+                        "byteLength":  85936
+                    }
+                ],
+    "bufferViews":  [
+                        {
+                            "buffer":  0,
+                            "byteOffset":  0,
+                            "byteLength":  24000,
+                            "target":  34962
+                        },
+                        {
+                            "buffer":  0,
+                            "byteOffset":  24000,
+                            "byteLength":  24000,
+                            "target":  34962
+                        },
+                        {
+                            "buffer":  0,
+                            "byteOffset":  48000,
+                            "byteLength":  16000,
+                            "target":  34962
+                        },
+                        {
+                            "buffer":  0,
+                            "byteOffset":  64000,
+                            "byteLength":  21936,
+                            "target":  34963
+                        }
+                    ],
+    "accessors":  [
+                      {
+                          "bufferView":  0,
+                          "componentType":  5126,
+                          "count":  2000,
+                          "type":  "VEC3",
+                          "min":  [
+                                      -1.419545,
+                                      -0.881252,
+                                      -0.711985
+                                  ],
+                          "max":  [
+                                      1.419545,
+                                      1.401111,
+                                      0.711984
+                                  ]
+                      },
+                      {
+                          "bufferView":  1,
+                          "componentType":  5126,
+                          "count":  2000,
+                          "type":  "VEC3"
+                      },
+                      {
+                          "bufferView":  2,
+                          "componentType":  5126,
+                          "count":  2000,
+                          "type":  "VEC2"
+                      },
+                      {
+                          "bufferView":  3,
+                          "componentType":  5125,
+                          "count":  5484,
+                          "type":  "SCALAR"
+                      }
+                  ]
+}

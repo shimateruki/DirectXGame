@@ -396,6 +396,9 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -1477,6 +1480,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h">

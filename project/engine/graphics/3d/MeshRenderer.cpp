@@ -5,6 +5,59 @@
 #include "LightManager.h"
 #include <cassert>
 #include <SrvManager.h>
+#include "json.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
+
+namespace {
+namespace fs = std::filesystem;
+
+std::string NormalizeSlashes(std::string text) {
+    std::replace(text.begin(), text.end(), '\\', '/');
+    return text;
+}
+
+std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
+    std::vector<fs::path> candidates;
+    if (modelName.empty()) {
+        return candidates;
+    }
+
+    const fs::path root = "Resources/3DModel";
+    const fs::path modelPath = fs::path(modelName);
+    const fs::path parent = modelPath.parent_path();
+    const std::string stem = modelPath.stem().string();
+    const std::string lodFileName = stem + "_lod.json";
+
+    if (!modelPath.extension().empty()) {
+        candidates.push_back(root / parent / lodFileName);
+        candidates.push_back(root / parent / stem / lodFileName);
+    } else {
+        candidates.push_back(root / parent / stem / lodFileName);
+        candidates.push_back(root / parent / lodFileName);
+    }
+
+    return candidates;
+}
+
+bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
+    std::ifstream file(path);
+    if (!file) {
+        return false;
+    }
+
+    try {
+        file >> outJson;
+        return true;
+    }
+    catch (...) {
+        return false;
+    }
+}
+}
 
 MeshRenderer::MeshRenderer(Transform* transform) {
     assert(transform);
@@ -189,7 +242,8 @@ void MeshRenderer::Update() {
 }
 
 void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
-    if (!model_ || !common_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_) return;
     common_->SetGraphicsCommand();
     common_->SetPipelineState(blendMode_);
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -203,7 +257,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     uint32_t shadowMapSrvHandle = common_->GetDxCommon()->GetShadowMapSrvHandle();
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
     // ModelのDrawを呼ぶ
-    model_->Draw(
+    drawModel->Draw(
         wvpResource_.Get(),
         LightManager::GetInstance()->GetDirectionalLightResource(),
         cameraResource_.Get(),
@@ -213,7 +267,8 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     );
 }
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    if (!model_ || !common_ || !waterParamResource_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !waterParamResource_) return;
 
     common_->SetWaterGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -226,10 +281,11 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     //  4番目にカラーテクスチャをセット
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
 
-    model_->DrawMeshOnly();
+    drawModel->DrawMeshOnly();
 }
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    if (!model_ || !common_ || !waterParamResource_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !waterParamResource_) return;
 
     common_->SetMagmaGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -240,11 +296,12 @@ void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
 
-    model_->DrawMeshOnly();
+    drawModel->DrawMeshOnly();
 }
 
 void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    if (!model_ || !common_ || !waterParamResource_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !waterParamResource_) return;
 
     common_->SetIceGraphicsCommand(); 
     // (以下、DrawMagmaと全く同じ)
@@ -254,10 +311,11 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
-    model_->DrawMeshOnly();
+    drawModel->DrawMeshOnly();
 }
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    if (!model_ || !common_ || !waterParamResource_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !waterParamResource_) return;
 
     if (!fireProxyModel_) {
         InitializeFireProxyModel();
@@ -270,12 +328,13 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
-    Model* drawModel = fireProxyModel_ ? fireProxyModel_.get() : model_;
+    drawModel = fireProxyModel_ ? fireProxyModel_.get() : drawModel;
     drawModel->DrawMeshOnly();
 }
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel) {
-    if (!model_ || !common_ || !waterParamResource_ || !setGraphicsCommand) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !waterParamResource_ || !setGraphicsCommand) return;
 
     if (useProxyModel && !fireProxyModel_) {
         InitializeFireProxyModel();
@@ -288,7 +347,7 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
-    Model* drawModel = (useProxyModel && fireProxyModel_) ? fireProxyModel_.get() : model_;
+    drawModel = (useProxyModel && fireProxyModel_) ? fireProxyModel_.get() : drawModel;
     drawModel->DrawMeshOnly();
 }
 
@@ -363,9 +422,153 @@ void MeshRenderer::InitializeFireProxyModel() {
     fireProxyModel_->CreateFromVertices(modelCommon, vertices, indices);
 }
 
+void MeshRenderer::SetModel(Model* model) {
+    model_ = model;
+    modelName_.clear();
+    ClearLodLevels();
+}
+
 void MeshRenderer::SetModel(const std::string& modelName) {
     modelName_ = modelName;
     model_ = ModelManager::GetInstance()->LoadModel(modelName);
+    LoadLodManifestForModel(modelName);
+}
+
+void MeshRenderer::SetLodLevels(const std::vector<LodLevel>& levels) {
+    lodLevels_.clear();
+
+    for (LodLevel level : levels) {
+        if (level.level <= 0 || level.modelName.empty()) {
+            continue;
+        }
+        if (!level.model) {
+            level.model = ModelManager::GetInstance()->LoadModel(level.modelName);
+        }
+        if (level.model) {
+            lodLevels_.push_back(level);
+        }
+    }
+
+    std::sort(lodLevels_.begin(), lodLevels_.end(), [](const LodLevel& lhs, const LodLevel& rhs) {
+        return lhs.distance < rhs.distance;
+    });
+    activeLodLevel_ = 0;
+}
+
+void MeshRenderer::ClearLodLevels() {
+    lodLevels_.clear();
+    activeLodLevel_ = 0;
+}
+
+bool MeshRenderer::SetLodLevelDistance(int level, float distance) {
+    bool changed = false;
+    for (auto& lod : lodLevels_) {
+        if (lod.level == level) {
+            lod.distance = (std::max)(0.0f, distance);
+            changed = true;
+            break;
+        }
+    }
+
+    if (changed) {
+        std::sort(lodLevels_.begin(), lodLevels_.end(), [](const LodLevel& lhs, const LodLevel& rhs) {
+            return lhs.distance < rhs.distance;
+        });
+    }
+    return changed;
+}
+
+bool MeshRenderer::LoadLodManifestForModel(const std::string& modelName) {
+    ClearLodLevels();
+
+    nlohmann::json manifest;
+    bool loaded = false;
+    for (const fs::path& candidate : MakeLodManifestCandidates(modelName)) {
+        if (ReadJsonFile(candidate, manifest)) {
+            loaded = true;
+            break;
+        }
+    }
+    if (!loaded || !manifest.contains("lods") || !manifest["lods"].is_array()) {
+        return false;
+    }
+
+    std::vector<LodLevel> levels;
+    for (const auto& lodJson : manifest["lods"]) {
+        if (!lodJson.is_object()) continue;
+        const int level = lodJson.value("level", 0);
+        if (level <= 0) continue;
+
+        const std::string lodModelName = lodJson.value("modelName", "");
+        if (lodModelName.empty()) continue;
+
+        LodLevel levelData;
+        levelData.level = level;
+        levelData.modelName = NormalizeSlashes(lodModelName);
+        levelData.distance = lodJson.value("distance", 0.0f);
+        levelData.model = ModelManager::GetInstance()->LoadModel(levelData.modelName);
+        if (levelData.model) {
+            levels.push_back(levelData);
+        }
+    }
+
+    SetLodLevels(levels);
+    return !lodLevels_.empty();
+}
+
+int MeshRenderer::GetActiveLodLevel() const {
+    ResolveDrawModel();
+    return activeLodLevel_;
+}
+
+std::string MeshRenderer::GetActiveModelName() const {
+    ResolveDrawModel();
+    if (activeLodLevel_ == 0) {
+        return modelName_;
+    }
+
+    for (const auto& lod : lodLevels_) {
+        if (lod.level == activeLodLevel_) {
+            return lod.modelName;
+        }
+    }
+    return modelName_;
+}
+
+float MeshRenderer::GetCameraDistanceToObject() const {
+    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    if (!camera || !transform_) {
+        return 0.0f;
+    }
+
+    const Vector3 cameraPos = camera->GetEye();
+    const Vector3 objectPos = {
+        transform_->matWorld.m[3][0],
+        transform_->matWorld.m[3][1],
+        transform_->matWorld.m[3][2]
+    };
+    const float dx = cameraPos.x - objectPos.x;
+    const float dy = cameraPos.y - objectPos.y;
+    const float dz = cameraPos.z - objectPos.z;
+    return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+Model* MeshRenderer::ResolveDrawModel() const {
+    activeLodLevel_ = 0;
+    if (!model_ || !lodEnabled_ || lodLevels_.empty()) {
+        return model_;
+    }
+
+    const float distance = GetCameraDistanceToObject();
+    Model* drawModel = model_;
+    for (const auto& lod : lodLevels_) {
+        if (distance >= lod.distance && lod.model) {
+            drawModel = lod.model;
+            activeLodLevel_ = lod.level;
+        }
+    }
+
+    return drawModel;
 }
 
 void MeshRenderer::SetColor(const Vector4& color) {
@@ -440,13 +643,14 @@ void MeshRenderer::SetTexture(const std::string& texturePath) {
 
 
 void MeshRenderer::DrawShadow() {
-    if (!model_ || !common_ || !shadowWvpResource_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !shadowWvpResource_) return;
     common_->SetShadowGraphicsCommand();
     // 影用のパイプラインに変更
     common_->SetShadowPipelineState();
 
     // 軽量版のドローコールを呼ぶ
-    model_->DrawShadow(shadowWvpResource_.Get());
+    drawModel->DrawShadow(shadowWvpResource_.Get());
 }
 
 void MeshRenderer::SetShadowCommonState() {
@@ -456,12 +660,14 @@ void MeshRenderer::SetShadowCommonState() {
 }
 
 void MeshRenderer::DrawShadowOnly() {
-    if (!model_ || !shadowWvpResource_) return;
-    model_->DrawShadow(shadowWvpResource_.Get());
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !shadowWvpResource_) return;
+    drawModel->DrawShadow(shadowWvpResource_.Get());
 }
 
 void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
-    if (!model_ || !common_ || !localFogResource_) return;
+    Model* drawModel = ResolveDrawModel();
+    if (!drawModel || !common_ || !localFogResource_) return;
 
     common_->SetLocalFogGraphicsCommand();
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
@@ -473,7 +679,7 @@ void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(3, localFogResource_->GetGPUVirtualAddress());
 
     // [0] にWVP、[1] にボーンが自動セットされる
-    model_->DrawShadow(wvpResource_.Get());
+    drawModel->DrawShadow(wvpResource_.Get());
 }
 void MeshRenderer::SetEnableEnvMap(bool enable) {
     if (materialData_) materialData_->enableEnvMap = enable ? 1 : 0;

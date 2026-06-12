@@ -5,6 +5,8 @@
 #include "engine/utility/math/Math.h"
 #include <wrl.h>
 #include <memory>
+#include <string>
+#include <vector>
 
 class Object3d; // 前方宣言
 
@@ -91,6 +93,13 @@ public:
         Vector3 cameraWorldPosition;
         float billboardScale;
     };
+
+    struct LodLevel {
+        int level = 0;
+        std::string modelName;
+        float distance = 0.0f;
+        Model* model = nullptr;
+    };
 public:
     // コンストラクタ: 描画対象のTransformを受け取る
     MeshRenderer(Transform* transform);
@@ -106,10 +115,22 @@ public:
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     // --- アクセッサ (Setters) ---
-    void SetModel(Model* model) { model_ = model; modelName_.clear(); }
+    void SetModel(Model* model);
     void SetModel(const std::string& modelName);
     Model* GetModel() const { return model_; }
     const std::string& GetModelName() const { return modelName_; }
+
+    void SetLodEnabled(bool enabled) { lodEnabled_ = enabled; }
+    bool IsLodEnabled() const { return lodEnabled_; }
+    bool HasLodLevels() const { return !lodLevels_.empty(); }
+    const std::vector<LodLevel>& GetLodLevels() const { return lodLevels_; }
+    void SetLodLevels(const std::vector<LodLevel>& levels);
+    void ClearLodLevels();
+    bool SetLodLevelDistance(int level, float distance);
+    bool LoadLodManifestForModel(const std::string& modelName);
+    int GetActiveLodLevel() const;
+    std::string GetActiveModelName() const;
+    float GetCameraDistanceToObject() const;
 
     void SetColor(const Vector4& color);
     void SetBlendMode(BlendMode blendMode) { blendMode_ = blendMode; }
@@ -178,6 +199,7 @@ public:
 private:
     void InitializeFireProxyModel();
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false);
+    Model* ResolveDrawModel() const;
 
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -186,6 +208,10 @@ private:
     // モデル
     Model* model_ = nullptr;
     std::string modelName_;
+
+    bool lodEnabled_ = true;
+    std::vector<LodLevel> lodLevels_;
+    mutable int activeLodLevel_ = 0;
 
     // 描画設定
     BlendMode blendMode_ = BlendMode::kNormal;

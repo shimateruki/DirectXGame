@@ -1,0 +1,91 @@
+{
+    "tool":  "Model LOD Builder",
+    "version":  1,
+    "generatedAt":  "2026-06-12T13:59:11",
+    "sourceModel":  "Gimmicks/star",
+    "sourceFile":  "Resources/3DModel/Gimmicks/star/star.gltf",
+    "sourceExtension":  ".gltf",
+    "analyzeOnly":  false,
+    "supportedForGeneration":  true,
+    "source":  {
+                   "vertices":  100,
+                   "indices":  120,
+                   "triangles":  40,
+                   "meshes":  1,
+                   "primitives":  1,
+                   "skins":  0,
+                   "animations":  0,
+                   "morphTargets":  0,
+                   "skinnedPrimitives":  0,
+                   "fileSizeBytes":  8833
+               },
+    "safety":  {
+                   "supported":  true,
+                   "reasons":  [
+
+                               ]
+               },
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Gimmicks/star",
+                     "file":  "Resources/3DModel/Gimmicks/star/star.gltf",
+                     "distance":  0,
+                     "ratio":  1,
+                     "generated":  false,
+                     "stats":  {
+                                   "vertices":  100,
+                                   "indices":  120,
+                                   "triangles":  40,
+                                   "meshes":  1,
+                                   "primitives":  1,
+                                   "skins":  0,
+                                   "animations":  0,
+                                   "morphTargets":  0,
+                                   "skinnedPrimitives":  0,
+                                   "fileSizeBytes":  8833
+                               }
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Gimmicks/star/star_lod1.gltf",
+                     "file":  "Resources/3DModel/Gimmicks/star/star_lod1.gltf",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  60,
+                                   "faces":  20,
+                                   "triangles":  20,
+                                   "skippedFaces":  20,
+                                   "format":  "gltf",
+                                   "fileSizeBytes":  7074,
+                                   "grid":  7
+                               },
+                     "triangleReduction":  0.5,
+                     "storageDeltaBytes":  -1759
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Gimmicks/star/star_lod2.gltf",
+                     "file":  "Resources/3DModel/Gimmicks/star/star_lod2.gltf",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "generated":  true,
+                     "stats":  {
+                                   "vertices":  60,
+                                   "faces":  20,
+                                   "triangles":  20,
+                                   "skippedFaces":  20,
+                                   "format":  "gltf",
+                                   "fileSizeBytes":  7074,
+                                   "grid":  5
+                               },
+                     "triangleReduction":  0.5,
+                     "storageDeltaBytes":  -1759
+                 }
+             ],
+    "warnings":  [
+                     "Static glTF LOD is generated as glTF+bin for far-distance rendering. Skin, animation, morph and PBR material data are intentionally not copied."
+                 ]
+}

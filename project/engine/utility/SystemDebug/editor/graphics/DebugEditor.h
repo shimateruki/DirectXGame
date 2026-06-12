@@ -32,6 +32,7 @@
 #include "SceneSavePreview.h"
 #include "EventLinkGraph.h"
 #include "TextSpriteGenerator.h"
+#include "ModelOptimizerWindow.h"
 
 
 // ========================================================================
@@ -201,6 +202,7 @@ public:
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
     TextSpriteGenerator* GetTextSpriteGenerator() { return &textSpriteGenerator_; }
+    ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
@@ -366,6 +368,7 @@ private:
     SceneSavePreview sceneSavePreview_;
     EventLinkGraph eventLinkGraph_;
     TextSpriteGenerator textSpriteGenerator_;
+    ModelOptimizerWindow modelOptimizerWindow_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     DebrisEffectEditor* debrisEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;

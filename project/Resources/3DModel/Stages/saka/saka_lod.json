@@ -1,0 +1,28 @@
+﻿{
+    "sourceModel":  "Stages/saka",
+    "sourceFile":  "Resources/3DModel/Stages/saka/saka.obj",
+    "generatedAt":  "2026-06-12T03:20:55",
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Stages/saka",
+                     "distance":  0,
+                     "ratio":  1,
+                     "triangles":  12
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Stages/saka/saka_lod1.obj",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "triangles":  8
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Stages/saka/saka_lod2.obj",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "triangles":  8
+                 }
+             ]
+}

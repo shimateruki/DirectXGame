@@ -1,0 +1,14 @@
+﻿{
+    "sourceModel":  "Characters/eye",
+    "sourceFile":  "Resources/3DModel/Characters/eye/eye.gltf",
+    "generatedAt":  "2026-06-12T02:58:28",
+    "lods":  [
+                 {
+                     "level":  0,
+                     "modelName":  "Characters/eye",
+                     "distance":  0,
+                     "ratio":  1,
+                     "triangles":  1312
+                 }
+             ]
+}
