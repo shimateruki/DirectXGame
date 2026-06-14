@@ -69,6 +69,8 @@ public:
     Player* GetPlayer() const override { return player_; }
     void SetPlayer(Player* player) override { player_ = player; }
 
+    void RefreshDebugStageStates();
+
 
 
 
@@ -77,12 +79,17 @@ private:
     void ApplyStageGateStates();
     bool IsStageUnlocked(int stageIndex) const;
     void EnterSelectedStage();
-    GimmickStageGate* FindNearestStageGate(float* outDistance) const;
+    bool IsStageGateObject(const Object3d* object) const;
+    int GetStageGateIndex(const Object3d* object) const;
+    Object3d* FindNearestStageGate(float* outDistance) const;
     int FindPendingUnlockStage() const;
     void UpdateUnlockPresentation(float deltaTime);
     void UpdateStageSelectDecorations(float deltaTime);
     void UpdatePathDisplay(int stageIndex, bool active, bool unlocking, float pulse);
     void UpdateStarCoinDisplays(float deltaTime);
+    Object3d* EnsureStageClearCrown(int stageIndex);
+    void UpdateStageClearCrownDisplays(float deltaTime);
+    Vector3 GetStageClearCrownPosition(int stageIndex) const;
     Object3d* FindObjectByName(const std::string& name) const;
     Vector3 GetStageNodePosition(int stageIndex) const;
 

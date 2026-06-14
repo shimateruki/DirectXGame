@@ -28,6 +28,17 @@
 #include <algorithm>
 #include <cmath>
 
+void GamePlayScene::SetIsGoal(bool isGoal) {
+    if (isGoal_ == isGoal) {
+        return;
+    }
+
+    isGoal_ = isGoal;
+    if (!isGoal_) {
+        goalSavePerformed_ = false;
+    }
+}
+
 void GamePlayScene::Update(float deltaTime) {
     if (HandleGoalClear(deltaTime)) {
         return;
@@ -116,18 +127,29 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         return false;
     }
 
-    int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
-    GameDataManager::GetInstance()->MarkStageCleared(currentStage);
+    if (!goalSavePerformed_) {
+        int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
+        GameDataManager::GetInstance()->MarkStageCleared(currentStage);
 
-    for (int i = 0; i < 3; i++) {
-        if (sessionStarCoins_[i]) {
-            GameDataManager::GetInstance()->MarkStarCoinCollected(currentStage, i);
+        for (int i = 0; i < 3; i++) {
+            if (sessionStarCoins_[i]) {
+                GameDataManager::GetInstance()->MarkStarCoinCollected(currentStage, i);
+            }
         }
+
+        if (saveIndicatorOverlay_) {
+            saveIndicatorOverlay_->Play(1.35f);
+        }
+        DebugConsole::GetInstance()->AddLog("Saving stage clear data...");
+        goalSavePerformed_ = true;
     }
 
+    if (saveIndicatorOverlay_) {
+        saveIndicatorOverlay_->Update(deltaTime);
+    }
     deltaTime = 0.0f;
 
-    if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
+    if (inputManager_->IsKeyTriggered(DIK_SPACE) && (!saveIndicatorOverlay_ || !saveIndicatorOverlay_->IsPlaying())) {
         SceneManager::GetInstance()->ChangeScene("SELECT");
         return true;
     }

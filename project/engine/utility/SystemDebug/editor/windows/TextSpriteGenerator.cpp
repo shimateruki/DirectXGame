@@ -338,6 +338,9 @@ void TextSpriteGenerator::Initialize(SceneManager* sceneManager, DebugEditor* ed
 
 void TextSpriteGenerator::Update() {
 #ifdef USE_IMGUI
+    if (exportNoticeTimer_ > 0.0f) {
+        exportNoticeTimer_ = std::max(0.0f, exportNoticeTimer_ - (1.0f / 60.0f));
+    }
 #endif
 }
 
@@ -514,6 +517,13 @@ void TextSpriteGenerator::DrawImGui() {
             pendingSpriteRelativePath_ = relativePath;
             AddPendingSpriteToScene();
         }
+    }
+
+    if (exportNoticeTimer_ > 0.0f && !exportNoticeMessage_.empty()) {
+        const ImVec4 noticeColor = exportNoticeSuccess_
+            ? ImVec4(0.36f, 1.0f, 0.58f, 1.0f)
+            : ImVec4(1.0f, 0.36f, 0.28f, 1.0f);
+        ImGui::TextColored(noticeColor, "%s", exportNoticeMessage_.c_str());
     }
 
     ImGui::TextDisabled("生成先: %s", kOutputDirectory);
@@ -849,6 +859,9 @@ bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* ou
     int height = 1;
     if (!RenderToFile(fullPath.generic_string(), width, height)) {
         DebugConsole::GetInstance()->AddLog("Text PNG: export failed.");
+        exportNoticeSuccess_ = false;
+        exportNoticeTimer_ = 2.5f;
+        exportNoticeMessage_ = "PNG出力に失敗しました";
         return false;
     }
 
@@ -859,6 +872,9 @@ bool TextSpriteGenerator::ExportToFile(std::string* outFullPath, std::string* ou
     if (outRelativePath) *outRelativePath = MakeRelativeSpritePath(fullPath.generic_string());
 
     DebugConsole::GetInstance()->AddLog("Text PNG exported: " + fullPath.generic_string());
+    exportNoticeSuccess_ = true;
+    exportNoticeTimer_ = 2.5f;
+    exportNoticeMessage_ = "PNG出力完了: " + fileName;
     return true;
 }
 

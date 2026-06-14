@@ -294,7 +294,7 @@ void PreviewScene::Draw() {
 			}
 		}
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 	
@@ -342,7 +342,7 @@ void PreviewScene::Draw() {
 	}
 
 	// 6. GPUパーティクル / 流体
-	bool hasFluid = false;
+	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
 	for (auto& obj : objects) {
 		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) { hasFluid = true; break; }
 	}
@@ -380,6 +380,7 @@ void PreviewScene::Draw() {
 				else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			}
 		}
+		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		if (hasGPUParticles) {
 			GPUParticleManager::GetInstance()->Draw(
 				dxCommon_->GetCommandList(),

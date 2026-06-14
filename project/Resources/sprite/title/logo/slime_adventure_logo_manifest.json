@@ -1,0 +1,128 @@
+{
+  "text": "スライムの大冒険",
+  "fullTexture": "title/logo/slime_adventure_logo_full.png",
+  "characters": [
+    {
+      "index": 0,
+      "char": "ス",
+      "texture": "title/logo/slime_adventure_char_00_su.png",
+      "previewOffset": [
+        60,
+        52
+      ],
+      "size": [
+        246,
+        242
+      ],
+      "suggestedDelay": 0.0
+    },
+    {
+      "index": 1,
+      "char": "ラ",
+      "texture": "title/logo/slime_adventure_char_01_ra.png",
+      "previewOffset": [
+        308,
+        39
+      ],
+      "size": [
+        247,
+        250
+      ],
+      "suggestedDelay": 0.055
+    },
+    {
+      "index": 2,
+      "char": "イ",
+      "texture": "title/logo/slime_adventure_char_02_i.png",
+      "previewOffset": [
+        550,
+        46
+      ],
+      "size": [
+        243,
+        244
+      ],
+      "suggestedDelay": 0.11
+    },
+    {
+      "index": 3,
+      "char": "ム",
+      "texture": "title/logo/slime_adventure_char_03_mu.png",
+      "previewOffset": [
+        785,
+        51
+      ],
+      "size": [
+        261,
+        248
+      ],
+      "suggestedDelay": 0.165
+    },
+    {
+      "index": 4,
+      "char": "の",
+      "texture": "title/logo/slime_adventure_char_04_no.png",
+      "previewOffset": [
+        1064,
+        32
+      ],
+      "size": [
+        210,
+        199
+      ],
+      "suggestedDelay": 0.22
+    },
+    {
+      "index": 5,
+      "char": "大",
+      "texture": "title/logo/slime_adventure_char_05_dai.png",
+      "previewOffset": [
+        1292,
+        41
+      ],
+      "size": [
+        269,
+        271
+      ],
+      "suggestedDelay": 0.275
+    },
+    {
+      "index": 6,
+      "char": "冒",
+      "texture": "title/logo/slime_adventure_char_06_bou.png",
+      "previewOffset": [
+        1553,
+        50
+      ],
+      "size": [
+        251,
+        262
+      ],
+      "suggestedDelay": 0.33
+    },
+    {
+      "index": 7,
+      "char": "険",
+      "texture": "title/logo/slime_adventure_char_07_ken.png",
+      "previewOffset": [
+        1799,
+        40
+      ],
+      "size": [
+        269,
+        272
+      ],
+      "suggestedDelay": 0.385
+    }
+  ],
+  "suggestedScreenPosition": [
+    960.0,
+    150.0
+  ],
+  "suggestedFullSize": [
+    880.0,
+    140.05
+  ],
+  "animationHint": "Show each character in index order with a small bounce/scale-in using suggestedDelay.",
+  "font": "C:/二年前期/CG2/project/Resources/font/MPLUS1p-Medium.ttf"
+}

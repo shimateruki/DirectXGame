@@ -98,4 +98,8 @@ private:
     std::string pendingSpriteRelativePath_;
     int pendingSpriteWidth_ = 1;
     int pendingSpriteHeight_ = 1;
+
+    std::string exportNoticeMessage_;
+    float exportNoticeTimer_ = 0.0f;
+    bool exportNoticeSuccess_ = false;
 };

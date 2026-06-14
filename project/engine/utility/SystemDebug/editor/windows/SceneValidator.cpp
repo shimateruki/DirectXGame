@@ -14,7 +14,7 @@
 #include <set>
 
 namespace {
-constexpr int kMaxKnownMaterialType = 21;
+constexpr int kMaxKnownMaterialType = 24;
 
 bool IsEditorOnlyObject(const Object3d* object) {
     if (!object) return false;

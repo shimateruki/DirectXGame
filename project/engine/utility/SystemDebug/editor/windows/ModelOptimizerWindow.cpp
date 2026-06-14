@@ -4,6 +4,7 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "EditorManager.h"
+#include "EffectPreviewStage.h"
 #include "IconsFontAwesome5.h"
 #include "Object3d.h"
 #include "SceneManager.h"
@@ -19,8 +20,10 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -50,6 +53,33 @@ bool IsGeneratedLodFile(const fs::path& path) {
     const std::string filename = ToLowerAscii(path.filename().string());
     return stem.find("_lod") != std::string::npos ||
         filename.find("_lod_report") != std::string::npos;
+}
+
+bool IsInsideDirectory(const fs::path& path, const fs::path& root) {
+    std::error_code ec;
+    const fs::path fullPath = fs::absolute(path, ec).lexically_normal();
+    if (ec) return false;
+    const fs::path fullRoot = fs::absolute(root, ec).lexically_normal();
+    if (ec) return false;
+
+    const std::string normalizedPath = ToLowerAscii(NormalizeSlashes(fullPath.generic_string()));
+    std::string normalizedRoot = ToLowerAscii(NormalizeSlashes(fullRoot.generic_string()));
+    if (!normalizedRoot.empty() && normalizedRoot.back() != '/') {
+        normalizedRoot.push_back('/');
+    }
+    return normalizedPath.rfind(normalizedRoot, 0) == 0;
+}
+
+bool SafeDeleteGeneratedLodFile(const fs::path& path) {
+    if (path.empty()) return false;
+    if (!IsGeneratedLodFile(path)) return false;
+    if (!IsInsideDirectory(path, "Resources/3DModel")) return false;
+
+    std::error_code ec;
+    if (!fs::exists(path, ec) || ec) {
+        return false;
+    }
+    return fs::remove(path, ec) && !ec;
 }
 
 std::string ToModelName(const fs::path& fullPath) {
@@ -325,6 +355,7 @@ void ModelOptimizerWindow::DrawImGui() {
     ImGui::DragFloat("LOD2 削減率", &lodRatios_[1], 0.01f, 0.02f, 0.90f, "%.2f");
     ImGui::DragFloat("LOD2 距離", &lodDistances_[1], 0.5f, 1.0f, 800.0f, "%.1f");
     ImGui::Checkbox("既存LODを上書き", &forceOverwrite_);
+    ImGui::Checkbox("Effect Preview Stageで比較", &autoUseEffectPreviewStage_);
 
     if (ImGui::Button(ICON_FA_SEARCH " 解析のみ")) {
         RunBuilder(true);
@@ -360,6 +391,19 @@ void ModelOptimizerWindow::DrawImGui() {
         RemovePreviewObjects();
     }
     ImGui::TextDisabled("Preview数: %d / 採用すると元モデルを保ったまま、距離で軽量モデルへ切り替わります。", CountPreviewObjects());
+
+    if (hasPendingGeneratedReview_) {
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(1.0f, 0.86f, 0.35f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " 生成したLODを確認中");
+        ImGui::TextWrapped("見た目を確認して、問題なければ採用してください。違和感がある場合は破棄すると生成LODファイルを自動で削除します。");
+        if (ImGui::Button(ICON_FA_CHECK " このLODを採用", ImVec2(180.0f, 0.0f))) {
+            AcceptGeneratedLods();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_TRASH " 破棄して削除", ImVec2(180.0f, 0.0f))) {
+            RejectGeneratedLods();
+        }
+    }
 
     if (latestReport_.contains("warnings") && latestReport_["warnings"].is_array() && !latestReport_["warnings"].empty()) {
         ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.25f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " Warning");
@@ -492,6 +536,11 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
         return false;
     }
 
+    if (!analyzeOnly) {
+        pendingApplyTarget_ = editor_ ? editor_->GetSelectedObject3D() : nullptr;
+        hasPendingGeneratedReview_ = false;
+    }
+
     std::string command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ";
     command += QuoteCommandArg("tools/model_lod_builder.ps1");
     command += " -Model " + QuoteCommandArg(modelName);
@@ -522,9 +571,12 @@ bool ModelOptimizerWindow::RunBuilder(bool analyzeOnly) {
 
     if (!analyzeOnly) {
         CreatePreviewObjects();
+        hasPendingGeneratedReview_ = true;
+        lastStatus_ = "LOD生成が完了しました。プレビューを確認して、採用または破棄を選んでください。";
     }
-
-    lastStatus_ = analyzeOnly ? "モデル解析が完了しました。" : "LOD生成が完了しました。";
+    else {
+        lastStatus_ = "モデル解析が完了しました。";
+    }
     DebugConsole::GetInstance()->AddLog(lastStatus_);
     return true;
 }
@@ -546,7 +598,11 @@ bool ModelOptimizerWindow::LoadLatestReport() {
 }
 
 bool ModelOptimizerWindow::ApplyLodConfigToSelected() {
-    if (!editor_ || !editor_->GetSelectedObject3D()) {
+    return ApplyLodConfigToObject(editor_ ? editor_->GetSelectedObject3D() : nullptr);
+}
+
+bool ModelOptimizerWindow::ApplyLodConfigToObject(Object3d* object) {
+    if (!editor_ || !object) {
         lastStatus_ = "LODを適用するObjectが選択されていません。";
         return false;
     }
@@ -582,7 +638,6 @@ bool ModelOptimizerWindow::ApplyLodConfigToSelected() {
         return false;
     }
 
-    Object3d* object = editor_->GetSelectedObject3D();
     const nlohmann::json beforeState = editor_->CaptureObjectState(object);
     object->SetModel(sourceModel);
     object->SetLodLevels(levels);
@@ -595,7 +650,82 @@ bool ModelOptimizerWindow::ApplyLodConfigToSelected() {
     return true;
 }
 
+bool ModelOptimizerWindow::AcceptGeneratedLods() {
+    Object3d* target = pendingApplyTarget_;
+    if (!target && editor_) {
+        target = editor_->GetSelectedObject3D();
+    }
+
+    if (!ApplyLodConfigToObject(target)) {
+        return false;
+    }
+
+    hasPendingGeneratedReview_ = false;
+    pendingApplyTarget_ = nullptr;
+    RemovePreviewObjects();
+    lastStatus_ = "LODを採用しました。距離に応じて軽量モデルへ切り替わります。";
+    DebugConsole::GetInstance()->AddLog(lastStatus_);
+    return true;
+}
+
+bool ModelOptimizerWindow::RejectGeneratedLods() {
+    const int deletedCount = DeleteGeneratedLodFilesFromReport();
+    RemovePreviewObjects();
+    hasPendingGeneratedReview_ = false;
+    pendingApplyTarget_ = nullptr;
+
+    lastStatus_ = "LODを破棄しました。生成ファイル削除数: " + std::to_string(deletedCount);
+    DebugConsole::GetInstance()->AddLog(lastStatus_);
+    return true;
+}
+
+int ModelOptimizerWindow::DeleteGeneratedLodFilesFromReport() {
+    if (!hasReport_ || !latestReport_.is_object()) {
+        return 0;
+    }
+
+    std::set<std::string> deleteTargets;
+    if (latestReport_.contains("lods") && latestReport_["lods"].is_array()) {
+        for (const auto& lod : latestReport_["lods"]) {
+            if (!lod.is_object()) continue;
+            if (ReadIntOrZero(lod, "level") <= 0) continue;
+            if (!lod.value("generated", true)) continue;
+
+            const std::string file = lod.value("file", std::string{});
+            if (file.empty()) continue;
+
+            fs::path lodPath = file;
+            deleteTargets.insert(lodPath.generic_string());
+            if (ToLowerAscii(lodPath.extension().string()) == ".gltf") {
+                deleteTargets.insert(lodPath.replace_extension(".bin").generic_string());
+            }
+        }
+    }
+
+    const std::string sourceFile = latestReport_.value("sourceFile", std::string{});
+    if (!sourceFile.empty()) {
+        const fs::path sourcePath = sourceFile;
+        const fs::path sourceDir = sourcePath.parent_path();
+        const std::string sourceStem = sourcePath.stem().string();
+        deleteTargets.insert((sourceDir / (sourceStem + "_lod.json")).generic_string());
+        deleteTargets.insert((sourceDir / (sourceStem + "_lod_report.json")).generic_string());
+    }
+
+    int deletedCount = 0;
+    for (const std::string& target : deleteTargets) {
+        if (SafeDeleteGeneratedLodFile(target)) {
+            ++deletedCount;
+        }
+    }
+    return deletedCount;
+}
+
 void ModelOptimizerWindow::CreatePreviewObjects() {
+    Object3d* selectedBeforeRemove = editor_ ? editor_->GetSelectedObject3D() : nullptr;
+    if (IsLodPreviewObject(selectedBeforeRemove)) {
+        selectedBeforeRemove = nullptr;
+    }
+
     RemovePreviewObjects();
 
     if (!editor_ || !editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene()) {
@@ -615,11 +745,27 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
     }
 
     Vector3 origin = { 0.0f, 2.0f, 0.0f };
-    if (Object3d* selected = editor_->GetSelectedObject3D()) {
-        origin = selected->GetTranslate();
+    if (autoUseEffectPreviewStage_) {
+        EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
+        stage->EnableForToolPreview();
+        stage->RequestCameraRecenter();
+        origin = stage->GetPreviewPosition();
+    }
+    else if (selectedBeforeRemove) {
+        origin = selectedBeforeRemove->GetTranslate();
         origin.x += 3.0f;
     }
 
+    int previewCount = 0;
+    for (const auto& lod : latestReport_["lods"]) {
+        if (!lod.is_object()) continue;
+        if (!lod.value("modelName", std::string{}).empty()) {
+            ++previewCount;
+        }
+    }
+
+    const float spacing = 4.0f;
+    const float startOffset = previewCount > 0 ? -spacing * static_cast<float>(previewCount - 1) * 0.5f : 0.0f;
     int previewIndex = 0;
     Object3d* firstPreview = nullptr;
     for (const auto& lod : latestReport_["lods"]) {
@@ -638,7 +784,7 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
         object->SetCollisionMask(0);
         object->SetModel(modelName);
         object->SetTranslate({
-            origin.x + static_cast<float>(previewIndex) * 3.0f,
+            origin.x + startOffset + static_cast<float>(previewIndex) * spacing,
             origin.y,
             origin.z
         });
@@ -655,7 +801,7 @@ void ModelOptimizerWindow::CreatePreviewObjects() {
 
     if (firstPreview) {
         editor_->SetSelectedObject(firstPreview);
-        EditorManager::GetInstance()->SetSelectedObject(editor_);
+        EditorManager::GetInstance()->SetSelectedObject(this);
     }
 
     lastStatus_ = "生成LODのPreviewを配置しました。Hierarchyでは __Editor_LODPreview_ で確認できます。";

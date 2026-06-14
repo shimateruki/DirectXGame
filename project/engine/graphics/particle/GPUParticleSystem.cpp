@@ -142,13 +142,13 @@ void GPUParticleSystem::CreateComputePipeline() {
     Microsoft::WRL::ComPtr<ID3DBlob> csBlobEmit;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
 
-    HRESULT hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "InitCS", "cs_5_0", 0, 0, &csBlobInit, &errorBlob);
+    HRESULT hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "InitCS", "cs_5_0", 0, 0, &csBlobInit, &errorBlob);
     if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
 
-    hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "UpdateCS", "cs_5_0", 0, 0, &csBlobUpdate, &errorBlob);
+    hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "UpdateCS", "cs_5_0", 0, 0, &csBlobUpdate, &errorBlob);
     if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
 
-    hr = D3DCompileFromFile(L"Resources/shader/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "EmitCS", "cs_5_0", 0, 0, &csBlobEmit, &errorBlob);
+    hr = D3DCompileFromFile(L"Resources/shader/particle/ParticleCS.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "EmitCS", "cs_5_0", 0, 0, &csBlobEmit, &errorBlob);
     if (FAILED(hr)) { OutputDebugStringA((char*)errorBlob->GetBufferPointer()); assert(false); }
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
@@ -178,8 +178,8 @@ void GPUParticleSystem::CreateGraphicsPipeline() {
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
     rsBuilder.Build(device, graphicsRootSignature_.GetAddressOf());
 
-    auto vsBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticleVS.hlsl", L"vs_6_0");
-    auto psBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/GPUParticlePS.hlsl", L"ps_6_0");
+    auto vsBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/particle/GPUParticleVS.hlsl", L"vs_6_0");
+    auto psBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/particle/GPUParticlePS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(graphicsRootSignature_.Get());

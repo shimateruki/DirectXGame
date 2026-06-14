@@ -24,6 +24,7 @@ public:
     int GetPlayRequestSerial() const { return playRequestSerial_; }
     void ApplyCameraOverride();
     void RequestCameraRecenter() { recenterCameraRequested_ = true; }
+    void EnableForToolPreview();
 
 private:
     EffectPreviewStage() = default;
@@ -35,6 +36,9 @@ private:
     void CreateFloor();
     void RemoveFloor();
     Object3d* FindFloor() const;
+    Object3d* FindEnvironmentObject(const std::string& name) const;
+    void CreateEnvironmentObject(const std::string& name);
+    void UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color);
     void ApplyBackgroundColor();
     void CaptureCameraState();
     void RestoreCameraState();

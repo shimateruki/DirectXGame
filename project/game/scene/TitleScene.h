@@ -69,8 +69,10 @@ private:
     };
 
     void InitializeSaveSlotUI();
+    void InitializeTitleLogoUI();
     void UpdateMainMenu();
     void UpdateSaveSelect();
+    void UpdateTitleLogoIntro(float deltaTime);
     void UpdateSaveSlotUI();
     void DrawSaveSlotUI();
     void StartSelectedSaveSlot();
@@ -129,6 +131,15 @@ private:
     Sprite* settingTextSprite_ = nullptr;
     Vector2 startTextBaseSize_ = { 0.0f, 0.0f };
     Vector2 settingTextBaseSize_ = { 0.0f, 0.0f };
+    struct TitleLogoGlyph {
+        Sprite* sprite = nullptr;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        Vector2 baseSize = { 0.0f, 0.0f };
+        float delay = 0.0f;
+    };
+    std::array<TitleLogoGlyph, 8> titleLogoGlyphs_{};
+    float titleIntroTime_ = 0.0f;
+    bool titleIntroComplete_ = false;
     std::vector<std::unique_ptr<Sprite>> titleUiSprites_;
     std::array<Sprite*, 3> saveSlotCards_ = { nullptr, nullptr, nullptr };
     std::array<std::array<Sprite*, 4>, 3> saveSlotFrames_{};

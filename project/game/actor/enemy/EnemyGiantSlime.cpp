@@ -41,6 +41,10 @@ void EnemyGiantSlime::Initialize(Object3dCommon* common, const std::string& mode
 }
 
 void EnemyGiantSlime::Update(float deltaTime) {
+    if (ShouldHandleDefeatEffect()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     if (isCarried_) {
         return;
     }

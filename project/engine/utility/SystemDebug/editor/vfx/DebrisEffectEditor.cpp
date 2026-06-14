@@ -38,7 +38,9 @@ constexpr const char* kMaterialTypeNames[] = {
     "王冠解放 (Crown Unlock)",
     "毒胞子 (Poison Spore)",
     "雲 (Cloud)",
-    "ゲートポータル (Gate Portal)"
+    "ゲートポータル (Gate Portal)",
+    "アニメ調地形 (Stylized Terrain)",
+    "ダッシュパネル (Dash Panel)"
 };
 
 void CopyToBuffer(std::array<char, 128>& buffer, const std::string& text) {

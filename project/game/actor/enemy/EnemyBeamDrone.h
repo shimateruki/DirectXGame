@@ -29,7 +29,7 @@ private:
     void HideBeamVisuals();
     void ApplyBeamVisualTransform(Object3d* visual, const Vector3& source, const Vector3& target, float thickness, const Vector4& color, float emissive);
     bool GetVisibleBeamSegment(Vector3& outStart, Vector3& outEnd) const;
-    Vector3 GetBeamMuzzlePosition() const;
+    Vector3 GetBeamMuzzlePosition(const Vector3& direction) const;
     void StartPlayerBeamCharge(class Player* player);
     void FirePlayerBeam(class Player* player);
     void UpdatePlayerBeam(class Player* player, float deltaTime);

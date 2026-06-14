@@ -51,12 +51,41 @@ constexpr const char* kSaveSlotCardSelected = "ui/title/save_slot_card_selected.
 constexpr const char* kSaveSlotCardEmpty = "ui/title/save_slot_card_empty.png";
 constexpr const char* kSaveDeleteButton = "ui/title/save_delete_button.png";
 constexpr const char* kSaveDeleteButtonSelected = "ui/title/save_delete_button_selected.png";
+constexpr float kTitleIntroLastDelay = 0.385f;
+constexpr float kTitleIntroGlyphDuration = 0.45f;
+constexpr float kTitleIntroMenuDelay = kTitleIntroLastDelay + kTitleIntroGlyphDuration + 0.20f;
+constexpr float kTitleIntroMenuFadeDuration = 0.35f;
+constexpr float kTitleIntroPi = 3.1415926535f;
 
 const std::array<const char*, 3> kFileTextPaths = {
     kTextFile1,
     kTextFile2,
     kTextFile3
 };
+
+struct TitleLogoGlyphLayout {
+    const char* name;
+    const char* texture;
+    Vector2 position;
+    Vector2 size;
+    float delay;
+};
+
+const std::array<TitleLogoGlyphLayout, 8> kTitleLogoGlyphLayouts = {
+    TitleLogoGlyphLayout{ "titleLogoChar_0", "title/logo/slime_adventure_char_00_su.png", { 596.5f, 147.3f }, { 102.8f, 101.1f }, 0.000f },
+    TitleLogoGlyphLayout{ "titleLogoChar_1", "title/logo/slime_adventure_char_01_ra.png", { 699.6f, 142.7f }, { 101.6f, 102.8f }, 0.055f },
+    TitleLogoGlyphLayout{ "titleLogoChar_2", "title/logo/slime_adventure_char_02_i.png", { 801.8f, 146.3f }, { 103.7f, 104.1f }, 0.110f },
+    TitleLogoGlyphLayout{ "titleLogoChar_3", "title/logo/slime_adventure_char_03_mu.png", { 902.3f, 147.7f }, { 108.3f, 102.8f }, 0.165f },
+    TitleLogoGlyphLayout{ "titleLogoChar_4", "title/logo/slime_adventure_char_04_no.png", { 1018.5f, 139.1f }, { 107.4f, 101.6f }, 0.220f },
+    TitleLogoGlyphLayout{ "titleLogoChar_5", "title/logo/slime_adventure_char_05_dai.png", { 1114.9f, 147.3f }, { 109.5f, 110.3f }, 0.275f },
+    TitleLogoGlyphLayout{ "titleLogoChar_6", "title/logo/slime_adventure_char_06_bou.png", { 1221.7f, 150.6f }, { 104.9f, 109.5f }, 0.330f },
+    TitleLogoGlyphLayout{ "titleLogoChar_7", "title/logo/slime_adventure_char_07_ken.png", { 1327.3f, 147.5f }, { 110.4f, 111.6f }, 0.385f }
+};
+
+float SmoothStep(float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
 }
 
 void TitleScene::Initialize() {
@@ -119,12 +148,15 @@ void TitleScene::Initialize() {
     titleTextSprite_ = GetSpriteByName("titleText.png");
     startTextSprite_ = GetSpriteByName("gameStartText.png");
     settingTextSprite_ = GetSpriteByName("setting.png");
+    titleIntroTime_ = 0.0f;
+    titleIntroComplete_ = false;
     if (startTextSprite_) {
         startTextBaseSize_ = startTextSprite_->GetSize();
     }
     if (settingTextSprite_) {
         settingTextBaseSize_ = settingTextSprite_->GetSize();
     }
+    InitializeTitleLogoUI();
     settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
     settingsOverlay_->Initialize(spriteCommon_.get());
     InitializeSaveSlotUI();
@@ -175,6 +207,11 @@ void TitleScene::Finalize() {
     saveConfirmYesText_ = nullptr;
     saveConfirmBackText_ = nullptr;
     titleTextSprite_ = nullptr;
+    for (auto& glyph : titleLogoGlyphs_) {
+        glyph = {};
+    }
+    titleIntroTime_ = 0.0f;
+    titleIntroComplete_ = false;
     settingsOverlay_.reset();
     sprites_.clear();
     particleSystem_.reset();
@@ -185,11 +222,29 @@ void TitleScene::Finalize() {
 
 void TitleScene::Update(float deltaTime) {
     titleUiTime_ += deltaTime;
+    UpdateTitleLogoIntro(deltaTime);
 
     const bool isSettingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
     if (isSettingsOpen) {
         settingsOverlay_->Update(deltaTime);
     } else if (titleMode_ == TitleMode::MainMenu) {
+        if (!titleIntroComplete_) {
+            UpdateSaveSlotUI();
+            LightEditor::GetInstance()->Update();
+            CameraManager::GetInstance()->Update();
+            CameraEditor::GetInstance()->Update(player_, false);
+            objectManager_->Update(deltaTime);
+            particleSystem_->Update(deltaTime);
+            for (auto& sprite : sprites_) {
+                sprite->Update();
+            }
+            for (auto& sprite : titleUiSprites_) {
+                sprite->Update();
+            }
+            BulletManager::GetInstance()->Update(deltaTime);
+            CollisionManager::GetInstance()->Update();
+            return;
+        }
         UpdateMainMenu();
     } else {
         UpdateSaveSelect();
@@ -218,6 +273,78 @@ void TitleScene::Update(float deltaTime) {
     CollisionManager::GetInstance()->Update();
 }
 
+void TitleScene::InitializeTitleLogoUI() {
+    if (titleTextSprite_) {
+        titleTextSprite_->SetVisible(false);
+    }
+
+    for (size_t i = 0; i < kTitleLogoGlyphLayouts.size(); ++i) {
+        const auto& layout = kTitleLogoGlyphLayouts[i];
+        Sprite* sprite = GetSpriteByName(layout.name);
+        if (!sprite) {
+            sprite = CreateUISprite("Resources/sprite/" + std::string(layout.texture), layout.position, layout.size, { 1.0f, 1.0f, 1.0f, 0.0f });
+            sprite->SetName(layout.name);
+            sprite->SetTextureName(layout.texture);
+        }
+
+        sprite->SetAnchorPoint({ 0.5f, 0.5f });
+        sprite->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+        sprite->SetVisible(false);
+
+        titleLogoGlyphs_[i].sprite = sprite;
+        titleLogoGlyphs_[i].basePosition = sprite->GetPosition();
+        titleLogoGlyphs_[i].baseSize = sprite->GetSize();
+        titleLogoGlyphs_[i].delay = layout.delay;
+    }
+}
+
+void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
+    if (titleTextSprite_) {
+        titleTextSprite_->SetVisible(false);
+    }
+
+    const bool showLogo = titleMode_ == TitleMode::MainMenu;
+    if (!showLogo) {
+        for (auto& glyph : titleLogoGlyphs_) {
+            if (glyph.sprite) {
+                glyph.sprite->SetVisible(false);
+            }
+        }
+        return;
+    }
+
+    titleIntroTime_ += deltaTime;
+    if (!titleIntroComplete_) {
+        if (titleIntroTime_ >= kTitleIntroMenuDelay) {
+            titleIntroComplete_ = true;
+        }
+    }
+
+    for (auto& glyph : titleLogoGlyphs_) {
+        Sprite* sprite = glyph.sprite;
+        if (!sprite) continue;
+
+        const float localTime = titleIntroTime_ - glyph.delay;
+        if (localTime < 0.0f) {
+            sprite->SetVisible(false);
+            continue;
+        }
+
+        const float appearT = std::clamp(localTime / kTitleIntroGlyphDuration, 0.0f, 1.0f);
+        const float smooth = SmoothStep(appearT);
+        const float bounce = std::sin(appearT * kTitleIntroPi) * (1.0f - appearT * 0.35f);
+        const float scaleX = 0.68f + 0.32f * smooth + bounce * 0.10f;
+        const float scaleY = 0.55f + 0.45f * smooth + bounce * 0.22f;
+        const float yOffset = (1.0f - smooth) * 22.0f - bounce * 10.0f;
+        const float alpha = std::clamp(localTime / 0.18f, 0.0f, 1.0f);
+
+        sprite->SetVisible(true);
+        sprite->SetPosition({ glyph.basePosition.x, glyph.basePosition.y + yOffset });
+        sprite->SetSize({ glyph.baseSize.x * scaleX, glyph.baseSize.y * scaleY });
+        sprite->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+    }
+}
+
 void TitleScene::UpdateMainMenu() {
     InputManager* input = InputManager::GetInstance();
 
@@ -232,8 +359,9 @@ void TitleScene::UpdateMainMenu() {
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 6.0f);
     const float selectedScale = 1.10f + pulse * 0.06f;
-    const Vector4 normalColor = { 0.62f, 0.74f, 0.82f, 0.72f };
-    const Vector4 selectColor = { 0.35f + pulse * 0.12f, 0.86f + pulse * 0.10f, 1.0f, 1.0f };
+    const float menuAlpha = std::clamp((titleIntroTime_ - kTitleIntroMenuDelay) / kTitleIntroMenuFadeDuration, 0.0f, 1.0f);
+    Vector4 normalColor = { 0.62f, 0.74f, 0.82f, 0.72f * menuAlpha };
+    Vector4 selectColor = { 0.35f + pulse * 0.12f, 0.86f + pulse * 0.10f, 1.0f, menuAlpha };
 
     if (startTextSprite_) {
         const bool selected = currentMenuIndex_ == (int)MenuIndex::GameStart;
@@ -515,9 +643,10 @@ Sprite* TitleScene::CreateUISprite(const std::string& texturePath, const Vector2
 void TitleScene::UpdateSaveSlotUI() {
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
-    if (titleTextSprite_) titleTextSprite_->SetVisible(!inSaveSelect);
-    if (startTextSprite_) startTextSprite_->SetVisible(!inSaveSelect);
-    if (settingTextSprite_) settingTextSprite_->SetVisible(!inSaveSelect);
+    const bool showMainMenu = !inSaveSelect && titleIntroComplete_;
+    if (titleTextSprite_) titleTextSprite_->SetVisible(false);
+    if (startTextSprite_) startTextSprite_->SetVisible(showMainMenu);
+    if (settingTextSprite_) settingTextSprite_->SetVisible(showMainMenu);
     if (saveSelectHeader_) saveSelectHeader_->SetVisible(false);
 
     const float pulse = 0.5f + 0.5f * std::sin(titleUiTime_ * 5.0f);

@@ -8,6 +8,7 @@
 #include "GPUParticleSystem.h"
 #include "CameraManager.h"
 #include "EffectPreviewStage.h"
+#include "EditorManager.h"
 
 using json = nlohmann::json;
 
@@ -18,7 +19,8 @@ void GPUParticleEditor::Initialize() {
 void GPUParticleEditor::Update(float deltaTime) {
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
     bool usePreviewStage = previewStage && previewStage->IsEnabled();
-    if (usePreviewStage) {
+    const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
+    if (usePreviewStage && isThisEditorSelected) {
         GPUParticleManager::GetInstance()->SetTimeScale(previewStage->GetPlaybackSpeed());
         if (previewStage->GetPlayRequestSerial() != lastStagePlayRequestSerial_) {
             lastStagePlayRequestSerial_ = previewStage->GetPlayRequestSerial();
@@ -29,7 +31,7 @@ void GPUParticleEditor::Update(float deltaTime) {
     // エディタのプレビュー間隔もスローモーションに対応させる
     float scaledDelta = deltaTime * GPUParticleManager::GetInstance()->GetTimeScale();
 
-    bool loopPreview = config_.isLooping || (usePreviewStage && previewStage->IsLoopEnabled());
+    bool loopPreview = isThisEditorSelected && (config_.isLooping || (usePreviewStage && previewStage->IsLoopEnabled()));
     if (loopPreview) {
         emitTimer_ += scaledDelta;
         if (emitTimer_ >= config_.emitInterval) {

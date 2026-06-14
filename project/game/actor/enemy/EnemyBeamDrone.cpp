@@ -22,6 +22,10 @@ constexpr float kBeamHitRadius = 1.0f;
 constexpr float kBeamDamage = 1.0f;
 constexpr float kOrbitSideOffset = 4.2f;
 constexpr float kSteeringResponse = 2.8f;
+constexpr float kEyeModelYawOffset = 3.1415926535f;
+constexpr float kEyeMuzzleForwardOffset = 0.95f;
+constexpr float kEyeMuzzleHeightOffset = 0.42f;
+constexpr float kBeamAimHeight = 0.8f;
 constexpr float kPlayerBeamChargeTime = 0.65f;
 constexpr float kPlayerBeamActiveTime = 0.32f;
 constexpr float kPlayerBeamCooldown = 0.9f;
@@ -119,6 +123,11 @@ void EnemyBeamDrone::Initialize(Object3dCommon* common, const std::string& model
 }
 
 void EnemyBeamDrone::Update(float deltaTime) {
+    if (ShouldHandleDefeatEffect()) {
+        HideBeamVisuals();
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     if (isCarried_) {
         return;
     }
@@ -351,7 +360,9 @@ void EnemyBeamDrone::UpdateHover(float deltaTime) {
 void EnemyBeamDrone::UpdateFacing(const Vector3& direction) {
     const float lengthSq = direction.x * direction.x + direction.z * direction.z;
     if (lengthSq <= 0.0001f) return;
-    SetRotationY(Math::LerpShortAngle(GetRotation().y, std::atan2(direction.x, direction.z), 0.16f));
+
+    const float targetYaw = std::atan2(direction.x, direction.z) + kEyeModelYawOffset;
+    SetRotation({ 0.0f, Math::LerpShortAngle(GetRotation().y, targetYaw, 0.16f), 0.0f });
 }
 
 void EnemyBeamDrone::StartCharge() {
@@ -367,12 +378,17 @@ void EnemyBeamDrone::FireBeam() {
         return;
     }
 
-    beamStart_ = GetBeamMuzzlePosition();
     Vector3 aimPoint = target_->GetTranslate();
-    aimPoint.y += 0.8f;
+    aimPoint.y += kBeamAimHeight;
+
+    Vector3 roughOrigin = GetTranslate();
+    roughOrigin.y += GetScale().y * kEyeMuzzleHeightOffset;
+    const Vector3 roughDirection = SafeNormalize(aimPoint - roughOrigin, NormalizePlanar(aimPoint - GetTranslate()));
+    beamStart_ = GetBeamMuzzlePosition(roughDirection);
+
     const Vector3 aimDiff = aimPoint - beamStart_;
     const float aimLength = (std::max)(0.01f, Math::Length(aimDiff));
-    beamDirection_ = SafeNormalize(aimDiff, { 0.0f, 0.0f, 1.0f });
+    beamDirection_ = SafeNormalize(aimDiff, roughDirection);
     beamLength_ = aimLength + kBeamOvershootLength;
     beamEnd_ = beamStart_ + beamDirection_ * beamLength_;
     state_ = BeamState::Beam;
@@ -458,37 +474,24 @@ bool EnemyBeamDrone::GetVisibleBeamSegment(Vector3& outStart, Vector3& outEnd) c
         return false;
     }
 
-    const Matrix4x4& world = beamVisual_->GetWorldMatrix();
-    const Vector3 center = { world.m[3][0], world.m[3][1], world.m[3][2] };
-    const Vector3 axisX = { world.m[0][0], world.m[0][1], world.m[0][2] };
-    const Vector3 axisY = { world.m[1][0], world.m[1][1], world.m[1][2] };
-    const Vector3 axisZ = { world.m[2][0], world.m[2][1], world.m[2][2] };
-
-    Vector3 halfAxis = axisX;
-    float halfLength = Math::Length(axisX);
-    const float lengthY = Math::Length(axisY);
-    const float lengthZ = Math::Length(axisZ);
-    if (lengthY > halfLength) {
-        halfAxis = axisY;
-        halfLength = lengthY;
-    }
-    if (lengthZ > halfLength) {
-        halfAxis = axisZ;
-        halfLength = lengthZ;
-    }
-
-    if (halfLength <= 0.001f) {
+    if (Math::Length(beamEnd_ - beamStart_) <= 0.001f) {
         return false;
     }
 
-    outStart = center - halfAxis;
-    outEnd = center + halfAxis;
+    outStart = beamStart_;
+    outEnd = beamEnd_;
     return true;
 }
 
-Vector3 EnemyBeamDrone::GetBeamMuzzlePosition() const {
+Vector3 EnemyBeamDrone::GetBeamMuzzlePosition(const Vector3& direction) const {
+    Vector3 forward = NormalizePlanar(direction);
     Vector3 position = GetTranslate();
-    position.y += 0.2f;
+    const Vector3 scale = GetScale();
+    const float horizontalScale = (std::max)(0.5f, (scale.x + scale.z) * 0.5f);
+    const float verticalScale = (std::max)(0.5f, scale.y);
+
+    position += forward * (horizontalScale * kEyeMuzzleForwardOffset);
+    position.y += verticalScale * kEyeMuzzleHeightOffset;
     return position;
 }
 

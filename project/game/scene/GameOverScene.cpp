@@ -336,6 +336,8 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         backgroundSprite_->SetColor({ 0.0f, 0.0f, 0.0f, 0.0f });
     }
 
+    const Vector4 hiddenTitleColor = { 1.0f, 0.16f, 0.10f, 0.0f };
+
     for (size_t i = 0; i < titleLetters_.size(); ++i) {
         Sprite* letter = titleLetters_[i];
         if (!letter) {
@@ -353,7 +355,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
             letter->SetVisible(false);
             letter->SetPosition(basePos);
             letter->SetSize({ baseSize.x * 0.65f, baseSize.y * 0.65f });
-            letter->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
+            letter->SetColor(hiddenTitleColor);
             continue;
         }
 
@@ -369,9 +371,9 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         letter->SetPosition({ basePos.x, basePos.y + dropOffset + wave * 4.0f * revealEase });
         letter->SetSize({ baseSize.x * scale, baseSize.y * scale });
         letter->SetColor({
-            0.88f + pulse * 0.12f,
-            0.96f + pulse * 0.04f,
-            1.0f,
+            0.92f + pulse * 0.08f,
+            0.10f + pulse * 0.10f,
+            0.08f + pulse * 0.08f,
             revealEase
         });
     }

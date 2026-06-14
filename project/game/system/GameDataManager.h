@@ -6,6 +6,7 @@
 #include <map>
 #include <sstream>
 #include <filesystem>
+#include <utility>
 #include "json.hpp"
 
 class GameDataManager {
@@ -104,6 +105,7 @@ public:
 
         data["lives"] = lives_;
         data["coins"] = coins_;
+        data["playTimeSeconds"] = playTimeSeconds_;
         data["clearedStages"] = clearedStages_; // クリア済みステージのインデックス
         data["seenUnlockedStages"] = seenUnlockedStages_;
 
@@ -114,6 +116,7 @@ public:
         }
         data["starCoins"] = coinData;
 
+        std::filesystem::create_directories(std::filesystem::path(GetSaveFilePath()).parent_path());
         std::ofstream outFile(GetSaveFilePath());
         if (outFile.is_open()) {
             outFile << data.dump(4);
@@ -126,6 +129,7 @@ public:
         if (!ReadSaveJson(activeSlot_, data)) {
             lives_ = 3;
             coins_ = 0;
+            playTimeSeconds_ = 0;
             clearedStages_.clear();
             seenUnlockedStages_.clear();
             stageStarCoins_.clear();
@@ -134,30 +138,36 @@ public:
 
         lives_ = 3;
         coins_ = 0;
+        playTimeSeconds_ = 0;
         clearedStages_.clear();
         seenUnlockedStages_.clear();
         stageStarCoins_.clear();
 
         if (data.contains("lives")) lives_ = data["lives"];
         if (data.contains("coins")) coins_ = data["coins"];
+        if (data.contains("playTimeSeconds")) playTimeSeconds_ = data["playTimeSeconds"];
         if (data.contains("clearedStages")) clearedStages_ = data["clearedStages"].get<std::vector<int>>();
         if (data.contains("seenUnlockedStages")) seenUnlockedStages_ = data["seenUnlockedStages"].get<std::vector<int>>();
         
         if (data.contains("starCoins")) {
             for (auto it = data["starCoins"].begin(); it != data["starCoins"].end(); ++it) {
                 int stageIdx = std::stoi(it.key());
-                stageStarCoins_[stageIdx] = it.value().get<std::vector<bool>>();
+                std::vector<bool> coins = it.value().get<std::vector<bool>>();
+                coins.resize(3, false);
+                stageStarCoins_[stageIdx] = std::move(coins);
             }
         }
     }
 
     // --- 残機操作 ---
     int GetLives() const { return lives_; }
+    void SetLives(int lives) { lives_ = std::clamp(lives, 0, 99); Save(); }
     void SubtractLife() { lives_--; if (lives_ < 0) lives_ = 0; Save(); }
     void ResetLives() { lives_ = 3; Save(); }
 
     // --- コイン操作 ---
     int GetCoins() const { return coins_; }
+    void SetCoins(int coins) { coins_ = std::clamp(coins, 0, 9999); Save(); }
     void AddCoin(int amount = 1) {
         coins_ += amount;
         while (coins_ >= 100) {
@@ -167,6 +177,12 @@ public:
         Save();
     }
     void ResetCoins() { coins_ = 0; Save(); }
+
+    int GetPlayTimeSeconds() const { return playTimeSeconds_; }
+    void SetPlayTimeSeconds(int seconds) {
+        playTimeSeconds_ = std::clamp(seconds, 0, 99 * 60 * 60 + 59 * 60 + 59);
+        Save();
+    }
 
     void RequestRespawnIrisIn() { pendingRespawnIrisIn_ = true; }
     bool ConsumeRespawnIrisInRequest() {
@@ -183,6 +199,22 @@ public:
         }
     }
 
+    void SetStageCleared(int index, bool cleared) {
+        auto it = std::find(clearedStages_.begin(), clearedStages_.end(), index);
+        if (cleared) {
+            if (it == clearedStages_.end()) {
+                clearedStages_.push_back(index);
+                Save();
+            }
+            return;
+        }
+
+        if (it != clearedStages_.end()) {
+            clearedStages_.erase(it);
+            Save();
+        }
+    }
+
     bool IsStageCleared(int index) const {
         return std::find(clearedStages_.begin(), clearedStages_.end(), index) != clearedStages_.end();
     }
@@ -194,6 +226,22 @@ public:
         }
     }
 
+    void SetStageUnlockSeen(int index, bool seen) {
+        auto it = std::find(seenUnlockedStages_.begin(), seenUnlockedStages_.end(), index);
+        if (seen) {
+            if (it == seenUnlockedStages_.end()) {
+                seenUnlockedStages_.push_back(index);
+                Save();
+            }
+            return;
+        }
+
+        if (it != seenUnlockedStages_.end()) {
+            seenUnlockedStages_.erase(it);
+            Save();
+        }
+    }
+
     bool IsStageUnlockSeen(int index) const {
         return std::find(seenUnlockedStages_.begin(), seenUnlockedStages_.end(), index) != seenUnlockedStages_.end();
     }
@@ -201,13 +249,15 @@ public:
     // --- スターコイン操作 ---
     void MarkStarCoinCollected(int stageIdx, int coinIdx) {
         if (coinIdx < 0 || coinIdx >= 3) return;
-        
-        // 該当ステージの配列がなければ作成
-        if (stageStarCoins_.find(stageIdx) == stageStarCoins_.end()) {
-            stageStarCoins_[stageIdx] = { false, false, false };
-        }
-        
-        stageStarCoins_[stageIdx][coinIdx] = true;
+        SetStarCoinCollected(stageIdx, coinIdx, true);
+    }
+
+    void SetStarCoinCollected(int stageIdx, int coinIdx, bool collected) {
+        if (coinIdx < 0 || coinIdx >= 3) return;
+
+        auto& coins = GetOrCreateStarCoins(stageIdx);
+        if (coins[coinIdx] == collected) return;
+        coins[coinIdx] = collected;
         Save();
     }
 
@@ -217,9 +267,33 @@ public:
         return stageStarCoins_.at(stageIdx)[coinIdx];
     }
 
+    int GetClearedStageCount() const {
+        int count = 0;
+        for (int stageIndex : clearedStages_) {
+            if (stageIndex >= 0) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    int GetCollectedStarCoinCount() const {
+        int count = 0;
+        for (const auto& [stageIndex, coins] : stageStarCoins_) {
+            (void)stageIndex;
+            for (bool collected : coins) {
+                if (collected) {
+                    ++count;
+                }
+            }
+        }
+        return count;
+    }
+
     void ResetAll() {
         lives_ = 3;
         coins_ = 0;
+        playTimeSeconds_ = 0;
         clearedStages_.clear();
         seenUnlockedStages_.clear();
         stageStarCoins_.clear();
@@ -244,7 +318,7 @@ public:
     }
 
 private:
-    GameDataManager() : lives_(3), coins_(0) {}
+    GameDataManager() : lives_(3), coins_(0), playTimeSeconds_(0) {}
     ~GameDataManager() = default;
 
     std::string GetLegacySaveFilePath() const {
@@ -269,8 +343,15 @@ private:
         return true;
     }
 
+    std::vector<bool>& GetOrCreateStarCoins(int stageIdx) {
+        auto& coins = stageStarCoins_[stageIdx];
+        coins.resize(3, false);
+        return coins;
+    }
+
     int lives_ = 3;
     int coins_ = 0;
+    int playTimeSeconds_ = 0;
     int activeSlot_ = 0;
     bool pendingRespawnIrisIn_ = false;
     std::vector<int> clearedStages_;

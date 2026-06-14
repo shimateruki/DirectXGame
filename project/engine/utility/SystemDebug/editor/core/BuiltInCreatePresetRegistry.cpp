@@ -54,6 +54,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
     }
 
     const std::vector<std::pair<std::string, std::string>> gimmicks = {
+        { "FireCannon", "火球砲台" },
         { "MovingFloor", "動く床" },
         { "Trampoline", "ジャンプ台" },
         { "SinkingFloor", "沈む床" },

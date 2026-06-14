@@ -1,7 +1,9 @@
 #pragma once
 #include "IAnimationState.h"
 #include "engine/utility/math/Math.h"
-class Object3d; // 前方宣言
+
+class Object3d;
+
 // --------------------------------------------------------
 // 待機状態 (Idle)
 // --------------------------------------------------------
@@ -44,8 +46,9 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
-    float timer_ = 0.0f; // 状態を終了させるための簡易タイマー
+    float timer_ = 0.0f;
 };
 
 // --------------------------------------------------------
@@ -57,6 +60,7 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
     float timer_ = 0.0f;
     bool sceneChangeRequested_ = false;
@@ -74,6 +78,7 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
     Vector3 knockbackDir_;
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };
@@ -91,13 +96,15 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
     enum class Phase {
         LifeLost,
-        Waiting,  // 落下を見せる待機時間
-        IrisOut,  // 画面を閉じる
-        IrisIn    // 画面を開く
+        Waiting,
+        IrisOut,
+        IrisIn
     };
+
     Phase phase_ = Phase::Waiting;
     float waitTimer_ = 0.0f;
     Vector2 irisCenter_ = { 0.5f, 0.5f };
@@ -113,25 +120,26 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
+    enum class Phase {
+        kShootHook,
+        kPullPlayer
+    };
+
     Vector3 targetPos_;
-    float speed_ = 60.0f; // フックの移動速度
+    float speed_ = 60.0f;
     float oldGravity_ = 0.0f;
     float wobbleTimer_ = 0.0f;
-    float oldFovY_ = 0.45f;   // Enter時に元のFOVを退避
-    float spawnTimer_ = 0.0f; // パーティクル生成タイマー
-    enum class Phase {
-        kShootHook,  // 腕（フック）を目標に向けて飛ばしている状態
-        kPullPlayer  // フックが刺さり、プレイヤー本体が引っ張られている状態
-    };
+    float oldFovY_ = 0.45f;
+    float spawnTimer_ = 0.0f;
     Phase phase_ = Phase::kShootHook;
-    Vector3 hookTipPos_;            // フック先端の現在位置
-    float hookShootSpeed_ = 250.0f; // フックが飛んでいく速度（超高速！）
+    Vector3 hookTipPos_;
+    float hookShootSpeed_ = 250.0f;
 };
 
-
 // --------------------------------------------------------
-// 敵引き寄せ状態 (Pull Enemy)
+// ターザン用スイングフック状態 (Swing Hook)
 // --------------------------------------------------------
 class PlayerStateSwingHook : public IAnimationState
 {
@@ -162,6 +170,9 @@ private:
     bool released_ = false;
 };
 
+// --------------------------------------------------------
+// 敵引き寄せ状態 (Pull Enemy)
+// --------------------------------------------------------
 class PlayerStatePullEnemy : public IAnimationState
 {
 public:
@@ -171,24 +182,24 @@ public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
+    enum class Phase {
+        kShootHook,
+        kPullEnemy
+    };
+
     Object3d* targetEnemy_ = nullptr;
     Vector3 targetPos_;
     Vector3 hookTipPos_;
-
-    enum class Phase {
-        kShootHook,  // 腕が敵に向かって飛んでいる
-        kPullEnemy   // 敵が自分に向かって引っ張られている
-    };
     Phase phase_ = Phase::kShootHook;
-    
-    Vector3 enemyStartPos_; // 引っ張り開始時の敵の座標
-    float pullTimer_ = 0.0f; // 引っ張りにかかる時間のタイマー
+    Vector3 enemyStartPos_;
+    float pullTimer_ = 0.0f;
     bool isHeavyPullTarget_ = false;
 };
 
 // --------------------------------------------------------
-// 敵持ち運び状態 (Carry)
+// オブジェクト引き寄せ状態 (Pull Object)
 // --------------------------------------------------------
 class PlayerStatePullObject : public IAnimationState
 {
@@ -210,12 +221,16 @@ private:
     bool pullStarted_ = false;
 };
 
+// --------------------------------------------------------
+// 敵持ち運び状態 (Carry)
+// --------------------------------------------------------
 class PlayerStateCarry : public IAnimationState
 {
 public:
     void Enter(Player* player) override;
     void Update(Player* player) override;
     void Exit(Player* player) override;
+
 private:
     float struggleTimer_ = 0.0f;
 };

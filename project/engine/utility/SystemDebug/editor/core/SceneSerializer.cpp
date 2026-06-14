@@ -226,6 +226,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["normalMapPath"] = obj->GetNormalMapPath();
     d["ormMapPath"] = obj->GetOrmMapPath();
     d["texturePath"] = obj->GetTexturePath();
+    Vector2 tiling = obj->GetTextureTiling();
+    d["textureTiling"] = { tiling.x, tiling.y };
+    d["autoTextureTiling"] = obj->GetAutoTextureTiling();
     d["enableEnvMap"] = obj->GetEnableEnvMap();
     d["envIntensity"] = obj->GetEnvIntensity();
     d["emissive"] = obj->GetEmissive();

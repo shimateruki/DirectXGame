@@ -1,14 +1,31 @@
-﻿{
+{
     "sourceModel":  "Characters/eye",
     "sourceFile":  "Resources/3DModel/Characters/eye/eye.gltf",
-    "generatedAt":  "2026-06-12T02:58:28",
+    "generatedAt":  "2026-06-14T00:19:28",
     "lods":  [
                  {
                      "level":  0,
                      "modelName":  "Characters/eye",
                      "distance":  0,
                      "ratio":  1,
-                     "triangles":  1312
+                     "triangles":  1312,
+                     "fileSizeBytes":  40842
+                 },
+                 {
+                     "level":  1,
+                     "modelName":  "Characters/eye/eye_lod1.gltf",
+                     "distance":  35,
+                     "ratio":  0.55,
+                     "triangles":  1000,
+                     "fileSizeBytes":  44380
+                 },
+                 {
+                     "level":  2,
+                     "modelName":  "Characters/eye/eye_lod2.gltf",
+                     "distance":  70,
+                     "ratio":  0.25,
+                     "triangles":  780,
+                     "fileSizeBytes":  39624
                  }
              ]
 }

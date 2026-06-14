@@ -121,6 +121,9 @@ void GamePlayScene::LoadCurrentStageContent(const StageData& currentStage) {
 
     settingsOverlay_ = std::make_unique<SettingsMenuOverlay>();
     settingsOverlay_->Initialize(spriteCommon_.get());
+
+    saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
+    saveIndicatorOverlay_->Initialize(spriteCommon_.get());
 }
 
 void GamePlayScene::StartRespawnIrisInIfNeeded() {
@@ -171,6 +174,7 @@ void GamePlayScene::FinalizeGameplayResources() {
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
+    saveIndicatorOverlay_.reset();
     settingsOverlay_.reset();
     pauseMenuOverlay_.reset();
     hudLifeMeter_ = {};

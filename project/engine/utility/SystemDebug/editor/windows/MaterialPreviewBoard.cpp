@@ -44,6 +44,10 @@ bool IsModelFolder(const std::filesystem::path& folder) {
     return false;
 }
 
+bool IsSpecialMaterialType(int materialType) {
+    return materialType >= 8 && materialType <= 22;
+}
+
 std::string ToModelName(const std::filesystem::path& folder) {
     std::error_code ec;
     std::filesystem::path relative = std::filesystem::relative(folder, kModelRoot, ec);
@@ -55,7 +59,7 @@ const char* GetPreviewNote(int materialType) {
     if (materialType == 13 || materialType == 16) {
         return "モデル形状に重ねて確認";
     }
-    return materialType >= 8 ? "専用描画パスで確認" : "通常描画パスで確認";
+    return IsSpecialMaterialType(materialType) ? "専用描画パスで確認" : "通常描画パスで確認";
 }
 }
 
@@ -298,11 +302,13 @@ std::vector<MaterialPreviewBoard::MaterialPreviewEntry> MaterialPreviewBoard::Ge
         { 20, "毒胞子 (Poison Spore)", "PoisonSpore", {{ 0.0f, "毒霧", "Mist" }, { 1.0f, "胞子雲", "Cloud" }, { 2.0f, "毒リング", "Ring" }} },
         { 21, "雲 (Cloud)", "Cloud", {{ 0.0f, "雲の塊", "Puff" }, { 1.0f, "流れる雲", "Drift" }, { 2.0f, "足元の煙", "Ground" }} },
         { 22, "ゲートポータル (Gate Portal)", "GatePortal", {{ 0.0f, "渦ポータル", "Swirl" }, { 1.0f, "暖色ゲート", "Warm" }, { 2.0f, "封印ゲート", "Seal" }} },
+        { 23, "アニメ調地形 (Stylized Terrain)", "StylizedTerrain", {} },
+        { 24, "ダッシュパネル (Dash Panel)", "DashPanel", {} },
     };
 
     std::vector<MaterialPreviewEntry> entries;
     for (const BaseEntry& base : baseEntries) {
-        if (showOnlySpecialMaterials_ && base.type < 8) continue;
+        if (showOnlySpecialMaterials_ && !IsSpecialMaterialType(base.type)) continue;
 
         if (expandModeVariants_ && !base.modes.empty()) {
             for (const Mode& mode : base.modes) {
@@ -375,9 +381,20 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
     if (!object) return;
 
     object->SetMaterialType(entry.materialType);
-    object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 || entry.materialType >= 8 ? BlendMode::kNormal : BlendMode::kNone);
+    object->SetBlendMode(entry.materialType == 1 || entry.materialType == 3 || IsSpecialMaterialType(entry.materialType) ? BlendMode::kNormal : BlendMode::kNone);
     object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     object->SetEmissive(entry.materialType == 3 ? 2.5f : 1.0f);
+    if (entry.materialType == 23) {
+        object->SetRoughness(0.42f);
+        object->SetMetallic(0.48f);
+    }
+    else if (entry.materialType == 24) {
+        object->SetColor({ 0.25f, 0.95f, 1.0f, 1.0f });
+        object->SetRoughness(0.62f);
+        object->SetMetallic(0.56f);
+        object->SetTextureTiling({ 1.0f, 1.0f });
+        object->SetAutoTextureTiling(false);
+    }
 
     MeshRenderer* renderer = object->GetMeshRenderer();
     auto* water = renderer ? renderer->GetWaterParamData() : nullptr;
@@ -395,6 +412,17 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
     water->flowSpeedY = 0.1f;
 
     switch (entry.materialType) {
+    case 8:
+        object->SetBlendMode(BlendMode::kNormal);
+        water->waveSpeed = 1.35f;
+        water->waveHeight = 0.55f;
+        water->waveFrequency = 5.2f;
+        water->flowSpeedX = 0.08f;
+        water->flowSpeedY = 0.05f;
+        water->effectScale = 0.9f;
+        water->effectSoftness = 0.58f;
+        water->effectIntensity = 1.25f;
+        break;
     case 11:
         object->SetBlendMode(BlendMode::kNormal);
         water->waveSpeed = 2.0f;

@@ -12,11 +12,32 @@
 #include "SceneManager.h"
 #include "imgui.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace {
 constexpr const char* kFloorName = "__Editor_EffectPreviewFloor";
+constexpr const char* kBackWallName = "__Editor_EffectPreviewBackWall";
+constexpr const char* kLeftRailName = "__Editor_EffectPreviewLeftRail";
+constexpr const char* kRightRailName = "__Editor_EffectPreviewRightRail";
+constexpr const char* kEnvironmentPrefix = "__Editor_EffectPreview";
+constexpr int kGridLineCount = 7;
+
+std::string MakeGridXName(int index) {
+    return std::string(kEnvironmentPrefix) + "GridX_" + std::to_string(index);
+}
+
+std::string MakeGridZName(int index) {
+    return std::string(kEnvironmentPrefix) + "GridZ_" + std::to_string(index);
+}
+
+bool IsPreviewEnvironmentName(const std::string& name) {
+    return name.rfind(kEnvironmentPrefix, 0) == 0;
+}
 }
 
 EffectPreviewStage* EffectPreviewStage::GetInstance() {
@@ -27,6 +48,17 @@ EffectPreviewStage* EffectPreviewStage::GetInstance() {
 void EffectPreviewStage::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
+}
+
+void EffectPreviewStage::EnableForToolPreview() {
+    enabled_ = true;
+    isolatedSpace_ = true;
+    showFloor_ = true;
+    moveCameraOnEnter_ = true;
+    floorSize_ = (std::max)(floorSize_, 18.0f);
+    cameraDistance_ = (std::max)(cameraDistance_, 18.0f);
+    cameraHeight_ = (std::max)(cameraHeight_, 6.5f);
+    recenterCameraRequested_ = true;
 }
 
 void EffectPreviewStage::Update() {
@@ -56,17 +88,36 @@ void EffectPreviewStage::Update() {
             CreateFloor();
             floor = FindFloor();
         }
-        if (floor) {
-            floor->SetIsVisible(true);
-            floor->SetTranslate({ previewPos.x, previewPos.y - 2.0f, previewPos.z });
-            floor->SetScale({ floorSize_, 0.05f, floorSize_ });
-            floor->SetColor(floorColor_);
-            floor->UpdateLocalMatrix();
-            floor->UpdateWorldMatrix();
+
+        const float half = floorSize_ * 0.5f;
+        const float floorY = previewPos.y - 2.0f;
+        const Vector4 gridColor = { 0.32f, 0.45f, 0.52f, 0.45f };
+        const Vector4 railColor = { 0.52f, 0.68f, 0.78f, 0.75f };
+        const Vector4 wallColor = {
+            backgroundColor_.x * 0.75f + 0.03f,
+            backgroundColor_.y * 0.75f + 0.04f,
+            backgroundColor_.z * 0.75f + 0.05f,
+            1.0f
+        };
+
+        UpdateEnvironmentObject(kFloorName, { previewPos.x, floorY, previewPos.z }, { floorSize_, 0.05f, floorSize_ }, floorColor_);
+        UpdateEnvironmentObject(kBackWallName, { previewPos.x, previewPos.y - 0.35f, previewPos.z + half }, { floorSize_, 3.4f, 0.08f }, wallColor);
+        UpdateEnvironmentObject(kLeftRailName, { previewPos.x - half, floorY + 0.12f, previewPos.z }, { 0.07f, 0.12f, floorSize_ }, railColor);
+        UpdateEnvironmentObject(kRightRailName, { previewPos.x + half, floorY + 0.12f, previewPos.z }, { 0.07f, 0.12f, floorSize_ }, railColor);
+
+        const float step = floorSize_ / static_cast<float>(kGridLineCount - 1);
+        for (int i = 0; i < kGridLineCount; ++i) {
+            const float offset = -half + step * static_cast<float>(i);
+            UpdateEnvironmentObject(MakeGridXName(i), { previewPos.x, floorY + 0.06f, previewPos.z + offset }, { floorSize_, 0.012f, 0.025f }, gridColor);
+            UpdateEnvironmentObject(MakeGridZName(i), { previewPos.x + offset, floorY + 0.065f, previewPos.z }, { 0.025f, 0.012f, floorSize_ }, gridColor);
         }
     }
     else if (floor) {
-        floor->SetIsVisible(false);
+        for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+            if (object && IsPreviewEnvironmentName(object->GetName())) {
+                object->SetIsVisible(false);
+            }
+        }
     }
 }
 
@@ -163,49 +214,89 @@ void EffectPreviewStage::CreateFloor() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     BaseScene* scene = sceneManager_->GetCurrentScene();
     if (!scene->GetObject3dCommon()) return;
-    if (FindFloor()) return;
 
     ModelManager::GetInstance()->LoadModel("Primitives/cube");
 
-    auto floor = std::make_unique<Object3d>();
-    floor->Initialize(scene->GetObject3dCommon());
-    floor->SetName(kFloorName);
-    floor->SetClassName("EditorOnly");
-    floor->SetSaveCategory("Object");
-    floor->SetModel("Primitives/cube");
-    floor->SetIsLocked(true);
-    floor->SetCollisionAttribute(0);
-    floor->SetCollisionMask(0);
-    floor->SetMaterialType(0);
-    floor->SetBlendMode(BlendMode::kNone);
-    floor->SetColor(floorColor_);
-    Vector3 previewPos = GetPreviewPosition();
-    floor->SetTranslate({ previewPos.x, previewPos.y - 2.0f, previewPos.z });
-    floor->SetScale({ floorSize_, 0.05f, floorSize_ });
-    floor->UpdateLocalMatrix();
-    floor->UpdateWorldMatrix();
-
-    scene->AddObject(std::move(floor));
-    DebugConsole::GetInstance()->AddLog("Effect Preview Stage floor created.");
+    const bool wasMissing = FindFloor() == nullptr;
+    CreateEnvironmentObject(kFloorName);
+    CreateEnvironmentObject(kBackWallName);
+    CreateEnvironmentObject(kLeftRailName);
+    CreateEnvironmentObject(kRightRailName);
+    for (int i = 0; i < kGridLineCount; ++i) {
+        CreateEnvironmentObject(MakeGridXName(i));
+        CreateEnvironmentObject(MakeGridZName(i));
+    }
+    if (wasMissing) {
+        DebugConsole::GetInstance()->AddLog("Effect Preview Stage environment created.");
+    }
 }
 
 void EffectPreviewStage::RemoveFloor() {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
-    if (Object3d* floor = FindFloor()) {
-        sceneManager_->GetCurrentScene()->RequestRemoveObject(floor);
-        DebugConsole::GetInstance()->AddLog("Effect Preview Stage floor removed.");
+
+    std::vector<Object3d*> targets;
+    for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
+        if (object && IsPreviewEnvironmentName(object->GetName())) {
+            targets.push_back(object.get());
+        }
+    }
+
+    for (Object3d* target : targets) {
+        sceneManager_->GetCurrentScene()->RequestRemoveObject(target);
+    }
+    if (!targets.empty()) {
+        DebugConsole::GetInstance()->AddLog("Effect Preview Stage environment removed.");
     }
 }
 
 Object3d* EffectPreviewStage::FindFloor() const {
+    return FindEnvironmentObject(kFloorName);
+}
+
+Object3d* EffectPreviewStage::FindEnvironmentObject(const std::string& name) const {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return nullptr;
 
     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
-        if (object && object->GetName() == kFloorName) {
+        if (object && object->GetName() == name) {
             return object.get();
         }
     }
     return nullptr;
+}
+
+void EffectPreviewStage::CreateEnvironmentObject(const std::string& name) {
+    if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
+    BaseScene* scene = sceneManager_->GetCurrentScene();
+    if (!scene->GetObject3dCommon() || FindEnvironmentObject(name)) return;
+
+    auto object = std::make_unique<Object3d>();
+    object->Initialize(scene->GetObject3dCommon());
+    object->SetName(name);
+    object->SetClassName("EditorOnly_EffectPreviewStage");
+    object->SetSaveCategory("Object");
+    object->SetModel("Primitives/cube");
+    object->SetIsLocked(true);
+    object->SetCollisionAttribute(0);
+    object->SetCollisionMask(0);
+    object->SetMaterialType(0);
+    object->SetBlendMode(BlendMode::kNormal);
+    object->SetColor(floorColor_);
+    object->SetIsVisible(false);
+    object->UpdateLocalMatrix();
+    object->UpdateWorldMatrix();
+    scene->AddObject(std::move(object));
+}
+
+void EffectPreviewStage::UpdateEnvironmentObject(const std::string& name, const Vector3& translate, const Vector3& scale, const Vector4& color) {
+    Object3d* object = FindEnvironmentObject(name);
+    if (!object) return;
+
+    object->SetIsVisible(true);
+    object->SetTranslate(translate);
+    object->SetScale(scale);
+    object->SetColor(color);
+    object->UpdateLocalMatrix();
+    object->UpdateWorldMatrix();
 }
 
 void EffectPreviewStage::ApplyBackgroundColor() {

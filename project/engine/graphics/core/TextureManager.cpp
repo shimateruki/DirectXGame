@@ -86,6 +86,9 @@ bool IsEditorPreviewTexture(const std::string& path) {
 bool IsLinearTexturePath(const std::string& path) {
     const std::string lowerPath = NormalizeTexturePathLower(path);
     return lowerPath.find("normal") != std::string::npos ||
+           lowerPath.find("bakedshader") != std::string::npos ||
+           lowerPath.find("_mask") != std::string::npos ||
+           lowerPath.find("_noise") != std::string::npos ||
            lowerPath.find("_n") != std::string::npos ||
            lowerPath.find("nor") != std::string::npos ||
            lowerPath.find("arm") != std::string::npos ||

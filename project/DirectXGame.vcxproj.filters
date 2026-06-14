@@ -246,6 +246,9 @@
     <ClCompile Include="game\ui\PauseMenuOverlay.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -333,6 +336,27 @@
     <ClCompile Include="game\actor\player\PlayerState.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.Basic.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.Damage.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.Hook.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.Life.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.PullEnemy.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.PullObject.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\player\PlayerState.Carry.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -399,10 +423,19 @@
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="engine\utility\SystemDebug\editor\core\SceneSerializer.cpp">
@@ -519,6 +552,9 @@
     <ClCompile Include="game\actor\gimmick\GimmickLaserNode.cpp">
       <Filter>繧ｽ繝ｼ繧ｹ 繝輔ぃ繧､繝ｫ</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\gimmick\GimmickFireCannon.cpp">
+      <Filter>郢ｧ・ｽ郢晢ｽｼ郢ｧ・ｹ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+    </ClCompile>
     <ClCompile Include="game\actor\gimmick\GimmickStageGate.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -545,23 +581,23 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\shader\Object3d.hlsli">
+    <None Include="Resources\shader\object3d\Object3d.hlsli">
       <Filter>シェーダーファイル</Filter>
     </None>
-    <None Include="Resources\shader\Sprite.PS.hlsl">
+    <None Include="Resources\shader\sprite\Sprite.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
-    <None Include="Resources\shader\Sprite.VS.hlsl">
+    <None Include="Resources\shader\sprite\Sprite.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
-    <None Include="Resources\shader\Particle.VS.hlsl">
+    <None Include="Resources\shader\particle\Particle.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </None>
     <None Include="DUMPS\2025-0422-1117.dmp">
       <Filter>ソース ファイル\engine\scene</Filter>
     </None>
-    <None Include="Resources\shader\DebugPrimitive.hlsli" />
-    <None Include="Resources\shader\DebugPrimitive.VS.hlsl" />
+    <None Include="Resources\shader\debug\DebugPrimitive.hlsli" />
+    <None Include="Resources\shader\debug\DebugPrimitive.VS.hlsl" />
     <None Include="externals\assimp\include\assimp\color4.inl">
       <Filter>ヘッダー ファイル</Filter>
     </None>
@@ -586,39 +622,39 @@
     <None Include="externals\assimp\include\assimp\vector3.inl">
       <Filter>ヘッダー ファイル</Filter>
     </None>
-    <None Include="Resources\shader\PostEffect.PS.hlsl" />
-    <None Include="Resources\shader\GPUParticlePS.hlsl" />
+    <None Include="Resources\shader\postprocess\PostEffect.PS.hlsl" />
+    <None Include="Resources\shader\particle\GPUParticlePS.hlsl" />
     <None Include=".editorconflg" />
     <None Include=".github\copilot-instructions.md" />
-    <None Include="Resources\shader\Water.hlsli" />
-    <None Include="Resources\shader\Magma.PS.hlsl" />
-    <None Include="Resources\shader\LocalFog.PS.hlsl" />
-    <None Include="Resources\shader\Water.PS.hlsl" />
-    <None Include="Resources\shader\Skybox.hlsli" />
+    <None Include="Resources\shader\common\Water.hlsli" />
+    <None Include="Resources\shader\materials\Magma.PS.hlsl" />
+    <None Include="Resources\shader\materials\LocalFog.PS.hlsl" />
+    <None Include="Resources\shader\materials\Water.PS.hlsl" />
+    <None Include="Resources\shader\skybox\Skybox.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
+    <FxCompile Include="Resources\shader\object3d\Object3d.VS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Object3d.PS.hlsl">
+    <FxCompile Include="Resources\shader\object3d\Object3d.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Particle.PS.hlsl">
+    <FxCompile Include="Resources\shader\particle\Particle.PS.hlsl">
       <Filter>シェーダーファイル</Filter>
     </FxCompile>
-    <FxCompile Include="Resources\shader\DebugPrimitive.PS.hlsl" />
-    <FxCompile Include="Resources\shader\PostEffect.VS.hlsl" />
-    <FxCompile Include="Resources\shader\ParticleCS.hlsl" />
-    <FxCompile Include="Resources\shader\GPUParticleVS.hlsl" />
-    <FxCompile Include="Resources\shader\LocalFog.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Effect3d.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Effect3d.PS.hlsl" />
-    <FxCompile Include="Resources\shader\Water.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Ice.PS.hlsl" />
-    <FxCompile Include="Resources\shader\Magma.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Ice.VS.hlsl" />
-    <FxCompile Include="Resources\shader\Skybox.PS.hlsl" />
-    <FxCompile Include="Resources\shader\Skybox.VS.hlsl" />
+    <FxCompile Include="Resources\shader\debug\DebugPrimitive.PS.hlsl" />
+    <FxCompile Include="Resources\shader\postprocess\PostEffect.VS.hlsl" />
+    <FxCompile Include="Resources\shader\particle\ParticleCS.hlsl" />
+    <FxCompile Include="Resources\shader\particle\GPUParticleVS.hlsl" />
+    <FxCompile Include="Resources\shader\materials\LocalFog.VS.hlsl" />
+    <FxCompile Include="Resources\shader\effects\Effect3d.VS.hlsl" />
+    <FxCompile Include="Resources\shader\effects\Effect3d.PS.hlsl" />
+    <FxCompile Include="Resources\shader\materials\Water.VS.hlsl" />
+    <FxCompile Include="Resources\shader\materials\Ice.PS.hlsl" />
+    <FxCompile Include="Resources\shader\materials\Magma.VS.hlsl" />
+    <FxCompile Include="Resources\shader\materials\Ice.VS.hlsl" />
+    <FxCompile Include="Resources\shader\skybox\Skybox.PS.hlsl" />
+    <FxCompile Include="Resources\shader\skybox\Skybox.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine\system\audio\AudioPlayer.h">
@@ -1485,10 +1521,19 @@
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
@@ -1611,6 +1656,9 @@
     <ClInclude Include="game\actor\gimmick\GimmickLaserNode.h">
       <Filter>繝倥ャ繝繝ｼ 繝輔ぃ繧､繝ｫ</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\gimmick\GimmickFireCannon.h">
+      <Filter>郢晏･繝｣郢敖郢晢ｽｼ 郢晁ｼ斐＜郢ｧ・､郢晢ｽｫ</Filter>
+    </ClInclude>
     <ClInclude Include="game\actor\gimmick\GimmickStageGate.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -1627,6 +1675,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\ui\PauseMenuOverlay.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ui\SaveIndicatorOverlay.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="game\ui\SettingsMenuOverlay.h">

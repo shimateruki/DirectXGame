@@ -32,6 +32,9 @@ Vector2 QuadraticBezier(const Vector2& start, const Vector2& control, const Vect
 void GamePlayScene::UpdateUI(float deltaTime) {
     UpdateGameplayHUD(deltaTime);
     UpdateLifeLostPresentation(deltaTime);
+    if (saveIndicatorOverlay_) {
+        saveIndicatorOverlay_->Update(deltaTime);
+    }
 }
 
 GamePlayScene::HudSpriteState GamePlayScene::BindGameplayHUDSprite(const std::string& name, const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color) {

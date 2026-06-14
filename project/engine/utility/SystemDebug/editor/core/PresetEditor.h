@@ -487,7 +487,7 @@ private:
                 SetColliderDefaults(data, 1, { 2.5f, 2.5f, 2.5f });
             }
             else if (type == "StageGate") {
-                data["modelName"] = "Gimmicks/goal";
+                data["modelName"] = "Gimmicks/portal_gate";
                 data["scale"] = { 1.0f, 1.0f, 1.0f };
                 SetColliderDefaults(data, 2, { 1.5f, 1.5f, 1.5f });
             }

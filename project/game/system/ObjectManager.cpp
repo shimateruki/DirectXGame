@@ -35,7 +35,8 @@ void ObjectManager::Draw(ID3D12Resource* pointLight, ID3D12Resource* spotLight) 
 	// 不透明描画
 	for (auto& obj : objects_) {
 		if (!obj->GetIsVisible()) continue;
-		if (obj->GetMaterialType() != 1 && obj->GetMaterialType() != 7 && obj->GetMaterialType() < 8) {
+		const int materialType = obj->GetMaterialType();
+		if (materialType != 1 && materialType != 7 && (materialType < 8 || materialType == 23 || materialType == 24)) {
 			obj->Draw(pointLight, spotLight);
 		}
 	}

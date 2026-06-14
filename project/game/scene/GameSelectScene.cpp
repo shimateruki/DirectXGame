@@ -59,6 +59,10 @@
 namespace {
 constexpr float kUnlockPresentationDuration = 2.6f;
 constexpr uint32_t kStageSelectSolidMask = 0xFFFFFFFFu;
+constexpr const char* kStageClearCrownPrefix = "__Editor_StageClearCrown_";
+constexpr const char* kStageClearCrownModel = "Stages/crown";
+constexpr float kStageClearCrownBaseScale = 0.42f;
+constexpr float kStageClearCrownHeightOffset = 0.85f;
 
 Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected, bool unlocking, float pulse) {
 	if (!unlocked && !unlocking) {
@@ -99,6 +103,39 @@ float GetStageIslandEmissive(bool unlocked, bool selected, bool unlocking, float
 		return 0.18f;
 	}
 	return selected ? 1.05f + pulse * 0.45f : 0.72f;
+}
+
+Vector4 GetStageGateModelColor(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
+	if (!unlocked && !unlocking) {
+		return { 0.20f, 0.20f, 0.24f, 0.82f };
+	}
+	if (unlocking) {
+		return { 1.0f, 0.82f + pulse * 0.10f, 0.28f, 1.0f };
+	}
+	if (selected) {
+		return { 1.0f, 0.92f, 0.42f, 1.0f };
+	}
+	if (cleared) {
+		return { 0.72f, 1.0f, 0.78f, 1.0f };
+	}
+	return { 0.86f, 0.95f, 1.0f, 1.0f };
+}
+
+float GetStageGateModelEmissive(bool unlocked, bool selected, bool cleared, bool unlocking, float pulse) {
+	if (unlocking) {
+		return 2.7f + pulse * 1.2f;
+	}
+	if (!unlocked) {
+		return 0.25f;
+	}
+	if (selected) {
+		return 1.9f + pulse * 0.55f;
+	}
+	return cleared ? 1.35f : 1.0f;
+}
+
+std::string MakeStageClearCrownName(int stageIndex) {
+	return std::string(kStageClearCrownPrefix) + std::to_string(stageIndex);
 }
 }
 
@@ -337,7 +374,7 @@ void GameSelectScene::Draw() {
 			}
 		}
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
 		obj->Draw(pointLightRes, spotLightRes);
 	}
 
@@ -373,7 +410,7 @@ void GameSelectScene::Draw() {
 	}
 
 	// 5. 流体描画
-	bool hasFluid = false;
+	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
 	for (auto& obj : objects) if (obj->GetIsVisible() && obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) hasFluid = true;
 	if (hasFluid) {
 		dxCommon_->UpdateGrabTexture();
@@ -396,6 +433,7 @@ void GameSelectScene::Draw() {
 			else if (matType == 21) obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 		}
+		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 	}
 
 	// 6. GPUパーティクル
@@ -434,9 +472,9 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
 	}
 
 	float nearestDistance = std::numeric_limits<float>::max();
-	GimmickStageGate* nearestGate = FindNearestStageGate(&nearestDistance);
+	Object3d* nearestGate = FindNearestStageGate(&nearestDistance);
 	if (nearestGate && nearestDistance <= gateSelectRadius_) {
-		int gateStageIndex = nearestGate->GetStageIndex();
+		int gateStageIndex = GetStageGateIndex(nearestGate);
 		if (gateStageIndex >= 0 && gateStageIndex < static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
 			selectedStageIndex_ = gateStageIndex;
 		}
@@ -469,18 +507,61 @@ void GameSelectScene::ApplyStageGateStates() {
 		return;
 	}
 
+	float pulse = (std::sin(stageSelectTime_ * 5.0f) + 1.0f) * 0.5f;
 	for (auto& object : objectManager_->GetObjects()) {
-		auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
-		if (!gate) {
+		if (!object || !IsStageGateObject(object.get())) {
 			continue;
 		}
 
-		int stageIndex = gate->GetStageIndex();
+		auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
+		int stageIndex = GetStageGateIndex(object.get());
+		if (stageIndex < 0 || stageIndex >= static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
+			continue;
+		}
+
 		bool unlocked = IsStageUnlocked(stageIndex);
 		bool cleared = GameDataManager::GetInstance()->IsStageCleared(stageIndex);
 		bool unlocking = stageIndex == unlockingStageIndex_;
-		gate->SetGateState(stageIndex == selectedStageIndex_, unlocked, cleared, unlocking);
+		bool selected = stageIndex == selectedStageIndex_;
+
+		if (gate) {
+			gate->SetGateState(selected, unlocked, cleared, unlocking);
+			continue;
+		}
+
+		object->SetIsVisible(true);
+		object->SetCollisionAttribute(unlocked ? CollisionAttribute::kTrigger : 0);
+		object->SetCollisionMask(unlocked ? CollisionAttribute::kPlayer : 0);
+		object->SetColliderType(ColliderType::kSphere);
+		object->SetCollisionRadius(gateSelectRadius_ * 0.55f);
+		object->SetColor(GetStageGateModelColor(unlocked, selected, cleared, unlocking, pulse));
+		object->SetEmissive(GetStageGateModelEmissive(unlocked, selected, cleared, unlocking, pulse));
 	}
+}
+
+void GameSelectScene::RefreshDebugStageStates() {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	if (stages.empty()) {
+		return;
+	}
+
+	if (selectedStageIndex_ < 0 || selectedStageIndex_ >= static_cast<int>(stages.size()) ||
+		!IsStageUnlocked(selectedStageIndex_)) {
+		selectedStageIndex_ = 0;
+		for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
+			if (IsStageUnlocked(stageIndex)) {
+				selectedStageIndex_ = stageIndex;
+				break;
+			}
+		}
+	}
+
+	previousSelectedStageIndex_ = -1;
+	unlockingStageIndex_ = FindPendingUnlockStage();
+	unlockPresentationTimer_ = 0.0f;
+	unlockParticleTimer_ = 0.0f;
+	ApplyStageGateStates();
+	UpdateStageSelectDecorations(0.0f);
 }
 
 bool GameSelectScene::IsStageUnlocked(int stageIndex) const {
@@ -633,6 +714,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
 	}
 
 	UpdateStarCoinDisplays(deltaTime);
+	UpdateStageClearCrownDisplays(deltaTime);
 }
 
 void GameSelectScene::UpdatePathDisplay(int stageIndex, bool active, bool unlocking, float pulse) {
@@ -698,6 +780,106 @@ void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
 	}
 }
 
+Object3d* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
+	if (!objectManager_ || !object3dCommon_) {
+		return nullptr;
+	}
+
+	const std::string name = MakeStageClearCrownName(stageIndex);
+	if (Object3d* existing = FindObjectByName(name)) {
+		return existing;
+	}
+
+	auto crown = std::make_unique<Object3d>();
+	crown->Initialize(object3dCommon_.get());
+	crown->SetModel(kStageClearCrownModel);
+	crown->SetName(name);
+	crown->SetClassName("EditorOnly");
+	crown->SetSaveCategory("Object");
+	crown->SetIsLocked(true);
+	crown->SetTargetID(stageIndex);
+	crown->SetColliderType(ColliderType::kNone);
+	crown->SetCollisionAttribute(0);
+	crown->SetCollisionMask(0);
+	crown->SetScale({ kStageClearCrownBaseScale, kStageClearCrownBaseScale, kStageClearCrownBaseScale });
+	crown->SetColor({ 1.0f, 0.86f, 0.20f, 1.0f });
+	crown->SetEmissive(1.85f);
+	crown->SetTranslate(GetStageClearCrownPosition(stageIndex));
+	crown->UpdateLocalMatrix();
+	crown->UpdateWorldMatrix();
+
+	Object3d* raw = crown.get();
+	objectManager_->GetObjects().push_back(std::move(crown));
+	return raw;
+}
+
+void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
+	const auto& stages = StageManager::GetInstance()->GetStages();
+	auto* save = GameDataManager::GetInstance();
+	const float pulse = (std::sin(stageSelectTime_ * 4.2f) + 1.0f) * 0.5f;
+
+	for (int stageIndex = 0; stageIndex < static_cast<int>(stages.size()); ++stageIndex) {
+		Object3d* crown = EnsureStageClearCrown(stageIndex);
+		if (!crown) {
+			continue;
+		}
+
+		const bool cleared = save->IsStageCleared(stageIndex);
+		crown->SetIsVisible(cleared);
+		crown->SetCollisionAttribute(0);
+		crown->SetCollisionMask(0);
+		if (!cleared) {
+			continue;
+		}
+
+		Transform* transform = crown->GetTransform();
+		const float bob = std::sin(stageSelectTime_ * 2.6f + static_cast<float>(stageIndex) * 0.75f) * 0.10f;
+		Vector3 targetPos = GetStageClearCrownPosition(stageIndex);
+		targetPos.y += bob;
+		transform->translate = targetPos;
+		transform->rotate.y += deltaTime * 1.15f;
+		transform->rotate.z = std::sin(stageSelectTime_ * 2.0f + static_cast<float>(stageIndex)) * 0.08f;
+		transform->isQuaternionMaster = false;
+
+		const float scale = kStageClearCrownBaseScale * (1.0f + pulse * 0.08f);
+		transform->scale = { scale, scale, scale };
+		crown->SetColor({ 1.0f, 0.82f + pulse * 0.12f, 0.20f, 1.0f });
+		crown->SetEmissive(1.85f + pulse * 0.55f);
+		crown->UpdateLocalMatrix();
+		crown->UpdateWorldMatrix();
+	}
+}
+
+Vector3 GameSelectScene::GetStageClearCrownPosition(int stageIndex) const {
+	Vector3 fallback = GetStageNodePosition(stageIndex) + Vector3{ 0.0f, 3.0f, 0.0f };
+	if (!objectManager_) {
+		return fallback;
+	}
+
+	for (const auto& object : objectManager_->GetObjects()) {
+		if (!object || !IsStageGateObject(object.get()) || GetStageGateIndex(object.get()) != stageIndex) {
+			continue;
+		}
+
+		AABB gateAabb = object->GetModelWorldAABB();
+		const bool validAabb =
+			std::isfinite(gateAabb.min.x) && std::isfinite(gateAabb.min.y) && std::isfinite(gateAabb.min.z) &&
+			std::isfinite(gateAabb.max.x) && std::isfinite(gateAabb.max.y) && std::isfinite(gateAabb.max.z) &&
+			gateAabb.max.y > gateAabb.min.y;
+		if (!validAabb) {
+			return fallback;
+		}
+
+		return {
+			(gateAabb.min.x + gateAabb.max.x) * 0.5f,
+			gateAabb.max.y + kStageClearCrownHeightOffset,
+			(gateAabb.min.z + gateAabb.max.z) * 0.5f
+		};
+	}
+
+	return fallback;
+}
+
 Object3d* GameSelectScene::FindObjectByName(const std::string& name) const {
 	if (!objectManager_) {
 		return nullptr;
@@ -714,9 +896,8 @@ Object3d* GameSelectScene::FindObjectByName(const std::string& name) const {
 Vector3 GameSelectScene::GetStageNodePosition(int stageIndex) const {
 	if (objectManager_) {
 		for (const auto& object : objectManager_->GetObjects()) {
-			auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
-			if (gate && gate->GetStageIndex() == stageIndex) {
-				return gate->GetWorldPosition();
+			if (object && IsStageGateObject(object.get()) && GetStageGateIndex(object.get()) == stageIndex) {
+				return object->GetWorldPosition();
 			}
 		}
 	}
@@ -756,7 +937,35 @@ void GameSelectScene::EnterSelectedStage() {
 	SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
 }
 
-GimmickStageGate* GameSelectScene::FindNearestStageGate(float* outDistance) const {
+bool GameSelectScene::IsStageGateObject(const Object3d* object) const {
+	if (!object) {
+		return false;
+	}
+	if (dynamic_cast<const GimmickStageGate*>(object)) {
+		return true;
+	}
+	if (object->GetGimmickType() == "StageGate") {
+		return true;
+	}
+
+	const std::string& modelName = object->GetModelName();
+	const std::string& objectName = object->GetName();
+	return modelName.find("portal_gate") != std::string::npos ||
+		objectName.find("portal_gate") != std::string::npos ||
+		objectName.find("StageGate") != std::string::npos;
+}
+
+int GameSelectScene::GetStageGateIndex(const Object3d* object) const {
+	if (!object) {
+		return -1;
+	}
+	if (const auto* gate = dynamic_cast<const GimmickStageGate*>(object)) {
+		return gate->GetStageIndex();
+	}
+	return object->GetTargetID();
+}
+
+Object3d* GameSelectScene::FindNearestStageGate(float* outDistance) const {
 	if (outDistance) {
 		*outDistance = std::numeric_limits<float>::max();
 	}
@@ -765,22 +974,24 @@ GimmickStageGate* GameSelectScene::FindNearestStageGate(float* outDistance) cons
 	}
 
 	const Vector3 playerPos = player_->GetWorldPosition();
-	GimmickStageGate* nearestGate = nullptr;
+	Object3d* nearestGate = nullptr;
 	float nearestDistanceSq = std::numeric_limits<float>::max();
 
 	for (const auto& object : objectManager_->GetObjects()) {
-		auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
-		if (!gate) {
+		if (!object || !IsStageGateObject(object.get())) {
+			continue;
+		}
+		if (GetStageGateIndex(object.get()) < 0) {
 			continue;
 		}
 
-		const Vector3 gatePos = gate->GetWorldPosition();
+		const Vector3 gatePos = object->GetWorldPosition();
 		float dx = gatePos.x - playerPos.x;
 		float dz = gatePos.z - playerPos.z;
 		float distanceSq = dx * dx + dz * dz;
 		if (distanceSq < nearestDistanceSq) {
 			nearestDistanceSq = distanceSq;
-			nearestGate = gate;
+			nearestGate = object.get();
 		}
 	}
 

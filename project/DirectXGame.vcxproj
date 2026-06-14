@@ -191,6 +191,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\actor\gimmick\GimmickLaserEmitter.cpp" />
     <ClCompile Include="game\actor\gimmick\GimmickLaserNode.cpp" />
     <ClCompile Include="game\actor\gimmick\GimmickStageGate.cpp" />
+    <ClCompile Include="game\actor\gimmick\GimmickFireCannon.cpp" />
     <ClCompile Include="game\actor\item\BaseItem.cpp" />
     <ClCompile Include="game\actor\item\HealItem.cpp" />
     <ClCompile Include="game\system\EnemyFactory.cpp" />
@@ -224,6 +225,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="game\scene\GameClearScene.cpp" />
     <ClCompile Include="game\scene\SettingsScene.cpp" />
     <ClCompile Include="game\ui\PauseMenuOverlay.cpp" />
+    <ClCompile Include="game\ui\SaveIndicatorOverlay.cpp" />
     <ClCompile Include="game\ui\SettingsMenuOverlay.cpp" />
     <ClCompile Include="game\system\GameRule.cpp" />
     <ClCompile Include="game\system\GameSettingsManager.cpp" />
@@ -300,6 +302,13 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\graphics\particle\ParticleManager.cpp" />
     <ClCompile Include="game\actor\player\PlayerMover.cpp" />
     <ClCompile Include="game\actor\player\PlayerState.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.Basic.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.Damage.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.Hook.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.Life.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.PullEnemy.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.PullObject.cpp" />
+    <ClCompile Include="game\actor\player\PlayerState.Carry.cpp" />
     <ClCompile Include="game\actor\player\PlayerClone.cpp" />
     <ClCompile Include="engine\graphics\postprocess\Fade.cpp" />
     <ClCompile Include="engine\graphics\postprocess\PostEffect.cpp" />
@@ -314,8 +323,11 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneValidator.cpp" />
@@ -347,15 +359,15 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <None Include="externals\assimp\include\assimp\SmoothingGroups.inl" />
     <None Include="externals\assimp\include\assimp\vector2.inl" />
     <None Include="externals\assimp\include\assimp\vector3.inl" />
-    <None Include="Resources\shader\DebugPrimitive.hlsli" />
-    <None Include="Resources\shader\DebugPrimitive.VS.hlsl" />
-    <None Include="Resources\shader\Particle.VS.hlsl" />
-    <None Include="Resources\shader\Object3d.hlsli" />
-    <None Include="Resources\shader\Skybox.hlsli" />
-    <None Include="Resources\shader\Water.hlsli" />
+    <None Include="Resources\shader\debug\DebugPrimitive.hlsli" />
+    <None Include="Resources\shader\debug\DebugPrimitive.VS.hlsl" />
+    <None Include="Resources\shader\particle\Particle.VS.hlsl" />
+    <None Include="Resources\shader\object3d\Object3d.hlsli" />
+    <None Include="Resources\shader\skybox\Skybox.hlsli" />
+    <None Include="Resources\shader\common\Water.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\shader\Effect3d.PS.hlsl">
+    <FxCompile Include="Resources\shader\effects\Effect3d.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
@@ -363,44 +375,44 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">5.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Effect3d.VS.hlsl">
+    <FxCompile Include="Resources\shader\effects\Effect3d.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Ice.PS.hlsl">
+    <FxCompile Include="Resources\shader\materials\Ice.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Ice.VS.hlsl">
+    <FxCompile Include="Resources\shader\materials\Ice.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <None Include="Resources\shader\LocalFog.PS.hlsl">
+    <None Include="Resources\shader\materials\LocalFog.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <FileType>Document</FileType>
     </None>
-    <FxCompile Include="Resources\shader\LocalFog.VS.hlsl">
+    <FxCompile Include="Resources\shader\materials\LocalFog.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
     </FxCompile>
-    <None Include="Resources\shader\Magma.PS.hlsl">
+    <None Include="Resources\shader\materials\Magma.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <FileType>Document</FileType>
     </None>
-    <FxCompile Include="Resources\shader\Magma.VS.hlsl">
+    <FxCompile Include="Resources\shader\materials\Magma.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\shader\ParticleCS.hlsl">
+    <FxCompile Include="Resources\shader\particle\ParticleCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Development|x64'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
@@ -411,39 +423,39 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Resources\shader\DebugPrimitive.PS.hlsl">
+    <FxCompile Include="Resources\shader\debug\DebugPrimitive.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
     </FxCompile>
-    <None Include="Resources\shader\Water.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <FileType>Document</FileType>
-    </None>
-    <FxCompile Include="Resources\shader\Skybox.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="Resources\shader\Skybox.VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-    </FxCompile>
-    <FxCompile Include="Resources\shader\Water.VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-    </FxCompile>
-    <None Include="Resources\shader\GPUParticlePS.hlsl">
+    <None Include="Resources\shader\materials\Water.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <FileType>Document</FileType>
     </None>
-    <FxCompile Include="Resources\shader\GPUParticleVS.hlsl">
+    <FxCompile Include="Resources\shader\skybox\Skybox.PS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Resources\shader\skybox\Skybox.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Resources\shader\materials\Water.VS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <None Include="Resources\shader\particle\GPUParticlePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </None>
+    <FxCompile Include="Resources\shader\particle\GPUParticleVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
@@ -451,12 +463,12 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Particle.PS.hlsl">
+    <FxCompile Include="Resources\shader\particle\Particle.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Object3d.PS.hlsl">
+    <FxCompile Include="Resources\shader\object3d\Object3d.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
@@ -464,7 +476,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Resources\shader\Object3d.VS.hlsl">
+    <FxCompile Include="Resources\shader\object3d\Object3d.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
@@ -472,7 +484,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Resources\shader\PostEffect.VS.hlsl">
+    <FxCompile Include="Resources\shader\postprocess\PostEffect.VS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
@@ -480,11 +492,11 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <None Include="Resources\shader\PostEffect.PS.hlsl" />
-    <None Include="Resources\shader\Sprite.PS.hlsl">
+    <None Include="Resources\shader\postprocess\PostEffect.PS.hlsl" />
+    <None Include="Resources\shader\sprite\Sprite.PS.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="Resources\shader\Sprite.VS.hlsl">
+    <None Include="Resources\shader\sprite\Sprite.VS.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -525,6 +537,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\actor\gimmick\GimmickLaserEmitter.h" />
     <ClInclude Include="game\actor\gimmick\GimmickLaserNode.h" />
     <ClInclude Include="game\actor\gimmick\GimmickStageGate.h" />
+    <ClInclude Include="game\actor\gimmick\GimmickFireCannon.h" />
     <ClInclude Include="game\actor\item\BaseItem.h" />
     <ClInclude Include="game\actor\item\HealItem.h" />
     <ClInclude Include="game\system\EnemyFactory.h" />
@@ -761,6 +774,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="game\scene\GameSelectScene.h" />
     <ClInclude Include="game\scene\SettingsScene.h" />
     <ClInclude Include="game\ui\PauseMenuOverlay.h" />
+    <ClInclude Include="game\ui\SaveIndicatorOverlay.h" />
     <ClInclude Include="game\ui\SettingsMenuOverlay.h" />
     <ClInclude Include="engine\utility\SystemDebug\ImguiManager.h" />
     <ClInclude Include="engine\utility\SystemDebug\ProfilerManager.h" />
@@ -812,8 +826,11 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\TextSpriteGenerator.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\Text3DGenerator.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\PrimitiveDrawer.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ProjectWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneValidator.h" />

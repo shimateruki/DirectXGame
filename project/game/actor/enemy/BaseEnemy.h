@@ -25,6 +25,7 @@ public:
     bool IsCarried() const { return isCarried_; }
     virtual void BeginThrown(const Vector3& initialVelocity);
     bool IsThrownPhysics() const { return isThrownPhysics_; }
+    bool IsDefeatEffectPlaying() const { return isDefeatEffectPlaying_; }
     virtual void ExecuteAbility(class Player* player);
     virtual void UpdateCarriedAbility(class Player* player, float deltaTime);
 
@@ -34,6 +35,7 @@ protected:
     Vector3 GetWanderTargetPosition(float deltaTime, float radiusScale = 0.65f, float verticalOffset = 0.0f);
     void ResetWanderOrigin();
     bool IsThrowRecovering() const { return throwRecoveryTimer_ > 0.0f || isThrownPhysics_ || isThrowRotationRecovering_; }
+    bool ShouldHandleDefeatEffect() const;
     virtual void OnSlamImpact(const Vector3& impactPosition, float impactSpeed);
 
     Object3d* target_ = nullptr; // 追いかける対象（プレイヤー）
@@ -58,6 +60,11 @@ private:
     void SpawnSlamImpactEffect(const Vector3& impactPosition, float impactSpeed);
     void DamageSlamTargets(const Vector3& impactPosition, float impactSpeed);
     void UpdateDamageFeedbackTimers(float deltaTime);
+    void BeginDefeatEffect();
+    void UpdateDefeatEffect(float deltaTime);
+    void SpawnDefeatStartParticles();
+    void SpawnDefeatLoopParticles();
+    class ParticleSystem* GetCurrentParticleSystem() const;
 
     Vector3 wanderOrigin_ = { 0.0f, 0.0f, 0.0f };
     Vector3 wanderTarget_ = { 0.0f, 0.0f, 0.0f };
@@ -74,4 +81,11 @@ private:
     float slamImpactCooldownTimer_ = 0.0f;
     int slamImpactCount_ = 0;
     bool isThrowRotationRecovering_ = false;
+    bool isDefeatEffectPlaying_ = false;
+    bool isDefeatEffectFinished_ = false;
+    float defeatEffectTimer_ = 0.0f;
+    float defeatEffectParticleTimer_ = 0.0f;
+    Vector3 defeatBasePosition_ = { 0.0f, 0.0f, 0.0f };
+    Vector3 defeatBaseScale_ = { 1.0f, 1.0f, 1.0f };
+    Vector4 defeatBaseColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
 };

@@ -7,6 +7,7 @@
 #include <vector>
 
 class DebugEditor;
+class Object3d;
 
 class ModelOptimizerWindow : public IEditable {
 public:
@@ -20,6 +21,10 @@ private:
     bool RunBuilder(bool analyzeOnly);
     bool LoadLatestReport();
     bool ApplyLodConfigToSelected();
+    bool ApplyLodConfigToObject(Object3d* object);
+    bool AcceptGeneratedLods();
+    bool RejectGeneratedLods();
+    int DeleteGeneratedLodFilesFromReport();
     void CreatePreviewObjects();
     void RemovePreviewObjects();
     std::string BuildReportSummary() const;
@@ -34,6 +39,9 @@ private:
     float lodRatios_[2] = { 0.55f, 0.25f };
     float lodDistances_[2] = { 35.0f, 70.0f };
     bool forceOverwrite_ = true;
+    bool autoUseEffectPreviewStage_ = true;
+    bool hasPendingGeneratedReview_ = false;
+    Object3d* pendingApplyTarget_ = nullptr;
     nlohmann::json latestReport_;
     bool hasReport_ = false;
     std::string lastStatus_ = "モデルを選んで解析またはLOD生成を実行してください。";

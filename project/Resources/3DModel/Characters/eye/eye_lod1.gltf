@@ -1,0 +1,121 @@
+{
+    "asset":  {
+                  "version":  "2.0",
+                  "generator":  "GE3 Model LOD Builder"
+              },
+    "scene":  0,
+    "scenes":  [
+                   {
+                       "nodes":  [
+                                     0
+                                 ]
+                   }
+               ],
+    "nodes":  [
+                  {
+                      "name":  "eye_lod1",
+                      "mesh":  0
+                  }
+              ],
+    "meshes":  [
+                   {
+                       "name":  "eye_lod1",
+                       "primitives":  [
+                                          {
+                                              "attributes":  {
+                                                                 "POSITION":  0,
+                                                                 "NORMAL":  1,
+                                                                 "TEXCOORD_0":  2
+                                                             },
+                                              "indices":  3,
+                                              "material":  0,
+                                              "mode":  4
+                                          }
+                                      ]
+                   }
+               ],
+    "materials":  [
+                      {
+                          "name":  "LOD_Default",
+                          "doubleSided":  true,
+                          "pbrMetallicRoughness":  {
+                                                       "baseColorFactor":  [
+                                                                               1,
+                                                                               1,
+                                                                               1,
+                                                                               1
+                                                                           ],
+                                                       "metallicFactor":  0,
+                                                       "roughnessFactor":  0.7
+                                                   }
+                      }
+                  ],
+    "buffers":  [
+                    {
+                        "uri":  "eye_lod1.bin",
+                        "byteLength":  39456
+                    }
+                ],
+    "bufferViews":  [
+                        {
+                            "buffer":  0,
+                            "byteOffset":  0,
+                            "byteLength":  10296,
+                            "target":  34962
+                        },
+                        {
+                            "buffer":  0,
+                            "byteOffset":  10296,
+                            "byteLength":  10296,
+                            "target":  34962
+                        },
+                        {
+                            "buffer":  0,
+                            "byteOffset":  20592,
+                            "byteLength":  6864,
+                            "target":  34962
+                        },
+                        {
+                            "buffer":  0,
+                            "byteOffset":  27456,
+                            "byteLength":  12000,
+                            "target":  34963
+                        }
+                    ],
+    "accessors":  [
+                      {
+                          "bufferView":  0,
+                          "componentType":  5126,
+                          "count":  858,
+                          "type":  "VEC3",
+                          "min":  [
+                                      -0.992048,
+                                      -0.992048,
+                                      -1.006933
+                                  ],
+                          "max":  [
+                                      0.992048,
+                                      0.992048,
+                                      1.021794
+                                  ]
+                      },
+                      {
+                          "bufferView":  1,
+                          "componentType":  5126,
+                          "count":  858,
+                          "type":  "VEC3"
+                      },
+                      {
+                          "bufferView":  2,
+                          "componentType":  5126,
+                          "count":  858,
+                          "type":  "VEC2"
+                      },
+                      {
+                          "bufferView":  3,
+                          "componentType":  5125,
+                          "count":  3000,
+                          "type":  "SCALAR"
+                      }
+                  ]
+}

@@ -48,6 +48,10 @@ void EnemyBat::Initialize(Object3dCommon* common, const std::string& modelName) 
 }
 
 void EnemyBat::Update(float deltaTime) {
+    if (ShouldHandleDefeatEffect()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     if (isCarried_) {
         return;
     }

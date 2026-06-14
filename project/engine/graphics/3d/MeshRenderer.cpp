@@ -3,6 +3,7 @@
 #include "ModelManager.h"
 #include "CameraManager.h"
 #include "LightManager.h"
+#include "TextureManager.h"
 #include <cassert>
 #include <SrvManager.h>
 #include "json.hpp"
@@ -15,9 +16,82 @@
 namespace {
 namespace fs = std::filesystem;
 
+struct BakedShaderTextureSet {
+    uint32_t slot0 = 0;
+    uint32_t slot1 = 0;
+    uint32_t slot2 = 0;
+};
+
+struct BakedShaderTextureCache {
+    BakedShaderTextureSet fallback;
+    BakedShaderTextureSet water;
+    BakedShaderTextureSet fire;
+    BakedShaderTextureSet gatePortal;
+    bool loaded = false;
+};
+
 std::string NormalizeSlashes(std::string text) {
     std::replace(text.begin(), text.end(), '\\', '/');
     return text;
+}
+
+BakedShaderTextureCache& GetBakedShaderTextureCache() {
+    static BakedShaderTextureCache cache;
+    return cache;
+}
+
+uint32_t LoadTextureWithFallback(const char* texturePath) {
+    const char* fallbackPath = "Resources/sprite/common/white.dds";
+    const char* pathToLoad = fs::exists(texturePath) ? texturePath : fallbackPath;
+    return TextureManager::GetInstance()->Load(pathToLoad, true);
+}
+
+void EnsureBakedShaderTexturesLoaded() {
+    BakedShaderTextureCache& cache = GetBakedShaderTextureCache();
+    if (cache.loaded) {
+        return;
+    }
+
+    const uint32_t fallback = LoadTextureWithFallback("Resources/sprite/common/white.dds");
+    cache.fallback = { fallback, fallback, fallback };
+    cache.water = {
+        LoadTextureWithFallback("Resources/texture/BakedShader/water_foam_mask.dds"),
+        LoadTextureWithFallback("Resources/texture/BakedShader/water_flow_noise.dds"),
+        fallback
+    };
+    cache.fire = {
+        LoadTextureWithFallback("Resources/texture/BakedShader/fire_flame_mask.dds"),
+        LoadTextureWithFallback("Resources/texture/BakedShader/fire_orb_mask.dds"),
+        fallback
+    };
+    cache.gatePortal = {
+        LoadTextureWithFallback("Resources/texture/BakedShader/gate_swirl_mask.dds"),
+        fallback,
+        fallback
+    };
+    cache.loaded = true;
+}
+
+const BakedShaderTextureSet& GetDefaultBakedShaderTextures() {
+    return GetBakedShaderTextureCache().fallback;
+}
+
+const BakedShaderTextureSet& GetWaterBakedShaderTextures() {
+    return GetBakedShaderTextureCache().water;
+}
+
+const BakedShaderTextureSet& GetFireBakedShaderTextures() {
+    return GetBakedShaderTextureCache().fire;
+}
+
+const BakedShaderTextureSet& GetGatePortalBakedShaderTextures() {
+    return GetBakedShaderTextureCache().gatePortal;
+}
+
+void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const BakedShaderTextureSet& textures) {
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, textures.slot0);
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 6, textures.slot1);
+    SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 7, textures.slot2);
 }
 
 std::vector<fs::path> MakeLodManifestCandidates(const std::string& modelName) {
@@ -56,6 +130,25 @@ bool ReadJsonFile(const fs::path& path, nlohmann::json& outJson) {
     catch (...) {
         return false;
     }
+}
+
+float ClampTextureTiling(float value) {
+    if (!std::isfinite(value)) {
+        return 1.0f;
+    }
+    return std::clamp(value, 0.01f, 1000.0f);
+}
+
+Vector2 MakeAutoTilingFromScale(const Vector3& scale) {
+    float a = std::abs(scale.x);
+    float b = std::abs(scale.y);
+    float c = std::abs(scale.z);
+
+    if (a < b) std::swap(a, b);
+    if (a < c) std::swap(a, c);
+    if (b < c) std::swap(b, c);
+
+    return { (std::max)(a, 0.01f), (std::max)(b, 0.01f) };
 }
 }
 
@@ -97,6 +190,7 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     materialData_->enableEnvMap = 0;     // デフォルトoff
     materialData_->envIntensity = 1.0f;  // デフォルト1.0倍
     materialData_->emissive = 1.0f;
+    materialData_->time = 0.0f;
     shadowWvpResource_ = dxCommon->CreateBufferResource(sizeof(TransformationMatrix));
     shadowWvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&shadowWvpData_));
     shadowWvpData_->WVP = Math::MakeIdentity4x4();
@@ -122,12 +216,17 @@ void MeshRenderer::Initialize(Object3dCommon* common) {
     waterParamData_->effectIntensity = 1.0f;
     waterParamData_->cameraWorldPosition = { 0.0f, 0.0f, -1.0f };
     waterParamData_->billboardScale = 0.55f;
+    EnsureBakedShaderTexturesLoaded();
     
 }
 
 void MeshRenderer::Update() {
 	// 経過時間を更新してGPUに転送
     time_ += 1.0f / 60.0f;
+    if (materialData_) {
+        materialData_->time = time_;
+    }
+    UpdateUvTransform();
 
     if (waterParamData_) {
         waterParamData_->time = time_; 
@@ -280,6 +379,7 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 
     //  4番目にカラーテクスチャをセット
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    BindBakedShaderTextures(commandList, GetWaterBakedShaderTextures());
 
     drawModel->DrawMeshOnly();
 }
@@ -295,6 +395,7 @@ void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
 
     drawModel->DrawMeshOnly();
 }
@@ -311,6 +412,7 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
     drawModel->DrawMeshOnly();
 }
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
@@ -328,11 +430,12 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    BindBakedShaderTextures(commandList, GetFireBakedShaderTextures());
     drawModel = fireProxyModel_ ? fireProxyModel_.get() : drawModel;
     drawModel->DrawMeshOnly();
 }
 
-void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel) {
+void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !waterParamResource_ || !setGraphicsCommand) return;
 
@@ -347,6 +450,9 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
     commandList->SetGraphicsRootConstantBufferView(2, materialResource_->GetGPUVirtualAddress());
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
+    const BakedShaderTextureSet& bakedTextures =
+        (bakedTextureMode == 1) ? GetGatePortalBakedShaderTextures() : GetDefaultBakedShaderTextures();
+    BindBakedShaderTextures(commandList, bakedTextures);
     drawModel = (useProxyModel && fireProxyModel_) ? fireProxyModel_.get() : drawModel;
     drawModel->DrawMeshOnly();
 }
@@ -392,7 +498,7 @@ void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
 }
 
 void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &Object3dCommon::SetGatePortalGraphicsCommand, true, 1);
 }
 
 void MeshRenderer::InitializeFireProxyModel() {
@@ -639,6 +745,38 @@ void MeshRenderer::SetTexture(const std::string& texturePath) {
     } else {
         textureHandle_ = 0;
     }
+}
+
+void MeshRenderer::SetTextureTiling(const Vector2& tiling) {
+    textureTiling_ = {
+        ClampTextureTiling(tiling.x),
+        ClampTextureTiling(tiling.y)
+    };
+    UpdateUvTransform();
+}
+
+void MeshRenderer::SetAutoTextureTiling(bool enabled) {
+    autoTextureTiling_ = enabled;
+    UpdateUvTransform();
+}
+
+void MeshRenderer::UpdateUvTransform() {
+    if (!materialData_) {
+        return;
+    }
+
+    Vector2 effectiveTiling = {
+        ClampTextureTiling(textureTiling_.x),
+        ClampTextureTiling(textureTiling_.y)
+    };
+
+    if (autoTextureTiling_ && transform_) {
+        Vector2 scaleTiling = MakeAutoTilingFromScale(transform_->scale);
+        effectiveTiling.x *= scaleTiling.x;
+        effectiveTiling.y *= scaleTiling.y;
+    }
+
+    materialData_->uvTransform = Math::MakeScaleMatrix({ effectiveTiling.x, effectiveTiling.y, 1.0f });
 }
 
 

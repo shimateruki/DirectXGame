@@ -833,6 +833,9 @@ json Object3d::ExportToJson() {
     d["normalMapPath"] = GetNormalMapPath();
     d["ormMapPath"] = GetOrmMapPath();
     d["texturePath"] = GetTexturePath();
+    Vector2 tiling = GetTextureTiling();
+    d["textureTiling"] = { tiling.x, tiling.y };
+    d["autoTextureTiling"] = GetAutoTextureTiling();
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
@@ -976,6 +979,10 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("normalMapPath")) SetNormalMap(j["normalMapPath"]);
     if (j.contains("ormMapPath")) SetOrmMap(j["ormMapPath"]);
     if (j.contains("texturePath")) SetTexture(j["texturePath"]);
+    if (j.contains("textureTiling") && j["textureTiling"].is_array() && j["textureTiling"].size() >= 2) {
+        SetTextureTiling({ j["textureTiling"][0].get<float>(), j["textureTiling"][1].get<float>() });
+    }
+    if (j.contains("autoTextureTiling")) SetAutoTextureTiling(j["autoTextureTiling"].get<bool>());
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());

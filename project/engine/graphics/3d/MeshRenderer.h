@@ -40,7 +40,8 @@ public:
         int32_t enableEnvMap;      // 4 byte (環境マップ有効化)
         float envIntensity;        // 4 byte (環境マップ強度)
         float emissive;            // 4 byte (自己発光の強さ。1.0で光らない)
-        float padding2[3];         // 12 byte (16バイト境界に合わせるためのダミー)
+        float time;                // 4 byte (時間アニメーション用)
+        float padding2[2];         // 8 byte (16バイト境界に合わせるためのダミー)
     };
 
     struct PointLight {
@@ -161,6 +162,10 @@ public:
     void SetTexture(const std::string& texturePath);
     std::string GetTexturePath() const { return texturePath_; }
     uint32_t GetTextureHandle() const { return textureHandle_; }
+    void SetTextureTiling(const Vector2& tiling);
+    Vector2 GetTextureTiling() const { return textureTiling_; }
+    void SetAutoTextureTiling(bool enabled);
+    bool GetAutoTextureTiling() const { return autoTextureTiling_; }
 
     bool GetEnableLighting() const { return materialData_ ? (materialData_->enableLighting != 0) : false; }
 
@@ -198,8 +203,9 @@ public:
     WaterParamForGPU* GetWaterParamData() const { return waterParamData_; }
 private:
     void InitializeFireProxyModel();
-    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false);
+    void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel = false, int bakedTextureMode = 0);
     Model* ResolveDrawModel() const;
+    void UpdateUvTransform();
 
     // 依存オブジェクト
     Object3dCommon* common_ = nullptr;
@@ -236,6 +242,8 @@ private:
 
     std::string texturePath_ = "";
     uint32_t textureHandle_ = 0;
+    Vector2 textureTiling_ = { 1.0f, 1.0f };
+    bool autoTextureTiling_ = false;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> waterParamResource_;
     WaterParamForGPU* waterParamData_ = nullptr;

@@ -1,7 +1,6 @@
 #include "GimmickDashPanel.h"
 #include "CollisionConfig.h"
 #include "Player.h"
-#include <cmath>
 
 void GimmickDashPanel::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -11,15 +10,18 @@ void GimmickDashPanel::Initialize(Object3dCommon* common, const std::string& mod
     SetName("Gimmick_DashPanel");
     SetCollisionAttribute(kGround);
     SetCollisionMask(0b11111111);
-    SetColor({ 1.0f, 0.55f, 0.1f, 1.0f });
+    SetMaterialType(24);
+    SetBlendMode(BlendMode::kNone);
+    SetColor({ 0.25f, 0.95f, 1.0f, 1.0f });
+    SetRoughness(0.62f);
+    SetMetallic(0.56f);
+    SetEmissive(1.0f);
+    SetTextureTiling({ 1.0f, 1.0f });
+    SetAutoTextureTiling(false);
     SetScale({ 2.0f, 0.25f, 1.2f });
 }
 
 void GimmickDashPanel::Update(float deltaTime) {
-    pulseTimer_ += deltaTime;
-    float pulse = 0.82f + std::sin(pulseTimer_ * 7.0f) * 0.08f;
-    SetColor({ 1.0f, 0.45f + pulse * 0.25f, 0.08f, 1.0f });
-
     BaseGimmick::Update(deltaTime);
 }
 

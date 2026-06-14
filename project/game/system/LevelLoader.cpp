@@ -389,6 +389,13 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 if (objData.contains("normalMapPath")) targetObject->SetNormalMap(objData["normalMapPath"].get<std::string>());
                 if (objData.contains("ormMapPath")) targetObject->SetOrmMap(objData["ormMapPath"].get<std::string>());
                 if (objData.contains("texturePath")) targetObject->SetTexture(objData["texturePath"].get<std::string>());
+                if (objData.contains("textureTiling") && objData["textureTiling"].is_array() && objData["textureTiling"].size() >= 2) {
+                    targetObject->SetTextureTiling({
+                        objData["textureTiling"][0].get<float>(),
+                        objData["textureTiling"][1].get<float>()
+                    });
+                }
+                if (objData.contains("autoTextureTiling")) targetObject->SetAutoTextureTiling(objData["autoTextureTiling"].get<bool>());
                 if (objData.contains("enableEnvMap")) targetObject->SetEnableEnvMap(objData["enableEnvMap"].get<bool>());
                 if (objData.contains("envIntensity")) targetObject->SetEnvIntensity(objData["envIntensity"].get<float>());
                 if (objData.contains("emissive")) targetObject->SetEmissive(objData["emissive"].get<float>());

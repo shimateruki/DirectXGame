@@ -135,8 +135,8 @@ void Object3dCommon::CreatePipelineStates() {
     };
 
     // 2. シェーダーのコンパイル
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Object3d.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Object3d.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/object3d/Object3d.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/object3d/Object3d.PS.hlsl", L"ps_6_0");
 
     // =========================================================
     // 【通常描画用 PSO (ブレンドモード6種類)】
@@ -163,7 +163,7 @@ void Object3dCommon::CreatePipelineStates() {
     // =========================================================
     // 【影描画用 (シャドウマップ) PSO】
     // =========================================================
-    auto shadowVsBlob = dxCommon_->CompileShader(L"Resources/shader/Shadow.VS.hlsl", L"vs_6_0");
+    auto shadowVsBlob = dxCommon_->CompileShader(L"Resources/shader/object3d/Shadow.VS.hlsl", L"vs_6_0");
 
     GraphicsPipelineBuilder shadowBuilder;
     shadowBuilder.SetRootSignature(shadowRootSignature_.Get());
@@ -244,8 +244,8 @@ void Object3dCommon::CreateLocalFogPipeline() {
         { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/LocalFog.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/LocalFog.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/LocalFog.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/LocalFog.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(localFogRootSignature_.Get());
@@ -338,8 +338,8 @@ void Object3dCommon::CreateEffectPipeline() {
     };
 
     // シェーダーのコンパイル (前回作成した軽量シェーダー)
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Effect3d.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Effect3d.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/effects/Effect3d.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/effects/Effect3d.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(effectRootSignature_.Get());
@@ -382,6 +382,10 @@ void Object3dCommon::CreateWaterRootSignature() {
     //  [3] 背景深度テクスチャ (t0レジスタ)
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
     builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    // [5-7] ベイク済みの補助テクスチャ (t2-t4レジスタ)
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
     //  サンプラー (s0レジスタ) 境界が綺麗に補間されるようにCLAMPを指定
     builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
     // 引数でポインタを渡して構築結果を受け取る
@@ -397,8 +401,8 @@ void Object3dCommon::CreateWaterPipeline() {
     };
 
     // 先ほど作ったシェーダーを読み込む
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Water.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Water.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Water.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Water.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(waterRootSignature_.Get());
@@ -463,8 +467,8 @@ void Object3dCommon::CreateMagmaPipeline() {
     };
 
     // ★頂点シェーダーは水(Water.VS)を使い回し、ピクセルシェーダーだけMagmaにする！
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Magma.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Magma.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Magma.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Magma.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     // ルートシグネチャも水のものを完全に使い回す
@@ -494,8 +498,8 @@ void Object3dCommon::CreateIcePipeline() {
         { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Ice.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Ice.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Ice.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Ice.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(waterRootSignature_.Get());
@@ -536,8 +540,8 @@ void Object3dCommon::CreateFirePipeline() {
         { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Fire.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Fire.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Fire.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Fire.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(waterRootSignature_.Get());
@@ -564,8 +568,8 @@ void Object3dCommon::SetFireGraphicsCommand() {
 
 void Object3dCommon::CreateLaserPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/LaserBeam.VS.hlsl",
-        L"Resources/shader/LaserBeam.PS.hlsl",
+        L"Resources/shader/materials/LaserBeam.VS.hlsl",
+        L"Resources/shader/materials/LaserBeam.PS.hlsl",
         BlendMode::kAdd,
         D3D12_CULL_MODE_NONE,
         laserPipelineState_.GetAddressOf()
@@ -574,8 +578,8 @@ void Object3dCommon::CreateLaserPipeline() {
 
 void Object3dCommon::CreateSlimeGelPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/SlimeGel.VS.hlsl",
-        L"Resources/shader/SlimeGel.PS.hlsl",
+        L"Resources/shader/materials/SlimeGel.VS.hlsl",
+        L"Resources/shader/materials/SlimeGel.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         slimeGelPipelineState_.GetAddressOf()
@@ -584,8 +588,8 @@ void Object3dCommon::CreateSlimeGelPipeline() {
 
 void Object3dCommon::CreateShockwavePipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/GroundShockwave.VS.hlsl",
-        L"Resources/shader/GroundShockwave.PS.hlsl",
+        L"Resources/shader/materials/GroundShockwave.VS.hlsl",
+        L"Resources/shader/materials/GroundShockwave.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         shockwavePipelineState_.GetAddressOf()
@@ -594,8 +598,8 @@ void Object3dCommon::CreateShockwavePipeline() {
 
 void Object3dCommon::CreateLiquidContactPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/LiquidContact.VS.hlsl",
-        L"Resources/shader/LiquidContact.PS.hlsl",
+        L"Resources/shader/materials/LiquidContact.VS.hlsl",
+        L"Resources/shader/materials/LiquidContact.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         liquidContactPipelineState_.GetAddressOf()
@@ -604,8 +608,8 @@ void Object3dCommon::CreateLiquidContactPipeline() {
 
 void Object3dCommon::CreateDamageCrackPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/DamageCrack.VS.hlsl",
-        L"Resources/shader/DamageCrack.PS.hlsl",
+        L"Resources/shader/materials/DamageCrack.VS.hlsl",
+        L"Resources/shader/materials/DamageCrack.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         damageCrackPipelineState_.GetAddressOf()
@@ -614,8 +618,8 @@ void Object3dCommon::CreateDamageCrackPipeline() {
 
 void Object3dCommon::CreateUpdraftPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/Updraft.VS.hlsl",
-        L"Resources/shader/Updraft.PS.hlsl",
+        L"Resources/shader/materials/Updraft.VS.hlsl",
+        L"Resources/shader/materials/Updraft.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         updraftPipelineState_.GetAddressOf()
@@ -624,8 +628,8 @@ void Object3dCommon::CreateUpdraftPipeline() {
 
 void Object3dCommon::CreateStunBindPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/StunBind.VS.hlsl",
-        L"Resources/shader/StunBind.PS.hlsl",
+        L"Resources/shader/materials/StunBind.VS.hlsl",
+        L"Resources/shader/materials/StunBind.PS.hlsl",
         BlendMode::kAdd,
         D3D12_CULL_MODE_NONE,
         stunBindPipelineState_.GetAddressOf()
@@ -634,8 +638,8 @@ void Object3dCommon::CreateStunBindPipeline() {
 
 void Object3dCommon::CreateCrownUnlockPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/CrownUnlock.VS.hlsl",
-        L"Resources/shader/CrownUnlock.PS.hlsl",
+        L"Resources/shader/materials/CrownUnlock.VS.hlsl",
+        L"Resources/shader/materials/CrownUnlock.PS.hlsl",
         BlendMode::kAdd,
         D3D12_CULL_MODE_NONE,
         crownUnlockPipelineState_.GetAddressOf()
@@ -644,8 +648,8 @@ void Object3dCommon::CreateCrownUnlockPipeline() {
 
 void Object3dCommon::CreatePoisonSporePipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/PoisonSpore.VS.hlsl",
-        L"Resources/shader/PoisonSpore.PS.hlsl",
+        L"Resources/shader/materials/PoisonSpore.VS.hlsl",
+        L"Resources/shader/materials/PoisonSpore.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         poisonSporePipelineState_.GetAddressOf()
@@ -654,8 +658,8 @@ void Object3dCommon::CreatePoisonSporePipeline() {
 
 void Object3dCommon::CreateCloudPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/Cloud.VS.hlsl",
-        L"Resources/shader/Cloud.PS.hlsl",
+        L"Resources/shader/materials/Cloud.VS.hlsl",
+        L"Resources/shader/materials/Cloud.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         cloudPipelineState_.GetAddressOf()
@@ -664,8 +668,8 @@ void Object3dCommon::CreateCloudPipeline() {
 
 void Object3dCommon::CreateGatePortalPipeline() {
     CreateSpecialMaterialPipeline(
-        L"Resources/shader/GatePortal.VS.hlsl",
-        L"Resources/shader/GatePortal.PS.hlsl",
+        L"Resources/shader/materials/GatePortal.VS.hlsl",
+        L"Resources/shader/materials/GatePortal.PS.hlsl",
         BlendMode::kNormal,
         D3D12_CULL_MODE_NONE,
         gatePortalPipelineState_.GetAddressOf()
@@ -766,8 +770,8 @@ void Object3dCommon::CreateSkyboxPipeline() {
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
     rsBuilder.Build(dxCommon_->GetDevice(), skyboxRootSignature_.GetAddressOf());
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Skybox.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Skybox.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/skybox/Skybox.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/skybox/Skybox.PS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder pipelineBuilder;
     pipelineBuilder.SetRootSignature(skyboxRootSignature_.Get());

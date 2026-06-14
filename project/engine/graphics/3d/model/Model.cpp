@@ -500,6 +500,10 @@ void Model::Initialize(ModelCommon* common, const std::string& directoryPath, co
     materialData_->roughness = 0.5f;
     materialData_->metallic = 0.0f;
     materialData_->enableNormalMap = 1;
+    materialData_->enableEnvMap = 0;
+    materialData_->envIntensity = 1.0f;
+    materialData_->emissive = 1.0f;
+    materialData_->time = 0.0f;
     materialData_->uvTransform = math_.MakeIdentity4x4();
 
     // 5. ボーン用バッファの作成 

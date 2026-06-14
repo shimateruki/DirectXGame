@@ -18,6 +18,9 @@ $PreviewMarkers = @(
     "/generated/editor/text_preview/"
 )
 $LinearMarkers = @(
+    "bakedshader",
+    "_mask",
+    "_noise",
     "normal",
     "_n",
     "nor",

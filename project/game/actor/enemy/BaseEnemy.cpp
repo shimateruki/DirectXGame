@@ -30,6 +30,10 @@ constexpr float kSlamImpactCooldown = 0.16f;
 constexpr float kSlamRadiusBase = 4.0f;
 constexpr float kSlamDamageBase = 46.0f;
 constexpr float kSlamDamageScale = 0.70f;
+constexpr float kDefeatEffectDuration = 1.05f;
+constexpr float kDefeatRiseHeight = 1.45f;
+constexpr float kDefeatSpinSpeed = 5.4f;
+constexpr float kDefeatParticleInterval = 0.055f;
 
 float PlanarDistance(const Vector3& a, const Vector3& b) {
     const float dx = a.x - b.x;
@@ -442,7 +446,175 @@ void BaseEnemy::UpdateDamageFeedbackTimers(float deltaTime) {
     }
 }
 
+bool BaseEnemy::ShouldHandleDefeatEffect() const {
+    if (isDefeatEffectFinished_) {
+        return false;
+    }
+    if (GetEnemyType() == "Bomb") {
+        return false;
+    }
+    if (isDefeatEffectPlaying_) {
+        return true;
+    }
+    return param_.has_value() && param_->hp <= 0.0f && !isDead;
+}
+
+ParticleSystem* BaseEnemy::GetCurrentParticleSystem() const {
+    SceneManager* sceneManager = SceneManager::GetInstance();
+    if (!sceneManager || !sceneManager->GetCurrentScene()) {
+        return nullptr;
+    }
+    return sceneManager->GetCurrentScene()->GetParticleSystem();
+}
+
+void BaseEnemy::BeginDefeatEffect() {
+    isDefeatEffectPlaying_ = true;
+    isDefeatEffectFinished_ = false;
+    defeatEffectTimer_ = 0.0f;
+    defeatEffectParticleTimer_ = 0.0f;
+    defeatBasePosition_ = GetTranslate();
+    defeatBaseScale_ = GetScale();
+    defeatBaseColor_ = GetColor();
+
+    isCarried_ = false;
+    isThrownPhysics_ = false;
+    isThrowRotationRecovering_ = false;
+    throwRecoveryTimer_ = 0.0f;
+    thrownTimer_ = 0.0f;
+    thrownSettleTimer_ = 0.0f;
+    slamImpactCooldownTimer_ = 0.0f;
+    SetVelocity({ 0.0f, 0.0f, 0.0f });
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+    SetSelectedLighting(2);
+    SetMaterialType(4);
+    SetBlendMode(BlendMode::kNormal);
+    SetEmissive(2.4f);
+    SetColor({ 1.0f, 0.96f, 0.72f, 1.0f });
+
+    SpawnDefeatStartParticles();
+}
+
+void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
+    defeatEffectTimer_ += deltaTime;
+    defeatEffectParticleTimer_ -= deltaTime;
+
+    const float progress = (std::clamp)(defeatEffectTimer_ / kDefeatEffectDuration, 0.0f, 1.0f);
+    const float eased = EaseOutCubic(progress);
+    const float pulse = 1.0f + std::sin(progress * kWanderPi * 6.0f) * 0.06f * (1.0f - progress);
+    const float shrink = 1.0f - eased * 0.34f;
+
+    Vector3 scale = defeatBaseScale_;
+    scale.x *= shrink * pulse;
+    scale.z *= shrink * pulse;
+    scale.y *= (1.0f - eased * 0.18f) * (1.0f + std::sin(progress * kWanderPi * 3.0f) * 0.10f * (1.0f - progress));
+    SetScale(scale);
+
+    Vector3 position = defeatBasePosition_;
+    position.y += kDefeatRiseHeight * eased;
+    SetTranslate(position);
+
+    Vector3 rotation = GetRotation();
+    rotation.y += (kDefeatSpinSpeed + progress * 4.0f) * deltaTime;
+    rotation.x += 0.55f * (1.0f - progress) * deltaTime;
+    SetRotation(rotation);
+
+    const float dissolveThreshold = 1.0f - (progress * progress * (3.0f - 2.0f * progress));
+    const Vector3 glowColor = {
+        defeatBaseColor_.x * (1.0f - eased) + 1.0f * eased,
+        defeatBaseColor_.y * (1.0f - eased) + 0.92f * eased,
+        defeatBaseColor_.z * (1.0f - eased) + 0.48f * eased
+    };
+    SetColor({ glowColor.x, glowColor.y, glowColor.z, dissolveThreshold });
+
+    if (defeatEffectParticleTimer_ <= 0.0f && progress < 0.96f) {
+        SpawnDefeatLoopParticles();
+        defeatEffectParticleTimer_ = kDefeatParticleInterval;
+    }
+
+    if (progress >= 1.0f) {
+        isDefeatEffectPlaying_ = false;
+        isDefeatEffectFinished_ = true;
+        isDead = true;
+        SetIsVisible(false);
+        if (BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr) {
+            scene->RequestRemoveObject(this);
+        }
+    }
+}
+
+void BaseEnemy::SpawnDefeatStartParticles() {
+    ParticleSystem* particleSystem = GetCurrentParticleSystem();
+    if (!particleSystem) {
+        return;
+    }
+
+    Vector3 center = GetWorldPosition();
+    center.y += (std::max)(0.35f, defeatBaseScale_.y * 0.45f);
+    Vector3 up = { 0.0f, 1.0f, 0.0f };
+    particleSystem->SpawnParticles(
+        center,
+        36,
+        4.6f,
+        nullptr,
+        0.0f,
+        { 1.0f, 0.95f, 0.58f, 1.0f },
+        { 0.55f, 0.82f, 1.0f, 0.0f },
+        0.25f,
+        0.72f,
+        0.55f,
+        0.04f
+    );
+    particleSystem->SpawnParticles(
+        center,
+        18,
+        2.2f,
+        &up,
+        1.1f,
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        { 1.0f, 0.78f, 0.32f, 0.0f },
+        0.22f,
+        0.58f,
+        0.35f,
+        0.02f
+    );
+}
+
+void BaseEnemy::SpawnDefeatLoopParticles() {
+    ParticleSystem* particleSystem = GetCurrentParticleSystem();
+    if (!particleSystem) {
+        return;
+    }
+
+    const float progress = (std::clamp)(defeatEffectTimer_ / kDefeatEffectDuration, 0.0f, 1.0f);
+    Vector3 center = GetWorldPosition();
+    center.y += (std::max)(0.2f, defeatBaseScale_.y * (0.2f + progress * 0.45f));
+    Vector3 up = { 0.0f, 1.0f, 0.0f };
+    particleSystem->SpawnParticles(
+        center,
+        8,
+        1.8f + progress * 1.4f,
+        &up,
+        0.9f,
+        { 1.0f, 0.92f, 0.48f, 1.0f },
+        { 0.72f, 0.9f, 1.0f, 0.0f },
+        0.18f,
+        0.46f,
+        0.28f,
+        0.02f
+    );
+}
+
 void BaseEnemy::Update(float deltaTime) {
+    if (ShouldHandleDefeatEffect()) {
+        if (!isDefeatEffectPlaying_) {
+            BeginDefeatEffect();
+        }
+        UpdateDefeatEffect(deltaTime);
+        Object3d::Update(deltaTime);
+        return;
+    }
+
     if (isCarried_) {
         return; // 重力も、タイマーの減少も全てストップ
     }

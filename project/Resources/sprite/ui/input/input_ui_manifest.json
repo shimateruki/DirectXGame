@@ -1,0 +1,648 @@
+{
+  "sprites": [
+    {
+      "group": "keyboard",
+      "name": "key_a",
+      "path": "Resources/sprite/ui/input/keyboard/key_a.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_b",
+      "path": "Resources/sprite/ui/input/keyboard/key_b.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_c",
+      "path": "Resources/sprite/ui/input/keyboard/key_c.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_d",
+      "path": "Resources/sprite/ui/input/keyboard/key_d.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_e",
+      "path": "Resources/sprite/ui/input/keyboard/key_e.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f",
+      "path": "Resources/sprite/ui/input/keyboard/key_f.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_g",
+      "path": "Resources/sprite/ui/input/keyboard/key_g.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_h",
+      "path": "Resources/sprite/ui/input/keyboard/key_h.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_i",
+      "path": "Resources/sprite/ui/input/keyboard/key_i.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_j",
+      "path": "Resources/sprite/ui/input/keyboard/key_j.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_k",
+      "path": "Resources/sprite/ui/input/keyboard/key_k.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_l",
+      "path": "Resources/sprite/ui/input/keyboard/key_l.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_m",
+      "path": "Resources/sprite/ui/input/keyboard/key_m.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_n",
+      "path": "Resources/sprite/ui/input/keyboard/key_n.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_o",
+      "path": "Resources/sprite/ui/input/keyboard/key_o.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_p",
+      "path": "Resources/sprite/ui/input/keyboard/key_p.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_q",
+      "path": "Resources/sprite/ui/input/keyboard/key_q.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_r",
+      "path": "Resources/sprite/ui/input/keyboard/key_r.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_s",
+      "path": "Resources/sprite/ui/input/keyboard/key_s.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_t",
+      "path": "Resources/sprite/ui/input/keyboard/key_t.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_u",
+      "path": "Resources/sprite/ui/input/keyboard/key_u.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_v",
+      "path": "Resources/sprite/ui/input/keyboard/key_v.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_w",
+      "path": "Resources/sprite/ui/input/keyboard/key_w.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_x",
+      "path": "Resources/sprite/ui/input/keyboard/key_x.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_y",
+      "path": "Resources/sprite/ui/input/keyboard/key_y.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_z",
+      "path": "Resources/sprite/ui/input/keyboard/key_z.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_0",
+      "path": "Resources/sprite/ui/input/keyboard/key_0.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_1",
+      "path": "Resources/sprite/ui/input/keyboard/key_1.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_2",
+      "path": "Resources/sprite/ui/input/keyboard/key_2.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_3",
+      "path": "Resources/sprite/ui/input/keyboard/key_3.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_4",
+      "path": "Resources/sprite/ui/input/keyboard/key_4.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_5",
+      "path": "Resources/sprite/ui/input/keyboard/key_5.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_6",
+      "path": "Resources/sprite/ui/input/keyboard/key_6.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_7",
+      "path": "Resources/sprite/ui/input/keyboard/key_7.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_8",
+      "path": "Resources/sprite/ui/input/keyboard/key_8.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_9",
+      "path": "Resources/sprite/ui/input/keyboard/key_9.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_space",
+      "path": "Resources/sprite/ui/input/keyboard/key_space.png",
+      "width": 236,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_enter",
+      "path": "Resources/sprite/ui/input/keyboard/key_enter.png",
+      "width": 154,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_tab",
+      "path": "Resources/sprite/ui/input/keyboard/key_tab.png",
+      "width": 136,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_esc",
+      "path": "Resources/sprite/ui/input/keyboard/key_esc.png",
+      "width": 122,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_shift",
+      "path": "Resources/sprite/ui/input/keyboard/key_shift.png",
+      "width": 162,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_ctrl",
+      "path": "Resources/sprite/ui/input/keyboard/key_ctrl.png",
+      "width": 136,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_alt",
+      "path": "Resources/sprite/ui/input/keyboard/key_alt.png",
+      "width": 122,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_backspace",
+      "path": "Resources/sprite/ui/input/keyboard/key_backspace.png",
+      "width": 218,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_delete",
+      "path": "Resources/sprite/ui/input/keyboard/key_delete.png",
+      "width": 164,
+      "height": 92
+    },
+    {
+      "group": "keyboard",
+      "name": "key_minus",
+      "path": "Resources/sprite/ui/input/keyboard/key_minus.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_plus",
+      "path": "Resources/sprite/ui/input/keyboard/key_plus.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_slash",
+      "path": "Resources/sprite/ui/input/keyboard/key_slash.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f1",
+      "path": "Resources/sprite/ui/input/keyboard/key_f1.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f2",
+      "path": "Resources/sprite/ui/input/keyboard/key_f2.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f3",
+      "path": "Resources/sprite/ui/input/keyboard/key_f3.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f4",
+      "path": "Resources/sprite/ui/input/keyboard/key_f4.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f5",
+      "path": "Resources/sprite/ui/input/keyboard/key_f5.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f6",
+      "path": "Resources/sprite/ui/input/keyboard/key_f6.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f7",
+      "path": "Resources/sprite/ui/input/keyboard/key_f7.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f8",
+      "path": "Resources/sprite/ui/input/keyboard/key_f8.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f9",
+      "path": "Resources/sprite/ui/input/keyboard/key_f9.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f10",
+      "path": "Resources/sprite/ui/input/keyboard/key_f10.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f11",
+      "path": "Resources/sprite/ui/input/keyboard/key_f11.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_f12",
+      "path": "Resources/sprite/ui/input/keyboard/key_f12.png",
+      "width": 104,
+      "height": 80
+    },
+    {
+      "group": "keyboard",
+      "name": "key_arrow_up",
+      "path": "Resources/sprite/ui/input/keyboard/key_arrow_up.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_arrow_down",
+      "path": "Resources/sprite/ui/input/keyboard/key_arrow_down.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_arrow_left",
+      "path": "Resources/sprite/ui/input/keyboard/key_arrow_left.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "keyboard",
+      "name": "key_arrow_right",
+      "path": "Resources/sprite/ui/input/keyboard/key_arrow_right.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "combo",
+      "name": "combo_wasd",
+      "path": "Resources/sprite/ui/input/combo/combo_wasd.png",
+      "width": 238,
+      "height": 178
+    },
+    {
+      "group": "combo",
+      "name": "combo_arrows",
+      "path": "Resources/sprite/ui/input/combo/combo_arrows.png",
+      "width": 238,
+      "height": 178
+    },
+    {
+      "group": "mouse",
+      "name": "mouse_left",
+      "path": "Resources/sprite/ui/input/mouse/mouse_left.png",
+      "width": 138,
+      "height": 154
+    },
+    {
+      "group": "mouse",
+      "name": "mouse_right",
+      "path": "Resources/sprite/ui/input/mouse/mouse_right.png",
+      "width": 138,
+      "height": 154
+    },
+    {
+      "group": "mouse",
+      "name": "mouse_middle",
+      "path": "Resources/sprite/ui/input/mouse/mouse_middle.png",
+      "width": 138,
+      "height": 154
+    },
+    {
+      "group": "mouse",
+      "name": "mouse_wheel",
+      "path": "Resources/sprite/ui/input/mouse/mouse_wheel.png",
+      "width": 138,
+      "height": 154
+    },
+    {
+      "group": "mouse",
+      "name": "mouse_move",
+      "path": "Resources/sprite/ui/input/mouse/mouse_move.png",
+      "width": 138,
+      "height": 154
+    },
+    {
+      "group": "controller",
+      "name": "pad_a",
+      "path": "Resources/sprite/ui/input/controller/pad_a.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "controller",
+      "name": "pad_b",
+      "path": "Resources/sprite/ui/input/controller/pad_b.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "controller",
+      "name": "pad_x",
+      "path": "Resources/sprite/ui/input/controller/pad_x.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "controller",
+      "name": "pad_y",
+      "path": "Resources/sprite/ui/input/controller/pad_y.png",
+      "width": 96,
+      "height": 96
+    },
+    {
+      "group": "controller",
+      "name": "pad_lb",
+      "path": "Resources/sprite/ui/input/controller/pad_lb.png",
+      "width": 136,
+      "height": 78
+    },
+    {
+      "group": "controller",
+      "name": "pad_rb",
+      "path": "Resources/sprite/ui/input/controller/pad_rb.png",
+      "width": 136,
+      "height": 78
+    },
+    {
+      "group": "controller",
+      "name": "pad_lt",
+      "path": "Resources/sprite/ui/input/controller/pad_lt.png",
+      "width": 136,
+      "height": 78
+    },
+    {
+      "group": "controller",
+      "name": "pad_rt",
+      "path": "Resources/sprite/ui/input/controller/pad_rt.png",
+      "width": 136,
+      "height": 78
+    },
+    {
+      "group": "controller",
+      "name": "pad_start",
+      "path": "Resources/sprite/ui/input/controller/pad_start.png",
+      "width": 150,
+      "height": 76
+    },
+    {
+      "group": "controller",
+      "name": "pad_back",
+      "path": "Resources/sprite/ui/input/controller/pad_back.png",
+      "width": 150,
+      "height": 76
+    },
+    {
+      "group": "controller",
+      "name": "pad_menu",
+      "path": "Resources/sprite/ui/input/controller/pad_menu.png",
+      "width": 150,
+      "height": 76
+    },
+    {
+      "group": "controller",
+      "name": "pad_view",
+      "path": "Resources/sprite/ui/input/controller/pad_view.png",
+      "width": 150,
+      "height": 76
+    },
+    {
+      "group": "controller",
+      "name": "pad_l_stick",
+      "path": "Resources/sprite/ui/input/controller/pad_l_stick.png",
+      "width": 112,
+      "height": 112
+    },
+    {
+      "group": "controller",
+      "name": "pad_r_stick",
+      "path": "Resources/sprite/ui/input/controller/pad_r_stick.png",
+      "width": 112,
+      "height": 112
+    },
+    {
+      "group": "controller",
+      "name": "pad_l3",
+      "path": "Resources/sprite/ui/input/controller/pad_l3.png",
+      "width": 112,
+      "height": 112
+    },
+    {
+      "group": "controller",
+      "name": "pad_r3",
+      "path": "Resources/sprite/ui/input/controller/pad_r3.png",
+      "width": 112,
+      "height": 112
+    },
+    {
+      "group": "controller",
+      "name": "pad_dpad",
+      "path": "Resources/sprite/ui/input/controller/pad_dpad.png",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "group": "controller",
+      "name": "pad_dpad_up",
+      "path": "Resources/sprite/ui/input/controller/pad_dpad_up.png",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "group": "controller",
+      "name": "pad_dpad_down",
+      "path": "Resources/sprite/ui/input/controller/pad_dpad_down.png",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "group": "controller",
+      "name": "pad_dpad_left",
+      "path": "Resources/sprite/ui/input/controller/pad_dpad_left.png",
+      "width": 128,
+      "height": 128
+    },
+    {
+      "group": "controller",
+      "name": "pad_dpad_right",
+      "path": "Resources/sprite/ui/input/controller/pad_dpad_right.png",
+      "width": 128,
+      "height": 128
+    }
+  ]
+}

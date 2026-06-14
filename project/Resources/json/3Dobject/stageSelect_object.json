@@ -92,7 +92,7 @@
             "scale": [
                 275.94573974609375,
                 0.007164343260228634,
-                92.35096740722656
+                275.0
             ],
             "targetID": -1,
             "texturePath": "",
@@ -103,11 +103,11 @@
                 "effectScale": 1.0,
                 "effectSoftness": 0.550000011920929,
                 "effectType": 0.0,
-                "flowSpeedX": 0.10000000149011612,
-                "flowSpeedY": 0.10000000149011612,
-                "waveFrequency": 1.5,
-                "waveHeight": 0.0,
-                "waveSpeed": 2.0
+                "flowSpeedX": 0.05000000074505806,
+                "flowSpeedY": 0.07999999821186066,
+                "waveFrequency": 2.200000047683716,
+                "waveHeight": 0.2800000011920929,
+                "waveSpeed": 1.399999976158142
             }
         },
         {

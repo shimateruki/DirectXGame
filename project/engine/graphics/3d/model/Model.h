@@ -59,6 +59,10 @@ public:
         float roughness;           // 4 byte (粗さ: 0.0=ツルツル, 1.0=ザラザラ)
         float metallic;            // 4 byte (金属度: 0.0=非金属, 1.0=金属)
         int32_t enableNormalMap;
+        int32_t enableEnvMap;      // 4 byte (環境マップ有効化)
+        float envIntensity;        // 4 byte (環境マップ強度)
+        float emissive;            // 4 byte (自己発光の強さ。1.0で光らない)
+        float time;                // 4 byte (時間アニメーション用)
         float padding2[2];         // 8 byte (アライメント調整)
 
     };

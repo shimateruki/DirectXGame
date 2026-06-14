@@ -32,7 +32,10 @@
 #include "SceneSavePreview.h"
 #include "EventLinkGraph.h"
 #include "TextSpriteGenerator.h"
+#include "Text3DGenerator.h"
 #include "ModelOptimizerWindow.h"
+#include "AssetAuditWindow.h"
+#include "GameDataDebugEditor.h"
 
 
 // ========================================================================
@@ -202,7 +205,10 @@ public:
     AnimationWorkbench* GetAnimationWorkbench() { return &animationWorkbench_; }
     EventLinkGraph* GetEventLinkGraph() { return &eventLinkGraph_; }
     TextSpriteGenerator* GetTextSpriteGenerator() { return &textSpriteGenerator_; }
+    Text3DGenerator* GetText3DGenerator() { return &text3DGenerator_; }
     ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
+    AssetAuditWindow* GetAssetAuditWindow() { return &assetAuditWindow_; }
+    GameDataDebugEditor* GetGameDataDebugEditor() { return &gameDataDebugEditor_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
@@ -368,7 +374,10 @@ private:
     SceneSavePreview sceneSavePreview_;
     EventLinkGraph eventLinkGraph_;
     TextSpriteGenerator textSpriteGenerator_;
+    Text3DGenerator text3DGenerator_;
     ModelOptimizerWindow modelOptimizerWindow_;
+    AssetAuditWindow assetAuditWindow_;
+    GameDataDebugEditor gameDataDebugEditor_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     DebrisEffectEditor* debrisEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;

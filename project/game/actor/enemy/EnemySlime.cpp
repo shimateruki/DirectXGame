@@ -6,6 +6,10 @@
 #include <DebugConsole.h>
 #include <algorithm>
 void EnemySlime::Update(float deltaTime) {
+    if (ShouldHandleDefeatEffect()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     if (isCarried_) {
         return;
     }

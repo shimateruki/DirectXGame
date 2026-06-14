@@ -228,11 +228,13 @@ void InspectorWindow::Draw() {
                                          "ダメージ亀裂 (Damage Crack)", "上昇気流 (Updraft)",
                                          "スタン拘束 (Stun Bind)", "王冠解放 (Crown Unlock)",
                                          "毒胞子 (Poison Spore)", "雲 (Cloud)",
-                                         "ゲートポータル (Gate Portal)"
+                                         "ゲートポータル (Gate Portal)",
+                                         "アニメ調地形 (Stylized Terrain)",
+                                         "ダッシュパネル (Dash Panel)"
                 };
                 int currentMatType = selectedObject->GetMaterialType();
                 if (currentMatType < 0) currentMatType = 0;
-                if (currentMatType > 22) currentMatType = 0;
+                if (currentMatType > 24) currentMatType = 0;
                 if (ImGui::Combo(ICON_FA_PAINT_BRUSH " 質感 (Material Type)", &currentMatType, matTypes, IM_ARRAYSIZE(matTypes))) {
                     selectedObject->SetMaterialType(currentMatType);
                     isGraphicsChanged = true;
@@ -248,6 +250,48 @@ void InspectorWindow::Draw() {
                         selectedObject->SetRoughness(roughness); isGraphicsChanged = true;
                     }
                 }
+                else if (currentMatType == 23) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.45f, 1.0f), ICON_FA_TREE " --- Stylized Terrain Settings ---");
+                    Vector4 terrainColor = selectedObject->GetColor();
+                    if (ImGui::ColorEdit4("地形色 (Terrain Color)", &terrainColor.x)) {
+                        selectedObject->SetColor(terrainColor); isGraphicsChanged = true;
+                    }
+                    float textureBlend = selectedObject->GetRoughness();
+                    if (ImGui::SliderFloat("テクスチャ反映量 (Texture Blend)", &textureBlend, 0.0f, 1.0f)) {
+                        selectedObject->SetRoughness(textureBlend); isGraphicsChanged = true;
+                    }
+                    float patchStrength = selectedObject->GetMetallic();
+                    if (ImGui::SliderFloat("色ムラの強さ (Patch Strength)", &patchStrength, 0.0f, 1.0f)) {
+                        selectedObject->SetMetallic(patchStrength); isGraphicsChanged = true;
+                    }
+                }
+                else if (currentMatType == 24) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.35f, 0.95f, 1.0f, 1.0f), ICON_FA_FORWARD " --- Dash Panel Settings ---");
+                    float flowSpeed = selectedObject->GetRoughness();
+                    if (ImGui::SliderFloat("流れる速さ (Flow Speed)", &flowSpeed, 0.0f, 1.0f)) {
+                        selectedObject->SetRoughness(flowSpeed); isGraphicsChanged = true;
+                    }
+                    float lineDensity = selectedObject->GetMetallic();
+                    if (ImGui::SliderFloat("ライン密度 (Line Density)", &lineDensity, 0.0f, 1.0f)) {
+                        selectedObject->SetMetallic(lineDensity); isGraphicsChanged = true;
+                    }
+                }
+
+                ImGui::Separator();
+                ImGui::Text(ICON_FA_EXPAND_ARROWS_ALT " PBRテクスチャ繰り返し");
+                Vector2 textureTiling = selectedObject->GetTextureTiling();
+                if (ImGui::DragFloat2("繰り返し倍率 (Tiling)", &textureTiling.x, 0.05f, 0.01f, 100.0f, "%.2f")) {
+                    selectedObject->SetTextureTiling(textureTiling);
+                    isGraphicsChanged = true;
+                }
+                bool autoTextureTiling = selectedObject->GetAutoTextureTiling();
+                if (ImGui::Checkbox("スケールに合わせて自動繰り返し", &autoTextureTiling)) {
+                    selectedObject->SetAutoTextureTiling(autoTextureTiling);
+                    isGraphicsChanged = true;
+                }
+                ImGui::TextDisabled("大きい床や壁でPBRテクスチャが伸びる時に使います");
 
                 if (currentMatType == 7) {
                     ImGui::Separator();
@@ -445,6 +489,13 @@ void InspectorWindow::Draw() {
                             ImGui::Text(ICON_FA_WIND " --- Flow Settings ---");
                             if (ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f)) isGraphicsChanged = true;
+                            if (currentMatType == 8) {
+                                ImGui::Separator();
+                                ImGui::Text(ICON_FA_TINT " --- Surface Settings ---");
+                                if (ImGui::DragFloat("屈折の強さ (Refraction)", &waterData->effectScale, 0.01f, 0.0f, 3.0f)) isGraphicsChanged = true;
+                                if (ImGui::SliderFloat("泡の広がり (Foam Width)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                                if (ImGui::DragFloat("水面の明るさ (Brightness)", &waterData->effectIntensity, 0.05f, 0.05f, 4.0f)) isGraphicsChanged = true;
+                            }
                         }
                     }
                 }
@@ -1028,6 +1079,18 @@ void InspectorWindow::Draw() {
                     ImGui::Checkbox("正方向に回転", &p.startActive);
                     ImGui::TextDisabled("床番号 1 -> 2 -> 3 ... の順に、当たり判定を残したまま180度回転します");
                 }
+                else if (gType == "FireCannon") {
+                    const char* aimModes[] = { "前方固定", "プレイヤーを狙う" };
+                    ImGui::Combo("発射方向", &p.actionMode, aimModes, IM_ARRAYSIZE(aimModes));
+                    ImGui::DragFloat(ICON_FA_FIRE " 火球速度", &p.speed, 0.5f, 1.0f, 120.0f);
+                    ImGui::DragFloat(ICON_FA_CLOCK " 発射間隔", &p.interval, 0.05f, 0.08f, 20.0f, "%.2f s");
+                    ImGui::DragFloat(ICON_FA_CIRCLE " 火球サイズ", &p.moveAmount, 0.01f, 0.1f, 5.0f);
+                    ImGui::DragFloat(ICON_FA_SEARCH " 索敵範囲", &p.detectionRange, 0.5f, 0.0f, 300.0f);
+                    ImGui::DragFloat(ICON_FA_SYNC_ALT " 旋回速度 (度/秒)", &p.moveSpeed, 1.0f, 1.0f, 720.0f);
+                    ImGui::Checkbox("開始時に有効", &p.startActive);
+                    ImGui::Checkbox("OFFで停止", &p.returnOnOff);
+                    ImGui::TextDisabled("前方固定はローカルZ+方向に火球を撃ちます");
+                }
                 else if (gType == "LaserEmitter") {
                     ImGui::DragFloat(ICON_FA_BOLT " ダメージ量", &p.speed, 0.5f, 0.0f, 100.0f);
                     ImGui::DragFloat(ICON_FA_CLOCK " ダメージ間隔", &p.interval, 0.05f, 0.05f, 10.0f, "%.2f s");
@@ -1206,7 +1269,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "LaserEmitter", "LaserNode" };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
@@ -1231,6 +1294,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         "回転床",
         "回転柱",
         "順番反転床",
+        "火球砲台",
         "レーザー発生器",
         "レーザー接続ノード"
     };
@@ -1333,7 +1397,14 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->SetClassName("Gimmick");
             selectedObject->SetName("Gimmick_DashPanel");
             selectedObject->SetModel("Stages/block");
-            selectedObject->SetColor({ 1.0f, 0.55f, 0.1f, 1.0f });
+            selectedObject->SetMaterialType(24);
+            selectedObject->SetBlendMode(BlendMode::kNone);
+            selectedObject->SetColor({ 0.25f, 0.95f, 1.0f, 1.0f });
+            selectedObject->SetRoughness(0.62f);
+            selectedObject->SetMetallic(0.56f);
+            selectedObject->SetEmissive(1.0f);
+            selectedObject->SetTextureTiling({ 1.0f, 1.0f });
+            selectedObject->SetAutoTextureTiling(false);
             selectedObject->SetScale({ 2.0f, 0.25f, 1.2f });
 
             selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
@@ -1567,6 +1638,34 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             selectedObject->param_->maxCount = 3;
             selectedObject->param_->interval = 1.0f;
             selectedObject->param_->startActive = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kOBB;
+            colConfig.size = { 1.0f, 1.0f, 1.0f };
+            selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "FireCannon") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_FireCannon");
+            selectedObject->SetModel("Primitives/cube");
+            selectedObject->SetColor({ 0.22f, 0.11f, 0.08f, 1.0f });
+            selectedObject->SetBlendMode(BlendMode::kNormal);
+            selectedObject->SetMaterialType(0);
+            selectedObject->SetEmissive(1.1f);
+            selectedObject->SetScale({ 0.55f, 0.55f, 1.1f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kGround);
+            selectedObject->SetCollisionMask(0b11111111);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->speed = 13.0f;
+            selectedObject->param_->interval = 1.35f;
+            selectedObject->param_->moveAmount = 0.55f;
+            selectedObject->param_->moveSpeed = 360.0f;
+            selectedObject->param_->detectionRange = 45.0f;
+            selectedObject->param_->actionMode = 1;
+            selectedObject->param_->startActive = true;
+            selectedObject->param_->returnOnOff = true;
 
             Object3d::ColliderConfig colConfig;
             colConfig.type = ColliderType::kOBB;

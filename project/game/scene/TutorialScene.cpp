@@ -55,6 +55,17 @@
 TutorialScene::TutorialScene() {}
 TutorialScene::~TutorialScene() {}
 
+void TutorialScene::SetIsGoal(bool isGoal) {
+	if (isGoal_ == isGoal) {
+		return;
+	}
+
+	isGoal_ = isGoal;
+	if (!isGoal_) {
+		goalSavePerformed_ = false;
+	}
+}
+
 void TutorialScene::Initialize() {
 	using json = nlohmann::json;
 
@@ -128,6 +139,9 @@ void TutorialScene::Initialize() {
 	levelLoader_->LoadObjectLayout(this, objectPath);
 	levelLoader_->LoadSpriteLayout(this, spritePath);
 
+	saveIndicatorOverlay_ = std::make_unique<SaveIndicatorOverlay>();
+	saveIndicatorOverlay_->Initialize(spriteCommon_.get());
+
 	LightManager::GetInstance()->LoadState("Resources/json/light/light_layout.json");
 	CameraEditor::GetInstance()->Initialize();
 	CameraEditor::GetInstance()->LoadFile("game_camera.json");
@@ -151,6 +165,7 @@ void TutorialScene::Initialize() {
 void TutorialScene::Finalize() {
 	CollisionManager::GetInstance()->ClearObjects();
 	BulletManager::GetInstance()->Finalize();
+	saveIndicatorOverlay_.reset();
 	particleSystem_.reset();
 	particleCommon_.reset();
 	sprites_.clear();
@@ -162,12 +177,23 @@ void TutorialScene::Finalize() {
 
 void TutorialScene::Update(float deltaTime) {
 	if (isGoal_) {
-		// チュートリアルクリア状況を保存
-		GameDataManager::GetInstance()->MarkStageCleared(-1);
+		if (!goalSavePerformed_) {
+			// チュートリアルクリア状況を保存
+			GameDataManager::GetInstance()->MarkStageCleared(-1);
+			if (saveIndicatorOverlay_) {
+				saveIndicatorOverlay_->Play(1.35f);
+			}
+			DebugConsole::GetInstance()->AddLog("Saving tutorial clear data...");
+			goalSavePerformed_ = true;
+		}
+
+		if (saveIndicatorOverlay_) {
+			saveIndicatorOverlay_->Update(deltaTime);
+		}
 
 		deltaTime = 0.0f; // 時を止める
 
-		if (inputManager_->IsKeyTriggered(DIK_SPACE)) {
+		if (inputManager_->IsKeyTriggered(DIK_SPACE) && (!saveIndicatorOverlay_ || !saveIndicatorOverlay_->IsPlaying())) {
 			SceneManager::GetInstance()->ChangeScene("SELECT");
 			return;
 		}
@@ -257,6 +283,9 @@ void TutorialScene::Update(float deltaTime) {
 	for (auto& sprite : sprites_) {
 		sprite->Update();
 	}
+	if (saveIndicatorOverlay_) {
+		saveIndicatorOverlay_->Update(deltaTime);
+	}
 	BulletManager::GetInstance()->Update(deltaTime);
 	CollisionManager::GetInstance()->Update();
 	UpdateUI();
@@ -307,7 +336,7 @@ void TutorialScene::Draw() {
 		}
 
 		if (isPlayerPart) continue;
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
 
 		obj->Draw(pointLightRes, spotLightRes);
 	}
@@ -349,7 +378,7 @@ void TutorialScene::Draw() {
 		dxCommon_->PostDrawLocalFog();
 	}
 
-	bool hasFluid = false;
+	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
 	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) { hasFluid = true; break; }
 
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
@@ -376,6 +405,7 @@ void TutorialScene::Draw() {
 				else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 			}
 		}
+		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 
 		if (hasGPUParticles) {
 			GPUParticleManager::GetInstance()->Draw(
@@ -394,6 +424,7 @@ void TutorialScene::DrawUI() {
 	for (auto& sprite : sprites_) sprite->Draw();
 	if (isDrawLockOn_ && lockOnSprite_) lockOnSprite_->Draw();
 	if (player_) player_->DrawUI();
+	if (saveIndicatorOverlay_ && saveIndicatorOverlay_->IsActive()) saveIndicatorOverlay_->Draw();
 }
 
 void TutorialScene::DrawShadow() {
@@ -408,6 +439,9 @@ void TutorialScene::DrawImGui() {
     ImGui::Separator();
     if (ImGui::Button("Back to SELECT")) {
         SceneManager::GetInstance()->ChangeScene("SELECT");
+    }
+    if (saveIndicatorOverlay_ && ImGui::CollapsingHeader("Save Indicator", ImGuiTreeNodeFlags_DefaultOpen)) {
+        saveIndicatorOverlay_->DrawImGui();
     }
     ImGui::Separator();
     ImGui::TextDisabled("※この項目は TutorialScene::DrawImGui() で編集可能です");

@@ -24,6 +24,7 @@
 #include "GimmickLaserEmitter.h"
 #include "GimmickLaserNode.h"
 #include "GimmickStageGate.h"
+#include "GimmickFireCannon.h"
 
 GimmickFactory* GimmickFactory::GetInstance() {
     static GimmickFactory instance;
@@ -178,9 +179,14 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
         node->Initialize(common, "Primitives/sphere");
         newGimmick = std::move(node);
     }
+    else if (gimmickName == "FireCannon") {
+        auto cannon = std::make_unique<GimmickFireCannon>();
+        cannon->Initialize(common, "Primitives/cube");
+        newGimmick = std::move(cannon);
+    }
     else if (gimmickName == "StageGate") {
         auto gate = std::make_unique<GimmickStageGate>();
-        gate->Initialize(common, "Gimmicks/goal");
+        gate->Initialize(common, "Gimmicks/portal_gate");
         newGimmick = std::move(gate);
     }
 

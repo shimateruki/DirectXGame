@@ -78,12 +78,12 @@ void PostEffect::CreatePipelineState() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
     // ★ VSは1つ、PSは用途に合わせて5つコンパイルする！
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/PostEffect.VS.hlsl", L"vs_6_0", L"main");
-    auto psCopy = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainCopy");
-    auto psExtract = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainExtract");
-    auto psDownsample = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainDownsample");
-    auto psAdd = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainAdd");
-    auto psComposite = dxCommon_->CompileShader(L"Resources/shader/PostEffect.PS.hlsl", L"ps_6_0", L"mainComposite");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.VS.hlsl", L"vs_6_0", L"main");
+    auto psCopy = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainCopy");
+    auto psExtract = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainExtract");
+    auto psDownsample = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainDownsample");
+    auto psAdd = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainAdd");
+    auto psComposite = dxCommon_->CompileShader(L"Resources/shader/postprocess/PostEffect.PS.hlsl", L"ps_6_0", L"mainComposite");
 
     // ==========================================================
     // --- 共通設定 ---

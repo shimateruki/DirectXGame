@@ -472,9 +472,21 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetTextSpriteGenerator());
         }
+        if (editor_->GetText3DGenerator() && ImGui::Selectable("  " ICON_FA_CUBE " 3Dテキスト生成 (Text 3D)", currentObj == editor_->GetText3DGenerator())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetText3DGenerator());
+        }
         if (editor_->GetModelOptimizerWindow() && ImGui::Selectable("  " ICON_FA_COMPRESS_ARROWS_ALT " モデル最適化 (Model Optimizer)", currentObj == editor_->GetModelOptimizerWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetModelOptimizerWindow());
+        }
+        if (editor_->GetAssetAuditWindow() && ImGui::Selectable("  " ICON_FA_SEARCH " アセット監査 (Asset Audit)", currentObj == editor_->GetAssetAuditWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());
+        }
+        if (editor_->GetGameDataDebugEditor() && ImGui::Selectable("  " ICON_FA_DATABASE " 内部データ編集 (Game Data)", currentObj == editor_->GetGameDataDebugEditor())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetGameDataDebugEditor());
         }
         ImGui::Separator();
         if (ImGui::Selectable("  " ICON_FA_GAMEPAD " ゲーム設定 (Game Settings)", currentObj == currentScene)) {

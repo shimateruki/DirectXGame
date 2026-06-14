@@ -52,8 +52,8 @@ void ParticleCommon::SetPipeline(ID3D12GraphicsCommandList* commandList, Particl
 void ParticleCommon::CreatePipeline() {
     ID3D12Device* device = dxCommon_->GetDevice();
 
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/Particle.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/Particle.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/particle/Particle.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/particle/Particle.PS.hlsl", L"ps_6_0");
 
     // =================================================================
     // 1. 入力レイアウト (インスタンシング対応の特殊レイアウト)

@@ -128,8 +128,8 @@ void GamePlayScene::Draw() {
 			continue;
 		}
 
-		// 半透明マテリアル(1)、ローカルフォグ(7)、流体マテリアル(8以上)はここでは描画しない
-		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || obj->GetMaterialType() >= 8) continue;
+		// 半透明マテリアル(1)、ローカルフォグ(7)、特殊描画マテリアル(8〜22)はここでは描画しない
+		if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22)) continue;
 
 		obj->Draw(pointLightRes, spotLightRes);
 	}
@@ -196,7 +196,7 @@ void GamePlayScene::Draw() {
 	// =======================================================
 	// 6. GPUパーティクル / 流体 (水・マグマ・氷) の描画
 	// =======================================================
-	bool hasFluid = false;
+	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
 	for (auto& obj : objects) {
 		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) {
 			hasFluid = true;
@@ -271,6 +271,7 @@ void GamePlayScene::Draw() {
 				}
 			}
 		}
+		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
 
 		if (hasGPUParticles) {
 			GPUParticleManager::GetInstance()->Draw(
@@ -338,6 +339,9 @@ void GamePlayScene::DrawUI() {
     }
     if (settingsOverlay_ && settingsOverlay_->IsActive()) {
         settingsOverlay_->Draw();
+    }
+    if (saveIndicatorOverlay_ && saveIndicatorOverlay_->IsActive()) {
+        saveIndicatorOverlay_->Draw();
     }
 }
 
@@ -437,6 +441,10 @@ void GamePlayScene::DrawImGui() {
         if (ImGui::Button(ICON_FA_PLAY " Start Bridge Drop Movie", ImVec2(-1, 30))) {
             StartBridgeDropMovie();
         }
+    }
+
+    if (saveIndicatorOverlay_ && ImGui::CollapsingHeader(ICON_FA_SAVE " Save Indicator", ImGuiTreeNodeFlags_DefaultOpen)) {
+        saveIndicatorOverlay_->DrawImGui();
     }
     
     ImGui::Separator();

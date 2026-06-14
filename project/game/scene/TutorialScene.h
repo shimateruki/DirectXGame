@@ -14,6 +14,7 @@
 #include "BulletManager.h"
 #include "Camera.h"
 #include "MeshRenderer.h"
+#include "game/ui/SaveIndicatorOverlay.h"
 
 #include "ObjectManager.h"
 #include "DebugEditor.h" 
@@ -76,7 +77,7 @@ public:
     void SetPlayer(Player* player) override { player_ = player; }
 
     // ゴール判定
-    void SetIsGoal(bool isGoal) { isGoal_ = isGoal; }
+    void SetIsGoal(bool isGoal);
     bool IsGoal() const { return isGoal_; }
 
     // スターコイン
@@ -141,7 +142,9 @@ private:
     std::unique_ptr<Object3d> animatedCube_;
 
     bool isGoal_ = false;
+    bool goalSavePerformed_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
+    std::unique_ptr<SaveIndicatorOverlay> saveIndicatorOverlay_;
 
     // フラスタムカリング判定
     bool IsVisible(Object3d* obj);

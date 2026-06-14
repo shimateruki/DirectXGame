@@ -36,6 +36,10 @@ void EnemyMushroom::Initialize(Object3dCommon* common, const std::string& modelN
 }
 
 void EnemyMushroom::Update(float deltaTime) {
+    if (ShouldHandleDefeatEffect()) {
+        BaseEnemy::Update(deltaTime);
+        return;
+    }
     if (isCarried_) {
         return;
     }

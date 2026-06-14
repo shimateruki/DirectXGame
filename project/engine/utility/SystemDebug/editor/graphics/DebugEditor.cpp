@@ -265,7 +265,10 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     animationWorkbench_.Initialize(sceneManager, dxCommon);
     eventLinkGraph_.Initialize(sceneManager, this);
     textSpriteGenerator_.Initialize(sceneManager, this);
+    text3DGenerator_.Initialize(sceneManager, this);
     modelOptimizerWindow_.Initialize(this);
+    assetAuditWindow_.Initialize(this);
+    gameDataDebugEditor_.Initialize(sceneManager);
 
     const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
     ddsCacheNotificationReadOffset_ = 0;
@@ -291,6 +294,7 @@ void DebugEditor::Update() {
     EffectPreviewStage::GetInstance()->Update();
     animationWorkbench_.Update(1.0f / 60.0f);
     textSpriteGenerator_.Update();
+    text3DGenerator_.Update();
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     InputManager* input = InputManager::GetInstance();

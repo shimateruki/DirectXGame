@@ -63,14 +63,206 @@
             "name": "titleText.png",
             "parentName": "",
             "position": [
-                771.4285888671875,
-                133.41586303710938
+                960.0,
+                145.0
             ],
             "size": [
-                300.0,
-                54.0
+                880.0,
+                140.0
             ],
-            "texture": "title/titleText.png"
+            "texture": "title/logo/slime_adventure_logo_full.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_0",
+            "parentName": "",
+            "position": [
+                596.5,
+                147.3
+            ],
+            "size": [
+                102.8,
+                101.1
+            ],
+            "texture": "title/logo/slime_adventure_char_00_su.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_1",
+            "parentName": "",
+            "position": [
+                699.6,
+                142.7
+            ],
+            "size": [
+                101.6,
+                102.8
+            ],
+            "texture": "title/logo/slime_adventure_char_01_ra.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_2",
+            "parentName": "",
+            "position": [
+                801.8,
+                146.3
+            ],
+            "size": [
+                103.7,
+                104.1
+            ],
+            "texture": "title/logo/slime_adventure_char_02_i.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_3",
+            "parentName": "",
+            "position": [
+                902.3,
+                147.7
+            ],
+            "size": [
+                108.3,
+                102.8
+            ],
+            "texture": "title/logo/slime_adventure_char_03_mu.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_4",
+            "parentName": "",
+            "position": [
+                1018.5,
+                139.1
+            ],
+            "size": [
+                107.4,
+                101.6
+            ],
+            "texture": "title/logo/slime_adventure_char_04_no.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_5",
+            "parentName": "",
+            "position": [
+                1114.9,
+                147.3
+            ],
+            "size": [
+                109.5,
+                110.3
+            ],
+            "texture": "title/logo/slime_adventure_char_05_dai.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_6",
+            "parentName": "",
+            "position": [
+                1221.7,
+                150.6
+            ],
+            "size": [
+                104.9,
+                109.5
+            ],
+            "texture": "title/logo/slime_adventure_char_06_bou.png"
+        },
+        {
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                0.0
+            ],
+            "emissive": 1.0,
+            "name": "titleLogoChar_7",
+            "parentName": "",
+            "position": [
+                1327.3,
+                147.5
+            ],
+            "size": [
+                110.4,
+                111.6
+            ],
+            "texture": "title/logo/slime_adventure_char_07_ken.png"
         },
         {
             "anchor": [

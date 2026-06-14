@@ -1,0 +1,21 @@
+newmtl stone
+Ka 0.25 0.25 0.25
+Kd 0.78 0.76 0.70
+Ks 0.10 0.10 0.10
+Ns 18
+map_Kd portal_gate_stone.png
+
+newmtl gold
+Ka 0.35 0.28 0.08
+Kd 1.00 0.76 0.24
+Ks 0.55 0.42 0.16
+Ns 64
+map_Kd portal_gate_gold.png
+
+newmtl portal
+Ka 0.80 0.62 0.18
+Kd 1.00 0.84 0.34
+Ks 0.55 0.55 0.40
+Ns 96
+d 0.92
+map_Kd portal_gate_core.png

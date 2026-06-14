@@ -1,0 +1,69 @@
+﻿{
+    "generatedAt":  "2026-06-13T21:22:21.1121193+09:00",
+    "generator":  "tools/shader_texture_baker.ps1",
+    "entries":  [
+                    {
+                        "key":  "water_foam_mask",
+                        "description":  "Water foam, caustics and flow helper channels.",
+                        "channels":  "R=foam, G=caustics, B=flow, A=opaque",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/water_foam_mask.png",
+                        "dds":  "Resources/texture/BakedShader/water_foam_mask.dds",
+                        "format":  "BC7_UNORM"
+                    },
+                    {
+                        "key":  "water_flow_noise",
+                        "description":  "Water flow vector and broken surface helper channels.",
+                        "channels":  "R=flowX, G=flowY, B=surface breakup, A=opaque",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/water_flow_noise.png",
+                        "dds":  "Resources/texture/BakedShader/water_flow_noise.dds",
+                        "format":  "BC7_UNORM"
+                    },
+                    {
+                        "key":  "gate_swirl_mask",
+                        "description":  "Portal swirl arms, rim and core helper channels.",
+                        "channels":  "R=swirl arms, G=rim, B=core, A=portal mask",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/gate_swirl_mask.png",
+                        "dds":  "Resources/texture/BakedShader/gate_swirl_mask.dds",
+                        "format":  "BC7_UNORM"
+                    },
+                    {
+                        "key":  "fire_flame_mask",
+                        "description":  "Billboard flame body helper channels.",
+                        "channels":  "R=heat, G=core, B=ember, A=flame mask",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/fire_flame_mask.png",
+                        "dds":  "Resources/texture/BakedShader/fire_flame_mask.dds",
+                        "format":  "BC7_UNORM"
+                    },
+                    {
+                        "key":  "fire_orb_mask",
+                        "description":  "Fire ball patch, crack and smoke helper channels.",
+                        "channels":  "R=heat patch, G=crack, B=smoke, A=orb mask",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/fire_orb_mask.png",
+                        "dds":  "Resources/texture/BakedShader/fire_orb_mask.dds",
+                        "format":  "BC7_UNORM"
+                    },
+                    {
+                        "key":  "glass_crack_mask",
+                        "description":  "Glass crack and shard helper channels.",
+                        "channels":  "R=crack, G=edge glow, B=shards, A=opaque",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/glass_crack_mask.png",
+                        "dds":  "Resources/texture/BakedShader/glass_crack_mask.dds",
+                        "format":  "BC7_UNORM"
+                    },
+                    {
+                        "key":  "dash_flow_mask",
+                        "description":  "Dash panel arrows, rails and speed streak helper channels.",
+                        "channels":  "R=arrow, G=rail, B=streak, A=opaque",
+                        "size":  512,
+                        "png":  "Resources/texture/BakedShader/dash_flow_mask.png",
+                        "dds":  "Resources/texture/BakedShader/dash_flow_mask.dds",
+                        "format":  "BC7_UNORM"
+                    }
+                ]
+}
