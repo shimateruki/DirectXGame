@@ -580,7 +580,7 @@ void Model::UpdateBoneBuffer() {
 }
 
 // モデルの描画処理
-void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation)
+void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightResource, ID3D12Resource* cameraResource, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, ID3D12Resource* overrideMaterialResource, uint32_t normalMapHandle, uint32_t ormMapHandle, uint32_t overrideTextureHandle, uint32_t instanceCount, uint32_t startInstanceLocation, int meshDrawIndex)
 {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
     // 1. マテリアル設定
@@ -624,7 +624,11 @@ void Model::Draw(ID3D12Resource* wvpResource, ID3D12Resource* directionalLightRe
     // 次のインデックス(例: 10番)にORMマップをセット！
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 10, ormHandleToBind);
     // 3. メッシュごとの描画ループ
-    for (const auto& mesh : modelData_.meshes) {
+    for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
+        if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
+            continue;
+        }
+        const auto& mesh = modelData_.meshes[meshIndex];
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
@@ -1074,7 +1078,7 @@ void Model::RebuildSkeletonForEditor() {
     UpdateBoneBuffer();
 }
 
-void Model::DrawShadow(ID3D12Resource* wvpResource) {
+void Model::DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     // [0] WVP
@@ -1086,7 +1090,11 @@ void Model::DrawShadow(ID3D12Resource* wvpResource) {
     }
 
     // 各メッシュの頂点を描画
-    for (auto& mesh : modelData_.meshes) {
+    for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
+        if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
+            continue;
+        }
+        auto& mesh = modelData_.meshes[meshIndex];
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }
@@ -1096,11 +1104,15 @@ void Model::DrawShadow(ID3D12Resource* wvpResource) {
     }
 }
 
-void Model::DrawMeshOnly() {
+void Model::DrawMeshOnly(int meshDrawIndex) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
     // メッシュごとに頂点バッファだけをセットして描画
-    for (const auto& mesh : modelData_.meshes) {
+    for (size_t meshIndex = 0; meshIndex < modelData_.meshes.size(); ++meshIndex) {
+        if (meshDrawIndex >= 0 && meshIndex != static_cast<size_t>(meshDrawIndex)) {
+            continue;
+        }
+        const auto& mesh = modelData_.meshes[meshIndex];
         if (!mesh.vertexResource || !mesh.indexResource || mesh.indices.empty()) {
             continue;
         }

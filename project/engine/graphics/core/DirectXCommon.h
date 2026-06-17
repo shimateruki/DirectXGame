@@ -225,8 +225,8 @@ private:
 	//  SRVManager上のインデックス番号
 	uint32_t renderTextureSrvHandle_ = 0;
 
-	//  GameViewのクリアカラー (動作確認用に「緑」にしておきます)
-	float clearColor_[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+	// GameViewのクリアカラー。シーンのライト設定から上書きされます。
+	float clearColor_[4] = { 0.1f, 0.25f, 0.5f, 1.0f };
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> shadowMapResource_ = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> shadowDsvHeap_ = nullptr;

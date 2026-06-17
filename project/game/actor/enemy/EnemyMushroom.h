@@ -6,6 +6,8 @@ public:
     void Initialize(Object3dCommon* common, const std::string& modelName) override;
     void Update(float deltaTime) override;
     std::unique_ptr<Object3d> Clone() const override;
+    void ExecuteAbility(class Player* player) override;
+    void UpdateCarriedAbility(class Player* player, float deltaTime) override;
 
 private:
     void UpdateFacing(const Vector3& direction);
@@ -14,6 +16,8 @@ private:
     void ApplySquashAnimation(float deltaTime);
 
     float attackCooldown_ = 0.8f;
+    float carriedSporeCooldown_ = 0.0f;
+    float carriedEffectTimer_ = 0.0f;
     float attackTimer_ = 0.0f;
     float idleTimer_ = 0.0f;
     Vector3 baseScale_ = { 1.0f, 1.0f, 1.0f };

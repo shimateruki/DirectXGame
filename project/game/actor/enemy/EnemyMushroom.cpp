@@ -11,6 +11,9 @@ constexpr float kAttackRange = 3.2f;
 constexpr float kRangedMinRange = 5.0f;
 constexpr float kSporeDamage = 1.0f;
 constexpr float kMoveSpeedScale = 1.0f;
+constexpr float kCarriedSporeCooldown = 0.65f;
+constexpr float kCarriedSporeSpeed = 32.0f;
+constexpr float kCarriedSporeLifetime = 2.4f;
 
 Vector3 NormalizePlanar(Vector3 value) {
     value.y = 0.0f;
@@ -107,6 +110,55 @@ std::unique_ptr<Object3d> EnemyMushroom::Clone() const {
     clone->SetTarget(target_);
     clone->SetDetectionRange(detectionRange_);
     return clone;
+}
+
+void EnemyMushroom::ExecuteAbility(Player* player) {
+    if (!player || !isCarried_ || carriedSporeCooldown_ > 0.0f) {
+        return;
+    }
+
+    Vector3 direction = player->GetForwardDirection();
+    if (Math::Length(direction) <= 0.001f) {
+        direction = { 0.0f, 0.0f, 1.0f };
+    }
+    direction = Math::Normalize(direction);
+
+    Vector3 spawnPos = player->GetWorldPosition();
+    spawnPos += direction * 1.8f;
+    spawnPos.y += 1.45f;
+
+    Vector3 velocity = direction * kCarriedSporeSpeed;
+    velocity.y = 2.5f;
+
+    BulletManager::GetInstance()->Fire(
+        spawnPos,
+        velocity,
+        kPlayerAttack,
+        kEnemy | kAllSolid,
+        "Primitives/sphere",
+        0.38f,
+        kCarriedSporeLifetime);
+
+    carriedSporeCooldown_ = kCarriedSporeCooldown;
+    carriedEffectTimer_ = 0.18f;
+    SetColor({ 1.0f, 0.34f, 0.72f, 1.0f });
+}
+
+void EnemyMushroom::UpdateCarriedAbility(Player* player, float deltaTime) {
+    (void)player;
+    if (!isCarried_) {
+        return;
+    }
+
+    carriedSporeCooldown_ = (std::max)(0.0f, carriedSporeCooldown_ - deltaTime);
+    carriedEffectTimer_ = (std::max)(0.0f, carriedEffectTimer_ - deltaTime);
+
+    if (carriedEffectTimer_ > 0.0f) {
+        const float pulse = 0.08f + std::sin(carriedEffectTimer_ * 48.0f) * 0.06f;
+        SetColor({ 1.0f, 0.34f + pulse, 0.72f, 1.0f });
+    } else {
+        SetColor(defaultColor_);
+    }
 }
 
 void EnemyMushroom::UpdateFacing(const Vector3& direction) {

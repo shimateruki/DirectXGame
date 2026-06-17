@@ -1,6 +1,7 @@
 #include "LightManager.h"
 #include "Object3d.h" // 追従対象の座標を取得するために必要
 #include <cassert>
+#include <filesystem>
 #include <fstream>
 #include <cmath>      // sin, cos
 #include "json.hpp"
@@ -30,14 +31,15 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
     directionalLightResource_ = dxCommon_->CreateBufferResource(sizeof(DirectionalLight));
 
     // 平行光源の初期設定
-    directionalLightData_.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-    directionalLightData_.direction = { 0.0f, -1.0f, 0.0f };
-    directionalLightData_.intensity = 1.0f;
-    directionalLightData_.ambientColor = { 0.1f, 0.1f, 0.1f };
+    directionalLightData_.color = { 1.0f, 0.96f, 0.88f, 1.0f };
+    directionalLightData_.direction = { -0.35f, -0.82f, 0.45f };
+    directionalLightData_.intensity = 0.86f;
+    directionalLightData_.ambientColor = { 0.34f, 0.38f, 0.42f };
     directionalLightData_.fogStart = 10.0f;
     directionalLightData_.fogEnd = 1000.0f;
-    directionalLightData_.fogColor = { 0.5f, 0.5f, 0.5f };
-    sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
+    directionalLightData_.fogColor = { 0.66f, 0.76f, 0.86f };
+    sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
+    dxCommon_->SetRenderClearColor(sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w);
 
     pointLights_.clear();
     spotLights_.clear();
@@ -172,6 +174,7 @@ LightManager::PointLightInstance* LightManager::AddPointLight() {
     if (pointLights_.size() >= kMaxPointLights) return nullptr;
 
     PointLightInstance instance;
+    instance.name = "PointLight " + std::to_string(pointLights_.size());
     // デフォルト値
     instance.data.color = { 1.0f, 1.0f, 1.0f, 1.0f };
     instance.data.position = { 0.0f, 2.0f, 0.0f };
@@ -193,6 +196,7 @@ LightManager::SpotLightInstance* LightManager::AddSpotLight() {
     if (spotLights_.size() >= kMaxSpotLights) return nullptr;
 
     SpotLightInstance instance;
+    instance.name = "SpotLight " + std::to_string(spotLights_.size());
     instance.data.color = { 1.0f, 1.0f, 1.0f, 1.0f };
     instance.data.position = { 0.0f, 5.0f, 0.0f };
     instance.data.direction = { 0.0f, -1.0f, 0.0f };
@@ -216,7 +220,7 @@ void LightManager::ClearAllLights() {
     spotLights_.clear();
 }
 
-void LightManager::SaveState(const std::string& filename) {
+bool LightManager::SaveState(const std::string& filename) {
     json root;
 
     root["clearColor"] = { sceneClearColor_.x, sceneClearColor_.y, sceneClearColor_.z, sceneClearColor_.w };
@@ -239,6 +243,7 @@ void LightManager::SaveState(const std::string& filename) {
     json pArray = json::array();
     for (const auto& instance : pointLights_) {
         json j;
+        j["name"] = instance.name;
         // GPUデータ
         const auto& l = instance.data;
         j["position"] = { l.position.x, l.position.y, l.position.z };
@@ -261,6 +266,7 @@ void LightManager::SaveState(const std::string& filename) {
     json sArray = json::array();
     for (const auto& instance : spotLights_) {
         json j;
+        j["name"] = instance.name;
         const auto& l = instance.data;
         j["position"] = { l.position.x, l.position.y, l.position.z };
         j["direction"] = { l.direction.x, l.direction.y, l.direction.z };
@@ -281,20 +287,38 @@ void LightManager::SaveState(const std::string& filename) {
     }
     root["spotLights"] = sArray;
 
-    std::ofstream file(filename);
-    if (file.is_open()) {
-        file << root.dump(4);
-        file.close();
+    try {
+        const std::filesystem::path path(filename);
+        if (!path.parent_path().empty()) {
+            std::filesystem::create_directories(path.parent_path());
+        }
+    } catch (...) {
+        return false;
     }
+
+    std::ofstream file(filename, std::ios::trunc);
+    if (!file.is_open()) {
+        return false;
+    }
+    file << root.dump(4);
+    const bool result = file.good();
+    if (result) {
+        currentStateFile_ = filename;
+        lastLoadSucceeded_ = true;
+    }
+    return result;
 }
 
-void LightManager::LoadState(const std::string& filename) {
+bool LightManager::LoadState(const std::string& filename) {
+    currentStateFile_ = filename;
+    lastLoadSucceeded_ = false;
+
     std::ifstream file(filename);
-    if (!file.is_open()) return;
+    if (!file.is_open()) return false;
 
     json root;
     try { file >> root; }
-    catch (...) { return; }
+    catch (...) { return false; }
 
     ClearAllLights();
 
@@ -348,6 +372,7 @@ void LightManager::LoadState(const std::string& filename) {
             auto instance = AddPointLight(); // Instance* が返る
             if (instance) {
                 auto& l = instance->data;
+                if (j.contains("name")) instance->name = j["name"];
                 if (j.contains("position")) { l.position.x = j["position"][0]; l.position.y = j["position"][1]; l.position.z = j["position"][2]; }
                 if (j.contains("color")) { l.color.x = j["color"][0]; l.color.y = j["color"][1]; l.color.z = j["color"][2]; l.color.w = j["color"][3]; }
                 if (j.contains("intensity")) l.intensity = j["intensity"];
@@ -371,6 +396,7 @@ void LightManager::LoadState(const std::string& filename) {
             auto instance = AddSpotLight();
             if (instance) {
                 auto& l = instance->data;
+                if (j.contains("name")) instance->name = j["name"];
                 if (j.contains("position")) { l.position.x = j["position"][0]; l.position.y = j["position"][1]; l.position.z = j["position"][2]; }
                 if (j.contains("direction")) { l.direction.x = j["direction"][0]; l.direction.y = j["direction"][1]; l.direction.z = j["direction"][2]; }
                 if (j.contains("color")) { l.color.x = j["color"][0]; l.color.y = j["color"][1]; l.color.z = j["color"][2]; l.color.w = j["color"][3]; }
@@ -390,4 +416,6 @@ void LightManager::LoadState(const std::string& filename) {
             }
         }
     }
+    lastLoadSucceeded_ = true;
+    return true;
 }

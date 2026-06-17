@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <vector>
+#include <array>
 #include <Skybox.h>
 
 // --- 前方宣言 ---
@@ -92,6 +93,22 @@ private:
     Vector3 GetStageClearCrownPosition(int stageIndex) const;
     Object3d* FindObjectByName(const std::string& name) const;
     Vector3 GetStageNodePosition(int stageIndex) const;
+    void InitializeStageSelectHUD();
+    Sprite* FindSpriteByName(const std::string& name) const;
+    struct StageSelectHudSprite {
+        Sprite* sprite = nullptr;
+        Vector2 basePosition = { 0.0f, 0.0f };
+        Vector2 baseSize = { 0.0f, 0.0f };
+        Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    };
+    StageSelectHudSprite BindStageSelectHUDSprite(
+        const std::string& name,
+        const std::string& texturePath,
+        const Vector2& position,
+        const Vector2& size,
+        const Vector2& anchor,
+        const Vector4& color);
+    void SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3>& digits, int value, const Vector4& color, bool visible);
 
 private:
     // --- エンジンシステムへのポインタ ---
@@ -145,4 +162,13 @@ private:
     float unlockPresentationTimer_ = 0.0f;
     float unlockParticleTimer_ = 0.0f;
     float stageSelectTime_ = 0.0f;
+    StageSelectHudSprite stageSelectCrownIcon_;
+    StageSelectHudSprite stageSelectCrownXIcon_;
+    std::array<StageSelectHudSprite, 3> stageSelectCrownDigits_;
+    StageSelectHudSprite stageSelectStarIcon_;
+    StageSelectHudSprite stageSelectStarXIcon_;
+    std::array<StageSelectHudSprite, 3> stageSelectStarDigits_;
+    StageSelectHudSprite stageSelectCoinIcon_;
+    StageSelectHudSprite stageSelectCoinXIcon_;
+    std::array<StageSelectHudSprite, 3> stageSelectCoinDigits_;
 };

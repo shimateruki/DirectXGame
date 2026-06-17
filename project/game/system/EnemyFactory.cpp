@@ -82,8 +82,7 @@ std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyNam
     {
         auto bomber = std::make_unique<EnemyBomber>();
 
-        // モデルは適宜変更してください
-        bomber->Initialize(common, "Stages/block");
+        bomber->Initialize(common, "Characters/bomb_slime");
 
         if (!bomber->param_.has_value()) {
             bomber->param_.emplace();

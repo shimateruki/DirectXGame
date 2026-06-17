@@ -120,6 +120,9 @@ public:
     void SetModel(const std::string& modelName);
     Model* GetModel() const { return model_; }
     const std::string& GetModelName() const { return modelName_; }
+    void SetMeshDrawIndex(int meshIndex) { meshDrawIndex_ = meshIndex; }
+    int GetMeshDrawIndex() const { return meshDrawIndex_; }
+    bool IsMeshDrawFiltered() const { return meshDrawIndex_ >= 0; }
 
     void SetLodEnabled(bool enabled) { lodEnabled_ = enabled; }
     bool IsLodEnabled() const { return lodEnabled_; }
@@ -167,6 +170,7 @@ public:
     void SetAutoTextureTiling(bool enabled);
     bool GetAutoTextureTiling() const { return autoTextureTiling_; }
 
+    void SetEnableLighting(bool enable) { if (materialData_) materialData_->enableLighting = enable ? 1 : 0; }
     bool GetEnableLighting() const { return materialData_ ? (materialData_->enableLighting != 0) : false; }
 
     void SetEnableEnvMap(bool enable);
@@ -214,6 +218,7 @@ private:
     // モデル
     Model* model_ = nullptr;
     std::string modelName_;
+    int meshDrawIndex_ = -1;
 
     bool lodEnabled_ = true;
     std::vector<LodLevel> lodLevels_;

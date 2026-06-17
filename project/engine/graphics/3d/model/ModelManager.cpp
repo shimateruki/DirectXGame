@@ -131,6 +131,12 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 
     return models_[modelName].get();
 }
+
+bool ModelManager::ReloadModel(const std::string& modelName) {
+    models_.erase(modelName);
+    return LoadModel(modelName) != nullptr;
+}
+
 std::vector<std::string> ModelManager::GetLoadedModelNames() const {
     std::vector<std::string> names;
     for (const auto& pair : models_) {

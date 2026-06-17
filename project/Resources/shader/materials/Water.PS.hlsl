@@ -102,7 +102,7 @@ float4 main(VSOutput input) : SV_TARGET
     float bgLinearDepth = LinearizeDepth(bgDepthZ);
     float waterLinearDepth = LinearizeDepth(input.screenPos.z / input.screenPos.w);
     float depthDiff = max(bgLinearDepth - waterLinearDepth, 0.0f);
-    float waterDepthFactor = saturate(depthDiff / 5.5f);
+    float waterDepthFactor = saturate(depthDiff / 6.8f);
 
     float2 flow = float2(flowSpeedX, flowSpeedY);
     float2 bakedFlowUV = frac(input.worldPos.xz * 0.045f + flow * time * 0.035f + float2(uvOffsetX, uvOffsetY) * 0.08f);
@@ -155,8 +155,8 @@ float4 main(VSOutput input) : SV_TARGET
     float causticFade = (1.0f - saturate(depthDiff / 18.0f)) * saturate(depthDiff / 0.35f);
     float causticStrength = caustics * causticFade * lerp(0.28f, 0.62f, saturate(effectIntensity * 0.45f));
 
-    float foamWidth = lerp(0.28f, 1.85f, saturate(effectSoftness));
-    float rawEdgeFoam = 1.0f - smoothstep(0.0f, foamWidth, depthDiff);
+    float foamWidth = lerp(0.42f, 2.10f, saturate(effectSoftness));
+    float contactMask = (1.0f - smoothstep(0.0f, foamWidth, depthDiff)) * smoothstep(0.045f, 0.24f, depthDiff);
     float lineA = BuildWaterLine(input.worldPos.xz * max(waveFrequency, 0.1f) * 0.16f + flow * time * 0.20f, waveSpeed * 0.62f, 0.16f);
     float lineB = BuildWaterLine(rotate2D(input.worldPos.xz, -0.85f) * max(waveFrequency, 0.1f) * 0.12f - flow.yx * time * 0.18f, waveSpeed * 0.47f, 0.12f);
     float bakedSurface = bakedWaterFoamTex.Sample(smp, frac(input.worldPos.xz * 0.105f + flow * time * 0.020f)).r;
@@ -164,20 +164,25 @@ float4 main(VSOutput input) : SV_TARGET
     float broadWaveB = sin(dot(input.worldPos.xz, float2(-0.046f, 0.081f)) - time * waveSpeed * 0.31f);
     float broadWave = saturate((broadWaveA + broadWaveB) * 0.25f + 0.5f);
     float surfaceLines = saturate(lineA * 0.55f + lineB * 0.35f + bakedSurface * 0.18f + broadWave * 0.10f) * smoothstep(0.26f, 0.80f, waveNoise);
-    // Keep intersection foam subtle so shore/contact areas share the same visual density as the open surface.
-    float edgeFoam = rawEdgeFoam * (0.18f + surfaceLines * 0.32f + bakedFoam.b * 0.18f);
-    edgeFoam *= smoothstep(0.02f, 0.18f, depthDiff);
-    float foam = saturate(edgeFoam + surfaceLines * 0.18f);
-    foam = saturate(foam + bakedFoam.a * 0.10f * smoothstep(0.12f, 0.72f, waterDepthFactor));
+    float crest = smoothstep(0.62f, 0.94f, broadWave) * smoothstep(0.38f, 0.88f, waveNoise);
+    float contactNoise = saturate(surfaceLines * 0.45f + bakedFoam.b * 0.24f + broadWave * 0.16f);
+    float edgeFoam = contactMask * contactNoise * lerp(0.18f, 0.34f, saturate(effectIntensity));
+    float openFoam = surfaceLines * lerp(0.12f, 0.20f, waterDepthFactor);
+    openFoam += bakedFoam.a * 0.08f * smoothstep(0.16f, 0.74f, waterDepthFactor);
+    float foam = saturate(edgeFoam + openFoam + crest * 0.08f);
 
     float3 body = lerp(refractionColor, waterTint, lerp(0.28f, 0.72f, waterDepthFactor));
     body *= diffuse;
-    body = lerp(body, skyColor, fresnel * 0.44f);
+    float reflectionAmount = saturate(fresnel * 0.52f + (1.0f - waterDepthFactor) * 0.10f);
+    body = lerp(body, skyColor, reflectionAmount);
+    float3 contactTint = lerp(waterTint, float3(0.74f, 0.92f, 1.0f), 0.34f);
+    body = lerp(body, contactTint, contactMask * 0.18f);
     body += float3(0.75f, 0.95f, 1.0f) * surfaceLines * 0.15f;
     body += float3(0.32f, 0.64f, 0.86f) * (broadWave - 0.5f) * 0.075f;
+    body += float3(0.52f, 0.84f, 1.0f) * crest * 0.065f;
     body += float3(1.0f, 0.96f, 0.72f) * causticStrength;
     body += float3(1.0f, 1.0f, 1.0f) * specular * max(effectIntensity, 0.25f) * 0.95f;
-    body = lerp(body, float3(0.95f, 1.0f, 1.0f), foam * 0.48f);
+    body = lerp(body, float3(0.92f, 0.98f, 1.0f), foam * 0.30f);
     body *= lerp(0.92f, 1.24f, saturate(effectIntensity * 0.55f));
 
     float artistAlpha = max(color.a, 0.62f);

@@ -144,7 +144,7 @@ void GameClearScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // フォグ(7)も不透明パスから除外
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 
@@ -164,36 +164,13 @@ void GameClearScene::Draw() {
     // =======================================================
     // 4. ローカルフォグ (霧の箱) の描画！
     // =======================================================
-    bool hasFog = false;
-    for (auto& obj : objects) {
-        if (obj->GetMaterialType() == 7) hasFog = true;
-    }
-
-    if (hasFog) {
-        dxCommon_->PreDrawLocalFog();
-        for (auto& obj : objects) {
-            if (obj->GetMaterialType() == 7) {
-                obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-            }
-        }
-        dxCommon_->PostDrawLocalFog();
-    }
+    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
     // =======================================================
     // 5. GPUパーティクルの描画！
     // =======================================================
-    dxCommon_->UpdateGrabTexture();
-    dxCommon_->PreDrawLocalFog();
-    if (camera) {
-        GPUParticleManager::GetInstance()->Draw(
-            dxCommon_->GetCommandList(),
-            camera->GetViewMatrix(),
-            camera->GetProjectionMatrix(),
-            gpuParticleTexHandle_,
-            dxCommon_->GetDepthSrvHandle()
-        );
-    }
-    dxCommon_->PostDrawLocalFog();
+    const bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+    DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 
 

@@ -163,6 +163,115 @@ Cylinder Collider::GetCylinder() const {
     return cyl;
 }
 
+bool Collider::SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const {
+    if (!terrain || !terrain->transform_) return false;
+    const TerrainCollisionData& data = terrain->terrainData_;
+    if (!data.enabled || data.resolution <= 0) return false;
+
+    const int sampleCount = data.resolution + 1;
+    if (static_cast<int>(data.heights.size()) < sampleCount * sampleCount) return false;
+
+    const Vector3 terrainPos = terrain->transform_->translate;
+    const Vector3 terrainScale = terrain->transform_->scale;
+    const float scaleX = std::max(0.0001f, std::abs(terrainScale.x));
+    const float scaleY = std::max(0.0001f, std::abs(terrainScale.y));
+    const float scaleZ = std::max(0.0001f, std::abs(terrainScale.z));
+    const float localX = (worldPosition.x - terrainPos.x) / scaleX;
+    const float localZ = (worldPosition.z - terrainPos.z) / scaleZ;
+    const float u = localX / std::max(0.0001f, data.sizeX) + 0.5f;
+    const float v = localZ / std::max(0.0001f, data.sizeZ) + 0.5f;
+    if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) return false;
+
+    const float fx = u * static_cast<float>(data.resolution);
+    const float fz = v * static_cast<float>(data.resolution);
+    const int x0 = std::clamp(static_cast<int>(std::floor(fx)), 0, data.resolution);
+    const int z0 = std::clamp(static_cast<int>(std::floor(fz)), 0, data.resolution);
+    const int x1 = std::clamp(x0 + 1, 0, data.resolution);
+    const int z1 = std::clamp(z0 + 1, 0, data.resolution);
+    const float tx = fx - static_cast<float>(x0);
+    const float tz = fz - static_cast<float>(z0);
+
+    auto heightAt = [&](int x, int z) -> float {
+        return data.heights[static_cast<size_t>(z * sampleCount + x)];
+    };
+    const float h00 = heightAt(x0, z0);
+    const float h10 = heightAt(x1, z0);
+    const float h01 = heightAt(x0, z1);
+    const float h11 = heightAt(x1, z1);
+    const float hx0 = h00 + (h10 - h00) * tx;
+    const float hx1 = h01 + (h11 - h01) * tx;
+    const float localHeight = hx0 + (hx1 - hx0) * tz;
+    outHeight = terrainPos.y + localHeight * scaleY;
+
+    const int xm = std::clamp(x0 - 1, 0, data.resolution);
+    const int xp = std::clamp(x0 + 1, 0, data.resolution);
+    const int zm = std::clamp(z0 - 1, 0, data.resolution);
+    const int zp = std::clamp(z0 + 1, 0, data.resolution);
+    const float cellX = std::max(0.0001f, data.sizeX / static_cast<float>(data.resolution) * scaleX);
+    const float cellZ = std::max(0.0001f, data.sizeZ / static_cast<float>(data.resolution) * scaleZ);
+    const float gradX = ((heightAt(xp, z0) - heightAt(xm, z0)) * scaleY) / cellX;
+    const float gradZ = ((heightAt(x0, zp) - heightAt(x0, zm)) * scaleY) / cellZ;
+    outNormal = { -gradX, 1.0f, -gradZ };
+    const float len = std::sqrt(outNormal.x * outNormal.x + outNormal.y * outNormal.y + outNormal.z * outNormal.z);
+    if (len > 0.0001f) {
+        outNormal.x /= len;
+        outNormal.y /= len;
+        outNormal.z /= len;
+    } else {
+        outNormal = { 0.0f, 1.0f, 0.0f };
+    }
+    return true;
+}
+
+CollisionInfo Collider::CheckSphereTerrainCollision(const Vector3& spherePos, float radius, const Collider* terrain) const {
+    CollisionInfo collision;
+    float terrainHeight = 0.0f;
+    Vector3 normal = { 0.0f, 1.0f, 0.0f };
+    if (!SampleTerrain(terrain, spherePos, terrainHeight, normal)) return collision;
+
+    const float bottom = spherePos.y - radius;
+    const float top = spherePos.y + radius;
+    if (bottom <= terrainHeight && top >= terrainHeight - radius * 0.25f) {
+        collision.isColliding = true;
+        collision.normal = normal;
+        collision.penetration = terrainHeight - bottom;
+    }
+    return collision;
+}
+
+CollisionInfo Collider::CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const {
+    CollisionInfo collision;
+    const Vector3 points[5] = {
+        { (aabb.min.x + aabb.max.x) * 0.5f, aabb.min.y, (aabb.min.z + aabb.max.z) * 0.5f },
+        { aabb.min.x, aabb.min.y, aabb.min.z },
+        { aabb.max.x, aabb.min.y, aabb.min.z },
+        { aabb.min.x, aabb.min.y, aabb.max.z },
+        { aabb.max.x, aabb.min.y, aabb.max.z },
+    };
+
+    float bestPenetration = 0.0f;
+    Vector3 bestNormal = { 0.0f, 1.0f, 0.0f };
+    for (const Vector3& point : points) {
+        float terrainHeight = 0.0f;
+        Vector3 normal = { 0.0f, 1.0f, 0.0f };
+        if (!SampleTerrain(terrain, point, terrainHeight, normal)) continue;
+        if (aabb.min.y <= terrainHeight && aabb.max.y >= terrainHeight - 0.05f) {
+            const float penetration = terrainHeight - aabb.min.y;
+            if (penetration > bestPenetration) {
+                bestPenetration = penetration;
+                bestNormal = normal;
+            }
+        }
+    }
+
+    if (bestPenetration > 0.0f) {
+        collision.isColliding = true;
+        collision.normal = bestNormal;
+        collision.penetration = bestPenetration;
+    }
+    return collision;
+}
+
 CollisionInfo Collider::CheckCollision(const Collider* other) const {
     CollisionInfo collision;
     collision.isColliding = false;
@@ -180,8 +289,19 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
 
     Vector3 otherPos = other->transform_->translate;
 
+    if (myType == ColliderType::kSphere && otherType == ColliderType::kTerrain) {
+        collision = CheckSphereTerrainCollision(myPos, this->GetRadius(), other);
+    } else if (myType == ColliderType::kTerrain && otherType == ColliderType::kSphere) {
+        collision = other->CheckSphereTerrainCollision(otherPos, other->GetRadius(), this);
+        collision.normal = collision.normal * -1.0f;
+    } else if ((myType == ColliderType::kAABB || myType == ColliderType::kOBB || myType == ColliderType::kCylinder) && otherType == ColliderType::kTerrain) {
+        collision = CheckAABBTerrainCollision(this->GetAABB(), other);
+    } else if (myType == ColliderType::kTerrain && (otherType == ColliderType::kAABB || otherType == ColliderType::kOBB || otherType == ColliderType::kCylinder)) {
+        collision = other->CheckAABBTerrainCollision(other->GetAABB(), this);
+        collision.normal = collision.normal * -1.0f;
+    }
     // --- 同種形状 ---
-    if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
+    else if (myType == ColliderType::kAABB && otherType == ColliderType::kAABB) {
         collision = CheckAABBCollision(this->GetAABB(), other->GetAABB());
     } else if (myType == ColliderType::kSphere && otherType == ColliderType::kSphere) {
         collision = CheckSphereCollision(

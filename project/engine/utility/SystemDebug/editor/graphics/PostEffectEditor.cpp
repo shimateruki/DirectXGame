@@ -38,6 +38,26 @@ void PostEffectEditor::DrawImGui() {
     }
     ImGui::Separator();
 
+    ImGui::Text(ICON_FA_PALETTE " Color Grading / LUT");
+    ImGui::DragFloat(" LUT Intensity", &params->lutIntensity, 0.01f, 0.0f, 1.0f);
+    ImGui::DragFloat(" Exposure", &params->colorExposure, 0.01f, -2.0f, 2.0f);
+    ImGui::DragFloat(" Contrast", &params->colorContrast, 0.01f, 0.0f, 2.5f);
+    ImGui::DragFloat(" Saturation", &params->colorSaturation, 0.01f, 0.0f, 2.5f);
+    ImGui::DragFloat(" Temperature", &params->colorTemperature, 0.01f, -1.0f, 1.0f);
+    ImGui::DragFloat(" Tint", &params->colorTint, 0.01f, -1.0f, 1.0f);
+    if (ImGui::Button("Soft Adventure Preset")) {
+        params->enableToneMapping = 2;
+        params->lutIntensity = 0.28f;
+        params->colorExposure = 0.02f;
+        params->colorContrast = 1.08f;
+        params->colorSaturation = 1.14f;
+        params->colorTemperature = 0.10f;
+        params->colorTint = 0.0f;
+        params->vignetteIntensity = 0.04f;
+        params->vignettePower = 1.15f;
+    }
+    ImGui::Separator();
+
     // ==========================================================
     // ブルームの設定
     // ==========================================================
@@ -180,6 +200,11 @@ void PostEffectEditor::SaveParams(const std::string& filename) {
     j["radialCenterX"] = params->radialCenterX;
     j["radialCenterY"] = params->radialCenterY;
     j["lutIntensity"] = params->lutIntensity;
+    j["colorExposure"] = params->colorExposure;
+    j["colorContrast"] = params->colorContrast;
+    j["colorSaturation"] = params->colorSaturation;
+    j["colorTemperature"] = params->colorTemperature;
+    j["colorTint"] = params->colorTint;
     j["damageFlash"] = params->damageFlash;
     j["cinemaBarHeight"] = params->cinemaBarHeight;
     j["wobbleIntensity"] = params->wobbleIntensity;
@@ -232,6 +257,11 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
         if (j.contains("radialCenterX")) params->radialCenterX = j["radialCenterX"];
         if (j.contains("radialCenterY")) params->radialCenterY = j["radialCenterY"];
         if (j.contains("lutIntensity")) params->lutIntensity = j["lutIntensity"];
+        if (j.contains("colorExposure")) params->colorExposure = j["colorExposure"];
+        if (j.contains("colorContrast")) params->colorContrast = j["colorContrast"];
+        if (j.contains("colorSaturation")) params->colorSaturation = j["colorSaturation"];
+        if (j.contains("colorTemperature")) params->colorTemperature = j["colorTemperature"];
+        if (j.contains("colorTint")) params->colorTint = j["colorTint"];
         if (j.contains("damageFlash")) params->damageFlash = j["damageFlash"];
         if (j.contains("cinemaBarHeight")) params->cinemaBarHeight = j["cinemaBarHeight"];
         if (j.contains("wobbleIntensity")) params->wobbleIntensity = j["wobbleIntensity"];

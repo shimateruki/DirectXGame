@@ -70,6 +70,10 @@ private:
 	void SetupDefaultDockspace();
 	void HandleGameViewDropTargets(SceneManager* sceneManager, const GameViewArea& area);
 	void DrawGhostPreview(bool isPlaying, const GameViewArea& area);
+	void RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
+	void StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
+	void DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName);
+	bool HasUnsavedEditorChanges() const;
 	void DrawStatusWindow(
 		float& timeScale,
 		float sceneUpdateTimeMs,
@@ -99,6 +103,7 @@ private:
 	bool showBossDebug_ = false;
 	bool previousPlayingState_ = false;
 	bool dockspaceInitialized_ = false;
+	bool openUnsavedPlayConfirm_ = false;
 };
 
 #endif

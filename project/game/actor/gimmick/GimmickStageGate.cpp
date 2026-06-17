@@ -1,7 +1,16 @@
 #include "GimmickStageGate.h"
 #include "CollisionConfig.h"
+#include "SceneManager.h"
+#include "StageManager.h"
 #include <cassert>
 #include <cmath>
+
+namespace {
+constexpr int kGateModeStageSelectNode = 0;
+constexpr int kGateModeSceneTransition = 1;
+constexpr int kGateModeStageTransition = 2;
+constexpr int kGatePortalMaterialType = 22;
+}
 
 void GimmickStageGate::Initialize(Object3dCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
@@ -9,9 +18,18 @@ void GimmickStageGate::Initialize(Object3dCommon* common, const std::string& mod
     SetClassName("Gimmick");
     SetGimmickType("StageGate");
     SetName("Gimmick_StageGate");
+    if (!param_.has_value()) {
+        param_.emplace();
+    }
+    param_->gimmickType = "StageGate";
+    param_->targetScene = param_->targetScene.empty() ? "SELECT" : param_->targetScene;
+    param_->startActive = true;
     SetColor({ 0.35f, 0.75f, 1.0f, 1.0f });
     SetScale({ 1.4f, 1.4f, 1.4f });
-    SetEmissive(1.2f);
+    SetEmissive(1.8f);
+    SetMaterialType(kGatePortalMaterialType);
+    SetBlendMode(BlendMode::kNormal);
+    SetEnableEnvMap(false);
 
     SetCollisionAttribute(CollisionAttribute::kTrigger);
     SetCollisionMask(CollisionAttribute::kPlayer);
@@ -50,8 +68,15 @@ void GimmickStageGate::Update(float deltaTime) {
 }
 
 bool GimmickStageGate::OnCollision(Object3d* other) {
-    (void)other;
-    return false;
+    if (!other || !(other->GetCollisionAttribute() & CollisionAttribute::kPlayer)) {
+        return false;
+    }
+    if (!CanTriggerTransition()) {
+        return false;
+    }
+
+    TriggerTransition();
+    return true;
 }
 
 std::unique_ptr<Object3d> GimmickStageGate::Clone() const {
@@ -66,11 +91,53 @@ int GimmickStageGate::GetStageIndex() const {
     return GetTargetID();
 }
 
+int GimmickStageGate::GetGateMode() const {
+    if (!param_.has_value()) {
+        return kGateModeStageSelectNode;
+    }
+    return param_->actionMode;
+}
+
+const std::string& GimmickStageGate::GetTargetSceneName() const {
+    static const std::string kDefaultScene = "SELECT";
+    if (!param_.has_value() || param_->targetScene.empty()) {
+        return kDefaultScene;
+    }
+    return param_->targetScene;
+}
+
+bool GimmickStageGate::IsStageSelectNodeMode() const {
+    return GetGateMode() == kGateModeStageSelectNode;
+}
+
 void GimmickStageGate::SetGateState(bool selected, bool unlocked, bool cleared, bool unlocking) {
     isSelected_ = selected;
     isUnlocked_ = unlocked;
     isCleared_ = cleared;
     isUnlocking_ = unlocking;
+}
+
+bool GimmickStageGate::CanTriggerTransition() const {
+    const int mode = GetGateMode();
+    if (mode == kGateModeStageSelectNode || hasTriggeredTransition_) {
+        return false;
+    }
+    if (param_.has_value() && !param_->startActive) {
+        return false;
+    }
+    return true;
+}
+
+void GimmickStageGate::TriggerTransition() {
+    hasTriggeredTransition_ = true;
+
+    if (GetGateMode() == kGateModeStageTransition) {
+        StageManager::GetInstance()->SetCurrentStage(GetStageIndex());
+        SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
+        return;
+    }
+
+    SceneManager::GetInstance()->ChangeScene(GetTargetSceneName());
 }
 
 void GimmickStageGate::CaptureBaseScale() {

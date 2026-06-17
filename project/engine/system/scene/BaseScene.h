@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <cstdint>
 
 // 継承先でも頻繁に使うためインクルード
 #include "Object3d.h"
@@ -13,6 +14,9 @@ class Object3dCommon;
 class SpriteCommon;
 class ParticleSystem;
 class DebugEditor;
+class Camera;
+class DirectXCommon;
+class BulletManager;
 class Player; // ★追加: LevelLoader対応
 
 #include "engine/utility/state/IEditable.h"
@@ -88,6 +92,12 @@ public:
     void SetLoadedSpriteFilename(const std::string& name) { loadedSpriteFilename_ = name; }
     std::string GetLoadedSpriteFilename() const { return loadedSpriteFilename_; }
 protected:
+    bool IsSpecialMaterialType(int materialType) const;
+    bool IsHiddenByFirstPerson(Object3d* object, Player* player, bool isFirstPerson) const;
+    bool DrawLocalFogObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, Player* player = nullptr, bool isFirstPerson = false);
+    bool DrawSpecialMaterialObjects(std::vector<std::unique_ptr<Object3d>>& objects, DirectXCommon* dxCommon, BulletManager* bulletManager = nullptr, Player* player = nullptr, bool isFirstPerson = false);
+    bool DrawGPUParticles(DirectXCommon* dxCommon, Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
+
     SceneManager* sceneManager_ = nullptr;
     DebugEditor* debugEditor_ = nullptr;
     std::string loadedFilename_ = "scene_layout.json";

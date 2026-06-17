@@ -180,58 +180,61 @@ float ValueNoise2D(float2 p)
 
 float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 N, float3 V, float3 worldPosition, float shadowFactor)
 {
-    float textureBlend = lerp(0.10f, 0.58f, saturate(gMaterial.roughness));
-    float patchStrength = lerp(0.10f, 0.55f, saturate(gMaterial.metallic));
-
-    float luminance = dot(textureBase, float3(0.299f, 0.587f, 0.114f));
-    float textureValue = lerp(0.72f, 1.22f, smoothstep(0.08f, 0.98f, luminance));
-    float3 softTexture = lerp(float3(luminance, luminance, luminance), textureBase, 0.54f);
-    softTexture = saturate(softTexture * 1.06f + 0.015f);
+    float textureBlend = lerp(0.02f, 0.30f, saturate(gMaterial.roughness));
+    float paintStrength = saturate(gMaterial.metallic);
 
     float slope = saturate(N.y);
-    float macroNoise = ValueNoise2D(worldPosition.xz * 0.035f);
-    float detailNoise = ValueNoise2D(worldPosition.xz * 0.16f + macroNoise * 3.25f);
-    float patchNoise = floor((macroNoise * 0.65f + detailNoise * 0.35f) * 4.0f) / 3.0f;
+    float macroNoise = ValueNoise2D(worldPosition.xz * 0.026f);
+    float detailNoise = ValueNoise2D(worldPosition.xz * 0.115f + macroNoise * 3.7f);
+    float tinyNoise = ValueNoise2D(worldPosition.xz * 0.34f + detailNoise * 2.0f);
+    float patchNoise = floor(saturate(macroNoise * 0.62f + detailNoise * 0.38f) * 4.0f) / 3.0f;
 
-    float3 grassShadow = float3(0.20f, 0.36f, 0.18f);
-    float3 grassBase = float3(0.42f, 0.62f, 0.28f);
-    float3 grassLight = float3(0.66f, 0.76f, 0.40f);
-    float3 earthBase = float3(0.43f, 0.33f, 0.20f);
-    float3 rockBase = float3(0.45f, 0.46f, 0.40f);
+    float steepMask = 1.0f - smoothstep(0.22f, 0.62f, slope);
+    float flatMask = smoothstep(0.52f, 0.92f, slope);
+    float dryMask = smoothstep(0.68f, 0.96f, macroNoise) * flatMask;
+    float shadePatch = (1.0f - patchNoise) * lerp(0.18f, 0.62f, paintStrength);
 
-    float steepMask = 1.0f - smoothstep(0.18f, 0.55f, slope);
-    float dryMask = smoothstep(0.72f, 0.95f, macroNoise) * slope;
-    float3 palette = lerp(earthBase, grassBase, slope);
-    palette = lerp(palette, rockBase, steepMask * 0.65f);
-    palette = lerp(palette, grassLight, dryMask * 0.28f);
-    palette = lerp(palette, grassShadow, (1.0f - patchNoise) * patchStrength * 0.30f);
+    float3 grassShadow = float3(0.17f, 0.36f, 0.10f);
+    float3 grassBase = float3(0.39f, 0.66f, 0.21f);
+    float3 grassLight = float3(0.72f, 0.84f, 0.34f);
+    float3 earthBase = float3(0.58f, 0.40f, 0.20f);
+    float3 rockBase = float3(0.43f, 0.44f, 0.36f);
 
+    float3 palette = lerp(earthBase, grassBase, flatMask);
+    palette = lerp(palette, rockBase, steepMask * 0.68f);
+    palette = lerp(palette, grassLight, dryMask * 0.30f);
+    palette = lerp(palette, grassShadow, shadePatch * 0.32f);
+
+    float3 accentColor = saturate(max(terrainTint, float3(0.02f, 0.02f, 0.02f)));
+    float accentDelta = max(max(abs(accentColor.r - 1.0f), abs(accentColor.g - 1.0f)), abs(accentColor.b - 1.0f));
+    float accentWeight = smoothstep(0.08f, 0.42f, accentDelta) * paintStrength;
+    float accentPatch = saturate(dryMask * 0.45f + shadePatch * 0.42f + smoothstep(0.58f, 1.0f, tinyNoise) * 0.34f);
+    palette = lerp(palette, lerp(palette, accentColor, 0.48f), accentWeight * accentPatch);
+
+    float textureLuma = dot(textureBase, float3(0.299f, 0.587f, 0.114f));
+    float textureValue = lerp(0.88f, 1.10f, smoothstep(0.12f, 0.92f, textureLuma));
+    float3 textureHue = lerp(float3(textureLuma, textureLuma, textureLuma), textureBase, 0.28f);
     float3 textureDetail = palette * textureValue;
-    textureDetail = lerp(textureDetail, softTexture * palette * 1.35f, textureBlend * 0.36f);
+    textureDetail = lerp(textureDetail, saturate(textureHue * palette * 1.18f), textureBlend * 0.45f);
 
     float3 baseColor = lerp(palette, textureDetail, textureBlend);
-    baseColor *= lerp(0.76f, 1.16f, patchNoise);
-
-    float3 tint = max(saturate(terrainTint), float3(0.035f, 0.035f, 0.035f));
-    float tintDelta = max(max(abs(tint.r - 1.0f), abs(tint.g - 1.0f)), abs(tint.b - 1.0f));
-    float tintWeight = saturate(tintDelta * 1.65f);
-    baseColor = lerp(baseColor, baseColor * tint * 1.18f, tintWeight);
+    baseColor *= lerp(0.86f, 1.13f, patchNoise);
+    baseColor += (tinyNoise - 0.5f) * 0.045f * paintStrength;
 
     float baseLuma = dot(baseColor, float3(0.299f, 0.587f, 0.114f));
-    baseColor = lerp(float3(baseLuma, baseLuma, baseLuma), baseColor, 1.34f);
-    baseColor = saturate(baseColor * 1.08f + 0.012f);
-    baseColor = min(baseColor, float3(0.94f, 0.94f, 0.94f));
+    baseColor = lerp(float3(baseLuma, baseLuma, baseLuma), baseColor, 1.38f);
+    baseColor = saturate(baseColor);
 
     float3 L = normalize(-gDirectionalLight.direction);
     float NdotL = saturate(dot(N, L));
-    float lightBand = (NdotL < 0.34f) ? 0.50f : ((NdotL < 0.70f) ? 0.76f : 1.04f);
-    lightBand *= lerp(0.50f, 1.0f, shadowFactor);
+    float lightBand = (NdotL < 0.30f) ? 0.78f : ((NdotL < 0.68f) ? 0.96f : 1.12f);
+    lightBand *= lerp(0.76f, 1.0f, shadowFactor);
 
     float ambientLevel = max(max(gDirectionalLight.ambientColor.r, gDirectionalLight.ambientColor.g), gDirectionalLight.ambientColor.b);
-    float ambientStrength = 0.27f + saturate(ambientLevel) * 0.18f;
-    float directStrength = saturate(gDirectionalLight.intenssity * 0.78f);
-    float3 lightTint = lerp(float3(1.0f, 1.0f, 1.0f), saturate(gDirectionalLight.color.rgb), 0.22f);
-    float combinedLight = saturate(ambientStrength + lightBand * directStrength * 0.62f);
+    float ambientStrength = 0.46f + saturate(ambientLevel) * 0.24f;
+    float directStrength = saturate(gDirectionalLight.intenssity * 0.68f);
+    float3 lightTint = lerp(float3(1.0f, 1.0f, 1.0f), saturate(gDirectionalLight.color.rgb), 0.10f);
+    float combinedLight = ambientStrength + lightBand * directStrength * 0.42f;
     float3 color = baseColor * combinedLight * lightTint;
     float3 localLight = float3(0.0f, 0.0f, 0.0f);
 
@@ -243,7 +246,7 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
         Lp = normalize(Lp);
         float attenuation = pow(saturate(-distance / pLight.radius + 1.0f), pLight.decay);
         float pointBand = (dot(N, Lp) > 0.18f) ? 1.0f : 0.38f;
-        localLight += baseColor * pLight.color.rgb * min(pLight.intensity, 2.0f) * attenuation * pointBand * 0.16f;
+        localLight += baseColor * pLight.color.rgb * min(pLight.intensity, 2.0f) * attenuation * pointBand * 0.11f;
     }
 
     for (int j = 0; j < gSpotLights.activeCount; ++j)
@@ -256,13 +259,13 @@ float3 BuildStylizedTerrainColor(float3 textureBase, float3 terrainTint, float3 
         float angleCos = dot(-Ls, normalize(sLight.direction));
         float falloffFactor = saturate((angleCos - sLight.cosAngle) / (sLight.cosFalloffStart - sLight.cosAngle));
         float spotBand = (dot(N, Ls) > 0.18f) ? 1.0f : 0.38f;
-        localLight += baseColor * sLight.color.rgb * min(sLight.intensity, 2.0f) * distanceFactor * falloffFactor * spotBand * 0.16f;
+        localLight += baseColor * sLight.color.rgb * min(sLight.intensity, 2.0f) * distanceFactor * falloffFactor * spotBand * 0.11f;
     }
 
-    float rim = pow(1.0f - saturate(dot(N, V)), 3.0f) * slope * 0.045f;
+    float rim = pow(1.0f - saturate(dot(N, V)), 3.0f) * slope * 0.035f;
     float3 rimColor = grassLight * rim;
 
-    return saturate((color + localLight + rimColor) * 1.04f);
+    return saturate(color + localLight + rimColor);
 }
 
 float SmoothBox(float2 p, float2 halfSize, float softness)

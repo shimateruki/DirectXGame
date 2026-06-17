@@ -3,6 +3,9 @@
 #include "json.hpp"
 #include <fstream>
 #include <cmath>
+#include <algorithm>
+#include <cstring>
+#include <filesystem>
 #include "DirectXCommon.h"
 #include "ModelManager.h"
 #include "imgui_internal.h"
@@ -10,6 +13,7 @@
 #include "Camera.h"
 #include "SceneManager.h" 
 #include "IconsFontAwesome5.h"
+#include "DebugConsole.h"
 using json = nlohmann::json;
 
 static ImVec2 WorldToScreen(const Vector3& worldPos, const Matrix4x4& mat) {
@@ -28,6 +32,79 @@ static ImVec2 WorldToScreen(const Vector3& worldPos, const Matrix4x4& mat) {
 LightEditor* LightEditor::GetInstance() {
     static LightEditor instance;
     return &instance;
+}
+
+void LightEditor::SetStatusMessage(const std::string& message, bool success) {
+    statusMessage_ = message;
+    statusSuccess_ = success;
+    statusVisibleUntil_ = ImGui::GetTime() + 3.0;
+}
+
+std::string LightEditor::BuildFullPathFromFileName() const {
+    return "Resources/json/light/" + std::string(currentFileName_);
+}
+
+void LightEditor::SyncCurrentFileNameFromManager() {
+    if (!lightManager_) {
+        return;
+    }
+
+    const std::string& currentPath = lightManager_->GetCurrentStateFile();
+    if (currentPath.empty() || currentPath == syncedLightPath_) {
+        return;
+    }
+
+    std::filesystem::path path(currentPath);
+    std::string fileName = path.filename().string();
+    if (fileName.empty()) {
+        fileName = currentPath;
+    }
+
+    strncpy_s(currentFileName_, sizeof(currentFileName_), fileName.c_str(), _TRUNCATE);
+    syncedLightPath_ = currentPath;
+}
+
+void LightEditor::DrawLightFileList() {
+#ifdef USE_IMGUI
+    SyncCurrentFileNameFromManager();
+
+    const std::string currentPath = lightManager_ ? lightManager_->GetCurrentStateFile() : "";
+    ImGui::Text(ICON_FA_FOLDER_OPEN " 現在のライト設定");
+    ImGui::SameLine();
+    ImGui::TextColored(
+        lightManager_ && lightManager_->WasLastLoadSuccessful() ? ImVec4(0.45f, 1.0f, 0.65f, 1.0f) : ImVec4(1.0f, 0.75f, 0.25f, 1.0f),
+        "%s",
+        currentPath.empty() ? "(未設定)" : currentPath.c_str()
+    );
+    if (lightManager_ && !lightManager_->WasLastLoadSuccessful()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " ファイルが未作成です。保存するとこの名前で作成されます。");
+    }
+
+    std::vector<std::string> fileNames;
+    const std::filesystem::path lightDir("Resources/json/light");
+    if (std::filesystem::exists(lightDir)) {
+        for (const auto& entry : std::filesystem::directory_iterator(lightDir)) {
+            if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+                continue;
+            }
+            fileNames.push_back(entry.path().filename().string());
+        }
+    }
+    std::sort(fileNames.begin(), fileNames.end());
+
+    ImGui::BeginChild("##LightFileList", ImVec2(0.0f, 92.0f), true);
+    if (fileNames.empty()) {
+        ImGui::TextDisabled("ライト設定ファイルがありません");
+    }
+    for (const auto& name : fileNames) {
+        const bool selected = (name == currentFileName_);
+        if (ImGui::Selectable(name.c_str(), selected)) {
+            strncpy_s(currentFileName_, sizeof(currentFileName_), name.c_str(), _TRUNCATE);
+            syncedLightPath_ = currentPath;
+        }
+    }
+    ImGui::EndChild();
+#endif
 }
 
 void LightEditor::Initialize() {
@@ -55,8 +132,8 @@ void LightEditor::Update() {
             if (!pointLightGizmos_[i]) {
                 pointLightGizmos_[i] = std::make_unique<Object3d>();
                 pointLightGizmos_[i]->Initialize(common_);
-                pointLightGizmos_[i]->SetModel("Stages/block");
-                pointLightGizmos_[i]->SetScale({ 0.5f, 0.5f, 0.5f });
+                pointLightGizmos_[i]->SetModel("Primitives/sphere");
+                pointLightGizmos_[i]->SetMaterialType(0);
             }
         }
     }
@@ -66,9 +143,15 @@ void LightEditor::Update() {
         if (pointLightGizmos_[i]) {
 
             pointLightGizmos_[i]->SetTranslate(pointLights[i].data.position);
+            pointLightGizmos_[i]->SetScale({ gizmoScale_, gizmoScale_, gizmoScale_ });
 
-            // ついでに色も反映 (Object3d側に対応メソッドがあれば)
-            // pointLightGizmos_[i]->SetColor(pointLights[i].data.color);
+            Vector4 color = pointLights[i].data.color;
+            color.x = color.x < 0.35f ? 0.35f : color.x;
+            color.y = color.y < 0.35f ? 0.35f : color.y;
+            color.z = color.z < 0.1f ? 0.1f : color.z;
+            color.w = 0.9f;
+            pointLightGizmos_[i]->SetColor(color);
+            pointLightGizmos_[i]->SetEmissive(2.5f);
 
             pointLightGizmos_[i]->Update(0.0f);
             pointLightGizmos_[i]->UpdateLocalMatrix();
@@ -87,8 +170,8 @@ void LightEditor::Update() {
             if (!spotLightGizmos_[i]) {
                 spotLightGizmos_[i] = std::make_unique<Object3d>();
                 spotLightGizmos_[i]->Initialize(common_);
-                spotLightGizmos_[i]->SetModel("Stages/block");
-                spotLightGizmos_[i]->SetScale({ 0.5f, 0.5f, 0.5f });
+                spotLightGizmos_[i]->SetModel("Primitives/sphere");
+                spotLightGizmos_[i]->SetMaterialType(0);
             }
         }
     }
@@ -97,6 +180,14 @@ void LightEditor::Update() {
         if (spotLightGizmos_[i]) {
             // スポットライト位置をギズモに反映
             spotLightGizmos_[i]->SetTranslate(spotLights[i].data.position);
+            spotLightGizmos_[i]->SetScale({ gizmoScale_ * 0.85f, gizmoScale_ * 1.35f, gizmoScale_ * 0.85f });
+            Vector4 color = spotLights[i].data.color;
+            color.x = color.x < 0.15f ? 0.15f : color.x;
+            color.y = color.y < 0.55f ? 0.55f : color.y;
+            color.z = color.z < 0.85f ? 0.85f : color.z;
+            color.w = 0.9f;
+            spotLightGizmos_[i]->SetColor(color);
+            spotLightGizmos_[i]->SetEmissive(2.5f);
 
             // 向きに合わせて回転させると完璧だが、今回は省略
             spotLightGizmos_[i]->Update(0.0f);
@@ -125,6 +216,7 @@ void LightEditor::DrawImGui() {
     if (!lightManager_) return;
 
     ImGui::Checkbox(ICON_FA_EYE " ライト位置を表示 (Gizmos)", &isVisibleGizmos_);
+    ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " ギズモサイズ", &gizmoScale_, 0.01f, 0.2f, 2.0f);
     ImGui::Separator();
     ImGui::Spacing();
 
@@ -138,13 +230,32 @@ void LightEditor::DrawImGui() {
     // 1. ファイル操作
     // -------------------------------------------------------------
     if (ImGui::CollapsingHeader(ICON_FA_SAVE " ファイル管理 (File I/O)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::InputText(ICON_FA_FILE_CODE " ファイル名 (.json)", currentFileName_, sizeof(currentFileName_));
-        std::string fullPath = "Resources/json/light/" + std::string(currentFileName_);
+        DrawLightFileList();
+        ImGui::Spacing();
 
-        if (ImGui::Button(ICON_FA_DOWNLOAD " セーブ (Save)")) lightManager_->SaveState(fullPath);
+        ImGui::InputText(ICON_FA_FILE_CODE " ファイル名 (.json)", currentFileName_, sizeof(currentFileName_));
+        std::string fullPath = BuildFullPathFromFileName();
+
+        if (ImGui::Button(ICON_FA_DOWNLOAD " セーブ (Save)")) {
+            const bool saved = lightManager_->SaveState(fullPath);
+            syncedLightPath_.clear();
+            SetStatusMessage(saved ? "ライト設定を保存しました" : "ライト設定の保存に失敗しました", saved);
+            DebugConsole::GetInstance()->AddLog(saved ? "Light Editor: saved " + fullPath : "Light Editor: save failed " + fullPath);
+        }
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_UPLOAD " ロード (Load)")) lightManager_->LoadState(fullPath);
+        if (ImGui::Button(ICON_FA_UPLOAD " ロード (Load)")) {
+            const bool loaded = lightManager_->LoadState(fullPath);
+            syncedLightPath_.clear();
+            SetStatusMessage(loaded ? "ライト設定をロードしました" : "ライト設定のロードに失敗しました", loaded);
+            DebugConsole::GetInstance()->AddLog(loaded ? "Light Editor: loaded " + fullPath : "Light Editor: load failed " + fullPath);
+        }
         ImGui::TextDisabled("ターゲットパス: %s", fullPath.c_str());
+        if (!statusMessage_.empty() && ImGui::GetTime() < statusVisibleUntil_) {
+            const ImVec4 statusColor = statusSuccess_
+                ? ImVec4(0.35f, 1.0f, 0.55f, 1.0f)
+                : ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+            ImGui::TextColored(statusColor, "%s", statusMessage_.c_str());
+        }
     }
 
     ImGui::Separator();
@@ -163,6 +274,16 @@ void LightEditor::DrawImGui() {
 
         ImGui::Separator();
         ImGui::ColorEdit3(ICON_FA_CLOUD " 環境光 (Ambient)", &sun.ambientColor.x);
+        if (ImGui::Button(ICON_FA_MAGIC " 明るい影プリセット")) {
+            sun.color = { 1.0f, 0.96f, 0.88f, 1.0f };
+            sun.direction = { -0.35f, -0.82f, 0.45f };
+            sun.intensity = 0.86f;
+            sun.ambientColor = { 0.34f, 0.38f, 0.42f };
+            sun.fogColor = { 0.66f, 0.76f, 0.86f };
+            clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
+            DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            SetStatusMessage("明るい影プリセットを適用しました", true);
+        }
 
         ImGui::Separator();
         bool isFogEnabled = (sun.enableFog != 0);
@@ -196,17 +317,48 @@ void LightEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_LIGHTBULB " 点光源 (Point Light)")) {
         if (ImGui::Button(ICON_FA_PLUS " 追加##Point")) lightManager_->AddPointLight();
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Point")) lightManager_->GetPointLights().clear();
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Point")) {
+            lightManager_->GetPointLights().clear();
+            selectedPointLightIndex_ = -1;
+        }
 
         auto& pointLights = lightManager_->GetPointLights();
+        if (selectedPointLightIndex_ >= static_cast<int>(pointLights.size())) {
+            selectedPointLightIndex_ = -1;
+        }
+
+        ImGui::TextDisabled("点光源: %d", static_cast<int>(pointLights.size()));
+        ImGui::BeginChild("##PointLightList", ImVec2(0.0f, 92.0f), true);
+        for (int i = 0; i < static_cast<int>(pointLights.size()); ++i) {
+            const auto& data = pointLights[i].data;
+            std::string label = pointLights[i].name + "  (" +
+                std::to_string(static_cast<int>(data.position.x)) + ", " +
+                std::to_string(static_cast<int>(data.position.y)) + ", " +
+                std::to_string(static_cast<int>(data.position.z)) + ")";
+            if (ImGui::Selectable(label.c_str(), selectedPointLightIndex_ == i)) {
+                selectedPointLightIndex_ = i;
+            }
+        }
+        ImGui::EndChild();
+
         for (int i = 0; i < pointLights.size(); ++i) {
             ImGui::PushID(i);
             auto& instance = pointLights[i];
             auto& data = instance.data;
 
+            if (selectedPointLightIndex_ == i) {
+                ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            }
             if (ImGui::TreeNode("点光源", ICON_FA_LIGHTBULB " Point Light %d", i)) {
+                char nameBuffer[128]{};
+                strncpy_s(nameBuffer, sizeof(nameBuffer), instance.name.c_str(), _TRUNCATE);
+                if (ImGui::InputText(ICON_FA_TAG " 名前", nameBuffer, sizeof(nameBuffer))) {
+                    instance.name = nameBuffer;
+                }
+
                 if (ImGui::Button(ICON_FA_TRASH " 削除")) {
                     pointLights.erase(pointLights.begin() + i);
+                    selectedPointLightIndex_ = -1;
                     ImGui::TreePop();
                     ImGui::PopID();
                     continue;
@@ -261,17 +413,48 @@ void LightEditor::DrawImGui() {
     if (ImGui::CollapsingHeader(ICON_FA_STREET_VIEW " スポットライト (Spot Light)")) {
         if (ImGui::Button(ICON_FA_PLUS " 追加##Spot")) lightManager_->AddSpotLight();
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Spot")) lightManager_->GetSpotLights().clear();
+        if (ImGui::Button(ICON_FA_TRASH_ALT " 全削除##Spot")) {
+            lightManager_->GetSpotLights().clear();
+            selectedSpotLightIndex_ = -1;
+        }
 
         auto& spotLights = lightManager_->GetSpotLights();
+        if (selectedSpotLightIndex_ >= static_cast<int>(spotLights.size())) {
+            selectedSpotLightIndex_ = -1;
+        }
+
+        ImGui::TextDisabled("スポットライト: %d", static_cast<int>(spotLights.size()));
+        ImGui::BeginChild("##SpotLightList", ImVec2(0.0f, 92.0f), true);
+        for (int i = 0; i < static_cast<int>(spotLights.size()); ++i) {
+            const auto& data = spotLights[i].data;
+            std::string label = spotLights[i].name + "  (" +
+                std::to_string(static_cast<int>(data.position.x)) + ", " +
+                std::to_string(static_cast<int>(data.position.y)) + ", " +
+                std::to_string(static_cast<int>(data.position.z)) + ")";
+            if (ImGui::Selectable(label.c_str(), selectedSpotLightIndex_ == i)) {
+                selectedSpotLightIndex_ = i;
+            }
+        }
+        ImGui::EndChild();
+
         for (int i = 0; i < spotLights.size(); ++i) {
             ImGui::PushID(i + 1000);
             auto& instance = spotLights[i];
             auto& data = instance.data;
 
+            if (selectedSpotLightIndex_ == i) {
+                ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            }
             if (ImGui::TreeNode("スポットライト", ICON_FA_STREET_VIEW " Spot Light %d", i)) {
+                char nameBuffer[128]{};
+                strncpy_s(nameBuffer, sizeof(nameBuffer), instance.name.c_str(), _TRUNCATE);
+                if (ImGui::InputText(ICON_FA_TAG " 名前", nameBuffer, sizeof(nameBuffer))) {
+                    instance.name = nameBuffer;
+                }
+
                 if (ImGui::Button(ICON_FA_TRASH " 削除")) {
                     spotLights.erase(spotLights.begin() + i);
+                    selectedSpotLightIndex_ = -1;
                     ImGui::TreePop();
                     ImGui::PopID();
                     continue;

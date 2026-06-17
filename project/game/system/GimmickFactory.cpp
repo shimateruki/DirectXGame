@@ -186,7 +186,7 @@ std::unique_ptr<BaseGimmick> GimmickFactory::CreateGimmick(const std::string& gi
     }
     else if (gimmickName == "StageGate") {
         auto gate = std::make_unique<GimmickStageGate>();
-        gate->Initialize(common, "Gimmicks/portal_gate");
+        gate->Initialize(common, "Gimmicks/portal_surface");
         newGimmick = std::move(gate);
     }
 

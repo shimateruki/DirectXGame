@@ -30,6 +30,30 @@ void RegisterBuiltInPreset(const std::string& presetName, std::unique_ptr<Object
     data["builtinCreateTemplate"] = true;
     PresetManager::GetInstance()->GetPreset(presetName) = data;
 }
+
+std::unique_ptr<Object3d> CreateSpriteCardPreset(Object3dCommon* common) {
+    auto object = std::make_unique<Object3d>();
+    object->Initialize(common);
+    object->SetClassName("Model");
+    object->SetModel("Primitives/plane");
+    object->SetName("SpriteCard_2_5D");
+    object->SetScale({ 1.8f, 1.8f, 1.0f });
+    object->SetTexture("Resources/sprite/common/white.png");
+    object->SetBlendMode(BlendMode::kNormal);
+    object->SetMaterialType(0);
+    object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    object->SetEnableLighting(false);
+    object->SetEnableEnvMap(false);
+    object->SetEmissive(1.35f);
+    object->SetCollisionAttribute(0);
+    object->SetCollisionMask(0);
+
+    ColliderConfig colliderConfig = object->GetColliderConfig();
+    colliderConfig.type = ColliderType::kNone;
+    object->SetColliderConfig(colliderConfig);
+
+    return object;
+}
 }
 
 void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
@@ -82,6 +106,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(Object3dCommon* common) {
     }
 
     RegisterBuiltInPreset("Builtin/Item/Heal", ItemFactory::GetInstance()->CreateItem("Heal", common), "体力回復");
+    RegisterBuiltInPreset("Builtin/Utility/SpriteCard2_5D", CreateSpriteCardPreset(common), "2.5Dスプライト板");
 
     if (PresetManager::GetInstance()->GetPresets().size() != presetCount) {
         PresetManager::GetInstance()->SaveAll();

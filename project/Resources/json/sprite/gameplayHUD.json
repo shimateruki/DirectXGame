@@ -111,22 +111,92 @@
             "parentName": ""
         },
         {
-            "name": "hud_life_meter",
-            "texture": "ui/hud/life_meter_6.png",
-            "position": [1802.0, 92.0],
-            "size": [138.0, 138.0],
+            "name": "hud_hp_icon",
+            "texture": "title/slime_save_icon.png",
+            "position": [1465.0, 94.0],
+            "size": [78.0, 78.0],
             "anchor": [0.5, 0.5],
             "color": [1.0, 1.0, 1.0, 0.96],
             "emissive": 1.0,
             "parentName": ""
         },
         {
-            "name": "hud_life_meter_digit",
-            "texture": "number/big6.png",
-            "position": [1802.0, 95.0],
-            "size": [52.0, 76.0],
+            "name": "hud_hp_damage_fill",
+            "texture": "ui/hud/hp_damage_fill.png",
+            "position": [1594.0, 94.0],
+            "size": [256.0, 28.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.92],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_hp_fill",
+            "texture": "ui/hud/hp_fill.png",
+            "position": [1594.0, 94.0],
+            "size": [256.0, 28.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_hp_highlight",
+            "texture": "ui/hud/hp_highlight.png",
+            "position": [1594.0, 94.0],
+            "size": [256.0, 28.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.45],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_hp_frame",
+            "texture": "ui/hud/hp_frame.png",
+            "position": [1516.0, 94.0],
+            "size": [350.0, 72.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_morph_gauge_back",
+            "texture": "ui/hud/morph_gauge/back.png",
+            "position": [1456.0, 194.0],
+            "size": [112.0, 112.0],
             "anchor": [0.5, 0.5],
-            "color": [1.0, 0.88, 0.20, 1.0],
+            "color": [1.0, 1.0, 1.0, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_morph_gauge_fill",
+            "texture": "ui/hud/morph_gauge/fill_32.png",
+            "position": [1456.0, 194.0],
+            "size": [112.0, 112.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_morph_gauge_icon",
+            "texture": "ui/hud/morph_gauge/icon.png",
+            "position": [1456.0, 194.0],
+            "size": [78.0, 78.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "hud_morph_gauge_frame",
+            "texture": "ui/hud/morph_gauge/frame.png",
+            "position": [1456.0, 194.0],
+            "size": [112.0, 112.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.0],
             "emissive": 1.0,
             "parentName": ""
         },

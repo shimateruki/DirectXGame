@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "GameOverScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -125,9 +125,6 @@ void GameOverScene::Initialize() {
 }
 
 void GameOverScene::Finalize() {
-    if (dxCommon_) {
-        dxCommon_->SetRenderClearColor(0.1f, 0.25f, 0.5f, 1.0f);
-    }
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
 
@@ -189,7 +186,7 @@ void GameOverScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; 
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue; 
         obj->Draw(pointLightRes, spotLightRes);
     }
 
@@ -209,36 +206,13 @@ void GameOverScene::Draw() {
     // =======================================================
     // 4. ローカルフォグ (霧の箱) の描画！
     // =======================================================
-    bool hasFog = false;
-    for (auto& obj : objects) {
-        if (obj->GetMaterialType() == 7) hasFog = true;
-    }
-
-    if (hasFog) {
-        dxCommon_->PreDrawLocalFog();
-        for (auto& obj : objects) {
-            if (obj->GetMaterialType() == 7) {
-                obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-            }
-        }
-        dxCommon_->PostDrawLocalFog();
-    }
+    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
     // =======================================================
     // 5. GPUパーティクルの描画！
     // =======================================================
-    dxCommon_->UpdateGrabTexture();
-    dxCommon_->PreDrawLocalFog();
-    if (camera) {
-        GPUParticleManager::GetInstance()->Draw(
-            dxCommon_->GetCommandList(),
-            camera->GetViewMatrix(),
-            camera->GetProjectionMatrix(),
-            gpuParticleTexHandle_,
-            dxCommon_->GetDepthSrvHandle()
-        );
-    }
-    dxCommon_->PostDrawLocalFog();
+    const bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+    DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 
 // ====================================================================

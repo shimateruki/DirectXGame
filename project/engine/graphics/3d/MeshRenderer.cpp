@@ -362,7 +362,8 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
         cameraResource_.Get(),
         pointLightResource,
         spotLightResource,
-        materialResource_.Get(), normalMapHandle_, ormMapHandle_, textureHandle_
+        materialResource_.Get(), normalMapHandle_, ormMapHandle_, textureHandle_,
+        1, 0, meshDrawIndex_
     );
 }
 void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
@@ -381,7 +382,7 @@ void MeshRenderer::DrawWater(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetWaterBakedShaderTextures());
 
-    drawModel->DrawMeshOnly();
+    drawModel->DrawMeshOnly(meshDrawIndex_);
 }
 void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
@@ -397,7 +398,7 @@ void MeshRenderer::DrawMagma(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
 
-    drawModel->DrawMeshOnly();
+    drawModel->DrawMeshOnly(meshDrawIndex_);
 }
 
 void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
@@ -413,7 +414,7 @@ void MeshRenderer::DrawIce(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetDefaultBakedShaderTextures());
-    drawModel->DrawMeshOnly();
+    drawModel->DrawMeshOnly(meshDrawIndex_);
 }
 void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     Model* drawModel = ResolveDrawModel();
@@ -432,7 +433,7 @@ void MeshRenderer::DrawFire(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     SRVManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetFireBakedShaderTextures());
     drawModel = fireProxyModel_ ? fireProxyModel_.get() : drawModel;
-    drawModel->DrawMeshOnly();
+    drawModel->DrawMeshOnly(fireProxyModel_ ? -1 : meshDrawIndex_);
 }
 
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle, void (Object3dCommon::*setGraphicsCommand)(), bool useProxyModel, int bakedTextureMode) {
@@ -454,7 +455,7 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
         (bakedTextureMode == 1) ? GetGatePortalBakedShaderTextures() : GetDefaultBakedShaderTextures();
     BindBakedShaderTextures(commandList, bakedTextures);
     drawModel = (useProxyModel && fireProxyModel_) ? fireProxyModel_.get() : drawModel;
-    drawModel->DrawMeshOnly();
+    drawModel->DrawMeshOnly((useProxyModel && fireProxyModel_) ? -1 : meshDrawIndex_);
 }
 
 void MeshRenderer::DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
@@ -788,7 +789,7 @@ void MeshRenderer::DrawShadow() {
     common_->SetShadowPipelineState();
 
     // 軽量版のドローコールを呼ぶ
-    drawModel->DrawShadow(shadowWvpResource_.Get());
+    drawModel->DrawShadow(shadowWvpResource_.Get(), meshDrawIndex_);
 }
 
 void MeshRenderer::SetShadowCommonState() {
@@ -800,7 +801,7 @@ void MeshRenderer::SetShadowCommonState() {
 void MeshRenderer::DrawShadowOnly() {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !shadowWvpResource_) return;
-    drawModel->DrawShadow(shadowWvpResource_.Get());
+    drawModel->DrawShadow(shadowWvpResource_.Get(), meshDrawIndex_);
 }
 
 void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
@@ -817,7 +818,7 @@ void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     commandList->SetGraphicsRootConstantBufferView(3, localFogResource_->GetGPUVirtualAddress());
 
     // [0] にWVP、[1] にボーンが自動セットされる
-    drawModel->DrawShadow(wvpResource_.Get());
+    drawModel->DrawShadow(wvpResource_.Get(), meshDrawIndex_);
 }
 void MeshRenderer::SetEnableEnvMap(bool enable) {
     if (materialData_) materialData_->enableEnvMap = enable ? 1 : 0;

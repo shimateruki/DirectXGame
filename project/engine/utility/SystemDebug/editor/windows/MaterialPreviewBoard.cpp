@@ -385,8 +385,8 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
     object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     object->SetEmissive(entry.materialType == 3 ? 2.5f : 1.0f);
     if (entry.materialType == 23) {
-        object->SetRoughness(0.42f);
-        object->SetMetallic(0.48f);
+        object->SetRoughness(0.24f);
+        object->SetMetallic(0.62f);
     }
     else if (entry.materialType == 24) {
         object->SetColor({ 0.25f, 0.95f, 1.0f, 1.0f });
@@ -422,6 +422,19 @@ void MaterialPreviewBoard::ApplyPreviewDefaults(Object3d* object, const Material
         water->effectScale = 0.9f;
         water->effectSoftness = 0.58f;
         water->effectIntensity = 1.25f;
+        break;
+    case 9:
+        object->SetBlendMode(BlendMode::kNone);
+        object->SetColor({ 1.0f, 0.12f, 0.02f, 1.0f });
+        object->SetEmissive(1.35f);
+        water->waveSpeed = 0.62f;
+        water->waveHeight = 0.42f;
+        water->waveFrequency = 2.4f;
+        water->flowSpeedX = 0.08f;
+        water->flowSpeedY = 0.03f;
+        water->effectScale = 1.65f;
+        water->effectSoftness = 0.62f;
+        water->effectIntensity = 1.35f;
         break;
     case 11:
         object->SetBlendMode(BlendMode::kNormal);

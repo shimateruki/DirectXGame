@@ -49,6 +49,7 @@ public:
         int colorType = 0; // 0: Blue, 1: Red
         int switchMode = 0; // 0: Momentary, 1: Toggle, 2: Timed
         int actionMode = 0; // 0: Appear, 1: MoveY, 2: MoveX, 3: MoveZ, 4: Enable, 5: Disable
+        std::string targetScene = "SELECT";
         float moveAmount = 10.0f;
         float moveSpeed = 6.0f;
         bool startActive = false;
@@ -103,6 +104,9 @@ public:
     void SetModel(const std::string& modelName);
     Model* GetModel() const;
     std::string GetModelName() const;
+    void SetMeshDrawIndex(int meshIndex);
+    int GetMeshDrawIndex() const;
+    bool IsMeshDrawFiltered() const;
     void SetLodEnabled(bool enabled);
     bool IsLodEnabled() const;
     bool HasLodLevels() const;
@@ -153,6 +157,11 @@ public:
     uint32_t GetCollisionAttribute() const;
     void SetCollisionMask(uint32_t mask);
     uint32_t GetCollisionMask() const;
+    bool LoadTerrainCollisionFromFile(const std::string& path);
+    void SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path = "");
+    const TerrainCollisionData* GetTerrainCollisionData() const;
+    void SetTerrainCollisionPath(const std::string& path) { terrainCollisionPath_ = path; }
+    const std::string& GetTerrainCollisionPath() const { return terrainCollisionPath_; }
     void SetMetallic(float metallic) { if (meshRenderer_) meshRenderer_->SetMetallic(metallic); }
     float GetMetallic() const { return meshRenderer_ ? meshRenderer_->GetMetallic() : 0.0f; }
     void SetRoughness(float roughness) { if (meshRenderer_) meshRenderer_->SetRoughness(roughness); }
@@ -231,6 +240,7 @@ public:
     Vector2 GetTextureTiling() const { return meshRenderer_ ? meshRenderer_->GetTextureTiling() : Vector2{ 1.0f, 1.0f }; }
     void SetAutoTextureTiling(bool enabled) { if (meshRenderer_) meshRenderer_->SetAutoTextureTiling(enabled); }
     bool GetAutoTextureTiling() const { return meshRenderer_ ? meshRenderer_->GetAutoTextureTiling() : false; }
+    void SetEnableLighting(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableLighting(enable); }
     void SetEnableEnvMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableEnvMap(enable); }
     bool GetEnableEnvMap() const { return meshRenderer_ ? meshRenderer_->GetEnableEnvMap() : true; }
     bool GetEnableLighting() const { return meshRenderer_ ? meshRenderer_->GetEnableLighting() : false; }
@@ -284,6 +294,7 @@ protected:
     // コンポーネント化された機能
     std::unique_ptr<Collider> collider_;
     std::unique_ptr<MeshRenderer> meshRenderer_;
+    std::string terrainCollisionPath_;
 
     bool isStatic_ = false;
     std::vector<Object3d*> children_;

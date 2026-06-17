@@ -177,8 +177,11 @@ void GamePlayScene::FinalizeGameplayResources() {
     saveIndicatorOverlay_.reset();
     settingsOverlay_.reset();
     pauseMenuOverlay_.reset();
-    hudLifeMeter_ = {};
-    hudLifeMeterDigit_ = {};
+    hudHpIcon_ = {};
+    hudHpFrame_ = {};
+    hudHpDamageFill_ = {};
+    hudHpFill_ = {};
+    hudHpHighlight_ = {};
     hudLifeIcon_ = {};
     hudLifeXIcon_ = {};
     for (auto& digit : hudLifeDigits_) {

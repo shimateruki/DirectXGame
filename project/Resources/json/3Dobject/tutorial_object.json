@@ -5,6 +5,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -40,6 +41,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -55,6 +57,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -93,6 +98,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -100,6 +109,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -135,6 +145,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -150,6 +161,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -188,6 +202,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -195,6 +213,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -230,6 +249,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -245,6 +265,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -283,6 +306,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -290,6 +317,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -325,6 +353,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -340,6 +369,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -378,6 +410,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -385,6 +421,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -420,6 +457,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -435,6 +473,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -473,6 +514,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -480,6 +525,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -515,6 +561,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -530,6 +577,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -568,6 +618,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -575,6 +629,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -610,6 +665,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -625,6 +681,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -663,6 +722,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -670,6 +733,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -705,6 +769,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -720,6 +785,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -758,6 +826,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -765,6 +837,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -800,6 +873,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -815,6 +889,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -853,6 +930,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -860,6 +941,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -895,6 +977,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -910,6 +993,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -948,6 +1034,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -955,6 +1045,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -990,6 +1081,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1005,6 +1097,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1043,6 +1138,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1050,6 +1149,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1085,6 +1185,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1100,6 +1201,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1138,6 +1242,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1145,6 +1253,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1180,6 +1289,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1195,6 +1305,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1233,6 +1346,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1240,6 +1357,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1275,6 +1393,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1290,6 +1409,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1328,6 +1450,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1335,6 +1461,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1370,6 +1497,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1385,6 +1513,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1423,6 +1554,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1430,6 +1565,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1465,6 +1601,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1480,6 +1617,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1518,6 +1658,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1525,6 +1669,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1560,6 +1705,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1575,6 +1721,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1613,6 +1762,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1620,6 +1773,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1655,6 +1809,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1670,6 +1825,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1708,6 +1866,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1715,6 +1877,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1750,6 +1913,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1765,6 +1929,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1803,6 +1970,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1810,6 +1981,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1845,6 +2017,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1860,6 +2033,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1898,6 +2074,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -1905,6 +2085,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -1940,6 +2121,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -1955,6 +2137,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -1993,6 +2178,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2000,6 +2189,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2035,6 +2225,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2050,6 +2241,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2088,6 +2282,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2095,6 +2293,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2130,6 +2329,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2145,6 +2345,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2183,6 +2386,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2190,6 +2397,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2225,6 +2433,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2240,6 +2449,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2278,6 +2490,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2285,6 +2501,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2320,6 +2537,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2335,6 +2553,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2373,6 +2594,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2380,6 +2605,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2415,6 +2641,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2430,6 +2657,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2468,6 +2698,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2475,6 +2709,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2510,6 +2745,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2525,6 +2761,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2563,6 +2802,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2570,6 +2813,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2605,6 +2849,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2620,6 +2865,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2658,6 +2906,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2665,6 +2917,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2700,6 +2953,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2715,6 +2969,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2753,6 +3010,10 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
         },
         {
@@ -2760,6 +3021,7 @@
                 "animName": "",
                 "isAnimLoop": true
             },
+            "autoTextureTiling": false,
             "blendMode": 1,
             "collider": {
                 "center": [
@@ -2795,6 +3057,7 @@
             "eventID": 0,
             "gimmickType": "",
             "gpuParticleName": "",
+            "itemType": "",
             "localFog": {
                 "color": [
                     0.20000000298023224,
@@ -2810,6 +3073,9 @@
                 "scatteringIntensity": 0.0
             },
             "materialType": 0,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
             "metallic": 0.0,
             "modelName": "Stages/block",
             "myEventID": -1,
@@ -2848,7 +3114,152 @@
             ],
             "targetID": -1,
             "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
             "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    4.0,
+                    4.0,
+                    4.0
+                ],
+                "type": 1
+            },
+            "collisionAttribute": 16,
+            "collisionMask": 1,
+            "color": [
+                0.3499999940395355,
+                0.75,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.7999999523162842,
+            "enableEnvMap": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "StageGate",
+            "gpuParticleName": "",
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 22,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Gimmicks/portal_surface",
+            "myEventID": -1,
+            "name": "Gimmick_StageGate",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "param": {
+                "actionMode": 1,
+                "colorType": 0,
+                "detectionRange": 20.0,
+                "enemyType": "",
+                "fallDuration": 2.0,
+                "gimmickType": "StageGate",
+                "gravity": 50.0,
+                "healAmount": 1.0,
+                "hp": 100.0,
+                "interval": 3.0,
+                "itemType": "",
+                "jumpPower": 10.0,
+                "maxCount": 5,
+                "maxFallSpeed": 60.0,
+                "maxHp": 100.0,
+                "moveAmount": 10.0,
+                "moveSpeed": 6.0,
+                "returnOnOff": true,
+                "shakeDuration": 1.0,
+                "speed": 1.0,
+                "startActive": true,
+                "switchMode": 0,
+                "targetScene": "SELECT"
+            },
+            "parentName": "",
+            "particleName": "",
+            "position": [
+                213.51870727539063,
+                6.468768119812012,
+                -26.161827087402344
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                1.399999976158142,
+                1.399999976158142,
+                1.399999976158142
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Gimmick",
+            "waterParam": {
+                "billboardScale": 0.550000011920929,
+                "effectIntensity": 1.0,
+                "effectScale": 1.399999976158142,
+                "effectSoftness": 0.48899999260902405,
+                "effectType": 0.0,
+                "flowSpeedX": 0.10000000149011612,
+                "flowSpeedY": 0.10000000149011612,
+                "waveFrequency": 1.5,
+                "waveHeight": 1.0199999809265137,
+                "waveSpeed": 2.0
+            }
         }
     ]
 }

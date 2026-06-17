@@ -480,6 +480,10 @@ void HierarchyWindow::Draw() {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetModelOptimizerWindow());
         }
+        if (editor_->GetTerrainEditorWindow() && ImGui::Selectable("  " ICON_FA_MOUNTAIN " 地形生成 (Terrain Builder)", currentObj == editor_->GetTerrainEditorWindow())) {
+            editor_->SetSelectedObject(nullptr);
+            EditorManager::GetInstance()->SetSelectedObject(editor_->GetTerrainEditorWindow());
+        }
         if (editor_->GetAssetAuditWindow() && ImGui::Selectable("  " ICON_FA_SEARCH " アセット監査 (Asset Audit)", currentObj == editor_->GetAssetAuditWindow())) {
             editor_->SetSelectedObject(nullptr);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAssetAuditWindow());

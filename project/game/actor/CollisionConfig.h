@@ -32,7 +32,8 @@ enum class ColliderType {
     kAABB,   // AABB（回転しない箱）
     kOBB,
     kCylinder,
-    kRing    // リング（ドーナツ型・衝撃波用）
+    kRing,   // リング（ドーナツ型・衝撃波用）
+    kTerrain // 高さ付き地形
 };
 
 // AABB構造体

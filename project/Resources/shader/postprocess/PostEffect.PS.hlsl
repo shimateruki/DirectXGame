@@ -27,6 +27,11 @@ cbuffer PostEffectParams : register(b0)
     int radialBlurSamples;
     
     float lutIntensity;
+    float colorExposure;
+    float colorContrast;
+    float colorSaturation;
+    float colorTemperature;
+    float colorTint;
     float damageFlash;
     float cinemaBarHeight;
     float wobbleIntensity;
@@ -152,6 +157,24 @@ float Luminance(float3 v)
     return dot(v, float3(0.2125f, 0.7154f, 0.0721f));
 }
 
+float3 ApplyColorGrading(float3 color)
+{
+    color = max(color * exp2(colorExposure), 0.0f);
+    color = (color - 0.5f) * max(colorContrast, 0.0f) + 0.5f;
+
+    float luminance = Luminance(color);
+    color = lerp(float3(luminance, luminance, luminance), color, max(colorSaturation, 0.0f));
+
+    float temperatureAmount = saturate(abs(colorTemperature));
+    float3 warmBalance = float3(1.10f, 1.03f, 0.92f);
+    float3 coolBalance = float3(0.92f, 1.02f, 1.10f);
+    float3 temperatureBalance = (colorTemperature >= 0.0f) ? warmBalance : coolBalance;
+    color *= lerp(float3(1.0f, 1.0f, 1.0f), temperatureBalance, temperatureAmount);
+
+    color += float3(colorTint * 0.025f, colorTint * 0.050f, -colorTint * 0.025f);
+    return saturate(color);
+}
+
 // ガウス関数 (資料に基づいた実装)
 float gauss(float x, float y, float sigma)
 {
@@ -274,6 +297,8 @@ float4 mainComposite(PSInput input) : SV_TARGET
     {
         finalColor = saturate(finalColor);
     }
+
+    finalColor.rgb = ApplyColorGrading(finalColor.rgb);
 
     // LUT
     if (lutIntensity > 0.0)

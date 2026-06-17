@@ -24,6 +24,8 @@
 namespace {
     constexpr float kPi = 3.1415926535f;
     constexpr float kTwoPi = kPi * 2.0f;
+    constexpr float kEnemyMorphDuration = 5.0f;
+    constexpr float kEnemyMorphParticleInterval = 0.12f;
 
     float NormalizeYaw(float yaw) {
         while (yaw > kPi) yaw -= kTwoPi;
@@ -37,6 +39,10 @@ namespace {
         }
 
         return Math::MatrixToEuler(Math::MakeRotateQuaternionMatrix(transform.quaternion));
+    }
+
+    float Clamp01(float value) {
+        return std::clamp(value, 0.0f, 1.0f);
     }
 }
 
@@ -240,7 +246,8 @@ void Player::Update(float deltaTime)
     }
 
     BaseEnemy* carriedEnemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
-    const bool isCarryingBat = carriedEnemyBase && carriedEnemyBase->GetEnemyType() == "Bat";
+    const bool isBatMorphActive = isEnemyMorphed_ && enemyMorphType_ == EnemyMorphType::Bat;
+    const bool isCarryingBat = (carriedEnemyBase && carriedEnemyBase->GetEnemyType() == "Bat") || isBatMorphActive;
 
     if (isControlActive_) {
         float gravity = inputManager_->IsMouseButtonPressed(1) ? 10.0f : 50.0f;
@@ -318,6 +325,8 @@ void Player::Update(float deltaTime)
     if (carriedEnemy_ && inputManager_->IsMouseButtonPressed(0)) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
+            CancelEnemyMorph();
+
             // ① カメラの向いている方向（投げる方向）を計算
             Camera* camera = CameraManager::GetInstance()->GetMainCamera();
             Vector3 throwForward = GetForwardDirection();
@@ -385,11 +394,17 @@ void Player::Update(float deltaTime)
         (carriedEnemyBase->GetEnemyType() == "Bomber" ? carryAbilityHeld : carryAbilityTriggered)) {
         BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(carriedEnemy_);
         if (enemyBase) {
+            if (!isEnemyMorphed_) {
+                StartEnemyMorph(enemyBase);
+            }
             // 乗せている敵の「固有能力」を呼び出す！
             enemyBase->ExecuteAbility(this);
         }
     }
     if (carriedEnemy_) {
+        carriedEnemy_->SetCollisionAttribute(0);
+        carriedEnemy_->SetCollisionMask(0);
+
         Vector3 playerPos = GetWorldPosition();
         
         static float struggleTimer_ = 0.0f;
@@ -435,6 +450,8 @@ void Player::Update(float deltaTime)
         transform_.scale.y = Math::Lerp(currentScale.y, targetScale.y, 0.15f);
         transform_.scale.z = Math::Lerp(currentScale.z, targetScale.z, 0.15f);
     }
+
+    UpdateEnemyMorph(deltaTime);
 }
 
 
@@ -461,6 +478,200 @@ Vector3 Player::GetForwardDirection() const
 void Player::SetMoveYaw(float yaw)
 {
     SetRotationY(NormalizeYaw(yaw + GetVisualYawOffset()));
+}
+
+void Player::StartEnemyMorph(BaseEnemy* enemy)
+{
+    if (!enemy) {
+        return;
+    }
+
+    if (!isEnemyMorphed_) {
+        savedMorphModelName_ = GetModelName();
+        savedMorphTexturePath_ = GetTexturePath();
+        savedMorphAnimName_ = animName_;
+        savedMorphAnimLoop_ = isAnimLoop_;
+        savedMorphColor_ = GetColor();
+        savedMorphScale_ = GetScale();
+        savedMorphMaterialType_ = GetMaterialType();
+        savedMorphEmissive_ = GetEmissive();
+    }
+
+    enemyMorphType_ = ResolveEnemyMorphType(enemy->GetEnemyType());
+    enemyMorphSource_ = enemy;
+    enemyMorphTimer_ = kEnemyMorphDuration;
+    enemyMorphDuration_ = kEnemyMorphDuration;
+    enemyMorphEffectTimer_ = 0.0f;
+    enemyMorphTint_ = GetEnemyMorphTint(enemyMorphType_);
+    isEnemyMorphed_ = true;
+
+    if (!enemy->GetModelName().empty()) {
+        SetModel(enemy->GetModelName());
+    }
+    const std::string enemyTexture = enemy->GetTexturePath();
+    if (!enemyTexture.empty()) {
+        SetTexture(enemyTexture);
+    }
+    SetMaterialType(enemy->GetMaterialType());
+    SetEmissive((std::max)(enemy->GetEmissive(), 1.4f));
+    animName_.clear();
+    animationTime_ = 0.0f;
+    SetColor(enemyMorphTint_);
+
+    for (Object3d* child : GetChildren()) {
+        if (child) {
+            child->SetColor(enemyMorphTint_);
+        }
+    }
+
+    if (particleSystem_) {
+        Vector3 up = { 0.0f, 1.0f, 0.0f };
+        particleSystem_->SpawnParticles(
+            GetWorldPosition() + Vector3{ 0.0f, 1.0f, 0.0f },
+            32,
+            2.2f,
+            &up,
+            22.0f,
+            enemyMorphTint_,
+            { enemyMorphTint_.x, enemyMorphTint_.y, enemyMorphTint_.z, 0.0f },
+            0.14f,
+            0.45f,
+            0.42f,
+            0.08f
+        );
+    }
+
+    DebugConsole::GetInstance()->AddLog("Enemy morph start.");
+}
+
+void Player::UpdateEnemyMorph(float deltaTime)
+{
+    if (!isEnemyMorphed_) {
+        return;
+    }
+
+    if (!carriedEnemy_ || enemyMorphSource_ != carriedEnemy_ || enemyMorphSource_->isDead || enemyMorphSource_->IsDefeatEffectPlaying()) {
+        CancelEnemyMorph();
+        return;
+    }
+
+    if (deltaTime > 0.0f) {
+        enemyMorphTimer_ -= deltaTime;
+        enemyMorphEffectTimer_ -= deltaTime;
+    }
+
+    if (enemyMorphTimer_ <= 0.0f) {
+        CancelEnemyMorph();
+        return;
+    }
+
+    const float elapsed = enemyMorphDuration_ - enemyMorphTimer_;
+    const float pulse = std::sin(elapsed * 10.0f) * 0.06f;
+    Vector4 morphColor = {
+        Clamp01(enemyMorphTint_.x + pulse),
+        Clamp01(enemyMorphTint_.y + pulse),
+        Clamp01(enemyMorphTint_.z + pulse),
+        enemyMorphTint_.w
+    };
+    SetColor(morphColor);
+    SetEmissive((std::max)(1.4f, savedMorphEmissive_) + 0.4f + std::abs(pulse) * 4.0f);
+
+    for (Object3d* child : GetChildren()) {
+        if (child) {
+            child->SetColor(morphColor);
+        }
+    }
+
+    if (particleSystem_ && enemyMorphEffectTimer_ <= 0.0f) {
+        Vector3 up = { 0.0f, 1.0f, 0.0f };
+        particleSystem_->SpawnParticles(
+            GetWorldPosition() + Vector3{ 0.0f, 1.1f, 0.0f },
+            6,
+            1.2f,
+            &up,
+            12.0f,
+            morphColor,
+            { morphColor.x, morphColor.y, morphColor.z, 0.0f },
+            0.08f,
+            0.22f,
+            0.26f,
+            0.03f
+        );
+        enemyMorphEffectTimer_ = kEnemyMorphParticleInterval;
+    }
+}
+
+float Player::GetEnemyMorphRate() const
+{
+    if (!isEnemyMorphed_ || enemyMorphDuration_ <= 0.0f) {
+        return 0.0f;
+    }
+    return std::clamp(enemyMorphTimer_ / enemyMorphDuration_, 0.0f, 1.0f);
+}
+
+void Player::CancelEnemyMorph()
+{
+    if (!isEnemyMorphed_) {
+        return;
+    }
+
+    if (!savedMorphModelName_.empty()) {
+        SetModel(savedMorphModelName_);
+    }
+    if (!savedMorphTexturePath_.empty()) {
+        SetTexture(savedMorphTexturePath_);
+    }
+    SetMaterialType(savedMorphMaterialType_);
+    SetEmissive(savedMorphEmissive_);
+    SetColor(savedMorphColor_);
+    SetScale(savedMorphScale_);
+    animName_ = savedMorphAnimName_;
+    isAnimLoop_ = savedMorphAnimLoop_;
+    animationTime_ = 0.0f;
+
+    for (Object3d* child : GetChildren()) {
+        if (child) {
+            child->SetColor(savedMorphColor_);
+        }
+    }
+
+    isEnemyMorphed_ = false;
+    enemyMorphType_ = EnemyMorphType::None;
+    enemyMorphSource_ = nullptr;
+    enemyMorphTimer_ = 0.0f;
+    enemyMorphEffectTimer_ = 0.0f;
+    DebugConsole::GetInstance()->AddLog("Enemy morph end.");
+}
+
+Player::EnemyMorphType Player::ResolveEnemyMorphType(const std::string& enemyType) const
+{
+    if (enemyType == "Bomber") return EnemyMorphType::Bomber;
+    if (enemyType == "Bat") return EnemyMorphType::Bat;
+    if (enemyType == "BeamDrone") return EnemyMorphType::BeamDrone;
+    if (enemyType == "Mushroom") return EnemyMorphType::Mushroom;
+    if (enemyType == "GiantSlime") return EnemyMorphType::GiantSlime;
+    if (enemyType == "Slime") return EnemyMorphType::Slime;
+    return EnemyMorphType::None;
+}
+
+Vector4 Player::GetEnemyMorphTint(EnemyMorphType type) const
+{
+    switch (type) {
+    case EnemyMorphType::Bomber:
+        return { 1.0f, 0.45f, 0.22f, 1.0f };
+    case EnemyMorphType::Bat:
+        return { 0.55f, 0.64f, 1.0f, 1.0f };
+    case EnemyMorphType::BeamDrone:
+        return { 0.42f, 0.95f, 1.0f, 1.0f };
+    case EnemyMorphType::Mushroom:
+        return { 1.0f, 0.34f, 0.72f, 1.0f };
+    case EnemyMorphType::GiantSlime:
+        return { 0.64f, 1.0f, 0.92f, 1.0f };
+    case EnemyMorphType::Slime:
+        return { 0.35f, 0.92f, 1.0f, 1.0f };
+    default:
+        return { 1.0f, 1.0f, 1.0f, 1.0f };
+    }
 }
 
 void Player::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource)

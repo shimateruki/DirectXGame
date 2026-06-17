@@ -158,9 +158,10 @@ public: // メンバ関数
         ID3D12Resource* spotLightResource,
         ID3D12Resource* overrideMaterialResource = nullptr, uint32_t normalMapHandle = 0, uint32_t ormMapHandle = 0, uint32_t overrideTextureHandle = 0,
         uint32_t instanceCount = 1,
-        uint32_t startInstanceLocation = 0
+        uint32_t startInstanceLocation = 0,
+        int meshDrawIndex = -1
     );
-    void DrawShadow(ID3D12Resource* wvpResource);
+    void DrawShadow(ID3D12Resource* wvpResource, int meshDrawIndex = -1);
     /// <summary>
     /// マテリアル情報の取得 (ImGuiでの操作用)
     /// </summary>
@@ -189,7 +190,7 @@ public: // メンバ関数
     Vector3 GetLocalAabbMin() const { return localAabbMin_; }
     Vector3 GetLocalAabbMax() const { return localAabbMax_; }
 
-    void DrawMeshOnly();
+    void DrawMeshOnly(int meshDrawIndex = -1);
     void CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices);
     
     // --- 情報取得用 ---

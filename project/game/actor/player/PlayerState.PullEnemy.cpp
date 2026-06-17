@@ -61,6 +61,9 @@ void PlayerStatePullEnemy::Update(Player* player) {
                 giantSlime->BeginHookSplitPull(playerPos);
             } else {
                 // 命中時に敵を「Carried（持ち運び）」状態へ移行させ、衝突判定を無効化
+                targetEnemy_->SetCollisionAttribute(0);
+                targetEnemy_->SetCollisionMask(0);
+
                 BaseEnemy* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_);
                 if (enemyBase) {
                     enemyBase->SetCarried(true);

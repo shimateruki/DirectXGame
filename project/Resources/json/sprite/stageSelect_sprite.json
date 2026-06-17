@@ -1,3 +1,154 @@
 {
-    "sprites": []
+    "sprites": [
+        {
+            "name": "stage_select_hud_crown_icon",
+            "texture": "ui/title/crown_progress_icon.png",
+            "position": [42.0, 86.0],
+            "size": [48.0, 48.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_crown_x",
+            "texture": "ui/hud/xUi.png",
+            "position": [94.0, 86.0],
+            "size": [38.0, 38.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.95, 0.58, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_crown_digit_0",
+            "texture": "number/0.png",
+            "position": [124.0, 86.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.94, 0.50, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_crown_digit_1",
+            "texture": "number/0.png",
+            "position": [149.0, 86.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.94, 0.50, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_crown_digit_2",
+            "texture": "number/0.png",
+            "position": [174.0, 86.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.94, 0.50, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_star_icon",
+            "texture": "ui/hud/stage_star_filled.png",
+            "position": [42.0, 142.0],
+            "size": [48.0, 48.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_star_x",
+            "texture": "ui/hud/xUi.png",
+            "position": [94.0, 142.0],
+            "size": [38.0, 38.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.95, 0.58, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_star_digit_0",
+            "texture": "number/0.png",
+            "position": [124.0, 142.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.90, 0.30, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_star_digit_1",
+            "texture": "number/0.png",
+            "position": [149.0, 142.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.90, 0.30, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_star_digit_2",
+            "texture": "number/0.png",
+            "position": [174.0, 142.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.90, 0.30, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_coin_icon",
+            "texture": "ui/hud/coin_icon.png",
+            "position": [42.0, 198.0],
+            "size": [48.0, 48.0],
+            "anchor": [0.0, 0.5],
+            "color": [1.0, 1.0, 1.0, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_coin_x",
+            "texture": "ui/hud/xUi.png",
+            "position": [94.0, 198.0],
+            "size": [38.0, 38.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.95, 0.58, 0.96],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_coin_digit_0",
+            "texture": "number/0.png",
+            "position": [124.0, 198.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.82, 0.24, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_coin_digit_1",
+            "texture": "number/0.png",
+            "position": [149.0, 198.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.82, 0.24, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        },
+        {
+            "name": "stage_select_hud_coin_digit_2",
+            "texture": "number/0.png",
+            "position": [174.0, 198.0],
+            "size": [24.0, 36.0],
+            "anchor": [0.5, 0.5],
+            "color": [1.0, 0.82, 0.24, 1.0],
+            "emissive": 1.0,
+            "parentName": ""
+        }
+    ]
 }

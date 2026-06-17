@@ -16,6 +16,25 @@
 #include <DebugConsole.h>
 #include <ProfilerManager.h>
 #include <fstream>
+#include <filesystem>
+
+namespace {
+
+std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
+    std::filesystem::path filePath(path);
+    if (std::filesystem::exists(filePath)) {
+        return filePath;
+    }
+
+    std::filesystem::path resourcesPath = std::filesystem::path("Resources") / filePath;
+    if (std::filesystem::exists(resourcesPath)) {
+        return resourcesPath;
+    }
+
+    return filePath;
+}
+
+}
 
 Object3d::~Object3d() {
     if (recorder_) {
@@ -271,6 +290,10 @@ void Object3d::SetModel(Model* model) {
 }
 
 void Object3d::SetModel(const std::string& modelName) {
+    if (modelName.empty()) {
+        SetModel(nullptr);
+        return;
+    }
     if (meshRenderer_ && !modelName.empty()) {
         Model* model = ModelManager::GetInstance()->LoadModel(modelName);
         meshRenderer_->SetModel(modelName);
@@ -372,6 +395,20 @@ Model* Object3d::GetModel() const {
 
 std::string Object3d::GetModelName() const {
     return meshRenderer_ ? meshRenderer_->GetModelName() : "";
+}
+
+void Object3d::SetMeshDrawIndex(int meshIndex) {
+    if (meshRenderer_) {
+        meshRenderer_->SetMeshDrawIndex(meshIndex);
+    }
+}
+
+int Object3d::GetMeshDrawIndex() const {
+    return meshRenderer_ ? meshRenderer_->GetMeshDrawIndex() : -1;
+}
+
+bool Object3d::IsMeshDrawFiltered() const {
+    return meshRenderer_ ? meshRenderer_->IsMeshDrawFiltered() : false;
 }
 
 void Object3d::SetLodEnabled(bool enabled) {
@@ -544,6 +581,71 @@ uint32_t Object3d::GetCollisionMask() const {
     return collider_ ? collider_->GetMask() : 0;
 }
 
+bool Object3d::LoadTerrainCollisionFromFile(const std::string& path) {
+    if (!collider_ || path.empty()) return false;
+
+    std::ifstream file(ResolveTerrainCollisionFilePath(path));
+    if (!file) return false;
+
+    json data;
+    try {
+        file >> data;
+    } catch (...) {
+        return false;
+    }
+    if (!data.is_object()) return false;
+
+    TerrainCollisionData terrain;
+    terrain.enabled = true;
+    terrain.resolution = data.value("resolution", 0);
+    terrain.sizeX = data.value("sizeX", 1.0f);
+    terrain.sizeZ = data.value("sizeZ", 1.0f);
+    terrain.minHeight = data.value("minHeight", 0.0f);
+    terrain.maxHeight = data.value("maxHeight", 0.0f);
+
+    if (data.contains("heightSamples") && data["heightSamples"].is_array()) {
+        const auto& samples = data["heightSamples"];
+        if (!samples.empty() && samples.front().is_array()) {
+            for (const auto& row : samples) {
+                if (!row.is_array()) continue;
+                for (const auto& value : row) {
+                    if (value.is_number()) {
+                        terrain.heights.push_back(value.get<float>());
+                    }
+                }
+            }
+        } else {
+            for (const auto& value : samples) {
+                if (value.is_number()) {
+                    terrain.heights.push_back(value.get<float>());
+                }
+            }
+        }
+    }
+
+    const int sampleCount = terrain.resolution + 1;
+    if (terrain.resolution <= 0 ||
+        static_cast<int>(terrain.heights.size()) < sampleCount * sampleCount) {
+        return false;
+    }
+
+    SetTerrainCollisionData(terrain, path);
+    return true;
+}
+
+void Object3d::SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path) {
+    if (!collider_) return;
+    collider_->SetTerrainData(data);
+    terrainCollisionPath_ = path;
+    if (isStatic_) CollisionManager::GetInstance()->MarkStaticGridDirty();
+}
+
+const TerrainCollisionData* Object3d::GetTerrainCollisionData() const {
+    if (!collider_) return nullptr;
+    const TerrainCollisionData& data = collider_->GetTerrainData();
+    return data.enabled ? &data : nullptr;
+}
+
 AABB Object3d::GetAABB() const {
     return collider_ ? collider_->GetAABB() : AABB{};
 }
@@ -682,6 +784,12 @@ void Object3d::CopyFrom(const Object3d* other) {
         this->SetColliderConfig(other->GetColliderConfig());
         this->SetCollisionAttribute(other->GetCollisionAttribute());
         this->SetCollisionMask(other->GetCollisionMask());
+        if (const TerrainCollisionData* terrain = other->GetTerrainCollisionData()) {
+            this->SetTerrainCollisionData(*terrain, other->GetTerrainCollisionPath());
+        } else {
+            terrainCollisionPath_.clear();
+            collider_->ClearTerrainData();
+        }
     }
 
     // 4. イベント関連
@@ -716,6 +824,7 @@ void Object3d::CopyFrom(const Object3d* other) {
         // LOD設定
         this->SetLodEnabled(other->IsLodEnabled());
         this->SetLodLevels(other->GetLodLevels());
+        this->SetMeshDrawIndex(other->GetMeshDrawIndex());
     }
 
     // 7. アニメーション
@@ -778,6 +887,9 @@ json Object3d::ExportToJson() {
     }
     d["collisionAttribute"] = GetCollisionAttribute();
     d["collisionMask"] = GetCollisionMask();
+    if (!terrainCollisionPath_.empty()) {
+        d["terrainCollisionPath"] = terrainCollisionPath_;
+    }
 
     // 4. イベント関連
     d["eventType"] = static_cast<int>(eventType_);
@@ -809,6 +921,7 @@ json Object3d::ExportToJson() {
         jp["fallDuration"] = p.fallDuration;
         jp["switchMode"] = p.switchMode;
         jp["actionMode"] = p.actionMode;
+        jp["targetScene"] = p.targetScene;
         jp["moveAmount"] = p.moveAmount;
         jp["moveSpeed"] = p.moveSpeed;
         jp["startActive"] = p.startActive;
@@ -821,6 +934,7 @@ json Object3d::ExportToJson() {
     d["color"] = { col.x, col.y, col.z, col.w };
     d["blendMode"] = static_cast<int>(GetBlendMode());
     d["materialType"] = GetMaterialType();
+    d["meshDrawIndex"] = GetMeshDrawIndex();
 
     // ★追加: 金属度と粗さ
     d["metallic"] = GetMetallic();
@@ -836,6 +950,7 @@ json Object3d::ExportToJson() {
     Vector2 tiling = GetTextureTiling();
     d["textureTiling"] = { tiling.x, tiling.y };
     d["autoTextureTiling"] = GetAutoTextureTiling();
+    d["enableLighting"] = GetEnableLighting();
     d["enableEnvMap"] = GetEnableEnvMap();
     d["envIntensity"] = GetEnvIntensity();
     d["emissive"] = GetEmissive();
@@ -928,6 +1043,9 @@ void Object3d::ImportFromJson(const json& j) {
     }
     if (j.contains("collisionAttribute")) SetCollisionAttribute(j["collisionAttribute"]);
     if (j.contains("collisionMask")) SetCollisionMask(j["collisionMask"]);
+    if (j.contains("terrainCollisionPath") && j["terrainCollisionPath"].is_string()) {
+        LoadTerrainCollisionFromFile(j["terrainCollisionPath"].get<std::string>());
+    }
 
     // 4. イベント関連
     if (j.contains("eventType")) eventType_ = static_cast<EventType>(j["eventType"]);
@@ -956,6 +1074,7 @@ void Object3d::ImportFromJson(const json& j) {
         if (jp.contains("fallDuration")) p.fallDuration = jp["fallDuration"];
         if (jp.contains("switchMode")) p.switchMode = jp["switchMode"];
         if (jp.contains("actionMode")) p.actionMode = jp["actionMode"];
+        if (jp.contains("targetScene")) p.targetScene = jp["targetScene"].get<std::string>();
         if (jp.contains("moveAmount")) p.moveAmount = jp["moveAmount"];
         if (jp.contains("moveSpeed")) p.moveSpeed = jp["moveSpeed"];
         if (jp.contains("startActive")) p.startActive = jp["startActive"];
@@ -967,6 +1086,7 @@ void Object3d::ImportFromJson(const json& j) {
     if (j.contains("color")) SetColor({ j["color"][0], j["color"][1], j["color"][2], j["color"][3] });
     if (j.contains("blendMode")) SetBlendMode(static_cast<BlendMode>(j["blendMode"]));
     if (j.contains("materialType")) SetMaterialType(j["materialType"]);
+    if (j.contains("meshDrawIndex")) SetMeshDrawIndex(j["meshDrawIndex"].get<int>());
 
     // ★追加: 金属度と粗さ
     if (j.contains("metallic")) SetMetallic(j["metallic"].get<float>());
@@ -983,6 +1103,7 @@ void Object3d::ImportFromJson(const json& j) {
         SetTextureTiling({ j["textureTiling"][0].get<float>(), j["textureTiling"][1].get<float>() });
     }
     if (j.contains("autoTextureTiling")) SetAutoTextureTiling(j["autoTextureTiling"].get<bool>());
+    if (j.contains("enableLighting")) SetEnableLighting(j["enableLighting"].get<bool>());
     if (j.contains("enableEnvMap")) SetEnableEnvMap(j["enableEnvMap"]);
     if (j.contains("envIntensity")) SetEnvIntensity(j["envIntensity"]);
     if (j.contains("emissive")) SetEmissive(j["emissive"].get<float>());

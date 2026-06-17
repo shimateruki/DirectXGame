@@ -40,6 +40,11 @@ public:
 
         // --- Color Grading & Action ---
         float lutIntensity = 0.0f;          // LUT適用強度
+        float colorExposure = 0.0f;         // Color grading exposure
+        float colorContrast = 1.0f;         // Color grading contrast
+        float colorSaturation = 1.0f;       // Color grading saturation
+        float colorTemperature = 0.0f;      // Warm/cool color shift
+        float colorTint = 0.0f;             // Green/magenta color shift
         float damageFlash = 0.0f;           // 被弾時の画面赤化
         float cinemaBarHeight = 0.0f;       // シネマスコープ（上下黒帯）の高さ
         float wobbleIntensity = 0.0f;       // 画面の波打ち歪み

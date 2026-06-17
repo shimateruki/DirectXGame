@@ -227,8 +227,18 @@ void CollisionManager::CheckCollisionPair(Object3d* objA, Object3d* objB) {
         return;
     }
 
-    // 各オブジェクトのOnCollisionを呼び出す
-    // (精密判定と応答は OnCollision 側が担当する)
+    // 実際に形状が重なっている場合だけOnCollisionを呼び出す
+    Collider* colliderA = objA->GetCollider();
+    Collider* colliderB = objB->GetCollider();
+    if (!colliderA || !colliderB) {
+        return;
+    }
+
+    const CollisionInfo collisionInfo = colliderA->CheckCollision(colliderB);
+    if (!collisionInfo.isColliding) {
+        return;
+    }
+
     objA->OnCollision(objB);
     objB->OnCollision(objA);
 }

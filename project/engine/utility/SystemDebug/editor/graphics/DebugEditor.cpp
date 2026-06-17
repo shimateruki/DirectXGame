@@ -89,6 +89,18 @@ namespace {
         return Math::Normalize(value);
     }
 
+    void ApplyEditorPreviewLightOverride(Object3d* object) {
+        if (!object) {
+            return;
+        }
+
+        if (auto* material = object->GetMaterialData()) {
+            material->enableLighting = 0;
+            material->selectedLighting = 0;
+            material->emissive = (std::max)(material->emissive, 1.0f);
+        }
+    }
+
     float GetSurfaceOffset(const Object3d* object, const Vector3& normal) {
         Vector3 extents = GetPlacementExtents(object);
         Vector3 absNormal = { std::abs(normal.x), std::abs(normal.y), std::abs(normal.z) };
@@ -269,6 +281,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     modelOptimizerWindow_.Initialize(this);
     assetAuditWindow_.Initialize(this);
     gameDataDebugEditor_.Initialize(sceneManager);
+    terrainEditorWindow_.Initialize(this);
 
     const fs::path notificationLog = "Resources/.cache/dds_cache_notifications.jsonl";
     ddsCacheNotificationReadOffset_ = 0;
@@ -582,7 +595,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 drawWorldMatrix = math.Multiply(matColliderLocal, obj->GetWorldMatrix());
 
             }
-            else if (type == ColliderType::kAABB) {
+            else if (type == ColliderType::kAABB || type == ColliderType::kTerrain) {
                 // AABB (軸平行ボックス) の計算
                 Matrix4x4 matScale = math.MakeScaleMatrix(config.size * 2.0f);
                 Matrix4x4 matTrans = math.MakeTranslateMatrix(config.center);
@@ -626,6 +639,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
             switch (type) {
             case ColliderType::kOBB:    color = { 1.0f, 0.2f, 0.2f, 1.0f }; break; // 赤
             case ColliderType::kAABB:   color = { 0.0f, 1.0f, 0.0f, 1.0f }; break; // 緑
+            case ColliderType::kTerrain: color = { 0.25f, 1.0f, 0.65f, 1.0f }; break;
             case ColliderType::kSphere: color = { 0.0f, 0.5f, 1.0f, 1.0f }; break; // 青
             case ColliderType::kCylinder: color = { 1.0f, 0.5f, 0.0f, 1.0f }; break; // オレンジ
             case ColliderType::kRing:   color = { 1.0f, 1.0f, 0.0f, 1.0f }; break; // 黄色
@@ -971,12 +985,15 @@ void DebugEditor::DrawProjectWindow() {
 
 void DebugEditor::SetPreviewObject(std::unique_ptr<Object3d> obj, const std::string& label) {
     previewChildObjects_.clear();
+    previewVisualStates_.clear();
     previewObject_ = std::move(obj);
     previewCreateCommandLabel_ = label;
     if (!previewObject_) {
         previewObjectOriginalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
         previewObjectOriginalBlendMode_ = BlendMode::kNormal;
         previewObjectOriginalMaterialType_ = 0;
+        previewObjectOriginalSelectedLighting_ = 2;
+        previewObjectOriginalEnableLighting_ = 1;
         previewObjectOriginalEmissive_ = 1.0f;
         previewObjectOriginalClassName_.clear();
         previewObjectOriginalModelName_.clear();
@@ -990,6 +1007,14 @@ void DebugEditor::SetPreviewObject(std::unique_ptr<Object3d> obj, const std::str
     previewObjectOriginalColor_ = previewObject_->GetColor();
     previewObjectOriginalBlendMode_ = previewObject_->GetBlendMode();
     previewObjectOriginalMaterialType_ = previewObject_->GetMaterialType();
+    if (auto* material = previewObject_->GetMaterialData()) {
+        previewObjectOriginalSelectedLighting_ = material->selectedLighting;
+        previewObjectOriginalEnableLighting_ = material->enableLighting;
+    }
+    else {
+        previewObjectOriginalSelectedLighting_ = 2;
+        previewObjectOriginalEnableLighting_ = 1;
+    }
     previewObjectOriginalEmissive_ = previewObject_->GetEmissive();
     previewObjectOriginalClassName_ = previewObject_->GetClassName();
     previewObjectOriginalModelName_ = previewObject_->GetModelName();
@@ -1051,6 +1076,7 @@ void DebugEditor::StartGameViewCreatePreview(std::vector<std::unique_ptr<Object3
     for (size_t index = 1; index < objects.size(); ++index) {
         if (objects[index]) {
             previewChildObjects_.push_back(std::move(objects[index]));
+            ApplyPreviewVisual(previewChildObjects_.back().get());
         }
     }
 
@@ -1194,6 +1220,7 @@ void DebugEditor::ConfirmPreviewPlacement() {
     createdObjects.push_back(std::move(previewObject_));
     for (auto& child : previewChildObjects_) {
         if (child) {
+            RestorePreviewVisual(child.get());
             child->UpdateLocalMatrix();
             child->UpdateWorldMatrix();
             createdObjects.push_back(std::move(child));
@@ -1204,6 +1231,7 @@ void DebugEditor::ConfirmPreviewPlacement() {
     AddEditorObjects(std::move(createdObjects), previewCreateCommandLabel_);
     DebugConsole::GetInstance()->AddLog("Create: " + createdName);
     previewCreateCommandLabel_ = "Place Preview Object";
+    previewVisualStates_.clear();
 }
 
 void DebugEditor::CancelPreviewPlacement() {
@@ -1212,6 +1240,7 @@ void DebugEditor::CancelPreviewPlacement() {
     DebugConsole::GetInstance()->AddLog("Cancel Preview Create: " + previewObject_->GetName());
     previewChildObjects_.clear();
     previewObject_ = nullptr;
+    previewVisualStates_.clear();
     previewCreateCommandLabel_ = "Place Preview Object";
 }
 
@@ -1373,6 +1402,7 @@ void DebugEditor::ApplyBrushPreviewVisual(Object3d* object) {
     Vector4 color = object->GetColor();
     object->SetColor({ color.x, color.y, color.z, 0.45f });
     object->SetEmissive(std::max(object->GetEmissive(), 1.4f));
+    ApplyEditorPreviewLightOverride(object);
     object->UpdateLocalMatrix();
     object->UpdateWorldMatrix();
     if (object->GetMeshRenderer()) {
@@ -1389,10 +1419,25 @@ void DebugEditor::ApplyPreviewVisual(Object3d* object) {
         previewObjectUsesFallbackModel_ = true;
     }
 
+    if (previewVisualStates_.find(object) == previewVisualStates_.end()) {
+        PreviewVisualState state;
+        state.className = object->GetClassName();
+        state.color = object->GetColor();
+        state.blendMode = object->GetBlendMode();
+        state.materialType = object->GetMaterialType();
+        state.emissive = object->GetEmissive();
+        if (auto* material = object->GetMaterialData()) {
+            state.selectedLighting = material->selectedLighting;
+            state.enableLighting = material->enableLighting;
+        }
+        previewVisualStates_[object] = state;
+    }
+
     object->SetMaterialType(0);
     object->SetBlendMode(BlendMode::kNormal);
     object->SetEmissive(1.25f);
     object->SetColor({ 0.45f, 1.0f, 0.68f, 0.46f });
+    ApplyEditorPreviewLightOverride(object);
 }
 
 void DebugEditor::RestorePreviewVisual(Object3d* object) {
@@ -1409,9 +1454,28 @@ void DebugEditor::RestorePreviewVisual(Object3d* object) {
         previewObjectUsesFallbackModel_ = false;
     }
 
+    const auto stateIt = previewVisualStates_.find(object);
+    if (stateIt != previewVisualStates_.end()) {
+        const PreviewVisualState& state = stateIt->second;
+        object->SetClassName(state.className);
+        object->SetMaterialType(state.materialType);
+        object->SetBlendMode(state.blendMode);
+        if (auto* material = object->GetMaterialData()) {
+            material->selectedLighting = state.selectedLighting;
+            material->enableLighting = state.enableLighting;
+        }
+        object->SetEmissive(state.emissive);
+        object->SetColor(state.color);
+        return;
+    }
+
     object->SetClassName(previewObjectOriginalClassName_);
     object->SetMaterialType(previewObjectOriginalMaterialType_);
     object->SetBlendMode(previewObjectOriginalBlendMode_);
+    if (auto* material = object->GetMaterialData()) {
+        material->selectedLighting = previewObjectOriginalSelectedLighting_;
+        material->enableLighting = previewObjectOriginalEnableLighting_;
+    }
     object->SetEmissive(previewObjectOriginalEmissive_);
     object->SetColor(previewObjectOriginalColor_);
 }
@@ -2490,6 +2554,128 @@ void DebugEditor::DropToFloor() {
 }
 // 指定したモデルをマウス位置(GameView)に配置
 // ========================================================================
+void DebugEditor::SplitSelectedModelIntoMeshChildren() {
+    if (!selectedObject_ || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
+        return;
+    }
+
+    BaseScene* currentScene = sceneManager_->GetCurrentScene();
+    Object3dCommon* objectCommon = currentScene->GetObject3dCommon();
+    Model* sourceModel = selectedObject_->GetModel();
+    const std::string sourceModelName = selectedObject_->GetModelName();
+
+    if (!objectCommon || !sourceModel || sourceModelName.empty()) {
+        DebugConsole::GetInstance()->AddLog("Mesh split skipped: selected object has no model.");
+        return;
+    }
+
+    const uint32_t meshCount = sourceModel->GetMeshCount();
+    if (meshCount <= 1) {
+        DebugConsole::GetInstance()->AddLog("Mesh split skipped: model has only one mesh.");
+        return;
+    }
+
+    if (selectedObject_->IsMeshDrawFiltered()) {
+        DebugConsole::GetInstance()->AddLog("Mesh split skipped: selected object is already a mesh part.");
+        return;
+    }
+
+    Object3d* rootObject = selectedObject_;
+    const std::string rootName = rootObject->GetName().empty() ? "MeshRoot" : rootObject->GetName();
+    const nlohmann::json beforeState = CaptureObjectState(rootObject);
+
+    const std::string saveCategory = rootObject->GetSaveCategory();
+    const Vector4 color = rootObject->GetColor();
+    const BlendMode blendMode = rootObject->GetBlendMode();
+    const int32_t materialType = rootObject->GetMaterialType();
+    const float metallic = rootObject->GetMetallic();
+    const float roughness = rootObject->GetRoughness();
+    const bool enableNormalMap = rootObject->GetEnableNormalMap();
+    const std::string normalMapPath = rootObject->GetNormalMapPath();
+    const std::string ormMapPath = rootObject->GetOrmMapPath();
+    const std::string texturePath = rootObject->GetTexturePath();
+    const Vector2 textureTiling = rootObject->GetTextureTiling();
+    const bool autoTextureTiling = rootObject->GetAutoTextureTiling();
+    const bool enableLighting = rootObject->GetEnableLighting();
+    const bool enableEnvMap = rootObject->GetEnableEnvMap();
+    const float envIntensity = rootObject->GetEnvIntensity();
+    const float emissive = rootObject->GetEmissive();
+
+    bool hasWaterParam = false;
+    MeshRenderer::WaterParamForGPU waterParam{};
+    if (rootObject->GetMeshRenderer() && rootObject->GetMeshRenderer()->GetWaterParamData()) {
+        waterParam = *rootObject->GetMeshRenderer()->GetWaterParamData();
+        hasWaterParam = true;
+    }
+
+    std::vector<std::unique_ptr<Object3d>> meshChildren;
+    std::vector<std::string> reservedNames;
+    meshChildren.reserve(meshCount);
+
+    for (uint32_t meshIndex = 0; meshIndex < meshCount; ++meshIndex) {
+        auto child = std::make_unique<Object3d>();
+        child->Initialize(objectCommon);
+
+        const std::string childBaseName = rootName + "_mesh" + std::to_string(meshIndex);
+        const std::string childName = MakeUniquePresetObjectName(currentScene, childBaseName, reservedNames);
+        reservedNames.push_back(childName);
+
+        child->SetName(childName);
+        child->SetClassName("MeshPart");
+        child->SetSaveCategory(saveCategory);
+        child->SetModel(sourceModelName);
+        child->SetMeshDrawIndex(static_cast<int>(meshIndex));
+        child->SetColor(color);
+        child->SetBlendMode(blendMode);
+        child->SetMaterialType(materialType);
+        child->SetMetallic(metallic);
+        child->SetRoughness(roughness);
+        child->SetEnableNormalMap(enableNormalMap);
+        child->SetNormalMap(normalMapPath);
+        child->SetOrmMap(ormMapPath);
+        child->SetTexture(texturePath);
+        child->SetTextureTiling(textureTiling);
+        child->SetAutoTextureTiling(autoTextureTiling);
+        child->SetEnableLighting(enableLighting);
+        child->SetEnableEnvMap(enableEnvMap);
+        child->SetEnvIntensity(envIntensity);
+        child->SetEmissive(emissive);
+        if (hasWaterParam && child->GetMeshRenderer() && child->GetMeshRenderer()->GetWaterParamData()) {
+            *child->GetMeshRenderer()->GetWaterParamData() = waterParam;
+        }
+
+        child->SetColliderType(ColliderType::kNone);
+        child->SetCollisionAttribute(0);
+        child->SetCollisionMask(0);
+        child->SetStatic(rootObject->IsStatic());
+        child->SetTranslate({ 0.0f, 0.0f, 0.0f });
+        child->SetRotation({ 0.0f, 0.0f, 0.0f });
+        child->SetScale({ 1.0f, 1.0f, 1.0f });
+        child->SetParent(rootObject);
+        child->UpdateLocalMatrix();
+        child->UpdateWorldMatrix();
+
+        meshChildren.push_back(std::move(child));
+    }
+
+    rootObject->SetClassName("MeshRoot");
+    rootObject->SetModel(nullptr);
+    rootObject->SetMeshDrawIndex(-1);
+    rootObject->SetColliderType(ColliderType::kNone);
+    rootObject->SetCollisionAttribute(0);
+    rootObject->SetCollisionMask(0);
+    rootObject->UpdateLocalMatrix();
+    rootObject->UpdateWorldMatrix();
+    RegisterObjectEdited(rootObject, beforeState, "Split Model Root");
+
+    AddEditorObjects(std::move(meshChildren), "Split Model Mesh Parts");
+    selectedObject_ = rootObject;
+    EditorManager::GetInstance()->SetSelectedObject(this);
+    MarkDirtyForObject(rootObject);
+
+    DebugConsole::GetInstance()->AddLog("Split model into mesh children: " + rootName + " (" + std::to_string(meshCount) + " meshes)");
+}
+
 void DebugEditor::InstantiateModelAtCursor(const std::string& modelName) {
     if (!sceneManager_ || !sceneManager_->GetCurrentScene()) return;
     BaseScene* currentScene = sceneManager_->GetCurrentScene();

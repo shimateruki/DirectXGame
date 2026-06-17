@@ -175,23 +175,7 @@ void GamePlayScene::Draw() {
 	// =======================================================
 	// 5. ローカルフォグ (霧の箱) の描画
 	// =======================================================
-	bool hasFog = false;
-	for (auto& obj : objects) {
-		if (obj->GetMaterialType() == 7) {
-			hasFog = true;
-			break;
-		}
-	}
-
-	if (hasFog) {
-		dxCommon_->PreDrawLocalFog();
-		for (auto& obj : objects) {
-			if (obj->GetMaterialType() == 7) {
-				obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-			}
-		}
-		dxCommon_->PostDrawLocalFog();
-	}
+	DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
 	// =======================================================
 	// 6. GPUパーティクル / 流体 (水・マグマ・氷) の描画

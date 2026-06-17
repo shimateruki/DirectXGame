@@ -134,8 +134,11 @@ private:
     bool isGoal_ = false;
     bool sessionStarCoins_[3] = { false, false, false };
 
-    std::unique_ptr<Sprite> hudLifeMeter_;
-    std::unique_ptr<Sprite> hudLifeMeterDigit_;
+    std::unique_ptr<Sprite> hudHpIcon_;
+    std::unique_ptr<Sprite> hudHpFrame_;
+    std::unique_ptr<Sprite> hudHpDamageFill_;
+    std::unique_ptr<Sprite> hudHpFill_;
+    std::unique_ptr<Sprite> hudHpHighlight_;
     std::unique_ptr<Sprite> hudLifeIcon_;
     std::unique_ptr<Sprite> hudLifeXIcon_;
     std::array<std::unique_ptr<Sprite>, 2> hudLifeDigits_;
@@ -144,7 +147,9 @@ private:
     std::array<std::unique_ptr<Sprite>, 2> hudCoinDigits_;
     float hudPreviousHp_ = 0.0f;
     float hudDamagePulseTimer_ = 0.0f;
-    int hudDisplayedLife_ = 6;
+    float hudHurtIconTimer_ = 0.0f;
+    float hudHpDamageHoldTimer_ = 0.0f;
+    float hudHpDelayedRate_ = 1.0f;
 
     std::unique_ptr<Sprite> CreatePreviewHUDSprite(const std::string& texturePath, const Vector2& position, const Vector2& size, const Vector2& anchor, const Vector4& color);
     void InitializePreviewHUD();

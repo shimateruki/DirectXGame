@@ -323,6 +323,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.cpp" />
+    <ClCompile Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.cpp" />
     <ClCompile Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.cpp" />
@@ -826,6 +827,7 @@ xcopy /y "$(ProjectDir)externals\SDL2\lib\x64\SDL2.dll" "$(OutDir)"</Command>
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\InspectorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\MaterialPreviewBoard.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\ModelOptimizerWindow.h" />
+    <ClInclude Include="engine\utility\SystemDebug\editor\windows\TerrainEditorWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\AssetAuditWindow.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\GameDataDebugEditor.h" />
     <ClInclude Include="engine\utility\SystemDebug\editor\windows\SceneSavePreview.h" />

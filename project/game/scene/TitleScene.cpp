@@ -1,4 +1,4 @@
-﻿#define NOMINMAX
+#define NOMINMAX
 #include "TitleScene.h"
 #include "DirectXCommon.h"
 #include "InputManager.h"
@@ -117,6 +117,10 @@ void TitleScene::Initialize() {
     particleSystem_ = std::make_unique<ParticleSystem>();
     particleSystem_->Initialize(particleCommon_.get(), "Resources/sprite/common/white.png");
 
+    skyboxTextureHandle_ = TextureManager::GetInstance()->Load("Resources/output_skybox.dds");
+    skybox_ = std::make_unique<Skybox>();
+    skybox_->Initialize(object3dCommon_.get(), skyboxTextureHandle_);
+
     // シングルトンのParticleManagerに今のシーンのシステムを紐づける
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
 
@@ -214,6 +218,8 @@ void TitleScene::Finalize() {
     titleIntroComplete_ = false;
     settingsOverlay_.reset();
     sprites_.clear();
+    skybox_.reset();
+    skyboxTextureHandle_ = 0;
     particleSystem_.reset();
     particleCommon_.reset();
     spriteCommon_.reset();
@@ -869,6 +875,10 @@ void TitleScene::Draw() {
 
     ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
     ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+    if (skybox_ && camera) {
+        skybox_->Draw(camera->GetConstantBuffer());
+    }
+
     object3dCommon_->SetGraphicsCommand();
 
     auto& objects = objectManager_->GetObjects();
@@ -876,7 +886,7 @@ void TitleScene::Draw() {
     // --- 1. 不透明描画 ---
     for (auto& obj : objects) {
         if (isFirstPerson && obj.get() == player_) continue;
-        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7) continue; // フォグ(7)も不透明パスから除外
+        if (obj->GetMaterialType() == 1 || obj->GetMaterialType() == 7 || IsSpecialMaterialType(obj->GetMaterialType())) continue; // フォグ(7)も不透明パスから除外
         obj->Draw(pointLightRes, spotLightRes);
     }
 
@@ -893,39 +903,9 @@ void TitleScene::Draw() {
     }
     particleSystem_->Draw();
 
-    // =======================================================
-    // 4. ローカルフォグ (霧の箱) の描画！
-    // =======================================================
-    bool hasFog = false;
-    for (auto& obj : objects) {
-        if (obj->GetMaterialType() == 7) hasFog = true;
-    }
-
-    if (hasFog) {
-        dxCommon_->PreDrawLocalFog();
-        for (auto& obj : objects) {
-            if (obj->GetMaterialType() == 7) {
-                obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-            }
-        }
-        dxCommon_->PostDrawLocalFog();
-    }
-
-    // =======================================================
-    // 5. GPUパーティクルの描画！
-    // =======================================================
-    dxCommon_->UpdateGrabTexture();
-    dxCommon_->PreDrawLocalFog();
-    if (camera) {
-        GPUParticleManager::GetInstance()->Draw(
-            dxCommon_->GetCommandList(),
-            camera->GetViewMatrix(),
-            camera->GetProjectionMatrix(),
-            gpuParticleTexHandle_,
-            dxCommon_->GetDepthSrvHandle()
-        );
-    }
-    dxCommon_->PostDrawLocalFog();
+    DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
+    const bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+    DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 }
 
 // ====================================================================

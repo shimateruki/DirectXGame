@@ -228,6 +228,13 @@ void PostEffect::CreateConstBuffer() {
     paramsData_->threshold = 0.8f;
     paramsData_->bloomIntensity = 2.0f;
     paramsData_->spread = 2.0f;
+    paramsData_->enableToneMapping = 2;
+    paramsData_->lutIntensity = 0.28f;
+    paramsData_->colorExposure = 0.02f;
+    paramsData_->colorContrast = 1.08f;
+    paramsData_->colorSaturation = 1.14f;
+    paramsData_->colorTemperature = 0.10f;
+    paramsData_->colorTint = 0.0f;
     paramsData_->slimeFadeIntensity = 0.0f;
     paramsData_->slimeDensity = 1.5f; // 少し密度を上げてディテールを出す
     paramsData_->slimeColor = { 0.1f, 0.9f, 0.2f }; // よりスライムらしい色味へ

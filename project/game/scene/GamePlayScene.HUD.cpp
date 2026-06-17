@@ -89,21 +89,77 @@ void GamePlayScene::InitializeGameplayHUD() {
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameplayHUD.json");
     }
 
-    hudLifeMeter_ = BindGameplayHUDSprite(
-        "hud_life_meter",
-        "Resources/sprite/ui/hud/life_meter_6.png",
-        { static_cast<float>(WinApp::kClientWidth) - 118.0f, 92.0f },
-        { 138.0f, 138.0f },
+    hudHpIcon_ = BindGameplayHUDSprite(
+        "hud_hp_icon",
+        "Resources/sprite/title/slime_save_icon.png",
+        { 1465.0f, 94.0f },
+        { 78.0f, 78.0f },
         { 0.5f, 0.5f },
         { 1.0f, 1.0f, 1.0f, 0.96f }
     );
-    hudLifeMeterDigit_ = BindGameplayHUDSprite(
-        "hud_life_meter_digit",
-        "Resources/sprite/number/big6.png",
-        { static_cast<float>(WinApp::kClientWidth) - 118.0f, 95.0f },
-        { 52.0f, 76.0f },
+    hudHpDamageFill_ = BindGameplayHUDSprite(
+        "hud_hp_damage_fill",
+        "Resources/sprite/ui/hud/hp_damage_fill.png",
+        { 1594.0f, 94.0f },
+        { 256.0f, 28.0f },
+        { 0.0f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 0.92f }
+    );
+    hudHpFill_ = BindGameplayHUDSprite(
+        "hud_hp_fill",
+        "Resources/sprite/ui/hud/hp_fill.png",
+        { 1594.0f, 94.0f },
+        { 256.0f, 28.0f },
+        { 0.0f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 1.0f }
+    );
+    hudHpHighlight_ = BindGameplayHUDSprite(
+        "hud_hp_highlight",
+        "Resources/sprite/ui/hud/hp_highlight.png",
+        { 1594.0f, 94.0f },
+        { 256.0f, 28.0f },
+        { 0.0f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 0.45f }
+    );
+    hudHpFrame_ = BindGameplayHUDSprite(
+        "hud_hp_frame",
+        "Resources/sprite/ui/hud/hp_frame.png",
+        { 1516.0f, 94.0f },
+        { 350.0f, 72.0f },
+        { 0.0f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 0.96f }
+    );
+    hudMorphGaugeBack_ = BindGameplayHUDSprite(
+        "hud_morph_gauge_back",
+        "Resources/sprite/ui/hud/morph_gauge/back.png",
+        { 1456.0f, 194.0f },
+        { 112.0f, 112.0f },
         { 0.5f, 0.5f },
-        { 1.0f, 0.88f, 0.20f, 1.0f }
+        { 1.0f, 1.0f, 1.0f, 0.0f }
+    );
+    hudMorphGaugeFill_ = BindGameplayHUDSprite(
+        "hud_morph_gauge_fill",
+        "Resources/sprite/ui/hud/morph_gauge/fill_32.png",
+        { 1456.0f, 194.0f },
+        { 112.0f, 112.0f },
+        { 0.5f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 0.0f }
+    );
+    hudMorphGaugeIcon_ = BindGameplayHUDSprite(
+        "hud_morph_gauge_icon",
+        "Resources/sprite/ui/hud/morph_gauge/icon.png",
+        { 1456.0f, 194.0f },
+        { 78.0f, 78.0f },
+        { 0.5f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 0.0f }
+    );
+    hudMorphGaugeFrame_ = BindGameplayHUDSprite(
+        "hud_morph_gauge_frame",
+        "Resources/sprite/ui/hud/morph_gauge/frame.png",
+        { 1456.0f, 194.0f },
+        { 112.0f, 112.0f },
+        { 0.5f, 0.5f },
+        { 1.0f, 1.0f, 1.0f, 0.0f }
     );
     hudLifeIcon_ = BindGameplayHUDSprite(
         "hud_life_icon",
@@ -222,8 +278,13 @@ void GamePlayScene::InitializeGameplayHUD() {
     lifeLostPresentationTimer_ = 0.0f;
 
     hudPreviousHp_ = player_ ? player_->GetHp() : 0.0f;
+    {
+        const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
+        hudHpDelayedRate_ = player_ ? std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f) : 0.0f;
+    }
     hudDamagePulseTimer_ = 0.0f;
-    hudDisplayedLife_ = 6;
+    hudHurtIconTimer_ = 0.0f;
+    hudHpDamageHoldTimer_ = 0.0f;
     UpdateGameplayHUD(0.0f);
 }
 
@@ -447,9 +508,8 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     const bool visible = player_ != nullptr;
     const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
     const float hp = player_ ? std::clamp(player_->GetHp(), 0.0f, maxHp) : 0.0f;
-    const float hpRate = hp / maxHp;
-    int lifeValue = hp <= 0.0f ? 0 : static_cast<int>(std::ceil(hpRate * 6.0f));
-    lifeValue = std::clamp(lifeValue, 0, 6);
+    const float hpRate = std::clamp(hp / maxHp, 0.0f, 1.0f);
+    const float previousHpRate = std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f);
     const int lives = GameDataManager::GetInstance()->GetLives();
     const int coins = GameDataManager::GetInstance()->GetCoins();
 
@@ -462,44 +522,117 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     hudPreviousLives_ = lives;
     hudPreviousCoins_ = coins;
 
-    if (visible && (hp < hudPreviousHp_ - 0.01f || lifeValue != hudDisplayedLife_)) {
-        hudDamagePulseTimer_ = 0.28f;
+    const bool tookDamage = visible && hp < hudPreviousHp_ - 0.01f;
+    if (tookDamage) {
+        hudDamagePulseTimer_ = 0.42f;
+        hudHurtIconTimer_ = 0.48f;
+        hudHpDamageHoldTimer_ = 0.18f;
+        hudHpDelayedRate_ = std::max(hudHpDelayedRate_, previousHpRate);
     }
-    hudDisplayedLife_ = lifeValue;
     hudPreviousHp_ = hp;
     hudDamagePulseTimer_ = std::max(0.0f, hudDamagePulseTimer_ - deltaTime);
+    hudHurtIconTimer_ = std::max(0.0f, hudHurtIconTimer_ - deltaTime);
+    if (!visible) {
+        hudHpDelayedRate_ = 0.0f;
+        hudHpDamageHoldTimer_ = 0.0f;
+    } else if (hpRate >= hudHpDelayedRate_) {
+        hudHpDelayedRate_ = hpRate;
+        hudHpDamageHoldTimer_ = 0.0f;
+    } else if (hudHpDamageHoldTimer_ > 0.0f) {
+        hudHpDamageHoldTimer_ = std::max(0.0f, hudHpDamageHoldTimer_ - deltaTime);
+    } else {
+        hudHpDelayedRate_ = std::max(hpRate, hudHpDelayedRate_ - deltaTime * 0.62f);
+    }
     hudLifeGainPulseTimer_ = std::max(0.0f, hudLifeGainPulseTimer_ - deltaTime);
     hudCoinPulseTimer_ = std::max(0.0f, hudCoinPulseTimer_ - deltaTime);
 
     const float pulse = hudDamagePulseTimer_ > 0.0f ? std::sin(hudDamagePulseTimer_ * 70.0f) : 0.0f;
-    const float lifePulse = hudDamagePulseTimer_ > 0.0f ? 1.0f + std::abs(pulse) * 0.08f : 1.0f;
+    const float hpIconPulse = hudDamagePulseTimer_ > 0.0f ? 1.0f + std::abs(pulse) * 0.07f : 1.0f;
     const float lifeGainRate = hudLifeGainPulseTimer_ > 0.0f ? hudLifeGainPulseTimer_ / 0.62f : 0.0f;
     const float lifeGainWave = std::sin((1.0f - lifeGainRate) * kPi * 2.0f) * lifeGainRate;
     const float lifeCountScaleX = 1.0f + lifeGainWave * 0.28f + lifeGainRate * 0.06f;
     const float lifeCountScaleY = 1.0f - lifeGainWave * 0.18f + lifeGainRate * 0.03f;
     const float coinPulseRate = hudCoinPulseTimer_ > 0.0f ? hudCoinPulseTimer_ / 0.24f : 0.0f;
-    const float coinPulseScale = 1.0f + std::sin((1.0f - coinPulseRate) * kPi) * coinPulseRate * 0.12f;
-    const Vector2 meterCenter = hudLifeMeter_.sprite ? hudLifeMeter_.basePosition : Vector2{ static_cast<float>(WinApp::kClientWidth) - 118.0f, 92.0f };
+    const float coinPulsePhase = 1.0f - coinPulseRate;
+    const float coinBounce = std::sin(coinPulsePhase * kPi) * coinPulseRate;
+    const float coinPulseScaleX = 1.0f + coinBounce * 0.20f;
+    const float coinPulseScaleY = 1.0f + coinBounce * 0.28f;
+    const float coinCountScale = 1.0f + coinBounce * 0.14f;
+    const float coinBounceOffsetY = -12.0f * coinBounce;
 
-    if (hudLifeMeter_.sprite) {
-        const uint32_t handle = Sprite::LoadTexture("ui/hud/life_meter_" + std::to_string(lifeValue) + ".png");
-        hudLifeMeter_.sprite->SetTextureHandle(handle);
-        hudLifeMeter_.sprite->SetVisible(visible);
-        hudLifeMeter_.sprite->SetPosition(meterCenter);
-        hudLifeMeter_.sprite->SetSize({ hudLifeMeter_.baseSize.x * lifePulse, hudLifeMeter_.baseSize.y * lifePulse });
-        hudLifeMeter_.sprite->SetRotation(pulse * 0.03f);
-        hudLifeMeter_.sprite->SetColor({ hudLifeMeter_.baseColor.x, hudLifeMeter_.baseColor.y, hudLifeMeter_.baseColor.z, visible ? hudLifeMeter_.baseColor.w : 0.0f });
-        hudLifeMeter_.sprite->Update();
+    if (hudHpIcon_.sprite) {
+        const bool showHurtIcon = hudHurtIconTimer_ > 0.0f;
+        const uint32_t handle = Sprite::LoadTexture(showHurtIcon ? "ui/hud/slime_hurt_icon.png" : "title/slime_save_icon.png");
+        const float shake = showHurtIcon ? std::sin(hudHurtIconTimer_ * 85.0f) * 2.0f : 0.0f;
+        hudHpIcon_.sprite->SetTextureHandle(handle);
+        hudHpIcon_.sprite->SetVisible(visible);
+        hudHpIcon_.sprite->SetPosition({ hudHpIcon_.basePosition.x + shake, hudHpIcon_.basePosition.y });
+        hudHpIcon_.sprite->SetSize({ hudHpIcon_.baseSize.x * hpIconPulse, hudHpIcon_.baseSize.y * hpIconPulse });
+        hudHpIcon_.sprite->SetRotation(showHurtIcon ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.05f : 0.0f);
+        hudHpIcon_.sprite->SetColor({ hudHpIcon_.baseColor.x, hudHpIcon_.baseColor.y, hudHpIcon_.baseColor.z, visible ? hudHpIcon_.baseColor.w : 0.0f });
+        hudHpIcon_.sprite->Update();
     }
-    if (hudLifeMeterDigit_.sprite) {
-        const uint32_t handle = Sprite::LoadTexture("number/big" + std::to_string(lifeValue) + ".png");
-        hudLifeMeterDigit_.sprite->SetTextureHandle(handle);
-        hudLifeMeterDigit_.sprite->SetVisible(visible);
-        hudLifeMeterDigit_.sprite->SetPosition(hudLifeMeterDigit_.basePosition);
-        hudLifeMeterDigit_.sprite->SetSize({ hudLifeMeterDigit_.baseSize.x * lifePulse, hudLifeMeterDigit_.baseSize.y * lifePulse });
-        hudLifeMeterDigit_.sprite->SetColor(lifeValue <= 1 ? Vector4{ 1.0f, 0.35f, 0.25f, 1.0f } : hudLifeMeterDigit_.baseColor);
-        hudLifeMeterDigit_.sprite->Update();
+    if (hudHpDamageFill_.sprite) {
+        const float rate = std::clamp(hudHpDelayedRate_, 0.0f, 1.0f);
+        hudHpDamageFill_.sprite->SetVisible(visible && rate > 0.001f);
+        hudHpDamageFill_.sprite->SetPosition(hudHpDamageFill_.basePosition);
+        hudHpDamageFill_.sprite->SetSize({ hudHpDamageFill_.baseSize.x * rate, hudHpDamageFill_.baseSize.y });
+        hudHpDamageFill_.sprite->SetColor({ hudHpDamageFill_.baseColor.x, hudHpDamageFill_.baseColor.y, hudHpDamageFill_.baseColor.z, visible ? hudHpDamageFill_.baseColor.w : 0.0f });
+        hudHpDamageFill_.sprite->Update();
     }
+    if (hudHpFill_.sprite) {
+        hudHpFill_.sprite->SetVisible(visible && hpRate > 0.001f);
+        hudHpFill_.sprite->SetPosition(hudHpFill_.basePosition);
+        hudHpFill_.sprite->SetSize({ hudHpFill_.baseSize.x * hpRate, hudHpFill_.baseSize.y });
+        hudHpFill_.sprite->SetColor({ hudHpFill_.baseColor.x, hudHpFill_.baseColor.y, hudHpFill_.baseColor.z, visible ? hudHpFill_.baseColor.w : 0.0f });
+        hudHpFill_.sprite->Update();
+    }
+    if (hudHpHighlight_.sprite) {
+        const float alpha = visible && hpRate > 0.001f ? hudHpHighlight_.baseColor.w * (0.7f + hpRate * 0.3f) : 0.0f;
+        hudHpHighlight_.sprite->SetVisible(visible && hpRate > 0.001f);
+        hudHpHighlight_.sprite->SetPosition(hudHpHighlight_.basePosition);
+        hudHpHighlight_.sprite->SetSize({ hudHpHighlight_.baseSize.x * hpRate, hudHpHighlight_.baseSize.y });
+        hudHpHighlight_.sprite->SetColor({ hudHpHighlight_.baseColor.x, hudHpHighlight_.baseColor.y, hudHpHighlight_.baseColor.z, alpha });
+        hudHpHighlight_.sprite->Update();
+    }
+    if (hudHpFrame_.sprite) {
+        hudHpFrame_.sprite->SetVisible(visible);
+        hudHpFrame_.sprite->SetPosition(hudHpFrame_.basePosition);
+        hudHpFrame_.sprite->SetSize(hudHpFrame_.baseSize);
+        hudHpFrame_.sprite->SetColor({ hudHpFrame_.baseColor.x, hudHpFrame_.baseColor.y, hudHpFrame_.baseColor.z, visible ? hudHpFrame_.baseColor.w : 0.0f });
+        hudHpFrame_.sprite->Update();
+    }
+
+    const bool morphVisible = visible && player_ && player_->IsEnemyMorphed();
+    const float morphRate = morphVisible ? player_->GetEnemyMorphRate() : 0.0f;
+    const int morphFrame = std::clamp(static_cast<int>(std::round(morphRate * 32.0f)), 0, 32);
+    const auto updateMorphSprite = [&](HudSpriteState& state, float alphaScale, float scale, float rotation) {
+        if (!state.sprite) {
+            return;
+        }
+        state.sprite->SetVisible(morphVisible);
+        state.sprite->SetPosition(state.basePosition);
+        state.sprite->SetSize({ state.baseSize.x * scale, state.baseSize.y * scale });
+        state.sprite->SetRotation(rotation);
+        state.sprite->SetColor({
+            state.baseColor.x,
+            state.baseColor.y,
+            state.baseColor.z,
+            morphVisible ? std::max(state.baseColor.w, 1.0f) * alphaScale : 0.0f
+        });
+        state.sprite->Update();
+    };
+    if (hudMorphGaugeFill_.sprite) {
+        const uint32_t handle = Sprite::LoadTexture("ui/hud/morph_gauge/fill_" + (morphFrame < 10 ? std::string("0") : std::string()) + std::to_string(morphFrame) + ".png");
+        hudMorphGaugeFill_.sprite->SetTextureHandle(handle);
+    }
+    const float warningPulse = morphVisible && morphRate < 0.25f ? (0.25f - morphRate) * 0.18f : 0.0f;
+    const float gaugeScale = 1.0f + warningPulse;
+    updateMorphSprite(hudMorphGaugeBack_, 0.82f, gaugeScale, 0.0f);
+    updateMorphSprite(hudMorphGaugeFill_, 1.0f, gaugeScale, 0.0f);
+    updateMorphSprite(hudMorphGaugeIcon_, 0.95f, 1.0f + warningPulse * 0.5f, warningPulse * 0.5f);
+    updateMorphSprite(hudMorphGaugeFrame_, 1.0f, gaugeScale, morphVisible ? (1.0f - morphRate) * 0.18f : 0.0f);
+
     if (hudLifeIcon_.sprite) {
         hudLifeIcon_.sprite->SetVisible(visible);
         hudLifeIcon_.sprite->SetPosition(hudLifeIcon_.basePosition);
@@ -528,15 +661,15 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
 
     if (hudCoinIcon_.sprite) {
         hudCoinIcon_.sprite->SetVisible(visible);
-        hudCoinIcon_.sprite->SetPosition(hudCoinIcon_.basePosition);
-        hudCoinIcon_.sprite->SetSize({ hudCoinIcon_.baseSize.x * coinPulseScale, hudCoinIcon_.baseSize.y * coinPulseScale });
+        hudCoinIcon_.sprite->SetPosition({ hudCoinIcon_.basePosition.x, hudCoinIcon_.basePosition.y + coinBounceOffsetY });
+        hudCoinIcon_.sprite->SetSize({ hudCoinIcon_.baseSize.x * coinPulseScaleX, hudCoinIcon_.baseSize.y * coinPulseScaleY });
         hudCoinIcon_.sprite->SetColor({ hudCoinIcon_.baseColor.x, hudCoinIcon_.baseColor.y, hudCoinIcon_.baseColor.z, visible ? hudCoinIcon_.baseColor.w : 0.0f });
         hudCoinIcon_.sprite->Update();
     }
     if (hudCoinXIcon_.sprite) {
         hudCoinXIcon_.sprite->SetVisible(visible);
-        hudCoinXIcon_.sprite->SetPosition(hudCoinXIcon_.basePosition);
-        hudCoinXIcon_.sprite->SetSize({ hudCoinXIcon_.baseSize.x * coinPulseScale, hudCoinXIcon_.baseSize.y * coinPulseScale });
+        hudCoinXIcon_.sprite->SetPosition({ hudCoinXIcon_.basePosition.x, hudCoinXIcon_.basePosition.y + coinBounceOffsetY * 0.55f });
+        hudCoinXIcon_.sprite->SetSize({ hudCoinXIcon_.baseSize.x * coinCountScale, hudCoinXIcon_.baseSize.y * coinCountScale });
         hudCoinXIcon_.sprite->SetColor({ hudCoinXIcon_.baseColor.x, hudCoinXIcon_.baseColor.y, hudCoinXIcon_.baseColor.z, visible ? hudCoinXIcon_.baseColor.w : 0.0f });
         hudCoinXIcon_.sprite->Update();
     }
@@ -546,8 +679,8 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     SetGameplayHUDNumber(
         hudCoinDigits_,
         coins,
-        coinNumberRight,
-        coinDigitHeight * coinPulseScale,
+        { coinNumberRight.x, coinNumberRight.y + coinBounceOffsetY * 0.55f },
+        coinDigitHeight * coinCountScale,
         hudCoinDigits_[1].baseColor,
         visible
     );
@@ -740,8 +873,15 @@ void GamePlayScene::DrawGameplayHUD() {
         DrawGameplayHUDSprite(digit);
     }
     DrawStageStarHUD();
-    DrawGameplayHUDSprite(hudLifeMeter_);
-    DrawGameplayHUDSprite(hudLifeMeterDigit_);
+    DrawGameplayHUDSprite(hudHpDamageFill_);
+    DrawGameplayHUDSprite(hudHpFill_);
+    DrawGameplayHUDSprite(hudHpHighlight_);
+    DrawGameplayHUDSprite(hudHpFrame_);
+    DrawGameplayHUDSprite(hudHpIcon_);
+    DrawGameplayHUDSprite(hudMorphGaugeBack_);
+    DrawGameplayHUDSprite(hudMorphGaugeFill_);
+    DrawGameplayHUDSprite(hudMorphGaugeIcon_);
+    DrawGameplayHUDSprite(hudMorphGaugeFrame_);
     DrawLifeLostPresentation();
 }
 

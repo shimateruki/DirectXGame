@@ -343,19 +343,9 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		}
 	} else {
 		if (ImGui::Button(ICON_FA_PLAY " 再生")) {
-			SaveAllEditors();
-			if (sceneManager) {
-				sceneManager->ChangeScene(currentSceneName);
-			}
-			MeshEffectManager::GetInstance()->Clear();
-			isPlaying = true;
-			if (sceneManager) {
-				sceneManager->SetIsPlaying(true);
-			}
-			CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+			RequestPlay(sceneManager, isPlaying, currentSceneName);
 		}
 	}
-
 	if (previousPlayingState_ != isPlaying && !isPlaying) {
 		MeshEffectManager::GetInstance()->Clear();
 		DebrisEffectManager::GetInstance()->Clear();
@@ -398,6 +388,67 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 	}
 
 	ImGui::EndMainMenuBar();
+	DrawUnsavedPlayConfirmPopup(sceneManager, isPlaying, currentSceneName);
+}
+
+bool GameEditorController::HasUnsavedEditorChanges() const {
+	return debugEditor_ && debugEditor_->HasAnyDirty();
+}
+
+void GameEditorController::RequestPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+	if (HasUnsavedEditorChanges()) {
+		openUnsavedPlayConfirm_ = true;
+		return;
+	}
+
+	StartPlay(sceneManager, isPlaying, currentSceneName);
+}
+
+void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+	if (sceneManager) {
+		sceneManager->ChangeScene(currentSceneName);
+	}
+	MeshEffectManager::GetInstance()->Clear();
+	isPlaying = true;
+	if (sceneManager) {
+		sceneManager->SetIsPlaying(true);
+	}
+	CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
+}
+
+void GameEditorController::DrawUnsavedPlayConfirmPopup(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
+	const char* popupName = "未保存の変更があります###UnsavedPlayConfirm";
+	if (openUnsavedPlayConfirm_) {
+		ImGui::OpenPopup(popupName);
+		openUnsavedPlayConfirm_ = false;
+	}
+
+	ImGui::SetNextWindowSize(ImVec2(430.0f, 0.0f), ImGuiCond_Appearing);
+	if (!ImGui::BeginPopupModal(popupName, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		return;
+	}
+
+	ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.32f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " この変更はまだ保存されていません。");
+	ImGui::Spacing();
+	ImGui::TextWrapped("保存されていない変更があります。このまま開始すると、プレイ用にシーンを再読み込みするため、未保存の編集内容が失われる可能性があります。");
+	if (debugEditor_) {
+		ImGui::Spacing();
+		ImGui::TextDisabled("未保存: %s", debugEditor_->GetDirtySummaryText().c_str());
+	}
+	ImGui::Separator();
+
+	if (ImGui::Button(ICON_FA_PLAY " 保存せず開始", ImVec2(170.0f, 0.0f))) {
+		DebugConsole::GetInstance()->AddLog("Play Warning: 未保存の変更を破棄して開始しました。");
+		StartPlay(sceneManager, isPlaying, currentSceneName);
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(ICON_FA_TIMES " キャンセル", ImVec2(130.0f, 0.0f))) {
+		DebugConsole::GetInstance()->AddLog("Play Warning: 未保存のため開始をキャンセルしました。");
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
 }
 
 void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float timeScale) {

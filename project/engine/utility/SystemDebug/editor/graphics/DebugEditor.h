@@ -10,6 +10,7 @@
 #include <deque>
 #include <memory>
 #include <cstdint>
+#include <unordered_map>
 
 #include "engine/utility/math/Math.h"
 #include "BaseScene.h"
@@ -36,6 +37,7 @@
 #include "ModelOptimizerWindow.h"
 #include "AssetAuditWindow.h"
 #include "GameDataDebugEditor.h"
+#include "TerrainEditorWindow.h"
 
 
 // ========================================================================
@@ -104,6 +106,7 @@ public:
     void DeleteSelected();        // 削除
     void PerformUndo();           // 元に戻す
     void PerformRedo();           // やり直し
+    void SplitSelectedModelIntoMeshChildren();
     void DropToFloor();
     void InstantiateModelAtCursor(const std::string& modelName);
     void InstantiatePresetAtCursor(const std::string& presetName);
@@ -209,6 +212,7 @@ public:
     ModelOptimizerWindow* GetModelOptimizerWindow() { return &modelOptimizerWindow_; }
     AssetAuditWindow* GetAssetAuditWindow() { return &assetAuditWindow_; }
     GameDataDebugEditor* GetGameDataDebugEditor() { return &gameDataDebugEditor_; }
+    TerrainEditorWindow* GetTerrainEditorWindow() { return &terrainEditorWindow_; }
     ProjectWindow* GetProjectWindow() { return &projectWindow_; }
     bool* GetDrawEventIDsPtr() { return &drawEventIDs_; }
 
@@ -275,6 +279,8 @@ private:
     Vector4 previewObjectOriginalColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
     BlendMode previewObjectOriginalBlendMode_ = BlendMode::kNormal;
     int32_t previewObjectOriginalMaterialType_ = 0;
+    int32_t previewObjectOriginalSelectedLighting_ = 2;
+    int32_t previewObjectOriginalEnableLighting_ = 1;
     float previewObjectOriginalEmissive_ = 1.0f;
     std::string previewObjectOriginalClassName_;
     std::string previewObjectOriginalModelName_;
@@ -284,6 +290,16 @@ private:
     Vector3 previewPlacementContactPosition_ = { 0.0f, 0.0f, 0.0f };
     bool hasPreviewPlacementContact_ = false;
     std::string previewCreateCommandLabel_ = "Place Preview Object";
+    struct PreviewVisualState {
+        std::string className;
+        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        BlendMode blendMode = BlendMode::kNormal;
+        int32_t materialType = 0;
+        int32_t selectedLighting = 2;
+        int32_t enableLighting = 1;
+        float emissive = 1.0f;
+    };
+    std::unordered_map<Object3d*, PreviewVisualState> previewVisualStates_;
     BaseScene* lastUpdatedScene_ = nullptr;
 
     bool drawColliders_ = true;
@@ -378,6 +394,7 @@ private:
     ModelOptimizerWindow modelOptimizerWindow_;
     AssetAuditWindow assetAuditWindow_;
     GameDataDebugEditor gameDataDebugEditor_;
+    TerrainEditorWindow terrainEditorWindow_;
     MeshEffectEditor* meshEffectEditor_ = nullptr;
     DebrisEffectEditor* debrisEffectEditor_ = nullptr;
     TrailEmitterEditor* trailEmitterEditor_ = nullptr;

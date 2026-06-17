@@ -156,8 +156,15 @@ private:
         Vector4 baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
-    HudSpriteState hudLifeMeter_;
-    HudSpriteState hudLifeMeterDigit_;
+    HudSpriteState hudHpIcon_;
+    HudSpriteState hudHpFrame_;
+    HudSpriteState hudHpDamageFill_;
+    HudSpriteState hudHpFill_;
+    HudSpriteState hudHpHighlight_;
+    HudSpriteState hudMorphGaugeBack_;
+    HudSpriteState hudMorphGaugeFill_;
+    HudSpriteState hudMorphGaugeIcon_;
+    HudSpriteState hudMorphGaugeFrame_;
     HudSpriteState hudLifeIcon_;
     HudSpriteState hudLifeXIcon_;
     std::array<HudSpriteState, 2> hudLifeDigits_;
@@ -186,7 +193,9 @@ private:
     int hudPreviousCoins_ = 0;
     float hudPreviousHp_ = 0.0f;
     float hudDamagePulseTimer_ = 0.0f;
-    int hudDisplayedLife_ = 6;
+    float hudHurtIconTimer_ = 0.0f;
+    float hudHpDamageHoldTimer_ = 0.0f;
+    float hudHpDelayedRate_ = 1.0f;
     bool lifeLostPresentationActive_ = false;
     bool lifeLostPresentationFinished_ = true;
     bool lifeLostBlackHold_ = false;

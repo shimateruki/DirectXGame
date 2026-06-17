@@ -104,7 +104,7 @@ void Game::ApplyInitialSceneOverrides() {
 
 void Game::InitializePostProcess() {
 	PostEffect::GetInstance()->Initialize(dxCommon_);
-	uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/sprite/particle.png");
+	uint32_t lutHandle = TextureManager::GetInstance()->Load("Resources/texture/lut/soft_adventure_lut.png");
 	PostEffect::GetInstance()->SetLUTTexture(lutHandle);
 
 	Fade::GetInstance()->Initialize();
@@ -366,6 +366,10 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 			sceneManager_->DrawUI();
 		}
 	}
+
+	dxCommon_->StartGpuProfile("Fade");
+	Fade::GetInstance()->Draw();
+	dxCommon_->EndGpuProfile("Fade");
 
 	dxCommon_->EndGpuProfile("メイン描画");
 	dxCommon_->PostDrawRenderTexture();

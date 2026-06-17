@@ -707,11 +707,6 @@ void DirectXCommon::CreateRenderTexture() {
 	resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
 	// 2. クリアカラー
-	clearColor_[0] = 0.1f;
-	clearColor_[1] = 0.25f;
-	clearColor_[2] = 0.5f;
-	clearColor_[3] = 1.0f;
-
 	D3D12_CLEAR_VALUE clearValue = {};
 	clearValue.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	clearValue.Color[0] = clearColor_[0];

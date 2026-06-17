@@ -116,8 +116,10 @@ public:
     void ClearAllLights();
 
     // --- ファイル保存・読み込み ---
-    void SaveState(const std::string& filename);
-    void LoadState(const std::string& filename);
+    bool SaveState(const std::string& filename);
+    bool LoadState(const std::string& filename);
+    const std::string& GetCurrentStateFile() const { return currentStateFile_; }
+    bool WasLastLoadSuccessful() const { return lastLoadSucceeded_; }
 
     uint32_t GetEnvironmentMapHandle() const { return environmentMapHandle_; }
     void SetEnvironmentMapHandle(uint32_t handle) { environmentMapHandle_ = handle; }
@@ -145,6 +147,8 @@ private:
     DirectionalLight directionalLightData_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
     uint32_t environmentMapHandle_ = 0;
-    Vector4 sceneClearColor_ = { 0.1f, 0.25f, 0.5f, 1.0f };
+    Vector4 sceneClearColor_ = { 0.52f, 0.68f, 0.84f, 1.0f };
+    std::string currentStateFile_ = "Resources/json/light/light_layout.json";
+    bool lastLoadSucceeded_ = true;
 
 };

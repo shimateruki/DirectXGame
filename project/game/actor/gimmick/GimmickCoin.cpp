@@ -1,55 +1,84 @@
 #include "GimmickCoin.h"
 #include "CollisionConfig.h"
 #include "GameDataManager.h"
-#include <GPUParticleManager.h>
 #include <DebugConsole.h>
+#include <algorithm>
+#include <cmath>
+#include <string>
+
+namespace {
+constexpr float kPi = 3.1415926535f;
+constexpr float kCollectAnimationDuration = 0.58f;
+}
 
 void GimmickCoin::Initialize(Object3dCommon* common, const std::string& modelName) {
-    // sphere などをコインモデルとして想定
     BaseGimmick::Initialize(common, modelName);
-    
-    // トリガーとして機能させるため、属性を設定
+
     SetCollisionAttribute(CollisionAttribute::kTrigger);
-    SetCollisionMask(CollisionAttribute::kPlayer); // プレイヤーのみと衝突する
-    
-    // 球体コライダーで判定
+    SetCollisionMask(CollisionAttribute::kPlayer);
     SetColliderType(ColliderType::kSphere);
-    SetCollisionRadius(1.0f); // 獲得しやすい適度なサイズ
-    
-    // コインらしいビジュアル設定（ゴールドイエローに光らせる）
+    SetCollisionRadius(1.0f);
     SetColor({ 1.0f, 0.9f, 0.0f, 1.0f });
-    
-    // 薄いコインの形を表現するために扁平させる（Z軸のスケールを小さく）
     SetScale({ 0.6f, 0.6f, 0.15f });
-    
+
     isCollected_ = false;
+    collectAnimationTimer_ = 0.0f;
+    collectStartPosition_ = GetTranslate();
+    collectStartScale_ = GetScale();
+
     SetClassName("Gimmick");
     SetGimmickType("Coin");
 }
 
 void GimmickCoin::Update(float deltaTime) {
+    Vector3 rotate = GetRotation();
+
     if (isCollected_) {
-        // 獲得されたら判定を切って消滅
-        SetCollisionAttribute(0);
-        SetCollisionMask(0);
-        SetIsVisible(false);
-        isDead = true;
+        collectAnimationTimer_ += deltaTime;
+        const float t = std::clamp(collectAnimationTimer_ / kCollectAnimationDuration, 0.0f, 1.0f);
+        const float easeOut = 1.0f - (1.0f - t) * (1.0f - t);
+        const float hop = std::sin(t * kPi);
+
+        Vector3 position = collectStartPosition_;
+        position.y += 1.25f * easeOut + 0.25f * hop;
+        SetTranslate(position);
+
+        rotate.y += (rotationSpeed_ + 18.0f) * deltaTime;
+        rotate.z += 10.0f * deltaTime;
+        SetRotation(rotate);
+
+        const float popScale = 1.0f + 0.18f * hop;
+        const float vanish = 1.0f - std::clamp((t - 0.55f) / 0.45f, 0.0f, 1.0f);
+        SetScale({
+            collectStartScale_.x * popScale * vanish,
+            collectStartScale_.y * popScale * vanish,
+            collectStartScale_.z * popScale * vanish
+        });
+        SetColor({ 1.0f, 0.92f, 0.18f, vanish });
+
+        if (t >= 1.0f) {
+            SetIsVisible(false);
+            isDead = true;
+        }
+
+        BaseGimmick::Update(deltaTime);
         return;
     }
-    
-    // コインをY軸方向に自動でクルクル回転させる（ゲーム的な演出！）
-    Vector3 rotate = GetRotation();
+
     rotate.y += rotationSpeed_ * deltaTime;
-    if (rotate.y > 6.28f) rotate.y -= 6.28f;
+    if (rotate.y > kPi * 2.0f) {
+        rotate.y -= kPi * 2.0f;
+    }
     SetRotation(rotate);
-    
+
     BaseGimmick::Update(deltaTime);
 }
 
 bool GimmickCoin::OnCollision(Object3d* other) {
-    if (isCollected_) return false;
+    if (isCollected_) {
+        return false;
+    }
 
-    // 衝突してきた相手がプレイヤーの場合のみ獲得
     if (other->GetCollisionAttribute() & CollisionAttribute::kPlayer) {
         Collect();
         return true;
@@ -59,22 +88,24 @@ bool GimmickCoin::OnCollision(Object3d* other) {
 }
 
 void GimmickCoin::Collect() {
-    isCollected_ = true;
+    if (isCollected_) {
+        return;
+    }
 
-    // コイン所持数を増やす（100枚で1UP）
+    isCollected_ = true;
+    collectAnimationTimer_ = 0.0f;
+    collectStartPosition_ = GetTranslate();
+    collectStartScale_ = GetScale();
+    SetCollisionAttribute(0);
+    SetCollisionMask(0);
+
     GameDataManager::GetInstance()->AddCoin(1);
 
-    // 獲得ログ出力
-    int currentCoins = GameDataManager::GetInstance()->GetCoins();
-    int currentLives = GameDataManager::GetInstance()->GetLives();
+    const int currentCoins = GameDataManager::GetInstance()->GetCoins();
+    const int currentLives = GameDataManager::GetInstance()->GetLives();
     DebugConsole::GetInstance()->AddLog(
         "Coin Collected! (" + std::to_string(currentCoins) + "/100) Lives: " + std::to_string(currentLives)
     );
-
-    // キラキラするGPUパーティクルの発生（プレミアム演出！）
-    if (GPUParticleManager::GetInstance()) {
-        GPUParticleManager::GetInstance()->Emit("star_sparkleGet", GetTranslate());
-    }
 }
 
 std::unique_ptr<Object3d> GimmickCoin::Clone() const {

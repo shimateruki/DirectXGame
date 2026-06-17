@@ -14,7 +14,9 @@
 #include "ImGuizmo.h"
 #include <filesystem>
 #include <algorithm>
+#include <cctype>
 #include <set>
+#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -24,6 +26,134 @@ static const float PI = (float)M_PI;
 static float ToRadians(float degrees) { return degrees * (PI / 180.0f); }
 static float ToDegrees(float radians) { return radians * (180.0f / PI); }
 namespace fs = std::filesystem;
+
+namespace {
+std::string ToLowerAscii(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return text;
+}
+
+std::string NormalizeAssetPath(const fs::path& path) {
+    return path.generic_string();
+}
+
+bool IsSupportedTextureFile(const fs::path& path) {
+    const std::string ext = ToLowerAscii(path.extension().string());
+    return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".dds";
+}
+
+void RefreshTextureLists(
+    std::vector<std::string>& albedoPaths,
+    std::vector<std::string>& normalPaths,
+    std::vector<std::string>& armPaths,
+    std::vector<std::string>& spritePaths) {
+    albedoPaths.clear();
+    normalPaths.clear();
+    armPaths.clear();
+    spritePaths.clear();
+
+    const std::string pbrDir = "Resources/texture/PBR/";
+    if (fs::exists(pbrDir)) {
+        std::vector<std::string> allFiles;
+        std::set<std::string> ddsBaseNames;
+
+        for (const auto& entry : fs::recursive_directory_iterator(pbrDir)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+            const fs::path path = entry.path();
+            if (!IsSupportedTextureFile(path)) {
+                continue;
+            }
+
+            const std::string normalized = NormalizeAssetPath(path);
+            allFiles.push_back(normalized);
+            if (ToLowerAscii(path.extension().string()) == ".dds") {
+                ddsBaseNames.insert(NormalizeAssetPath(path.parent_path() / path.stem()));
+            }
+        }
+
+        for (const std::string& pathString : allFiles) {
+            const fs::path p(pathString);
+            const std::string ext = ToLowerAscii(p.extension().string());
+            const std::string base = NormalizeAssetPath(p.parent_path() / p.stem());
+            if (ext != ".dds" && ddsBaseNames.count(base) != 0) {
+                continue;
+            }
+
+            if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
+            else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
+            else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
+        }
+    }
+
+    const std::string spriteDir = "Resources/sprite/";
+    if (fs::exists(spriteDir)) {
+        for (const auto& entry : fs::recursive_directory_iterator(spriteDir)) {
+            if (!entry.is_regular_file() || !IsSupportedTextureFile(entry.path())) {
+                continue;
+            }
+            spritePaths.push_back(NormalizeAssetPath(entry.path()));
+        }
+    }
+
+    auto sortPaths = [](std::vector<std::string>& paths) {
+        std::sort(paths.begin(), paths.end());
+    };
+    sortPaths(albedoPaths);
+    sortPaths(normalPaths);
+    sortPaths(armPaths);
+    sortPaths(spritePaths);
+}
+
+bool IsSpriteCardObject(const Object3d* object) {
+    if (!object) {
+        return false;
+    }
+    const std::string modelName = object->GetModelName();
+    const std::string texturePath = object->GetTexturePath();
+    const std::string name = object->GetName();
+    return modelName == "Primitives/plane" ||
+        texturePath.find("Resources/sprite/") == 0 ||
+        name.find("SpriteCard") != std::string::npos ||
+        name.find("2.5D") != std::string::npos;
+}
+
+void ConfigureSpriteCardObject(Object3d* object) {
+    if (!object) {
+        return;
+    }
+
+    object->SetClassName("Model");
+    object->SetModel("Primitives/plane");
+    if (object->GetName().empty() || object->GetName() == "Object") {
+        object->SetName("SpriteCard_2_5D");
+    }
+    if (object->GetTexturePath().empty()) {
+        object->SetTexture("Resources/sprite/common/white.png");
+    }
+    object->SetMaterialType(0);
+    object->SetBlendMode(BlendMode::kNormal);
+    object->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    object->SetEnableNormalMap(false);
+    object->SetNormalMap("");
+    object->SetOrmMap("");
+    object->SetEnableEnvMap(false);
+    object->SetEnableLighting(false);
+    object->SetEmissive(1.35f);
+    object->SetTextureTiling({ 1.0f, 1.0f });
+    object->SetAutoTextureTiling(false);
+    object->SetCollisionAttribute(0);
+    object->SetCollisionMask(0);
+
+    Object3d::ColliderConfig colliderConfig = object->GetColliderConfig();
+    colliderConfig.type = ColliderType::kNone;
+    object->SetColliderConfig(colliderConfig);
+}
+}
+
 void InspectorWindow::Initialize(DebugEditor* editor) {
     editor_ = editor;
 }
@@ -139,6 +269,20 @@ void InspectorWindow::Draw() {
                 }
                 ImGui::EndDragDropTarget();
             }
+
+            Model* currentModel = selectedObject->GetModel();
+            const int meshCount = currentModel ? static_cast<int>(currentModel->GetMeshCount()) : 0;
+            if (selectedObject->IsMeshDrawFiltered()) {
+                ImGui::TextDisabled("描画Mesh: %d", selectedObject->GetMeshDrawIndex());
+            }
+            if (meshCount > 1 && !selectedObject->IsMeshDrawFiltered()) {
+                ImGui::TextDisabled("Mesh数: %d", meshCount);
+                if (ImGui::Button(ICON_FA_CUBE " メッシュを子Objectに分割", ImVec2(-1, 28))) {
+                    editor_->SplitSelectedModelIntoMeshChildren();
+                }
+            } else if (meshCount == 1) {
+                ImGui::TextDisabled("Mesh数: 1");
+            }
         }
 
         // --- 可視性設定 ---
@@ -171,7 +315,7 @@ void InspectorWindow::Draw() {
             Object3d::ColliderConfig colConfig = selectedObject->GetColliderConfig();
             bool isColChanged = false;
 
-            const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)", "円柱 (Cylinder)", "リング (Ring)" };
+            const char* typeNames[] = { "なし (None)", "球 (Sphere)", "箱 (AABB)", "回転箱 (OBB)", "円柱 (Cylinder)", "リング (Ring)", "地形 (Terrain)" };
             int currentTypeIndex = (int)colConfig.type;
             if (ImGui::Combo(ICON_FA_SHAPES " 形状タイプ", &currentTypeIndex, typeNames, IM_ARRAYSIZE(typeNames))) {
                 colConfig.type = (ColliderType)currentTypeIndex;
@@ -254,16 +398,16 @@ void InspectorWindow::Draw() {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.45f, 1.0f, 0.45f, 1.0f), ICON_FA_TREE " --- Stylized Terrain Settings ---");
                     Vector4 terrainColor = selectedObject->GetColor();
-                    if (ImGui::ColorEdit4("地形色 (Terrain Color)", &terrainColor.x)) {
+                    if (ImGui::ColorEdit4("差し色 (Accent Color)", &terrainColor.x)) {
                         selectedObject->SetColor(terrainColor); isGraphicsChanged = true;
                     }
                     float textureBlend = selectedObject->GetRoughness();
                     if (ImGui::SliderFloat("テクスチャ反映量 (Texture Blend)", &textureBlend, 0.0f, 1.0f)) {
                         selectedObject->SetRoughness(textureBlend); isGraphicsChanged = true;
                     }
-                    float patchStrength = selectedObject->GetMetallic();
-                    if (ImGui::SliderFloat("色ムラの強さ (Patch Strength)", &patchStrength, 0.0f, 1.0f)) {
-                        selectedObject->SetMetallic(patchStrength); isGraphicsChanged = true;
+                    float paintStrength = selectedObject->GetMetallic();
+                    if (ImGui::SliderFloat("塗りの濃さ / 色ムラ (Paint Strength)", &paintStrength, 0.0f, 1.0f)) {
+                        selectedObject->SetMetallic(paintStrength); isGraphicsChanged = true;
                     }
                 }
                 else if (currentMatType == 24) {
@@ -477,9 +621,21 @@ void InspectorWindow::Draw() {
                             if (ImGui::SliderFloat("輪郭の柔らかさ (Softness)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
                             if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f)) isGraphicsChanged = true;
                         }
+                        else if (currentMatType == 9) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.28f, 0.04f, 1.0f), ICON_FA_FIRE " --- Magma Settings ---");
+                            if (ImGui::DragFloat("流れる速度 (Flow Speed)", &waterData->waveSpeed, 0.01f, 0.05f, 6.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("隆起の高さ (Heave Height)", &waterData->waveHeight, 0.01f, 0.0f, 4.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("塊の細かさ (Blob Detail)", &waterData->waveFrequency, 0.05f, 0.15f, 12.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("粘度/引き伸ばし (Viscosity)", &waterData->effectScale, 0.01f, 0.1f, 5.0f)) isGraphicsChanged = true;
+                            if (ImGui::SliderFloat("黒いクラストの幅 (Crust Width)", &waterData->effectSoftness, 0.0f, 1.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("熱の強さ (Heat Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f)) isGraphicsChanged = true;
+                            ImGui::Separator();
+                            ImGui::Text(ICON_FA_WIND " --- Slow Flow Direction ---");
+                            if (ImGui::DragFloat("Flow Speed X", &waterData->flowSpeedX, 0.01f, -5.0f, 5.0f)) isGraphicsChanged = true;
+                            if (ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -5.0f, 5.0f)) isGraphicsChanged = true;
+                        }
                         else {
                             const char* settingTitle = (currentMatType == 8) ? ICON_FA_TINT " --- Water Settings ---" :
-                                (currentMatType == 9) ? ICON_FA_FIRE " --- Magma Settings ---" :
                                 ICON_FA_SNOWFLAKE " --- Ice Settings ---";
                             ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), settingTitle);
                             if (ImGui::DragFloat("Wave Speed (波の速さ)", &waterData->waveSpeed, 0.05f, 0.0f, 10.0f)) isGraphicsChanged = true;
@@ -516,58 +672,108 @@ void InspectorWindow::Draw() {
                         selectedObject->SetEnvIntensity(envIntensity); isGraphicsChanged = true;
                     }
                 }
-                if (enableNormal) {
-                    static std::vector<std::string> albedoPaths;
-                    static std::vector<std::string> normalPaths;
-                    static std::vector<std::string> armPaths;
-                    static bool isListInitialized = false;
 
-                    if (!isListInitialized) {
-                        albedoPaths.clear();
-                        normalPaths.clear();
-                        armPaths.clear();
-                        std::string targetDir = "Resources/texture/PBR/";
-                        if (std::filesystem::exists(targetDir)) {
-                            // まず全ファイルを走査して、DDSが存在するパスを特定する
-                            std::vector<std::string> allFiles;
-                            std::set<std::string> ddsBaseNames; // 拡張子を除いたパスの集合
+                bool enableLighting = selectedObject->GetEnableLighting();
+                if (ImGui::Checkbox(ICON_FA_LIGHTBULB " ライト影響を受ける", &enableLighting)) {
+                    selectedObject->SetEnableLighting(enableLighting);
+                    isGraphicsChanged = true;
+                }
 
-                            for (const auto& entry : std::filesystem::recursive_directory_iterator(targetDir)) {
-                                if (entry.is_regular_file()) {
-                                    std::string pathString = entry.path().string();
-                                    std::replace(pathString.begin(), pathString.end(), '\\', '/');
-                                    allFiles.push_back(pathString);
+                static std::vector<std::string> albedoPaths;
+                static std::vector<std::string> normalPaths;
+                static std::vector<std::string> armPaths;
+                static std::vector<std::string> spriteTexturePaths;
+                static bool isTextureListInitialized = false;
 
-                                    if (entry.path().extension() == ".dds") {
-                                        std::string base = entry.path().parent_path().string() + "/" + entry.path().stem().string();
-                                        std::replace(base.begin(), base.end(), '\\', '/');
-                                        ddsBaseNames.insert(base);
-                                    }
-                                }
+                if (!isTextureListInitialized) {
+                    RefreshTextureLists(albedoPaths, normalPaths, armPaths, spriteTexturePaths);
+                    isTextureListInitialized = true;
+                }
+
+                ImGui::Separator();
+                std::string currentTexturePath = selectedObject->GetTexturePath();
+                const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
+
+                if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse / Sprite)", previewTextureValue)) {
+                    if (!spriteTexturePaths.empty()) {
+                        ImGui::TextDisabled("Sprite");
+                        for (const std::string& path : spriteTexturePaths) {
+                            bool isSelected = (currentTexturePath == path);
+                            if (ImGui::Selectable(path.c_str(), isSelected)) {
+                                selectedObject->SetTexture(path); isGraphicsChanged = true;
                             }
-
-                            // フィルタリングしながらリストに追加
-                            for (const std::string& pathString : allFiles) {
-                                std::filesystem::path p(pathString);
-                                std::string ext = p.extension().string();
-                                std::string base = p.parent_path().string() + "/" + p.stem().string();
-                                std::replace(base.begin(), base.end(), '\\', '/');
-
-                                // もし拡張子が .dds でない（png/jpg等）かつ、同じ名前の .dds が既に存在するならスキップ
-                                if (ext != ".dds" && ddsBaseNames.count(base)) {
-                                    continue;
-                                }
-
-                                if (ext == ".png" || ext == ".jpg" || ext == ".dds") {
-                                    if (pathString.find("/Albedo/") != std::string::npos) albedoPaths.push_back(pathString);
-                                    else if (pathString.find("/Normal/") != std::string::npos) normalPaths.push_back(pathString);
-                                    else if (pathString.find("/ARM/") != std::string::npos) armPaths.push_back(pathString);
-                                }
-                            }
+                            if (isSelected) ImGui::SetItemDefaultFocus();
                         }
-                        isListInitialized = true;
+                        ImGui::Separator();
                     }
 
+                    if (!albedoPaths.empty()) {
+                        ImGui::TextDisabled("PBR Albedo");
+                        for (const std::string& path : albedoPaths) {
+                            bool isSelected = (currentTexturePath == path);
+                            if (ImGui::Selectable(path.c_str(), isSelected)) {
+                                selectedObject->SetTexture(path); isGraphicsChanged = true;
+                            }
+                            if (isSelected) ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::Separator();
+                    }
+
+                    if (ImGui::Selectable("デフォルトに戻す", currentTexturePath.empty())) {
+                        selectedObject->SetTexture(""); isGraphicsChanged = true;
+                    }
+                    ImGui::EndCombo();
+                }
+
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SPRITE_FILE")) {
+                        const char* spritePath = static_cast<const char*>(payload->Data);
+                        if (spritePath) {
+                            selectedObject->SetTexture("Resources/sprite/" + std::string(spritePath));
+                            isGraphicsChanged = true;
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_FA_SYNC_ALT " 更新##TextureList")) {
+                    isTextureListInitialized = false;
+                }
+
+                if (IsSpriteCardObject(selectedObject)) {
+                    ImGui::Separator();
+                    if (ImGui::CollapsingHeader(ICON_FA_IMAGE " 2.5Dスプライト板", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        ImGui::TextDisabled("3D空間にSprite画像を置くための板です。画像は上の基本画像から変更できます。");
+                        if (ImGui::Button(ICON_FA_MAGIC " 2.5D用に整える", ImVec2(-1, 28))) {
+                            ConfigureSpriteCardObject(selectedObject);
+                            currentMatType = 0;
+                            isGraphicsChanged = true;
+                        }
+
+                        Transform* cardTransform = selectedObject->GetTransform();
+                        Vector2 cardSize = { cardTransform->scale.x, cardTransform->scale.y };
+                        if (ImGui::DragFloat2("表示サイズ (幅 / 高さ)", &cardSize.x, 0.02f, 0.01f, 100.0f, "%.2f")) {
+                            cardTransform->scale.x = (std::max)(0.01f, cardSize.x);
+                            cardTransform->scale.y = (std::max)(0.01f, cardSize.y);
+                            cardTransform->scale.z = 1.0f;
+                            isTransformChanged = true;
+                        }
+
+                        if (ImGui::Button(ICON_FA_UNDO " 正面向きに戻す")) {
+                            selectedObject->SetRotation({ 0.0f, 0.0f, 0.0f });
+                            isTransformChanged = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button(ICON_FA_SHIELD_ALT " 当たり判定なし")) {
+                            Object3d::ColliderConfig colliderConfig = selectedObject->GetColliderConfig();
+                            colliderConfig.type = ColliderType::kNone;
+                            selectedObject->SetColliderConfig(colliderConfig);
+                        }
+                    }
+                }
+
+                if (enableNormal) {
                     std::string currentPath = selectedObject->GetNormalMapPath();
                     const char* previewValue = currentPath.empty() ? "未設定 (クリックで選択)" : currentPath.c_str();
 
@@ -603,27 +809,6 @@ void InspectorWindow::Draw() {
                         }
                         ImGui::EndCombo();
                     }
-                    std::string currentTexturePath = selectedObject->GetTexturePath();
-                    const char* previewTextureValue = currentTexturePath.empty() ? "デフォルト (モデル固有)" : currentTexturePath.c_str();
-
-                    if (ImGui::BeginCombo(ICON_FA_IMAGE " 基本画像 (Diffuse)", previewTextureValue)) {
-                        for (const std::string& path : albedoPaths) {
-                            bool isSelected = (currentTexturePath == path);
-                            if (ImGui::Selectable(path.c_str(), isSelected)) {
-                                selectedObject->SetTexture(path); isGraphicsChanged = true;
-                            }
-                            if (isSelected) ImGui::SetItemDefaultFocus();
-                        }
-                        ImGui::Separator();
-                        if (ImGui::Selectable("デフォルトに戻す", currentTexturePath.empty())) {
-                            selectedObject->SetTexture(""); isGraphicsChanged = true;
-                        }
-                        ImGui::EndCombo();
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button(ICON_FA_SYNC_ALT " 更新")) {
-                        isListInitialized = false;
-                    }
                 }
                 ImGui::Separator();
                 const char* blendModes[] = { "なし (None)", "通常 (Normal)", "加算 (Add)", "減算 (Subtract)", "乗算 (Multiply)", "スクリーン (Screen)" };
@@ -633,9 +818,11 @@ void InspectorWindow::Draw() {
                     selectedObject->SetBlendMode(static_cast<BlendMode>(currentBlend)); isGraphicsChanged = true;
                 }
 
-                Vector4 color = selectedObject->GetColor();
-                if (ImGui::ColorEdit4(ICON_FA_FILL_DRIP " 色 (Color)", &color.x)) {
-                    selectedObject->SetColor(color); isGraphicsChanged = true;
+                if (currentMatType != 23) {
+                    Vector4 color = selectedObject->GetColor();
+                    if (ImGui::ColorEdit4(ICON_FA_FILL_DRIP " 色 (Color)", &color.x)) {
+                        selectedObject->SetColor(color); isGraphicsChanged = true;
+                    }
                 }
 
                 ImGui::Spacing();
@@ -1107,6 +1294,45 @@ void InspectorWindow::Draw() {
                     ImGui::Checkbox("OFFで停止", &p.returnOnOff);
                     ImGui::TextDisabled("Target ID に次の LaserNode の My Event ID を入れると、その間にレーザーが出ます");
                 }
+                else if (gType == "StageGate") {
+                    const char* gateModes[] = { "ステージセレクト用ノード", "シーン転移ゲート", "ステージ開始ゲート" };
+                    p.actionMode = (std::clamp)(p.actionMode, 0, 2);
+                    ImGui::Combo("ゲートモード", &p.actionMode, gateModes, IM_ARRAYSIZE(gateModes));
+                    ImGui::Checkbox("開始時に有効", &p.startActive);
+
+                    if (p.actionMode == 0) {
+                        int stageIndex = selectedObject->GetTargetID();
+                        if (ImGui::InputInt("ステージ番号 (Target ID)", &stageIndex)) {
+                            selectedObject->SetTargetID(stageIndex);
+                        }
+                        ImGui::TextDisabled("ステージセレクトで近づいて決定した時だけ使われます");
+                    }
+                    else if (p.actionMode == 1) {
+                        const char* sceneValues[] = { "TITLE", "TUTORIAL", "SELECT", "GAMEPLAY", "GAMECLEAR", "GAMEOVER", "SETTING", "PREVIEW" };
+                        const char* sceneLabels[] = { "タイトル", "チュートリアル", "ステージセレクト", "ゲーム本編", "ゲームクリア", "ゲームオーバー", "設定", "プレビュー" };
+                        int sceneIndex = 2;
+                        for (int i = 0; i < IM_ARRAYSIZE(sceneValues); ++i) {
+                            if (p.targetScene == sceneValues[i]) {
+                                sceneIndex = i;
+                                break;
+                            }
+                        }
+                        if (ImGui::Combo("転移先シーン", &sceneIndex, sceneLabels, IM_ARRAYSIZE(sceneLabels))) {
+                            p.targetScene = sceneValues[sceneIndex];
+                        }
+                        if (p.targetScene.empty()) {
+                            p.targetScene = "SELECT";
+                        }
+                        ImGui::TextDisabled("プレイヤーが触れると指定シーンへ遷移します");
+                    }
+                    else if (p.actionMode == 2) {
+                        int stageIndex = selectedObject->GetTargetID();
+                        if (ImGui::InputInt("開始ステージ番号 (Target ID)", &stageIndex)) {
+                            selectedObject->SetTargetID(stageIndex);
+                        }
+                        ImGui::TextDisabled("プレイヤーが触れると指定ステージをセットしてゲーム本編へ遷移します");
+                    }
+                }
                 else {
                     ImGui::TextDisabled("(この種類には個別設定がありません)");
                 }
@@ -1269,7 +1495,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
     Object3d* selectedObject = editor_->GetSelectedObject();
     if (!selectedObject) return;
 
-    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "LaserEmitter", "LaserNode" };
+    const char* gimmickTypes[] = { "Default", "MovingFloor", "Trampoline", "ChikuwaBlock", "BlinkBlock", "BreakableBlock", "Coin", "HookAnchor", "SinkingFloor", "SeesawFloor", "DashPanel", "IceFloor", "TimedSwitch", "AppearingFloor", "Switch", "EventReceiver", "HookPullBlock", "OneWayFloor", "LiquidLevel", "ChainCollapseFloor", "RotatingFloor", "RotatingPillar", "PhaseFlipFloor", "FireCannon", "StageGate", "LaserEmitter", "LaserNode" };
     const char* gimmickTypeLabels[] = {
         "通常",
         "移動床",
@@ -1295,6 +1521,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         "回転柱",
         "順番反転床",
         "火球砲台",
+        "ステージゲート",
         "レーザー発生器",
         "レーザー接続ノード"
     };
@@ -1671,6 +1898,32 @@ void InspectorWindow::DrawGimmickTypeSelector() {
             colConfig.type = ColliderType::kOBB;
             colConfig.size = { 1.0f, 1.0f, 1.0f };
             selectedObject->SetColliderConfig(colConfig);
+        }
+        else if (selectedGimmickType == "StageGate") {
+            selectedObject->SetClassName("Gimmick");
+            selectedObject->SetName("Gimmick_StageGate");
+            selectedObject->SetModel("Gimmicks/portal_surface");
+            selectedObject->SetColor({ 0.35f, 0.75f, 1.0f, 1.0f });
+            selectedObject->SetBlendMode(BlendMode::kNormal);
+            selectedObject->SetMaterialType(22);
+            selectedObject->SetEmissive(1.8f);
+            selectedObject->SetEnableEnvMap(false);
+            selectedObject->SetScale({ 1.4f, 1.4f, 1.4f });
+            selectedObject->SetCollisionAttribute(CollisionAttribute::kTrigger);
+            selectedObject->SetCollisionMask(CollisionAttribute::kPlayer);
+            selectedObject->SetStatic(false);
+
+            if (!selectedObject->param_.has_value()) selectedObject->param_.emplace();
+            selectedObject->param_->gimmickType = "StageGate";
+            selectedObject->param_->actionMode = 0;
+            selectedObject->param_->targetScene = "SELECT";
+            selectedObject->param_->startActive = true;
+
+            Object3d::ColliderConfig colConfig;
+            colConfig.type = ColliderType::kSphere;
+            colConfig.size = { 4.0f, 4.0f, 4.0f };
+            selectedObject->SetColliderConfig(colConfig);
+            selectedObject->SetCollisionRadius(4.0f);
         }
         else if (selectedGimmickType == "LaserEmitter") {
             selectedObject->SetClassName("Gimmick");

@@ -21,6 +21,7 @@
 #include <array>
 #include <memory>
 #include <vector>
+#include <Skybox.h>
 
 // --- 前方宣言 ---
 class DirectXCommon;
@@ -98,9 +99,11 @@ private:
     // --- リソース ---
     std::vector<std::unique_ptr<Sprite>> sprites_;
     std::unique_ptr<ParticleSystem> particleSystem_ = nullptr;
+    std::unique_ptr<Skybox> skybox_ = nullptr;
     Player* player_ = nullptr;
 
     uint32_t bgmHandle_ = 0;
+    uint32_t skyboxTextureHandle_ = 0;
 
     // --- ライト・GPUリソース ---
     Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;

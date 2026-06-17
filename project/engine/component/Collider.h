@@ -3,6 +3,7 @@
 #include "Transform.h" // Transformを使うため
 #include "CollisionConfig.h" 
 #include <cstdint>
+#include <vector>
 
 
 struct ColliderConfig {
@@ -10,6 +11,16 @@ struct ColliderConfig {
     Vector3 center = { 0.0f, 0.0f, 0.0f };
     Vector3 size = { 1.0f, 1.0f, 1.0f };
     Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+};
+
+struct TerrainCollisionData {
+    bool enabled = false;
+    int resolution = 0;
+    float sizeX = 1.0f;
+    float sizeZ = 1.0f;
+    float minHeight = 0.0f;
+    float maxHeight = 0.0f;
+    std::vector<float> heights;
 };
 
 // 新しい Collider クラス
@@ -23,11 +34,14 @@ public:
     void SetConfig(const ColliderConfig& config) { config_ = config; }
     void SetAttribute(uint32_t attribute) { attribute_ = attribute; }
     void SetMask(uint32_t mask) { mask_ = mask; }
+    void SetTerrainData(const TerrainCollisionData& data) { terrainData_ = data; }
+    void ClearTerrainData() { terrainData_ = TerrainCollisionData{}; }
 
     // --- 取得 (Getters) ---
     const ColliderConfig& GetConfig() const { return config_; }
     uint32_t GetAttribute() const { return attribute_; }
     uint32_t GetMask() const { return mask_; }
+    const TerrainCollisionData& GetTerrainData() const { return terrainData_; }
 
     // タイプやサイズのショートカット
     ColliderType GetType() const { return config_.type; }
@@ -48,6 +62,10 @@ public:
     CollisionInfo CheckCollision(const Collider* other) const;
 
 private:
+    bool SampleTerrain(const Collider* terrain, const Vector3& worldPosition, float& outHeight, Vector3& outNormal) const;
+    CollisionInfo CheckSphereTerrainCollision(const Vector3& spherePos, float radius, const Collider* terrain) const;
+    CollisionInfo CheckAABBTerrainCollision(const AABB& aabb, const Collider* terrain) const;
+
     // このコライダーの持ち主（座標計算に使う）
     Transform* transform_ = nullptr;
 
@@ -57,4 +75,6 @@ private:
     // フィルタリング用
     uint32_t attribute_ = 0;
     uint32_t mask_ = 0xFFFFFFFF;
+
+    TerrainCollisionData terrainData_;
 };

@@ -156,7 +156,7 @@ void SceneValidator::Refresh() {
             AddIssue(Severity::Error, object, "Target ID", "Target ID " + std::to_string(object->GetTargetID()) + " の接続先が見つかりません");
         }
 
-        if (className != "InvisibleBox") {
+        if (className != "InvisibleBox" && className != "MeshRoot") {
             if (modelName.empty()) {
                 AddIssue(Severity::Error, object, "Model", "modelName が空です");
             }

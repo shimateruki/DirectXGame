@@ -37,6 +37,22 @@ bool IsModelAssetFile(const fs::path& path) {
 bool IsGeneratedLodAsset(const fs::path& path) {
     return ToLowerAscii(path.stem().string()).find("_lod") != std::string::npos;
 }
+
+void ApplyThumbnailLightOverride(Object3d* object) {
+    if (!object) {
+        return;
+    }
+
+    if (auto* material = object->GetMaterialData()) {
+        material->enableLighting = 0;
+        material->selectedLighting = 0;
+        material->emissive = (std::max)(material->emissive, 1.0f);
+    }
+
+    for (Object3d* child : object->GetChildren()) {
+        ApplyThumbnailLightOverride(child);
+    }
+}
 }
 
 void ProjectWindow::Initialize(DebugEditor* editor, DirectXCommon* dxCommon) {
@@ -313,6 +329,7 @@ void ProjectWindow::CapturePendingThumbnails() {
         }
 
         auto& targetObj = data.previewObject;
+        ApplyThumbnailLightOverride(targetObj.get());
 
         // くるくる回転
         targetObj->GetTransform()->rotate.y += 0.02f;
@@ -390,6 +407,8 @@ void ProjectWindow::CapturePendingThumbnails() {
                 }
             }
         }
+
+        ApplyThumbnailLightOverride(data.previewObject.get());
 
         data.previewObject->UpdateLocalMatrix();
         data.previewObject->UpdateWorldMatrix();

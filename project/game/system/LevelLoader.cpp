@@ -337,8 +337,12 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (objData.contains("modelName") && objData["modelName"].is_string()) {
                         std::string modelName = objData["modelName"].get<std::string>();
                         // モデルロードはManagerに任せる
-                        ModelManager::GetInstance()->LoadModel(modelName);
-                        targetObject->SetModel(modelName);
+                        if (!modelName.empty()) {
+                            ModelManager::GetInstance()->LoadModel(modelName);
+                            targetObject->SetModel(modelName);
+                        } else {
+                            targetObject->SetModel(nullptr);
+                        }
                     }
                 }
 
@@ -373,6 +377,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                 targetObject->UpdateWorldMatrix();
                 if (objData.contains("blendMode")) targetObject->SetBlendMode(static_cast<BlendMode>(objData["blendMode"].get<int>()));
                 if (objData.contains("materialType")) targetObject->SetMaterialType(objData["materialType"].get<int>());
+                if (objData.contains("meshDrawIndex")) targetObject->SetMeshDrawIndex(objData["meshDrawIndex"].get<int>());
 
                 if (objData.contains("color")) {
                     targetObject->SetColor({
@@ -447,6 +452,9 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
 
                 if (objData.contains("collisionAttribute")) targetObject->SetCollisionAttribute(objData["collisionAttribute"]);
                 if (objData.contains("collisionMask")) targetObject->SetCollisionMask(objData["collisionMask"]);
+                if (objData.contains("terrainCollisionPath") && objData["terrainCollisionPath"].is_string()) {
+                    targetObject->LoadTerrainCollisionFromFile(objData["terrainCollisionPath"].get<std::string>());
+                }
 
                 // 6. Events & Params
                 if (objData.contains("eventID")) targetObject->SetEventType(static_cast<EventType>(objData["eventID"]));
@@ -478,6 +486,7 @@ void LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename) 
                     if (p.contains("detectionRange")) param.detectionRange = p["detectionRange"];
                     if (p.contains("switchMode")) param.switchMode = p["switchMode"];
                     if (p.contains("actionMode")) param.actionMode = p["actionMode"];
+                    if (p.contains("targetScene")) param.targetScene = p["targetScene"].get<std::string>();
                     if (p.contains("moveAmount")) param.moveAmount = p["moveAmount"];
                     if (p.contains("moveSpeed")) param.moveSpeed = p["moveSpeed"];
                     if (p.contains("startActive")) param.startActive = p["startActive"];

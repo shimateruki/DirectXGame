@@ -182,6 +182,9 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     // 5. 衝突属性
     d["collisionAttribute"] = obj->GetCollisionAttribute();
     d["collisionMask"] = obj->GetCollisionMask();
+    if (!obj->GetTerrainCollisionPath().empty()) {
+        d["terrainCollisionPath"] = obj->GetTerrainCollisionPath();
+    }
 
     // 6. イベント関連
     d["eventID"] = static_cast<int>(obj->GetEventType());
@@ -209,6 +212,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
         d["param"]["detectionRange"] = p.detectionRange;
         d["param"]["switchMode"] = p.switchMode;
         d["param"]["actionMode"] = p.actionMode;
+        d["param"]["targetScene"] = p.targetScene;
         d["param"]["moveAmount"] = p.moveAmount;
         d["param"]["moveSpeed"] = p.moveSpeed;
         d["param"]["startActive"] = p.startActive;
@@ -220,6 +224,7 @@ nlohmann::json SceneSerializer::SerializeObject(Object3d* obj) {
     d["color"] = { color.x, color.y, color.z, color.w };
     d["blendMode"] = static_cast<int>(obj->GetBlendMode());
     d["materialType"] = obj->GetMaterialType();
+    d["meshDrawIndex"] = obj->GetMeshDrawIndex();
     d["metallic"] = obj->GetMetallic();
     d["roughness"] = obj->GetRoughness();
     d["enableNormalMap"] = obj->GetEnableNormalMap();

@@ -369,53 +369,12 @@ void TutorialScene::Draw() {
 	}
 	particleSystem_->Draw();
 
-	bool hasFog = false;
-	for (auto& obj : objects) if (obj->GetMaterialType() == 7) { hasFog = true; break; }
-
-	if (hasFog) {
-		dxCommon_->PreDrawLocalFog();
-		for (auto& obj : objects) if (obj->GetMaterialType() == 7) obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-		dxCommon_->PostDrawLocalFog();
-	}
-
-	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
-	for (auto& obj : objects) if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) { hasFluid = true; break; }
+	DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
-	if (hasFluid || hasGPUParticles) {
-		dxCommon_->UpdateGrabTexture();
-
-		if (hasFluid) {
-			for (auto& obj : objects) {
-				int matType = obj->GetMaterialType();
-				if (matType == 8) obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 12) obj->DrawLaser(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 13) obj->DrawSlimeGel(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 14) obj->DrawShockwave(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 15) obj->DrawLiquidContact(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 16) obj->DrawDamageCrack(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 17) obj->DrawUpdraft(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 18) obj->DrawStunBind(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 19) obj->DrawCrownUnlock(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 20) obj->DrawPoisonSpore(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 21) obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			}
-		}
-		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-
-		if (hasGPUParticles) {
-			GPUParticleManager::GetInstance()->Draw(
-				dxCommon_->GetCommandList(),
-				camera->GetViewMatrix(),
-				camera->GetProjectionMatrix(),
-				gpuParticleTexHandle_,
-				dxCommon_->GetDepthSrvHandle()
-			);
-		}
+	bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+	if (hasGPUParticles) {
+		DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 	}
 }
 

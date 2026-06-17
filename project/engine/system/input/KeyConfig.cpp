@@ -9,6 +9,29 @@
 #include "IconsFontAwesome5.h"
 using json = nlohmann::json;
 
+namespace {
+std::string GetMouseButtonName(int mouseButton) {
+    static constexpr const char* kMouseNames[] = {
+        "Left",
+        "Right",
+        "Middle",
+        "X1",
+        "X2",
+    };
+    constexpr int kMouseNameCount = static_cast<int>(sizeof(kMouseNames) / sizeof(kMouseNames[0]));
+
+    if (mouseButton < 0) {
+        return "None";
+    }
+
+    if (mouseButton < kMouseNameCount) {
+        return kMouseNames[mouseButton];
+    }
+
+    return "Button" + std::to_string(mouseButton);
+}
+}
+
 KeyConfig* KeyConfig::GetInstance() {
     static KeyConfig instance;
     return &instance;
@@ -271,8 +294,7 @@ void KeyConfig::DrawImGui() {
                 std::string label;
                 if (bind.mouseButton != -1) {
                     // マウスボタンの名前を表示 (例: Mouse:Left)
-                    const char* mNames[] = { "Left", "Right", "Middle", "Side" };
-                    label = "Mouse:" + std::string(mNames[bind.mouseButton]);
+                    label = "Mouse:" + GetMouseButtonName(bind.mouseButton);
                 }
                 else {
                     label = GetKeyName(bind.keyCode);

@@ -139,8 +139,11 @@ void PreviewScene::Finalize() {
 	BulletManager::GetInstance()->Finalize();
 	particleSystem_.reset();
 	particleCommon_.reset();
-	hudLifeMeter_.reset();
-	hudLifeMeterDigit_.reset();
+	hudHpIcon_.reset();
+	hudHpFrame_.reset();
+	hudHpDamageFill_.reset();
+	hudHpFill_.reset();
+	hudHpHighlight_.reset();
 	hudLifeIcon_.reset();
 	hudLifeXIcon_.reset();
 	for (auto& digit : hudLifeDigits_) {
@@ -327,69 +330,13 @@ void PreviewScene::Draw() {
 	particleSystem_->Draw();
 
 	// 5. ローカルフォグ
-	bool hasFog = false;
-	for (auto& obj : objects) {
-		if (obj->GetMaterialType() == 7) { hasFog = true; break; }
-	}
-	if (hasFog) {
-		dxCommon_->PreDrawLocalFog();
-		for (auto& obj : objects) {
-			if (obj->GetMaterialType() == 7) {
-				obj->DrawLocalFog(dxCommon_->GetDepthSrvHandle());
-			}
-		}
-		dxCommon_->PostDrawLocalFog();
-	}
+	DrawLocalFogObjects(objects, dxCommon_, player_, isFirstPerson);
 
 	// 6. GPUパーティクル / 流体
-	bool hasFluid = BulletManager::GetInstance()->HasSpecialMaterialBullets();
-	for (auto& obj : objects) {
-		if (obj->GetMaterialType() >= 8 && obj->GetMaterialType() <= 22) { hasFluid = true; break; }
-	}
 	bool hasGPUParticles = !GPUParticleManager::GetInstance()->IsEmpty();
-	bool grabUpdated = false;
-	if (hasFluid || hasGPUParticles) {
-		dxCommon_->UpdateGrabTexture();
-		grabUpdated = true;
-		if (hasFluid) {
-			for (auto& obj : objects) {
-				bool isPlayerPart = false;
-				if (isFirstPerson) {
-					Object3d* current = obj.get();
-					while (current) {
-						if (current == player_) { isPlayerPart = true; break; }
-						current = current->GetParent();
-					}
-				}
-				if (isPlayerPart) continue;
-				int matType = obj->GetMaterialType();
-				if (matType == 8) obj->DrawWater(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 9) obj->DrawMagma(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 10) obj->DrawIce(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 11) obj->DrawFire(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 12) obj->DrawLaser(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 13) obj->DrawSlimeGel(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 14) obj->DrawShockwave(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 15) obj->DrawLiquidContact(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 16) obj->DrawDamageCrack(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 17) obj->DrawUpdraft(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 18) obj->DrawStunBind(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 19) obj->DrawCrownUnlock(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 20) obj->DrawPoisonSpore(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 21) obj->DrawCloud(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-				else if (matType == 22) obj->DrawGatePortal(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-			}
-		}
-		BulletManager::GetInstance()->DrawSpecial(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());
-		if (hasGPUParticles) {
-			GPUParticleManager::GetInstance()->Draw(
-				dxCommon_->GetCommandList(),
-				camera->GetViewMatrix(),
-				camera->GetProjectionMatrix(),
-				gpuParticleTexHandle_,
-				dxCommon_->GetDepthSrvHandle()
-			);
-		}
+	bool grabUpdated = DrawSpecialMaterialObjects(objects, dxCommon_, BulletManager::GetInstance(), player_, isFirstPerson);
+	if (hasGPUParticles) {
+		grabUpdated = DrawGPUParticles(dxCommon_, camera, gpuParticleTexHandle_, grabUpdated);
 	}
 
 	// =======================================================
@@ -454,19 +401,40 @@ std::unique_ptr<Sprite> PreviewScene::CreatePreviewHUDSprite(const std::string& 
 }
 
 void PreviewScene::InitializePreviewHUD() {
-	hudLifeMeter_ = CreatePreviewHUDSprite(
-		"Resources/sprite/ui/hud/life_meter_6.png",
-		{ static_cast<float>(WinApp::kClientWidth) - 118.0f, 92.0f },
-		{ 138.0f, 138.0f },
+	hudHpIcon_ = CreatePreviewHUDSprite(
+		"Resources/sprite/title/slime_save_icon.png",
+		{ 1465.0f, 94.0f },
+		{ 78.0f, 78.0f },
 		{ 0.5f, 0.5f },
 		{ 1.0f, 1.0f, 1.0f, 0.96f }
 	);
-	hudLifeMeterDigit_ = CreatePreviewHUDSprite(
-		"Resources/sprite/number/big6.png",
-		{ static_cast<float>(WinApp::kClientWidth) - 118.0f, 95.0f },
-		{ 52.0f, 76.0f },
-		{ 0.5f, 0.5f },
-		{ 1.0f, 0.88f, 0.20f, 1.0f }
+	hudHpDamageFill_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/hp_damage_fill.png",
+		{ 1594.0f, 94.0f },
+		{ 256.0f, 28.0f },
+		{ 0.0f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 0.92f }
+	);
+	hudHpFill_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/hp_fill.png",
+		{ 1594.0f, 94.0f },
+		{ 256.0f, 28.0f },
+		{ 0.0f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 1.0f }
+	);
+	hudHpHighlight_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/hp_highlight.png",
+		{ 1594.0f, 94.0f },
+		{ 256.0f, 28.0f },
+		{ 0.0f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 0.45f }
+	);
+	hudHpFrame_ = CreatePreviewHUDSprite(
+		"Resources/sprite/ui/hud/hp_frame.png",
+		{ 1516.0f, 94.0f },
+		{ 350.0f, 72.0f },
+		{ 0.0f, 0.5f },
+		{ 1.0f, 1.0f, 1.0f, 0.96f }
 	);
 	hudLifeIcon_ = CreatePreviewHUDSprite(
 		"Resources/sprite/title/slime_save_icon.png",
@@ -517,8 +485,13 @@ void PreviewScene::InitializePreviewHUD() {
 	}
 
 	hudPreviousHp_ = player_ ? player_->GetHp() : 0.0f;
+	{
+		const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
+		hudHpDelayedRate_ = player_ ? std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f) : 0.0f;
+	}
 	hudDamagePulseTimer_ = 0.0f;
-	hudDisplayedLife_ = 6;
+	hudHurtIconTimer_ = 0.0f;
+	hudHpDamageHoldTimer_ = 0.0f;
 	UpdatePreviewHUD(0.0f);
 }
 
@@ -557,44 +530,79 @@ void PreviewScene::UpdatePreviewHUD(float deltaTime) {
 	const bool visible = player_ != nullptr;
 	const float maxHp = player_ ? std::max(player_->GetMaxHp(), 1.0f) : 1.0f;
 	const float hp = player_ ? std::clamp(player_->GetHp(), 0.0f, maxHp) : 0.0f;
-	const float hpRate = hp / maxHp;
-	int lifeValue = hp <= 0.0f ? 0 : static_cast<int>(std::ceil(hpRate * 6.0f));
-	lifeValue = std::clamp(lifeValue, 0, 6);
+	const float hpRate = std::clamp(hp / maxHp, 0.0f, 1.0f);
+	const float previousHpRate = std::clamp(hudPreviousHp_ / maxHp, 0.0f, 1.0f);
 
-	if (visible && (hp < hudPreviousHp_ - 0.01f || lifeValue != hudDisplayedLife_)) {
-		hudDamagePulseTimer_ = 0.28f;
+	if (visible && hp < hudPreviousHp_ - 0.01f) {
+		hudDamagePulseTimer_ = 0.42f;
+		hudHurtIconTimer_ = 0.48f;
+		hudHpDamageHoldTimer_ = 0.18f;
+		hudHpDelayedRate_ = std::max(hudHpDelayedRate_, previousHpRate);
 	}
-	hudDisplayedLife_ = lifeValue;
 	hudPreviousHp_ = hp;
 	hudDamagePulseTimer_ = std::max(0.0f, hudDamagePulseTimer_ - deltaTime);
+	hudHurtIconTimer_ = std::max(0.0f, hudHurtIconTimer_ - deltaTime);
+	if (!visible) {
+		hudHpDelayedRate_ = 0.0f;
+		hudHpDamageHoldTimer_ = 0.0f;
+	} else if (hpRate >= hudHpDelayedRate_) {
+		hudHpDelayedRate_ = hpRate;
+		hudHpDamageHoldTimer_ = 0.0f;
+	} else if (hudHpDamageHoldTimer_ > 0.0f) {
+		hudHpDamageHoldTimer_ = std::max(0.0f, hudHpDamageHoldTimer_ - deltaTime);
+	} else {
+		hudHpDelayedRate_ = std::max(hpRate, hudHpDelayedRate_ - deltaTime * 0.62f);
+	}
 
 	const float pulse = hudDamagePulseTimer_ > 0.0f ? std::sin(hudDamagePulseTimer_ * 70.0f) : 0.0f;
-	const float lifePulse = hudDamagePulseTimer_ > 0.0f ? 1.0f + std::abs(pulse) * 0.08f : 1.0f;
-	const Vector2 meterCenter = { static_cast<float>(WinApp::kClientWidth) - 118.0f, 92.0f };
+	const float hpIconPulse = hudDamagePulseTimer_ > 0.0f ? 1.0f + std::abs(pulse) * 0.07f : 1.0f;
 
-	if (hudLifeMeter_) {
-		const uint32_t handle = Sprite::LoadTexture("ui/hud/life_meter_" + std::to_string(lifeValue) + ".png");
-		hudLifeMeter_->SetTextureHandle(handle);
-		hudLifeMeter_->SetVisible(visible);
-		hudLifeMeter_->SetPosition(meterCenter);
-		hudLifeMeter_->SetSize({ 138.0f * lifePulse, 138.0f * lifePulse });
-		hudLifeMeter_->SetRotation(pulse * 0.03f);
-		hudLifeMeter_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
-		hudLifeMeter_->Update();
+	if (hudHpIcon_) {
+		const bool showHurtIcon = hudHurtIconTimer_ > 0.0f;
+		const uint32_t handle = Sprite::LoadTexture(showHurtIcon ? "ui/hud/slime_hurt_icon.png" : "title/slime_save_icon.png");
+		const float shake = showHurtIcon ? std::sin(hudHurtIconTimer_ * 85.0f) * 2.0f : 0.0f;
+		hudHpIcon_->SetTextureHandle(handle);
+		hudHpIcon_->SetVisible(visible);
+		hudHpIcon_->SetPosition({ 1465.0f + shake, 94.0f });
+		hudHpIcon_->SetSize({ 78.0f * hpIconPulse, 78.0f * hpIconPulse });
+		hudHpIcon_->SetRotation(showHurtIcon ? std::sin(hudHurtIconTimer_ * 55.0f) * 0.05f : 0.0f);
+		hudHpIcon_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
+		hudHpIcon_->Update();
 	}
-	if (hudLifeMeterDigit_) {
-		const uint32_t handle = Sprite::LoadTexture("number/big" + std::to_string(lifeValue) + ".png");
-		hudLifeMeterDigit_->SetTextureHandle(handle);
-		hudLifeMeterDigit_->SetVisible(visible);
-		hudLifeMeterDigit_->SetPosition({ meterCenter.x, meterCenter.y + 3.0f });
-		hudLifeMeterDigit_->SetSize({ 52.0f * lifePulse, 76.0f * lifePulse });
-		hudLifeMeterDigit_->SetColor(lifeValue <= 1 ? Vector4{ 1.0f, 0.35f, 0.25f, 1.0f } : Vector4{ 1.0f, 0.88f, 0.20f, 1.0f });
-		hudLifeMeterDigit_->Update();
+	if (hudHpDamageFill_) {
+		const float rate = std::clamp(hudHpDelayedRate_, 0.0f, 1.0f);
+		hudHpDamageFill_->SetVisible(visible && rate > 0.001f);
+		hudHpDamageFill_->SetPosition({ 1594.0f, 94.0f });
+		hudHpDamageFill_->SetSize({ 256.0f * rate, 28.0f });
+		hudHpDamageFill_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.92f : 0.0f });
+		hudHpDamageFill_->Update();
+	}
+	if (hudHpFill_) {
+		hudHpFill_->SetVisible(visible && hpRate > 0.001f);
+		hudHpFill_->SetPosition({ 1594.0f, 94.0f });
+		hudHpFill_->SetSize({ 256.0f * hpRate, 28.0f });
+		hudHpFill_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 1.0f : 0.0f });
+		hudHpFill_->Update();
+	}
+	if (hudHpHighlight_) {
+		const float alpha = visible && hpRate > 0.001f ? 0.45f * (0.7f + hpRate * 0.3f) : 0.0f;
+		hudHpHighlight_->SetVisible(visible && hpRate > 0.001f);
+		hudHpHighlight_->SetPosition({ 1594.0f, 94.0f });
+		hudHpHighlight_->SetSize({ 256.0f * hpRate, 28.0f });
+		hudHpHighlight_->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
+		hudHpHighlight_->Update();
+	}
+	if (hudHpFrame_) {
+		hudHpFrame_->SetVisible(visible);
+		hudHpFrame_->SetPosition({ 1516.0f, 94.0f });
+		hudHpFrame_->SetSize({ 350.0f, 72.0f });
+		hudHpFrame_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
+		hudHpFrame_->Update();
 	}
 	if (hudLifeIcon_) {
 		hudLifeIcon_->SetVisible(visible);
 		hudLifeIcon_->SetPosition({ 38.0f, 100.0f });
-		hudLifeIcon_->SetSize({ 50.0f * lifePulse, 50.0f * lifePulse });
+		hudLifeIcon_->SetSize({ 50.0f, 50.0f });
 		hudLifeIcon_->SetColor({ 1.0f, 1.0f, 1.0f, visible ? 0.96f : 0.0f });
 		hudLifeIcon_->Update();
 	}
@@ -650,8 +658,11 @@ void PreviewScene::DrawPreviewHUD() {
 	for (auto& digit : hudCoinDigits_) {
 		if (digit) digit->Draw();
 	}
-	if (hudLifeMeter_) hudLifeMeter_->Draw();
-	if (hudLifeMeterDigit_) hudLifeMeterDigit_->Draw();
+	if (hudHpDamageFill_) hudHpDamageFill_->Draw();
+	if (hudHpFill_) hudHpFill_->Draw();
+	if (hudHpHighlight_) hudHpHighlight_->Draw();
+	if (hudHpFrame_) hudHpFrame_->Draw();
+	if (hudHpIcon_) hudHpIcon_->Draw();
 }
 
 void PreviewScene::DrawImGui() {

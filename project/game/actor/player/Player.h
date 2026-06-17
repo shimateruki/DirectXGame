@@ -11,6 +11,7 @@
 
 class IMoveStrategy; // 前方宣言
 class SpriteCommon;
+class BaseEnemy;
 
 // プレイヤーキャラクターの統合制御クラス
 class Player : public Character
@@ -126,6 +127,8 @@ public:
     void SetCarriedEnemy(Object3d* enemy) { carriedEnemy_ = enemy; } // ← Object3d* に変更！
     Object3d* GetCarriedEnemy() const { return carriedEnemy_; } // ← Object3d* に変更！
 
+    bool IsEnemyMorphed() const { return isEnemyMorphed_; }
+    float GetEnemyMorphRate() const;
 private:
     // --- 内部コンポーネント ---
     std::unique_ptr<PlayerMover> mover_ = nullptr;            // 移動処理の委譲先
@@ -173,6 +176,38 @@ private:
     Object3d* carriedEnemy_ = nullptr;
     Object3d* aimTargetObject_ = nullptr;  // エイム中にレイが当たっている対象
     float carryGlideEffectTimer_ = 0.0f;
+
+    enum class EnemyMorphType {
+        None,
+        Slime,
+        Bomber,
+        Bat,
+        BeamDrone,
+        Mushroom,
+        GiantSlime
+    };
+
+    EnemyMorphType enemyMorphType_ = EnemyMorphType::None;
+    BaseEnemy* enemyMorphSource_ = nullptr;
+    bool isEnemyMorphed_ = false;
+    float enemyMorphTimer_ = 0.0f;
+    float enemyMorphDuration_ = 5.0f;
+    float enemyMorphEffectTimer_ = 0.0f;
+    std::string savedMorphModelName_;
+    std::string savedMorphTexturePath_;
+    std::string savedMorphAnimName_;
+    bool savedMorphAnimLoop_ = true;
+    Vector4 savedMorphColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Vector3 savedMorphScale_ = { 1.0f, 1.0f, 1.0f };
+    int savedMorphMaterialType_ = 0;
+    float savedMorphEmissive_ = 1.0f;
+    Vector4 enemyMorphTint_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    void StartEnemyMorph(BaseEnemy* enemy);
+    void UpdateEnemyMorph(float deltaTime);
+    void CancelEnemyMorph();
+    EnemyMorphType ResolveEnemyMorphType(const std::string& enemyType) const;
+    Vector4 GetEnemyMorphTint(EnemyMorphType type) const;
 public:
     Object3d* GetHookMarker() const { return hookMarker_.get(); }
 private:
